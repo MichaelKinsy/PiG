@@ -2118,23 +2118,23 @@ rationale = "Pi deletes the v1 chord layer (src/node.ts is the pre-next root fil
 [[files]]
 path = "packages/chord/src/node/app/app.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_test.go", "test:chord/nextnode/app/app_workers_test.go", "test:chord/nextnode/app/app_export_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/archive.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/archive_upstream_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/blobs.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/blobs_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/data.ts"
@@ -2146,23 +2146,23 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/app/ephemeral-sessions.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/ephemeral_sessions_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/ephemeral.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/ephemeral_upstream_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/files-copy.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/files_copy_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/files-entry.ts"
@@ -2174,23 +2174,23 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/app/files-index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/files_index_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/files.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/files_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/folder-views.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/folder_views_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/index.ts"
@@ -2202,79 +2202,79 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/app/info.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/info_upstream_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/invite.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/invite_upstream_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/layout.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/layout_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/owner.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/owner_upstream_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/pairing.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/pairing_upstream_test.go", "test:chord/delta/tracker_upstream_test.go", "test:chord/next/host/host_ref_state_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/secrets.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/secrets_umask_unix_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/sessions.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/sessions_upstream_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/tar.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/tar_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/uploads.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/uploads_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/users.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/users_upstream_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/app/worker.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_workers_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/node/compression.ts"
@@ -2559,16 +2559,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/workers/base.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "D600 (draft; rows/chord-reload-workers.md): a Go worker is the program's own executable; no esbuild worker base."
 
 [[files]]
 path = "packages/chord/src/node/workers/child.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "D600 (draft; rows/chord-reload-workers.md): a Go worker is the program's own executable; no esbuild worker base."
 
 [[files]]
 path = "packages/chord/src/node/workers/control.ts"
@@ -3105,37 +3105,37 @@ rationale = "Moved from packages/chord/src/next/store/writes.ts by the root move
 [[files]]
 path = "packages/chord/src/surfaces/active-language.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_active_language_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/active-theme.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_active_theme_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/client.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/connection.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_connection_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/format.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_format_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/index.ts"
@@ -3161,37 +3161,37 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/surfaces/locale-choice.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_preference_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/messages.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_messages_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/page-state.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_page_state_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/preference.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_preference_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/registered.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_registered_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/scripts.ts"
@@ -3210,16 +3210,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/surfaces/themes.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_themes_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/surfaces/translations.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_translations_test.go"]
+rationale = "New at c23b9ec1 (no v1.5.0 counterpart); ported on the lane branch (rows/chord-nodeapp.md / chord-surfaces.md); evidence is the Go twin of the Pi test file."
 
 [[files]]
 path = "packages/chord/src/sync/batch.ts"
