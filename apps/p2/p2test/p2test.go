@@ -339,12 +339,23 @@ func HoldIn(h host.Host, contract *contracts.Contract, params *delta.JsonObject,
 	if err != nil {
 		return nil, err
 	}
-	if err := p2runtime.WhenLive(Background, ref); err != nil {
+	ctx, cancel := context.WithTimeout(Background, HoldLiveTimeout)
+	defer cancel()
+	if err := p2runtime.WhenLive(ctx, ref); err != nil {
+		state := ref.State().Value()
 		ref.Release()
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("the reference to %s was not live within %v (state %v, %v): a worker that failed to start leaves its address failed until a retry", contract.Name, HoldLiveTimeout, state.Kind, p2runtime.ErrorOf(ref))
+		}
 		return nil, err
 	}
 	return narrowed(ref, variant)
 }
+
+// HoldLiveTimeout bounds how long HoldIn waits for a reference to go live: a worker's start takes 60 s at most, and one that
+// failed to start leaves its address failed (a transient failure the reference keeps waiting through), where a wait with no
+// bound holds the test until the test binary's own timeout.
+var HoldLiveTimeout = 90 * time.Second
 
 // BoundIn is HoldIn for an older contract version: it fails, naming the state, when the reference does not bind (a version
 // the provider does not accept is left `failed { waiting }` with `contract_mismatch`, where HoldIn would wait).
