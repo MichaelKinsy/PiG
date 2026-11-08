@@ -2518,7 +2518,7 @@
       "upstreamTestHash": "sha256:80138fbe8d042d39d7aec298c286f32a580e97d98bd7524e50e35e003f13b0d1",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. The whole file is designed out in the mapping (see its rationale and the owner question in TERN-CLAUDE-CHANNEL.md): it needs no Go test. Owner hold (2026-11-08): the mapping row is pending, not designed out (D604 not approved). Intention: the book and the example cannot drift (quoted blocks match the example's files, the files are what run, the shown output is what they print); to port as a PiG tutorial with the same three checks."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package. Owner hold (2026-11-08): the mapping row is partial, not designed out (D604 not approved). Intention: the book and the example cannot drift (quoted blocks match the example's files, the files are what run, the shown output is what they print); ported as a PiG tutorial (docs/chord/tutorial.md, examples/chord-todo) with the same three checks, the first chapter written, the rest recorded in the mapping row."
     },
     {
       "path": "packages/chord/test/host/activity.test.ts",
@@ -2852,7 +2852,7 @@
       "upstreamTestHash": "sha256:f37461c6de1d420c72b433c29f3012ffa117b441ed39bbc44c5cedec6c43cc28",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_export_test.go, app_test.go, app_workers_test.go) runs in package chord/nextnode/app through exported production functions such as StartServer, AddressParam; no export_test seam or test-only stand-in replaces the code under test."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_export_test.go, app_test.go, app_workers_test.go) runs in package chord/nextnode/app through exported production functions such as StartServer, AddressParam; no export_test seam or test-only stand-in replaces the code under test. The last case (an inactive optional import that is missing) is tested on the plugins' import graph (app_executable_test.go: TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThere...); D603 keeps it off the executable only."
     },
     {
       "path": "packages/chord/test/node/app/archive.test.ts",
@@ -3300,7 +3300,7 @@
       "upstreamTestHash": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): the file is partial in the mapping, not designed out; its rationale holds the intention checks and what is still to port."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): D600 is not approved as a design-out of this file; every case is ported in PiG form (plugins_workerbase_test.go, surfaces_bundle_test.go, plugins_build_test.go, workers_workers_test.go), each stating what it protects."
     },
     {
       "path": "packages/chord/test/node/workers/child.test.ts",
