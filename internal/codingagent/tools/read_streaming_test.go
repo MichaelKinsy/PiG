@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 )
@@ -341,7 +340,6 @@ func TestReadStreamingStopsConsumingTheStreamWhenAborted(t *testing.T) {
 				if chunksRead == 3 {
 					cancel()
 				}
-				time.Sleep(time.Millisecond)
 				return copy(p, "line\n"), nil
 			}), onClose: func() { closed = true }}, nil
 		},
