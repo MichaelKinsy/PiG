@@ -79,7 +79,7 @@ func (r *rootScopes) run(fn func(ctx Ctx) (any, error), principal data.Principal
 		// The scope's own signal, aborted by its seal; the caller's abort seals it (one listener, no linked signal: a
 		// request's scope is made per HTTP request).
 		scope, abort := chordctx.WithCancel(chordctx.WithoutAbortSignal(ctx))
-		call := newCallContext(scope, caller{principal: principal, incarnation: host.Incarnation()}, host)
+		call := newCallContext(scope, caller{principal: principal, incarnation: host.Incarnation()}, host, nil)
 		open = &openScope{closed: make(chan struct{})}
 		var stopAborted func() bool
 		self := open

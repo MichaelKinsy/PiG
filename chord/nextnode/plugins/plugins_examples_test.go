@@ -677,7 +677,7 @@ func TestExample36PluginFailures(t *testing.T) {
 	}
 	wantObjects := map[string]host.ReloadedObjectKind{
 		"example.boot": host.ReloadRestarted, "example.counter": host.ReloadRestarted, "example.greeting": host.ReloadRestarted,
-		"example.price": host.ReloadRestarted, "example.summary": host.ReloadRestarted,
+		"example.price": host.ReloadRestarted, "example.summary": host.ReloadParked,
 	}
 	if !reflect.DeepEqual(objects, wantObjects) {
 		t.Fatalf("3. objects: %v, want %v", objects, wantObjects)

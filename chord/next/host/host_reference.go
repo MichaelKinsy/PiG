@@ -119,8 +119,14 @@ func (r *Reference) Release() {
 type target interface {
 	// label is the object in errors: its type, and its params key when it has params.
 	label() string
+	// kind is where it is: `local` for an object on this host, `remote` for one held over a link (another host decides what
+	// it serves).
+	kind() string
 	// state is its state as its references show it.
 	state() *RefState
+	// stateFor is its state as a reference of version and fingerprint sees it: on this host `live` also while a restart's
+	// open old attempt binds that version (decision "Reload restarts every affected object", rule 5); `state` over a link.
+	stateFor(version int, fingerprint string) *RefState
 	// hydrated is whether its state members have values: live once, for a remote object bound once.
 	hydrated() bool
 	// variant is the variant bound last; not bound for a local object and before the first binding.
@@ -313,6 +319,8 @@ type binding struct {
 	heldKeys *referenceKeys
 	// attached is the instance it attached to last: it takes last values only from that one.
 	attached attachable
+	// unlisted is whether presence lists leave it out: a restart's readiness bindings (`unlist`).
+	unlisted bool
 
 	members map[string]*ReferenceMember
 	keyed   map[string]*ReferenceKeyed
@@ -376,7 +384,8 @@ func (b *binding) principal() data.Principal { return b.from.principal }
 func (b *binding) refState() *RefState {
 	switch b.state.kind {
 	case bindingBound:
-		return b.state.target.state()
+		// A bound reference keeps its contract until it is released.
+		return b.state.target.stateFor(b.consumer.Version, b.consumer.Fingerprint)
 	case bindingWaiting:
 		if b.state.failure != nil {
 			return b.state.failure
@@ -388,6 +397,28 @@ func (b *binding) refState() *RefState {
 		return refLoading
 	}
 	return b.state.ended
+}
+
+// listed is whether presence lists show it (§19).
+func (b *binding) listed() bool { return !b.unlisted }
+
+// unlist keeps it out of presence lists, before it binds: a restart's readiness binding is no consumer of its own.
+func (b *binding) unlist() { b.unlisted = true }
+
+// hydratedNow is whether its members have values now: bound to an object that shows it live and has them.
+func (b *binding) hydratedNow() bool {
+	return b.state.kind == bindingBound && b.state.target.hydrated() && b.refState().Kind == RefStateLive
+}
+
+// untilState settles once done holds for the reference's state, checked now and at every change; rejects at its end or
+// ctx's abort.
+func (b *binding) untilState(done func(*RefState) bool, ctx context.Context) *keyedPromise[struct{}] {
+	return b.until(func(current *RefState) decision {
+		if done(current) {
+			return doneDecision
+		}
+		return waitDecision
+	}, ctx)
 }
 
 // target is the object it is bound to; nil while it is not bound.
@@ -612,7 +643,7 @@ func (b *binding) live(ctx context.Context) *keyedPromise[struct{}] {
 
 // hydrated resolves once the object's members have values; rejects when the reference fails or is released first.
 func (b *binding) hydrated(ctx context.Context) *keyedPromise[struct{}] {
-	if b.state.kind == bindingBound && b.state.target.hydrated() {
+	if b.hydratedNow() {
 		done := newKeyedPromise[struct{}](b.loop)
 		done.resolve(struct{}{})
 		return done
@@ -737,7 +768,7 @@ func (b *binding) pinKey(member, key string, ctx context.Context) (pinnedKey, er
 func (b *binding) boundTarget() (target, error) {
 	switch b.state.kind {
 	case bindingBound:
-		if current := b.state.target.state(); current.Kind == RefStateFailed {
+		if current := b.refState(); current.Kind == RefStateFailed {
 			return nil, current.Cause.Error
 		}
 		return b.state.target, nil
@@ -802,7 +833,7 @@ func (b *binding) watch(member string, ctx context.Context) (*chord.Watch[delta.
 // had any); rejects only when the reference ends (released, revoked, its host closed) or ctx aborts: a failure is
 // waited through (Opus G3).
 func (b *binding) firstValues(ctx context.Context) *keyedPromise[struct{}] {
-	if b.state.kind == bindingBound && b.state.target.hydrated() {
+	if b.hydratedNow() {
 		done := newKeyedPromise[struct{}](b.loop)
 		done.resolve(struct{}{})
 		return done
