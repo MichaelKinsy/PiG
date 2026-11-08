@@ -373,8 +373,16 @@ export default defineFacet((host) => host.serve(Idx, () => ({ label: constant(la
 		t.Fatalf("the core facet runs %v, want its old code", tag)
 	}
 	without, goHost2 := run(t, false)
-	if len(without.Failed) != 0 || tagOf(t, goHost2) != "new" {
+	if len(without.Failed) != 0 {
 		t.Fatalf("without the options the Go host applied: failed = %v", pcFailedList(without.Failed))
+	}
+	// A restart's new attempt takes over once it is live: the reload returned before it.
+	deadline := time.Now().Add(10 * time.Second)
+	for tagOf(t, goHost2) != "new" {
+		if time.Now().After(deadline) {
+			t.Fatalf("without the options the core facet runs %v, want its new code", tagOf(t, goHost2))
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 	_ = data.CodeAborted
 }

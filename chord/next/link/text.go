@@ -159,7 +159,26 @@ func ownTuple(message Message) string {
 	case *ReleaseMessage:
 		return jsonText([]any{"R", float64(typed.Hold)})
 	case *CallMessage:
-		return withPayload(jsonText([]any{"c", float64(typed.Call), float64(typed.Hold), float64(typed.Method)}), typed.Args, typed.Segments)
+		head := jsonText([]any{"c", float64(typed.Call), float64(typed.Hold), float64(typed.Method)})
+		if !typed.Old {
+			return withPayload(head, typed.Args, typed.Segments)
+		}
+		// With the old-work flag the payload's fields are positional (null when absent), the trace carrier's place next
+		// (null: no carrier here), the flag last.
+		lengths := "null"
+		if typed.Segments != nil {
+			sizes := make([]any, len(typed.Segments))
+			for index, segment := range typed.Segments {
+				sizes[index] = float64(len(segment))
+			}
+			lengths = jsonText(sizes)
+		}
+		part := "null"
+		if typed.Args != nil {
+			part = mustPartText(typed.Args)
+		}
+		//portlint:allow utf16units head is a closed JSON tuple ending in the one-byte ASCII ']' that is also one code unit; dropped as head.slice(0, -1) at text.ts:93
+		return head[:len(head)-1] + "," + part + "," + lengths + ",null,true]"
 	case *AbortMessage:
 		return jsonText([]any{"x", float64(typed.Call)})
 	case *BoundMessage:
@@ -373,9 +392,30 @@ func fromFields(fields []any, rest []byte) Message {
 		arity(1)
 		return &ReleaseMessage{Hold: asInt(f[0])}
 	case "c":
-		arity(3, 4, 5)
+		arity(3, 4, 5, 7)
 		message := &CallMessage{Call: asInt(f[0]), Hold: asInt(f[1]), Method: asInt(f[2])}
-		message.Args, message.Segments = payloadFields(f[3:], rest)
+		if len(f) < 6 {
+			message.Args, message.Segments = payloadFields(f[3:], rest)
+			return message
+		}
+		// With the old-work flag: the payload's fields positional, null when absent, then the trace carrier's place (this
+		// codec carries none: only null) and the flag (`true` only).
+		fields := []any{}
+		switch {
+		case f[3] == nil:
+		case f[4] == nil:
+			fields = f[3:4]
+		default:
+			fields = f[3:5]
+		}
+		if f[5] != nil {
+			fail("text: a trace carrier on a call")
+		}
+		if f[6] != true {
+			fail("text: a call's old-work flag is true only")
+		}
+		message.Args, message.Segments = payloadFields(fields, rest)
+		message.Old = true
 		return message
 	case "x":
 		arity(1)

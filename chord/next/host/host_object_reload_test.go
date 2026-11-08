@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 	"weak"
@@ -21,11 +22,13 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports the reload describes of packages/chord/test/next/host/object.test.ts: fates (slice 7b §4), the pure swap (§5), a stuck
-// routine call past the handover, GC, a parked attempt's handover, swaps one after another, a reference detaching from a
-// parked swap's old instance, and the two "final review" cases of a live failure and a native restart. Every case runs a real
+// Ports the reload describes of packages/chord/test/host/object.test.ts: fates (decision "Reload restarts every affected object"), a
+// restart's readiness and old attempt, a stuck routine call past the drain, old work finishing on old code, the reload drain
+// bound, GC, a parked attempt's handover, two reloads in a row, a reference detaching from a parked restart's old attempt, and
+// the two "final review" cases of a live failure and a native restart. Every case runs a real
 // host; the one Pi runs under `fakeTimers()` runs on the scopeLoop. What Pi awaits in a handler is a blocking Go function on
 // its task, gated by signals; a call a case starts and awaits later runs on a goroutine and reports on a channel.
 //
@@ -201,16 +204,17 @@ func reloadWantObjects(t testing.TB, report ReloadReport, want ...ReloadedObject
 
 // --- reload: fates (slice 7b §4) ------------------------------------------------------------------------------------------
 
-func TestReloadFatesSwapsAPureObjectInPlaceSameDocumentsAndInstanceIdNewCodeForNewCalls(t *testing.T) {
+func TestReloadFatesRestartsALiveObjectItsDocumentsKeptNewCodeForNewCalls(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, nil) }, loadedOptions{})
 	defer closeHosts(t, host)
 	pure := mustGet(t, host, reloadPure, jsonObject())
 	reloadBump(t, pure)
-	object := reloadObjectOf(pure)
 	var instance string
+	object := reloadObjectOf(pure)
 	host.(*chordHost).enter(func() { instance = object.instanceID })
 	report := reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 10, nil) }))
-	reloadWantObjects(t, report, ReloadedObject{Object: "app.pure", Kind: ReloadSwapped})
+	reloadWantObjects(t, report, ReloadedObject{Object: "app.pure", Kind: ReloadRestarted})
+	turn(host)
 	untilKind(t, pure, RefStateLive)
 	reloadUntilLabel(t, pure, "v2")
 	if bumped := reloadBump(t, pure); bumped != 11.0 {
@@ -218,12 +222,12 @@ func TestReloadFatesSwapsAPureObjectInPlaceSameDocumentsAndInstanceIdNewCodeForN
 	}
 	var after string
 	host.(*chordHost).enter(func() { after = object.instanceID })
-	if object != reloadObjectOf(pure) || after != instance {
-		t.Fatalf("the object or its instance id changed across the swap (%q -> %q)", instance, after)
+	if object != reloadObjectOf(pure) || after == instance {
+		t.Fatalf("the object changed, or its instance id did not (%q -> %q): a restart is a new instance on the same object", instance, after)
 	}
 }
 
-func TestReloadFatesRestartsAnObjectWithNativesTheDrainFirstItsNativesClosedWithReasonReloadANewInstance(t *testing.T) {
+func TestReloadFatesShowsTheOldAttemptLiveWhileItDrainsClosesItsNativesWithReasonReloadThenOpensTheNewOnes(t *testing.T) {
 	var mu sync.Mutex
 	var closes []string
 	push := func(text string) {
@@ -268,10 +272,11 @@ func TestReloadFatesRestartsAnObjectWithNativesTheDrainFirstItsNativesClosedWith
 	held.entered.wait(t)
 	report := reloadMust(t)(reloadApp(host, func(h FacetHost) error { return serve(h, "v2", nil) }))
 	reloadWantObjects(t, report, ReloadedObject{Object: "app.pure", Kind: ReloadRestarted})
-	if state := stateOfRef(pure); state.Kind != RefStateLoading {
-		t.Fatalf("state = %+v, want loading", state)
+	// The old attempt binds this reference's version: it sees it live while it drains (rule 5).
+	if state := stateOfRef(pure); state.Kind != RefStateLive {
+		t.Fatalf("state = %+v, want live", state)
 	}
-	// A new call parks until the new attempt is live.
+	// A new call waits at the gate until the new attempt is live.
 	parked := startReloadCall(pure, "bump", nil)
 	turn(host)
 	mu.Lock()
@@ -398,7 +403,7 @@ func TestReloadFatesRetriesAFailedObjectOnTheNewCode(t *testing.T) {
 	reloadUntilLabel(t, pure, "fixed")
 }
 
-func TestReloadFatesParksASwapWhoseNewFactoryNeedsAMissingDependencyItGoesLiveWhenTheDependencyIsServed(t *testing.T) {
+func TestReloadFatesReportsARestartParkedWhoseNewFactoryNeedsAMissingDependencyItGoesLiveOnceThatIsServed(t *testing.T) {
 	dep := mustContract(declareLocal("app.dep", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("name", contracts.Str())},
 	}))
@@ -445,9 +450,9 @@ func TestReloadFatesParksASwapWhoseNewFactoryNeedsAMissingDependencyItGoesLiveWh
 	reloadUntilLabel(t, pure, "with dep")
 }
 
-// --- reload: the pure swap (slice 7b §5) ----------------------------------------------------------------------------------
+// --- reload: a restart's old attempt (rules 1-4) ---------------------------------------------------------------------------
 
-func TestReloadThePureSwapLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallWaitsAtTheGateForTheNewCode(t *testing.T) {
+func TestReloadARestartLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallWaitsAtTheGateForTheNewCode(t *testing.T) {
 	held := newReloadGate()
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, reloadGates(held)) }, loadedOptions{})
 	defer closeHosts(t, host)
@@ -455,7 +460,7 @@ func TestReloadThePureSwapLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallW
 	old := startReloadCall(pure, "bump", nil)
 	held.entered.wait(t)
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 10, nil) }))
-	// The old call commits through its old handle after the swap.
+	// The old call commits through its old handle after the commit.
 	held.open.fire()
 	if got := old.wait(t); got != 1.0 {
 		t.Fatalf("old call = %v, want 1", got)
@@ -465,7 +470,7 @@ func TestReloadThePureSwapLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallW
 	}
 }
 
-func TestReloadThePureSwapAnOldCallTouchingADocumentWhoseVersionRoseThrowsOnceR15TheDocumentIsMigrated(t *testing.T) {
+func TestReloadARestartOldWorkWritesADocumentWhoseVersionTheReloadRaisesTheNewCodeMigratesWhatItWrote(t *testing.T) {
 	v2, err := documents.DefineState("doc", documents.StateOptions{
 		Schema:  contracts.Obj(contracts.Prop("n", contracts.Int()), contracts.Prop("unit", contracts.Str())),
 		Version: 2,
@@ -519,15 +524,22 @@ func TestReloadThePureSwapAnOldCallTouchingADocumentWhoseVersionRoseThrowsOnceR1
 	old := startReloadCall(pure, "bump", nil)
 	held.entered.wait(t)
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return serve(h, v2, nil) }))
-	reloadUntilLabel(t, pure, `{"n":1,"unit":"pcs"}`)
+	turn(host)
+	// The new factory has not run: the old attempt's documents are as the old code declared them.
+	if got := memberOf(t, pure, "label"); got != `{"n":1}` {
+		t.Fatalf("label = %v, want {\"n\":1}", got)
+	}
 	held.open.fire()
-	wantChordError(t, old.rejected(t), data.CodeReleased, data.ReasonVersion, "")
-	if got := reloadBump(t, pure); got != 2.0 {
-		t.Fatalf("new call = %v, want 2", got)
+	if got := old.wait(t); got != 2.0 {
+		t.Fatalf("old call = %v, want 2", got)
+	}
+	reloadUntilLabel(t, pure, `{"n":2,"unit":"pcs"}`)
+	if got := reloadBump(t, pure); got != 3.0 {
+		t.Fatalf("new call = %v, want 3", got)
 	}
 }
 
-func TestReloadThePureSwapBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADependencyHeldOnlyByItNeverEnds(t *testing.T) {
+func TestReloadARestartBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADependencyHeldOnlyByItNeverEnds(t *testing.T) {
 	depType := mustContract(declareLocal("app.dep", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 		Members: []contracts.LocalEntry{
@@ -581,7 +593,7 @@ func TestReloadThePureSwapBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesAD
 	}
 }
 
-func TestReloadThePureSwapReBindsMembersByNameOneFrameFromTheLastValueAndRebuildsInternalDerives(t *testing.T) {
+func TestReloadARestartReBindsMembersByNameOneFrameFromTheLastValueAndRebuildsInternalDerives(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, nil) }, loadedOptions{})
 	defer closeHosts(t, host)
 	pure := mustGet(t, host, reloadPure, jsonObject())
@@ -605,7 +617,7 @@ func TestReloadThePureSwapReBindsMembersByNameOneFrameFromTheLastValueAndRebuild
 	}
 }
 
-func TestReloadThePureSwapHandsItsRoutinesOverTheOldOnesAbortedTheNewOnesStartAfterTheOldCallsFinished(t *testing.T) {
+func TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart(t *testing.T) {
 	var mu sync.Mutex
 	var events []string
 	push := func(text string) {
@@ -655,7 +667,7 @@ func TestReloadThePureSwapHandsItsRoutinesOverTheOldOnesAbortedTheNewOnesStartAf
 	}
 }
 
-func TestReloadThePureSwapStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch(t *testing.T) {
+func TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch(t *testing.T) {
 	tools, err := registries.DefineRegistry[any, any]("app.tools", registries.DefineRegistryOptions{Version: 1})
 	must(t, err)
 	var mu sync.Mutex
@@ -715,9 +727,9 @@ func TestReloadThePureSwapStartsAWritableAtItsNewInitialValueAndReplacesTheContr
 	}
 }
 
-// --- reload: a stuck routine call past the handover ------------------------------------------------------------------------
+// --- reload: a stuck routine call past the drain ---------------------------------------------------------------------------
 
-func TestReloadAStuckRoutineCallPastTheHandoverAnOldRoutineCallStuckPastTheHandoverDrainTimeoutTheOldAttemptSealedItsCommitRefusedAudit12(t *testing.T) {
+func TestReloadAStuckRoutineCallPastTheDrainAnOldRoutineCallStuckPastTheReloadDrainBoundDrainTimeoutTheOldAttemptSealedItsCommitRefused(t *testing.T) {
 	stuck := newSignal()
 	t.Cleanup(stuck.fire)
 	late := make(chan error, 1)
@@ -782,7 +794,7 @@ func reloadContainsKind(kinds []HostErrorKind, kind HostErrorKind) bool {
 
 // --- reload: GC -----------------------------------------------------------------------------------------------------------
 
-func TestReloadGCCollectsASwappedOutAttemptAndItsClosuresOnceItsCallsSettled(t *testing.T) {
+func TestReloadGCCollectsARestartsOldAttemptAndItsClosuresOnceItEnded(t *testing.T) {
 	held := newReloadGate()
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, reloadGates(held)) }, loadedOptions{})
 	defer closeHosts(t, host)
@@ -794,6 +806,7 @@ func TestReloadGCCollectsASwappedOutAttemptAndItsClosuresOnceItsCallsSettled(t *
 		object := reloadObjectOf(pure)
 		host.(*chordHost).enter(func() { swapped = weak.Make(object.phase.attempt) })
 	}()
+	// The reload starts a restart: the live attempt is the old one, which the object lets go of once it ended.
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 1, nil) }))
 	held.open.fire()
 	old.wait(t)
@@ -947,9 +960,9 @@ func TestReloadAParkedAttemptsHandoverBindsReplacementRequestsBeforeReleasingThe
 	}
 }
 
-// --- reload: swaps one after another (fix round 1) ------------------------------------------------------------------------
+// --- reload: two reloads in a row -------------------------------------------------------------------------------------------
 
-func TestReloadSwapsOneAfterAnotherASecondSwapDoesNotWaitForTheFirstSwapsOldCallThatCallStillFinishesOnItsOldCode(t *testing.T) {
+func TestReloadTwoReloadsInARowTheSecondDoesNotWaitForTheFirstsOldCallWhichFinishesOnItsOldCodeTheLastCodeServes(t *testing.T) {
 	held := newReloadGate()
 	closeTimeout := time.Minute
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, reloadGates(held)) },
@@ -959,9 +972,12 @@ func TestReloadSwapsOneAfterAnotherASecondSwapDoesNotWaitForTheFirstSwapsOldCall
 	old := startReloadCall(pure, "bump", nil)
 	held.entered.wait(t)
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 10, nil) }))
-	// Not held up by v1's call (Fable, Opus F1): resolved at once, the gate open for new calls.
+	// Its report does not wait for the old attempt's drain.
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v3", 100, nil) }))
-	reloadUntilLabel(t, pure, "v3")
+	// The old attempt still runs v1's call: the reference sees it live meanwhile.
+	if got := memberOf(t, pure, "label"); got != "v1" {
+		t.Fatalf("label = %v, want v1 (the old attempt still shown)", got)
+	}
 	held.open.fire()
 	if got := old.wait(t); got != 1.0 {
 		t.Fatalf("old call = %v, want 1", got)
@@ -969,14 +985,15 @@ func TestReloadSwapsOneAfterAnotherASecondSwapDoesNotWaitForTheFirstSwapsOldCall
 	if got := reloadBump(t, pure); got != 101.0 {
 		t.Fatalf("new call = %v, want 101", got)
 	}
+	reloadUntilLabel(t, pure, "v3")
 	if errs.Len() != 0 {
 		t.Fatalf("errors = %v, want none", errs.All())
 	}
 }
 
-// --- reload: a reference detaching from a parked swap's old instance (Opus G1) ---------------------------------------------
+// --- reload: a reference detaching from a parked restart's old attempt (Opus G1) ------------------------------------------
 
-func TestReloadAReferenceDetachingFromAParkedSwapsOldInstanceFollowsTheOldInstanceWhileItsCallDrainsThenKeepsItsLastValueWithTheFailureOnce(t *testing.T) {
+func TestReloadAReferenceDetachingFromAParkedRestartsOldAttemptFollowsTheOldInstanceWhileItsCallDrainsThenKeepsItsLastValueWithTheFailureOnce(t *testing.T) {
 	missing := mustContract(declareLocal("app.missing", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{}}))
 	held := newReloadGate()
 	closeTimeout := time.Minute
@@ -1005,7 +1022,7 @@ func TestReloadAReferenceDetachingFromAParkedSwapsOldInstanceFollowsTheOldInstan
 	if state := stateOfRef(pure); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
 		t.Fatalf("state = %+v, want failed waiting", state)
 	}
-	// The old instance's call still commits: the reference follows it until it retires.
+	// The old attempt's call still commits: the reference follows it until it ended.
 	held.open.fire()
 	if got := bumping.wait(t); got != 1.0 {
 		t.Fatalf("old call = %v, want 1", got)
@@ -1216,5 +1233,237 @@ func TestObjectParkedWalksADiamondOnOneHostOnceASharedParkedDependencyPassesARet
 	mu.Unlock()
 	if got := memberOf(t, held, "n"); made != 2 || got != 4.0 {
 		t.Fatalf("cores %d, n %v, want 2 and 4", made, got)
+	}
+}
+
+// Mirrors "reload: a restart's readiness while the old attempt drains › shows a failed request while it lasts: a request that recovers shows the object live again, new calls wait".
+func TestReloadReadinessShowsAFailedRequestWhileItLastsARequestThatRecoversShowsTheObjectLiveAgainNewCallsWait(t *testing.T) {
+	flakyType := mustContract(declareLocal("app.flaky", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
+		Members: []contracts.LocalEntry{contracts.Mem("name", contracts.Str())},
+	}))
+	var failing atomic.Bool
+	failing.Store(true)
+	flaky := func(h FacetHost) error {
+		return h.Serve(flakyType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			selfOpen(self, func(context.Context) error {
+				if failing.Load() {
+					return errors.New("flaky is down")
+				}
+				return nil
+			}, func(NativeCloseReason) {})
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"name": constant("flaky")},
+			}}, nil
+		}, ServeOptions{})
+	}
+	gate := newReloadGate()
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{
+		{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return reloadServePure(t, h, "v1", 1, reloadGates(gate))
+		})},
+		{Name: "@test/flaky", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return flaky(h) })},
+	}, background))
+	pure := mustGet(t, host, reloadPure, jsonObject())
+	down, err := host.Hold(background, flakyType, jsonObject("id", 1.0), GetOptions{})
+	must(t, err)
+	untilState(t, down, func(s *RefState) bool { return s.Kind == RefStateFailed })
+	running := startReloadCall(pure, "bump", nil)
+	gate.entered.wait(t)
+	needsFlaky := func(h FacetHost) error {
+		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			self.Get(flakyType, jsonObject("id", 1.0))
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State:   map[string]chord.Watchable[delta.JsonValue]{"n": constant(0.0), "label": constant("v2")},
+				Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 2.0, nil }},
+			}}, nil
+		}, ServeOptions{})
+	}
+	reloadMust(t)(host.Reload([]HostFacet{
+		{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return needsFlaky(h) })},
+		{Name: "@test/flaky", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return flaky(h) })},
+	}, background, ReloadOptions{}))
+	// The successor's request failed: holders see it while it lasts (old work still runs on the old attempt).
+	untilState(t, pure, func(s *RefState) bool { return s.Kind == RefStateFailed && s.Cause.Kind == data.FailureWaiting })
+	failing.Store(false)
+	down.Retry()
+	untilState(t, down, func(s *RefState) bool { return s.Kind == RefStateLive })
+	// Recovered during the drain: the old attempt is shown again, and a new call waits for the new code.
+	untilState(t, pure, func(s *RefState) bool { return s.Kind == RefStateLive })
+	next := startReloadCall(pure, "bump", nil)
+	gate.open.fire()
+	if got := running.wait(t); got != 1.0 {
+		t.Fatalf("old call = %v, want 1", got)
+	}
+	if got := next.wait(t); got != 2.0 {
+		t.Fatalf("new call = %v, want 2", got)
+	}
+}
+
+// Mirrors "reload: old work finishes on old code › old work starts a job, writes documents and tables and reads ... on the old code; the new factory runs after". The live query Pi reads (`self.query`) has no Go counterpart: the
+// table is read through its handle's Page.
+func TestReloadOldWorkStartsAJobWritesDocumentsAndTablesAndReadsOnTheOldCodeTheNewFactoryRunsAfter(t *testing.T) {
+	chordStore := memoryStore(t, true)
+	opened := newEventLog()
+	latch, entered := newSignal(), newSignal()
+	checkpoint := func(*delta.JsonObject, []delta.Op, documents.CheckpointInfo) bool { return true }
+	notes1, err := documents.DefineState("notes", documents.StateOptions{
+		Schema: contracts.Obj(contracts.Prop("list", contracts.Arr(contracts.Str()))), Version: 1, Persist: true, CheckpointWhen: checkpoint,
+		Initial: func() *delta.JsonObject { return jsonObject("list", []any{}) },
+	})
+	must(t, err)
+	notes2, err := documents.DefineState("notes", documents.StateOptions{
+		Schema:  contracts.Obj(contracts.Prop("list", contracts.Arr(contracts.Str())), contracts.Prop("count", contracts.Int())),
+		Version: 2, Persist: true, CheckpointWhen: checkpoint,
+		Initial: func() *delta.JsonObject { return jsonObject("list", []any{}, "count", 0.0) },
+		Migrate: func(old *delta.JsonObject, _ int) (*delta.JsonObject, error) {
+			list := old.Value("list").([]any)
+			return jsonObject("list", list, "count", float64(len(list))), nil
+		},
+	})
+	must(t, err)
+	job1, err := DefineJob("app.job", JobOptions{Version: 1, Args: contracts.Obj(contracts.Prop("text", contracts.Str())), Result: contracts.Str()})
+	must(t, err)
+	job2, err := DefineJob("app.job", JobOptions{
+		Version: 2, Args: contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("priority", contracts.Int())), Result: contracts.Str(),
+		Accepts: JobAccepts{1: JobAdapter{
+			Args: func(old any) (any, error) {
+				return jsonObject("text", old.(*delta.JsonObject).Value("text"), "priority", 0.0), nil
+			},
+			Result: func(old any) (any, error) { return old, nil },
+		}},
+	})
+	must(t, err)
+	items, err := store.DefineTable("items", store.TableOptions{
+		Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Int()), store.Col("text", store.Str())}, Key: []string{"id"},
+	})
+	must(t, err)
+	storeType := mustContract(declareLocal("app.store", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{},
+		Members: []contracts.LocalEntry{
+			contracts.Mem("work", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+			contracts.Mem("read", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+		},
+	}))
+	serve := func(h FacetHost, code string, notesDef *documents.StateDefinition, jobDef *JobDefinition) error {
+		return h.Serve(storeType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			selfOpen(self, func(context.Context) error { opened.add(code); return nil }, func(NativeCloseReason) {})
+			notes := stateOf(self, notesDef)
+			job := self.Job(jobDef, JobImplementation{Run: func(args any, _ JobCtx) (any, error) {
+				return code + " ran " + args.(*delta.JsonObject).Value("text").(string), nil
+			}})
+			table := self.(StoreSelf).Table(items)
+			methods := map[string]contracts.MethodFunction{
+				"read": func(_ delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+					doc := notes.Value()
+					if doc.Has("count") {
+						return fmt.Sprintf(`%s: {"list":["%s"],"count":%v}`, code, doc.Value("list").([]any)[0], doc.Value("count")), nil
+					}
+					return fmt.Sprintf(`%s: {"list":[]}`, code), nil
+				},
+			}
+			if code == "v1" {
+				methods["work"] = func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					entered.fire()
+					latch.await(t, ctx)
+					if err := notes.Change(func(draft *delta.Object) { _, _ = draft.Array("list").Push("old") }, ctx); err != nil {
+						return nil, err
+					}
+					if _, err := self.Tx(func(tx documents.Tx) (any, error) {
+						return nil, tx.Put(table, store.Row{"id": int64(1), "text": "old"})
+					}, ctx); err != nil {
+						return nil, err
+					}
+					run, err := job.Start(jsonObject("text", "a"), ctx, StartOptions{})
+					if err != nil {
+						return nil, err
+					}
+					outcome, err := job.Outcome(run.ID(), ctx)
+					if err != nil {
+						return nil, err
+					}
+					result := outcome.Result
+					if outcome.Kind != OutcomeDone {
+						result = string(outcome.Kind)
+					}
+					page, err := table.Page(ctx, store.NewQuery(items), 10, store.PageOptions{})
+					if err != nil {
+						return nil, err
+					}
+					var texts []string
+					for _, row := range page.Items {
+						texts = append(texts, row["text"].(string))
+					}
+					var listed []string
+					for _, entry := range notes.Value().Value("list").([]any) {
+						listed = append(listed, entry.(string))
+					}
+					return fmt.Sprintf("v1: %s | [%s] | %v", strings.Join(listed, ","), strings.Join(texts, ","), result), nil
+				}
+			} else {
+				methods["work"] = func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "v2", nil }
+			}
+			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: methods}}, nil
+		}, ServeOptions{})
+	}
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serve(h, "v1", notes1, job1) }, loadedOptions{Store: chordStore})
+	defer closeHosts(t, host)
+	reference := mustGet(t, host, storeType, jsonObject())
+	working := startReloadCall(reference, "work", nil)
+	entered.wait(t)
+	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return serve(h, "v2", notes2, job2) }))
+	turn(host)
+	requireStrings(t, opened.all(), []string{"v1"})
+	latch.fire()
+	if got := working.wait(t); got != "v1: old | [old] | v1 ran a" {
+		t.Fatalf("work = %v, want \"v1: old | [old] | v1 ran a\"", got)
+	}
+	var read any
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		read, _ = reference.Call("read", nil, background)
+		if read == `v2: {"list":["old"],"count":1}` {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if read != `v2: {"list":["old"],"count":1}` {
+		t.Fatalf("read = %v, want v2's migrated document", read)
+	}
+	opened.await("v2")
+	requireStrings(t, opened.all(), []string{"v1", "v2"})
+}
+
+// Mirrors "reload: the reload drain bound › cuts a call still running at reloadDrainTimeout (released), reports drain_timeout, then the new code serves".
+func TestReloadDrainBoundCutsACallStillRunningAtReloadDrainTimeoutReleasedReportsDrainTimeoutThenTheNewCodeServes(t *testing.T) {
+	stuck := newReloadGate()
+	t.Cleanup(stuck.open.fire)
+	drain := 300 * time.Millisecond
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, reloadGates(stuck)) },
+		loadedOptions{ReloadDrainTimeout: &drain})
+	defer closeHosts(t, host)
+	pure := mustGet(t, host, reloadPure, jsonObject())
+	old := startReloadCall(pure, "bump", nil)
+	stuck.entered.wait(t)
+	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 10, nil) }))
+	wantChordError(t, old.rejected(t), data.CodeReleased, "", "")
+	kinds := []HostErrorKind{}
+	for _, err := range errs.All() {
+		kinds = append(kinds, err.Kind)
+	}
+	if !reloadContainsKind(kinds, ErrDrainTimeout) {
+		t.Fatalf("error kinds = %v, want drain_timeout among them", kinds)
+	}
+	reloadUntilLabel(t, pure, "v2")
+}
+
+// Mirrors "reload: the reload drain bound › is at most closeTimeout".
+func TestReloadDrainBoundIsAtMostCloseTimeout(t *testing.T) {
+	closeTimeout, drain := time.Second, 5*time.Second
+	host := newHost(t, HostOptions{CloseTimeout: &closeTimeout, ReloadDrainTimeout: &drain, OnError: func(HostError) {}})
+	if got := host.(*chordHost).timeouts.reload; got != time.Second {
+		t.Fatalf("reload drain bound = %v, want %v", got, time.Second)
 	}
 }

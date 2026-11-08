@@ -44,6 +44,9 @@ const (
 const (
 	// originFlag is the kind byte's flag for an origin.
 	originFlag = 0x80
+	// oldFlag is the kind byte's flag for a `call` that is old work of a reload (`call.old`); another kind with it is unknown.
+	// (0x40 is a trace carrier's, a hold's or call's.)
+	oldFlag = 0x20
 	// payloadPresent and payloadSegments are a payload's flags: present, and carrying byte segments.
 	payloadPresent  = 1
 	payloadSegments = 2
@@ -85,6 +88,9 @@ func (binaryCodec) Encode(message Message) (encoded []byte, err error) {
 	defer recoverCodec(&err)
 	writer := newWriter()
 	kind := kindOf(message)
+	if call, ok := message.(*CallMessage); ok && call.Old {
+		kind |= oldFlag
+	}
 	if origin := OriginOf(message); origin.Ok {
 		writer.byte(kind | originFlag)
 		writer.varint(origin.Value)
@@ -104,12 +110,16 @@ func (binaryCodec) Decode(bytes []byte) (message Message, err error) {
 	if hasOrigin {
 		origin = reader.varint()
 	}
-	kind := int(first &^ originFlag)
-	if kind >= kindCount {
+	hasOld := first&oldFlag != 0
+	kind := int(first &^ (originFlag | oldFlag))
+	if kind >= kindCount || (hasOld && kind != kindCall) {
 		fail("binary: an unknown kind")
 	}
 	message = decodeFields(kind, reader)
 	reader.end()
+	if hasOld {
+		message.(*CallMessage).Old = true
+	}
 	// A fresh message; the message schema refuses an origin of 0.
 	if hasOrigin && !setOrigin(message, origin) {
 		fail("binary: an origin on a kind without one")

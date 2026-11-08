@@ -149,8 +149,8 @@ func adaptedMade(host Host, version int, key bool) []weak.Pointer[adaptedMembers
 			if object.phase.attempt != nil {
 				attempts[object.phase.attempt] = true
 			}
-			if object.phase.swap != nil && object.phase.swap.old != nil {
-				attempts[object.phase.swap.old] = true
+			if object.old != nil {
+				attempts[object.old] = true
 			}
 		}
 		for each := range attempts {

@@ -116,6 +116,12 @@ func (h *relayedHold) lost() {
 // origin. Without an upstream link it is answered `unavailable` at once (it crossed the `loading` notice).
 func (h *relayedHold) call(message *link.CallMessage) {
 	if upstream := h.upstream; upstream != nil {
+		// A downstream link that is not trusted (a page) cannot claim old work: its flag is dropped here.
+		if message.Old && !h.downstream.link.trusted {
+			unmarked := *message
+			unmarked.Old = false
+			message = &unmarked
+		}
 		upstream.link.send(link.WithOrigin(message, link.Some(upstream.origin)))
 		return
 	}
