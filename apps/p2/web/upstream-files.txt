@@ -525,3 +525,8 @@ plugins/subagents/tui.ts
 plugins/proxy-marker/contract.ts
 plugins/proxy-marker/package.json
 plugins/radius/contract.ts
+plugins/projects/contract.ts
+plugins/workspace/protocol.ts
+plugins/conversations/contract.ts
+test/p2/outbox.test.ts
+test/p2/session-start.test.ts
