@@ -11,7 +11,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	clientsurfaces "github.com/MichaelKinsy/PiG/chord/next/surfaces"
+	next "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
@@ -55,7 +55,7 @@ type PublishedScripts struct {
 	// current is the published script of each plugin now, names in order.
 	current map[string]published
 	names   []string
-	set     clientsurfaces.ScriptSet
+	set     next.ScriptSet
 	// files are the files of the last keptSets sets, newest last, each by path.
 	files []map[string]ServedFile
 }
@@ -67,7 +67,7 @@ func NewPublishedScripts(surface SurfaceName, kind, prefix, base string, p *plug
 }
 
 // Set is the set published now (after Start).
-func (p *PublishedScripts) Set() clientsurfaces.ScriptSet {
+func (p *PublishedScripts) Set() next.ScriptSet {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.set
@@ -111,7 +111,7 @@ func (p *PublishedScripts) Step(name string) plugins.RolloutStep {
 			if err != nil {
 				return plugins.StepResult{}, err
 			}
-			if err := publishTo(p.host, p.surface, p.Set(), ctx); err != nil {
+			if err := PublishTo(p.host, p.surface, p.Set(), ctx); err != nil {
 				return plugins.StepResult{}, err
 			}
 			p.mu.Lock()
@@ -142,31 +142,28 @@ func (p *PublishedScripts) Step(name string) plugins.RolloutStep {
 // kept with the last few sets'. It returns the plugins whose build failed.
 func (p *PublishedScripts) publish(scripts []plugins.PluginScript) ([]host.PluginFailure, error) {
 	var failed []host.PluginFailure
-	next := map[string]published{}
+	kept := map[string]published{}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	for _, script := range scripts {
 		built, name := script.Built, script.Plugin.Name
 		if built.Kind == plugins.BuiltFacetScript {
-			text, err := clientsurfaces.RegisteredSource(name, built.Digest, built.Source)
-			if err != nil {
-				return nil, err
-			}
+			text := next.RegisteredSource(name, built.Digest, built.Source)
 			entry := published{digest: built.Digest, text: text, assets: built.Assets}
 			if built.CSS != nil {
 				entry.css, entry.hasCSS = built.CSS.Text, true
 			}
-			next[name] = entry
+			kept[name] = entry
 			continue
 		}
 		failed = append(failed, host.PluginFailure{Plugin: name, Error: &buildFailure{strings.Join(built.Errors, "\n")}})
-		if kept, ok := p.current[name]; ok {
-			next[name] = kept
+		if previous, ok := p.current[name]; ok {
+			kept[name] = previous
 		}
 	}
-	p.current = next
+	p.current = kept
 	p.names = p.names[:0]
-	for name := range next {
+	for name := range kept {
 		p.names = append(p.names, name)
 	}
 	slices.SortFunc(p.names, compareUTF16)
@@ -186,9 +183,9 @@ func (e *buildFailure) Error() string { return e.text }
 
 // filesLocked is the set of the current scripts and its files: each script (its source map inline), stylesheet and asset, and the
 // combined file (without source maps: a browser reads only one per file, so they would be bytes for nothing).
-func (p *PublishedScripts) filesLocked() (clientsurfaces.ScriptSet, map[string]ServedFile) {
+func (p *PublishedScripts) filesLocked() (next.ScriptSet, map[string]ServedFile) {
 	files := map[string]ServedFile{}
-	entries := make([]clientsurfaces.ScriptEntry, 0, len(p.names))
+	entries := make([]next.ScriptEntry, 0, len(p.names))
 	var combined strings.Builder
 	for _, name := range p.names {
 		each := p.current[name]
@@ -196,12 +193,12 @@ func (p *PublishedScripts) filesLocked() (clientsurfaces.ScriptSet, map[string]S
 		// parsed back.
 		stem := p.prefix + "plugin/" + strings.Replace(name, "/", "~", 1) + "." + each.digest
 		files[stem+".js"] = ServedFile{Mime: JavaScript, Bytes: []byte(each.text)}
-		entry := clientsurfaces.ScriptEntry{Name: name, Digest: each.digest, URL: stem + ".js"}
+		entry := next.ScriptEntry{Name: name, Digest: each.digest, URL: stem + ".js"}
 		if each.hasCSS {
 			// Named by its own content too: a change of only the CSS keeps the script's digest.
 			style := stem + "." + hashOf(each.css) + ".css"
 			files[style] = ServedFile{Mime: CSS, Bytes: []byte(each.css)}
-			entry.CSS = style
+			entry.CSS = &style
 		}
 		entries = append(entries, entry)
 		combined.WriteString(sourceMap.ReplaceAllString(each.text, ""))
@@ -212,7 +209,7 @@ func (p *PublishedScripts) filesLocked() (clientsurfaces.ScriptSet, map[string]S
 	body := combined.String()
 	url := p.prefix + "plugins." + hashOf(body) + ".js"
 	files[url] = ServedFile{Mime: JavaScript, Bytes: []byte(body)}
-	return clientsurfaces.ScriptSet{Base: p.base, Combined: url, Plugins: entries}, files
+	return next.ScriptSet{Base: p.base, Combined: url, Plugins: entries}, files
 }
 
 // hashOf is the first 16 hex digits of the SHA-256 of text.

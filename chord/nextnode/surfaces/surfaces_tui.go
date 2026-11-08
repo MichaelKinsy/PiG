@@ -36,7 +36,9 @@ type TuiStart struct {
 
 // TuiSurface is the terminal surface: its facet (for the server's core facets), its rollout step, its base bundle's hash.
 type TuiSurface struct {
-	Facet host.Facet
+	// Facet contributes the surface's routes; Scripts serves its scripts objects (see WebSurface).
+	Facet   host.Facet
+	Scripts host.Facet
 	// Base is its base bundle's hash.
 	Base string
 	// Inputs are the files its base bundle was built from, with their bytes' hashes: the app's base code for this surface.
@@ -61,7 +63,7 @@ func NewTuiSurface(server host.Host, options TuiSurfaceOptions, ctx context.Cont
 	if kind == "" {
 		kind = "tui"
 	}
-	published := NewPublishedScripts(SurfaceTui, kind, TuiPrefix, base.Hash, options.Plugins, server)
+	published := NewPublishedScripts(Tui, kind, TuiPrefix, base.Hash, options.Plugins, server)
 	if _, err := published.Start(ctx); err != nil {
 		return nil, err
 	}
@@ -75,10 +77,7 @@ func NewTuiSurface(server host.Host, options TuiSurfaceOptions, ctx context.Cont
 		return Served(file(request.Path())), nil
 	}
 	noStore := []http.ResponseHeader{http.HeaderOf("Cache-Control", "no-store")}
-	facet := host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
-		if err := serveScripts(SurfaceTui, published)(facet); err != nil {
-			return err
-		}
+	facet := host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
 		return self.Contribute(registries.Registry[any, any](http.Http), http.HttpContribution{Routes: []http.HttpRouteEntry{
 			http.RouteFunc("GET "+TuiPrefix+"start", func(http.HttpRequest, host.Ctx) (http.HttpResponse, error) {
 				start := TuiStart{Base: base.Hash, Script: base.Script, Combined: published.Set().Combined}
@@ -91,5 +90,5 @@ func NewTuiSurface(server host.Host, options TuiSurfaceOptions, ctx context.Cont
 			http.RouteFunc("GET "+TuiPrefix+"plugin/:file", serve),
 		}})
 	})
-	return &TuiSurface{Facet: facet, Base: base.Hash, Inputs: base.Inputs, published: published}, nil
+	return &TuiSurface{Facet: facet, Scripts: ScriptsFacet(Tui, published.Set), Base: base.Hash, Inputs: base.Inputs, published: published}, nil
 }

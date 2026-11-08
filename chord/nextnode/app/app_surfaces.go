@@ -37,7 +37,7 @@ type AppSurface struct {
 // surface is a client surface of the app: its facet, its rollout step, its base bundle's inputs.
 type surface struct {
 	name   string
-	facet  host.Facet
+	facets []host.HostFacet
 	step   func(name string) plugins.RolloutStep
 	base   string
 	inputs plugins.BaseInputs
@@ -54,7 +54,7 @@ func surfacesOf(h host.Host, options AppOptions, p *plugins.Plugins, ctx context
 		if err != nil {
 			return nil, err
 		}
-		surfaces = append(surfaces, surface{"web", web.Facet, web.Step, web.Base, web.Inputs})
+		surfaces = append(surfaces, surface{"web", []host.HostFacet{{Name: "chord.web", Facet: web.Facet}, {Name: "chord.web.scripts", Facet: web.Scripts}}, web.Step, web.Base, web.Inputs})
 	}
 	if options.Tui != nil {
 		tui, err := nodesurfaces.NewTuiSurface(h, nodesurfaces.TuiSurfaceOptions{
@@ -63,7 +63,7 @@ func surfacesOf(h host.Host, options AppOptions, p *plugins.Plugins, ctx context
 		if err != nil {
 			return nil, err
 		}
-		surfaces = append(surfaces, surface{"tui", tui.Facet, tui.Step, tui.Base, tui.Inputs})
+		surfaces = append(surfaces, surface{"tui", []host.HostFacet{{Name: "chord.tui", Facet: tui.Facet}, {Name: "chord.tui.scripts", Facet: tui.Scripts}}, tui.Step, tui.Base, tui.Inputs})
 	}
 	return surfaces, nil
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
-	clientsurfaces "github.com/MichaelKinsy/PiG/chord/next/surfaces"
+	next "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -49,7 +49,10 @@ type PageAssets struct {
 
 // WebSurface is the web surface: its facet (for the server's core facets), its rollout step, its base bundle's hash.
 type WebSurface struct {
-	Facet host.Facet
+	// Facet contributes the surface's routes; Scripts serves its scripts objects (Pi's one `chord.web` facet does both: the Go
+	// facet is opaque, so the app loads the two).
+	Facet   host.Facet
+	Scripts host.Facet
 	// Base is its base bundle's hash.
 	Base string
 	// Inputs are the files its base bundle was built from, with their bytes' hashes: the app's base code for this surface.
@@ -75,7 +78,7 @@ func NewWebSurface(server host.Host, options WebSurfaceOptions, ctx context.Cont
 	if kind == "" {
 		kind = "web"
 	}
-	published := NewPublishedScripts(SurfaceWeb, kind, WebPrefix, base.Hash, options.Plugins, server)
+	published := NewPublishedScripts(Web, kind, WebPrefix, base.Hash, options.Plugins, server)
 	if _, err := published.Start(ctx); err != nil {
 		return nil, err
 	}
@@ -86,10 +89,7 @@ func NewWebSurface(server host.Host, options WebSurfaceOptions, ctx context.Cont
 		return published.File(path)
 	}
 	routes := webRoutes(options, base.Hash, file, func() PageAssets { return pageAssets(base, published) })
-	facet := host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
-		if err := serveScripts(SurfaceWeb, published)(facet); err != nil {
-			return err
-		}
+	facet := host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
 		return self.Contribute(registries.Registry[any, any](http.Http), http.HttpContribution{
 			Routes: routes,
 			Csp: []http.CspEntry{
@@ -101,7 +101,7 @@ func NewWebSurface(server host.Host, options WebSurfaceOptions, ctx context.Cont
 			Scripts: []string{WebPrefix},
 		})
 	})
-	return &WebSurface{Facet: facet, Base: base.Hash, Inputs: base.Inputs, published: published}, nil
+	return &WebSurface{Facet: facet, Scripts: ScriptsFacet(Web, published.Set), Base: base.Hash, Inputs: base.Inputs, published: published}, nil
 }
 
 // webRoutes are the surface's routes: its files (served forever), its current base hash (public), and the page.
@@ -146,8 +146,8 @@ func pageAssets(base *BaseBundle, published *PublishedScripts) PageAssets {
 		styles = append(styles, base.Style)
 	}
 	for _, entry := range set.Plugins {
-		if entry.CSS != "" {
-			styles = append(styles, entry.CSS)
+		if entry.CSS != nil {
+			styles = append(styles, *entry.CSS)
 		}
 	}
 	return PageAssets{Bootstrap: bootstrap(base.Hash, set), Script: base.Script, Plugins: set.Combined, Styles: styles}
@@ -157,11 +157,11 @@ func pageAssets(base *BaseBundle, published *PublishedScripts) PageAssets {
 // `startPage`; how each stylesheet's load ended (`links`, by `href`: `load` or `error`, from a capturing listener the page's
 // start removes: a failed load still has a `sheet`, empty); and the `chordFacet` the combined file's scripts call before the
 // base bundle runs (they queue; `startPage` takes them).
-func bootstrap(hash string, set clientsurfaces.ScriptSet) string {
+func bootstrap(hash string, set next.ScriptSet) string {
 	styles := delta.NewJsonObject(len(set.Plugins))
 	for _, entry := range set.Plugins {
-		if entry.CSS != "" {
-			styles.Set(entry.Name, entry.CSS)
+		if entry.CSS != nil {
+			styles.Set(entry.Name, *entry.CSS)
 		}
 	}
 	text, err := jsstring.MarshalJSON(delta.JsonObjectOf("base", hash, "styles", styles, "links", delta.NewJsonObject(0), "queued", []any{}))
@@ -172,7 +172,7 @@ func bootstrap(hash string, set clientsurfaces.ScriptSet) string {
 	page := strings.ReplaceAll(string(text), "<", `\u003c`)
 	watching := `chordPage.watching=function(e){var t=e.target;if(t&&t.tagName==="LINK")chordPage.links[t.getAttribute("href")]=e.type};` +
 		`document.addEventListener("load",chordPage.watching,true);document.addEventListener("error",chordPage.watching,true);`
-	return "globalThis.chordPage=" + page + ";" + watching + "globalThis." + clientsurfaces.Register + "=function(p,d,f){chordPage.queued.push([p,d,f])};"
+	return "globalThis.chordPage=" + page + ";" + watching + "globalThis." + next.Register + "=function(p,d,f){chordPage.queued.push([p,d,f])};"
 }
 
 // PageScripts is the page's tags for assets: the inline bootstrap with nonce, the stylesheets, then the deferred scripts.
