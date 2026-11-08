@@ -27,6 +27,15 @@ type WritableOwner interface {
 	AssertUsable() error
 }
 
+// SectionOwner is a WritableOwner whose host runs its code in sections of one loop (Pi's single event loop). Set called from
+// outside a section (a native's opener, which the host runs off the loop) enters one, as Pi's continuation after an
+// `await` is on the loop; inside a section it nests.
+type SectionOwner interface {
+	WritableOwner
+	// Do runs work as one section of the owner's loop.
+	Do(work func())
+}
+
 // WritableSource is a writable: its value, set by its owner's code, delivered through the host's batch. It is a Writable;
 // NewWritableSource makes it.
 type WritableSource[T any] struct {
@@ -35,11 +44,16 @@ type WritableSource[T any] struct {
 	// owner is the running attempt, nil once it ended and ended holds its error (the Go form of Pi's Ownership union).
 	owner WritableOwner
 	ended error
+	// do is the owner's loop, fixed at construction (nil: the owner has none, and the caller is in a section).
+	do func(work func())
 }
 
 // NewWritableSource returns a writable holding initial, owned by owner, on batch.
 func NewWritableSource[T any](initial T, owner WritableOwner, batch *Batch) *WritableSource[T] {
 	w := &WritableSource[T]{value: initial, owner: owner}
+	if sections, ok := owner.(SectionOwner); ok {
+		w.do = sections.Do
+	}
 	w.Init(batch, w)
 	return w
 }
@@ -49,7 +63,15 @@ func (w *WritableSource[T]) Value() T { return w.value }
 
 // Set sets the value, as Writable.Set says. After the attempt ended it returns the error the attempt ended with, also for
 // the value it has.
-func (w *WritableSource[T]) Set(value T) error {
+func (w *WritableSource[T]) Set(value T) (err error) {
+	if w.do != nil {
+		w.do(func() { err = w.set(value) })
+		return err
+	}
+	return w.set(value)
+}
+
+func (w *WritableSource[T]) set(value T) error {
 	if w.ended != nil {
 		return w.ended
 	}
