@@ -19,6 +19,8 @@ var (
 	anchorMu sync.Mutex
 	// anchor is the wall-clock time of performance.now()'s zero; performance.timeOrigin until the first step is followed.
 	anchor = jsclock.TimeOrigin()
+	// anchoredAt is the jsclock generation the anchor was made in.
+	anchoredAt = jsclock.Generation()
 )
 
 // TelemetryNow is now as milliseconds since the epoch, rounded to the microsecond: PerformanceNow (monotonic,
@@ -26,11 +28,14 @@ var (
 // order and spacing to the microsecond; past that the clock follows DateNow again, at whole milliseconds. Every adapter of
 // this package and Chord's SQLite store stamp span starts with it, so their times agree.
 func TelemetryNow() float64 {
+	generation := jsclock.Generation()
 	clock := jsclock.PerformanceNow()
 	wall := jsclock.DateNow()
 	anchorMu.Lock()
-	if math.Abs(anchor+clock-wall) > telemetryToleranceMs {
-		anchor = wall - clock
+	// A clock replaced or set since the anchor was made is a new process to it: Pi's vitest mocks Date.now() per test in a fresh
+	// module state, and an anchor kept across them would carry one test's microseconds into the next.
+	if generation != anchoredAt || math.Abs(anchor+clock-wall) > telemetryToleranceMs {
+		anchor, anchoredAt = wall-clock, generation
 	}
 	now := anchor + clock
 	anchorMu.Unlock()
@@ -38,4 +43,4 @@ func TelemetryNow() float64 {
 }
 
 // Microseconds is ms rounded to the microsecond, as span times are (Math.round(ms * 1000) / 1000).
-func Microseconds(ms float64) float64 { return math.Floor(ms*1000+0.5) / 1000 }
+func Microseconds(ms float64) float64 { return math.Floor(float64(ms*1000)+0.5) / 1000 }
