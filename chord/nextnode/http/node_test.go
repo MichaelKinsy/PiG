@@ -27,8 +27,8 @@ import (
 
 // echo is a plugin answering its path and params, under `GET /who` and `GET /n/:name`.
 var echoPlugin = plugin{"@app/echo", contributing(HttpContribution{Routes: []HttpRouteEntry{
-	RouteFunc("GET /who", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) { return jsonOf(request.Path()), nil }),
-	RouteFunc("GET /n/:name", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+	publicRoute("GET /who", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) { return jsonOf(request.Path()), nil }),
+	publicRoute("GET /n/:name", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
 		params := map[string]any{}
 		for name, value := range request.Params() {
 			params[name] = value
@@ -160,7 +160,7 @@ func TestTheRequestsScopeLastsUntilTheResponseIsFlushedCloseWaitsForIt(t *testin
 	scope := make(chan host.Ctx, 1)
 	body := strings.Repeat("x", size)
 	server := serving(t, []plugin{{"@app/large", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /large", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /large", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			scope <- ctx
 			return htmlOf(body), nil
 		}),
@@ -193,7 +193,7 @@ func TestTheRequestsScopeLastsUntilTheResponseIsFlushedCloseWaitsForIt(t *testin
 func TestTheRequestsScopeIsAbortedWhenTheClientDisconnects(t *testing.T) {
 	entered := make(chan host.Ctx, 1)
 	server := serving(t, []plugin{{"@app/slow", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /slow", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /slow", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			entered <- ctx
 			<-ctx.Done()
 			return HttpResponse{Kind: KindError, Status: 503}, nil
