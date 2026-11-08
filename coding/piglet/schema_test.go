@@ -125,7 +125,7 @@ func TestValidateAgainstSchemaNamesTheRootAndNestedPaths(t *testing.T) {
 			if !strings.HasPrefix(err.Error(), tc.want) {
 				t.Fatalf("message %q does not start with %q", err, tc.want)
 			}
-			for _, problem := range strings.Split(strings.TrimPrefix(err.Error(), prefix), "; ") {
+			for problem := range strings.SplitSeq(strings.TrimPrefix(err.Error(), prefix), "; ") {
 				if !strings.HasPrefix(problem, "/") {
 					t.Errorf("problem %q does not start with a path", problem)
 				}

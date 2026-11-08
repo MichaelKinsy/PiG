@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -41,10 +42,5 @@ func PathOnlyEnvironment(tb testing.TB, programs ...string) {
 }
 
 func contains(list []string, want string) bool {
-	for _, entry := range list {
-		if entry == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, want)
 }

@@ -623,14 +623,12 @@ func TestConcurrentStartsLeaveOneWholeRecord(t *testing.T) {
 	errs := make(chan error, starts)
 	begin := make(chan struct{})
 	for range starts {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-begin
 			if _, err := verifyClosed(f.process(), t.Context(), f.manifest(), f.exe, f.digest); err != nil {
 				errs <- err
 			}
-		}()
+		})
 	}
 	close(begin)
 	wg.Wait()

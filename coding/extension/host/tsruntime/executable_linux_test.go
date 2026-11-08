@@ -368,9 +368,7 @@ func TestConcurrentExecLinksDoNotCollide(t *testing.T) {
 	dirs := make(chan string, starts)
 	var wg sync.WaitGroup
 	for range starts {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			handle, _, err := v.Verify(t.Context(), m, exe, verified)
 			if err != nil {
 				t.Error(err)
@@ -393,7 +391,7 @@ func TestConcurrentExecLinksDoNotCollide(t *testing.T) {
 			if got, _, _ := strings.Cut(strings.TrimSpace(string(out)), " "); got != verified {
 				t.Errorf("a concurrent start ran %s, want %s", got, verified)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	close(dirs)
