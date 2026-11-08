@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -18,7 +19,7 @@ func TestWatchCallIsPlainDataOfItsFieldsThatSurvivesAJSONRoundTrip(t *testing.T)
 			fields = append(fields, field.Name)
 		}
 		want := []string{"Kind", "Value", "Ops", "Retired", "Error"}
-		if kind.Name() == "NativeWatchCall" {
+		if strings.HasPrefix(kind.Name(), "NativeWatchCall") {
 			want = []string{"Kind", "Value", "Error"}
 		}
 		if !reflect.DeepEqual(fields, want) {
