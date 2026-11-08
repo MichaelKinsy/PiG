@@ -33,6 +33,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, NotRequired, Protocol, TypeAlias, TypedDict
 from . import editor_component as _editor_component
+from ._diagnostic import diagnose
 from .editor_component import EditorBase as EditorBase, EditorComponent as EditorComponent, EditorFactory as EditorFactory, EditorStatus as EditorStatus
 from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
 from .session_manager import ReadonlySessionManager, SessionManager as SessionManager, SetupSessionManager
@@ -1295,8 +1296,8 @@ def _dispose_remote_component(component: RemoteComponent) -> None:
     if callable(set_invalidate):
         try:
             set_invalidate(None)
-        except Exception:  # noqa: BLE001 - reported on stderr, the extension log, as the Go SDK's overlay stop does
-            print(f"extension: recovered from exception in a component's set_invalidate(None):\n{traceback.format_exc()}", file=sys.stderr, end="")
+        except Exception:  # noqa: BLE001 - reported in the extension log, as the Go SDK's overlay stop does
+            diagnose(f"extension: recovered from exception in a component's set_invalidate(None):\n{traceback.format_exc()}")
     dispose = getattr(component, "dispose", None)
     if callable(dispose):
         try:
@@ -2872,6 +2873,16 @@ class Context:
     def call_host(self, method: str, args: Any = None) -> Any:
         return self._call(method, args).get("result")
 
+    def with_file_mutation_queue(self, file_path: str, fn: Callable[[], Any]) -> Any:
+        """Pi's ``withFileMutationQueue`` for a handler that has its context: run ``fn`` in the host's file mutation queue for ``file_path`` and return its result.
+
+        A tool that takes the queue through its context registers in the order Pi's one thread runs the batch's tools (D187); the free ``with_file_mutation_queue``
+        registers in the order the calls reach the host. See :func:`pig_sdk.file_mutation_queue.with_context_file_mutation_queue`.
+        """
+        from .file_mutation_queue import with_context_file_mutation_queue
+
+        return with_context_file_mutation_queue(self, file_path, fn)
+
     def create_agent_session(self, options: CreateAgentSessionOptions | None = None) -> AgentSession:
         """Pi's ``createAgentSession``: create a child agent session in the host and return once it is ready.
 
@@ -3191,7 +3202,10 @@ class Context:
         self._call("ui.pasteToEditor", {"text": text})
 
     def get_session_name(self) -> str | None:
-        """The session name, or None when the session has no name (Pi's ``string | undefined``)."""
+        """The session name, or None when the session has no name (Pi's ``string | undefined``). Answered from the replicated snapshot, as :meth:`get_session_id` is."""
+        replicated = self._replicated_session()
+        if replicated is not None:
+            return replicated[1] or None
         return self._optional_string_field("getSessionName", "name")
 
     def set_session_name(self, name: str) -> None:
@@ -3333,6 +3347,13 @@ class Context:
         return result
 
     def get_model_info(self) -> dict[str, Any] | None:
+        """The active model's info (name, context window, costs...), ``None`` while the Session has no model. The replicated snapshot answers it; a copy is returned per call. A replacement context, and a context that predates the first snapshot, ask the host."""
+        if self._replacement is None:
+            self._assert_active()
+            with self.extension._state_lock:
+                known, model = self.extension._model_known, self.extension._model_info
+            if known:
+                return copy.deepcopy(model) if isinstance(model, dict) and model.get("id") else None
         result = self._call("getModelInfo").get("result")
         return result if isinstance(result, dict) and result.get("id") else None
 
@@ -3639,7 +3660,7 @@ class Context:
         the order the host sent the widths, never on the thread that reads the
         host's replies, so a handler can make a blocking host call such as
         :meth:`set_footer`. A slow handler delays the later deliveries, not the
-        extension's other handlers. A handler that raises is reported on stderr
+        extension's other handlers. A handler that raises is reported in the extension's log
         and does not stop the others. Returns an idempotent unsubscribe
         callable; a delivery already queued still reaches the handlers that
         were subscribed when the width arrived.
@@ -3653,7 +3674,7 @@ class Context:
 
         Pi calls a widget component's ``invalidate()`` on a theme change, and the component reads ``ctx.ui.theme`` at its next render, so it never paints the colors of an old theme. A subprocess extension pushes rows that were colored when it built them, so it re-renders from this subscription. :meth:`set_widget_renderer` colors through the live theme at every render and needs no handler for it.
 
-        Handlers run on a worker thread, one at a time in the order the changes arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call. A handler that raises is reported on stderr and does not stop the others. Returns an idempotent unsubscribe callable; a delivery already queued still reaches the handlers subscribed when the change arrived. A palette equal to the one before is not a change.
+        Handlers run on a worker thread, one at a time in the order the changes arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call. A handler that raises is reported in the extension's log and does not stop the others. Returns an idempotent unsubscribe callable; a delivery already queued still reaches the handlers subscribed when the change arrived. A palette equal to the one before is not a change.
         """
         if not callable(handler):
             raise TypeError("on_theme_change requires a callable handler")
@@ -3703,11 +3724,27 @@ class Context:
     # Session identity -------------------------------------------------------
 
     def get_session_id(self) -> str:
-        """The current session's id, including in-memory sessions."""
+        """The current session's id, including in-memory sessions. The replicated snapshot answers it; a replacement context, and a context that predates the first snapshot, ask the host."""
+        replicated = self._replicated_session()
+        if replicated is not None:
+            return replicated[0]
         return self._reply_field("getSessionID", "sessionId")
 
+    def _replicated_session(self) -> tuple[str, str, str] | None:
+        """The session id, name and file of the last snapshot (``""`` for no name or an in-memory session), ``None`` when this context must ask the host: a replacement context or no snapshot yet. Raises the stale message after invalidation."""
+        if self._replacement is not None:
+            return None
+        self._assert_active()
+        with self.extension._state_lock:
+            if not self.extension._session_known:
+                return None
+            return self.extension._session_id, self.extension._session_name, self.extension._session_file
+
     def get_session_file(self) -> str | None:
-        """The current session file path, or None for an in-memory session (Pi's ``string | undefined``)."""
+        """The current session file path, or None for an in-memory session (Pi's ``string | undefined``). Answered from the replicated snapshot, as :meth:`get_session_id` is."""
+        replicated = self._replicated_session()
+        if replicated is not None:
+            return replicated[2] or None
         return self._optional_string_field("getSessionFile", "sessionFile")
 
     def get_leaf_id(self) -> str | None:
@@ -4277,11 +4314,8 @@ def _frame_head(body: bytes | bytearray) -> tuple[str | None, str | None]:
 
 
 def _diagnose(message: str) -> None:
-    """One diagnostic line on stderr; a closed stderr does not end the extension."""
-    try:
-        print(f"pig_sdk: {message}", file=sys.stderr, flush=True)
-    except (OSError, ValueError):
-        pass
+    """One diagnostic line in the extension's log (see ``_diagnostic``); one that cannot be written does not end the extension."""
+    diagnose(f"pig_sdk: {message}\n")
 
 
 def _refusal(kind: str | None, frame_id: str | None) -> dict[str, Any]:
@@ -4528,6 +4562,12 @@ class Extension:
         self._width: int = 0
         self._height: int = 0
         self._model: str = ""
+        # The snapshot's model object, kept for get_model_info; _model_known is set once a snapshot carried the member (null included).
+        self._model_info: Any = None
+        self._model_known = False
+        # The snapshot's session id; _session_known is set once a snapshot carried the session object (the id, name and file are then known).
+        self._session_id: str = ""
+        self._session_known = False
         self._has_ui: bool = False
         self._theme = Theme()
         self._sock: socket.socket | None = None
@@ -4814,7 +4854,7 @@ class Extension:
                 if waiting is not None and waiting.is_set():
                     return None
             elif kind == "refused":
-                continue  # nested past the reader and already reported on stderr by _read
+                continue  # nested past the reader and already reported in the extension log by _read
             elif kind == "request" and env.get("refused"):
                 self._respond(env.get("id", ""), None, {"message": env["refused"]})
             elif kind == "request" and (env.get("request") or {}).get("method") == "events.dispatch":
@@ -5290,7 +5330,7 @@ class Extension:
             try:
                 self._call("event.subscribe", {"event": event, "handlerId": handler_id})
             except Exception as exc:  # noqa: BLE001 - report where the host shows extension output
-                print(f"extension: event.subscribe {event!r}: {exc}", file=sys.stderr)
+                diagnose(f"extension: event.subscribe {event!r}: {exc}" + "\n")
         removed = threading.Lock()
 
         def unsubscribe() -> None:
@@ -5305,7 +5345,7 @@ class Extension:
                 try:
                     self._call("event.unsubscribe", {"event": event, "handlerId": handler_id})
                 except Exception as exc:  # noqa: BLE001 - upstream's unsubscribe cannot fail; report it
-                    print(f"extension: event.unsubscribe {event!r}: {exc}", file=sys.stderr)
+                    diagnose(f"extension: event.unsubscribe {event!r}: {exc}" + "\n")
 
         return unsubscribe
 
@@ -5371,7 +5411,6 @@ class Extension:
             self._apply_ui_state(initial_state)
         initial_session = initial_state.get("session")
         if initial_session:
-            self._session_file = str(initial_session.get("sessionFile") or "")
             self._session_mirror.apply_update(initial_session)
         self._run_loaded()
         while True:
@@ -5531,7 +5570,7 @@ class Extension:
     def on_loaded(self, handler: "Callable[[Context], Any]") -> None:
         """Run ``handler(ctx)`` once the extension is registered with the host and has received its state, before it serves any request (session_start included).
 
-        It is the place for work a factory cannot do: a :class:`Context` exists, so the handler can read session state, call the host and emit on ``ctx.events``. Handlers run in registration order, one at a time on a thread of their own, so a host call the host answers itself is answered. The host's requests wait behind them (a listener dispatch excepted), so a handler must not wait for something that needs this extension to serve a request, such as a call that runs one of its own tools or event handlers: that wait never ends. A handler that raises is reported on stderr and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is ``session_start``. A handler registered after the extension started never runs.
+        It is the place for work a factory cannot do: a :class:`Context` exists, so the handler can read session state, call the host and emit on ``ctx.events``. Handlers run in registration order, one at a time on a thread of their own, so a host call the host answers itself is answered. The host's requests wait behind them (a listener dispatch excepted), so a handler must not wait for something that needs this extension to serve a request, such as a call that runs one of its own tools or event handlers: that wait never ends. A handler that raises is reported in the extension's log and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is ``session_start``. A handler registered after the extension started never runs.
         """
         if not callable(handler):
             raise TypeError("on_loaded requires a callable handler")
@@ -5549,7 +5588,7 @@ class Extension:
                     try:
                         handler(Context(self))
                     except Exception:  # noqa: BLE001 - one handler's failure must not stop the next
-                        print(f"pig: on_loaded handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
+                        diagnose(f"pig: on_loaded handler failed:\n{traceback.format_exc()}")
             finally:
                 self._loaded.set()
                 with self._request_threads_lock:
@@ -5694,8 +5733,6 @@ class Extension:
                 # Session replication: apply incremental entries.
                 session = state.get("session")
                 if session:
-                    if session.get("sessionFile"):
-                        self._session_file = str(session["sessionFile"])
                     self._session_mirror.apply_update(session)
                 self._apply_ui_state(state)
             elif method == "theme_change":
@@ -5783,7 +5820,7 @@ class Extension:
             with self._width_dispatch_lock:
                 self._width_deliveries.clear()
                 self._width_worker_running = False
-            print(f"pig: start width change handlers: {exc}", file=sys.stderr)
+            diagnose(f"pig: start width change handlers: {exc}" + "\n")
 
     def _run_width_deliveries(self) -> None:
         try:
@@ -5811,7 +5848,7 @@ class Extension:
                     handler(width)
                 except Exception:  # noqa: BLE001 - one handler's failure must not stop the others, as a thrown handler error rejects one call in upstream
                     if not self._shutdown.is_set():
-                        print(f"pig: width change handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
+                        diagnose(f"pig: width change handler failed:\n{traceback.format_exc()}")
 
     def _set_theme_palette(self, palette: dict[str, Any]) -> None:
         """Install the host's palette and deliver a snapshot of the theme to the on_theme_change handlers when it differs from the one before. The caller holds the state lock."""
@@ -5827,12 +5864,21 @@ class Extension:
         """Record the snapshot's replicated values: hasUI, theme, settings, MCP servers, the model and the session name. The ready state and every state_update pass through here. Caller holds _state_lock."""
         self._views.apply_state(state)
         if "model" in state:
-            # An absent key keeps the replica; an explicit null clears it (the Session holds no model).
-            self._model, self._model_provider = _model_identity(state["model"])
+            # An absent key keeps the replica; an explicit null clears it (the Session holds no model). A push that repeats the model derives nothing.
+            model = state["model"]
+            if not self._model_known or model != self._model_info:
+                self._model_info = copy.deepcopy(model)
+                self._model, self._model_provider = _model_identity(model)
+                self._model_known = True
         session = state.get("session")
         if isinstance(session, dict):
-            # Every session snapshot carries the name; "" is the host's carrier for a session with no name.
+            # sessionId is omitted only when empty.
+            session_id = session.get("sessionId")
+            self._session_id = session_id if isinstance(session_id, str) else ""
+            self._session_known = True
+            # Every session snapshot carries the name and the file, both always replacing the replica: "" is the host's carrier for no name and for an in-memory session.
             self._session_name = str(session.get("sessionName") or "")
+            self._session_file = str(session.get("sessionFile") or "")
         has_ui = state.get("hasUI")
         if isinstance(has_ui, bool):
             self._has_ui = has_ui
@@ -6040,9 +6086,8 @@ class Extension:
             elif method == "terminal_input":
                 # The host is blocked on this reply and upstream's handler is
                 # synchronous, so handlers run inline. A raising handler is
-                # reported on stderr, which the host captures in the extension
-                # log, and degrades to not-consumed rather than capturing the
-                # keystroke.
+                # reported in the extension's log, and degrades to
+                # not-consumed rather than capturing the keystroke.
                 original = (req.get("args") or {}).get("data") or ""
                 current = original
                 consume = False
@@ -6050,7 +6095,7 @@ class Extension:
                     try:
                         consumes, data = _terminal_input_verdict(h(current))
                     except Exception:  # a failing handler does not stop the others
-                        print(f"extension: recovered from exception in a terminal input handler:\n{traceback.format_exc()}", file=sys.stderr, end="")
+                        diagnose(f"extension: recovered from exception in a terminal input handler:\n{traceback.format_exc()}")
                         continue
                     if consumes:
                         consume = True
@@ -6631,7 +6676,7 @@ class Extension:
                             ctx._call(method, {"view": views.wire(encoded)})
             except Exception as exc:  # noqa: BLE001 - a failed resend leaves the host's previous frame, as a failed send would
                 if not self._shutdown.is_set():
-                    print(f"pig: resend evicted view images: {exc}", file=sys.stderr)
+                    diagnose(f"pig: resend evicted view images: {exc}" + "\n")
 
         threading.Thread(target=resend, name="pig-view-evicted", daemon=True).start()
 

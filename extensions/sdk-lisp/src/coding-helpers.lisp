@@ -369,3 +369,20 @@ path keeps its drive or share and takes a backslash for every separator. DOUBLE-
     (unwind-protect (funcall function)
       (handler-case (cx-host "fileMutation.exit" (obj "ticket" ticket))
         (host-call-error () (ignore-errors (cx-host "fileMutation.exit" (obj "ticket" ticket))))))))
+
+(defun ctx-with-file-mutation-queue (ctx file-path function)
+  "Pi's withFileMutationQueue for a handler that has its CTX: calls FUNCTION (no arguments) in the host's file mutation queue for FILE-PATH, in the place Pi gives a tool call of a parallel batch, and returns its value. A tool that takes the queue through its context registers in the order Pi's one thread runs the batch's tools (D187): Pi starts every call of a batch in source order and each runs to its first await, and withFileMutationQueue registers in the order it is called, so two tools that reach the queue after the same number of awaits register in call order, and one that awaited real work first registers after the one that did not. A native handler runs on a thread of its own, so WITH-FILE-MUTATION-QUEUE registers in the order the calls reach the host. The context form names its tool call, and the host registers it only after the start windows of the extension tools before it in the batch closed: a tool's window is open until its first host call that returns a Promise in Pi (an exec, a dialog, a model call, this one), its answer or its end, so a tool that makes only getter calls before it takes the queue still registers before the tool behind it, however many round trips its getters took. The price is the one docs/extension-api-parity.md names for the edit and write calls behind a native tool: a tool that does work of its own, with no host call, before it takes the queue holds the registrations of the tools behind it. A context that serves no tool call registers as WITH-FILE-MUTATION-QUEUE does, and the wait for the file ignores the request's cancellation, as Pi's queue does."
+  (let* ((ext (ctx-extension ctx))
+         (request-id (ctx-request-id ctx))
+         (reports (plusp (length request-id)))
+         (args (if (and (ctx-tool-call-id ctx) reports)
+                   (obj "path" (cx-abspath file-path) "request" request-id)
+                   (obj "path" (cx-abspath file-path)))))
+    (when reports (send-request-state ext request-id "blocked" "host_call" (ctx-request ctx)))
+    ;; The call is detached from the request: an aborted request does not end the wait for the file or the release of its turn.
+    (let ((ticket (unwind-protect (cx-get (or (host-call ext "fileMutation.enter" args) (obj)) "ticket")
+                    (when reports (send-request-state ext request-id "progress" nil (ctx-request ctx))))))
+      (unless (cx-truthy ticket) (error "fileMutation.enter returned no ticket"))
+      (unwind-protect (funcall function)
+        (handler-case (cx-host "fileMutation.exit" (obj "ticket" ticket))
+          (host-call-error () (ignore-errors (cx-host "fileMutation.exit" (obj "ticket" ticket)))))))))

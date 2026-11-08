@@ -2,6 +2,8 @@ package packagemanager
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
@@ -89,6 +91,8 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 		defer progressMu.Unlock()
 		EmitProgress(progress, event)
 	}
+	// updatedGit collects the Git packages whose commit changed, keyed by source and scope, so the results can follow configured order.
+	var updatedGit sync.Map
 	var tasks []func() error
 	for _, batch := range batches {
 		label := "user npm packages"
@@ -123,9 +127,16 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 						if j > 0 {
 							start(pkg)
 						}
+						checkout, _ := GitCheckoutPath(cwd, sm.AgentDir(), pkg.Source.Source, pkg.Scope == "project")
+						from := gitHead(checkout)
 						err := FinishPackageProgress(report, "update", pkg.Source.Source, InstallManagedGit(cwd, sm.AgentDir(), sm, pkg.Source.Source, pkg.Scope == "project", WithProgressReporter(report)))
 						if err != nil && first == nil {
 							first = err
+						}
+						if err == nil {
+							if to := gitHead(checkout); from != to {
+								updatedGit.Store(updatedPackageKey{source: pkg.Source.Source, scope: pkg.Scope}, updatedPackage{kind: "git", scope: pkg.Scope, source: pkg.Source.Source, from: from, to: to})
+							}
 						}
 					}
 					return first
@@ -134,7 +145,81 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 			return runPackageTasks(gitTasks, func(i int) { start(groups[i][0]) })
 		})
 	}
-	return runPackageTasks(tasks, nil)
+	if err := runPackageTasks(tasks, nil); err != nil {
+		return err
+	}
+
+	var updated []updatedPackage
+	for i, target := range npm {
+		if !shouldUpdate[i] {
+			continue
+		}
+		to := ReadInstalledNpmVersion(npmInstalledPath(cwd, sm, target.ref, target.local))
+		if to != target.installedVersion {
+			updated = append(updated, updatedPackage{kind: "npm", scope: scopeOf(target.local), source: target.source, from: target.installedVersion, to: to})
+		}
+	}
+	// Keep Git results in configured order, independent of completion order.
+	for _, pkg := range git {
+		if update, ok := updatedGit.Load(updatedPackageKey{source: pkg.Source.Source, scope: pkg.Scope}); ok {
+			updated = append(updated, update.(updatedPackage))
+		}
+	}
+	// Report each changed package, for example "npm:foo 1.2.0 -> 1.3.0".
+	for _, pkg := range updated {
+		report(ProgressEvent{Type: "result", Action: "update", Source: pkg.source, Message: new(pkg.message())})
+	}
+	return nil
+}
+
+// updatedPackageKey identifies a configured Git package.
+type updatedPackageKey struct{ source, scope string }
+
+// updatedPackage is a configured package whose installed npm version or Git commit changed during an update. from and to are empty when
+// the package was not installed before or has no version or commit now.
+type updatedPackage struct {
+	kind, scope, source string
+	from, to            string
+}
+
+func scopeOf(local bool) string {
+	if local {
+		return "project"
+	}
+	return "user"
+}
+
+// message is `<source>[ (project)] <from> -> <to>`, with Git commits shortened to 7 characters.
+func (p updatedPackage) message() string {
+	format := func(value string) string {
+		switch {
+		case value == "":
+			return "(none)"
+		case p.kind == "git":
+			return value[:min(len(value), 7)]
+		}
+		return value
+	}
+	scope := ""
+	if p.scope == "project" {
+		scope = " (project)"
+	}
+	return p.source + scope + " " + format(p.from) + " -> " + format(p.to)
+}
+
+// gitHead is the commit a managed checkout is on, or "" when it does not exist or cannot be read (package-manager.ts getGitHead).
+func gitHead(checkout string) string {
+	if checkout == "" {
+		return ""
+	}
+	if _, err := os.Stat(checkout); err != nil {
+		return ""
+	}
+	head, err := RunWithTimeout(gitCaptureCommand(checkout, "rev-parse", "HEAD"), UpdateCheckNetworkTimeout)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(head)
 }
 
 // groupGitUpdatesByCheckout collects Git packages that resolve to one managed checkout, in input order, with groups ordered by their first package. Pi's updateConfiguredSources gives each package its own task and so races two updates of one checkout (package-manager.ts:1171-1181, 1931-1945): both fetch into one FETCH_HEAD and both run `git reset --hard`, which fails on index.lock. A source whose checkout path cannot be computed stays alone, so InstallManagedGit reports its error for that package only.

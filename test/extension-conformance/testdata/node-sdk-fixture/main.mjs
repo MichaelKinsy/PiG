@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import zlib from "node:zlib";
+import { Readable } from "node:stream";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import * as piAi from "@earendil-works/pi-ai";
 import { Value } from "typebox/value";
@@ -144,19 +145,27 @@ export default function (pi) {
     const ok = await pi.setModel({ provider: "probe", id: "model" });
     ctx.ui.notify(JSON.stringify([pi.getThinkingLevel(), ok]), "info");
   }});
-  pi.registerCommand("replicated-accessors", { description: "Read the replicated accessors after each write", handler: async (_args, ctx) => {
+  // replicated-accessors reads after each write straight from the handler's first synchronous run. With the argument "after-await" (TestNodeReplicatedWritesReadBackAfterAwait) it is the product shape beside that: the same writes and reads after one real wait, as an extension's handler makes them once it has awaited a timer or a host call. The host's session pushes then reach the receive loop's waiter, which cannot read them until the handler's synchronous run ends, not the calls the handler makes in that run. This fixture registers pi.onLoaded as well (below), so every request also first awaits the loaded handlers' promise. The other SDK fixtures ignore the argument.
+  pi.registerCommand("replicated-accessors", { description: "Read the replicated accessors after each write", handler: async (args, ctx) => {
+    const wait = args === "after-await" ? () => new Promise((resolve) => setTimeout(resolve, 5)) : undefined;
     const lastType = () => { const entries = ctx.sessionManager.getEntries(); return entries[entries.length - 1]?.type ?? ""; };
     const out = { name0: ctx.sessionManager.getSessionName() ?? "", model0: ctx.model?.id ?? "", provider0: ctx.model?.provider ?? "" };
+    if (wait) await wait();
     pi.setSessionName("renamed");
     out.name1 = ctx.sessionManager.getSessionName() ?? "";
+    out.entryAfterName = lastType();
     pi.setLabel("one", "lab");
     out.entryAfterLabel = lastType();
     pi.sendMessage({ customType: "probe", content: "hi", display: true });
     out.entryAfterMessage = lastType();
+    out.entryCount = ctx.sessionManager.getEntries().length;
     await pi.setModel({ provider: "prov-after", id: "id-after" });
     out.model1 = ctx.model?.id ?? "";
     out.provider1 = ctx.model?.provider ?? "";
     out.qualified1 = `${out.provider1}/${out.model1}`;
+    // The log read again once the serve loop ran: a push it applied a second time would collapse the log to one entry.
+    out.entryCountLater = ctx.sessionManager.getEntries().length;
+    out.lastLater = lastType();
     ctx.ui.notify(JSON.stringify(out), "info");
   }});
   pi.registerCommand("active_tools_set", { description: "Set the active tools to the comma-separated names", handler: async (args) => pi.setActiveTools(String(args).trim().split(",")) });
@@ -169,6 +178,14 @@ export default function (pi) {
     ctx.ui.notify(`unbound:${parts.join(",")}`, "info");
   }});
   pi.registerCommand("active_tools_get", { description: "Report the active tools", handler: async (_args, ctx) => ctx.ui.notify(`active_tools:${pi.getActiveTools().join(",")}`, "info") });
+  // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
+  pi.registerCommand("registry-model-probe", {
+    description: "Register the active model's provider with a new name, then read the model",
+    handler: async (args, ctx) => {
+      await pi.registerProvider("replica-reg", { baseUrl: "https://probe.invalid/v1", api: "openai-completions", apiKey: "probe-key", models: [{ id: "m", name: args, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000, maxTokens: 100 }] });
+      ctx.ui.notify("regname=" + (ctx.model?.name ?? ""), "info");
+    },
+  });
   pi.registerCommand("provider_probe_register", { description: "Register a provider with one model", handler: async () => pi.registerProvider("conformance-probe", JSON.parse(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}`)) });
   pi.registerCommand("provider_probe_unregister", { description: "Unregister the provider", handler: async () => pi.unregisterProvider("conformance-probe") });
   pi.registerCommand("commands-probe", { description: "Read the host's slash commands", handler: async (_args, ctx) => {
@@ -446,6 +463,20 @@ export default function (pi) {
     async execute(_id, params) {
       if (params.late === "loop") await new Promise((resolve) => setImmediate(resolve));
       await withFileMutationQueue(params.file, async () => {
+        const before = fs.existsSync(params.file) ? fs.readFileSync(params.file, "utf8") : "";
+        fs.writeFileSync(params.file, `${before}${params.tag}\n`);
+      });
+      return { content: [{ type: "text", text: `mutated ${params.tag}` }] };
+    },
+  });
+  // mutation_order_ctx_probe makes `calls` getter calls, then takes the queue through its context (TestFileMutationOrderOfTheContextFormAcrossSDKs).
+  pi.registerTool({
+    name: "mutation_order_ctx_probe",
+    description: "Make getter calls, take the queue through the context and append a tag",
+    parameters: { type: "object", properties: { file: { type: "string" }, tag: { type: "string" }, calls: { type: "number" } } },
+    async execute(_id, params, _signal, _onUpdate, ctx) {
+      for (let i = 0; i < (params.calls ?? 0); i++) ctx.getContextUsage();
+      await ctx.withFileMutationQueue(params.file, async () => {
         const before = fs.existsSync(params.file) ? fs.readFileSync(params.file, "utf8") : "";
         fs.writeFileSync(params.file, `${before}${params.tag}\n`);
       });
@@ -1119,11 +1150,14 @@ export default function (pi) {
     const hook = c.hook ? (spawn) => { log.push(`spawnHook:${spawn.command}`); return { command: "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"", cwd: spawn.cwd, env: { ...spawn.env, HOOK_VAR: "hook-env" } }; } : undefined;
     const custom = c.ops === "custom";
     switch (c.tool) {
-      case "read": return { autoResizeImages: c.autoResizeImages ?? undefined, operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from(`OPS:${p}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
+      case "read": if (c.ops === "stream") return { operations: { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from(`OPS:${p}`); }, access: async (p) => { log.push(`access:${p}`); }, createReadStream: (p) => { log.push(`createReadStream:${p}`); return Readable.from([Buffer.from("STREAM:"), Buffer.from(`${p}\n`)]); } } };
+        return { autoResizeImages: c.autoResizeImages ?? undefined, operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from(`OPS:${p}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
       case "write": return { operations: custom ? { writeFile: async (p, content) => { log.push(`writeFile:${p}:${content}`); }, mkdir: async (d) => { log.push(`mkdir:${d}`); } } : undefined };
       case "edit": return { operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from("hello world\n"); }, writeFile: async (p, content) => { log.push(`writeFile:${p}:${content}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
       case "ls": return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return true; }, stat: async (p) => { log.push(`stat:${p}`); return { isDirectory: () => !p.includes(".") }; }, readdir: async (p) => { log.push(`readdir:${p}`); return ["b.txt", "a.txt", "sub"]; } } : undefined };
-      case "grep": return { operations: custom ? { isDirectory: async (p) => { log.push(`isDirectory:${p}`); throw new Error("no such path for the probe"); } } : undefined };
+      // readFile is not a member of Pi main's GrepOperations (8da141c2a): a JS extension may still pass one, and Pi never calls it. The native SDKs have no such member.
+      case "grep": if (c.ops === "grepdir") return { operations: { isDirectory: async (p) => { log.push(`isDirectory:${p}`); return true; }, readFile: async (p) => { log.push(`readFile:${p}`); return ""; } } };
+        return { operations: custom ? { isDirectory: async (p) => { log.push(`isDirectory:${p}`); throw new Error("no such path for the probe"); }, readFile: async (p) => { log.push(`readFile:${p}`); return ""; } } : undefined };
       case "find": if (c.ops === "globlimit") return { operations: { exists: async (p) => { log.push(`exists:${p}`); return true; }, glob: async (pattern, cwd, o) => { log.push(`glob:${pattern}:limit=${o.limit}`); return ["a.txt", "b.txt", "c.txt"].slice(0, o.limit); } } };
         return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return false; }, glob: async (pattern) => { log.push(`glob:${pattern}`); return []; } } : undefined };
       case "powershell": return { exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined };
@@ -1467,6 +1501,45 @@ export default function (pi) {
   });
   pi.registerCommand("usage-probe", {
     handler: (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.getContextUsage() ?? null), "info"),
+  });
+  pi.registerCommand("console-probe", {
+    description: "Write console lines to stdout and stderr",
+    handler: async (args) => {
+      for (const n of [1, 2]) {
+        if (args !== "stderr") console.log(`probe-out-${n}`);
+        console.error(`probe-err-${n}`);
+      }
+    },
+  });
+  // panic-probe and the onLoaded handler throw after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+  pi.onLoaded(() => {
+    if (process.env.PIG_FIXTURE_PANIC_PROBE) {
+      console.error("probe-err-loaded");
+      throw new Error("probe-panic-boom");
+    }
+  });
+  pi.registerCommand("panic-probe", {
+    description: "Throw after an stderr line of the extension's own",
+    handler: async () => {
+      console.error("probe-err-command");
+      throw new Error("probe-panic-boom");
+    },
+  });
+  // replica-probe (TestReplicatedReadsAreLocalAcrossSDKs) reads the model object, the session id, the session manager's id and the context usage, and reports them as one JSON object. Its argument is empty, or "set-model:<provider>/<id>" to call setModel before it reads. Every SDK fixture reports the same shape.
+  pi.registerCommand("replica-probe", {
+    description: "Report the replicated model object, session ids and context usage",
+    handler: async (args, ctx) => {
+      if (args.startsWith("set-model:")) {
+        const [provider, ...rest] = args.slice("set-model:".length).split("/");
+        await pi.setModel({ provider, id: rest.join("/") });
+      }
+      const m = ctx.model;
+      const model = m === undefined || !m.id ? null : {
+        id: m.id, name: m.name ?? "", provider: typeof m.provider === "string" ? m.provider : m.provider?.id ?? "", contextWindow: m.contextWindow ?? 0, maxOutputTokens: m.maxTokens ?? 0, reasoning: m.reasoning === true,
+        inputCostPer1M: m.cost?.input ?? 0, outputCostPer1M: m.cost?.output ?? 0, cacheReadCostPer1M: m.cost?.cacheRead ?? 0, cacheWriteCostPer1M: m.cost?.cacheWrite ?? 0,
+      };
+      ctx.ui.notify(JSON.stringify({ model, sessionId: ctx.sessionManager.getSessionId(), managerSessionId: ctx.sessionManager.getSessionId(), sessionName: ctx.sessionManager.getSessionName() ?? null, sessionFile: ctx.sessionManager.getSessionFile() ?? null, managerSessionName: ctx.sessionManager.getSessionName() ?? null, managerSessionFile: ctx.sessionManager.getSessionFile() ?? null, usage: ctx.getContextUsage() ?? null }), "info");
+    },
   });
   pi.registerCommand("context-probe", {
     description: "Report ctx.mode + ctx.getSystemPromptOptions()",
@@ -2343,11 +2416,15 @@ export default function (pi) {
       ctx.ui.notify(`ui_prompt:${event.type}:${event.reason}:${event.kind}:${"title" in event ? event.title : "(none)"}`, "info");
     });
   }
-  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "thinking-level" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "model-name" | "session-id" | "context-usage" | "session-name" | "thinking-level" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
   pi.registerCommand("state-push-probe", { description: "Read one replicated accessor from a timer between requests", handler: async (args, ctx) => {
     const { kind, dir } = JSON.parse(args);
     let read;
     if (kind === "model") read = () => ctx.model?.id ?? "";
+    else if (kind === "model-name") read = () => ctx.model?.name ?? "";
+    else if (kind === "usage-then-id") read = () => { const usage = ctx.getContextUsage(); if (!usage || usage.tokens == null) return "none"; return usage.tokens === 250 ? `tokens=250,id=${ctx.sessionManager.getSessionId()}` : `tokens=${usage.tokens}`; };
+    else if (kind === "context-usage") read = () => { const usage = ctx.getContextUsage(); return usage ? `tokens=${usage.tokens ?? ""}` : "none"; };
+    else if (kind === "session-id") read = () => ctx.sessionManager.getSessionId();
     else if (kind === "session-name") read = () => pi.getSessionName() ?? "";
     else if (kind === "theme") read = () => ctx.ui.theme.name ?? "";
     else if (kind === "thinking-level") read = () => pi.getThinkingLevel();

@@ -63,7 +63,7 @@ thread; a condition it signals becomes the response's error message.")
   `(setf (gethash ,method *request-handlers*) (lambda (,ext ,ctx ,req) (declare (ignorable ,ext ,ctx ,req)) ,@body)))
 
 (defun run-hooks (variable &rest arguments)
-  "Call every hook of VARIABLE with ARGUMENTS; one that signals is reported on stderr and does not stop the others."
+  "Call every hook of VARIABLE with ARGUMENTS; one that signals is reported in the extension's log and does not stop the others."
   (dolist (entry (symbol-value variable))
     (handler-case (apply (cdr entry) arguments)
-      (error (e) (format *error-output* "pig: hook ~A failed: ~A~%" (car entry) e)))))
+      (error (e) (diagnose "pig: hook ~A failed: ~A~%" (car entry) e)))))
