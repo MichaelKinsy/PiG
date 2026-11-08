@@ -42,3 +42,5 @@ var (
 )
 
 var iconCopy = icon(`<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>`)
+
+var iconClose = icon(`<path d="M6 6l12 12M18 6 6 18"/>`)

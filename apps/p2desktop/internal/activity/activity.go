@@ -5,10 +5,12 @@
 package activity
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/apps/p2/tui/jsvalue"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/transcript"
 )
 
@@ -166,6 +168,9 @@ func partsOf(run []transcript.Item, live bool, after string, byKey map[string]*t
 					tool, ok := tools[b.ID]
 					if !ok {
 						tool = transcript.ToolView{ID: b.ID, Name: b.Name, Status: transcript.ToolPending}
+					}
+					if tool.Args == nil {
+						tool.Args = argsOf(b)
 					}
 					c := calls("activity:"+key, byKey[item.Key])
 					c.steps = append(c.steps, stepOf(tool))
@@ -367,4 +372,18 @@ func Elapsed(ms int64) string {
 		return fmt.Sprintf("%dm %02ds", seconds/60, seconds%60)
 	}
 	return fmt.Sprintf("%dh %02dm", seconds/3600, seconds/60%60)
+}
+
+// argsOf is the arguments a call's request carried, for a call whose result has not given its own.
+func argsOf(call ai.ToolCall) *jsvalue.Object {
+	text, err := json.Marshal(call.Arguments)
+	if err != nil {
+		return nil
+	}
+	value, err := jsvalue.Parse(text)
+	if err != nil {
+		return nil
+	}
+	object, _ := value.(*jsvalue.Object)
+	return object
 }

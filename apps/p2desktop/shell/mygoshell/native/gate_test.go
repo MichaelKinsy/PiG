@@ -11,6 +11,7 @@ import (
 	brandsprite "github.com/MichaelKinsy/PiG/apps/p2/brand/sprite"
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/activity"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/surfacehost"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/egoist/mygo/ui"
@@ -96,6 +97,25 @@ func TestGateShot(t *testing.T) {
 			return worked && !tt.HasText("Working…") && !tt.HasText("Stop")
 		})
 		want = "Explain what the surface host does, with a short list."
+		if os.Getenv("P2_GATE_TOOLS") == "1" {
+			// The tool cards: the faux provider's scripted calls (write, edit, bash), one turn each, the last turn's row opened.
+			for _, prompt := range []string{"write", "edit", "bash"} {
+				if err := app.chat.Send(prompt); err != nil {
+					t.Fatal(err)
+				}
+				until(t, tt, "the "+prompt+" turn", func() bool { return !tt.HasText("Stop") && !tt.HasText("Working…") && tt.HasText(prompt) })
+			}
+			time.Sleep(time.Second)
+			tr, _ := app.chat.Transcript()
+			items := app.activityItems(&tr)
+			for i := len(items) - 1; i >= 0; i-- {
+				if act, ok := items[i].(activity.Activity); ok {
+					app.sheetKey = act.Key
+					break
+				}
+			}
+			want = "bash"
+		}
 	}
 	if opened == "" {
 		until(t, tt, "the first frame", func() bool { return tt.HasText(want) && tt.HasText("What should PiG do?") })
