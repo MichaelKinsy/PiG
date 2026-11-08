@@ -141,19 +141,17 @@ type Attachment struct {
 	Batch  *state.Batch
 }
 
-// commitResult is what a commit settled with.
-type commitResult struct {
-	seq int64
-	err error
-}
-
-// queuedCommit is a commit waiting in the commit queue for its group's turn: what Commit was given, and where its
-// outcome goes (settled once, by the goroutine running its group's turn).
+// queuedCommit is a commit waiting in the commit queue for its group's turn: what Commit was given, and its outcome
+// (settled once, by the goroutine running its group's turn).
 type queuedCommit struct {
-	writes  []StagedWrite
-	fence   CommitFence
-	ctx     context.Context
-	result  chan commitResult
+	writes []StagedWrite
+	fence  CommitFence
+	ctx    context.Context
+	// ready is closed once the commit settled. It is nil for a commit that leads its group (its caller runs the turn, so
+	// the outcome stands when the turn returns) and for one settled at enlist.
+	ready   chan struct{}
+	seq     int64
+	err     error
 	settled bool
 }
 
@@ -163,7 +161,10 @@ func (queued *queuedCommit) settle(seq int64, err error) {
 		return
 	}
 	queued.settled = true
-	queued.result <- commitResult{seq: seq, err: err}
+	queued.seq, queued.err = seq, err
+	if queued.ready != nil {
+		close(queued.ready)
+	}
 }
 
 // commitGroup is the commits queued behind a running step that share the next step's backend transaction (group commit,
@@ -175,12 +176,15 @@ type commitGroup struct {
 }
 
 // pendingCommit is a commit that has its place in the commit queue (enlist): Wait runs it when its turn is its caller's
-// and returns its outcome.
+// and returns its outcome. It holds the commit and, as the group's first, the group (and its commit list), so a lone
+// commit takes one allocation for them all.
 type pendingCommit struct {
 	store *ChordStore
 	// group is the group this commit leads; nil for a commit that joined one.
 	group  *commitGroup
-	queued *queuedCommit
+	queued queuedCommit
+	lead   commitGroup
+	first  [1]*queuedCommit
 }
 
 // SeriesCommit is one commit of a series (CommitSeries): its own check, which writes nothing, and its writes. The check
@@ -514,15 +518,35 @@ func (store *ChordStore) ticket() (previous <-chan struct{}, done chan struct{})
 // Async contract: the call takes its place in the queue under `mu` and blocks until its commit settled; the caller of a
 // group's first commit runs the group's turn, the others wait for it.
 func (store *ChordStore) Commit(writes []StagedWrite, fence CommitFence, ctx context.Context) (int64, error) {
-	return store.enlist(writes, fence, ctx).Wait()
+	pending := store.enlist(writes, fence, ctx)
+	seq, err := pending.Wait()
+	pending.release()
+	return seq, err
+}
+
+// pendingCommits recycles the pendingCommit of a commit that led its group alone, the common case of a store with one
+// committer at a time: nothing but its caller holds one once it has settled.
+var pendingCommits = sync.Pool{New: func() any { return new(pendingCommit) }}
+
+// release hands pending back for reuse when its caller is its only holder: it led its group and no commit joined it
+// (a group takes no more commits once its turn started). A commit that joined a group stays, since the group's turn may
+// still read it; so does one that was settled at enlist, which is rare.
+func (pending *pendingCommit) release() {
+	if pending.group == nil || len(pending.group.commits) != 1 {
+		return
+	}
+	*pending = pendingCommit{}
+	pendingCommits.Put(pending)
 }
 
 // enlist takes the commit's place in the commit queue, as Pi's `commit` call does at the call: behind the group still
 // open (a commit with writes), or as the first of a new one. An empty commit takes no transaction: it neither joins nor
 // opens a group. A store that is not usable settles it at once.
 func (store *ChordStore) enlist(writes []StagedWrite, fence CommitFence, ctx context.Context) *pendingCommit {
-	queued := &queuedCommit{writes: writes, fence: fence, ctx: ctx, result: make(chan commitResult, 1)}
-	pending := &pendingCommit{store: store, queued: queued}
+	pending := pendingCommits.Get().(*pendingCommit)
+	pending.store = store
+	pending.queued = queuedCommit{writes: writes, fence: fence, ctx: ctx}
+	queued := &pending.queued
 	if err := store.AssertUsable(); err != nil {
 		queued.settle(0, err)
 		return pending
@@ -530,16 +554,18 @@ func (store *ChordStore) enlist(writes []StagedWrite, fence CommitFence, ctx con
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if len(writes) > 0 && store.open != nil {
+		queued.ready = make(chan struct{})
 		store.open.commits = append(store.open.commits, queued)
 		return pending
 	}
-	group := &commitGroup{commits: []*queuedCommit{queued}, previous: store.tail, done: make(chan struct{})}
-	store.tail = group.done
+	pending.first[0] = queued
+	pending.lead = commitGroup{commits: pending.first[:], previous: store.tail, done: make(chan struct{})}
+	pending.group = &pending.lead
+	store.tail = pending.lead.done
 	store.open = nil
 	if len(writes) > 0 {
-		store.open = group
+		store.open = pending.group
 	}
-	pending.group = group
 	return pending
 }
 
@@ -549,9 +575,10 @@ func (pending *pendingCommit) Wait() (int64, error) {
 	if pending.group != nil {
 		<-pending.group.previous
 		pending.store.runGroup(pending.group)
+	} else if pending.queued.ready != nil {
+		<-pending.queued.ready
 	}
-	outcome := <-pending.queued.result
-	return outcome.seq, outcome.err
+	return pending.queued.seq, pending.queued.err
 }
 
 // CommitSeries commits commits in one backend transaction when the commit queue reaches it, one seq each, in order: each
@@ -748,6 +775,15 @@ func (store *ChordStore) runGroup(group *commitGroup) {
 	if err := store.AssertUsable(); err != nil {
 		for _, queued := range group.commits {
 			queued.settle(0, err)
+		}
+		return
+	}
+	// A group of one is its commit's own step.
+	if len(group.commits) == 1 {
+		if queued := group.commits[0]; queued.fence.Admit() {
+			store.alone(queued)
+		} else {
+			queued.settle(0, discarded())
 		}
 		return
 	}
