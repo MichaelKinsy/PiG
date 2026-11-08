@@ -109,6 +109,12 @@ declare module "@earendil-works/pi-coding-agent" {
     readonly toolCallIndex?: number;
     /** In a tool's `execute`: `JSON.stringify` of the call's arguments, members in the model's order. */
     readonly toolInput?: string;
+    /**
+     * Pi's `withFileMutationQueue` for a handler that has its context (D187): runs `fn` in the host's file mutation queue for `filePath`. Node runs Pi's one
+     * thread, so this registers in the order Pi gives the tools of a parallel batch, exactly as Pi's own export does; the Go, Rust, Python and Lisp SDKs have the same
+     * call on their contexts, where it orders a batch's tools that a bare free function leaves to thread scheduling.
+     */
+    withFileMutationQueue<T>(filePath: string, fn: () => Promise<T>): Promise<T>;
   }
   // Pi c466a359 (#11360) adds ExecOptions.maxBuffer and ExecResult.truncated. PiG's host implements them and this augmentation declares them.
   interface ExecOptions {

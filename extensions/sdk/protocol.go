@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -395,7 +394,7 @@ func (c *conn) readLoop() {
 			case kind == msgCallResult && id != "":
 				env = envelope{Type: msgCallResult, ID: id, CallResult: &callResultMsg{Error: &errorInfo{Message: errTooDeep.Error()}}}
 			default:
-				fmt.Fprintln(os.Stderr, "pig-sdk: dropped a frame nested deeper than the reader takes")
+				diagnosticf("pig-sdk: dropped a frame nested deeper than the reader takes\n")
 				continue
 			}
 		}

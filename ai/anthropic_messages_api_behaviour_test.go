@@ -81,7 +81,7 @@ func TestAnthropicMessagesAPIMissingKeyEndsTheStreamAndSendsNoRequest(t *testing
 		simple  bool
 		aborted bool
 		want    StopReason
-	}{{false, false, StopReasonError}, {false, true, StopReasonAborted}, {true, false, StopReasonError}, {true, true, StopReasonError}} {
+	}{{false, false, StopReasonError}, {false, true, StopReasonAborted}, {true, false, StopReasonError}, {true, true, StopReasonAborted}} {
 		run := AnthropicMessagesAPI().Stream
 		if probe.simple {
 			run = AnthropicMessagesAPI().StreamSimple

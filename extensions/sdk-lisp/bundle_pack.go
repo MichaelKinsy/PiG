@@ -17,6 +17,7 @@ var bundledFiles = []string{
 	"src/context.lisp",
 	"src/conversation.lisp",
 	"src/create-provider.lisp",
+	"src/diagnostic.lisp",
 	"src/dispatch.lisp",
 	"src/editor-component.lisp",
 	"src/errors.lisp",
@@ -73,4 +74,4 @@ var bundledFiles = []string{
 }
 
 // stagedHash is the staging hash of the files, as pigsdk computes it from them: the first 16 hex digits.
-const stagedHash = "18fc0360656a9f8c"
+const stagedHash = "0f32e13889093efa"

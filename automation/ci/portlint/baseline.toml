@@ -19,24 +19,6 @@ snippet = "go func() {"
 
 [[hit]]
 check = "asyncorder"
-file = "coding/cli/rpc_mode_runtime.go"
-func = "rpcHost.bind"
-snippet = "go func() {"
-
-[[hit]]
-check = "asyncorder"
-file = "coding/session.go"
-func = "NewSession"
-snippet = "go sess.forwardAgentEvents()"
-
-[[hit]]
-check = "asyncorder"
-file = "internal/codingagent/model_tasks.go"
-func = "ModelRegistry.CloseModelTasks"
-snippet = "go models.Close()"
-
-[[hit]]
-check = "asyncorder"
 file = "mcp/client.go"
 func = "Client.startRequest"
 snippet = "go func() {"
@@ -159,7 +141,7 @@ snippet = "_, err = refresh.Publish(ModelsPublication{Persist: &ModelsStoreEntry
 check = "clock"
 file = "ai/models_runtime_stream.go"
 func = "pushModelsSetupError"
-snippet = "message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: time.Now().UnixMilli()}"
+snippet = "message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: reason, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: time.Now().UnixMilli()}"
 
 [[hit]]
 check = "clock"
@@ -1041,12 +1023,6 @@ check = "emptydrop"
 file = "ai/openai.go"
 func = "(decl)"
 snippet = "ChatTemplateArgs            map[string]any `json:\"chatTemplateArgs,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "ai/openai.go"
-func = "(decl)"
-snippet = "AllowedFallbackModels          []AnthropicAllowedFallbackModel `json:\"allowedFallbackModels,omitempty\"`"
 
 [[hit]]
 check = "emptydrop"
@@ -2986,12 +2962,6 @@ check = "mapkeyorder"
 file = "internal/codingagent/interactive_extensions.go"
 func = "subprocessStreamOptions"
 snippet = "data, err := json.Marshal(object)"
-
-[[hit]]
-check = "mapkeyorder"
-file = "internal/codingagent/interactive_radius_mcp.go"
-func = "radiusMcpServerConfig"
-snippet = "auth, err := json.Marshal(map[string]string{\"provider\": providerID})"
 
 [[hit]]
 check = "mapkeyorder"
@@ -5817,12 +5787,6 @@ snippet = "if apiKey, err = resolveAPIKey(context.Background()); err != nil {"
 
 [[hit]]
 check = "ctxbackground"
-file = "coding/model_runtime_typed.go"
-func = "ModelRuntime.failedStream"
-snippet = "runtime.fail(context.Background(), outer, model, err)"
-
-[[hit]]
-check = "ctxbackground"
 file = "coding/piglet/pull_cli.go"
 func = "cmdPull"
 snippet = "result, err := pigletrelease.Pull(context.Background(), ref, pigletrelease.Options{"
@@ -7120,13 +7084,13 @@ snippet = "if err := json.Unmarshal(encoded, &wire); err != nil {"
 [[hit]]
 check = "hotpathjson"
 file = "coding/extension/host/subprocess/host.go"
-func = "Host.pushStateTo"
+func = "Host.pushState"
 snippet = "leanBody, err := json.Marshal(stateUpdateBody{State: &lean})"
 
 [[hit]]
 check = "hotpathjson"
 file = "coding/extension/host/subprocess/host.go"
-func = "Host.pushStateTo"
+func = "Host.pushState"
 snippet = "if out, err = json.Marshal(stateUpdateBody{State: &partial}); err != nil {"
 
 [[hit]]

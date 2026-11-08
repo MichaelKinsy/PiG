@@ -1,4 +1,5 @@
 import { modelFetchCallbacks } from "./model-fetch.mjs";
+import { withFileMutationQueue } from "./shims/file-mutation-queue-bridge.mjs";
 import { AutocompleteRuntime } from "./autocomplete.mjs";
 import { dispatchFacet, dispatchFacetSync, hasFacetBridge } from "./facet-bridge.mjs";
 import { syncTerminalGeometry } from "./terminal-geometry.mjs";
@@ -7,6 +8,7 @@ import { disposeIndependentSessions } from "./independent-session-owner.mjs";
 import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs";
 import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
+import { diagnose } from "./diagnostic.mjs";
 import { constants as bufferConstants } from "node:buffer";
 import { MessageChannel } from "node:worker_threads";
 import net from "node:net";
@@ -1263,6 +1265,8 @@ export class Connection {
     this.queue = [];
     this.waiters = [];
     this.held = [];
+    this.handedOff = undefined;
+    this.takenFrame = undefined;
     this.closed = false;
     this.streamStarts = new Map();
     socket.on("envelope", env => this.onEnvelope(env));
@@ -1337,6 +1341,8 @@ export class Connection {
       const pending = this.pending.get(env.id);
       // The loading factory's connection has no serve loop yet: its awaited calls settle as their results arrive.
       if (pending?.synchronous || pending?.appliedOnReceipt || (pending && this.loading)) {
+        // The state the host pushed before this result is still queued, and the result settles at once: apply it first, so a read after the call is not older than the call (frame order).
+        this.applyQueuedStateUpdates?.();
         this.resolveCall(env);
         return;
       }
@@ -1351,9 +1357,21 @@ export class Connection {
     this.deliver(env);
   }
 
+  // A frame handed to the waiting serve loop is read by the loop in a microtask, which a synchronous host call made before then cannot wait for: a handler that resumed from an await ahead of the loop is such a caller, and the frames its call reads (the state the host pushes before the call's result) reach the waiting loop, not the queue. handedOff keeps the frame where takeHandedOff finds it, until the loop reads it.
   deliver(env) {
-    if (this.waiters.length > 0) this.waiters.shift()(env);
-    else this.queue.push(env);
+    if (this.waiters.length > 0) {
+      this.handedOff = env;
+      this.waiters.shift()(env);
+    } else this.queue.push(env);
+  }
+
+  // takeHandedOff returns the frame handed to the serve loop that the loop has not read, when accept takes it, and the caller applies it in the loop's place. The loop skips the frame it finds in takenFrame, and clears handedOff when it starts on one: its handler's synchronous run, a command request's first run among them, then finds nothing handed off.
+  takeHandedOff(accept) {
+    const env = this.handedOff;
+    if (env === undefined || !accept(env)) return undefined;
+    this.handedOff = undefined;
+    this.takenFrame = env;
+    return env;
   }
 
   releaseHeld() {
@@ -1387,7 +1405,12 @@ export class Connection {
   }
 
   next() {
-    if (this.queue.length > 0) return Promise.resolve(this.queue.shift());
+    if (this.queue.length > 0) {
+      // The frame is read by the loop's await a microtask later, as a delivered one is: a synchronous host call made before then applies it first (takeHandedOff), and the frames still queued are newer.
+      const env = this.queue.shift();
+      this.handedOff = env;
+      return Promise.resolve(env);
+    }
     if (this.closed) return Promise.resolve(null);
     return new Promise((resolve) => this.waiters.push(resolve));
   }
@@ -1626,7 +1649,8 @@ class RuntimeContext {
   // produced is painted (it drains input first), so a shutdown requested
   // from an editor's handleInput reaches the host after that frame.
   shutdown() { this.runtime.extensionRuntime.assertActive(); queueMicrotask(() => this.runtime.fireAndForget("shutdown", {})); }
-  getContextUsage() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.contextUsage; }
+  // Pi computes the usage live from the branch (agent-session.ts getContextUsage) and it moves with every message the Session commits, which no state push announces, so a read asks the host: a snapshot would be stale after waitForIdle, compact or navigateTree and for a timer between requests.
+  getContextUsage() { this.runtime.extensionRuntime.assertActive(); return this.runtime.callSync("getContextUsage") ?? undefined; }
   // The host reads the options flat. Upstream starts compaction without
   // awaiting it and reports the outcome through onComplete/onError, so a call
   // with callbacks carries no parent request and outlives its handler
@@ -1648,6 +1672,13 @@ class RuntimeContext {
   getSystemPrompt() {
     this.runtime.extensionRuntime.assertActive();
     return this.runtime.promptWritten ? this.runtime.callSync("getSystemPrompt")?.prompt ?? "" : this.runtime.state.systemPrompt;
+  }
+  // PiG-only (D187): withFileMutationQueue for a handler that has its context. The Node runtime is Pi's one thread, so the registration order of Pi's own export
+  // (core/tools/file-mutation-queue.ts) is the order Pi gives a batch's tools, and the runtime holds a tool's enter behind the edit and write calls that precede it
+  // (tool_window_settled): the context form is that function, so the Node SDK offers the same call as the other SDKs with the same order.
+  withFileMutationQueue(filePath, fn) {
+    this.runtime.extensionRuntime.assertActive();
+    return withFileMutationQueue(filePath, fn);
   }
   getSystemPromptOptions() {
     this.runtime.extensionRuntime.assertActive();
@@ -2118,6 +2149,8 @@ export class Runtime {
     this.loadingUnsubscribers = [];
     this.extensionRuntime = createExtensionRuntime();
     this.hostReady = false;
+    // readyStateApplied is set once the ready frame's state is applied: a state the host pushed after it is newer, and one applied before it would be overwritten by it.
+    this.readyStateApplied = false;
     this.markdownTransformer = undefined;
     this.markdownMessageTypes = undefined;
     // PiG-only: whether this extension owns the thinking runs of assistant messages. Recorded during load, carried by the register frame; later calls go to the host.
@@ -2251,7 +2284,6 @@ export class Runtime {
       editorText: "",
       toolsExpanded: false,
       allThemes: [],
-      contextUsage: undefined,
       systemPrompt: "",
       systemPromptOptions: {},
       flags: {},
@@ -2328,7 +2360,7 @@ export class Runtime {
           try { this.writeSync("sendMessage", { message, options, yield_token: token }); }
           catch (err) {
             if (!isHostCancellation(err)) {
-              try { process.stderr.write(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
+              try { diagnose(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
             }
             return;
           }
@@ -2342,7 +2374,7 @@ export class Runtime {
         try { this.writeSync("sendMessage", { message, options }); }
         catch (err) {
           if (!isHostCancellation(err)) {
-            try { process.stderr.write(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
+            try { diagnose(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
           }
           return;
         }
@@ -2943,8 +2975,9 @@ export class Runtime {
     const conn = new Connection(socket);
     conn.nestedEvent = (env) => {
       if (!((conn.nestedWrites ?? 0) > 0 || this.activeRequest()?.pendingHostCalls.size > 0) || conn.queue.some((queued) => queued.type !== "notify" && queued.type !== "call_result")) return false;
-      // The host sent these notifications, such as a state push, and the results of earlier asynchronous calls, such as an appendEntry, before the event: they apply first, as the serve loop would.
-      for (const queued of conn.queue.splice(0)) {
+      // The host sent these notifications, such as a state push, and the results of earlier asynchronous calls, such as an appendEntry, before the event: they apply first, as the serve loop would, the one it was handed and has not read before the ones queued. A request it holds is left to the loop, as it was before the loop's frames were visible here: the setter's event starts in the setter, as the host waits for it to start before it answers the setter.
+      const ahead = conn.takeHandedOff((held) => held.type === "notify" || held.type === "call_result");
+      for (const queued of ahead === undefined ? conn.queue.splice(0) : [ahead, ...conn.queue.splice(0)]) {
         if (queued.type === "call_result") conn.resolveCall(queued);
         else if (queued.notify) this.handleNotify(queued.notify);
       }
@@ -2953,6 +2986,19 @@ export class Runtime {
       const request = this.requestRecords.get(env.id);
       if (request && !request.settled && !request.suspensionReported) conn.requestState(env.id, "blocked", "host_call");
       return true;
+    };
+    conn.applyQueuedStateUpdates = () => {
+      // A synchronous call made while the ready frame is handled settles before the ready state is applied: leave the queued states to the loop, which applies them after it, in frame order.
+      if (!this.readyStateApplied) return;
+      // The state the serve loop was handed and has not read is older than any queued.
+      const handedOff = conn.takeHandedOff((env) => env.type === "notify" && env.notify?.method === "state_update");
+      if (handedOff !== undefined) this.handleNotify(handedOff.notify);
+      for (let i = 0; i < conn.queue.length; i++) {
+        const queued = conn.queue[i];
+        if (queued.type !== "notify" || queued.notify?.method !== "state_update") continue;
+        conn.queue.splice(i--, 1);
+        this.handleNotify(queued.notify);
+      }
     };
     liveRuntimes.add(this);
     this.xrefTransport = {
@@ -3098,6 +3144,11 @@ export class Runtime {
       while (true) {
         const env = await this.conn.next();
         if (!env) return;
+        if (env === this.conn.takenFrame) {
+          this.conn.takenFrame = undefined;
+          continue;
+        }
+        this.conn.handedOff = undefined;
         if (env.type === "call_result") {
           // Apply earlier state and stream notifications before an awaited call resumes its handler.
           this.conn.resolveCall(env);
@@ -3116,6 +3167,7 @@ export class Runtime {
             this.setFrontend(env.ready.state.frontend === true);
             this.applyState(env.ready.state);
           }
+          this.readyStateApplied = true;
           // Pi's interactive mode loads every highlight.js language once startup has emitted session_start and resources_discover
           // (interactive-mode.ts:1100-1122); print, JSON and RPC mode keep the eager set. The load evaluates every grammar on this thread,
           // so it starts when this extension's handling of those startup events ends, not while its handlers wait behind it.
@@ -3149,6 +3201,7 @@ export class Runtime {
       sharedBus.disposeRuntime(this);
       this.extensionRuntime.invalidate();
       this.hostReady = false;
+      this.readyStateApplied = false;
       liveRuntimes.delete(this);
       this.providerTransport.abort(new Error("Provider connection closed"));
       this.autocomplete.dispose();
@@ -3413,9 +3466,6 @@ export class Runtime {
       this.toolsExpandedKnown = true;
       if (changed) this.fireChangeHandlers(this.toolsExpandedChangeHandlers, snapshot.toolsExpanded);
     }
-    if (Object.hasOwn(snapshot, "contextUsage")) {
-      this.state.contextUsage = snapshot.contextUsage == null ? undefined : { ...snapshot.contextUsage };
-    }
     if (snapshot.systemPromptOptions && typeof snapshot.systemPromptOptions === "object") {
       this.state.systemPromptOptions = snapshot.systemPromptOptions;
     }
@@ -3504,7 +3554,7 @@ export class Runtime {
     const owner = this.activeRequest();
     let operation;
     operation = this.syncSessionLog(entries.length, this.sessionLogGeneration).catch((error) => {
-      try { process.stderr.write(`pig: session synchronization failed: ${error?.message || String(error)}\n`); } catch {}
+      try { diagnose(`pig: session synchronization failed: ${error?.message || String(error)}\n`); } catch {}
     }).finally(() => {
       owner?.pendingHostCalls.delete(operation);
     });
@@ -4651,6 +4701,17 @@ export class Runtime {
     }
     this.providers.set(name, config);
     if (this.providersSent) this.holdRegistryWrite(name, this.fireAndForget("registerProvider", { ...this.providerDeclaration(name, config), configRef: this.providerConfigRef(merged) }));
+    this.refreshCurrentModelFromRegistry();
+  }
+
+  // agent-session.ts _refreshCurrentModelFromRegistry: registerProvider, registerNativeProvider and unregisterProvider replace the Session's model with the registry's object for the same provider and id before they return. The write is held over this process's registry view, which the Host's answer and its state push confirm later.
+  refreshCurrentModelFromRegistry() {
+    const current = this.state.model;
+    if (!current) return;
+    const refreshed = this.contextValues.modelRegistry?.find?.(current.provider, current.id);
+    if (!refreshed) return;
+    this.state.model = normalizeModel(refreshed);
+    this.contextValues.model = normalizeModel(this.state.model);
   }
 
   // The declaration of a provider config, as the register frame and a registration after the factory carry it: the config without its callbacks, and the operations that run in this process.
@@ -4687,11 +4748,12 @@ export class Runtime {
     }
     if (this.providersSent) {
       this.holdRegistryWrite(provider.id, this.fireAndForget("registerProvider", { name: provider.id, config: {}, native: declaration }));
-      return;
+    } else {
+      const models = this.allModels();
+      for(const [key,model] of models) if(model.provider===provider.id)models.delete(key);
+      for(const model of declaration.models) models.set(modelRegistryKey(provider.id,model.id),normalizeModel(model));
     }
-    const models = this.allModels();
-    for(const [key,model] of models) if(model.provider===provider.id)models.delete(key);
-    for(const model of declaration.models) models.set(modelRegistryKey(provider.id,model.id),normalizeModel(model));
+    this.refreshCurrentModelFromRegistry();
   }
 
   unregisterProvider(name) {
@@ -4704,6 +4766,7 @@ export class Runtime {
     this.nativeProviders.delete(name);
     if (this.loadState === "active") this.transferProviderOwnership(name, undefined);
     if (this.providersSent) this.holdRegistryWrite(name, this.fireAndForget("unregisterProvider", { name }));
+    this.refreshCurrentModelFromRegistry();
   }
 
   // The Host forwards its caller's abort to a request that already settled while the extension still holds refreshSignal, until releaseRetainedSignal reports that it does not.
@@ -5215,7 +5278,7 @@ export class Runtime {
             try {
               result = handler(current);
             } catch (error) {
-              try { process.stderr.write(`pig: terminal input handler failed: ${error?.stack || String(error)}\n`); } catch {}
+              try { diagnose(`pig: terminal input handler failed: ${error?.stack || String(error)}\n`); } catch {}
               continue;
             }
             if (result?.consume) {
@@ -5331,7 +5394,7 @@ export class Runtime {
     // notify and LoginOptions.getDeviceId are synchronous in Pi (auth/types.ts:160, 208).
     const providerCallback = method === "provider.callback" && (args.method === "notify" || args.method === "getDeviceId");
     const themeMethod = ["ui.getTheme", "ui.setTheme", "ui.theme", "ui.addAutocompleteProvider", "ui.autocomplete.invoke", "ui.autocomplete.current"].includes(method);
-    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getCommands", "hasPendingMessages", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
+    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getCommands", "hasPendingMessages", "getContextUsage", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
       throw new Error(`Host method ${method} is not a synchronous bridge operation`);
     }
     if (!this.conn) throw new Error("runtime not connected");
@@ -5434,7 +5497,6 @@ export class Runtime {
       isIdle: snapshot.isIdle !== false,
       projectTrusted: snapshot.projectTrusted === true,
       hasPendingMessages: snapshot.hasPendingMessages === true,
-      contextUsage: snapshot.contextUsage == null ? undefined : { ...snapshot.contextUsage },
       systemPrompt: typeof snapshot.systemPrompt === "string" ? snapshot.systemPrompt : "",
       systemPromptOptions: snapshot.systemPromptOptions ?? this.state.systemPromptOptions,
       flags: { ...(snapshot.flags ?? {}) },
@@ -5514,7 +5576,7 @@ export class Runtime {
       try {
         await handler(this.ctx);
       } catch (error) {
-        process.stderr.write(`extension: ${this.name}: onLoaded handler failed: ${error?.stack ?? error}\n`);
+        diagnose(`extension: ${this.name}: onLoaded handler failed: ${error?.stack ?? error}\n`);
       }
     }
   }
@@ -5629,7 +5691,7 @@ export class Runtime {
       if (isHostCancellation(err) || conn.closed) return;
       const reason = err && err.message ? err.message : String(err);
       try {
-        process.stderr.write(`pig: host call ${method} failed: ${reason}\n`);
+        diagnose(`pig: host call ${method} failed: ${reason}\n`);
       } catch {
         // A closed stderr during shutdown must not escalate into an unhandled
         // rejection in a path the caller never awaits.

@@ -98,6 +98,9 @@ type Session struct {
 	closeDone         chan struct{}
 	closeOnce         sync.Once
 	replicatedState   changeobservers.Observers
+	// replicatedBegin and replicatedEnd bracket a change of the identity state (model, session id, name, file): the first runs before the change is visible, the second after replicatedState reported it (beginReplicatedChange).
+	replicatedBegin changeobservers.Observers
+	replicatedEnd   changeobservers.Observers
 	// successorOwnsResources makes Close leave the session-ID keyed provider resources alone: the Session that replaced this one carries the same ID and owns them now.
 	successorOwnsResources atomic.Bool
 	// eventsDone ends the Session event executor: the forwarder stops, the
@@ -1208,8 +1211,8 @@ func (s *Session) refreshCurrentModelFromRegistry() {
 	if s.modelRuntime.sameBoundModelMetadata(current, refreshed) {
 		return
 	}
+	defer s.beginReplicatedChange()()
 	s.agent.SetModel(refreshed)
-	s.notifyReplicatedState()
 }
 
 // sameBoundModelMetadata retains an unchanged runtime-bound model instead of replacing it with another equivalent adapter. A changed catalog still replaces the model, and concrete caller providers are never treated as runtime adapters.
@@ -1356,13 +1359,13 @@ func (s *Session) beginModelChangeState(ctx context.Context, m *ai.Model, source
 	if explicit != nil {
 		thinkingLevel = *explicit
 	}
+	// The change is reported once the whole synchronous mutation, including the thinking level the model implies, has run, and on the error paths after the agent holds the model.
+	defer s.beginReplicatedChange()()
 	s.modelChangeMu.Lock()
 	if s.agent != nil {
 		s.agent.SetModel(m)
 	}
 	s.modelChangeMu.Unlock()
-	// The change is reported once the whole synchronous mutation, including the thinking level the model implies, has run, and on the error paths after the agent holds the model.
-	defer s.notifyReplicatedState()
 	if s.inner != nil {
 		if _, err := s.inner.AppendModelChange(providerID(m), m.ID); err != nil {
 			return nil, fmt.Errorf("coding: SetModel: persist audit: %w", err)
@@ -1442,6 +1445,7 @@ func (s *Session) ReplaceInner(sess *icodingagent.Session) {
 	s.installCacheWarmer(sess, nil)
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer s.beginReplicatedChange()()
 	s.inner = sess
 	// upstream: runner.ts:889-891. Extensions see the log the Session now owns, and nothing keeps the replaced one alive.
 	if runner := s.currentRunner(); runner != nil {
@@ -1456,7 +1460,6 @@ func (s *Session) ReplaceInner(sess *icodingagent.Session) {
 		thinking = ai.ClampThinkingLevel(model, thinking)
 	}
 	s.agent.SetThinkingLevel(thinking)
-	s.notifyReplicatedState()
 }
 
 // EmitSessionStart dispatches a session_start event to extension handlers.
@@ -1611,11 +1614,14 @@ func (s *Session) SessionName() string { return s.inner.GetSessionName() }
 // SetSessionName persists the sanitized Session name, immediately notifies subscribers, and admits the extension handler's synchronous prefix before returning. Suspended extension work belongs to the Session lifetime. An empty name clears the current name; RPC and slash-command boundaries validate their own non-empty input.
 func (s *Session) SetSessionName(name string) error {
 	// Pi reads the name synchronously after its own append (agent-session.ts:3559-3560); a concurrent caller's later append cannot change the name this call publishes.
+	s.replicatedBegin.Notify()
 	_, current, err := s.inner.AppendSessionInfoName(name)
 	if err != nil {
+		s.replicatedEnd.Notify()
 		return fmt.Errorf("coding: SetSessionName: append: %w", err)
 	}
 	s.notifyReplicatedState()
+	s.replicatedEnd.Notify()
 	// upstream: packages/coding-agent/src/core/agent-session.ts:setSessionName
 	event := agent.SessionInfoChangedEvent{Name: current}
 	s.notifyAgentEventListeners(event)
@@ -3002,10 +3008,12 @@ func (s *Session) IsCompacting() bool {
 	return s.compacting.Load() || s.branchSumCancel != nil
 }
 
+// isManualCompacting reports a manual compaction or a branch summary in progress: a prompt submitted during either is rejected
+// (agent-session.ts: _compactionAbortController !== undefined || _branchSummaryAbortController !== undefined).
 func (s *Session) isManualCompacting() bool {
 	s.compactMu.Lock()
 	defer s.compactMu.Unlock()
-	return s.manualCompacting
+	return s.manualCompacting || s.branchSumCancel != nil
 }
 
 func (s *Session) beginCompaction() bool {
@@ -3083,7 +3091,8 @@ const treeNavigationInProgressError = "Wait for the current compaction or tree n
 // navigateTree is the internal implementation. NavigateTree (public SDK) and
 // NavigateTreeHandle (InteractiveSessionHandle bridge) both call this.
 func (s *Session) navigateTree(ctx context.Context, targetID string, opts NavigateTreeOptions) (NavigateTreeResult, error) {
-	if s.agent.IsStreaming() {
+	// A prompt that is still in its input hooks and auth checks owns the context (#9154).
+	if s.agent.IsStreaming() || s.runState.promptPreflight.Load() > 0 {
 		return NavigateTreeResult{}, errors.New("Wait for the current response to finish before navigating the session tree.")
 	}
 
@@ -3102,15 +3111,21 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 	// callers may release their ordered initiation lane while this admitted
 	// operation continues asynchronously.
 	extension.CallInitiated(ctx)
-	defer func() {
-		cancel()
-		s.compactMu.Lock()
-		s.branchSumCancel = nil
-		s.branchSumDone = nil
-		close(done)
-		s.compactMu.Unlock()
-		s.notifyIdleWaiters()
-	}()
+	var releaseOnce sync.Once
+	release := func() {
+		releaseOnce.Do(func() {
+			cancel()
+			s.compactMu.Lock()
+			s.branchSumCancel = nil
+			s.branchSumDone = nil
+			close(done)
+			s.compactMu.Unlock()
+			s.notifyIdleWaiters()
+		})
+	}
+	// A navigation that session_tree handlers start owns the Session operation by then, so the first one releases it before the event
+	// (the selected context is installed) and only once.
+	defer release()
 
 	// Snapshot current leaf under lock.
 	s.mu.Lock()
@@ -3225,6 +3240,8 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 	currentLeafID := s.inner.GetLeafID()
 	s.mu.Unlock()
 
+	// The selected context is installed; session_tree handlers may now prompt or navigate again.
+	release()
 	s.emitSessionTree(ctx, currentLeafID, oldLeafID, summaryID, summary != nil && summary.FromExtension)
 	return NavigateTreeResult{EditorText: editorText, SummaryEntry: s.branchSummaryEntry(summaryID)}, nil
 }
