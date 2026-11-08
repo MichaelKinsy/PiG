@@ -90,6 +90,23 @@ func TestUpstreamTabWidth(t *testing.T) {
 			t.Fatalf("slice = %+v", got)
 		}
 	})
+	// packages/tui/test/tab-width.test.ts "does not carry cursor markers into later slices" (#9332, Pi 25490ea49)
+	t.Run("does not carry cursor markers into later slices", func(t *testing.T) {
+		line := "ab" + widthx.CursorMarker + "cdefghij"
+		if got := widthx.SliceWithWidth(line, 4, 2, true); got.Text != "ef" || got.Width != 2 {
+			t.Fatalf("slice(4,2) = %+v", got)
+		}
+		if got := widthx.SliceWithWidth(line, 6, 4, true); got.Text != "ghij" || got.Width != 4 {
+			t.Fatalf("slice(6,4) = %+v", got)
+		}
+	})
+	// packages/tui/test/tab-width.test.ts "continues to carry persistent styling into later slices" (#9332, Pi 25490ea49)
+	t.Run("continues to carry persistent styling into later slices", func(t *testing.T) {
+		line := "\x1b[31mabcdefghij\x1b[0m"
+		if got := widthx.SliceWithWidth(line, 4, 2, true); got.Text != "\x1b[31mef" || got.Width != 2 {
+			t.Fatalf("slice = %+v", got)
+		}
+	})
 	// .upstream/v0.87.1/packages/tui/test/tab-width.test.ts:47
 	t.Run("keeps overlay segment widths consistent with visible width", func(t *testing.T) {
 		text := "out 192M\t.pi/skill-tests/results-ha"

@@ -523,6 +523,9 @@ type InteractiveMode struct {
 	// anthropicSubWarningShown gates the one-time Anthropic subscription
 	// auth warning. Mirrors upstream anthropicSubscriptionWarningShown.
 	anthropicSubWarningShown     bool
+	// cacheWarmingNotice is the last cache-warming notice, extended in place
+	// while it is the last chat line. Mirrors upstream cacheWarmingNotice.
+	cacheWarmingNotice           *cacheWarmingNotice
 	previousThinkingDroppedCount int
 
 	// inputLoopErr, owned by the input loop, ends it with the error of a
@@ -569,6 +572,11 @@ type InteractiveMode struct {
 	// extensionDialogs is the stack of dialogs shown in the editor slot (select, confirm, input, editor and an editor-slot
 	// custom component); the last entry is visible. Only the owner loop touches it (interactive-mode.ts extensionDialogs).
 	extensionDialogs []*extensionDialog
+	// nextBlockingOverlayID numbers the program status sources of blocking overlays, so closing one keeps the others.
+	nextBlockingOverlayID int
+	// extensionOverlays are the open extension overlays (ui.custom with overlay: true), in opening order. Reset removes only these, not
+	// pi's own overlays.
+	extensionOverlays []*extensionOverlay
 	// awaitedDialogs are the dialogs an owner-loop caller waits on (awaitOwnerDialog), by the cancel that dismisses each one.
 	// Only the owner loop touches it.
 	awaitedDialogs map[*awaitedDialog]struct{}

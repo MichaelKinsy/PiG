@@ -25,7 +25,7 @@ func azureDeepSeekV4ThinkingLevelMap() *Obj {
 }
 
 // Qwen Token Plan serves DeepSeek V4 through Qwen's own thinking format.
-var qwenFormatProviders = map[string]bool{"qwen-token-plan": true, "qwen-token-plan-cn": true, "qwen-token-plan-individual": true}
+var qwenFormatProviders = map[string]bool{"qwen-token-plan": true, "qwen-token-plan-cn": true, "qwen-token-plan-individual": true, "qwen-token-plan-individual-cn": true}
 
 // These hosts accept native reasoning efforts instead of DeepSeek's thinking toggle.
 var nativeEffortProviders = map[string]bool{"openrouter": true, "opencode": true}

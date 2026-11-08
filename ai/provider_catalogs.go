@@ -305,6 +305,21 @@ func QwenTokenPlanIndividualClassifierModels() ClassifierModelCatalog {
 	return classifierModelCatalog("qwen-token-plan-individual")
 }
 
+// QwenTokenPlanIndividualCNModels is QWEN_TOKEN_PLAN_INDIVIDUAL_CN_MODELS.
+func QwenTokenPlanIndividualCNModels() ChatModelCatalog {
+	return chatModelCatalog("qwen-token-plan-individual-cn")
+}
+
+// QwenTokenPlanIndividualCNImageModels is QWEN_TOKEN_PLAN_INDIVIDUAL_CN_IMAGE_MODELS.
+func QwenTokenPlanIndividualCNImageModels() ImageModelCatalog {
+	return imageModelCatalog("qwen-token-plan-individual-cn")
+}
+
+// QwenTokenPlanIndividualCNClassifierModels is QWEN_TOKEN_PLAN_INDIVIDUAL_CN_CLASSIFIER_MODELS.
+func QwenTokenPlanIndividualCNClassifierModels() ClassifierModelCatalog {
+	return classifierModelCatalog("qwen-token-plan-individual-cn")
+}
+
 // QwenTokenPlanModels is QWEN_TOKEN_PLAN_MODELS.
 func QwenTokenPlanModels() ChatModelCatalog { return chatModelCatalog("qwen-token-plan") }
 

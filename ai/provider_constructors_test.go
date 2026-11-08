@@ -16,7 +16,7 @@ func TestProviderConstructorsMatchCatalog(t *testing.T) {
 		"meta": MetaProvider, "minimax": MinimaxProvider, "minimax-cn": MinimaxCnProvider, "mistral": MistralProvider,
 		"moonshotai": MoonshotaiProvider, "moonshotai-cn": MoonshotaiCnProvider, "nvidia": NvidiaProvider, "openai": OpenaiProvider,
 		"openai-codex": OpenaiCodexProvider, "opencode": OpencodeProvider, "opencode-go": OpenCodeGoProvider, "openrouter": OpenrouterProvider,
-		"qwen-token-plan": QwenTokenPlanProvider, "qwen-token-plan-cn": QwenTokenPlanCnProvider, "qwen-token-plan-individual": QwenTokenPlanIndividualProvider,
+		"qwen-token-plan": QwenTokenPlanProvider, "qwen-token-plan-cn": QwenTokenPlanCnProvider, "qwen-token-plan-individual": QwenTokenPlanIndividualProvider, "qwen-token-plan-individual-cn": QwenTokenPlanIndividualCnProvider,
 		"together": TogetherProvider, "vercel-ai-gateway": VercelAIGatewayProvider, "xai": XaiProvider, "xiaomi": XiaomiProvider,
 		"xiaomi-token-plan-ams": XiaomiTokenPlanAmsProvider, "xiaomi-token-plan-cn": XiaomiTokenPlanCnProvider, "xiaomi-token-plan-sgp": XiaomiTokenPlanSgpProvider,
 		"zai": ZaiProvider, "zai-coding-cn": ZaiCodingCnProvider,
