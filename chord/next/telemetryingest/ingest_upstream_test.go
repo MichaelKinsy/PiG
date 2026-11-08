@@ -162,10 +162,10 @@ func ingest(t *testing.T, client host.Host, spans []any) (delta.JsonValue, error
 func TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding(t *testing.T) {
 	s := serving(t, nil, ownerAttributes)
 	client, _ := clientOf(t, s, principalOf("owner"), host.HostOptions{})
-	first := spanRow(client.Incarnation(), 1, func(row *delta.JsonObject) {
+	first := spanRow(incarnationOf(client), 1, func(row *delta.JsonObject) {
 		row.Set("attributes", delta.JsonObjectOf("chord.host", "server", "chord.principal", "root"))
 	})
-	receipt, err := ingest(t, client, []any{first, spanRow(client.Incarnation(), 2, nil)})
+	receipt, err := ingest(t, client, []any{first, spanRow(incarnationOf(client), 2, nil)})
 	must(t, err)
 	if !reflect.DeepEqual(receipt, delta.JsonObjectOf("written", 2.0, "dropped", 0.0)) {
 		t.Fatalf("receipt = %v", receipt)
@@ -189,9 +189,9 @@ func TestPageBatchCallsTheHookOncePerSpanItStampsCachingNothingItself(t *testing
 		return telemetry.SpanAttributes{telemetry.Attr("chord.principal", "owner")}
 	})
 	client, _ := clientOf(t, s, principalOf("owner"), host.HostOptions{})
-	_, err := ingest(t, client, []any{spanRow(client.Incarnation(), 1, nil), spanRow(client.Incarnation(), 2, nil)})
+	_, err := ingest(t, client, []any{spanRow(incarnationOf(client), 1, nil), spanRow(incarnationOf(client), 2, nil)})
 	must(t, err)
-	_, err = ingest(t, client, []any{spanRow(client.Incarnation(), 3, nil)})
+	_, err = ingest(t, client, []any{spanRow(incarnationOf(client), 3, nil)})
 	must(t, err)
 	if calls != 3 {
 		t.Fatalf("hook called %d times", calls)
@@ -201,7 +201,7 @@ func TestPageBatchCallsTheHookOncePerSpanItStampsCachingNothingItself(t *testing
 func TestPageBatchNeverKeepsAPrincipalThePageClaims(t *testing.T) {
 	s := serving(t, nil, func(data.Principal) telemetry.SpanAttributes { return nil })
 	client, _ := clientOf(t, s, principalOf("owner"), host.HostOptions{})
-	claimed := spanRow(client.Incarnation(), 1, func(row *delta.JsonObject) {
+	claimed := spanRow(incarnationOf(client), 1, func(row *delta.JsonObject) {
 		row.Set("attributes", delta.JsonObjectOf("chord.principal", "root", "chord.host", "server", "n", 1.0))
 	})
 	_, err := ingest(t, client, []any{claimed})
@@ -215,7 +215,7 @@ func TestPageBatchNeverKeepsAPrincipalThePageClaims(t *testing.T) {
 func TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers(t *testing.T) {
 	s := serving(t, nil, ownerAttributes)
 	client, _ := clientOf(t, s, principalOf("owner"), host.HostOptions{})
-	incarnation := client.Incarnation()
+	incarnation := incarnationOf(client)
 	foreign := "0193b2c4-1111-7000-8000-000000000000:7"
 	spans := []any{
 		spanRow(incarnation, 2, nil),
@@ -291,7 +291,7 @@ func TestPageBatchRefusesAnInvalidBatchWritingNothing(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			s := serving(t, nil, ownerAttributes)
 			client, _ := clientOf(t, s, principalOf("owner"), host.HostOptions{})
-			_, err := ingest(t, client, spans(client.Incarnation()))
+			_, err := ingest(t, client, spans(incarnationOf(client)))
 			if _, ok := data.IsChordErrorCode(err, data.CodeInvalid); !ok {
 				t.Fatalf("error = %v", err)
 			}
@@ -309,7 +309,7 @@ func TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget(t *te
 	for batch := 0; batch*telemetryingest.PageBatchSpans < telemetryingest.PageSpansPerMinute+telemetryingest.PageBatchSpans; batch++ {
 		spans := make([]any, telemetryingest.PageBatchSpans)
 		for n := range spans {
-			spans[n] = spanRow(client.Incarnation(), batch*telemetryingest.PageBatchSpans+n+2, nil)
+			spans[n] = spanRow(incarnationOf(client), batch*telemetryingest.PageBatchSpans+n+2, nil)
 		}
 		receipt, err := ingest(t, client, spans)
 		must(t, err)
@@ -331,7 +331,7 @@ func TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget(t *te
 func TestPageBatchRecordsNoSpanForAnIngestCall(t *testing.T) {
 	s := serving(t, nil, ownerAttributes)
 	client, _ := clientOf(t, s, principalOf("owner"), host.HostOptions{})
-	_, err := ingest(t, client, []any{spanRow(client.Incarnation(), 1, nil)})
+	_, err := ingest(t, client, []any{spanRow(incarnationOf(client), 1, nil)})
 	must(t, err)
 	for _, span := range s.telemetry.GetSpans() {
 		if span.Name == "chord.method" {
@@ -349,7 +349,7 @@ func TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHa
 	if variant, _, _ := held.Variant(); variant != "worker" {
 		t.Fatalf("variant = %q", variant)
 	}
-	own := spanRow(client.Incarnation(), 1, func(row *delta.JsonObject) {
+	own := spanRow(incarnationOf(client), 1, func(row *delta.JsonObject) {
 		row.Set("id", "w:1")
 		row.Set("traceId", "w:1")
 		row.Delete("parentId")
@@ -400,7 +400,7 @@ func sending(t *testing.T, principal data.Principal, scope func(incarnation stri
 	client, err := host.CreateHost(host.HostOptions{Telemetry: recorder, OnError: func(host.HostError) {}})
 	must(t, err)
 	t.Cleanup(func() { _ = client.Close(background) })
-	incarnation = client.Incarnation()
+	incarnation = incarnationOf(client)
 	_, err = client.Load(nil, background)
 	must(t, err)
 	connect := func() {
@@ -487,3 +487,6 @@ func TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant(t *testing.T) {
 }
 
 var _ context.Context = background
+
+// incarnationOf is the host's incarnation (Pi's `host.incarnation`): a page's span ids carry it.
+func incarnationOf(h host.Host) string { return h.(interface{ Incarnation() string }).Incarnation() }
