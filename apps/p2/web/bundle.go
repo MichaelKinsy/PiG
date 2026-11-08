@@ -23,10 +23,32 @@ const BundlePath = "/__p2_web/"
 // ManifestPath is the current web bundle manifest; its files remain under BundlePath (`WEB_MANIFEST_PATH`).
 const ManifestPath = "/__p2_web"
 
-// File is one file of the bundle: its content and Content-Type.
+// File is one file of the bundle: its Content-Type, size and content. The content is read from the embedded files when first
+// asked for and kept: a server nobody loads the page from holds none of the bundle (about 9 MB with the source maps), and a
+// source map nobody opens is never read.
 type File struct {
-	Body []byte
 	Type string
+	// Size is the content's length in bytes.
+	Size int
+
+	files fs.FS
+	path  string
+	once  sync.Once
+	body  []byte
+}
+
+// Body is the file's content (read once, shared: never modify it). An embedded file always reads; if it somehow does not, the
+// result is empty.
+func (f *File) Body() []byte {
+	f.once.Do(func() { f.body, _ = fs.ReadFile(f.files, f.path) })
+	return f.body
+}
+
+// NewFile is a bundle file with content in hand (tests build bundles by hand).
+func NewFile(contentType string, body []byte) *File {
+	f := &File{Type: contentType, Size: len(body)}
+	f.once.Do(func() { f.body = body })
+	return f
 }
 
 // Bundle is the web bundle: every file named by its content, so a page can cache it forever (`WebBundle`).
@@ -34,7 +56,7 @@ type Bundle struct {
 	// Version is a hash over the names of all files, which carry their own content hashes.
 	Version string
 	// Files are by file name (`app-<hash>.js`), served under BundlePath.
-	Files map[string]File
+	Files map[string]*File
 	// Script is the entry script and Style its stylesheet ("" for none), as file names.
 	Script string
 	Style  string
@@ -114,16 +136,16 @@ func load(files fs.FS, dir string) (*Bundle, error) {
 	if err := json.Unmarshal(raw, &described); err != nil {
 		return nil, fmt.Errorf("web bundle: bundle.json: %w", err)
 	}
-	bundle := &Bundle{Version: described.Version, Script: described.Script, Plugins: described.Plugins, Files: make(map[string]File, len(described.Files))}
+	bundle := &Bundle{Version: described.Version, Script: described.Script, Plugins: described.Plugins, Files: make(map[string]*File, len(described.Files))}
 	if described.Style != nil {
 		bundle.Style = *described.Style
 	}
 	for _, file := range described.Files {
-		body, err := fs.ReadFile(files, dir+"/"+file.Name)
+		info, err := fs.Stat(files, dir+"/"+file.Name)
 		if err != nil {
 			return nil, fmt.Errorf("web bundle: %w", err)
 		}
-		bundle.Files[file.Name] = File{Body: body, Type: file.Type}
+		bundle.Files[file.Name] = &File{Type: file.Type, Size: int(info.Size()), files: files, path: dir + "/" + file.Name}
 	}
 	bundle.Brand = UpstreamBrand
 	if described.Brand != nil {
