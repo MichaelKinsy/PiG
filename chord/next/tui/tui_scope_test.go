@@ -101,6 +101,19 @@ func until(t testing.TB, check func() bool) {
 	}
 }
 
+// settle waits until a counter stood still for 100 ms: the watches of Go deliver on goroutines, where Pi's microtasks
+// have all run by the time its `until` returns.
+func settle(n *atomic.Int64) {
+	for last := n.Load(); ; {
+		time.Sleep(100 * time.Millisecond)
+		if now := n.Load(); now == last {
+			return
+		} else {
+			last = now
+		}
+	}
+}
+
 func TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose(t *testing.T) {
 	h := newHost(t)
 	var changes atomic.Int64
@@ -156,6 +169,7 @@ func TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChange
 	read := WatchMember(scope, notes.Member("text"))
 	text, add, _ := OptimisticLast(scope, func() delta.JsonValue { v, _ := read(); return v })
 	until(t, func() bool { return text() == "first" })
+	settle(&changes)
 	before := changes.Load()
 	gate, shown := make(chan struct{}), make(chan struct{})
 	done := make(chan error)
@@ -341,5 +355,6 @@ func TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChange
 	}
 }
 
-func fmtN(n any, suffix string) string { return surfaces.FormatNumber(nil, n.(float64), nil) + " " + suffix }
-
+func fmtN(n any, suffix string) string {
+	return surfaces.FormatNumber(nil, n.(float64), nil) + " " + suffix
+}
