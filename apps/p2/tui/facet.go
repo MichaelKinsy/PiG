@@ -4,6 +4,8 @@ package tui
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
@@ -72,4 +74,21 @@ func JBool(value any) bool {
 func JList(value any) []any {
 	list, _ := value.([]any)
 	return list
+}
+
+// URLSearchEscape is how URLSearchParams serializes a name or a value: alphanumerics and `*-._` stay, a space is `+`, every other byte is `%XX`.
+func URLSearchEscape(text string) string {
+	var out strings.Builder
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		switch {
+		case c >= '0' && c <= '9', c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c == '*', c == '-', c == '.', c == '_':
+			out.WriteByte(c)
+		case c == ' ':
+			out.WriteByte('+')
+		default:
+			fmt.Fprintf(&out, "%%%02X", c)
+		}
+	}
+	return out.String()
 }
