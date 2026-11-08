@@ -306,12 +306,11 @@ def new_extension() -> pig_sdk.Extension:
 	for _, tc := range []struct {
 		name, mode, extension string
 		wantStderr            string
-		wantToolResult        bool
 	}{
-		{"throwing handler/text", "text", throwing, "Extension error (" + throwing + "): shutdown boom\n", false},
-		{"throwing handler/json", "json", throwing, "Extension error (" + throwing + "): shutdown boom\n", false},
-		{"slow handler/text", "text", slow, "test-faux: unhandled request \"(no output)\n\nCommand exited with code 137\"\n", true},
-		{"python handler waiting for idle/text", "text", waitsForIdle, "test-faux: unhandled request \"(no output)\n\nCommand exited with code 137\"\n", true},
+		{"throwing handler/text", "text", throwing, "Extension error (" + throwing + "): shutdown boom\nThis operation was aborted\n"},
+		{"throwing handler/json", "json", throwing, "Extension error (" + throwing + "): shutdown boom\n"},
+		{"slow handler/text", "text", slow, "This operation was aborted\n"},
+		{"python handler waiting for idle/text", "text", waitsForIdle, "This operation was aborted\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workDir, agentDir, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
@@ -364,8 +363,8 @@ def new_extension() -> pig_sdk.Extension:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := strings.Contains(string(data), `"role":"toolResult"`); got != tc.wantToolResult {
-				t.Fatalf("session has a tool result = %v, want %v:\n%s", got, tc.wantToolResult, data)
+			if !strings.Contains(string(data), `"role":"toolResult"`) {
+				t.Fatalf("session has no tool result; the run the signal's disposal settled persists it:\n%s", data)
 			}
 		})
 	}
