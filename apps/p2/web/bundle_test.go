@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -110,7 +111,7 @@ func TestEmbeddedBundleIsWhole(t *testing.T) {
 	}
 	names := make([]string, 0, len(described.Files))
 	for _, file := range described.Files {
-		body := bundle.Files[file.Name].Body
+		body := bundle.Files[file.Name].Body()
 		if got := sha256.Sum256(body); hex.EncodeToString(got[:]) != file.Sha256 || len(body) != file.Size {
 			t.Errorf("%s differs from bundle.json", file.Name)
 		}
@@ -134,7 +135,7 @@ func TestEmbeddedBundleIsWhole(t *testing.T) {
 	var bytes int
 	for name, file := range bundle.Files {
 		if !strings.HasSuffix(name, ".map") {
-			bytes += len(file.Body)
+			bytes += file.Size
 		}
 	}
 	if bytes > 8*1024*1024 {
@@ -188,5 +189,39 @@ func TestEmbeddedBundleIsBranded(t *testing.T) {
 	// `name` stays Pi's: test/p2/health.test.ts reads it.
 	if manifest.Name != "Pi" || manifest.ShortName != "PiG" {
 		t.Errorf("manifest %+v", manifest)
+	}
+}
+
+// countingFS counts what is opened by name.
+type countingFS struct {
+	fs.FS
+	opened map[string]int
+}
+
+func (c *countingFS) Open(name string) (fs.File, error) {
+	c.opened[name]++
+	return c.FS.Open(name)
+}
+
+// Loading the bundle reads its manifest (and the brand's small public files), not its files: the content is read when a file is
+// first served, once. The startup of a server nobody opens the page of must not hold the bundle.
+func TestBundleFilesAreReadWhenFirstServed(t *testing.T) {
+	counting := &countingFS{FS: distFiles, opened: map[string]int{}}
+	bundle, err := load(counting, "dist")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name := range bundle.Files {
+		if counting.opened["dist/"+name] != 0 {
+			t.Errorf("%s was read at load", name)
+		}
+	}
+	script := bundle.Files[bundle.Script]
+	if script.Size == 0 || len(script.Body()) != script.Size {
+		t.Fatalf("script size %d, body %d", script.Size, len(script.Body()))
+	}
+	script.Body()
+	if got := counting.opened["dist/"+bundle.Script]; got != 1 {
+		t.Errorf("the script was opened %d times, want once", got)
 	}
 }
