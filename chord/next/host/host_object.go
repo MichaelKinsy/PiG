@@ -278,6 +278,7 @@ var (
 	_ store.Claimant           = (*chordObject)(nil)
 	_ documents.Clock          = (*objectClock)(nil)
 	_ documents.DocumentsOwner = (*objectDocuments)(nil)
+	_ documents.CancelReporter = (*objectDocuments)(nil)
 )
 
 // newChordObject makes the object of served for params, in principal's identity (nil for a local one): key is its params'
@@ -327,6 +328,11 @@ func (d *objectDocuments) Batch() *state.Batch { return d.object.host.batch }
 
 // Context is the object's context.
 func (d *objectDocuments) Context() context.Context { return d.object.ctx }
+
+// TransactionCancelled reports a transaction that did not commit while its context was cancelled (`transaction_cancelled`).
+func (d *objectDocuments) TransactionCancelled(cause error) {
+	d.object.host.report(HostError{Kind: ErrTransactionCancelled, Object: d.object.text, Error: cause})
+}
 
 // Store is the host's store and the object's owner name in it, when the host has one.
 func (d *objectDocuments) Store() (*store.ChordStore, string, bool) {
