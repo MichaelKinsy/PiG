@@ -4,7 +4,7 @@
 # including a reached zero. The latter case runs real fd against one temp file.
 # Exact result text and SDK details are compared.
 #
-# Pi main 676af1d77 (#11747, in the pin c23b9ec1; Pi 1.5.0 differed, D253 is retired) reads a limit below 1 as 1, floors a fraction, cuts a custom glob's results to the
+# Pi main 676af1d77 (#11747, in the pin c23b9ec1; Pi 1.5.0 differed; the divergence record is retired) reads a limit below 1 as 1, floors a fraction, cuts a custom glob's results to the
 # limit and prints the limit notice only when more results than the limit exist. The probe asserts the pin's results (`limit-0` and `limit-1.5` keep one of the two globbed
 # entries and report limit 1; `fd-zero` runs real fd with limit 0 and lists the one file without a notice) and both_contain pins the three complete lines in both outputs.
 name = "21-find-operations-and-limits"

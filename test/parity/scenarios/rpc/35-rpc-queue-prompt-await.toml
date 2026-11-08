@@ -37,7 +37,7 @@ both_contain = [
 # Pi's agent-session.ts _handleAgentEvent (user message_start) matches a delivered message against the pending queue even when its text is empty since Pi main a63c4ec5c
 # (#8612, in the pin c23b9ec1; Pi 1.5.0 guarded the match with a truthy text and emitted nothing). The RPC stream therefore carries two queue_update records in both
 # engines, each before the message_start that caused it: the empty prompt's message_start removes the queued empty steering entry, and the delivery of the steer's message
-# removes the queued empty follow-up entry. They are compared like every other record; D250 is retired. both_contain pins both records so the scenario fails if either engine stops emitting them.
+# removes the queued empty follow-up entry. They are compared like every other record; its divergence record is retired. both_contain pins both records so the scenario fails if either engine stops emitting them.
 
 [[assert.json_aliases]]
 paths = ["/**/sessionId"]
