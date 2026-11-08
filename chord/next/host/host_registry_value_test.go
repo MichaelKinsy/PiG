@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// RegistryValue reads a registry's composition inside a section of the host's loop: a registry value source composes when it
-// is read, so a read from another goroutine races a contribution changed meanwhile. Run under -race.
+// A registry value source composes when it is read: a read from another goroutine runs as a section of the host's loop, so it
+// cannot race a contribution changed there meanwhile. Run under -race.
 func TestRegistryValueReadsRaceFreeWhileAContributionChanges(t *testing.T) {
 	registry := benchRegistryOf(t, 4)
 	var readers sync.WaitGroup
@@ -21,25 +21,26 @@ func TestRegistryValueReadsRaceFreeWhileAContributionChanges(t *testing.T) {
 					return
 				default:
 				}
-				if _, err := registry.host.RegistryValue(background, benchSum, GetOptions{}); err != nil {
-					t.Errorf("RegistryValue: %v", err)
+				source, err := registry.host.Registry(background, benchSum, GetOptions{})
+				if err != nil {
+					t.Errorf("Registry: %v", err)
+					return
+				}
+				if _, ok := source.Value().(float64); !ok {
+					t.Errorf("Value is %T, want the composed sum", source.Value())
 					return
 				}
 			}
 		}()
 	}
 	for i := range 500 {
-		if err := registry.writables[i%len(registry.writables)].Set(float64(i + 1)); err != nil {
+		// A change is made inside a section of the host's loop, as an object's code makes it.
+		var err error
+		registry.host.(*chordHost).enter(func() { err = registry.writables[i%len(registry.writables)].Set(float64(i + 1)) })
+		if err != nil {
 			t.Fatal(err)
 		}
 	}
 	close(stop)
 	readers.Wait()
-	value, err := registry.host.RegistryValue(background, benchSum, GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := value.(float64); !ok {
-		t.Fatalf("value is %T, want the composed sum", value)
-	}
 }
