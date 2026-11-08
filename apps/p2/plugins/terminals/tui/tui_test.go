@@ -46,7 +46,7 @@ func TestTheCallShowsTheTmuxCommandLine(t *testing.T) {
 	built, context := newContext(t, false)
 	args := jsvalue.Obj("command", "send-keys", "args", []any{"-t", "dev", "echo\nhi", float64(3)})
 	got := plain(tui.Renderers.RenderCall(args, built, context))
-	if !strings.Contains(got, "terminal send-keys -t dev echo hi ") {
+	if !strings.Contains(got, "terminal send-keys -t dev echo hi") {
 		t.Fatalf("call = %q", got)
 	}
 	if got := plain(tui.Renderers.RenderCall(jsvalue.Obj(), built, context)); !strings.Contains(got, "terminal ...") {
