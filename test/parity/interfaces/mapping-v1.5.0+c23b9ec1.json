@@ -263536,7 +263536,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -263559,7 +263559,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
       ]
     },
     {
@@ -263915,8 +263915,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
-        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored"
+        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored",
+        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderInvalidatesOnlyTheNamedCredentialKind"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -263938,8 +263938,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
-        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored"
+        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored",
+        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderInvalidatesOnlyTheNamedCredentialKind"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -264142,7 +264142,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -264163,9 +264163,9 @@
         "call:mcp/oauth/client_settings.go#CreateOAuthClientProvider"
       ],
       "evidence": [
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
         "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
-        "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
+        "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite",
+        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderConfiguredClientWinsAndIgnoresSavedRegistrations"
       ]
     },
     {
@@ -264187,7 +264187,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
       ]
     },
     {
@@ -264249,7 +264249,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -264272,7 +264272,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -264295,7 +264295,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
       ]
     },
     {
@@ -264317,7 +264317,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
       ]
     },
     {
@@ -264339,7 +264339,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
       ]
     },
     {
@@ -265487,8 +265487,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInCompletesThroughTheLoopbackCallbackServer",
-        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate"
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "test:mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
       ]
     },
     {
