@@ -234,6 +234,7 @@ func TestAClickOnTheEditorKeepsKeysOnTheRuntimeCtrlCStillClearsAndTheScreenStill
 	l.newSession(l.fixture.Workspace)
 	l.typed("clicked draft")
 	poll(t, func() bool { return l.draft() == "clicked draft" })
+	l.waitScreen(10*time.Second, "clicked draft")
 	// An SGR click on the editor's line: pi-tui would focus the editor itself, bypassing the runtime's commands.
 	row := -1
 	for index, line := range l.terminal.Viewport() {
