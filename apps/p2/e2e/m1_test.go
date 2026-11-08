@@ -110,8 +110,7 @@ func busyHas(entry *delta.JsonObject, conversation float64) bool {
 
 func TestSmokeCreatesASessionAndGetsAnAnswer(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
-	var rebuilds p2test.Rebuilds
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{BuildRevision: rebuilds.Revision})
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{})
 	browser := fixture.Browser()
 	sessions, err := p2test.HoldIn(browser, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
 	if err != nil {
@@ -137,7 +136,8 @@ func TestSmokeCreatesASessionAndGetsAnAnswer(t *testing.T) {
 // plugin reload, reopen after the worker stopped idle, archive and restore. The cases run in order, as the TypeScript's.
 func TestM1WorkingChat(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{Idle: 1500 * time.Millisecond})
+	var rebuilds p2test.Rebuilds
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Idle: 1500 * time.Millisecond, BuildRevision: rebuilds.Revision})
 	browser := fixture.Browser()
 	sessions, err := p2test.HoldIn(browser, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
 	if err != nil {
