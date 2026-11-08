@@ -16,7 +16,6 @@ import (
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/apps/p2/tui/jsvalue"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/tools"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/transcript"
 	"github.com/MichaelKinsy/PiG/durable"
