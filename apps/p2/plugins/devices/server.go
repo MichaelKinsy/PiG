@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/devices/contract"
@@ -36,6 +37,29 @@ func forbid(response http.ResponseWriter, request *http.Request, message string)
 	return err
 }
 
+// retention hands the open owner access of a reloaded facet to the facet that replaces it.
+type retention struct {
+	mu   sync.Mutex
+	kept map[string]*contract.OwnerAccess
+}
+
+var retained = &retention{kept: map[string]*contract.OwnerAccess{}}
+
+func (r *retention) keep(access *contract.OwnerAccess) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.kept[access.Directory()] = access
+	return true
+}
+
+func (r *retention) take(directory string) *contract.OwnerAccess {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	access := r.kept[directory]
+	delete(r.kept, directory)
+	return access
+}
+
 func serveDeviceAccess(facet host.FacetHost) error {
 	return facet.Serve(contract.DeviceAccess, host.LocalFactory(func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 		server := self.Get(p2runtime.ServerLocal, delta.NewJsonObject(0))
@@ -49,9 +73,18 @@ func serveDeviceAccess(facet host.FacetHost) error {
 				return nil, err
 			}
 			directory, _ := value.Value("dataDir").(string)
+			if kept := retained.take(directory); kept != nil {
+				return kept, nil
+			}
 			return contract.OpenOwnerAccess(directory, nil)
-		}, func(value any, _ host.NativeCloseReason, _ context.Context) error {
-			value.(*contract.OwnerAccess).Close()
+		}, func(value any, reason host.NativeCloseReason, _ context.Context) error {
+			access := value.(*contract.OwnerAccess)
+			// Pi's reload of unchanged code leaves the object, and so its invitations and key, in place; a Go reload
+			// re-evaluates the facet, so the next open takes the access over instead.
+			if reason.Kind == host.NativeCloseReload && retained.keep(access) {
+				return nil
+			}
+			access.Close()
 			return nil
 		})
 		access := func() *contract.OwnerAccess {

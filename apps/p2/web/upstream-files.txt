@@ -506,3 +506,5 @@ tsconfig.json
 src/runtime/worker.ts
 plugins/chat/shell.ts
 plugins/sessions/lock-worker.ts
+plugins/proxy-marker/contract.ts
+plugins/proxy-marker/package.json

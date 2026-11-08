@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -181,10 +182,15 @@ func TestProxyMarkingIsNeverAuthenticationIncludingTheLoopbackUnixSocketBridge(t
 				t.Fatalf("%s leaks: %s", path, response.Body)
 			}
 		}
-		for _, path := range []string{"/upload?session=" + session + "&name=intrude.txt", "/workspace-upload?session=" + session + "&name=intrude.txt"} {
+		// Pi's plugins answer a stranger's upload with 403. `/workspace-upload` is the workspace plugin's route (not in this
+		// build): until it is linked, the host's sign-in page (401) refuses the stranger just the same.
+		for path, allowed := range map[string][]int{
+			"/upload?session=" + session + "&name=intrude.txt":           {403},
+			"/workspace-upload?session=" + session + "&name=intrude.txt": {401, 403},
+		} {
 			response := httpGet(t, port, path, p2test.HTTPOptions{Method: http.MethodPost, Headers: proxied, Body: strings.NewReader("intrusion")})
-			if response.Status != 403 || strings.Contains(response.Body, "PRIVATE") {
-				t.Fatalf("%s: %d %s", path, response.Status, response.Body)
+			if !slices.Contains(allowed, response.Status) || strings.Contains(response.Body, "PRIVATE") {
+				t.Fatalf("%s: %d", path, response.Status)
 			}
 		}
 	})
