@@ -6,7 +6,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
 // Ports packages/chord/src/node/app/info.ts
@@ -52,14 +51,14 @@ type AppInfoValues struct {
 // AppInfoFacet is the facet serving AppInfo with info.
 func AppInfoFacet(info AppInfoValues) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(AppInfo, func(_ *delta.JsonObject, _ host.Self) (contracts.Implementation, error) {
+		return h.Serve(AppInfo, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
-					"dataDir": state.ConstantOf[delta.JsonValue](info.DataDir),
-					"name":    state.ConstantOf[delta.JsonValue](info.Name),
-					"version": state.ConstantOf[delta.JsonValue](info.Version),
+					"dataDir": constant(self, info.DataDir),
+					"name":    constant(self, info.Name),
+					"version": constant(self, info.Version),
 					// The same object at every get: its principal key is computed once.
-					"owner": state.ConstantOf[delta.JsonValue](info.Owner),
+					"owner": constant(self, info.Owner),
 				},
 			}}, nil
 		}, host.ServeOptions{})
@@ -78,13 +77,19 @@ type WorkerInfoValues struct {
 // WorkerInfoFacet is the facet serving WorkerInfo with the worker's address and start data.
 func WorkerInfoFacet(info WorkerInfoValues) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(WorkerInfo, func(_ *delta.JsonObject, _ host.Self) (contracts.Implementation, error) {
+		return h.Serve(WorkerInfo, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
-					"address": state.ConstantOf[delta.JsonValue](delta.JsonObjectOf("kind", info.Kind, "key", info.Key, "params", info.Params)),
-					"start":   state.ConstantOf[delta.JsonValue](info.Start),
+					"address": constant(self, delta.JsonObjectOf("kind", info.Kind, "key", info.Key, "params", info.Params)),
+					"start":   constant(self, info.Start),
 				},
 			}}, nil
 		}, host.ServeOptions{})
 	})
+}
+
+// constant is a state member that never changes (upstream's `constant(value)`): a derive of no source. Go's Self has no
+// constant of its own (the host takes a *state.Constant only where a member is given as a value, not through Derive).
+func constant(self host.Self, value delta.JsonValue) chord.Watchable[delta.JsonValue] {
+	return self.Derive(nil, func([]any) (delta.JsonValue, error) { return value, nil })
 }

@@ -19,18 +19,28 @@ import (
 // EphemeralGrace is how long an ephemeral session lives without a link: a minute, past a reload and the reconnect loop's pauses.
 const EphemeralGrace = 60 * time.Second
 
+// timerHandle is a started timer: Stop cancels it.
+type timerHandle interface{ Stop() bool }
+
+// afterFunc starts a timer calling fn after d; time.AfterFunc outside tests, a fake one the tests fire by hand (Go has no global
+// fake timers: the unexported seam stands in for vi.useFakeTimers).
+type afterFunc func(d time.Duration, fn func()) timerHandle
+
+func realAfterFunc(d time.Duration, fn func()) timerHandle { return time.AfterFunc(d, fn) }
+
 // ephemeralSession is one ephemeral session: its secret's hash, its principal, its open links, its end's timer while it has none.
 type ephemeralSession struct {
 	hash      string
 	principal data.Principal
 	links     int
-	timer     *time.Timer
+	timer     timerHandle
 }
 
 // EphemeralSessions are the server's ephemeral sessions.
 type EphemeralSessions struct {
 	max   int
 	grace time.Duration
+	after afterFunc
 
 	mu       sync.Mutex
 	sessions map[string]*ephemeralSession
@@ -43,7 +53,7 @@ func NewEphemeralSessions(max int, grace time.Duration) *EphemeralSessions {
 	if grace == 0 {
 		grace = EphemeralGrace
 	}
-	return &EphemeralSessions{max: max, grace: grace, sessions: map[string]*ephemeralSession{}}
+	return &EphemeralSessions{max: max, grace: grace, after: realAfterFunc, sessions: map[string]*ephemeralSession{}}
 }
 
 // Issue makes session id (its secret's hash hash) for principal; the oldest ends past the cap.
@@ -127,8 +137,8 @@ func (e *EphemeralSessions) LinkOpened(id string) (closed func()) {
 
 // waitForLinkLocked ends session unless a link opens within the grace period.
 func (e *EphemeralSessions) waitForLinkLocked(id string, session *ephemeralSession) {
-	var timer *time.Timer
-	timer = time.AfterFunc(e.grace, func() {
+	var timer timerHandle
+	timer = e.after(e.grace, func() {
 		e.mu.Lock()
 		defer e.mu.Unlock()
 		// A stopped or replaced timer does nothing.
