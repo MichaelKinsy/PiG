@@ -93,7 +93,7 @@ func TestCustomMessageAndEntryComponentsMatchPi(t *testing.T) {
 				renderer = func(*tui.CustomMessage, tui.MessageRenderOptions) tui.Component { return nil }
 			}
 			var c *tui.CustomMessageComponent
-			c = tui.NewCustomMessageComponent(&tui.CustomMessage{CustomType: "note", Content: probe.Content}, renderer, nil, probe.Pad)
+			c = tui.NewCustomMessageComponent(&tui.CustomMessage{CustomType: "note", Content: probe.Content}, renderer, nil, probe.Pad, nil, "", "")
 			for _, step := range []struct {
 				expanded bool
 				pad      int

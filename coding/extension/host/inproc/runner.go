@@ -1181,24 +1181,18 @@ func (r *Runner) MessageRenderer(customType string) extension.MessageRenderer {
 func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
 	var transformers []extension.MarkdownTransformer
 	for _, ext := range r.extensions {
-		if ext.MarkdownTransformer != nil {
-			transformers = append(transformers, restrictMarkdownTransformer(ext.MarkdownTransformer, ext.MarkdownMessageTypes))
+		if ext.MarkdownTransformer == nil {
+			continue
 		}
+		transformer, messageTypes := ext.MarkdownTransformer.Transformer, ext.MarkdownTransformer.MessageTypes
+		transformers = append(transformers, func(markdown string, context extension.MarkdownTransformContext) string {
+			if _, ok := messageTypes[context.MessageType]; !ok {
+				return markdown
+			}
+			return transformer(markdown, context)
+		})
 	}
 	return transformers
-}
-
-// restrictMarkdownTransformer wraps transformer so it runs only on the listed message types; a nil list is the default types.
-func restrictMarkdownTransformer(transformer extension.MarkdownTransformer, types []extension.MarkdownMessageType) extension.MarkdownTransformer {
-	if types == nil {
-		types = extension.DefaultMarkdownMessageTypes()
-	}
-	return func(markdown string, context extension.MarkdownTransformContext) string {
-		if !slices.Contains(types, context.MessageType) {
-			return markdown
-		}
-		return transformer(markdown, context)
-	}
 }
 
 // OwnsThinkingRuns reports whether any of the runner's extensions owns the thinking runs of assistant messages: the flags of the

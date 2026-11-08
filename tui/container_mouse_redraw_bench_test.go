@@ -23,7 +23,7 @@ func clickRedrawFrame(n, index int) (root *Container, click TuiMouseEvent, open 
 				return &TuiMouseEventResult{Handled: true}
 			})
 		}
-		root.Add(NewCustomMessageComponent(&CustomMessage{CustomType: "card", Content: "x"}, renderer, nil, 1))
+		root.Add(NewCustomMessageComponent(&CustomMessage{CustomType: "card", Content: "x"}, renderer, nil, 1, nil, "", ""))
 	}
 	root.Render(100)
 	rows := index*2 + 1 // each message is a spacer row and the card row
@@ -57,7 +57,7 @@ func BenchmarkTranscriptSetExpandedRedraw(b *testing.B) {
 			for i := range n {
 				component := NewCustomMessageComponent(&CustomMessage{CustomType: "card", Content: "x"}, func(*CustomMessage, MessageRenderOptions) Component {
 					return &silentLine{line: func() string { return fmt.Sprintf("card %d", i) }}
-				}, nil, 1)
+				}, nil, 1, nil, "", "")
 				if i == n/2 {
 					target = component
 				}

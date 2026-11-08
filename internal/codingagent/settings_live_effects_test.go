@@ -231,7 +231,7 @@ func TestOnSettingAppliedClearsIdleStatusAfterDisablingClearOnShrink(t *testing.
 func TestOnSettingAppliedOutputPaddingReachesEveryChatAndPendingChild(t *testing.T) {
 	bash := tui.NewBashExecutionComponent("make", nil, false, 1)
 	bash.AppendOutput("live output\n")
-	compaction := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "s", TokensBefore: 10}, nil, 1)
+	compaction := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "s", TokensBefore: 10}, nil, 1, nil, "", "")
 	pendingUser := tui.NewUserMessageComponent("queued", nil, 1, nil, "", "")
 	chat, pending := tui.NewContainer(), tui.NewContainer()
 	chat.Add(bash)

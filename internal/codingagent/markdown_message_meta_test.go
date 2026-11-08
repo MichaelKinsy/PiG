@@ -21,12 +21,12 @@ func TestMarkdownTransformContextCarriesPersistedEntryIdentity(t *testing.T) {
 	var mu sync.Mutex
 	var got []seen
 	install := func(m *InteractiveMode) {
-		m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: func(text string, context extension.MarkdownTransformContext) string {
+		m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, context extension.MarkdownTransformContext) string {
 			mu.Lock()
 			defer mu.Unlock()
 			got = append(got, seen{context.MessageType, context.MessageID, context.Timestamp})
 			return text
-		}}}, "")
+		}, nil)}}, "")
 	}
 	dir := t.TempDir()
 	sess, err := NewSessionManagerWithDir(dir, dir).Create("meta", "")

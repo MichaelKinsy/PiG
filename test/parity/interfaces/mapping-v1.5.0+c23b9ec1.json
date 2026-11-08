@@ -3518,7 +3518,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_UpdatesStateWithMutators",
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -3673,7 +3673,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_UpdatesStateWithMutators",
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -145747,9 +145747,9 @@
         "call:coding/session_tools.go#Session.SetActiveToolsByName"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -145769,9 +145769,9 @@
         "call:coding/session_tools.go#Session.SetActiveToolsByName"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -152373,13 +152373,47 @@
     },
     {
       "id": "pkg:coding-agent/.#BranchSummaryMessageComponent",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:80e55902558e7ddee12b0b970f70c24ee36fda11c2a3849df135a2d6792bf126"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:80e55902558e7ddee12b0b970f70c24ee36fda11c2a3849df135a2d6792bf126",
+      "rationale": "Derived by the interface gap detector: BranchSummaryMessageComponent is Go tui/branch_summary.go#BranchSummaryMessageComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/branch_summary.go#BranchSummaryMessageComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+      ],
+      "evidence": [
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageComponentsUpstream",
+        "test:tui/collapsible_message_upstream_test.go#TestSummaryMessageComponentsInheritBoxMembers"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#BranchSummaryMessageComponent::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1e4cbbbd8e6cb8ce84778ea159f89eb3db538924dfeecbe140d695e01780e53d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1e4cbbbd8e6cb8ce84778ea159f89eb3db538924dfeecbe140d695e01780e53d",
+      "rationale": "Derived by the interface gap detector: BranchSummaryMessageComponent::construct:0 is Go tui/branch_summary.go#NewBranchSummaryMessageComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/branch_summary.go#NewBranchSummaryMessageComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/branch_summary.go#NewBranchSummaryMessageComponent"
+      ],
+      "evidence": [
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageComponentsUpstream",
+        "test:tui/collapsible_message_upstream_test.go#TestSummaryMessageComponentsInheritBoxMembers"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#BranchSummaryMessageComponent::property:addChild",
@@ -155001,13 +155035,47 @@
     },
     {
       "id": "pkg:coding-agent/.#CompactionSummaryMessageComponent",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e658b9ef655b3cc30fe93118e84560193e4fa3f61aa364834ef54f80b2695519"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e658b9ef655b3cc30fe93118e84560193e4fa3f61aa364834ef54f80b2695519",
+      "rationale": "Derived by the interface gap detector: CompactionSummaryMessageComponent is Go tui/compaction_summary.go#CompactionSummaryMessageComponent (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/compaction_summary.go#CompactionSummaryMessageComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+      ],
+      "evidence": [
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageComponentsUpstream",
+        "test:tui/collapsible_message_upstream_test.go#TestSummaryMessageComponentsInheritBoxMembers"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#CompactionSummaryMessageComponent::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c9d85df7be1b6bdcdef0357ec91c71b7fe6fcd0a27598c13ccca4f18aa6a7f59"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c9d85df7be1b6bdcdef0357ec91c71b7fe6fcd0a27598c13ccca4f18aa6a7f59",
+      "rationale": "Derived by the interface gap detector: CompactionSummaryMessageComponent::construct:0 is Go tui/compaction_summary.go#NewCompactionSummaryMessageComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/compaction_summary.go#NewCompactionSummaryMessageComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/compaction_summary.go#NewCompactionSummaryMessageComponent"
+      ],
+      "evidence": [
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageComponentsUpstream",
+        "test:tui/collapsible_message_upstream_test.go#TestSummaryMessageComponentsInheritBoxMembers"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#CompactionSummaryMessageComponent::property:addChild",
@@ -160440,13 +160508,47 @@
     },
     {
       "id": "pkg:coding-agent/.#CustomMessageComponent",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:01ea817436b7b1420a5bffa1ca81ba4ad0a2d20ae7d0cb6eada121a6752b972e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:01ea817436b7b1420a5bffa1ca81ba4ad0a2d20ae7d0cb6eada121a6752b972e",
+      "rationale": "Derived by the interface gap detector: CustomMessageComponent is Go tui/custom_message.go#CustomMessageComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/custom_message.go#CustomMessageComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.Render"
+      ],
+      "evidence": [
+        "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode",
+        "test:internal/codingagent/auth_warnings_upstream_test.go#TestAnthropicSubscriptionWarningUpstream",
+        "test:internal/codingagent/clipboard_image_native_errors_upstream_test.go#TestNativeImageErrorsAbortPasteWithoutReadingTextOrChangingEditor"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#CustomMessageComponent::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1b6cd872c36c5dcdd73aaf5b898117c4038a4a8cf95401e9dffdb8e4cc1d369b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1b6cd872c36c5dcdd73aaf5b898117c4038a4a8cf95401e9dffdb8e4cc1d369b",
+      "rationale": "Derived by the interface gap detector: CustomMessageComponent::construct:0 is Go tui/custom_message.go#NewCustomMessageComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/custom_message.go#NewCustomMessageComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/custom_message.go#NewCustomMessageComponent"
+      ],
+      "evidence": [
+        "test:internal/codingagent/custom_message_components_oracle_test.go#TestCustomMessageAndEntryComponentsMatchPi",
+        "test:tui/custom_message_upstream_test.go#TestCustomMessageComponentProvidesOutputPadToCustomRenderersUpstream",
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#CustomMessageComponent::property:addChild",
@@ -164183,8 +164285,25 @@
     },
     {
       "id": "pkg:coding-agent/.#Extension",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9267a7f29cf388d9ad60d97ec5f75585b9427d7d57b84afd96dfd7cfa4f5b43e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9267a7f29cf388d9ad60d97ec5f75585b9427d7d57b84afd96dfd7cfa4f5b43e",
+      "rationale": "Derived by the interface gap detector: Extension is Go coding/extension/extension.go#Extension (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/extension.go#Extension"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/factoryload/api.go#api.GetFlag"
+      ],
+      "evidence": [
+        "test:coding/extension/host/subprocess/upstream_discovery_test.go#TestUpstreamExtensionsDiscovery",
+        "test:coding/cache_warming_decision_upstream_test.go#TestCacheWarmingDecisionUsesLastExtensionOverride",
+        "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#Extension::property:commands",
@@ -164298,8 +164417,25 @@
     },
     {
       "id": "pkg:coding-agent/.#Extension::property:markdownTransformer",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fd3c1267b16af0886f9429e9dddeb9c5b990f3ce458e624a50970ca8039325f2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fd3c1267b16af0886f9429e9dddeb9c5b990f3ce458e624a50970ca8039325f2",
+      "rationale": "Derived by the interface gap detector: Extension::property:markdownTransformer is Go coding/extension/extension.go#Extension.MarkdownTransformer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/extension.go#Extension.MarkdownTransformer"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+      ],
+      "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:coding/extension/host/subprocess/upstream_discovery_test.go#TestUpstreamExtensionsDiscovery"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#Extension::property:messageRenderers",
@@ -164384,9 +164520,9 @@
         "call:coding/extension/factoryload/load.go#LoadExtensionFromFactory"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/diagnostics_upstream_test.go#TestRunnerShortcutConflictIsAWarningDiagnosticWithThePath"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
       ]
     },
     {
@@ -164473,8 +164609,8 @@
       ],
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestOmitReplacedExtensionsWarnsAboutReplacedBuiltin",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -164860,8 +164996,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -164882,8 +165018,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -164904,8 +165040,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -164926,8 +165062,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -170085,7 +170221,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -170107,7 +170243,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -170129,7 +170265,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -170151,7 +170287,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -174174,8 +174310,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -174196,8 +174332,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -174218,8 +174354,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -174240,8 +174376,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -183857,7 +183993,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#markdownMessageTypes"
+        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
@@ -183879,7 +184015,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/runner.go#restrictMarkdownTransformer"
+        "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
@@ -184076,7 +184212,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#markdownMessageTypes"
+        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
       ],
       "evidence": [
         "test:test/extension-conformance/api_register_test.go#TestConformanceAPIRegisterRenderersAndTransformer",
@@ -184085,23 +184221,85 @@
     },
     {
       "id": "pkg:coding-agent/.#MarkdownTransformerRegistration",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:928454393ffd65a0f4e1e8bb9b7e4ce757ae8710078dc08012435932adb29033"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:928454393ffd65a0f4e1e8bb9b7e4ce757ae8710078dc08012435932adb29033",
+      "rationale": "Derived by the interface gap detector: MarkdownTransformerRegistration is Go coding/extension/renderer.go#MarkdownTransformerRegistration (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/renderer.go#MarkdownTransformerRegistration"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+      ],
+      "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:internal/codingagent/assistant_block_async_race_test.go#TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#MarkdownTransformerRegistration::property:messageTypes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c4f211bf6c14cf82a6bb221790e080aa69ca41f92fda7c421dda5569320aadad"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c4f211bf6c14cf82a6bb221790e080aa69ca41f92fda7c421dda5569320aadad",
+      "rationale": "Derived by the interface gap detector: MarkdownTransformerRegistration::property:messageTypes is Go coding/extension/renderer.go#MarkdownTransformerRegistration.MessageTypes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/renderer.go#MarkdownTransformerRegistration.MessageTypes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
+      ],
+      "evidence": [
+        "test:coding/extension/host/subprocess/markdown_message_types_test.go#TestRegisteredMarkdownMessageTypesReachTheBuiltExtension"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#MarkdownTransformerRegistration::property:transformer",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8dbe0d6ca0b21754637030e52053676a559d67dcac6a659a5bcf7f4d68f20768"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8dbe0d6ca0b21754637030e52053676a559d67dcac6a659a5bcf7f4d68f20768",
+      "rationale": "Derived by the interface gap detector: MarkdownTransformerRegistration::property:transformer is Go coding/extension/renderer.go#MarkdownTransformerRegistration.Transformer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/renderer.go#MarkdownTransformerRegistration.Transformer"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
+      ],
+      "evidence": [
+        "test:coding/extension/host/subprocess/markdown_transform_proxy_test.go#TestNodeMarkdownTransformerDoesNotCacheAcrossMessages"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#MarkdownTransformerRegistration::property:transformer::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e0276858dcca982ab1874bad93a41113b60eafdbe043aa356840dbc2d6ab2c0e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e0276858dcca982ab1874bad93a41113b60eafdbe043aa356840dbc2d6ab2c0e",
+      "rationale": "Derived by the interface gap detector: MarkdownTransformerRegistration::property:transformer::call:0 is Go coding/extension/renderer.go#MarkdownTransformerRegistration.Transformer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/renderer.go#MarkdownTransformerRegistration.Transformer"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
+      ],
+      "evidence": [
+        "test:coding/extension/host/subprocess/markdown_transform_proxy_test.go#TestNodeMarkdownTransformerDoesNotCacheAcrossMessages"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#McpExposure",
@@ -193622,8 +193820,26 @@
     },
     {
       "id": "pkg:coding-agent/.#ReadOperations",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:90900e4f22f826da527f54a7eccf3790352eaa3d766e131f7d5307a0aa292b56"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:90900e4f22f826da527f54a7eccf3790352eaa3d766e131f7d5307a0aa292b56",
+      "rationale": "Derived by the interface gap detector: ReadOperations is Go internal/codingagent/tools/read.go#ReadOperations (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/read.go#ReadOperations"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/read.go#readThroughOperations"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions",
+        "test:internal/codingagent/tools/read_grep_operations_test.go#TestReadToolOperationsDecideImageDetection"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:coding-agent/.#ReadOperations::property:access",
@@ -193673,8 +193889,26 @@
     },
     {
       "id": "pkg:coding-agent/.#ReadOperations::property:createReadStream",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b7219a97bad771e7cf4e60885f719755233518b3f9983f1fb53799d92af0f440"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b7219a97bad771e7cf4e60885f719755233518b3f9983f1fb53799d92af0f440",
+      "rationale": "Derived by the interface gap detector: ReadOperations::property:createReadStream is Go internal/codingagent/tools/read.go#ReadOperations.CreateReadStream (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/read.go#ReadOperations.CreateReadStream"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/read.go#readThroughOperations"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingKeepsMemoryBoundedForA200MBLine",
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingStopsConsumingTheStreamWhenAborted",
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingDecodesChunkSplitCharactersAndInvalidUTF8LikeBufferToString"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:coding-agent/.#ReadOperations::property:detectImageMimeType",
@@ -194318,8 +194552,8 @@
       ],
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestOmitReplacedExtensionsWarnsAboutReplacedBuiltin",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -194339,9 +194573,9 @@
         "call:coding/extension/factoryload/api.go#api.RegisterTool"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
       ]
     },
     {
@@ -213081,13 +213315,47 @@
     },
     {
       "id": "pkg:coding-agent/.#SkillInvocationMessageComponent",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8932fdf511a5e256dd5ae6c85cbb6ea50dbf1a56e731c033addf703ccbd509bc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8932fdf511a5e256dd5ae6c85cbb6ea50dbf1a56e731c033addf703ccbd509bc",
+      "rationale": "Derived by the interface gap detector: SkillInvocationMessageComponent is Go tui/skill_invocation.go#SkillInvocationMessageComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/skill_invocation.go#SkillInvocationMessageComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+      ],
+      "evidence": [
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageComponentsUpstream",
+        "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#SkillInvocationMessageComponent::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5079d5a230df074bf1a0d30f2e307cf762eafe6264d8e8aa519f0a5eedd67fb3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5079d5a230df074bf1a0d30f2e307cf762eafe6264d8e8aa519f0a5eedd67fb3",
+      "rationale": "Derived by the interface gap detector: SkillInvocationMessageComponent::construct:0 is Go tui/skill_invocation.go#NewSkillInvocationMessageComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/skill_invocation.go#NewSkillInvocationMessageComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/skill_invocation.go#NewSkillInvocationMessageComponent"
+      ],
+      "evidence": [
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageComponentsUpstream",
+        "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#SkillInvocationMessageComponent::property:addChild",
@@ -216250,8 +216518,8 @@
       ],
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/extension/builtin/codemode/session_free_upstream_test.go#TestDeclaresModelsOnlyForAToolCreatedWithModelAccess"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -216361,9 +216629,9 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools"
       ]
     },
     {
@@ -216383,9 +216651,9 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
       ]
     },
     {
@@ -216427,9 +216695,9 @@
         "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields"
+        "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo"
       ]
     },
     {
@@ -216449,9 +216717,9 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools"
       ]
     },
     {
@@ -275793,43 +276061,88 @@
     },
     {
       "id": "pkg:schema/.#bigint",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1268523f1f4566582dfda9241d07917517b7124fd843e2b7c28fbae7189fc95a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1268523f1f4566582dfda9241d07917517b7124fd843e2b7c28fbae7189fc95a",
+      "rationale": "Derived by the interface gap detector: bigint is Go schema/builders.go#BigInt (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#BigInt"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#BigInt"
+      ],
+      "evidence": [
+        "test:schema/pi_main_bigint_upstream_test.go#TestExplainsBigIntsAgainstBoundsOfEitherKind",
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainBuildsABigIntWithBounds",
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainChecksMultipleOfOfBigIntsExactly"
+      ]
     },
     {
       "id": "pkg:schema/.#bigint::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:75a7064aa6569ff75e8536b030453c7e44837d620ccb935131be54aadfe555f3"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:75a7064aa6569ff75e8536b030453c7e44837d620ccb935131be54aadfe555f3",
+      "rationale": "Pi packages/schema/src/builders.ts:82 bigint::call:0 (Pi 1.5.0+c23b9ec1, unchanged from 1.4.0+b556cfe5): Pi's `bigint` returns Schema<bigint>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:12). Pi's `options` parameter (Annotations<bigint> & BigintBounds) is spread into the schema. Go has no optional parameter, and a struct of options cannot record the order in which the caller wrote the members, which the JS spread keeps in the schema (the key order is part of the provider request bytes and of fingerprints), so each builder takes variadic options applied in call order and typed per builder: BigInt takes ...BigIntOption (schema/builders.go:53): the AnnotationOption values Title, Description, Examples, Deprecated and Default, and BigMinimum, BigMaximum, BigExclusiveMinimum, BigExclusiveMaximum and BigMultipleOf (schema/builders.go:200-213). A misplaced option such as BigInt(MinLength(1)) or BigInt(Open()) does not compile, the Go counterpart of the excess-property check of Pi's per-builder TypeScript option type. Designed out as Go language mechanics (typed variadic options in call order; owner review flagged). Intention check (owner rule 2026-11-08): the Pi test guards that a bigint takes exactly its own bounds as bigints, written after the type in the order given, and that no other builder accepts them; PiG tests that intention at run time and at its type boundary: TestPiMainBuildsABigIntWithBounds (every BigInt option writes its keyword in call order) and TestBuilderOptionsFitOnlyTheirBuilders (the Big* options fit BigInt alone, and no number, string, array, bytes or object option fits it). Only the compile-time excess-property check of the TypeScript type has no run-time form. Owner approved 2026-11-02 (the same decision as num and int: Pi 1.5.0+c23b9ec1 packages/schema/src/builders.ts:44-48 builders spread their options into the schema).",
+      "pigTargets": [
+        "schema/builders.go#BigInt"
+      ]
     },
     {
       "id": "pkg:schema/.#BigintBounds",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fb5bb9c4b10ecf81a0769cf2ced4e7a1e2a27b10e0b84bad217c4d2c2f1c1429"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:fb5bb9c4b10ecf81a0769cf2ced4e7a1e2a27b10e0b84bad217c4d2c2f1c1429",
+      "rationale": "Pi packages/schema/src/builders.ts:70 BigintBounds (Pi 1.5.0+c23b9ec1): is a TypeScript-only type with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics) (an interface { minimum?, maximum?, exclusiveMinimum?, exclusiveMaximum?, multipleOf? } of bigints that Pi's bigint option type intersects); Go carries it as BigIntOption (schema/builders.go:53), the option type of BigInt only, whose values are BigMinimum, BigMaximum, BigExclusiveMinimum, BigExclusiveMaximum and BigMultipleOf (schema/builders.go:200-213). Intention check (owner rule 2026-11-08): the Pi test guards that a bigint takes exactly its own bounds as bigints, written after the type in the order given, and that no other builder accepts them; PiG tests that intention at run time and at its type boundary: TestPiMainBuildsABigIntWithBounds (every BigInt option writes its keyword in call order) and TestBuilderOptionsFitOnlyTheirBuilders (the Big* options fit BigInt alone, and no number, string, array, bytes or object option fits it). Only the compile-time excess-property check of the TypeScript type has no run-time form.",
+      "pigTargets": [
+        "schema/builders.go#BigIntOption"
+      ]
     },
     {
       "id": "pkg:schema/.#BigintBounds::property:exclusiveMaximum",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f4e22a63f6692196ae561535d076498012b46e12ab87eea76e7b2d2612eb30a6"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f4e22a63f6692196ae561535d076498012b46e12ab87eea76e7b2d2612eb30a6",
+      "rationale": "Pi packages/schema/src/builders.ts:74 BigintBounds::property:exclusiveMaximum (Pi 1.5.0+c23b9ec1): is a TypeScript-only type with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics) (an optional bigint member of BigintBounds); Go carries it as the BigIntOption value BigExclusiveMaximum(schema/builders.go:210), accepted by BigInt. Intention check (owner rule 2026-11-08): the Pi test guards that a bigint takes exactly its own bounds as bigints, written after the type in the order given, and that no other builder accepts them; PiG tests that intention at run time and at its type boundary: TestPiMainBuildsABigIntWithBounds (every BigInt option writes its keyword in call order) and TestBuilderOptionsFitOnlyTheirBuilders (the Big* options fit BigInt alone, and no number, string, array, bytes or object option fits it). Only the compile-time excess-property check of the TypeScript type has no run-time form.",
+      "pigTargets": [
+        "schema/builders.go#BigIntOption"
+      ]
     },
     {
       "id": "pkg:schema/.#BigintBounds::property:exclusiveMinimum",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6d80e01d4dc711f4859ac49237dd42aea4183e695d309ecff634af0fee030179"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6d80e01d4dc711f4859ac49237dd42aea4183e695d309ecff634af0fee030179",
+      "rationale": "Pi packages/schema/src/builders.ts:73 BigintBounds::property:exclusiveMinimum (Pi 1.5.0+c23b9ec1): is a TypeScript-only type with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics) (an optional bigint member of BigintBounds); Go carries it as the BigIntOption value BigExclusiveMinimum(schema/builders.go:207), accepted by BigInt. Intention check (owner rule 2026-11-08): the Pi test guards that a bigint takes exactly its own bounds as bigints, written after the type in the order given, and that no other builder accepts them; PiG tests that intention at run time and at its type boundary: TestPiMainBuildsABigIntWithBounds (every BigInt option writes its keyword in call order) and TestBuilderOptionsFitOnlyTheirBuilders (the Big* options fit BigInt alone, and no number, string, array, bytes or object option fits it). Only the compile-time excess-property check of the TypeScript type has no run-time form.",
+      "pigTargets": [
+        "schema/builders.go#BigIntOption"
+      ]
     },
     {
       "id": "pkg:schema/.#BigintBounds::property:maximum",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d222111d1d4a94d21c862062715247ec5435c51079127f55bd0bbd3da619db52"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d222111d1d4a94d21c862062715247ec5435c51079127f55bd0bbd3da619db52",
+      "rationale": "Pi packages/schema/src/builders.ts:72 BigintBounds::property:maximum (Pi 1.5.0+c23b9ec1): is a TypeScript-only type with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics) (an optional bigint member of BigintBounds); Go carries it as the BigIntOption value BigMaximum(schema/builders.go:204), accepted by BigInt. Intention check (owner rule 2026-11-08): the Pi test guards that a bigint takes exactly its own bounds as bigints, written after the type in the order given, and that no other builder accepts them; PiG tests that intention at run time and at its type boundary: TestPiMainBuildsABigIntWithBounds (every BigInt option writes its keyword in call order) and TestBuilderOptionsFitOnlyTheirBuilders (the Big* options fit BigInt alone, and no number, string, array, bytes or object option fits it). Only the compile-time excess-property check of the TypeScript type has no run-time form.",
+      "pigTargets": [
+        "schema/builders.go#BigIntOption"
+      ]
     },
     {
       "id": "pkg:schema/.#BigintBounds::property:minimum",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2bcc5dddfac752220dcf7bae40fc8b2f5fb7542c2fdf4eb4fcb8cd1060f0ac23"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:2bcc5dddfac752220dcf7bae40fc8b2f5fb7542c2fdf4eb4fcb8cd1060f0ac23",
+      "rationale": "Pi packages/schema/src/builders.ts:71 BigintBounds::property:minimum (Pi 1.5.0+c23b9ec1): is a TypeScript-only type with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics) (an optional bigint member of BigintBounds); Go carries it as the BigIntOption value BigMinimum(schema/builders.go:201), accepted by BigInt. Intention check (owner rule 2026-11-08): the Pi test guards that a bigint takes exactly its own bounds as bigints, written after the type in the order given, and that no other builder accepts them; PiG tests that intention at run time and at its type boundary: TestPiMainBuildsABigIntWithBounds (every BigInt option writes its keyword in call order) and TestBuilderOptionsFitOnlyTheirBuilders (the Big* options fit BigInt alone, and no number, string, array, bytes or object option fits it). Only the compile-time excess-property check of the TypeScript type has no run-time form.",
+      "pigTargets": [
+        "schema/builders.go#BigIntOption"
+      ]
     },
     {
       "id": "pkg:schema/.#BigintBounds::property:multipleOf",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:233142c9e748d57db68a285fae1a67ca12e68f163cf46dc49e13f086ff96018e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:233142c9e748d57db68a285fae1a67ca12e68f163cf46dc49e13f086ff96018e",
+      "rationale": "Pi packages/schema/src/builders.ts:75 BigintBounds::property:multipleOf (Pi 1.5.0+c23b9ec1): is a TypeScript-only type with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics) (an optional bigint member of BigintBounds); Go carries it as the BigIntOption value BigMultipleOf(schema/builders.go:213), accepted by BigInt. Intention check (owner rule 2026-11-08): the Pi test guards that a bigint takes exactly its own bounds as bigints, written after the type in the order given, and that no other builder accepts them; PiG tests that intention at run time and at its type boundary: TestPiMainBuildsABigIntWithBounds (every BigInt option writes its keyword in call order) and TestBuilderOptionsFitOnlyTheirBuilders (the Big* options fit BigInt alone, and no number, string, array, bytes or object option fits it). Only the compile-time excess-property check of the TypeScript type has no run-time form.",
+      "pigTargets": [
+        "schema/builders.go#BigIntOption"
+      ]
     },
     {
       "id": "pkg:schema/.#bool",

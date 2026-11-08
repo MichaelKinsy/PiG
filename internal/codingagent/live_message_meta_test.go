@@ -25,13 +25,12 @@ func liveMetaMode(t *testing.T, dir, path string) (*InteractiveMode, func() []li
 	var got []liveMetaSeen
 	m := resumeBashModeFromFile(t, dir, path)
 	m.newRunner = inproc.NewRunner([]extension.Extension{{
-		MarkdownMessageTypes: []extension.MarkdownMessageType{extension.MarkdownMessageCustom, extension.MarkdownMessageSummary},
-		MarkdownTransformer: func(text string, context extension.MarkdownTransformContext) string {
+		MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, context extension.MarkdownTransformContext) string {
 			mu.Lock()
 			defer mu.Unlock()
 			got = append(got, liveMetaSeen{context.MessageType, context.MessageID, context.Timestamp})
 			return text
-		},
+		}, []extension.MarkdownMessageType{extension.MarkdownMessageCustom, extension.MarkdownMessageSummary}),
 	}}, "")
 	m.toolsExpanded = true
 	m.statusLine = NewFooterComponent(&ai.Model{ID: "active"}, "", nil)
