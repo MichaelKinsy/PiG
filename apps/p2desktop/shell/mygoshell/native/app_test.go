@@ -149,7 +149,9 @@ func TestProvidersSheetFromTheEmptyState(t *testing.T) {
 	if err := tt.Click("Anthropic"); err != nil {
 		t.Fatal(err)
 	}
-	until(t, tt, "the provider's sheet", func() bool { return tt.HasText("Not signed in. Environment keys may still apply. Credentials are stored on the server.") })
+	until(t, tt, "the provider's sheet", func() bool {
+		return tt.HasText("Not signed in. Environment keys may still apply. Credentials are stored on the server.")
+	})
 	if err := tt.Click("Back"); err != nil {
 		t.Fatal(err)
 	}
