@@ -75,6 +75,7 @@ for (const sequence of corpus.sequences) {
       defaultWorkingMessage: 'Working',
       compactionQueuedMessages: [],
       pendingTools: new Map(),
+      pendingBashComponents: [],
       entriesRenderedByBoundaryCompaction: new Set(),
       toolOutputExpanded: sequence.expanded === true,
       outputPad: 1,
