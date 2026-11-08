@@ -186,8 +186,6 @@ func TestUnreadAtRuntimeLeavesVendoredReadmes(t *testing.T) {
 		"shims/photon-node/LICENSE.md":                           false,
 		"shims/pi-dist/pi-coding-agent/README.md":                false,
 		"shims/pi-dist/pi-coding-agent/docs/usage.md":            false,
-		"shims/pi-dist/pi-coding-agent/CHANGELOG.md":             true,
-		"shims/pi-dist/pi-ai/CHANGELOG.md":                       false,
 		"shims/yaml/dist/index.js":                               false,
 	} {
 		if got := UnreadAtRuntime(name); got != want {

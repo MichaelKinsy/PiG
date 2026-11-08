@@ -190,7 +190,6 @@ func uvarint(s string) (uint64, int) {
 //   - shims/vendor-manifest.json: the provenance record the vendoring tests compare with the source tree; no runtime code opens it.
 //   - shims/pi-dist/pi-coding-agent/docs/images/: the screenshots the package docs embed. The documentation Pi's system prompt advertises is its Markdown (docs/*.md, README.md and examples/), which stays; PiG's own documentation bundle (internal/pigdocs) carries no images either.
 //   - shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png: the announcement image of Pi's Node InteractiveMode, which PiG never runs (its own copy is embedded by internal/codingagent); the loader reads it in a try/catch and shows the announcement without the picture when it is missing.
-//   - shims/pi-dist/pi-coding-agent/CHANGELOG.md: Pi's release notes. Only `getChangelogPath` (config.js) names it, and only Node's InteractiveMode (the `/changelog` command and the what's-new banner, which PiG never runs; its changelog is the Go host's) calls that; utils/changelog.js checks `existsSync` before it reads, and Pi's system prompt advertises README.md, docs/ and examples/ but not the changelog. The archive budget (automation/perf/startup-budgets.json) stays at 4,750,000 bytes.
 //   - shims/undici/docs/: undici's API documentation (Markdown) that its npm package ships. undici's code never opens it, and no Pi documentation links to it.
 //   - any README.md outside shims/pi-dist (shims/<package>/README.md, and nested ones such as shims/undici/types/README.md): the package page npm shows, which no code opens. pi-dist's own READMEs stay: Pi's getReadmePath reads shims/pi-dist/pi-coding-agent/README.md, and the documentation Pi's system prompt advertises includes the others.
 func UnreadAtRuntime(relative string) bool {
@@ -199,7 +198,6 @@ func UnreadAtRuntime(relative string) bool {
 		relative == "shims/vendor-manifest.json" ||
 		strings.HasPrefix(relative, "shims/pi-dist/pi-coding-agent/docs/images/") ||
 		relative == "shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png" ||
-		relative == "shims/pi-dist/pi-coding-agent/CHANGELOG.md" ||
 		strings.HasPrefix(relative, "shims/undici/docs/") ||
 		unreadVendoredReadme(relative)
 }
