@@ -18,7 +18,7 @@ import (
 // kernel, which are the ones job control and signals interrupt, go through the retrying helpers or retry in place.
 //
 //   - x/term's MakeRaw, Restore and SetState issue the termios setting ioctls (TCSETS, TIOCSETA), which wait for output to drain and stop a
-//     background group with SIGTTOU. Only the seam variables in terminal.go may name them; everything else calls makeRaw and restoreCooked.
+//     background group with SIGTTOU. Only the seam variables in terminal.go may name them; everything else calls MakeRaw and RestoreCooked.
 //   - x/sys/unix's Poll, Select, Read and Ioctl* calls, and calls through those seams, must sit in a loop that goes round again on EINTR; a
 //     function that only names EINTR, or returns on it, does not count.
 //
@@ -230,7 +230,7 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 				switch selector.Sel.Name {
 				case "MakeRaw", "Restore", "SetState":
 					if !allowedSeam {
-						report(selector.Pos(), "term."+selector.Sel.Name+" without the EINTR retry (use makeRaw and restoreCooked)")
+						report(selector.Pos(), "term."+selector.Sel.Name+" without the EINTR retry (use MakeRaw and RestoreCooked)")
 					}
 				}
 			case "golang.org/x/sys/unix":
