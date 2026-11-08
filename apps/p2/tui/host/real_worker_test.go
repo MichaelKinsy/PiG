@@ -86,7 +86,7 @@ func (l *launcher) openNewestSession() {
 	l.waitScreen(15*time.Second, "New session")
 	l.terminal.SendInput(keyDown)
 	l.terminal.SendInput(keyEnter)
-	pollFor(l.t, 10*time.Second, func() bool {
+	l.until(10*time.Second, "the conversation connected", func() bool {
 		screen := l.terminal.screen()
 		return !strings.Contains(screen, "Connecting conversation") && strings.Contains(screen, "•")
 	})
