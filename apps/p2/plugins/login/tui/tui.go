@@ -125,8 +125,15 @@ func (d *LoginDialog) owner() *host.Reference {
 
 // current is the login state when it is this provider's, nil otherwise.
 func (d *LoginDialog) current() any {
-	if d.state != nil && p2tui.JStr(p2tui.JField(d.state, "providerId")) == d.provider.id {
-		return d.state
+	// The live value, not the last one the loop saw: a key pressed right after the server's change must act on it.
+	state := d.state
+	if member := d.ref.Member("login"); member != nil && !d.closed {
+		if value, err := member.Value(); err == nil {
+			state = value
+		}
+	}
+	if state != nil && p2tui.JStr(p2tui.JField(state, "providerId")) == d.provider.id {
+		return state
 	}
 	return nil
 }
@@ -238,11 +245,11 @@ func (d *LoginDialog) Close() {
 	if d.closed {
 		return
 	}
+	state, ref := d.current(), d.owner()
 	d.closed = true
 	d.stop()
 	d.input.SetValue("")
 	d.secret.Clear()
-	state, ref := d.current(), d.owner()
 	if state != nil && ref != nil {
 		attempt := p2tui.JStr(p2tui.JField(state, "attemptId"))
 		working := p2tui.JStr(p2tui.JField(state, "status")) == "working"
