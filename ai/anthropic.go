@@ -1136,6 +1136,7 @@ func (p *anthropicProvider) Stream(ctx context.Context, transcript TranscriptCon
 	model := p.resolveModel()
 	// upstream: packages/ai/src/api/anthropic-messages.ts:stream
 	builder := newObservedProviderBuilder(ctx, outputAPI(p.cfg.ModelMetadata, APIAnthropicMessages), p.cfg.ProviderID, p.cfg.Model)
+	builder.causeDetail = true
 	builder.modelCost = opts.ModelCost
 	builder.setProviderEventObserver(opts, model)
 	// buildParams records the effort of the final effort marker on the reply once it has built the request (anthropic-messages.ts:647), so a failure

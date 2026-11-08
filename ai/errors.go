@@ -5,7 +5,9 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"reflect"
 	"strings"
 	"sync"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
 
 const MaxProviderErrorBodyChars = 4000
@@ -62,7 +65,59 @@ func NormalizeProviderError(value any) NormalizedProviderError {
 	if status, ok := responseErrorStatus(err); ok {
 		result.Status = new(status)
 	}
+	if result.Status == nil {
+		result.Message = WithCauseDetail(err)
+	}
 	return result
+}
+
+// maxCauseDepth is error-body.ts MAX_CAUSE_DEPTH.
+const maxCauseDepth = 5
+
+// WithCauseDetail is error-body.ts withCauseDetail. Connection-level failures carry no status or body, and an SDK replaces the reason
+// with a generic message; the reason sits in the cause chain (errors.Unwrap here). It appends the deepest cause's message, and its
+// code when the error has a Code method and the message lacks it, so callers that surface only the message keep the reason.
+//
+// An error that passed through the Node fetch boundary (nodeTransportError) carries a Go cause for diagnostics, not the cause Node's
+// undici attaches: a "fetch failed" gets the Node message of the connection failure, and an abort or a dropped body has no detail.
+func WithCauseDetail(err error) string {
+	message := err.Error()
+	var detail, code string
+	if transport, ok := errors.AsType[*nodeTransportError](err); ok {
+		if transport.message != "fetch failed" {
+			return message
+		}
+		detail, code = nodeConnectionFailure(transport.cause)
+		if detail == "" {
+			return message
+		}
+	} else {
+		var deepest error
+		for current, depth := errors.Unwrap(err), 0; depth < maxCauseDepth && current != nil; depth++ {
+			deepest = current
+			current = errors.Unwrap(current)
+		}
+		if deepest == nil {
+			return message
+		}
+		detail = trimJSWhitespace(deepest.Error())
+		if detail == "" {
+			detail = "Error"
+		}
+		if coded, ok := deepest.(interface{ Code() string }); ok {
+			code = coded.Code()
+		}
+	}
+	if code != "" && !strings.Contains(detail, code) {
+		detail += " (" + code + ")"
+	}
+	if strings.Contains(message, detail) {
+		return message
+	}
+	if message == "" {
+		return detail
+	}
+	return message + ": " + detail
 }
 
 func providerErrorBody(value any) *string {
@@ -175,4 +230,19 @@ func (state *safeJSONEncoder) stringify(value any) []byte {
 	}
 	state.canonical = canonical
 	return canonical
+}
+
+// nodeConnectionFailure is the message and code of the cause undici attaches to "fetch failed" for a failed connection: Node's
+// `connect ECONNREFUSED 127.0.0.1:8080` for a refused or unreachable dial and `getaddrinfo ENOTFOUND host` for a name that does not
+// resolve. It is empty for a failure with no such Node counterpart.
+func nodeConnectionFailure(cause error) (message, code string) {
+	if dns, ok := errors.AsType[*net.DNSError](cause); ok && dns.IsNotFound {
+		return "getaddrinfo ENOTFOUND " + dns.Name, "ENOTFOUND"
+	}
+	if op, ok := errors.AsType[*net.OpError](cause); ok && op.Op == "dial" && op.Addr != nil {
+		if code = nodeerrno.ErrorCode(op.Err); code != "" {
+			return "connect " + code + " " + op.Addr.String(), code
+		}
+	}
+	return "", ""
 }
