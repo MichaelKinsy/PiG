@@ -76,7 +76,7 @@ func cookieOf(t *testing.T, result p2test.HTTPResult) string {
 	return strings.Split(result.Headers.Get("Set-Cookie"), ";")[0]
 }
 
-func mint(t *testing.T, devices *p2test.Narrowed) string {
+func mint(t *testing.T, devices *host.Reference) string {
 	t.Helper()
 	minted, err := devices.Call("token", delta.NewJsonObject(0), p2test.Background)
 	if err != nil {
