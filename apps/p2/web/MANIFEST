@@ -621,3 +621,6 @@ dcad8fab92410b7258ce2ce9f3b1cd7be2d0561d7dff850ecfdae488bd1ab3b6  plugins/coding
 d097c64df3c91a99a7b5f91b4cab2c7c9a6f065d502a0d2a89fdc871936c8a16  plugins/powershell/tui.ts
 13227dd047df731f7cdf34e24bc923399399a6ad7c9e7447976e39e2ecf62e97  plugins/subagents/tui.ts
 >>>>>>> dp/fix/p2-voice-reload-noop
+bbb294f915ed448ae8c467a72e4db3763e9ced1f0ad891050037a380af325e16  test/p2/outbox.test.ts
+b435ef3cb087cb2a87fef20acd7d690282ed125fa8b4bc0e74d0bbaee483a206  test/p2/session-start.test.ts
+9b9c207f6705c4d60bbf45b6778b02c1944f38aeec846c1b0f6f000f76988d6f  plugins/conversations/contract.ts

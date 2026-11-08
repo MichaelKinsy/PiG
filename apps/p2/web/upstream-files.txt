@@ -620,3 +620,6 @@ plugins/coding-tools/tui.ts
 plugins/powershell/tui.ts
 plugins/subagents/tui.ts
 >>>>>>> dp/fix/p2-voice-reload-noop
+test/p2/outbox.test.ts
+test/p2/session-start.test.ts
+plugins/conversations/contract.ts
