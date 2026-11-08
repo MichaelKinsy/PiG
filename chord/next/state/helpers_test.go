@@ -78,7 +78,7 @@ type harness struct {
 }
 
 // newHarness returns a harness whose batch counts on metrics when it is not nil.
-func newHarness(t *testing.T, metrics telemetry.TelemetryMetrics) *harness {
+func newHarness(t testing.TB, metrics telemetry.TelemetryMetrics) *harness {
 	t.Helper()
 	h := &harness{scheduler: chord.NewDeliveryScheduler(), micro: &microtasks{}, errors: &errorLog{}, meter: metrics}
 	h.batch = state.NewBatch(h.errors.add, metrics).UseScheduler(h.scheduler).UseMicrotasks(h.micro.enqueue)

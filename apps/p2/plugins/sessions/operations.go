@@ -405,6 +405,7 @@ func serveOperations(facet host.FacetHost) error {
 				if refused != "" {
 					return refused, nil
 				}
+				//portlint:allow erroridentity Pi matches the message too (sessions/server.ts: startsWith("Background work is still running"))
 				if strings.HasPrefix(err.Error(), backgroundWork) {
 					return err.Error(), nil
 				}
@@ -483,6 +484,7 @@ func serveOperations(facet host.FacetHost) error {
 				if refused != "" {
 					return refusedResult(refused), failure
 				}
+				//portlint:allow erroridentity Pi matches the message too (sessions/server.ts: startsWith("Background work is still running"))
 				if strings.HasPrefix(err.Error(), backgroundWork) {
 					return refusedResult(err.Error()), failure
 				}

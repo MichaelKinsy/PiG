@@ -18,10 +18,8 @@ import (
 // Ports apps/p2/src/runtime/durable.ts (the Harness's registry over the worker's Chord registries of extensions and their
 // switches), tool-access.ts (who may make the agent call a tool, and where) and origin.ts (who started a tool's turn).
 //
-// Forced Go differences. A p2 tool is a Durable tool plus ToolAccess, kept beside the extension (P2Extension.Access, by
-// tool name), since Go's ToolRegistration has no room for it. Durable's transactions here have no lookup of a submission
-// by ID, so OriginOf reads the Session's submissions and entries (committed and immutable once placed) one by one rather
-// than inside one commit.
+// A p2 tool is a Durable tool plus its ToolAccess (P2Tool, Pi's `ToolRegistration & ToolAccess`), so a tool carries its
+// requirements and they cannot drift from it.
 
 // ToolAccess is a tool's requirements; the zero value is `any` for each.
 type ToolAccess struct {
@@ -37,10 +35,17 @@ type ToolAccess struct {
 	Locked string
 }
 
-// P2Extension is a Durable extension whose tools declare their requirements, by tool name.
+// P2Tool is a tool as p2 plugins contribute it: a Durable tool with its requirements (Pi's `P2Tool`).
+type P2Tool struct {
+	*durable.ToolRegistration
+	ToolAccess
+}
+
+// P2Extension is a Durable extension whose tools declare their requirements: Extension holds everything but the tools
+// (its own Tools are ignored: the registry replaces them with Tools, guarded), Tools are the extension's tools.
 type P2Extension struct {
-	*durable.Extension
-	Access map[string]ToolAccess
+	Extension *durable.Extension
+	Tools     []P2Tool
 }
 
 // Extensions are the Durable extensions every conversation of the worker may select, by name (host-lifetime objects
@@ -57,13 +62,13 @@ var ExtensionSwitches = NewKeyedRegistry[*bool]("p2.extension-switches")
 const codemodeExtension = "codemode"
 
 // guardTool is tool as Durable runs it: unchanged without requirements, else refusing calls that do not meet them.
-func guardTool(tool *durable.ToolRegistration, access ToolAccess, session func() durable.Storage) *durable.ToolRegistration {
-	if access.Origin != "owner" && access.Scope != "main" {
-		return tool
+func guardTool(tool P2Tool) *durable.ToolRegistration {
+	if tool.Origin != "owner" && tool.Scope != "main" {
+		return tool.ToolRegistration
 	}
-	guarded := *tool
+	guarded := *tool.ToolRegistration
 	guarded.Execute = func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-		if access.Scope == "main" {
+		if tool.Scope == "main" {
 			top, err := IsTopLevel(ctx, api, api.ConversationId())
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
@@ -72,13 +77,13 @@ func guardTool(tool *durable.ToolRegistration, access ToolAccess, session func()
 				return refusal(tool.Name + " works only in the session's main conversation."), nil
 			}
 		}
-		if access.Origin == "owner" {
+		if tool.Origin == "owner" {
 			lock, err := LockOf(ctx, api)
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
 			if lock != nil {
-				rule := access.Locked
+				rule := tool.Locked
 				if rule == "never" {
 					return refusal(tool.Name + " is not available in a locked session."), nil
 				}
@@ -86,7 +91,7 @@ func guardTool(tool *durable.ToolRegistration, access ToolAccess, session func()
 					return refusal(tool.Name + " is not among the resources the owner picked for this session."), nil
 				}
 			} else {
-				origin, err := OriginOf(ctx, api, session())
+				origin, err := OriginOf(ctx, api)
 				if err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
@@ -108,40 +113,39 @@ func refusal(text string) durable.ToolExecutionResult {
 // OriginOf is who started the calling tool's turn: the owner, or nobody allowed (""). The turn is the conversation's
 // current run, a code mode script's nested calls included: it is the owner's only if every input the run placed so far is
 // (EntryOrigin). A guest's message steered into the run takes it away for the rest of the run.
-func OriginOf(ctx context.Context, api durable.ToolExecutionApi, session durable.Storage) (ConversationOrigin, error) {
+func OriginOf(ctx context.Context, api durable.ToolExecutionApi) (ConversationOrigin, error) {
 	live, err := durable.Snapshot(ctx, api, harness.LiveDoc, api.ConversationId())
 	if err != nil || live == nil || live.Run == nil || len(live.Run.Inputs) == 0 {
 		return "", err
 	}
-	placed := 0
-	for _, id := range live.Run.Inputs {
-		submission, err := session.Submission(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		// A continue places no entry: it adds no input, and only inputs grant.
-		if submission != nil && submission.Type == durable.SubmissionTypeContinue {
-			continue
-		}
-		var entry *durable.EntryRecord
-		if submission != nil && submission.Entry != nil {
-			at, err := session.Entry(ctx, *submission.Entry)
+	inputs := live.Run.Inputs
+	return durable.Commit(ctx, api, func(tx durable.Tx) (ConversationOrigin, error) {
+		placed := 0
+		for _, id := range inputs {
+			submission, err := tx.Submission(id)
 			if err != nil {
 				return "", err
 			}
-			if at != nil {
-				entry = &at.Entry
+			// A continue places no entry: it adds no input, and only inputs grant.
+			if submission != nil && submission.Type == durable.SubmissionTypeContinue {
+				continue
 			}
+			var entry *durable.EntryRecord
+			if submission != nil && submission.Entry != nil {
+				if entry, err = tx.Entry(*submission.Entry); err != nil {
+					return "", err
+				}
+			}
+			if EntryOrigin(entry) != OriginOwner {
+				return "", nil
+			}
+			placed++
 		}
-		if EntryOrigin(entry) != OriginOwner {
-			return "", nil
+		if placed > 0 {
+			return OriginOwner, nil
 		}
-		placed++
-	}
-	if placed > 0 {
-		return OriginOwner, nil
-	}
-	return "", nil
+		return "", nil
+	})
 }
 
 // EntryOrigin is the origin an input entry records in its data: a person's input is the owner's when its author is the
@@ -213,15 +217,13 @@ func AnswerOrigin(tx durable.Tx, conversation durable.ConversationId, answer dur
 // switched-off set), made once and kept while the composition lives. Without code mode, deferred tools the model may call
 // (MCP tools, the terminal tool) are reachable only through `tool_search`, as pi falls back: it is installed then, once,
 // whichever plugins offer such tools. Subscribe observes both registries' compositions (its listener called inside the
-// Chord batch that composed, so it only wakes the scheduler). session is the Session tools read origins from (the Harness,
-// open by the time a tool runs). ctx ends the observations.
-func DurableRegistry(extensions, switches *registries.RegistryValueSource, session func() durable.Storage) harness.RegistryReader {
-	return &durableRegistry{extensions: extensions, switches: switches, session: session, snapshots: map[*KeyedTable[*P2Extension]]map[string]durable.RegistrySnapshot{}}
+// Chord batch that composed, so it only wakes the scheduler).
+func DurableRegistry(extensions, switches *registries.RegistryValueSource) harness.RegistryReader {
+	return &durableRegistry{extensions: extensions, switches: switches, snapshots: map[*KeyedTable[*P2Extension]]map[string]durable.RegistrySnapshot{}}
 }
 
 type durableRegistry struct {
 	extensions, switches *registries.RegistryValueSource
-	session              func() durable.Storage
 
 	mu        sync.Mutex
 	snapshots map[*KeyedTable[*P2Extension]]map[string]durable.RegistrySnapshot
@@ -270,7 +272,7 @@ func (r *durableRegistry) Snapshot() durable.RegistrySnapshot {
 		guarded := *extension.Extension
 		guarded.Tools = make([]*durable.ToolRegistration, len(extension.Tools))
 		for i, tool := range extension.Tools {
-			guarded.Tools[i] = guardTool(tool, extension.Access[tool.Name], r.session)
+			guarded.Tools[i] = guardTool(tool)
 			if tool.Deferred && tool.CallableBy(durable.CallerModel) {
 				deferred = true
 			}

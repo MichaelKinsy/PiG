@@ -538,9 +538,9 @@ divergence-guard: ## Fail on unrecorded invented limits, dropped events and swal
 # semantic mismatches (map key order, nil versus empty JSON, UTF-16 units, regex
 # folding, numbers, clocks), goroutine and request lifetime, error identity, and
 # test isolation. Current findings are ratcheted in automation/ci/portlint/baseline.toml,
-# which may only shrink. `go run ./automation/ci/portlint -report` prints counts and every finding.
+# which may only shrink. `go run ./automation/ci/portlint -report` prints counts and every finding. apps/p2 is a nested module the root `./...` does not reach, so it is named.
 port-lint: ## Fail on porting anti-patterns the baseline does not list (ratchet)
-	@./automation/ci/cached-gate.sh port-lint -- go run ./automation/ci/portlint
+	@./automation/ci/cached-gate.sh port-lint -- go run ./automation/ci/portlint ./... ./apps/p2/...
 
 # any-trap counts the decodes of JSON into any, map[string]any, []any and type parameters (automation/ci/anytrap):
 # each builds a tree of boxed values. The counts in automation/ci/anytrap/baseline.toml may only shrink.
@@ -549,7 +549,7 @@ any-trap: ## Fail on JSON decodes into interface values the baseline does not li
 
 # perf-lint finds known performance antipatterns (JSON round trips as clone, marshal-to-compare, regexp compiled in a function, message-history clones, env/stat and Sprintf in loops in the hot packages; automation/ci/perflint). A proven cold site carries //perf:ok <reason>; the rest are ratcheted in baseline.toml, which may only shrink.
 perf-lint: ## Fail on performance antipatterns the baseline does not list (ratchet)
-	@./automation/ci/cached-gate.sh perf-lint -- go run ./automation/ci/perflint
+	@./automation/ci/cached-gate.sh perf-lint -- go run ./automation/ci/perflint ./... ./apps/p2/...
 
 # race-coverage fails when a package that starts goroutines or timers and has tests is in no nightly -race group of automation/ci/race-packages.txt (and is not exempt there with a reason).
 race-coverage: ## Fail on a concurrency package that no nightly -race group runs

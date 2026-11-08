@@ -330,6 +330,7 @@ func modelOf(record *object) (ai.AnyModel, error) {
 	if err != nil {
 		return nil, err
 	}
+	//perf:ok a custom model is built from models.json once per load (cold)
 	model, known, err := ai.DecodeStoredModel(encoded)
 	if err != nil {
 		return nil, err

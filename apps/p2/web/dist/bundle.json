@@ -1,10 +1,11 @@
 {
-	"version": "00e273a97499303ebd3bd456af6dd2e4e52860e47f4039c0e1bd6783313cf3c2",
-	"script": "app-PUNM6QUZ.js",
+	"version": "7859122b2241349287679bb74a7af1cdfec9decdd86b5242548da8a787b25a1b",
+	"script": "app-T7P2LT7M.js",
 	"style": "app-MMH4KMJY.css",
 	"plugins": [
 		"chat",
 		"envs",
+		"login",
 		"sessions",
 		"subagents",
 		"web-shell"
@@ -53,16 +54,16 @@
 			"sha256": "29a4c269e50bda0d11aaf86f831f24693ec25dfed9ff79d3fae0e64be58aaa10"
 		},
 		{
-			"name": "app-PUNM6QUZ.js",
+			"name": "app-T7P2LT7M.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1098411,
-			"sha256": "b4c326fe9820e13c2308ad4af93903864e58ac6f04c7c35ec3cc6222b5107584"
+			"size": 1106666,
+			"sha256": "1e1ffbb9652144b7fcc4c81d47fdf6616c2a962447c35e1e7df4174f46d1c65f"
 		},
 		{
-			"name": "app-PUNM6QUZ.js.map",
+			"name": "app-T7P2LT7M.js.map",
 			"type": "application/json",
-			"size": 5325290,
-			"sha256": "296be0695bf3496de303736a9e5ab78943e31551184bb576ef6b0c599775e56e"
+			"size": 5354550,
+			"sha256": "b471f916178f78c7bec29e9f30682662337f591e26c33958111b14be85bd5237"
 		}
 	],
 	"brand": {
@@ -71,7 +72,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "2ce1999fd85280ad5c780e2df63de79afb4e3eaff799c05ebe76fb2fae5c18c4",
+		"upstreamVersion": "1f9cbf9cf01cdf17bf204cd9fdba20f20cb880832b6851fba69165e5d338af68",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",

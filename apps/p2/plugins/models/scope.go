@@ -46,6 +46,7 @@ func glob(pattern string) *regexp.Regexp {
 		}
 	}
 	source.WriteString("$")
+	//perf:ok the pattern is built from the user's glob, not constant
 	return regexp.MustCompile(source.String())
 }
 
