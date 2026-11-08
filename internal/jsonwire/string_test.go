@@ -1,6 +1,7 @@
 package jsonwire
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -25,7 +26,7 @@ func TestValidAndUnmarshalMatchTheByteForms(t *testing.T) {
 func equalAny(a, b any) bool {
 	left, _ := json.Marshal(a)
 	right, _ := json.Marshal(b)
-	return string(left) == string(right)
+	return bytes.Equal(left, right)
 }
 
 // The strings and raw messages a decode stores do not alias the input string.

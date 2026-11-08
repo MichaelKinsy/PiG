@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"math"
@@ -53,7 +54,7 @@ func TestContentMarshalJSONToWritesWhatMarshalJSONWrites(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(got) != string(want) {
+			if !bytes.Equal(got, want) {
 				t.Fatalf("json.Marshal\n got: %s\nwant: %s", got, want)
 			}
 			want, err = jsonv2.Marshal(viaMarshalJSON{value}, jsonopts.Stringify)
@@ -64,7 +65,7 @@ func TestContentMarshalJSONToWritesWhatMarshalJSONWrites(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(got) != string(want) {
+			if !bytes.Equal(got, want) {
 				t.Fatalf("jsonv2.Marshal(Stringify)\n got: %s\nwant: %s", got, want)
 			}
 		})
