@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,10 +14,11 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
-// error-body.test.ts "surfaces the reason from a real openai SDK connection failure" against the pinned pi-ai, then the same local port
-// through the three stream APIs (openai-completions, openai-responses, anthropic-messages): a closed port keeps
-// `Connection error.: connect ECONNREFUSED <addr>`, and a server that resets every connection keeps `Connection error.: connect ECONNRESET <addr>`
-// (Node reports the reset on the connect; Go's dial returns first, so the reset on a fresh connection reads as the connect failure).
+// error-body.test.ts "surfaces the reason from a real openai SDK connection failure" against the pinned pi-ai, then the same local server
+// through the three stream APIs (openai-completions, openai-responses, anthropic-messages). undici's cause reaches the message:
+// `connect ECONNREFUSED <addr>` for a closed port, `read ECONNRESET` for a peer that resets after it read the request, and
+// `other side closed (UND_ERR_SOCKET)` for a peer that closes. A peer that resets on accept reaches Node's connect, write or read by timing
+// (probed with a Node-hosted and a Go-hosted server: all three occur), so TestOpenAISDKTransportErrorConnectionReset covers it.
 func TestConnectionErrorKeepsCauseThroughSDKsMatchesPi(t *testing.T) {
 	t.Run("refused", func(t *testing.T) {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -29,24 +31,48 @@ func TestConnectionErrorKeepsCauseThroughSDKsMatchesPi(t *testing.T) {
 		}
 		connectionCauseMatchesPi(t, address)
 	})
-	t.Run("reset", func(t *testing.T) {
-		listener, err := net.Listen("tcp", "127.0.0.1:0")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() { _ = listener.Close() }()
-		go func() {
-			for {
-				conn, err := listener.Accept()
-				if err != nil {
-					return
-				}
-				_ = conn.(*net.TCPConn).SetLinger(0)
-				_ = conn.Close()
-			}
-		}()
-		connectionCauseMatchesPi(t, listener.Addr().String())
+	t.Run("reset after the request", func(t *testing.T) {
+		connectionCauseMatchesPi(t, serveConnections(t, func(conn *net.TCPConn) {
+			_, _ = conn.Read(make([]byte, 1))
+			_ = conn.SetLinger(0)
+			_ = conn.Close()
+		}))
 	})
+	t.Run("closed after the request", func(t *testing.T) {
+		connectionCauseMatchesPi(t, serveConnections(t, func(conn *net.TCPConn) {
+			defer func() { _ = conn.Close() }()
+			_, _ = conn.Read(make([]byte, 1))
+			_ = conn.CloseWrite()
+			_, _ = io.Copy(io.Discard, conn)
+		}))
+	})
+	t.Run("closed on accept", func(t *testing.T) {
+		connectionCauseMatchesPi(t, serveConnections(t, func(conn *net.TCPConn) {
+			defer func() { _ = conn.Close() }()
+			_ = conn.CloseWrite()
+			_, _ = io.Copy(io.Discard, conn)
+		}))
+	})
+}
+
+// serveConnections accepts connections on a local listener until the test ends and hands each to handle in its own goroutine.
+func serveConnections(t *testing.T, handle func(*net.TCPConn)) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			go handle(conn.(*net.TCPConn))
+		}
+	}()
+	return listener.Addr().String()
 }
 
 // connectionCauseMatchesPi runs the oracle and the Go providers against one local address and compares what each reports.

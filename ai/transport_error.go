@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
@@ -68,7 +67,6 @@ func (transport *nodeFetchTransport) RoundTrip(request *http.Request) (*http.Res
 	var owner *bodyReadOwner
 	var observed *observedResponseBody
 	gotConn := false
-	var freshRemote net.Addr
 	if transport.connectionIdle {
 		// Only the owned transport needs idle activation. Caller-provided fetch clients retain the original request context identity.
 		trace := &httptrace.ClientTrace{
@@ -77,9 +75,6 @@ func (transport *nodeFetchTransport) RoundTrip(request *http.Request) (*http.Res
 				responseMu.Lock()
 				owner = httpBodyReadOwner(info.Conn)
 				gotConn = true
-				if !info.Reused {
-					freshRemote = info.Conn.RemoteAddr()
-				}
 				responseMu.Unlock()
 			},
 			PutIdleConn: func(error) {
@@ -101,11 +96,7 @@ func (transport *nodeFetchTransport) RoundTrip(request *http.Request) (*http.Res
 		}
 		responseMu.Lock()
 		headersTimeout := gotConn && isHeadersTimeout(err)
-		remote := freshRemote
 		responseMu.Unlock()
-		if remote != nil && (errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE)) {
-			err = &freshConnectionReset{remote: remote, err: err}
-		}
 		return response, &nodeTransportError{message: "fetch failed", cause: err, headersTimeout: headersTimeout}
 	}
 	if response.Body != nil {
@@ -122,17 +113,6 @@ func (transport *nodeFetchTransport) RoundTrip(request *http.Request) (*http.Res
 	}
 	return response, nil
 }
-
-// freshConnectionReset is a peer's reset of a connection this request opened, before any response byte. Node reports it as the connect failure
-// `connect ECONNRESET <addr>`: the reset reaches libuv while the connect completes. Go's dial returns first, so the reset lands on the
-// request's first write or read; nodeConnectionFailure gives it Node's message. A reset of a connection the request reused is not mapped (no detail), as before.
-type freshConnectionReset struct {
-	remote net.Addr
-	err    error
-}
-
-func (reset *freshConnectionReset) Error() string { return reset.err.Error() }
-func (reset *freshConnectionReset) Unwrap() error { return reset.err }
 
 // errFetchBadPort is the cause undici gives "fetch failed" for a URL whose port the Fetch standard blocks: the request is refused without a connection.
 var errFetchBadPort = errors.New("bad port")
