@@ -1,7 +1,7 @@
 // Ports the end-to-end case of test/p2/history-tools.test.ts (Pi main c23b9ec1): after a compaction and a handoff the agent
-// reads its own earlier entries with `history_read` (items: exactly the requested entry; tail: the entries right before the
-// handoff) and hands off with `history_handoff`. Pi finds the first entry with `history_search`, which needs the search
-// plugin's index (not ported yet: see rows/p2-chattree.md); this case takes its ID from the conversation's view instead.
+// finds its own earlier entry with `history_search` (the search plugin's index, filled asynchronously: the search is repeated
+// until it finds the entry), reads it with `history_read` (items: exactly the requested entry; tail: the entries right before
+// the handoff) and hands off with `history_handoff`.
 
 package e2e_test
 
@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/history"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/search"
 )
 
 // toolResultTexts are the results of tool in a view, as text.
@@ -132,20 +134,24 @@ func TestHistoryToolsEndToEndFakeProvider(t *testing.T) {
 	idle()
 	say("after the compaction", "three")
 
-	// The entry Pi's search finds: the first message, by its text.
-	view, _ := chat.Member("view").Value()
-	var hit float64
-	entries, _ := object(view).Value("entries").([]any)
-	for _, entry := range entries {
-		if data := object(object(entry).Value("data")); data != nil && data.Value("text") == "the zebrafish migration plan" {
-			hit, _ = object(entry).Value("id").(float64)
-		}
+	// The index is asynchronous: search until the earlier entry is found.
+	var found string
+	for attempt := 0; attempt < 20 && !strings.Contains(found, "zebrafish"); attempt++ {
+		found = call("history_search", `{"query":"zebrafish"}`, fmt.Sprintf("search-%d", attempt))
 	}
+	if ok, _ := regexp.MatchString(`<history conversation=.*\n.*not instructions`, found); !ok {
+		t.Fatalf("search: %q", found)
+	}
+	match := regexp.MustCompile(`#(\d+) user`).FindStringSubmatch(found)
+	if match == nil {
+		t.Fatalf("no hit: %q", found)
+	}
+	hit, _ := strconv.Atoi(match[1])
 	if hit <= 0 {
-		t.Fatalf("the first message is not in the view: %v", view)
+		t.Fatalf("hit %d: %q", hit, found)
 	}
-	read := call("history_read", fmt.Sprintf(`{"mode":"items","entries":[%d]}`, int(hit)), "read")
-	if ok, _ := regexp.MatchString(fmt.Sprintf(`#%d user \(Owner\): the zebrafish migration plan`, int(hit)), read); !ok {
+	read := call("history_read", fmt.Sprintf(`{"mode":"items","entries":[%d]}`, hit), "read")
+	if ok, _ := regexp.MatchString(fmt.Sprintf(`#%d user \(Owner\): the zebrafish migration plan`, hit), read); !ok {
 		t.Fatalf("read: %q", read)
 	}
 	if lines := regexp.MustCompile(`(?m)^#\d+ `).FindAllString(read, -1); len(lines) != 1 {

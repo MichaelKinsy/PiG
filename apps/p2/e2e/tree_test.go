@@ -4,11 +4,11 @@
 // null for the session title), switching while busy and `p2.main` version 1's migration. The cases run in order on one
 // session, as the TypeScript's.
 //
-// Four cases need plugins this port has not reached and are not in this file: "gives a branch the main agent's tools" (the
-// ports plugin's `ports` tool), "keeps the main agent's artifacts list across branches" (the artifacts plugin's `artifact`
-// tool), "registers a branch's subagents on conversation 1 and reports to the branch" and "reports to the branch that asked,
-// also after a switch; team send to parent goes there too" (the subagents plugin's `subagent` and `team` tools): see
-// rows/p2-chattree.md.
+// The cases that need other plugins link them: "gives a branch the main agent's tools" (the ports plugin's `ports` tool),
+// "keeps the main agent's artifacts list across branches" (the artifacts plugin's `artifact` tool), and the two subagent
+// cases ("registers a branch's subagents on conversation 1 and reports to the branch", "reports to the branch that asked,
+// also after a switch; team send to parent goes there too": the subagents plugin's `subagent` and `team` tools, and the
+// coding-tools plugin's bash for the second).
 
 package e2e_test
 
@@ -21,9 +21,11 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	artifactscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts/contract"
 	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
 	sessionscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
+	subagentscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	treecontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/tree/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -31,6 +33,10 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/coding-tools" // the subagent's bash call
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/ports"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/tree"
 )
 
@@ -323,6 +329,133 @@ func TestTreeFakeProvider(t *testing.T) {
 		if siblings != 2 {
 			t.Fatalf("%d answers hang below the branch point, want 2", siblings)
 		}
+	})
+
+	// sendTo sends text to a conversation; the caller waits for what it expects.
+	sendTo := func(t *testing.T, chat *host.Reference, text, requestID string) {
+		t.Helper()
+		if _, err := chat.Call("send", delta.JsonObjectOf("text", text, "requestId", requestID), p2test.Background); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// hasToolResult is whether a view holds a result of tool toolName.
+	hasToolResult := func(toolName string) func(delta.JsonValue) bool {
+		return func(view delta.JsonValue) bool { return view != nil && len(toolResults(view, toolName)) > 0 }
+	}
+	mainConversation := func(t *testing.T, ref *host.Reference) float64 {
+		t.Helper()
+		return treeOf(t, ref).Value("main").(float64)
+	}
+	// childNamed is the session's listed child called name in a Subagents feed's value.
+	childNamed := func(view delta.JsonValue, name string) *delta.JsonObject {
+		if view == nil {
+			return nil
+		}
+		for _, each := range list(object(view).Value(sessionID)) {
+			if object(each).Value("name") == name {
+				return object(each)
+			}
+		}
+		return nil
+	}
+
+	t.Run("gives a branch the main agent's tools", func(t *testing.T) {
+		ref := treeRef(t)
+		defer ref.Release()
+		chat := chatOf(t, mainConversation(t, ref))
+		defer chat.Release()
+		sendTo(t, chat, `ports {"action":"list"}`, "ports")
+		view := until(t, chat.Member("view"), hasToolResult("ports"))
+		if result := toolResults(view, "ports")[0]; result.Value("isError") != false {
+			t.Fatalf("ports: %s", jsonText(result.Value("content")))
+		}
+		idle(t)
+	})
+
+	t.Run("keeps the main agent's artifacts list across branches", func(t *testing.T) {
+		ref := treeRef(t)
+		defer ref.Release()
+		main := mainConversation(t, ref)
+		chat := chatOf(t, main)
+		sendTo(t, chat, "artifact", "artifact")
+		until(t, chat.Member("view"), hasToolResult("artifact"))
+		chat.Release()
+		idle(t)
+		for _, conversation := range []float64{main, 1} {
+			artifacts, err := p2test.HoldIn(owner, artifactscontract.ArtifactList, delta.JsonObjectOf("session", sessionID, "conversation", conversation), "reader")
+			if err != nil {
+				t.Fatal(err)
+			}
+			until(t, artifacts.Member("artifacts"), func(value delta.JsonValue) bool {
+				items, _ := value.([]any)
+				for _, item := range items {
+					if object(item).Value("name") == "demo" {
+						return true
+					}
+				}
+				return false
+			})
+			artifacts.Release()
+		}
+	})
+
+	t.Run("registers a branch's subagents on conversation 1 and reports to the branch", func(t *testing.T) {
+		ref := treeRef(t)
+		defer ref.Release()
+		chat := chatOf(t, mainConversation(t, ref))
+		sendTo(t, chat, "subagent", "subagent")
+		until(t, chat.Member("view"), func(next delta.JsonValue) bool {
+			return strings.Contains(viewText(next), `<sender kind="subagent" name="helper"/>`)
+		})
+		chat.Release()
+		idle(t)
+		feed, err := p2test.HoldIn(owner, subagentscontract.Subagents, delta.NewJsonObject(0), "reader")
+		if err != nil {
+			t.Fatal(err)
+		}
+		until(t, feed.Member("children"), func(children delta.JsonValue) bool { return childNamed(children, "helper") != nil })
+		feed.Release()
+	})
+
+	t.Run("reports to the branch that asked, also after a switch; team send to parent goes there too", func(t *testing.T) {
+		ref := treeRef(t)
+		defer ref.Release()
+		asking := mainConversation(t, ref)
+		chat := chatOf(t, asking)
+		defer chat.Release()
+		spawn, _ := json.Marshal(map[string]any{"action": "spawn", "name": "slowpoke", "message": "slow-tool", "tools": []string{"bash"}})
+		sendTo(t, chat, "subagent "+string(spawn), "slowpoke")
+		until(t, chat.Member("view"), func(next delta.JsonValue) bool { return strings.Contains(viewText(next), "Started slowpoke.") })
+		// The subagent's bash call takes 4 seconds: the session switches meanwhile.
+		selectBranch(t, ref, 1)
+		until(t, chat.Member("view"), func(next delta.JsonValue) bool {
+			return strings.Contains(viewText(next), `<sender kind="subagent" name="slowpoke"/>`)
+		})
+		feed, err := p2test.HoldIn(owner, subagentscontract.Subagents, delta.NewJsonObject(0), "reader")
+		if err != nil {
+			t.Fatal(err)
+		}
+		children := until(t, feed.Member("children"), func(value delta.JsonValue) bool { return childNamed(value, "slowpoke") != nil })
+		feed.Release()
+		slowpoke, ok := childNamed(children, "slowpoke").Value("conversationId").(float64)
+		if !ok {
+			t.Fatalf("slowpoke: %s", jsonText(childNamed(children, "slowpoke")))
+		}
+		direct := chatOf(t, slowpoke)
+		team, _ := json.Marshal(map[string]any{"action": "send", "to": "parent", "message": "for the asker", "intent": "note"})
+		sendTo(t, direct, "team "+string(team), "team-parent")
+		until(t, chat.Member("view"), func(next delta.JsonValue) bool {
+			return strings.Contains(viewText(next), "[notes, no reply needed] for the asker")
+		})
+		direct.Release()
+		idle(t)
+		main := chatOf(t, 1)
+		view := until(t, main.Member("view"), func(next delta.JsonValue) bool { return next != nil })
+		if strings.Contains(viewText(view), "subagent slowpoke") {
+			t.Fatalf("the report went to conversation 1: %q", viewText(view))
+		}
+		main.Release()
+		selectBranch(t, ref, asking)
 	})
 
 	t.Run("lists the branches in the session row and switches with select", func(t *testing.T) {

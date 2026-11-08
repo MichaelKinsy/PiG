@@ -1,6 +1,7 @@
 package history_test
 
 import (
+	"context"
 	"encoding/json"
 	"slices"
 	"strings"
@@ -8,13 +9,14 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/history"
+	"github.com/MichaelKinsy/PiG/apps/p2/plugins/search"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// Ports the unit cases of test/p2/history-tools.test.ts (Pi main c23b9ec1): reading entries (items, range, tail, around: 0),
-// rendering and the output budget. The query-building and SQL-bounds cases (`ftsQuery`, `SearchDb`) and the end-to-end case
-// (a compaction and a handoff through the search index) belong to the search plugin: see rows/p2-chattree.md.
+// Ports the unit cases of test/p2/history-tools.test.ts (Pi main c23b9ec1): query building (`ftsQuery`, the search plugin's
+// FTSQuery), the SQL bounds before the limit (`SearchDb`), reading entries (items, range, tail, around: 0), rendering and the
+// output budget. The end-to-end case (a compaction and a handoff through the search index) is e2e/history_test.go.
 
 func entry(id int64, kind string) durable.EntryRecord {
 	return durable.EntryRecord{Id: durable.EntryId(id), ConversationId: 1, Kind: kind}
@@ -195,5 +197,70 @@ func TestRendersAuthorsToolCallsAndPlaceholdersNeverToolResultsAndCutsAtTheBudge
 	kept, truncated := history.WithinBudget(big, history.ReadBudget)
 	if len(kept) != 1 || !truncated {
 		t.Fatalf("kept %d truncated %v", len(kept), truncated)
+	}
+}
+
+func TestBuildsFTSQueriesRequiredTermsPhrasesForPunctuationPrefixesNeverRawSyntax(t *testing.T) {
+	for _, each := range []struct{ query, want string }{
+		{"tx.draft", `"tx draft"`},
+		{"next/diff.ts R6", `"next diff ts" AND "R6"`},
+		{"compac* reload", `"compac"* AND "reload"`},
+		{`"exact phrase" other`, `"exact phrase" AND "other"`},
+		// FTS operators and quotes are words, never syntax.
+		{`a OR b NEAR( "c`, `"a" AND "OR" AND "b" AND "NEAR" AND "c"`},
+		// Nothing searchable: no query.
+		{"  ... --- ", ""},
+	} {
+		if got := search.FTSQuery(each.query); got != each.want {
+			t.Errorf("FTSQuery(%q) = %q, want %q", each.query, got, each.want)
+		}
+	}
+}
+
+func TestBoundsHitsToTheSessionTheConversationAndBeforeAnEntryBeforeTheLimit(t *testing.T) {
+	ctx := context.Background()
+	db, err := search.Open(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	message := func(conversation, entryID int, text string) search.IndexedMessage {
+		return search.IndexedMessage{ConversationID: conversation, EntryID: entryID, Role: "user", Text: text}
+	}
+	index := func(session string, conversation, through int, messages ...search.IndexedMessage) {
+		t.Helper()
+		if err := db.Index(ctx, session, conversation, messages, through); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entryIDs := func(hits []search.ConversationHit) []int {
+		ids := make([]int, len(hits))
+		for i, hit := range hits {
+			ids[i] = hit.EntryID
+		}
+		return ids
+	}
+	// Better-ranked matches elsewhere (repeated keyword): other sessions, other conversations, after `before`.
+	strong := strings.Repeat("needle ", 20)
+	index("s2", 1, 5, message(1, 5, strong))
+	index("s1", 2, 6, message(2, 6, strong))
+	index("s1", 1, 50, message(1, 3, "a needle here"), message(1, 50, strong), message(1, 4, "needle two"))
+	match := search.FTSQuery("needle")
+	before := 10
+	hits, more, err := db.ConversationMessages(ctx, "s1", 1, match, &before, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ids := entryIDs(hits); !slices.Equal(ids, []int{4}) || !more {
+		t.Fatalf("the best match within the bounds, not one outside them: %v, more %v", ids, more)
+	}
+	hits, _, err = db.ConversationMessages(ctx, "s1", 1, match, &before, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := entryIDs(hits)
+	slices.Sort(ids)
+	if !slices.Equal(ids, []int{3, 4}) {
+		t.Fatalf("within the bounds: %v", ids)
 	}
 }
