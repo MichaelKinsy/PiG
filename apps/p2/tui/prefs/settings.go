@@ -7,6 +7,7 @@ package prefs
 
 import (
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -486,4 +487,31 @@ func mergeTerminal(dst *TerminalSettings, src TerminalSettings) {
 	if src.TrueColor != nil {
 		dst.TrueColor = src.TrueColor
 	}
+}
+
+// MarshalJSON writes the JSON value the setting was read from: `true`, `false` or "header".
+func (q QuietStartup) MarshalJSON() ([]byte, error) {
+	if q.Header {
+		return []byte(`"header"`), nil
+	}
+	if q.On {
+		return []byte("true"), nil
+	}
+	return []byte("false"), nil
+}
+
+// MarshalJSON writes "kitty", "iterm2" or `false`.
+func (i Images) MarshalJSON() ([]byte, error) {
+	if i.Protocol == "" {
+		return []byte("false"), nil
+	}
+	return []byte(`"` + i.Protocol + `"`), nil
+}
+
+// MarshalJSON writes "auto" or the line count.
+func (w WheelLines) MarshalJSON() ([]byte, error) {
+	if w.Auto {
+		return []byte(`"auto"`), nil
+	}
+	return []byte(strconv.Itoa(w.Lines)), nil
 }
