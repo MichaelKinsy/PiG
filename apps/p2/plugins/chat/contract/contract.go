@@ -343,3 +343,7 @@ type EntryReply struct {
 	Name    string
 	Excerpt string
 }
+
+// TranscriptEntries is the extension point of the transcript, keyed by entry kind (e.g. `chat.mention`): the transcript shows every entry whose data is a
+// person's message by itself; a registered kind adds to it (`p2.chat-transcript-entries`; the web client and the TUI read it).
+var TranscriptEntries = p2runtime.NewKeyedRegistry[func(data any) *EntryDisplay]("p2.chat-transcript-entries")
