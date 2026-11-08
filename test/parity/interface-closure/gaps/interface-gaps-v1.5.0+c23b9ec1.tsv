@@ -453,6 +453,8 @@ pkg:chord/plugins#Plugins::property:reload	chord	child-gap	chord/nextnode/plugin
 pkg:chord/plugins#Plugins::property:reload::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload
 pkg:chord/plugins#Plugins::property:step	chord	child-gap	chord/nextnode/plugins/plugins_plugins.go#Plugins.Step
 pkg:chord/plugins#Plugins::property:step::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_plugins.go#Plugins.Step
+pkg:chord/plugins#Plugins::property:watchBase	chord	child-gap	chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase
+pkg:chord/plugins#Plugins::property:watchBase::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase
 pkg:chord/plugins#PluginsOptions	chord	type-mismatch	chord/nextnode/plugins/plugins_plugins.go#PluginsOptions
 pkg:chord/plugins#RolloutHost	chord	type-mismatch	chord/nextnode/plugins/plugins_plugins.go#RolloutHost
 pkg:chord/plugins#RolloutStep	chord	type-mismatch	chord/nextnode/plugins/plugins_plugins.go#RolloutStep
@@ -663,9 +665,6 @@ pkg:chord/workers/child#WorkerPlugins	chord	child-gap	chord/nextnode/workers/wor
 pkg:chord/workers/child#WorkerPlugins::property:load	chord	child-gap	chord/nextnode/workers/workers_main.go#WorkerPlugins.Load
 pkg:chord/workers/child#WorkerPlugins::property:load::call:0	chord	signature-mismatch	chord/nextnode/workers/workers_main.go#WorkerPlugins.Load
 pkg:chord/workers/child#WorkerResult	chord	undecidable	chord/nextnode/workers/workers_main.go#WorkerResult
-pkg:chord/workers/child#WorkerStart	chord	not-exercised	chord/nextnode/workers/workers_main.go#WorkerStart
-pkg:chord/workers/child#workerMain	chord	not-exercised	chord/nextnode/workers/workers_main.go#WorkerMain
-pkg:chord/workers/child#workerMain::call:0	chord	not-exercised	chord/nextnode/workers/workers_main.go#WorkerMain
 pkg:coding-agent/.#BranchSummaryMessageComponent	coding-agent	child-gap	tui/branch_summary.go#BranchSummaryMessageComponent
 pkg:coding-agent/.#BranchSummaryMessageComponent::construct:0	coding-agent	signature-mismatch	tui/branch_summary.go#NewBranchSummaryMessageComponent
 pkg:coding-agent/.#CompactionSummaryMessageComponent	coding-agent	child-gap	tui/compaction_summary.go#CompactionSummaryMessageComponent
