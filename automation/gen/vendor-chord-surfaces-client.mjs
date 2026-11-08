@@ -13,9 +13,11 @@
 // (packages/schema, never published): its src closure is copied byte for byte to pi/schema, with its package.json and
 // THIRD_PARTY_NOTICES, and node/host.mjs resolves the package name to it, because Node refuses to strip the types of a file under
 // node_modules. pi-telemetry's dist modules are copied as a package in node_modules.
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
 const [piTree, commit, telemetryDir, outDir, pin] = process.argv.slice(2);
@@ -103,6 +105,39 @@ for (const file of walk(join(telemetryDir, "dist")).sort()) {
 	if (name.endsWith(".js") && !name.startsWith("dist/testing/")) copy(file, join(pi, "node_modules/@earendil-works/pi-telemetry", name));
 }
 
+// React, the page's own: the version Pi's chord tests with (its devDependencies), published to npm (`npm pack`), production
+// builds only (the bundles define NODE_ENV as "production"). react-dom needs scheduler, at the version it depends on. The Pi
+// test fixtures' base bundle imports `react`, `react/jsx-runtime` and `react-dom/client` by name; the files below are what those
+// resolve to under client/pi/node_modules.
+const chordPackage = JSON.parse(readFileSync(join(piTree, "packages/chord/package.json"), "utf8"));
+const reactVersion = chordPackage.devDependencies.react;
+const reactDomVersion = chordPackage.devDependencies["react-dom"];
+const reactFiles = {
+	react: ["package.json", "LICENSE", "index.js", "jsx-runtime.js", "cjs/react.production.js", "cjs/react-jsx-runtime.production.js"],
+	"react-dom": ["package.json", "LICENSE", "index.js", "client.js", "cjs/react-dom.production.js", "cjs/react-dom-client.production.js"],
+	scheduler: ["package.json", "LICENSE", "index.js", "cjs/scheduler.production.js"],
+};
+const reactVersions = {};
+{
+	const work = mkdtempSync(join(tmpdir(), "chord-react-"));
+	const pack = (spec) => {
+		const name = execFileSync("npm", ["pack", spec, "--silent", "--pack-destination", work], { encoding: "utf8" }).trim().split("\n").pop();
+		const target = join(work, name.replace(/\.tgz$/, ""));
+		mkdirSync(target);
+		execFileSync("tar", ["xzf", join(work, name), "-C", target]);
+		return join(target, "package");
+	};
+	const react = pack(`react@${reactVersion}`);
+	const reactDom = pack(`react-dom@${reactDomVersion}`);
+	const schedulerSpec = JSON.parse(readFileSync(join(reactDom, "package.json"), "utf8")).dependencies.scheduler;
+	const scheduler = pack(`scheduler@${schedulerSpec}`);
+	for (const [name, dir] of [["react", react], ["react-dom", reactDom], ["scheduler", scheduler]]) {
+		reactVersions[name] = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
+		for (const file of reactFiles[name]) copy(join(dir, file), join(pi, "node_modules", name, file));
+	}
+	rmSync(work, { recursive: true, force: true });
+}
+
 // The terminal sandbox's bootstrap (node/tui/sandbox.ts `BOOTSTRAP`, a template literal): the child's main script, read as the
 // template evaluates it, with the two values it interpolates left as the placeholders `@MAX_PIPE_FRAME@` and
 // `@SANDBOX_BUILTINS@` the Go launcher substitutes (D601).
@@ -125,6 +160,7 @@ const manifest = {
 	...(commit === pin ? {} : { catchup: commit }),
 	piSchema: JSON.parse(readFileSync(join(schemaDir, "package.json"), "utf8")).version,
 	piTelemetry: JSON.parse(readFileSync(join(telemetryDir, "package.json"), "utf8")).version,
+	react: reactVersions,
 	files: files.sort().map((path) => ({ path, sha256: createHash("sha256").update(readFileSync(join(outDir, path))).digest("hex") })),
 };
 writeFileSync(join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, "\t")}\n`);
