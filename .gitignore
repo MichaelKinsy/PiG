@@ -175,6 +175,7 @@ node_modules
 # Exception: Pi's chord runtime dependencies vendored for the plugins component's Node subprocess
 # (automation/gen/vendor-chord-plugins-node.sh): a package resolves from a directory named node_modules.
 !chord/nextnode/plugins/node/pi/node_modules
+!chord/nextnode/surfaces/client/pi/node_modules
 internal/evals/.eval/
 
 # built tool binary of test/parity/interface-closure/autobind

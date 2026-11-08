@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/telemetryingest"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
@@ -48,9 +49,8 @@ import (
 // `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
 // worker kinds.
 //
-// Not ported yet (pending, no divergence): the web and terminal surfaces (`web`, `tui`: T11, nextnode/surfaces and nextnode/tui; until
-// they land AppOptions has no such field); the `principalAttributes` hook (T6 host spans: the Go host has none);
-// `reloadDrainTimeout` (not a Go host option).
+// Not ported yet (pending, no divergence): the `principalAttributes` hook (T6 host spans: the Go host has none); `reloadDrainTimeout`
+// (not a Go host option).
 
 // Server is the server's host kind: the kit's server host is Server().
 var Server = mustHostKind("server")
@@ -189,6 +189,11 @@ type AppOptions struct {
 	Facets []host.HostFacet
 	// Telemetry is the app's telemetry store; nil: none.
 	Telemetry AppTelemetry
+	// Web is the web surface (slice 11): the app's web entry, its page template, the paths serving the page; the `web` facet kind.
+	// Nil: no web surface.
+	Web *AppWeb
+	// Tui is the terminal surface (slice 11): the app's terminal entry; the `tui` facet kind. Nil: no terminal clients.
+	Tui *AppTui
 	// Base is the app's base code beside what the kit knows (files or directories: its API modules, its start script), hashed at start.
 	Base []string
 	// Timeouts are the `closeTimeout` and `readyTimeout` of every host (the server's and each worker's).
@@ -296,6 +301,10 @@ type App struct {
 	Node *plugins.NodeHost
 	// DataDir is the data directory.
 	DataDir string
+	// Web is the web surface's base bundle hash, when the app has one.
+	Web *AppSurface
+	// Tui is the terminal surface's base bundle hash, when the app has one.
+	Tui *AppSurface
 	// OwnerTokenFile is the owner token file's path (a device session of the owner, mode 0600).
 	OwnerTokenFile string
 
@@ -303,6 +312,8 @@ type App struct {
 	lock    *workers.ProcessLockHandle
 	options AppOptions
 	link    string
+	// surfaces are the client surfaces, filled before the server's load.
+	surfaces []surface
 
 	// build and rollout are the plugins component's Build and Rollout, the two steps ApplyChanges runs (Pi's tests replace the
 	// component's `build` and `rollout` to hold one: a test here replaces these two, before it applies anything).
@@ -449,10 +460,13 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if exe, ok := a.serverExecutable(); ok && !slices.Contains(base, exe) {
 		base = append(base, exe)
 	}
+	// The web surface serves a browser build's assets under its prefix (Pi's `publicPath: ${WEB_PREFIX}assets/`).
+	assetsPath := nodesurfaces.WebPrefix + "assets/"
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
-		Api:     &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
-		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
+		Api:        &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
+		PublicPath: &assetsPath,
+		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
 	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
 	workerHosts := &workerHosts{keys: map[string]string{}}
@@ -498,6 +512,21 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			return err
 		}
 		a.Workers[kind.Kind.Kind] = created
+	}
+	made, err := surfacesOf(h, options, a.Plugins, ctx)
+	if err != nil {
+		return err
+	}
+	for _, each := range made {
+		a.surfaces = append(a.surfaces, each)
+		core = append(core, each.facets...)
+		a.Plugins.WatchBase(each.inputs)
+		switch each.name {
+		case "web":
+			a.Web = &AppSurface{Base: each.base}
+		case "tui":
+			a.Tui = &AppSurface{Base: each.base}
+		}
 	}
 	report, err := h.Load(core, ctx)
 	if err != nil {
@@ -722,7 +751,7 @@ func (a *App) InstallPlugin(source plugins.PluginSource, ctx context.Context) ([
 	return a.Plugins.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
 }
 
-// ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind (the web and terminal surfaces will follow, T11);
+// ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind, then the web and terminal surfaces;
 // never by itself. Calls run one after another (a later one builds after the earlier one rolled out).
 func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	a.applyMu.Lock()
@@ -738,6 +767,9 @@ func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	steps := []plugins.RolloutStep{server}
 	for _, kind := range a.options.Workers {
 		steps = append(steps, a.Workers[kind.Kind.Kind].Step(kind.Kind.Kind))
+	}
+	for _, each := range a.surfaces {
+		steps = append(steps, each.step(each.name))
 	}
 	return a.rollout(steps, built, ctx)
 }

@@ -133,8 +133,7 @@ type servedOptions struct {
 	closeTimeout time.Duration
 	authenticate Authenticator
 	// noLoad: the host is made, not loaded.
-	noLoad       bool
-	readyTimeout time.Duration
+	noLoad bool
 	// telemetry is the HTTP component's adapter.
 	telemetry pitelemetry.TelemetryContext
 	address   *contracts.Address
@@ -150,10 +149,6 @@ func serving(t *testing.T, plugins []plugin, options servedOptions) *testServer 
 	errs := &collector[HttpError]{}
 	hostErrs := &collector[host.HostError]{}
 	hostOptions := host.HostOptions{Principal: principalServer(), OnError: func(err host.HostError) { hostErrs.add(err) }, Address: options.address}
-	if options.readyTimeout != 0 {
-		ready := options.readyTimeout
-		hostOptions.ReadyTimeout = &ready
-	}
 	inner, err := host.CreateHost(hostOptions)
 	if err != nil {
 		t.Fatal(err)
