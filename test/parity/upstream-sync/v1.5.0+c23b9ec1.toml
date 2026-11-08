@@ -13,7 +13,7 @@ path = "packages/ai/src/api/anthropic-messages.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCreateThenContinue", "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream", "test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicStrictToolSchemas"]
-rationale = "a758f3ae4 adds Anthropic message threads (ai/anthropic_threads.go, D353), 4c992154d keeps the underlying cause in connection error messages (ai/errors.go WithCauseDetail), 4a6a58eb5 keeps root $defs in non-strict tool schemas (D351); each has its upstream cases ported."
+rationale = "a758f3ae4 adds Anthropic message threads (ai/anthropic_threads.go), 4c992154d keeps the underlying cause in connection error messages (ai/errors.go WithCauseDetail), 4a6a58eb5 keeps root $defs in non-strict tool schemas; each has its upstream cases ported."
 
 [[files]]
 path = "packages/ai/src/api/azure-openai-responses.ts"
@@ -41,7 +41,7 @@ path = "packages/ai/src/api/openai-codex-responses.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:ai/openai_codex_retry_backoff_release_test.go#TestCodexSSERetryBackoffReleasesTheCallerContext"]
-rationale = "90b42bca6 removes the abort listener after the SSE retry backoff (D352)."
+rationale = "90b42bca6 removes the abort listener after the SSE retry backoff."
 
 [[files]]
 path = "packages/ai/src/api/openai-completions.ts"
@@ -55,7 +55,7 @@ path = "packages/ai/src/api/openai-responses.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatHeadersUpstream", "test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"]
-rationale = "c5d397835 sends session-id instead of session_id (D246) and 0f4d5e960 adds promptCacheKeyMode."
+rationale = "c5d397835 sends session-id instead of session_id and 0f4d5e960 adds promptCacheKeyMode."
 
 [[files]]
 path = "packages/ai/src/api/simple-options.ts"

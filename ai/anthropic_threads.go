@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// pig divergence (D352): Pi main a758f3ae4 (not in Pi 1.5.0). Message threads: the server keeps the conversation of a thread, so a request can continue from the previous reply and send only the new
+// Message threads (Pi a758f3ae4): the server keeps the conversation of a thread, so a request can continue from the previous reply and send only the new
 // messages. PiG still builds the full request; prepareThread compares it with the previous request of the session and sends only the new
 // part when nothing earlier changed. The payload is handled as the JSON the hook left, so a replacement payload is threaded like the
 // provider's own request.

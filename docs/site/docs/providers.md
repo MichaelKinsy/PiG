@@ -441,7 +441,6 @@ These differences apply to several providers:
 - OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block. Pi drops it (D122, Pi #9534).
 - `httpIdleTimeoutMs` restarts on each stream event, not on each byte. A stream that sends only keepalive comments or pings ends with an error after the timeout. Pi waits indefinitely (D131, Pi #10761, #10762).
 - A single server-sent-event line may be up to 512 MiB, the limit Node's string length gives Pi (D134).
-- A response stream dropped mid-run reports `terminated (cause: ...)`. Pi reports a bare `terminated` (D144, Pi #10697).
 
 ## Provider resolution
 

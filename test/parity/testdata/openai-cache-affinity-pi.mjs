@@ -13,7 +13,7 @@ for (const [api, stream, id] of [["completions", completions, "gpt-4o-mini"], ["
   const server = createServer(async (req, res) => {
    const chunks = []; for await (const chunk of req) chunks.push(chunk);
    const body = JSON.parse(Buffer.concat(chunks).toString());
-   captured = { api, case: test.name, key: body.prompt_cache_key ?? "", retention: body.prompt_cache_retention ?? "", session: req.headers.session_id ?? "", client: req.headers["x-client-request-id"] ?? "", affinity: req.headers["x-session-affinity"] ?? "", router: req.headers["x-session-id"] ?? "", reasoning: body.reasoning ?? null, choice: body.tool_choice ?? "" };
+   captured = { api, case: test.name, key: body.prompt_cache_key ?? "", retention: body.prompt_cache_retention ?? "", session: (api === "responses" ? req.headers["session-id"] : req.headers.session_id) ?? "", client: req.headers["x-client-request-id"] ?? "", affinity: req.headers["x-session-affinity"] ?? "", router: req.headers["x-session-id"] ?? "", reasoning: body.reasoning ?? null, choice: body.tool_choice ?? "" };
    res.writeHead(200, { "content-type": "text/event-stream" });
    res.end(api === "responses" ? 'data: {"type":"response.completed","response":{"status":"completed"}}\n\n' : 'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n');
   });

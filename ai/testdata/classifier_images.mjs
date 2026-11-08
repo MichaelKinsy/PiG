@@ -16,7 +16,7 @@ const probes = JSON.parse(input);
 const questions = { q: { type: "bool", instructions: "Is it fine?", criteria: { true: "yes", false: "no" } } };
 const results = [];
 for (const probe of probes) {
-  const model = { id: "m", name: "M", api: probe.api, provider: "p", baseUrl: "http://127.0.0.1:2/", input: probe.input, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000 };
+  const model = { id: "m", name: "M", api: probe.api, provider: "p", baseUrl: "http://127.0.0.1:1/", input: probe.input, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000 };
   const context = { state: { a: 1 }, questions };
   if (probe.images > 0) context.images = Array.from({ length: probe.images }, () => ({ type: "image", data: "AAAA", mimeType: "image/png" }));
   if (probe.kind === "assert") {
