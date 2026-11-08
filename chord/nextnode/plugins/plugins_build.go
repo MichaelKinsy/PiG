@@ -128,7 +128,7 @@ type BuiltFacet struct {
 
 // pluginsSpecifier is the one specifier of this component a script imports (`pluginFile`): external always, answered per
 // facet (evaluate.ts's PLUGINS_SPECIFIER).
-const pluginsSpecifier = "@earendil-works/chord/next/plugins"
+const pluginsSpecifier = "@earendil-works/chord/plugins"
 
 // globalMarkers are what a free `__dirname` and `__filename` become in a build: names no script has, found again by
 // `freeGlobals`.

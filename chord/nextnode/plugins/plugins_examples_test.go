@@ -35,7 +35,7 @@ import (
 // `host.get` of a LOCAL type (Index, Clock, Greeting...) lives on the Node host, so it is read through the probe
 // (plugins_probe_test.go): the contract is declared in the probe's op, nothing is imported from the plugin files.
 
-const exChord = "@earendil-works/chord/next"
+const exChord = "@earendil-works/chord"
 
 // exOps are the probe ops of the examples. `read` reads one member of a one-member local type on the Node host (every local
 // type the examples read has that shape and no params); `state` reports whether `get` of such a type succeeds; `armStatus`,
@@ -805,7 +805,7 @@ func TestExample37PluginImports(t *testing.T) {
 	if want := []string{"@example/paths", "@example/refused", "@example/report", "@example/ruler"}; !slices.Equal(order, want) {
 		t.Fatalf("1. left out: %v, want %v", order, want)
 	}
-	const hint = ` (a file of the plugin is read through pluginFile(path) from "@earendil-works/chord/next/plugins")`
+	const hint = ` (a file of the plugin is read through pluginFile(path) from "@earendil-works/chord/plugins")`
 	const identity = "import.meta.url, __dirname and __filename are not available in a plugin script" + hint
 	wantLeft := map[string][]string{
 		"@example/paths": {
@@ -1387,7 +1387,7 @@ panels: async (a, { ctx }) => {
 		"   hello from a v2 plugin",
 		"2. refused at build:",
 		`   @acme/ancient: server.ts:3:40: "@acme/app/v1": @acme/app/v1 is not available: this app provides v3, v2`,
-		`   @acme/direct: server.ts:3:29: "@earendil-works/chord/next": plugins import Chord through the app's API ("@acme/app/v3"), never directly`,
+		`   @acme/direct: server.ts:3:29: "@earendil-works/chord": plugins import Chord through the app's API ("@acme/app/v3"), never directly`,
 		"   @acme/mixed: one facet imports one version of @acme/app: this one imports @acme/app/v2 (server.ts) and @acme/app/v3 (server.ts)",
 		`   @acme/panel: server.ts:5:24: "@acme/app/v3/web": not available to server facets`,
 		"3. the panel plugin: server failed, web script",

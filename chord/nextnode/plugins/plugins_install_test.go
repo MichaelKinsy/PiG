@@ -189,7 +189,7 @@ func workerOf(t *testing.T, root, name string) string {
 		if plugin.Name != name {
 			continue
 		}
-		built, err := BuildFacet(plugin, "worker", BuildOptions{HostPackages: []string{"@earendil-works/chord/next"}, Platform: PlatformNode, Plugins: discovery.Plugins}, background)
+		built, err := BuildFacet(plugin, "worker", BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: PlatformNode, Plugins: discovery.Plugins}, background)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -32,9 +32,9 @@ import (
 // stable across two checkout paths, inputs hashed as esbuild read them.
 
 var (
-	esbuildNode    = BuildOptions{HostPackages: []string{"@earendil-works/chord/next"}, Platform: PlatformNode}
+	esbuildNode    = BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: PlatformNode}
 	esbuildBrowser = BuildOptions{
-		HostPackages: []string{"@earendil-works/chord/next", "react/jsx-runtime"},
+		HostPackages: []string{"@earendil-works/chord", "react/jsx-runtime"},
 		Platform:     PlatformBrowser,
 		PublicPath:   new("/assets/"),
 	}
@@ -163,7 +163,7 @@ func TestEsbuildBuildInlinesOwnFilesAndAnotherPluginsFileKeepsHostPackagesExtern
 	if !strings.HasPrefix(built.Source, "(function (require, module, exports) {") {
 		t.Errorf("source starts %q", built.Source[:60])
 	}
-	if !strings.Contains(built.Source, `require("@earendil-works/chord/next")`) {
+	if !strings.Contains(built.Source, `require("@earendil-works/chord")`) {
 		t.Error("the host package is not required")
 	}
 	if want := []string{filepath.Join(real, "contracts", "contract.ts")}; !reflect.DeepEqual(built.Copied, want) {
@@ -264,7 +264,7 @@ func TestEsbuildBuildInlinesADependencyKeepsExternalPackagesAndNodeBuiltinsExter
 			`import native from "native-dep";`,
 			`import { join } from "node:path";`,
 			`import { readFileSync } from "fs";`,
-			`import { pluginFile } from "@earendil-works/chord/next/plugins";`,
+			`import { pluginFile } from "@earendil-works/chord/plugins";`,
 			"export default { setup: () => [pad, native, join, readFileSync, pluginFile] };",
 		}, "\n"),
 	}, map[string]any{"dependencies": map[string]any{"pad-dep": "1.0.0"}, "chord": map[string]any{"external": []string{"native-dep"}}})
@@ -275,7 +275,7 @@ func TestEsbuildBuildInlinesADependencyKeepsExternalPackagesAndNodeBuiltinsExter
 	if !strings.Contains(built.Source, `"pad:"`) {
 		t.Error("the dependency is not inlined")
 	}
-	for _, external := range []string{"native-dep", "node:path", "fs", "@earendil-works/chord/next/plugins"} {
+	for _, external := range []string{"native-dep", "node:path", "fs", "@earendil-works/chord/plugins"} {
 		if !strings.Contains(built.Source, `require("`+external+`")`) {
 			t.Errorf("%s is not required", external)
 		}
@@ -566,7 +566,7 @@ func TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals(t *test
 // the Go API, so the scripts Pi's `buildFacet` makes of the fixture plugins and these are the same bytes: the digests and
 // lengths below are what Pi's own `buildFacet` (build.ts of Pi 9823079ad, run in Node 24 on esbuild 0.28.2) printed for the
 // fixture plugins as they are at that commit (test/next-node/fixtures/plugins, the contract imported by relative path
-// `../contracts/contract.ts`), built with `hostPackages: ["@earendil-works/chord/next"]`, `platform: "node"`.
+// `../contracts/contract.ts`), built with `hostPackages: ["@earendil-works/chord"]`, `platform: "node"`.
 func TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures(t *testing.T) {
 	root := tempRoot(t, "contracts", "notes", "files")
 	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
@@ -585,7 +585,7 @@ func TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures(t *testing.T) {
 	got := 0
 	for _, plugin := range discovery.Plugins {
 		for kind := range plugin.Facets {
-			built, err := BuildFacet(plugin, kind, BuildOptions{HostPackages: []string{"@earendil-works/chord/next"}, Platform: PlatformNode, Plugins: discovery.Plugins}, background)
+			built, err := BuildFacet(plugin, kind, BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: PlatformNode, Plugins: discovery.Plugins}, background)
 			if err != nil || built.Kind != BuiltFacetScript {
 				t.Fatalf("%s %s: %+v, %v", plugin.Name, kind, built, err)
 			}
@@ -686,7 +686,7 @@ func TestEsbuildBuildKeepsAListedVersionAndTheKindsModuleExternalAndThePluginsCo
 		"worker.ts": strings.Join([]string{
 			`import { defineFacet } from "@acme/app/v3";`,
 			`import { Tools } from "@acme/app/v3/worker";`,
-			`import { pluginFile } from "@earendil-works/chord/next/plugins";`,
+			`import { pluginFile } from "@earendil-works/chord/plugins";`,
 			"export default defineFacet(() => [Tools, pluginFile]);",
 		}, "\n"),
 	}, nil)
@@ -708,19 +708,19 @@ func TestEsbuildBuildRefusesAnUnlistedVersionNoVersionAnotherKindsModuleAndChord
 			`import { a } from "@acme/app/v1";`,
 			`import { b } from "@acme/app";`,
 			`import { c } from "@acme/app/v3/web";`,
-			`import { d } from "@earendil-works/chord/next";`,
+			`import { d } from "@earendil-works/chord";`,
 			"export default { setup: () => [a, b, c, d] };",
 		}, "\n"),
 	}, nil)
 	_, plugin := esbuildDiscovered(t, "@test/bad", root)
 	// Chord is refused even when the app lists it as a host package.
 	options := esbuildAPIKind("worker")
-	options.HostPackages = append(slices.Clone(options.HostPackages), "@earendil-works/chord/next")
+	options.HostPackages = append(slices.Clone(options.HostPackages), "@earendil-works/chord")
 	esbuildMatches(t, esbuildErrors(t, esbuildBuild(t, plugin, "worker", options)),
 		`worker.ts:1:19: "@acme/app/v1": @acme/app/v1 is not available: this app provides v3, v2`,
 		`worker.ts:2:19: "@acme/app": import a version of the app's API (this app provides v3, v2)`,
 		`worker.ts:3:19: "@acme/app/v3/web": not available to worker facets`,
-		`worker.ts:4:19: "@earendil-works/chord/next": plugins import Chord through the app's API ("@acme/app/v3"), never directly`,
+		`worker.ts:4:19: "@earendil-works/chord": plugins import Chord through the app's API ("@acme/app/v3"), never directly`,
 	)
 }
 
@@ -993,7 +993,7 @@ func TestEsbuildBuildInlinesADependencysSharedAndPerKindContractFilesAsItsExport
 func TestEsbuildBuildAllowsHostPackagesOnlyRefusingOtherFilesPackagesAndBuiltinsWithAPointerToADirectory(t *testing.T) {
 	root := tempRoot(t)
 	writeFiles(t, root, map[string]string{
-		"hello.server.ts": "import { defineFacet } from \"@earendil-works/chord/next\";\nexport default defineFacet(() => {});",
+		"hello.server.ts": "import { defineFacet } from \"@earendil-works/chord\";\nexport default defineFacet(() => {});",
 		"bad.server.ts": strings.Join([]string{
 			`import { a } from "./hello.server.ts";`,
 			`import b from "some-package";`,

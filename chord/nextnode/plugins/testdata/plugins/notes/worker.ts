@@ -1,6 +1,6 @@
 // Fixture plugin (slice 7c): the worker facet, serving `Notes` with a count document.
 
-import { constant, defineFacet, defineState, int, obj } from "@earendil-works/chord/next";
+import { constant, defineFacet, defineState, int, obj } from "@earendil-works/chord";
 import { Notes } from "../contracts/contract.ts";
 import { label } from "./label.ts";
 

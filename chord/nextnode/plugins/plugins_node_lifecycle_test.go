@@ -114,7 +114,7 @@ func TestNodeAnUncaughtExceptionIsPrintedOnStderrWithItsMappedStackAndEndsWithCo
 func TestNodeAThrownStringIsPrintedAsNodePrintsIt(t *testing.T) {
 	var out lifecycleOutput
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => { throw "just text"; }, 0); }) };
+		module.exports = { default: require("@earendil-works/chord").defineFacet(() => { setTimeout(() => { throw "just text"; }, 0); }) };
 	})`)
 	node := loadLifecycle(t, out.options(), script)
 	exit := exitOf(t, node)
@@ -154,7 +154,7 @@ func TestNodeAnUnhandledRejectionIsAnUncaughtExceptionAsNodesDefaultMakesIt(t *t
 		t.Run(each.name, func(t *testing.T) {
 			var out lifecycleOutput
 			script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-				module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => { Promise.reject(`+each.reject+`); }, 0); }) };
+				module.exports = { default: require("@earendil-works/chord").defineFacet(() => { setTimeout(() => { Promise.reject(`+each.reject+`); }, 0); }) };
 			})`)
 			node := loadLifecycle(t, out.options(), script)
 			exit := exitOf(t, node)
@@ -175,7 +175,7 @@ func TestNodeAnUnhandledRejectionIsAnUncaughtExceptionAsNodesDefaultMakesIt(t *t
 func TestNodeAPluginsProcessExitEndsOnlyTheHostWithItsCode(t *testing.T) {
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
 		const go = require("@acme/go");
-		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { go.gate().then(() => { process.exit(7); }); }) };
+		module.exports = { default: require("@earendil-works/chord").defineFacet(() => { go.gate().then(() => { process.exit(7); }); }) };
 	})`)
 	gate := make(chan struct{})
 	node, _, err := NewPluginRuntime(NodeOptions{OnOutput: func(NodeStream, []byte) {}}).Load(RuntimeLoad{

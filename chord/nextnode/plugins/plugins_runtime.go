@@ -32,7 +32,7 @@ type PluginScript struct {
 }
 
 // HostPackages are the host packages a script's imports are answered with, by specifier: the file of the module (an absolute
-// path) the subprocess imports once, and shares between the scripts of its host. `@earendil-works/chord/next` is always
+// path) the subprocess imports once, and shares between the scripts of its host. `@earendil-works/chord` is always
 // Pi's own, the subprocess's; naming it here replaces nothing.
 type HostPackages map[string]string
 

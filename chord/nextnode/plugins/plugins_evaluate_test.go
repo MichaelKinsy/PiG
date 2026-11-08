@@ -21,7 +21,7 @@ import (
 // of a plugin's load is also read in the LoadReport of the real load (`*NodeError`.Message and .Stack).
 
 // evaluateHostPackages is the keys of evaluate.test.ts's `HOSTS`: what its builds name as host packages.
-var evaluateHostPackages = []string{"@earendil-works/chord/next", "esm-host", "cjs-host"}
+var evaluateHostPackages = []string{"@earendil-works/chord", "esm-host", "cjs-host"}
 
 // evaluateOpsPrelude is the probe ops shared by the evaluate and the stack tests. `packages` is Pi's `HOSTS` (hosts: "all"),
 // support.ts's `HOST_PACKAGES` ("chord") or `{}` ("none"); `run` is `evaluateFacet(script, { hostPackages, plugin })`;
@@ -29,7 +29,7 @@ var evaluateHostPackages = []string{"@earendil-works/chord/next", "esm-host", "c
 const evaluateOpsPrelude = `
 	packages: async (a) => {
 		if (a.hosts === "none") return {};
-		const chord = { "@earendil-works/chord/next": next };
+		const chord = { "@earendil-works/chord": next };
 		if (a.hosts === "chord") return chord;
 		return { ...chord, "esm-host": await import(a.esm), "cjs-host": (await import(a.cjs)).default };
 	},
@@ -256,7 +256,7 @@ func TestEvaluateGivesHostPackagesAsTheHostsInstances(t *testing.T) {
 	root := tempRoot(t)
 	writePlugin(t, root, "p", "@test/p", map[string]string{
 		"worker.ts": strings.Join([]string{
-			`import { ChordError, defineFacet } from "@earendil-works/chord/next";`,
+			`import { ChordError, defineFacet } from "@earendil-works/chord";`,
 			"const facet = defineFacet(() => {});",
 			`export default { ...facet, made: new ChordError({ code: "unavailable", message: "m" }), is: (e: unknown) => e instanceof ChordError };`,
 		}, "\n"),
@@ -317,7 +317,7 @@ func TestEvaluateGivesEachFacetPluginFileForItsOwnPluginsDirectoryAndRefusesDotD
 		t.Fatalf("text = %v", got)
 	}
 	writePlugin(t, root, "escape", "@test/escape", map[string]string{
-		"worker.ts": "import { pluginFile } from \"@earendil-works/chord/next/plugins\";\nexport default { setup: () => {}, escape: () => pluginFile(\"../files/assets/data.txt\") };",
+		"worker.ts": "import { pluginFile } from \"@earendil-works/chord/plugins\";\nexport default { setup: () => {}, escape: () => pluginFile(\"../files/assets/data.txt\") };",
 	}, nil)
 	escaping := evaluateBuilt(t, root, "@test/escape", "worker", evaluateHostPackages)
 	got := asMap(t, p.must("pluginFiles", evaluateArgs(t, escaping, "all")))
@@ -335,7 +335,7 @@ func TestEvaluateGivesEachFacetPluginFileForItsOwnPluginsDirectoryAndRefusesDotD
 func TestEvaluateRefusesPluginFileInASingleFilePluginItHasNoDirectoryOfItsOwn(t *testing.T) {
 	root := tempRoot(t)
 	writeFiles(t, root, map[string]string{
-		"lone.worker.ts": "import { pluginFile } from \"@earendil-works/chord/next/plugins\";\nexport default { setup: () => {}, read: () => pluginFile(\"x.txt\") };",
+		"lone.worker.ts": "import { pluginFile } from \"@earendil-works/chord/plugins\";\nexport default { setup: () => {}, read: () => pluginFile(\"x.txt\") };",
 	})
 	script := evaluateBuilt(t, root, "lone", "worker", evaluateHostPackages)
 	p := evaluateProbe(t, evaluateOps)
@@ -353,8 +353,8 @@ func TestEvaluateRefusesPluginFileInASingleFilePluginItHasNoDirectoryOfItsOwn(t 
 func TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAppsAPIChordItselfAndBuiltinsInASingleFilePlugin(t *testing.T) {
 	root := tempRoot(t)
 	api := &AppApi{Name: "@acme/app", Versions: []string{"v3", "v2"}}
-	packages := map[string]any{"@acme/app/v3": map[string]any{"value": 3}, "@acme/app/v2": map[string]any{"value": 2}, "@earendil-works/chord/next": map[string]any{}}
-	hostPackages := []string{"@acme/app/v3", "@acme/app/v2", "@earendil-works/chord/next"}
+	packages := map[string]any{"@acme/app/v3": map[string]any{"value": 3}, "@acme/app/v2": map[string]any{"value": 2}, "@earendil-works/chord": map[string]any{}}
+	hostPackages := []string{"@acme/app/v3", "@acme/app/v2", "@earendil-works/chord"}
 	join := func(parts ...string) string {
 		quoted := make([]string, len(parts))
 		for i, part := range parts {
@@ -466,7 +466,7 @@ func TestEvaluateRunsAComputedImportThroughTheFacetsRequire(t *testing.T) {
 	root := tempRoot(t)
 	writePlugin(t, root, "dynamic", "@test/dynamic", map[string]string{
 		"worker.ts": strings.Join([]string{
-			`import { defineFacet } from "@earendil-works/chord/next";`,
+			`import { defineFacet } from "@earendil-works/chord";`,
 			"const later = (specifier: string) => import(specifier);",
 			"export default { ...defineFacet(() => {}), later };",
 		}, "\n"),

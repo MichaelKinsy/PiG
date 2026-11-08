@@ -1,13 +1,92 @@
 {
-	"commit": "9823079ad98d39f3587286c8d9f29556dfb3687b",
-	"pin": "f9a26365568127461c47a07a37dcb42c140a3ac5",
-	"catchup": "9823079ad98d39f3587286c8d9f29556dfb3687b",
+	"commit": "c23b9ec1ef12a63573d739d4c294f81a377b7d57",
+	"pin": "c23b9ec1ef12a63573d739d4c294f81a377b7d57",
 	"piSchema": "1.5.0",
 	"piTelemetry": "1.5.0",
 	"files": [
 		{
 			"path": "pi/chord/src/context/index.ts",
 			"sha256": "fb68a9ad4d1d894b215148eb151cd86415dde8d12fc126d2783c28143b12f126"
+		},
+		{
+			"path": "pi/chord/src/contracts/accepts.ts",
+			"sha256": "24967022f53ade986b62fe23764e486f8cb824fc324692752b36d9c3447df000"
+		},
+		{
+			"path": "pi/chord/src/contracts/contract.ts",
+			"sha256": "9aa1117e9ad2d2ad4f2cc0f9d03d0ab07e9be2eff1aa559c906c8b3ca592bf0a"
+		},
+		{
+			"path": "pi/chord/src/contracts/declare.ts",
+			"sha256": "f862c88d75413b5e5409ca3dfd05f818f69532a60ef7297c8e465117aaf81856"
+		},
+		{
+			"path": "pi/chord/src/contracts/evolve.ts",
+			"sha256": "dade23f3782ee8ce9315a99d27df733077b5129081af33cc0f350d29931bf026"
+		},
+		{
+			"path": "pi/chord/src/contracts/fingerprint.ts",
+			"sha256": "74559b17bd79a90202af4460cefbc76cd6fddbba383b743194d8721e494f9cd5"
+		},
+		{
+			"path": "pi/chord/src/contracts/host-kind.ts",
+			"sha256": "b8276f22d7c481a7db5129a9d9deb10475ebf00a7585ad4a01b05122cf4a2de0"
+		},
+		{
+			"path": "pi/chord/src/contracts/index.ts",
+			"sha256": "ca1c999d409b30bd1420c6216de4cd13c2aa33945b831e8550081286d91360f8"
+		},
+		{
+			"path": "pi/chord/src/contracts/internal.ts",
+			"sha256": "433a9d90b4621552620d0e5e6e78fc40cbef823812018a171e19882270c15e6f"
+		},
+		{
+			"path": "pi/chord/src/contracts/names.ts",
+			"sha256": "856e45e30fdc8b1b989f4bc9269381d39ebf82235ba9ca9da87550e4755518a8"
+		},
+		{
+			"path": "pi/chord/src/contracts/params.ts",
+			"sha256": "de6e942f4b119a02768461693481b869ec9ec5bcf854375c828020fe12664ed1"
+		},
+		{
+			"path": "pi/chord/src/contracts/schema.ts",
+			"sha256": "9e877673563801e30ceff745b19a48ac5e0f29a87a26d29d8dce5f79ced96560"
+		},
+		{
+			"path": "pi/chord/src/contracts/snapshot.ts",
+			"sha256": "d8743ae1b12e0b9687e3225ca8db0fc16c45839564f2d49bd416d60c7f71c9ef"
+		},
+		{
+			"path": "pi/chord/src/data/args.ts",
+			"sha256": "7828d90bbeca768761d62dcd20d4cc69857f0cf0399d1fa86738c11ea7ea5575"
+		},
+		{
+			"path": "pi/chord/src/data/errors.ts",
+			"sha256": "85733af1ff7c3f9fa4abb2f8f446e9e8466bf1b75b59ef75b9478eeb1265eeb5"
+		},
+		{
+			"path": "pi/chord/src/data/failure.ts",
+			"sha256": "7373bedfec1be8218bf4c0381a2b2f1253e500a4bd83d4ae5559ac4b51eb3adb"
+		},
+		{
+			"path": "pi/chord/src/data/index.ts",
+			"sha256": "11dd326538fa8026c948d6fb98bef31beff96abb06ddb95f83c569f3ad3c33a8"
+		},
+		{
+			"path": "pi/chord/src/data/internal.ts",
+			"sha256": "9a07ab03d99ebbcff23208924f29dc408963151ae37053fd5894ec5891627dcb"
+		},
+		{
+			"path": "pi/chord/src/data/params.ts",
+			"sha256": "f2ee5229e4a8e31a7838665c025f045c135ed2ed8a66cbcf20340be4a6a982f0"
+		},
+		{
+			"path": "pi/chord/src/data/principal.ts",
+			"sha256": "d72f41b38e488df634e4fe1175fb44a76eaced6522c7f08de0d20a970496b19f"
+		},
+		{
+			"path": "pi/chord/src/data/validator.ts",
+			"sha256": "44e3ea92125650e26baf57eeefaccf67efd8667bf761a72c6ffe3b4813183db1"
 		},
 		{
 			"path": "pi/chord/src/delta/apply-immutable-trusted.ts",
@@ -30,600 +109,376 @@
 			"sha256": "26afccb6fc63af8f92aac31f267803956f2e8bf60080f06fbfe8367f89d1d68b"
 		},
 		{
+			"path": "pi/chord/src/documents/address-source.ts",
+			"sha256": "eb593d59eb217add65fad7db0c19334daa976ce4418b51fb4e9fa6a706a29f43"
+		},
+		{
+			"path": "pi/chord/src/documents/definition.ts",
+			"sha256": "c785137b4ff550b6b2123920e5d832eabee400076a712012b682927ddccb0f9b"
+		},
+		{
+			"path": "pi/chord/src/documents/documents.ts",
+			"sha256": "f2baba94c272ef3369ded6f7f81e9bc0a33cef0c37b33d95901e82059e11afa2"
+		},
+		{
+			"path": "pi/chord/src/documents/fence.ts",
+			"sha256": "0de7e615d3e9b29dad51d04b5b2211ea43358500199944aaab8fdc3529b65f9e"
+		},
+		{
+			"path": "pi/chord/src/documents/handles.ts",
+			"sha256": "b1d2c61745795b3c345e2bd52177209a5d35a12a24524cae268ef0229fdbcea8"
+		},
+		{
+			"path": "pi/chord/src/documents/index.ts",
+			"sha256": "e80cb14c85017303c4542d5720a520aa6b4ad200c39965393e4b61b04288ae37"
+		},
+		{
+			"path": "pi/chord/src/documents/internal.ts",
+			"sha256": "874c39f953d02837b9d4e014b61dcf5cfdeef7ebfbfc0dbaa4a60675840dca29"
+		},
+		{
+			"path": "pi/chord/src/documents/keyed-slot.ts",
+			"sha256": "61ad119635930cf8db812b13367ad553548718762cd6a4163f038edfa1f05877"
+		},
+		{
+			"path": "pi/chord/src/documents/line.ts",
+			"sha256": "ea2e21375e00c3602f0357cbf444a25c7cbb4453596658243d370a2e97e3bbf3"
+		},
+		{
+			"path": "pi/chord/src/documents/persistence.ts",
+			"sha256": "1d68bb9666e4feb34fa7f113cde3104adb9e2aceb4b50d83919fcfbb07835ad2"
+		},
+		{
+			"path": "pi/chord/src/documents/residency.ts",
+			"sha256": "51923777c267cff8ac088a8c0b4b6069c09e51521a12c87e73c98a1c0efa38fc"
+		},
+		{
+			"path": "pi/chord/src/documents/slot.ts",
+			"sha256": "320f41d2c656ba4fa2f1f8bcf9095cce632acd79306eaccf8ca3d1bd66c59ebd"
+		},
+		{
+			"path": "pi/chord/src/documents/transaction.ts",
+			"sha256": "83e1a5a246e43ae15a364a44d8c7d535eaa22809a0f43f18db94785123274f46"
+		},
+		{
+			"path": "pi/chord/src/host/activity.ts",
+			"sha256": "538fe8642dc008ff748f7519ebe29094080a16bbdd0cb47e29ee274da64f51a6"
+		},
+		{
+			"path": "pi/chord/src/host/adapted.ts",
+			"sha256": "b2f87f789d8e776a6a11b37b4fcaa88a5468dfd3912bb5877ee34f051cbfc90a"
+		},
+		{
+			"path": "pi/chord/src/host/attempt.ts",
+			"sha256": "db69364fd137a0e95c21e960ad05ba8d8cd2b4f528287eccd3f22343c66a71c7"
+		},
+		{
+			"path": "pi/chord/src/host/backoff.ts",
+			"sha256": "b4ee201035be8e2b007e0936b71e5dedb941abfa4c821d8f0a4042e2f28f9215"
+		},
+		{
+			"path": "pi/chord/src/host/ctx.ts",
+			"sha256": "37a22ad9f5834e1f37fc9a56357da16dc5ab2789b4a96cd3fd13773accba577e"
+		},
+		{
+			"path": "pi/chord/src/host/deadline.ts",
+			"sha256": "1cfdd2774890f1c803edb17eca484b15c5741a887a1eff651e55aa6b29cd1b7d"
+		},
+		{
+			"path": "pi/chord/src/host/dependencies.ts",
+			"sha256": "4681315cad2fd8424c8ef900b8eede9c6bc89ccd7e7e21aaeac9bd50594d3258"
+		},
+		{
+			"path": "pi/chord/src/host/destination.ts",
+			"sha256": "f9e05d38d74d734bfc26bc7b7bf9d0024a03d2529d2032c8d5e37935f10313f8"
+		},
+		{
+			"path": "pi/chord/src/host/facet.ts",
+			"sha256": "0ee7e54b360f34c705db0a69038858135d49d4774e24266692d99a32f28d78a5"
+		},
+		{
+			"path": "pi/chord/src/host/follow.ts",
+			"sha256": "d13b1a0eb9b13f6cd48b981511b65b56bf109162c18521034b6175e373038200"
+		},
+		{
+			"path": "pi/chord/src/host/host.ts",
+			"sha256": "73546b9f03f6549aa82ceaa62992b53417d67433ee46bd6e9475c7d035d37c0a"
+		},
+		{
+			"path": "pi/chord/src/host/index.ts",
+			"sha256": "d784f956dd57575c882f445033c71624efff7830e6f83031f6c3fc42af9c5589"
+		},
+		{
+			"path": "pi/chord/src/host/internal.ts",
+			"sha256": "2b41e1c3f3befbd6899a05e844288231da75338fbbdf64e873e53b318bfd4fee"
+		},
+		{
+			"path": "pi/chord/src/host/members.ts",
+			"sha256": "09f0b0b2530e9904556aee0ddb69d824065bab5a766194099a3c7887528291c3"
+		},
+		{
+			"path": "pi/chord/src/host/native.ts",
+			"sha256": "34cc97678427c5f1f129264e9a364db27f21236f357e26f0d750df69165f6a1f"
+		},
+		{
+			"path": "pi/chord/src/host/object.ts",
+			"sha256": "2ff00d229f826dba73c0594475b172569d7f1a820bcf8fc30f36a0f419d3fecc"
+		},
+		{
+			"path": "pi/chord/src/host/old-work.ts",
+			"sha256": "369fb1ac2ff2f0e19c9158ce590064b4efb99547b49905f3d31709d807c5161e"
+		},
+		{
+			"path": "pi/chord/src/host/parked.ts",
+			"sha256": "84e25a4607bf92e179d46f80bc02a3e84bd925b8536393c134ebe13367c8f980"
+		},
+		{
+			"path": "pi/chord/src/host/presence.ts",
+			"sha256": "df14d49e39acb20ff70a98a98fc0dc485d6f46b3b4df3cc8454e72dabff22ea6"
+		},
+		{
+			"path": "pi/chord/src/host/readiness.ts",
+			"sha256": "38a9752a1e35944e2561c57df77dbc76207e1393bae43269db7c7250efe1d1e5"
+		},
+		{
+			"path": "pi/chord/src/host/ref-state.ts",
+			"sha256": "8067afa29a332cad25e2f1fc40c1255acf3f8e2e2f75860786ea96787911a966"
+		},
+		{
+			"path": "pi/chord/src/host/reference-keys.ts",
+			"sha256": "e5cb7be79b754ce455954797e09fed63b088f4d7642e1a98e61a498449e15f98"
+		},
+		{
+			"path": "pi/chord/src/host/reference-source.ts",
+			"sha256": "bd0f064bbb3676b5113ce7bde4938a98fd91f18258cf61a8c8c48dc0ec447d41"
+		},
+		{
+			"path": "pi/chord/src/host/reference.ts",
+			"sha256": "72d94e2d2ea2dd48714a401d88846c022b69558355088c9f4b2e0ede2712e60d"
+		},
+		{
+			"path": "pi/chord/src/host/reload-cycle.ts",
+			"sha256": "152ca42798d83b2799c08149cf8abe0f3d6983608c7fd4acff4ec09b2526246f"
+		},
+		{
+			"path": "pi/chord/src/host/retry-on.ts",
+			"sha256": "68397e79a7ac167f405f954b57af99d44de2fc8aeeb5dede8de2c13b9ec5109f"
+		},
+		{
+			"path": "pi/chord/src/host/revocation.ts",
+			"sha256": "9ce2cad1579ed9c7f995244e498d23e0a99e8101bea96d13159ffd454a0f1447"
+		},
+		{
+			"path": "pi/chord/src/host/root.ts",
+			"sha256": "ac84435e2c9a9e918b2a9c82581197705b82dbc2da2d83c777e372574e9ee775"
+		},
+		{
+			"path": "pi/chord/src/host/route.ts",
+			"sha256": "21aa19556d505a4d048c35074b86ba7895566b9bf9843d413e0e440ceb406e0a"
+		},
+		{
+			"path": "pi/chord/src/host/routines.ts",
+			"sha256": "c361db03f4adf07cdcf40732616ec0786423476a359d28b9e832a0a84f429fd0"
+		},
+		{
+			"path": "pi/chord/src/host/sleep.ts",
+			"sha256": "093a9f3d308bb2e243baf12f7812cda048524ca518c87965d44d32ab5fbfc51a"
+		},
+		{
+			"path": "pi/chord/src/host/staging.ts",
+			"sha256": "0d252bd69672ff652642d565b64f464ed28664579d8e2682d3c522930bd6a47f"
+		},
+		{
+			"path": "pi/chord/src/host/unbound-clock.ts",
+			"sha256": "74b9b817b8824f54dde9fe8b1e745b98b2d16e8f51fc74a0003cf9f88f2ec96f"
+		},
+		{
+			"path": "pi/chord/src/host/unbound.ts",
+			"sha256": "ba4a4e50f0676450d7f56038cdf8e995c231faba8025aeb16c0804632aeb30e7"
+		},
+		{
+			"path": "pi/chord/src/host/uuid.ts",
+			"sha256": "9f99b712e6fc86f6174ddff717d7f487566d0102af5e471be29887b63c626c94"
+		},
+		{
+			"path": "pi/chord/src/index.ts",
+			"sha256": "6470a9f4c47ebd25232b05fc68cd9db0f1fd2235fc2c7b373f417039663eee29"
+		},
+		{
+			"path": "pi/chord/src/jobs/definition.ts",
+			"sha256": "4a61a28ee694335194f1f3a16b4fec62e0bacf6c02167c3de02bc146adb0c22a"
+		},
+		{
+			"path": "pi/chord/src/jobs/index.ts",
+			"sha256": "078e01c7da808ed4d0d655fb50b02edd5f88975607d524ee4a2e7dde2a491121"
+		},
+		{
+			"path": "pi/chord/src/jobs/internal.ts",
+			"sha256": "c85f23f95490a6d0a4521adc1092f9744af1c7b7268a46030f70de58354ae0b5"
+		},
+		{
+			"path": "pi/chord/src/jobs/job.ts",
+			"sha256": "819e9401afed9afecb1fa95e7ced42c70186c3b52b5439864a4c5e55196a9b20"
+		},
+		{
+			"path": "pi/chord/src/jobs/persisted.ts",
+			"sha256": "f5747160764a421ce4a1da2bb97cb00ddebf2fd72b4e4a5de1c9f8b1c7b1b9a9"
+		},
+		{
+			"path": "pi/chord/src/jobs/records.ts",
+			"sha256": "a0d2ff81ba07d4f3d6585b23f15cbcd4fa632e759d42eb6709026fd7d68c9315"
+		},
+		{
+			"path": "pi/chord/src/jobs/run-states.ts",
+			"sha256": "d971cbd1fd4cec5e05f6159f54d20a146e8c7e296552f403423aa65bec96b16b"
+		},
+		{
+			"path": "pi/chord/src/jobs/run.ts",
+			"sha256": "aa692b4b6e911201201fc6a50e383a44a78273f85bbb0dacb4051fd9a1d980e7"
+		},
+		{
+			"path": "pi/chord/src/jobs/running.ts",
+			"sha256": "fea41cb9f323e6b386f906be7636459ce2a0fa4610716eba2518cd9a5bc209ac"
+		},
+		{
+			"path": "pi/chord/src/jobs/stored.ts",
+			"sha256": "22739d2c8463fef017561676feaf7d90d60b30c95a894f8792c16adeecd89a20"
+		},
+		{
 			"path": "pi/chord/src/json.ts",
 			"sha256": "d3a115dde2afa8e79c987b0fb188ec0bdba03939192859a20198a23b2892bb60"
 		},
 		{
-			"path": "pi/chord/src/next-node/compression.ts",
-			"sha256": "f41f610a26fd66dd320e1ea70fc0b267f9df63e9bf45cafad407f017d933e7b1"
+			"path": "pi/chord/src/link/binary.ts",
+			"sha256": "d1db55f6e0b9e6daea676f717f56dca93f4f762d19063331a431fa598ed9d562"
 		},
 		{
-			"path": "pi/chord/src/next-node/plugins/evaluate.ts",
-			"sha256": "ee4765d841eff1db90010496e22ea7c268226b1394c3ce9f20697bb0fe71b270"
+			"path": "pi/chord/src/link/channel.ts",
+			"sha256": "47fe2a6d3cba15602fd256c4214a76944108e79b226e82095e15ff11ad8e2ef6"
 		},
 		{
-			"path": "pi/chord/src/next-node/plugins/runtime.ts",
-			"sha256": "fb546b048a4358f5d0685faf2cdbd2ddc349385d1db498a7b98313406a1e11f1"
+			"path": "pi/chord/src/link/errors.ts",
+			"sha256": "9570a144615945ccc8dc13c13e8f2695f5166b672d816855084057723ccc1d0b"
 		},
 		{
-			"path": "pi/chord/src/next-node/plugins/stack.ts",
-			"sha256": "9407458339f0cc95ea6ed1775bb542930ca1d6691761eee12e0f209f8585c7cf"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/accepts.ts",
-			"sha256": "5a4b32c692fbe44f1e886e6374e0539f833badaf1f4215efb6e2cbfb0b71a0f6"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/contract.ts",
-			"sha256": "df6b8cab7ed4e993113a6fed896c21f49b29feb16a5ab093179742ee9027d971"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/declare.ts",
-			"sha256": "f862c88d75413b5e5409ca3dfd05f818f69532a60ef7297c8e465117aaf81856"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/evolve.ts",
-			"sha256": "dade23f3782ee8ce9315a99d27df733077b5129081af33cc0f350d29931bf026"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/fingerprint.ts",
-			"sha256": "f9906f456796dcaba5d3a292f0ed5397e52e277d02ff6ccd1fd06c9aff2c6de4"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/host-kind.ts",
-			"sha256": "b8276f22d7c481a7db5129a9d9deb10475ebf00a7585ad4a01b05122cf4a2de0"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/index.ts",
-			"sha256": "ca1c999d409b30bd1420c6216de4cd13c2aa33945b831e8550081286d91360f8"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/internal.ts",
-			"sha256": "433a9d90b4621552620d0e5e6e78fc40cbef823812018a171e19882270c15e6f"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/names.ts",
-			"sha256": "856e45e30fdc8b1b989f4bc9269381d39ebf82235ba9ca9da87550e4755518a8"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/params.ts",
-			"sha256": "3a73dad2240fc8534cce83a9fee1482717aded956d91e5182a27d3ac402284e0"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/schema.ts",
-			"sha256": "9e877673563801e30ceff745b19a48ac5e0f29a87a26d29d8dce5f79ced96560"
-		},
-		{
-			"path": "pi/chord/src/next/contracts/snapshot.ts",
-			"sha256": "8053e7f3ac60e77a47fa7c5a5a11421a215ecdabd11b4487350f6a46f08ed6e9"
-		},
-		{
-			"path": "pi/chord/src/next/data/args.ts",
-			"sha256": "b2a684d421d2e6772e50336d07c609d27bd456650fce963abd5cd1f9ca1a7a65"
-		},
-		{
-			"path": "pi/chord/src/next/data/errors.ts",
-			"sha256": "5860e89893208fb942d81f2a74c31e0519ffb6dce38c08f3f4414bd570e48648"
-		},
-		{
-			"path": "pi/chord/src/next/data/failure.ts",
-			"sha256": "565be86a59c4a0cb5ec29d9416d0f95c73cee7723fce682030449a749c4c4cd8"
-		},
-		{
-			"path": "pi/chord/src/next/data/index.ts",
-			"sha256": "25527a84646f7a04db97f47da1fa29b99d58aed50c394ed78e14723872d8a3d7"
-		},
-		{
-			"path": "pi/chord/src/next/data/internal.ts",
-			"sha256": "ed62381460cf919018ac5cd79f5ca9fe055ff8d9ac84bd6aaf7895f395139627"
-		},
-		{
-			"path": "pi/chord/src/next/data/params.ts",
-			"sha256": "c80898afff22af9709f0aa6724f4b1bb9578a8df693d9a6b68f0588146e06b1e"
-		},
-		{
-			"path": "pi/chord/src/next/data/principal.ts",
-			"sha256": "e129e52ca879127bcb71e8037f5e1c084b887e9f8dcadda37b7362e429945122"
-		},
-		{
-			"path": "pi/chord/src/next/data/validator.ts",
-			"sha256": "814cbf9a055102428a0d81c49f551bab7431f483e70e11754af87d89775244f4"
-		},
-		{
-			"path": "pi/chord/src/next/documents/address-source.ts",
-			"sha256": "238caf5ea936c9901a8daf10de2757af156aa1a1e8d9e7d75082fe6937c12415"
-		},
-		{
-			"path": "pi/chord/src/next/documents/definition.ts",
-			"sha256": "13936cca26eb07833a6d6214d09efc81f2f34b923bc51fc920d65adaf23492c9"
-		},
-		{
-			"path": "pi/chord/src/next/documents/documents.ts",
-			"sha256": "e59d69259a32cf5e65286d32a85d85565207e518df23c2a0be0bf8faee848ea4"
-		},
-		{
-			"path": "pi/chord/src/next/documents/fence.ts",
-			"sha256": "0de7e615d3e9b29dad51d04b5b2211ea43358500199944aaab8fdc3529b65f9e"
-		},
-		{
-			"path": "pi/chord/src/next/documents/handles.ts",
-			"sha256": "ae4e0d9a8945815cd2b28ab279124063f4e42c790cf0acb606f4f9daed661859"
-		},
-		{
-			"path": "pi/chord/src/next/documents/index.ts",
-			"sha256": "e80cb14c85017303c4542d5720a520aa6b4ad200c39965393e4b61b04288ae37"
-		},
-		{
-			"path": "pi/chord/src/next/documents/internal.ts",
-			"sha256": "ffac7204f5ab82f036d030c92d484cadabd68c03529202557c92d7307d7f0a44"
-		},
-		{
-			"path": "pi/chord/src/next/documents/keyed-slot.ts",
-			"sha256": "b3a05e30be6d0df55c0fb7a4e00a3d13ed12644dd215fc062748578b2ced019c"
-		},
-		{
-			"path": "pi/chord/src/next/documents/line.ts",
-			"sha256": "ea2e21375e00c3602f0357cbf444a25c7cbb4453596658243d370a2e97e3bbf3"
-		},
-		{
-			"path": "pi/chord/src/next/documents/persistence.ts",
-			"sha256": "8748a8a2844697bdbbc14356bb8ef4b385a3caf87b96535a5ea8f16b0e798ef5"
-		},
-		{
-			"path": "pi/chord/src/next/documents/residency.ts",
-			"sha256": "b25260f764f4c4b9fd5c3162e4a2d19a3c4413a2a03b53a5e7fe6b0bdee4db97"
-		},
-		{
-			"path": "pi/chord/src/next/documents/slot.ts",
-			"sha256": "2c58e3b051357ed41eb904bdf91142154c3fe32a4d630ed8a1c6856b75bc8ab5"
-		},
-		{
-			"path": "pi/chord/src/next/documents/transaction.ts",
-			"sha256": "6d5e436de3301daeca4df7e56413a931b94e3a5187c54154d38aa4af3d5e2814"
-		},
-		{
-			"path": "pi/chord/src/next/host/activity.ts",
-			"sha256": "841300da6c1a2c69c9f919f80e1b92ff2c4b50f630a8df0f399387cb2c4eec2e"
-		},
-		{
-			"path": "pi/chord/src/next/host/adapted.ts",
-			"sha256": "c336f9afa40347e99cc18be42e7b0f5d734883ad45a514b0c51d347d9c36abc3"
-		},
-		{
-			"path": "pi/chord/src/next/host/attempt.ts",
-			"sha256": "31bc2b00acb3e871e5c6d91e3d5a1c337b4847612b59800d257d03f2f9d103f4"
-		},
-		{
-			"path": "pi/chord/src/next/host/backoff.ts",
-			"sha256": "b4ee201035be8e2b007e0936b71e5dedb941abfa4c821d8f0a4042e2f28f9215"
-		},
-		{
-			"path": "pi/chord/src/next/host/ctx.ts",
-			"sha256": "0210dbcc975ceaeb84f40fe46e7b24c19a2d725db840d0802e94792640442d8d"
-		},
-		{
-			"path": "pi/chord/src/next/host/deadline.ts",
-			"sha256": "1cfdd2774890f1c803edb17eca484b15c5741a887a1eff651e55aa6b29cd1b7d"
-		},
-		{
-			"path": "pi/chord/src/next/host/dependencies.ts",
-			"sha256": "4681315cad2fd8424c8ef900b8eede9c6bc89ccd7e7e21aaeac9bd50594d3258"
-		},
-		{
-			"path": "pi/chord/src/next/host/destination.ts",
-			"sha256": "4fb7ed91a3deffae4787a991c9b2341707643b2c9c2196a234de0c8506d04dfb"
-		},
-		{
-			"path": "pi/chord/src/next/host/facet.ts",
-			"sha256": "a3b049d007c498766caf8444210a0c4a208318dd1b0cc809bed00e0547600796"
-		},
-		{
-			"path": "pi/chord/src/next/host/follow.ts",
-			"sha256": "ccf60f052e878d7b40328379f63d70e1682fd4af9c4758499700f3588140e764"
-		},
-		{
-			"path": "pi/chord/src/next/host/host.ts",
-			"sha256": "8381b71c62edf92ed3c8dbfd2a8e4a9bd258220784f00601f4bb90d2fc39909e"
-		},
-		{
-			"path": "pi/chord/src/next/host/index.ts",
-			"sha256": "d712e0edf7fe21130b197c55251c39b58996464b20472827b81564ba5ad0b310"
-		},
-		{
-			"path": "pi/chord/src/next/host/internal.ts",
-			"sha256": "161ff3d498dc57338b314f108587674bde4c462864e01d2c0ace4c494c0469fc"
-		},
-		{
-			"path": "pi/chord/src/next/host/members.ts",
-			"sha256": "bbfc0354f34b1c1532c933d8a007673794b542c3c42e6856dcded17edfd65649"
-		},
-		{
-			"path": "pi/chord/src/next/host/native.ts",
-			"sha256": "15fc02062017a0079acf64bca9936a6e274fcfa85ee605b11797d7d437761766"
-		},
-		{
-			"path": "pi/chord/src/next/host/object.ts",
-			"sha256": "2d0f481da8171b6fec835f12257cfe11643e4f74f4017bc22b98bd0a421982ab"
-		},
-		{
-			"path": "pi/chord/src/next/host/parked.ts",
-			"sha256": "4b8f731a6a5ea4b7eb7bbf5436237e06bac8dae82b2e72111f67f6270755c5c7"
-		},
-		{
-			"path": "pi/chord/src/next/host/presence.ts",
-			"sha256": "864b7d2afff0dc94b7f622b0e9c1553505948ea04f43f55887720af1cb5840d6"
-		},
-		{
-			"path": "pi/chord/src/next/host/ref-state.ts",
-			"sha256": "7e1de85988463764b6c58abf36956bd8ba9e48399ded19f937ed5cc9dc399bd4"
-		},
-		{
-			"path": "pi/chord/src/next/host/reference-keys.ts",
-			"sha256": "730be9e8aa60dbdea1958001404935c44f2c0d9408c8dd3a9a3dd217d6c8f8c3"
-		},
-		{
-			"path": "pi/chord/src/next/host/reference-source.ts",
-			"sha256": "4a6f31af5dbd018bce43b7a96f049f912955791131b528009f4b951df98f7a13"
-		},
-		{
-			"path": "pi/chord/src/next/host/reference.ts",
-			"sha256": "145121632e36b8455a5061b0bf4f715f598d80e99120ab891162a91ada449cbd"
-		},
-		{
-			"path": "pi/chord/src/next/host/retry-on.ts",
-			"sha256": "68397e79a7ac167f405f954b57af99d44de2fc8aeeb5dede8de2c13b9ec5109f"
-		},
-		{
-			"path": "pi/chord/src/next/host/revocation.ts",
-			"sha256": "3118107ba361c0fc834d5e7386086bdfde22d11c5a2c09384d145fe0eb0f2029"
-		},
-		{
-			"path": "pi/chord/src/next/host/root.ts",
-			"sha256": "b531d4bc9918d73724c01c3172b49591578725d48b29bca7bdba26a1fa9f71af"
-		},
-		{
-			"path": "pi/chord/src/next/host/route.ts",
-			"sha256": "4e8d853b39478c9f02da7ec73a1978525571565d55d71fb903a15cf8a6615e77"
-		},
-		{
-			"path": "pi/chord/src/next/host/routines.ts",
-			"sha256": "e93ec076419934129ef11c556fc68b1384ee60db76dd16474ded30f86b37735c"
-		},
-		{
-			"path": "pi/chord/src/next/host/sleep.ts",
-			"sha256": "3aa69d23a7098aba68a5ae60d2255510313fd742d526925bc66b9656099162d7"
-		},
-		{
-			"path": "pi/chord/src/next/host/staging.ts",
-			"sha256": "0ab83df3ef8612a2ba403ac88c95c67c90aa5e5290c6f8428b87888afdc9e41c"
-		},
-		{
-			"path": "pi/chord/src/next/host/unbound.ts",
-			"sha256": "9813a6f692a2533950b84bbe8624ef062a34e9a0da83d6ef8099537e8827a014"
-		},
-		{
-			"path": "pi/chord/src/next/host/uuid.ts",
-			"sha256": "9f99b712e6fc86f6174ddff717d7f487566d0102af5e471be29887b63c626c94"
-		},
-		{
-			"path": "pi/chord/src/next/index.ts",
-			"sha256": "6049478deeeda1a22f3e6eb5e29a5aa23318d9b12049ed0c022967a3e488e00f"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/definition.ts",
-			"sha256": "4a61a28ee694335194f1f3a16b4fec62e0bacf6c02167c3de02bc146adb0c22a"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/index.ts",
-			"sha256": "078e01c7da808ed4d0d655fb50b02edd5f88975607d524ee4a2e7dde2a491121"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/internal.ts",
-			"sha256": "c85f23f95490a6d0a4521adc1092f9744af1c7b7268a46030f70de58354ae0b5"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/job.ts",
-			"sha256": "2ae67b1c39f80b08fb38f48b198a5f06e840d6e432615dda982e754b11476f96"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/persisted.ts",
-			"sha256": "ea56853b3ddb1dbe1d5ae1f6cb1b958de6fb4e3ab8857697a052effe7616207e"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/records.ts",
-			"sha256": "2e2f6e4061685ae770e55e1ee7cbde8cf13f09af5c46a20d772c73631167dd46"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/run-states.ts",
-			"sha256": "844976496978613718a168c821b913df5cafaf48e67ae682d9e8b0c5edfebb13"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/run.ts",
-			"sha256": "fdb958ec70eda721f661ffc0897eb13f9cfa46cded65a52d9762d65130504660"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/running.ts",
-			"sha256": "eea6d6dbedd2a4616a3ca72748118a6051a7da5b1a78982482279ce827aa3f98"
-		},
-		{
-			"path": "pi/chord/src/next/jobs/stored.ts",
-			"sha256": "039570aa16a51536e05641500463343cee9ef9e4dda332bff75e778e5498d2a7"
-		},
-		{
-			"path": "pi/chord/src/next/link/binary.ts",
-			"sha256": "3e8e83239652bc9f8cd08976ba332570ca983ba01ad4d631ca37e410d219aea3"
-		},
-		{
-			"path": "pi/chord/src/next/link/channel.ts",
-			"sha256": "03e50e3e8f2363ca30e57f8ae0ad840791d96ef074134305efda6508636422b5"
-		},
-		{
-			"path": "pi/chord/src/next/link/errors.ts",
-			"sha256": "826908459c5a5df684c93d01496def84edc58eb66df8fb47aa194de702d92977"
-		},
-		{
-			"path": "pi/chord/src/next/link/index.ts",
+			"path": "pi/chord/src/link/index.ts",
 			"sha256": "b5312e77d4495a9c489dfdc65067e6ab4bd92002b452b690176956b0c19426f2"
 		},
 		{
-			"path": "pi/chord/src/next/link/internal.ts",
+			"path": "pi/chord/src/link/internal.ts",
 			"sha256": "55ec7dcce180652a80f8594bcd3d88970f1787876494e32d978dd6d2ff4c33c1"
 		},
 		{
-			"path": "pi/chord/src/next/link/ipc.ts",
+			"path": "pi/chord/src/link/ipc.ts",
 			"sha256": "921e69b568aa1e8260fab84834bdeca2ddf5712feee0d9c100d7d0beb86ad37b"
 		},
 		{
-			"path": "pi/chord/src/next/link/link.ts",
+			"path": "pi/chord/src/link/link.ts",
 			"sha256": "cc23ae6cfc538068d5fd4dbf52fde1372d17cac87882b2bfead537591c7c098f"
 		},
 		{
-			"path": "pi/chord/src/next/link/message.ts",
-			"sha256": "9ba9b5503a2696c805c605427c0119de77cde2651c3971fee254b4ec7e1fc855"
+			"path": "pi/chord/src/link/message.ts",
+			"sha256": "d0a74009bd16b6c56bbe0c78b8bb7f15e939da9cf6deca450d81a0a092160ccd"
 		},
 		{
-			"path": "pi/chord/src/next/link/part.ts",
-			"sha256": "5c63556932f2d26a10f38339e4c4e38ebd93791b47a1948eb66e4cde523da2c1"
+			"path": "pi/chord/src/link/part.ts",
+			"sha256": "e8fcd50bd10728268f81b91243f0f770dcbacf4e4c8f5e3815f7b4131cd05ce4"
 		},
 		{
-			"path": "pi/chord/src/next/link/text.ts",
-			"sha256": "0cb515e42dc991fb3cf58c68b29667de1f6265097e86734d59c33e9aa3879928"
+			"path": "pi/chord/src/link/text.ts",
+			"sha256": "89f99e7ddac22213ec1ea7982b1327cf47315fd240ebc8434b1b71b850e1aacb"
 		},
 		{
-			"path": "pi/chord/src/next/link/values.ts",
-			"sha256": "360bd47ef866a6da9f37cc8ccb0e48b592dfe0363c7f0a5475bd2c1f7827809e"
+			"path": "pi/chord/src/link/values.ts",
+			"sha256": "f45347bb0d1514e13db60391e453f24c79ce8ac6a31b3e354c30bd3638ca0f35"
 		},
 		{
-			"path": "pi/chord/src/next/link/websocket.ts",
+			"path": "pi/chord/src/link/websocket.ts",
 			"sha256": "c1c466178e64c610fce0b68ff54c886d25796787dcffbdf4093af0584598b571"
 		},
 		{
-			"path": "pi/chord/src/next/registries/contribution.ts",
+			"path": "pi/chord/src/node/compression.ts",
+			"sha256": "7eb3cadd994aa7e35a12d471d58b80e40a50b1a329e0b6e5d7334516a6c2e2ae"
+		},
+		{
+			"path": "pi/chord/src/node/plugins/evaluate.ts",
+			"sha256": "b1e8ada5ac95261375b4b4021ebf9eb1954e4cbf143fca75b767bdaaa3403c4b"
+		},
+		{
+			"path": "pi/chord/src/node/plugins/runtime.ts",
+			"sha256": "1fb6e899d1d4cde71cf038ec023bdaaa1ff7af9b54616fd7026246961c7f4428"
+		},
+		{
+			"path": "pi/chord/src/node/plugins/stack.ts",
+			"sha256": "9407458339f0cc95ea6ed1775bb542930ca1d6691761eee12e0f209f8585c7cf"
+		},
+		{
+			"path": "pi/chord/src/registries/contribution.ts",
 			"sha256": "77af49ff5f8a3e90d5e6e05aec0b20438f1d8b11d19cd1b51852dd361fc33114"
 		},
 		{
-			"path": "pi/chord/src/next/registries/entries.ts",
+			"path": "pi/chord/src/registries/entries.ts",
 			"sha256": "6f26c5e7e04f6c239a1da5cfd004aeb308c4e3334dc85cc05805992d59d9ccd2"
 		},
 		{
-			"path": "pi/chord/src/next/registries/index.ts",
+			"path": "pi/chord/src/registries/index.ts",
 			"sha256": "e7e140058ac507e115338b64f4c920245b3daff42967a7f61980e5ad8bfd5910"
 		},
 		{
-			"path": "pi/chord/src/next/registries/internal.ts",
+			"path": "pi/chord/src/registries/internal.ts",
 			"sha256": "e28e9613162601ea207cbad698dd1352b43d5bcd08070a30381fd86bbc9c2d4e"
 		},
 		{
-			"path": "pi/chord/src/next/registries/record.ts",
-			"sha256": "c5740166c05814ce7b2bbfe32dd8e782eb9481ffa99376d6fa257f9b8f5268cf"
+			"path": "pi/chord/src/registries/record.ts",
+			"sha256": "4d97736d2b97b9e112f74b099109a3807fcfa38e0981755cbaf354a99bab9a21"
 		},
 		{
-			"path": "pi/chord/src/next/registries/registry.ts",
-			"sha256": "c8f5d3839733e87e52622b01687e98965b2300f04dec94f69e9ba8c1567188db"
+			"path": "pi/chord/src/registries/registry.ts",
+			"sha256": "a41baacd9db03801af84a40099ab2208ab480a6ac44fb107692096e46d657f94"
 		},
 		{
-			"path": "pi/chord/src/next/registries/value.ts",
-			"sha256": "33a031d24ed84798034c0101fa697bb68b66248dfc6d3ab06838c359d66f6cfa"
+			"path": "pi/chord/src/registries/value.ts",
+			"sha256": "efd7e3394186a0c752632ff3f90a0bbdcb0ca4dadbff0348ca094d7af81fc133"
 		},
 		{
-			"path": "pi/chord/src/next/remote/calls.ts",
+			"path": "pi/chord/src/remote/calls.ts",
 			"sha256": "0d35145aaa39e69ffedf6bdcba300cc54723cdbdc7afba89ef2e943d588a8823"
 		},
 		{
-			"path": "pi/chord/src/next/remote/consumer.ts",
-			"sha256": "671595de2faca8e262a7c08a23e3912dd22c443417372556c3e7d047e68859e4"
+			"path": "pi/chord/src/remote/consumer.ts",
+			"sha256": "17b4b2993f8da9e1a6f9f3dd13102539b654f94feadb975b7c741ab0bc2d2528"
 		},
 		{
-			"path": "pi/chord/src/next/remote/hold.ts",
-			"sha256": "794742948f528c371a2b450ef1c0b77e679e0c23d2f0f1fc5c7df333e65b5c85"
+			"path": "pi/chord/src/remote/hold.ts",
+			"sha256": "223f9c6b43e5f6f8e8265094dc67e457ed7f9f549dd500db860d209b29d1fad3"
 		},
 		{
-			"path": "pi/chord/src/next/remote/host-link.ts",
-			"sha256": "41b0c515c8a3931f3e14ece94ad5a6342adadb0df8d73ff68c94f71deca5c329"
+			"path": "pi/chord/src/remote/host-link.ts",
+			"sha256": "c682a523653e5bd87a1e1be8bff040e20519980f65f4f2a0d59ea91e2cef2d5e"
 		},
 		{
-			"path": "pi/chord/src/next/remote/internal.ts",
+			"path": "pi/chord/src/remote/internal.ts",
 			"sha256": "710c96d6aff32bd2c5215a519c650a3035575195f091b1835a696b9a7d2e79b3"
 		},
 		{
-			"path": "pi/chord/src/next/remote/path.ts",
+			"path": "pi/chord/src/remote/path.ts",
 			"sha256": "5ac81481f75e45a71aa76db8df29364a3283b8cd4c0bcd54dc838c36298f95ed"
 		},
 		{
-			"path": "pi/chord/src/next/remote/provider.ts",
-			"sha256": "80c41053167ec54af381063e959d334fd22e8be6e0cf56e791759bdcd8d0de58"
+			"path": "pi/chord/src/remote/provider.ts",
+			"sha256": "5e01b9db25f8a5e1eb14e7ee09fa8587d38823b9ff6eaa32c42d39433ceadf6c"
 		},
 		{
-			"path": "pi/chord/src/next/remote/relay.ts",
-			"sha256": "042cc2dc94e09ed2510637d7c676182155d5e3742387f4e4a4bc891d91c21dc1"
+			"path": "pi/chord/src/remote/relay.ts",
+			"sha256": "dcdd066a24b8466c604d7c0a12d12d8b30a5bc41ac6422269042282fd8656d70"
 		},
 		{
-			"path": "pi/chord/src/next/remote/remote-object.ts",
-			"sha256": "0f51db39176507434cde40a78ec839fb835c8ebb714e7453ddd9b18e21c0a0d1"
+			"path": "pi/chord/src/remote/remote-object.ts",
+			"sha256": "279e1858c0a82386b91d273bc3c351a63f85150dff7f4e8fccc4ec922d992469"
 		},
 		{
-			"path": "pi/chord/src/next/remote/replica.ts",
-			"sha256": "8092d72d68cf6d3c84524b1e5b1cba5434986f140cb32ab379f3ce985ea1d2d1"
-		},
-		{
-			"path": "pi/chord/src/next/state/batch.ts",
-			"sha256": "b372e417b58b66198f7c1f2e98071b065a9808d2d68704012b98c6966e2b57b3"
-		},
-		{
-			"path": "pi/chord/src/next/state/derive.ts",
-			"sha256": "de58e5cdd0910468bf38241adee1d911873f3dc147acd5e47f3943026bcce263"
-		},
-		{
-			"path": "pi/chord/src/next/state/index.ts",
-			"sha256": "ce895008fcd0be8bf7337dd0b067bd51ec23f9f2433dd7dd8ba20f7750ce3245"
-		},
-		{
-			"path": "pi/chord/src/next/state/internal.ts",
-			"sha256": "4e721f5c4de35521b1b7f28c46231e1d75c3d8b70669efb579aaacd4433f080f"
-		},
-		{
-			"path": "pi/chord/src/next/state/native-source.ts",
-			"sha256": "4fd025280b4cb696ff097a323eb31e3ecad3deaa983a442b243a95e10fe4c8f0"
-		},
-		{
-			"path": "pi/chord/src/next/state/watchable.ts",
-			"sha256": "2e85abd79bc631965ed6a28808ffb692e29c435eea35597a496579b1a25f85e2"
-		},
-		{
-			"path": "pi/chord/src/next/state/writable.ts",
-			"sha256": "9aecb1c40ef95cfef9e8ed852b387434fa698cf9ff11d24742d31d1c0738022d"
-		},
-		{
-			"path": "pi/chord/src/next/store/adapter.ts",
-			"sha256": "ed6d6d987361b2a56a827e5def2f5622fbb8c7346dfa659b38fa57113c75d039"
-		},
-		{
-			"path": "pi/chord/src/next/store/allocator.ts",
-			"sha256": "a937b6d24d9de66b1e87360e01d3cd8f827b8c03857f949adb4168aace251104"
-		},
-		{
-			"path": "pi/chord/src/next/store/applier.ts",
-			"sha256": "9aad1e0054daa46bf0e17bbe1031ca561cdfb60e6262958cb9fe93c73f5cdfd9"
-		},
-		{
-			"path": "pi/chord/src/next/store/apply-batch.ts",
-			"sha256": "718ac09098bd14bb99386c301b710446d58a4917ff97de94a5c45918e04f4b44"
-		},
-		{
-			"path": "pi/chord/src/next/store/archive.ts",
-			"sha256": "df212ed68eac425418c53f9812b4d11a41f584f9503b2aa9ae2d72749e6f87cc"
-		},
-		{
-			"path": "pi/chord/src/next/store/backend.ts",
-			"sha256": "d5bd4b85f78f3fe18b66d68d66367ab413855031089a08b76081f5694ad20bd5"
-		},
-		{
-			"path": "pi/chord/src/next/store/catalog.ts",
-			"sha256": "cac70ca406b58e0254f7cadb53e3b6986a4cbecf7a6ee797d339116fe78911dd"
-		},
-		{
-			"path": "pi/chord/src/next/store/claims.ts",
-			"sha256": "1da70cfe392fff78f896c5a42cb5d4d8d38b7d785f1c2665302e46637d216fc4"
-		},
-		{
-			"path": "pi/chord/src/next/store/columns.ts",
-			"sha256": "e9df754c1aaa852411bfb0d239069526478d5cc8cc57396fe0336194b405c0d0"
-		},
-		{
-			"path": "pi/chord/src/next/store/engine.ts",
-			"sha256": "2aab1963e58de8e431d752dffe4776be1089f35a4e4ea0e2c6bc3cd1d7e183cf"
-		},
-		{
-			"path": "pi/chord/src/next/store/evaluate.ts",
-			"sha256": "65e45a08db9c844e3ca7bddf4ae56d501520eac495d53abf6a37499f7f9b9857"
-		},
-		{
-			"path": "pi/chord/src/next/store/export.ts",
-			"sha256": "8d7153b6e3bc08bed708f106e77f692506ff83c06441f0352559b81d5cca0482"
-		},
-		{
-			"path": "pi/chord/src/next/store/expression.ts",
-			"sha256": "116cdde241dcc03feb8ed0d2962a3f987c478200a5a22495eab0e4530ed2d76e"
-		},
-		{
-			"path": "pi/chord/src/next/store/import.ts",
-			"sha256": "f606a4e97f17d522f932f369e239a8006bd4708311baeec8a185ee82b036840f"
-		},
-		{
-			"path": "pi/chord/src/next/store/index.ts",
-			"sha256": "22cb969601fc54766a1db1015f832edb0cd6a779d6d4ebc1b17bff9dfc260f02"
-		},
-		{
-			"path": "pi/chord/src/next/store/json-column.ts",
-			"sha256": "2f478e747ed9883fe1c588f73aaaf73c2f532c40cd20e846c52284aabf0a162e"
-		},
-		{
-			"path": "pi/chord/src/next/store/jsonl.ts",
-			"sha256": "c3d558f5e8360567012e72dc26fafab7f601c5b6dc9148eb83f67c7744375ced"
-		},
-		{
-			"path": "pi/chord/src/next/store/outbox.ts",
-			"sha256": "b231134db3f9aa1223f7d3173227cc807ddf7b4c06ceb4e292cd385d7fd9d588"
-		},
-		{
-			"path": "pi/chord/src/next/store/query.ts",
-			"sha256": "1746553e26fd8ce31324c5b830b87514194987967bf33d6d2b60f48664a1d35b"
-		},
-		{
-			"path": "pi/chord/src/next/store/refusal.ts",
-			"sha256": "a59ca45f3bc2659a1e074d5a317651ac5de92062618b4180904e1c41eaa96481"
-		},
-		{
-			"path": "pi/chord/src/next/store/rows.ts",
-			"sha256": "4406ddb1eb5aef6fefeabec37c8cf4e343b21bfa404a8acb15ebf049aef38950"
-		},
-		{
-			"path": "pi/chord/src/next/store/schema.ts",
-			"sha256": "01ea8d3150d5fa259dfe3bb5b140efa5e493e9cf0d52ee7183ebf9d6b0e8e97c"
-		},
-		{
-			"path": "pi/chord/src/next/store/sql.ts",
-			"sha256": "9fe9b740ecbf804ed3a5b1235a38e4a457d91553b535798b6cef807bc1fac367"
-		},
-		{
-			"path": "pi/chord/src/next/store/step.ts",
-			"sha256": "82bcc58972d02964eb507cb9bf24855e6926a6fe2a6e5e32fdc162e79c0aeaac"
-		},
-		{
-			"path": "pi/chord/src/next/store/store.ts",
-			"sha256": "6595ee8271a1a6055f43c1cdd36c9a6009a0b2aec067299b39d09f8ba6d82676"
-		},
-		{
-			"path": "pi/chord/src/next/store/table-changes.ts",
-			"sha256": "93304fddd14fc6fb4faf79e82584fb281942498b45e2c01436857a1de7439cf7"
-		},
-		{
-			"path": "pi/chord/src/next/store/table-evolve.ts",
-			"sha256": "987a1b20d1b029a82b9f7928f414cba70bae2fd02e5d517e3b955a5260feddf5"
-		},
-		{
-			"path": "pi/chord/src/next/store/table-handle.ts",
-			"sha256": "4ef40f914b9ee349f60654f8c08e02baca11f513305b20515b4cfe8a217284e2"
-		},
-		{
-			"path": "pi/chord/src/next/store/table-history.ts",
-			"sha256": "3e25c5842b386543e88824009d957bf0bfc537a3b6211c04b23eaca0d8325c22"
-		},
-		{
-			"path": "pi/chord/src/next/store/table-migration.ts",
-			"sha256": "4fe7b136f686bb8ff5c9bc47b3c12580733c873f25a16002000d31436cf51185"
-		},
-		{
-			"path": "pi/chord/src/next/store/table-writes.ts",
-			"sha256": "6a433c8fba57cc47ec921187ddc253da95f6ddf0fed2a1fef53469ca601e8018"
-		},
-		{
-			"path": "pi/chord/src/next/store/table.ts",
-			"sha256": "27b505606fdfbd533e0584a7953678a5a81824cc85c4beb904dbcbce239c413c"
-		},
-		{
-			"path": "pi/chord/src/next/store/text.ts",
-			"sha256": "1549b41f3974919ba25440a542eff1973d03cecb9d45d95e0506a8ed214e1638"
+			"path": "pi/chord/src/remote/replica.ts",
+			"sha256": "32462ae60f6b0220949c75a8279f7a398924f011e8268097a7a8d895d18c971a"
 		},
 		{
 			"path": "pi/chord/src/sqlite/database.ts",
@@ -639,11 +494,247 @@
 		},
 		{
 			"path": "pi/chord/src/sqlite/node.ts",
-			"sha256": "83b24baaa127f8b24adba495491a70eaff9b70cc3ad73f99055905395b12e986"
+			"sha256": "754f3e921e76ce990951b419791853b4d7a57cf1fc74e1fa697e2dea4cfa1a47"
 		},
 		{
 			"path": "pi/chord/src/sqlite/schema.ts",
 			"sha256": "156d8191d7bcfca84f04e3745323645b2102f270649fb9b2603985a812a12af7"
+		},
+		{
+			"path": "pi/chord/src/state/batch.ts",
+			"sha256": "105f25660e248aadf3e6da9291d0c033e4806c88462a9a9f56ce7ca8cf83103f"
+		},
+		{
+			"path": "pi/chord/src/state/derive.ts",
+			"sha256": "78b8a324b1db2ef2f1af0a87d93ce878cc6996c81b8102b7b410468c43f12510"
+		},
+		{
+			"path": "pi/chord/src/state/index.ts",
+			"sha256": "394ad4bbbcc567a3bd4834ec2a1ec99dad423f7870d85807a14debe2ade657b7"
+		},
+		{
+			"path": "pi/chord/src/state/internal.ts",
+			"sha256": "4e721f5c4de35521b1b7f28c46231e1d75c3d8b70669efb579aaacd4433f080f"
+		},
+		{
+			"path": "pi/chord/src/state/native-source.ts",
+			"sha256": "f8feac4ed1bf1ded001851099d7578d3bcf986129623f62a44a3599a8d9e5a62"
+		},
+		{
+			"path": "pi/chord/src/state/watchable.ts",
+			"sha256": "5f6ac2a8e4ad4a704bded24afe09fa4bdb9c0404c0a8b9c2a7dfb383d9d53cce"
+		},
+		{
+			"path": "pi/chord/src/state/writable.ts",
+			"sha256": "6b6bbf54fc265d7ee1c780357c9775b903216521af33a99be8d6f44d5cf5e475"
+		},
+		{
+			"path": "pi/chord/src/store/adapter.ts",
+			"sha256": "79d8468910a4ce6eb065ce2343ed3006a39be4d8a98b72ce13706694f5ef8ece"
+		},
+		{
+			"path": "pi/chord/src/store/allocator.ts",
+			"sha256": "a937b6d24d9de66b1e87360e01d3cd8f827b8c03857f949adb4168aace251104"
+		},
+		{
+			"path": "pi/chord/src/store/applier.ts",
+			"sha256": "3713391e840758233d1d46b686b664c7fa476e52be50f9461e9ea5c0421a718c"
+		},
+		{
+			"path": "pi/chord/src/store/apply-batch.ts",
+			"sha256": "48588d52f72b97d5e54bec130b2312a6ab4722f809e2b0fcd795ccdd6c03fc0b"
+		},
+		{
+			"path": "pi/chord/src/store/archive.ts",
+			"sha256": "d3b324311abc3f1efaa445e810c1ba840ee35864c008d4a58e515e4995452ab0"
+		},
+		{
+			"path": "pi/chord/src/store/backend.ts",
+			"sha256": "5ec04c545bd41a12f9bce7815eab0040f613df69a58b5b7f36adadb368f9d465"
+		},
+		{
+			"path": "pi/chord/src/store/catalog.ts",
+			"sha256": "3763da01e83b7b7cd5b0a80d059e2c940632f730930b4207673bf2528097e561"
+		},
+		{
+			"path": "pi/chord/src/store/claims.ts",
+			"sha256": "1da70cfe392fff78f896c5a42cb5d4d8d38b7d785f1c2665302e46637d216fc4"
+		},
+		{
+			"path": "pi/chord/src/store/columns.ts",
+			"sha256": "e9df754c1aaa852411bfb0d239069526478d5cc8cc57396fe0336194b405c0d0"
+		},
+		{
+			"path": "pi/chord/src/store/engine.ts",
+			"sha256": "f55b0bc7671fc94771564c8b4e382369278ca29da9d6e7b3176ed4e82b15bfe8"
+		},
+		{
+			"path": "pi/chord/src/store/evaluate.ts",
+			"sha256": "436b05221a42f71e313b791aad750a75b42bd5883508d26c4438364f1017d7b0"
+		},
+		{
+			"path": "pi/chord/src/store/export.ts",
+			"sha256": "dc966b803a1673ebbea088855ce3cba6555e490be74079917351b373a0ad69f6"
+		},
+		{
+			"path": "pi/chord/src/store/expression.ts",
+			"sha256": "02fb9272aba1218a65b3caa035e7e9d2f6562b1cce25602d47682ae18c0e3466"
+		},
+		{
+			"path": "pi/chord/src/store/import.ts",
+			"sha256": "59dd91de20c54d4cd65de55f4bff21185d758eace3ec094245bea8295564aaff"
+		},
+		{
+			"path": "pi/chord/src/store/index.ts",
+			"sha256": "22cb969601fc54766a1db1015f832edb0cd6a779d6d4ebc1b17bff9dfc260f02"
+		},
+		{
+			"path": "pi/chord/src/store/json-column.ts",
+			"sha256": "c8e3deea36a652a482ded5791a9e166049073bbdb219463833b59ed071fb2fb6"
+		},
+		{
+			"path": "pi/chord/src/store/jsonl.ts",
+			"sha256": "c3d558f5e8360567012e72dc26fafab7f601c5b6dc9148eb83f67c7744375ced"
+		},
+		{
+			"path": "pi/chord/src/store/live-query.ts",
+			"sha256": "a92f0b135b458a60ac06e90c99080a434ffaf4340eab787ef06e68d84fd1dd99"
+		},
+		{
+			"path": "pi/chord/src/store/outbox.ts",
+			"sha256": "399a84863497b47c830c98846c8368b99cd554b3adda93437db47d63bb9ba849"
+		},
+		{
+			"path": "pi/chord/src/store/query.ts",
+			"sha256": "01a376dbfdedc7e7a4d76799b8b052602b08d2ac48a93c136da58d0c13be8cfc"
+		},
+		{
+			"path": "pi/chord/src/store/refusal.ts",
+			"sha256": "a59ca45f3bc2659a1e074d5a317651ac5de92062618b4180904e1c41eaa96481"
+		},
+		{
+			"path": "pi/chord/src/store/rows.ts",
+			"sha256": "5291820b9ba2beb1122e8b7ebf4402795fc82211a0f6eb407cf2e81f28187ee4"
+		},
+		{
+			"path": "pi/chord/src/store/schema.ts",
+			"sha256": "f6dc1021c11a8776ce53d6c6c94839cef30a29c9b0fd850afcf152b00bbb0116"
+		},
+		{
+			"path": "pi/chord/src/store/sql.ts",
+			"sha256": "427383ce32ffbdec63152ee1fc1faf71d6a1e8c27e29d4d6edad32a393f01d4e"
+		},
+		{
+			"path": "pi/chord/src/store/step.ts",
+			"sha256": "22e927034affde6c77da680d380c834df3a62261267d02425136f22506a0f9bf"
+		},
+		{
+			"path": "pi/chord/src/store/store.ts",
+			"sha256": "002d713fa42f8c1afeef829000c1442c419da696b06d157142d2935d267a9626"
+		},
+		{
+			"path": "pi/chord/src/store/table-changes.ts",
+			"sha256": "76aec9528e59273a5c2dec232f5dd14b713db2e9d49b8308466fc02783d4188c"
+		},
+		{
+			"path": "pi/chord/src/store/table-evolve.ts",
+			"sha256": "987a1b20d1b029a82b9f7928f414cba70bae2fd02e5d517e3b955a5260feddf5"
+		},
+		{
+			"path": "pi/chord/src/store/table-handle.ts",
+			"sha256": "917480fdc8e60329bebc9c0bf8b63a761f971846c5bc0d25f6c4cf9377aee68e"
+		},
+		{
+			"path": "pi/chord/src/store/table-history.ts",
+			"sha256": "3e25c5842b386543e88824009d957bf0bfc537a3b6211c04b23eaca0d8325c22"
+		},
+		{
+			"path": "pi/chord/src/store/table-migration.ts",
+			"sha256": "762076d75683a85bf73c8f19467e053306c8fcdca4ca6f088e9175222e6cb86f"
+		},
+		{
+			"path": "pi/chord/src/store/table-writes.ts",
+			"sha256": "17687d3ee6091abfb20d2707b26c1fff8950576e130d678b85fc38c245027668"
+		},
+		{
+			"path": "pi/chord/src/store/table.ts",
+			"sha256": "a846730a5d5e3c49ec6f69359d900a0989e96bad7c5e6de9356b194990ef6e32"
+		},
+		{
+			"path": "pi/chord/src/store/text.ts",
+			"sha256": "1549b41f3974919ba25440a542eff1973d03cecb9d45d95e0506a8ed214e1638"
+		},
+		{
+			"path": "pi/chord/src/surfaces/active-language.ts",
+			"sha256": "1ef415ca186e8937ae30d66d5fa939e188588fc801bf662cdea7082be0d8b2d3"
+		},
+		{
+			"path": "pi/chord/src/surfaces/active-theme.ts",
+			"sha256": "4ff8b1a2a0b2838f3e4f1605551f350ccc269e37dada61dc7883f27fef3608d5"
+		},
+		{
+			"path": "pi/chord/src/surfaces/client.ts",
+			"sha256": "969b4a518ee8863d9724a76bb5962b9161f5b400e5365f8539fcedb16e8d46b5"
+		},
+		{
+			"path": "pi/chord/src/surfaces/connection.ts",
+			"sha256": "6888e2d8e8a057c7e5c13b8e3966660102bc790886d727f388089eb41179cf3b"
+		},
+		{
+			"path": "pi/chord/src/surfaces/format.ts",
+			"sha256": "d32891b442c251c405e8641f550cedac5293a0db58852bed6b122fe395295cdb"
+		},
+		{
+			"path": "pi/chord/src/surfaces/index.ts",
+			"sha256": "b11cc39a23cf07a38b4befff042d77a4f7d1d6ef006867250ff35a9df8b7731a"
+		},
+		{
+			"path": "pi/chord/src/surfaces/language.ts",
+			"sha256": "a254cc3ab6c49f4fb4db50db434053320886563d79f68d8ecdfb06a7dce52177"
+		},
+		{
+			"path": "pi/chord/src/surfaces/loaded.ts",
+			"sha256": "fe01c801e4c5ff4d2121f718b42c63dc5eb032d68ad522c16fbad3e0b948d589"
+		},
+		{
+			"path": "pi/chord/src/surfaces/locale-choice.ts",
+			"sha256": "d91e2f37d50fe1aca1556014b069aff84c2804a9e856622f43edc3626a2887c9"
+		},
+		{
+			"path": "pi/chord/src/surfaces/messages.ts",
+			"sha256": "fd1667a1f1661e17e6c0c94e6ce14c90c66943efb251e6ed84d9e576b56da08a"
+		},
+		{
+			"path": "pi/chord/src/surfaces/page-state.ts",
+			"sha256": "595a18765a88b7c598d92d6cabbf7acff22c3c4d11e043ba03d35f2fa62b9d15"
+		},
+		{
+			"path": "pi/chord/src/surfaces/preference.ts",
+			"sha256": "65b4ca2965118122f76a9b8e2aaf4467d72378f9e89189d164cabf16ba8d1cee"
+		},
+		{
+			"path": "pi/chord/src/surfaces/registered.ts",
+			"sha256": "f5c25fc87437144daf0886934380edbd660bc4f059f2481047196d083c4226e7"
+		},
+		{
+			"path": "pi/chord/src/surfaces/scripts.ts",
+			"sha256": "000259a1abf41185a0cb62090c8d06d5c364b0ffcde8d1f1ebfe5fbb5f8fbd18"
+		},
+		{
+			"path": "pi/chord/src/surfaces/theme-choice.ts",
+			"sha256": "6072e9bb31b9b02a55eef1bb27f32f2ab665a34921cc616dd8964cb23c9d5f8d"
+		},
+		{
+			"path": "pi/chord/src/surfaces/themes.ts",
+			"sha256": "6c4a63554601141afec87ddd9677e0d889a5ccee119c4a94c098f8b02267a65b"
+		},
+		{
+			"path": "pi/chord/src/surfaces/translations.ts",
+			"sha256": "2d049b486b9eab22812fa18d0e6c0a638fc2fd8aee310e98876f3f91fcbbe823"
+		},
+		{
+			"path": "pi/chord/src/telemetry.ts",
+			"sha256": "88cba188b5df259fab23e6fa33c4ba0fa35f6e75b2ed7fbb68dc474a0db8d91f"
 		},
 		{
 			"path": "pi/chord/src/watch.ts",
@@ -651,11 +742,11 @@
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/dist/index.js",
-			"sha256": "b34be60c5fac72aefc31e9fddd80aafb32d2a76332a49ce42887555990e15da6"
+			"sha256": "36c7065227f131fbfb47edf0b87085d47f661c0c0d52195d1b412161114a34bd"
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/dist/memory.js",
-			"sha256": "bb707191048dd416144d4c50499a8d7adab97e2d3c416e80da4e04cb04bf7c4b"
+			"sha256": "48b26f2d984de512dc1b0c8d4e9527089a9c4ea361b6859a06396469299e9ae6"
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/dist/metrics.js",
@@ -667,19 +758,19 @@
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/dist/render.js",
-			"sha256": "e440a5574584926e2b239d1ac6103d612601da6acb56add208a06a9dfc1a1b7d"
+			"sha256": "50d3842b269917fc75c85df7200ae0f91d57f369974f3f22f3c666ab926e1cb7"
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/package.json",
 			"sha256": "6e9dbd90ae345976c464f9b8b4540b117d4c05aa670202b53a732e06af737ef6"
 		},
 		{
-			"path": "pi/schema/LICENSES/typebox-LICENSE",
+			"path": "pi/schema/THIRD_PARTY_NOTICES/typebox-LICENSE",
 			"sha256": "e8a7cc256941a26ba8234f04390165243a4d42f74fd6491934140605bf7eae2d"
 		},
 		{
 			"path": "pi/schema/package.json",
-			"sha256": "88f3e22dc6830ed0a7dc287ce82dfc63a0958483143031e6f0c462183ad6177c"
+			"sha256": "48d14ec4c8ca986caf9928e226c9239002c45786fbed0abc1369cf119789f05e"
 		},
 		{
 			"path": "pi/schema/src/annotations.ts",
@@ -687,31 +778,31 @@
 		},
 		{
 			"path": "pi/schema/src/builders.ts",
-			"sha256": "99935e247a7031d27164e0619d215cc6fd1f7ddbeb34ef1f7de5187a8ff972c3"
+			"sha256": "24ddac642ce8dc3b7ee61b7fb5b406e8a4e5f120383f9c4b0f761e1dc3eeebdc"
 		},
 		{
 			"path": "pi/schema/src/checks.ts",
-			"sha256": "3190cb5d2d2228fc699c2c4442bc019676948c7acff17ef99359580a587bd849"
+			"sha256": "2f8f2bfbc03da9af440cc76d0b72714f31c65ec1e4afb4bdddcb319d5498e6fd"
 		},
 		{
 			"path": "pi/schema/src/coerce.ts",
-			"sha256": "e7949b8e3fa3268b0a0fc8f57f177c644ac0f36a32c78f94aee2789d349f5f26"
+			"sha256": "24082dc163740800b6e692e33ace6af4659c974d07d2be1f8b2a2b58c0d873e5"
 		},
 		{
 			"path": "pi/schema/src/compiler.ts",
-			"sha256": "cb05465b48f72f6d8c8c4eb7926c54ae970e8bf147ebdbb90a8920382dc9a74e"
+			"sha256": "68d686ea84b1340e3f2c247e6f5aaf76049e42cff3199636f7059c58821a92e4"
 		},
 		{
 			"path": "pi/schema/src/explain.ts",
-			"sha256": "48e3cc21b452384a6018ea001e4b7f5522b0cd5b395935d00f019389b987bb31"
+			"sha256": "660f5da517156522da13b6d4d0971c5454be5a407a9d311e25df2d47bf573fda"
 		},
 		{
 			"path": "pi/schema/src/index.ts",
-			"sha256": "6cea71fd7d23812d6928bfed24e1f11185b535d6d4dc6a99667dd59f94df565c"
+			"sha256": "a346d771ead9f32e78c3823df38547486528f53b8026db7ec3f83cec36465688"
 		},
 		{
 			"path": "pi/schema/src/resolver.ts",
-			"sha256": "15f19933cba1c9f25e34f58ab0554015a9ae5a18c0d88d468eaa188d8b3dd668"
+			"sha256": "f928532fb72d5f6ee7bebbdc9207dee63ee2a465644e1ff238a237e6b38c720c"
 		},
 		{
 			"path": "pi/schema/src/shared.ts",
@@ -719,7 +810,7 @@
 		},
 		{
 			"path": "pi/schema/src/validator.ts",
-			"sha256": "b92f177753d9d872a79fc54727e946c81660ebdc8a91143e8df01febe45ba3a4"
+			"sha256": "173734355e3c770dad137503635e87e2438fc2769f37800470cb0b555ea182cd"
 		}
 	]
 }
