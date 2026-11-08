@@ -23,12 +23,6 @@ type SecretMeta struct {
 	GitHosts []string
 }
 
-// presetExtras are, per secret preset id, what helps tools in the VM pick a secret up (SECRET_PRESETS in
-// secret-presets.ts, the fields the launcher gets).
-var presetExtras = map[string]struct{ aliases, gitHosts []string }{
-	"github": {aliases: []string{"GH_TOKEN"}, gitHosts: []string{"github.com"}},
-}
-
 // SecretsPath is the file of the sandboxes' secrets in directory.
 func SecretsPath(directory string) string { return filepath.Join(directory, "sandbox-secrets.json") }
 
@@ -73,7 +67,7 @@ func SandboxSecrets(_ context.Context, directory, sandbox string) (meta []Secret
 			return nil, nil, errInvalidSecrets
 		}
 		preset, _ := secret.Value("preset").(string)
-		extras := presetExtras[preset]
+		extras := presetExtrasOf(preset)
 		meta = append(meta, SecretMeta{Name: name, Hosts: hosts, Version: version, Aliases: slices.Clone(extras.aliases), GitHosts: slices.Clone(extras.gitHosts)})
 		values.Set(name, secretValue)
 	}
@@ -92,4 +86,15 @@ func stringList(value any) ([]string, bool) {
 		}
 	}
 	return out, true
+}
+
+// presetExtrasOf is what the secret preset id adds for the launcher (the fields `sandboxSecrets` copies of SECRET_PRESETS):
+// none for an unknown preset or one without them.
+func presetExtrasOf(id string) (extras struct{ aliases, gitHosts []string }) {
+	for _, preset := range SecretPresets {
+		if preset.ID == id {
+			extras.aliases, extras.gitHosts = preset.Aliases, preset.GitHosts
+		}
+	}
+	return extras
 }
