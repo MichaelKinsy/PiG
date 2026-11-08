@@ -431,10 +431,6 @@
     "go": "durable/storage/store/storage.go#StoreStorage.VisibleEntry",
     "reason": "Pi packages/durable/src/storage/store/storage.ts:53 declares StoredEntry = { readonly entry: EntryRecord; readonly commitSeq: Seq } as a file-local type alias, and StoreStorage.entry(conversationId, id, context) returns Promise<StoredEntry | undefined> (storage.ts:211), the visible-entry overload that Go splits out as StoreStorage.VisibleEntry (a Go method has one signature, as for MemoryStorage and SqliteStorage). It is the inline object type Storage.entry returns in types.ts:1374, which the ported rows of MemoryStorage and SqliteStorage match against durable.EntryAt; Go StoreStorage.VisibleEntry returns *durable.EntryAt, the struct { Entry EntryRecord; CommitSeq Seq } (durable/types.go:1355), nil for no entry. The detector cannot read a file-local alias, so the shape check stays undecided; the same member is exercised by durable/storage/store/store_storage_test.go and the durabletest Storage suite."
   },
-  "pkg:mcp/.#McpHttpServerConfig::property:headers": {
-    "go": "coding/extension/mcp_servers.go#McpServerConfig.Headers",
-    "reason": "Pi config.ts types `headers` as Record<string, string>, a JavaScript object whose keys keep their insertion order, which the order of the entries decides (headers are sent, and environment variables are set, in that order). Go's map has no order, so McpServerConfig.Headers is *OrderedStrings, a string map that keeps its JSON key order (orderedjson.Object); it holds the same names and string values, decodes from and encodes to the same JSON object, and Keys/Get read it in order. TestValidateMcpServerConfig* in coding/extension/mcp_servers_test.go keep the order through validation."
-  },
   "pkg:mcp/.#McpOutputSaver::call:0": {
     "go": "mcp/output_limit.go#McpOutputSaver",
     "reason": "Pi output-limit.ts:15 types McpOutputSaver as (data: string | Uint8Array, extension: string) => Promise<string>: the data is text or bytes, and the saver writes it to a file as it is. Go's McpOutputSaver is func(data []byte, extension string) (string, error): text is its UTF-8 bytes (limitMcpContent passes the combined text as []byte, and coding/mcpext.SaveToTempFile writes the bytes with outputfiles.WriteFile), so a file written from a string and one written from the same bytes are the same file; the Promise is the blocking call that returns the path or the error. TestLimitMcpContentCutsTheMiddleOfLongerTextSavesTheFullTextAndKeepsImages (mcp/output_limit_pi_test.go) asserts the saved bytes and extension."
@@ -442,10 +438,6 @@
   "pkg:mcp/.#McpPipe::property:exited": {
     "go": "mcp/pipe.go#McpPipe.Exited",
     "reason": "Pi pipe.ts:17 declares `readonly exited: Promise<unknown>`: it settles when the program has ended, whatever the reason, and also after close(); PipeTransport awaits it and treats a rejection that close() did not cause as the exit failure. Go has no promise property: McpPipe.Exited() (int, error) blocks until the program has ended and returns its exit code, or the error that ended it (Pi's rejection); it may be called any number of times and after Close, as a settled promise may be awaited again. TestMcpPipeWritesClosesStdinAndKillsAProgram and TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses assert both outcomes."
-  },
-  "pkg:mcp/.#McpStdioServerConfig::property:env": {
-    "go": "coding/extension/mcp_servers.go#McpServerConfig.Env",
-    "reason": "Pi config.ts types `env` as Record<string, string>, a JavaScript object whose keys keep their insertion order, which the order of the entries decides (headers are sent, and environment variables are set, in that order). Go's map has no order, so McpServerConfig.Env is *OrderedStrings, a string map that keeps its JSON key order (orderedjson.Object); it holds the same names and string values, decodes from and encodes to the same JSON object, and Keys/Get read it in order. TestValidateMcpServerConfig* in coding/extension/mcp_servers_test.go keep the order through validation."
   },
   "pkg:mcp/.#isMcpServerOverride::call:0": {
     "go": "mcp/config.go#IsMcpServerOverride",
