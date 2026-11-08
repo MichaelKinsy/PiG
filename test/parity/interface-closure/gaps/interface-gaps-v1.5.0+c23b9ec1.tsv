@@ -1,126 +1,16 @@
-pkg:agent/.#AgentLoopConfig	agent	child-gap	agent/standalone_loop.go#AgentLoopConfig
-pkg:agent/.#AgentLoopConfig::property:disableContinuation	agent	member-missing	agent/standalone_loop.go#AgentLoopConfig
 pkg:agent/.#ProxyStreamOptions	agent	child-gap	agent/proxy.go#ProxyStreamOptions
-pkg:agent/.#ProxyStreamOptions::property:disableContinuation	agent	member-missing	agent/proxy.go#ProxyStreamOptions
-pkg:ai/.#AnthropicMessagesCompat	ai	child-gap	ai/types.go#ModelCompat
-pkg:ai/.#AnthropicMessagesCompat::property:supportsMessageThreads	ai	member-missing	ai/types.go#ModelCompat
-pkg:ai/.#AnthropicOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#AnthropicOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#AzureOpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#AzureOpenAIResponsesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#BedrockOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#BedrockOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#GoogleOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#GoogleOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#GoogleVertexOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#GoogleVertexOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#KnownProvider	ai	type-mismatch	ai/known_provider.go#KnownProvider
-pkg:ai/.#MistralOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#MistralOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#ModelsSimpleStreamOptions	ai	type-mismatch	ai/types.go#StreamOptions
-pkg:ai/.#OpenAICodexResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#OpenAICodexResponsesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#OpenAICompletionsCompat	ai	child-gap	ai/openai.go#OpenAICompat
-pkg:ai/.#OpenAICompletionsCompat::property:promptCacheKeyMode	ai	member-missing	ai/openai.go#OpenAICompat
-pkg:ai/.#OpenAICompletionsCompat::property:requiresNonNullAssistantContent	ai	member-missing	ai/openai.go#OpenAICompat
-pkg:ai/.#OpenAICompletionsCompat::property:requiresToolsWithToolHistory	ai	member-missing	ai/openai.go#OpenAICompat
-pkg:ai/.#OpenAICompletionsOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#OpenAICompletionsOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#OpenAIResponsesCompat	ai	child-gap	ai/types.go#ModelCompat
-pkg:ai/.#OpenAIResponsesCompat::property:promptCacheKeyMode	ai	member-missing	ai/types.go#ModelCompat
-pkg:ai/.#OpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#OpenAIResponsesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#PiMessagesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#PiMessagesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#SimpleStreamOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#SimpleStreamOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/.#StreamOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/.#StreamOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/api/anthropic-messages#AnthropicOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/anthropic-messages#AnthropicOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/api/azure-openai-config#AzureEndpointOptions	ai	child-gap	ai/azure_config.go#AzureEndpointOptions
-pkg:ai/api/azure-openai-config#AzureEndpointOptions::property:disableContinuation	ai	member-missing	ai/azure_config.go#AzureEndpointOptions
-pkg:ai/api/azure-openai-responses#AzureOpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/azure-openai-responses#AzureOpenAIResponsesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/api/bedrock-converse-stream#BedrockOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/bedrock-converse-stream#BedrockOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
+pkg:agent/.#ProxyStreamOptions::property:disableContinuation	agent	not-exercised	agent/proxy.go#ProxyStreamOptions.DisableContinuation
 pkg:ai/api/bedrock-converse-stream.lazy#setBedrockProviderLoader	ai	no-go-symbol	
 pkg:ai/api/bedrock-converse-stream.lazy#setBedrockProviderLoader::call:0	ai	child-gap	
-pkg:ai/api/google-generative-ai#GoogleOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/google-generative-ai#GoogleOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/api/google-vertex#GoogleVertexOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/google-vertex#GoogleVertexOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/api/mistral-conversations#MistralOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/mistral-conversations#MistralOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/api/openai-codex-responses#OpenAICodexResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/openai-codex-responses#OpenAICodexResponsesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/api/openai-completions#OpenAICompletionsOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/openai-completions#OpenAICompletionsOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/api/openai-completions#convertMessages	ai	child-gap	ai/openai.go#ConvertCompletionsMessages
-pkg:ai/api/openai-completions#convertMessages::call:0	ai	signature-mismatch	ai/openai.go#ConvertCompletionsMessages
-pkg:ai/api/openai-responses#OpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/openai-responses#OpenAIResponsesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/api/pi-messages#PiMessagesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/api/pi-messages#PiMessagesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#AnthropicMessagesCompat	ai	child-gap	ai/types.go#ModelCompat
-pkg:ai/compat#AnthropicMessagesCompat::property:supportsMessageThreads	ai	member-missing	ai/types.go#ModelCompat
-pkg:ai/compat#AnthropicOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#AnthropicOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#AzureOpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#AzureOpenAIResponsesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#BedrockOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#BedrockOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
 pkg:ai/compat#BuiltinProvider	ai	undecidable	ai/known_provider.go#KnownProvider
-pkg:ai/compat#GoogleOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#GoogleOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#GoogleVertexOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#GoogleVertexOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#KnownProvider	ai	type-mismatch	ai/known_provider.go#KnownProvider
-pkg:ai/compat#MistralOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#MistralOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#ModelsSimpleStreamOptions	ai	type-mismatch	ai/types.go#StreamOptions
-pkg:ai/compat#OpenAICodexResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#OpenAICodexResponsesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#OpenAICompletionsCompat	ai	child-gap	ai/openai.go#OpenAICompat
-pkg:ai/compat#OpenAICompletionsCompat::property:promptCacheKeyMode	ai	member-missing	ai/openai.go#OpenAICompat
-pkg:ai/compat#OpenAICompletionsCompat::property:requiresNonNullAssistantContent	ai	member-missing	ai/openai.go#OpenAICompat
-pkg:ai/compat#OpenAICompletionsCompat::property:requiresToolsWithToolHistory	ai	member-missing	ai/openai.go#OpenAICompat
-pkg:ai/compat#OpenAICompletionsOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#OpenAICompletionsOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#OpenAIResponsesCompat	ai	child-gap	ai/types.go#ModelCompat
-pkg:ai/compat#OpenAIResponsesCompat::property:promptCacheKeyMode	ai	member-missing	ai/types.go#ModelCompat
-pkg:ai/compat#OpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#OpenAIResponsesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#PiMessagesOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#PiMessagesOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#SimpleStreamOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#SimpleStreamOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
-pkg:ai/compat#StreamOptions	ai	child-gap	ai/types.go#StreamOptions
-pkg:ai/compat#StreamOptions::property:disableContinuation	ai	member-missing	ai/types.go#StreamOptions
 pkg:ai/compat#setBedrockProviderLoader	ai	no-go-symbol	
 pkg:ai/compat#setBedrockProviderLoader::call:0	ai	child-gap	
 pkg:ai/lazy-bedrock-provider#registerLazyBedrockProvider	ai	no-go-symbol	
 pkg:ai/lazy-bedrock-provider#registerLazyBedrockProvider::call:0	ai	child-gap	
 pkg:ai/lazy-oauth#registerLazyOAuthFlows	ai	no-go-symbol	
 pkg:ai/lazy-oauth#registerLazyOAuthFlows::call:0	ai	child-gap	
-pkg:ai/models#ModelsSimpleStreamOptions	ai	type-mismatch	ai/types.go#StreamOptions
 pkg:ai/providers/all#BuiltinProvider	ai	no-go-symbol	
-pkg:ai/providers/compat-schema#AnthropicMessagesCompat	ai	child-gap	ai/types.go#AnthropicMessagesCompat
-pkg:ai/providers/compat-schema#AnthropicMessagesCompat::property:supportsMessageThreads	ai	member-missing	ai/types.go#AnthropicMessagesCompat
-pkg:ai/providers/compat-schema#OpenAICompletionsCompat	ai	child-gap	ai/openai.go#OpenAICompat
-pkg:ai/providers/compat-schema#OpenAICompletionsCompat::property:promptCacheKeyMode	ai	member-missing	ai/openai.go#OpenAICompat
-pkg:ai/providers/compat-schema#OpenAICompletionsCompat::property:requiresNonNullAssistantContent	ai	member-missing	ai/openai.go#OpenAICompat
-pkg:ai/providers/compat-schema#OpenAICompletionsCompat::property:requiresToolsWithToolHistory	ai	member-missing	ai/openai.go#OpenAICompat
-pkg:ai/providers/compat-schema#OpenAIResponsesCompat	ai	child-gap	ai/types.go#OpenAIResponsesCompat
-pkg:ai/providers/compat-schema#OpenAIResponsesCompat::property:promptCacheKeyMode	ai	member-missing	ai/types.go#OpenAIResponsesCompat
 pkg:ai/providers/compat-schema#ProviderCompat	ai	type-mismatch	internal/codingagent/model_registry.go#providerCompat
-pkg:ai/providers/qwen-token-plan-individual-cn#qwenTokenPlanIndividualCnProvider	ai	no-go-symbol	
-pkg:ai/providers/qwen-token-plan-individual-cn#qwenTokenPlanIndividualCnProvider::call:0	ai	child-gap	
-pkg:ai/providers/qwen-token-plan-individual-cn.models#QWEN_TOKEN_PLAN_INDIVIDUAL_CN_CLASSIFIER_MODELS	ai	no-go-symbol	
-pkg:ai/providers/qwen-token-plan-individual-cn.models#QWEN_TOKEN_PLAN_INDIVIDUAL_CN_IMAGE_MODELS	ai	no-go-symbol	
-pkg:ai/providers/qwen-token-plan-individual-cn.models#QWEN_TOKEN_PLAN_INDIVIDUAL_CN_MODELS	ai	no-go-symbol	
-pkg:ai/utils/error-body#withCauseDetail	ai	no-go-symbol	
-pkg:ai/utils/error-body#withCauseDetail::call:0	ai	child-gap	
 pkg:chord/.#AcceptsTable	chord	undecidable	chord/next/contracts/accepts.go#AcceptsTable
 pkg:chord/.#AddedColumn	chord	no-go-symbol	
 pkg:chord/.#Address	chord	undecidable	chord/next/contracts/host_kind.go#Address
@@ -260,13 +150,6 @@ pkg:chord/.#KeyedHandle::property:change	chord	child-gap	chord/next/documents/ha
 pkg:chord/.#KeyedHandle::property:change::call:0	chord	undecidable	chord/next/documents/handles.go#KeyedHandle.Change
 pkg:chord/.#KeyedHandle::property:keys	chord	child-gap	chord/next/documents/handles.go#KeyedHandle.Keys
 pkg:chord/.#KeyedHandle::property:keys::call:0	chord	undecidable	chord/next/documents/handles.go#KeyedHandle.Keys
-pkg:chord/.#KeyedWatchable	chord	child-gap	chord/next/contracts/contract.go#KeyedWatchable
-pkg:chord/.#KeyedWatchable::property:at	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.At
-pkg:chord/.#KeyedWatchable::property:at::call:0	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.At
-pkg:chord/.#KeyedWatchable::property:get	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Get
-pkg:chord/.#KeyedWatchable::property:get::call:0	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Get
-pkg:chord/.#KeyedWatchable::property:watch	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Watch
-pkg:chord/.#KeyedWatchable::property:watch::call:0	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Watch
 pkg:chord/.#KindShape	chord	no-go-symbol	
 pkg:chord/.#Language	chord	no-go-symbol	
 pkg:chord/.#LanguageFollower	chord	no-go-symbol	
@@ -404,12 +287,8 @@ pkg:chord/.#Static	chord	no-go-symbol
 pkg:chord/.#Step	chord	child-gap	chord/next/store/step.go#Step
 pkg:chord/.#Step::property:rows	chord	member-missing	chord/next/store/step.go#Step
 pkg:chord/.#Store	chord	child-gap	chord/next/store/store.go#Store
-pkg:chord/.#Store::property:close	chord	not-exercised	chord/next/store/store.go#Store.Close
-pkg:chord/.#Store::property:close::call:0	chord	not-exercised	chord/next/store/store.go#Store.Close
-pkg:chord/.#Store::property:export	chord	not-exercised	chord/next/store/store.go#Store.Export
+pkg:chord/.#Store::property:export	chord	child-gap	chord/next/store/store.go#Store.Export
 pkg:chord/.#Store::property:export::call:0	chord	undecidable	chord/next/store/store.go#Store.Export
-pkg:chord/.#Store::property:lastSeq	chord	not-exercised	chord/next/store/store.go#Store.LastSeq
-pkg:chord/.#Store::property:outbox	chord	not-exercised	chord/next/store/store.go#Store.Outbox
 pkg:chord/.#StoreSelf	chord	child-gap	chord/next/host/host_attempt.go#StoreSelf
 pkg:chord/.#StoreSelf::property:contribute	chord	not-exercised	chord/next/host/host_attempt.go#StoreSelf.Contribute
 pkg:chord/.#StoreSelf::property:contribute::call:0	chord	undecidable	chord/next/host/host_attempt.go#StoreSelf.Contribute
@@ -799,9 +678,9 @@ pkg:chord/plugins#PluginError::property:problems	chord	member-missing	chord/next
 pkg:chord/plugins#PluginError::property:required	chord	member-missing	chord/next/data/errors.go#PluginError
 pkg:chord/plugins#PluginRoot	chord	no-go-symbol	
 pkg:chord/plugins#PluginRuntime	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime
-pkg:chord/plugins#PluginRuntime::property:load	chord	not-exercised	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
+pkg:chord/plugins#PluginRuntime::property:load	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
 pkg:chord/plugins#PluginRuntime::property:load::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
-pkg:chord/plugins#PluginRuntime::property:reload	chord	not-exercised	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
+pkg:chord/plugins#PluginRuntime::property:reload	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
 pkg:chord/plugins#PluginRuntime::property:reload::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
 pkg:chord/plugins#PluginSource	chord	no-go-symbol	
 pkg:chord/plugins#Plugins	chord	child-gap	chord/nextnode/plugins/plugins_plugins.go#Plugins
@@ -866,9 +745,9 @@ pkg:chord/plugins/runtime#PluginError::property:failed	chord	member-missing	chor
 pkg:chord/plugins/runtime#PluginError::property:problems	chord	member-missing	chord/next/data/errors.go#PluginError
 pkg:chord/plugins/runtime#PluginError::property:required	chord	member-missing	chord/next/data/errors.go#PluginError
 pkg:chord/plugins/runtime#PluginRuntime	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime
-pkg:chord/plugins/runtime#PluginRuntime::property:load	chord	not-exercised	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
+pkg:chord/plugins/runtime#PluginRuntime::property:load	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
 pkg:chord/plugins/runtime#PluginRuntime::property:load::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
-pkg:chord/plugins/runtime#PluginRuntime::property:reload	chord	not-exercised	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
+pkg:chord/plugins/runtime#PluginRuntime::property:reload	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
 pkg:chord/plugins/runtime#PluginRuntime::property:reload::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
 pkg:chord/plugins/runtime#RuntimeLoad	chord	type-mismatch	chord/nextnode/plugins/plugins_runtime.go#RuntimeLoad
 pkg:chord/plugins/runtime#createPluginRuntime	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime
@@ -1253,26 +1132,6 @@ pkg:durable/storage/sqlite/node#NodeSqliteDatabase	durable	child-gap	durable/sto
 pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0	durable	signature-mismatch	durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase
 pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions	durable	type-mismatch	durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions
 pkg:durable/storage/sqlite/node#NodeSqliteStorageOptions	durable	type-mismatch	durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions
-pkg:env/.#ProcessOptions	env	no-go-symbol	
-pkg:env/.#ProcessOptions::property:argv	env	child-gap	
-pkg:env/.#ProcessOptions::property:cwd	env	child-gap	
-pkg:env/.#ProcessOptions::property:env	env	child-gap	
-pkg:env/.#ProcessOptions::property:inheritEnv	env	child-gap	
-pkg:env/.#ProcessOptions::property:onStderr	env	child-gap	
-pkg:env/.#ProcessOptions::property:onStdout	env	child-gap	
-pkg:env/.#ProcessOptions::property:onStdout::call:0	env	child-gap	
-pkg:env/.#RemoteProcess	env	no-go-symbol	
-pkg:env/.#RemoteProcess::construct:0	env	child-gap	
-pkg:env/.#RemoteProcess::property:close	env	child-gap	
-pkg:env/.#RemoteProcess::property:close::call:0	env	child-gap	
-pkg:env/.#RemoteProcess::property:closeStdin	env	child-gap	
-pkg:env/.#RemoteProcess::property:closeStdin::call:0	env	child-gap	
-pkg:env/.#RemoteProcess::property:exited	env	child-gap	
-pkg:env/.#RemoteProcess::property:pid	env	child-gap	
-pkg:env/.#RemoteProcess::property:write	env	child-gap	
-pkg:env/.#RemoteProcess::property:write::call:0	env	child-gap	
-pkg:env/.#openProcess	env	no-go-symbol	
-pkg:env/.#openProcess::call:0	env	child-gap	
 pkg:mcp/.#LimitedMcpContent	mcp	no-go-symbol	
 pkg:mcp/.#LimitedMcpContent::property:content	mcp	child-gap	
 pkg:mcp/.#LimitedMcpContent::property:fullOutputPath	mcp	child-gap	
@@ -1409,18 +1268,8 @@ pkg:schema/.#BigintBounds::property:exclusiveMinimum	schema	child-gap
 pkg:schema/.#BigintBounds::property:maximum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:minimum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:multipleOf	schema	child-gap	
-pkg:schema/.#CoercingValidator	schema	child-gap	schema/validator.go#CoercingValidator
-pkg:schema/.#CoercingValidator::property:validate	schema	member-missing	schema/validator.go#CoercingValidator
-pkg:schema/.#CoercingValidator::property:validate::call:0	schema	member-missing	schema/validator.go#CoercingValidator
-pkg:schema/.#Validator	schema	child-gap	schema/validator.go#Validator
-pkg:schema/.#Validator::property:validate	schema	member-missing	schema/validator.go#Validator
-pkg:schema/.#Validator::property:validate::call:0	schema	member-missing	schema/validator.go#Validator
 pkg:schema/.#bigint	schema	no-go-symbol	
 pkg:schema/.#bigint::call:0	schema	child-gap	
-pkg:schema/.#equal	schema	no-go-symbol	
-pkg:schema/.#equal::call:0	schema	child-gap	
-pkg:schema/.#recursive	schema	no-go-symbol	
-pkg:schema/.#recursive::call:0	schema	child-gap	
 pkg:schema/.#unsafe	schema	no-go-symbol	
 pkg:schema/.#unsafe::call:0	schema	child-gap	
 pkg:telemetry/.#telemetryNow	telemetry	no-go-symbol	
