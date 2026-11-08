@@ -953,7 +953,7 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 			executions := executionValue.(*execution)
 			h, err := harness.OpenHarness(ctx, storage, harness.HarnessOptions{
 				ModelsFunc: models,
-				Registry:   DurableRegistry(extensions, switches, func() durable.Storage { return storage }),
+				Registry:   DurableRegistry(extensions, switches),
 				Settings:   settings,
 				// The conversation's location, not its agent cwd alone: a subagent's own may be on another machine.
 				Env: func(ctx context.Context, target harness.EnvTarget) (durableenv.ExecutionEnv, error) {

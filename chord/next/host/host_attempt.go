@@ -471,6 +471,9 @@ type attemptWritableOwner struct{ attempt *attempt }
 
 func (o *attemptWritableOwner) Context() context.Context { return o.attempt.ctx }
 
+// Do runs work as one section of the host's loop (nested when the caller is in one).
+func (o *attemptWritableOwner) Do(work func()) { o.attempt.object.host.enter(work) }
+
 func (o *attemptWritableOwner) AssertUsable() error {
 	if o.attempt.token.Sealed() {
 		return o.attempt.object.ended()

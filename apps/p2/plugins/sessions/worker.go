@@ -134,8 +134,8 @@ func serveSessionTools(facet host.FacetHost) error {
 		}
 		const name = "p2-session-title"
 		extension := &p2runtime.P2Extension{
-			Extension: &durable.Extension{Name: name, Tools: []*durable.ToolRegistration{tool}},
-			Access:    map[string]p2runtime.ToolAccess{"rename_session": {Scope: "main"}},
+			Extension: &durable.Extension{Name: name},
+			Tools:     []p2runtime.P2Tool{{ToolRegistration: tool, ToolAccess: p2runtime.ToolAccess{Scope: "main"}}},
 		}
 		p2runtime.ContributeKeyed(self, p2runtime.Extensions, p2runtime.Entry(name, extension))
 		return nil
