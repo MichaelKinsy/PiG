@@ -67,7 +67,7 @@ func TestProjectsOwnerOnlyFollowsProjectsJSONAndNamesTheDevice(t *testing.T) {
 	if _, err := p2test.Until(projects.Member("failure"), func(v delta.JsonValue) bool { s, _ := v.(string); return s != "" }, 0); err != nil {
 		t.Fatal(err)
 	}
-	if list, _ := projects.Member("projects").Value(); projectCount(list) != 1 || !strings.Contains(marshal(t, list), `"name":"pi"`) {
+	if list, _ := projects.Member("projects").Value(); projectCount(list) != 1 || !strings.Contains(chordMarshal(t, list), `"name":"pi"`) {
 		t.Fatalf("projects after a bad save = %v", list)
 	}
 	writeProjects(t, fixture, "{}")
@@ -134,13 +134,13 @@ func TestProjectMembership(t *testing.T) {
 		t.Fatal(err)
 	}
 	if object(members).Len() != 2 || object(members).Value(source) != "pi" || object(members).Value(plain) != nil {
-		t.Fatalf("members = %s", marshal(t, members))
+		t.Fatalf("members = %s", chordMarshal(t, members))
 	}
 	// The session catalog is untouched: rows have no project.
 	rows, _ := sessions.Member("sessions").Value()
 	for _, row := range rows.([]any) {
 		if object(row).Value("project") != nil {
-			t.Fatalf("a session row has a project: %s", marshal(t, row))
+			t.Fatalf("a session row has a project: %s", chordMarshal(t, row))
 		}
 	}
 	// A project gone from projects.json keeps its members' names.
@@ -149,11 +149,11 @@ func TestProjectMembership(t *testing.T) {
 		t.Fatal(err)
 	}
 	if now, _ := projects.Member("sessions").Value(); object(now).Value(source) != "pi" {
-		t.Fatalf("members after the project went = %s", marshal(t, now))
+		t.Fatalf("members after the project went = %s", chordMarshal(t, now))
 	}
 }
 
-func marshal(t *testing.T, value delta.JsonValue) string {
+func chordMarshal(t *testing.T, value delta.JsonValue) string {
 	t.Helper()
 	encoded, err := chordjson.Marshal(value)
 	if err != nil {
