@@ -29954,7 +29954,8 @@
       ],
       "evidence": [
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream",
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal"
       ]
     },
     {
@@ -44832,9 +44833,9 @@
         "public-api:ai/openai.go#ConvertCompletionsMessagesOptions"
       ],
       "evidence": [
+        "test:ai/openai_completions_thinking_as_text_upstream_test.go#TestOpenAICompletionsThinkingAsTextReplayUpstream",
         "test:ai/convert_completions_forwarding_test.go#TestConvertCompletionsMessagesUsesTheModelsProviderBaseURLIDAndInput",
-        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties",
-        "test:ai/ledger_options_test.go#TestConvertCompletionsMessagesGrammarToolInputPropertiesReplaysACustomToolCall"
+        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties"
       ]
     },
     {
@@ -44874,9 +44875,9 @@
         "public-api:ai/openai.go#ConvertCompletionsMessages"
       ],
       "evidence": [
+        "test:ai/openai_completions_thinking_as_text_upstream_test.go#TestOpenAICompletionsThinkingAsTextReplayUpstream",
         "test:ai/convert_completions_forwarding_test.go#TestConvertCompletionsMessagesUsesTheModelsProviderBaseURLIDAndInput",
-        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties",
-        "test:ai/ledger_options_test.go#TestConvertCompletionsMessagesGrammarToolInputPropertiesReplaysACustomToolCall"
+        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties"
       ]
     },
     {
@@ -44896,9 +44897,9 @@
         "public-api:ai/openai.go#ConvertCompletionsMessages"
       ],
       "evidence": [
+        "test:ai/openai_completions_thinking_as_text_upstream_test.go#TestOpenAICompletionsThinkingAsTextReplayUpstream",
         "test:ai/convert_completions_forwarding_test.go#TestConvertCompletionsMessagesUsesTheModelsProviderBaseURLIDAndInput",
-        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties",
-        "test:ai/ledger_options_test.go#TestConvertCompletionsMessagesGrammarToolInputPropertiesReplaysACustomToolCall"
+        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties"
       ]
     },
     {
@@ -75168,7 +75169,8 @@
       ],
       "evidence": [
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream",
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal"
       ]
     },
     {
