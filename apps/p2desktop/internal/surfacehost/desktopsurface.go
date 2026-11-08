@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
 )
 
-// pig additive (D481): the desktop is a third surface beside Chord's web and terminal ones, defined here and not in
+// the desktop is a third surface beside Chord's web and terminal ones, defined here and not in
 // Chord's Pi-shaped surfaces packages. Its two contracts have the shape of the web and terminal ones
 // (chord.web.scripts and chord.web.current: surfaces.ScriptSetSchema as state, `publish` to change it), and its server
 // facet is the same facet as nextnode/surfaces.ScriptsFacet over them, written with the public host API. Nothing is

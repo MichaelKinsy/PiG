@@ -195,7 +195,7 @@ func (p *Platform) NewWindow(spec shell.WindowSpec) (shell.Window, error) {
 	if start == "" {
 		start = "about:blank"
 	}
-	// pig additive (D481): the window shows p2's page with no Go bridge and no navigation beyond the server's origin.
+	// the window shows p2's page with no Go bridge and no navigation beyond the server's origin.
 	w := mygo.NewWindow(mygo.WindowOptions{
 		Title:           spec.Title,
 		URL:             start,

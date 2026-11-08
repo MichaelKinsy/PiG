@@ -13,7 +13,7 @@ import (
 	"github.com/egoist/mygo/ui/markdown"
 )
 
-// pig additive (D481): the chat screen. The transcript is the display items of the p2 TUI's shared model
+// the chat screen. The transcript is the display items of the p2 TUI's shared model
 // (apps/p2/tui/transcript, built from the Chat contract's `view`) in a virtualized, follow-the-end list; prose is MyGo's
 // markdown view (streaming while the answer is written); the prompt bar is a text area with the model and usage row.
 
