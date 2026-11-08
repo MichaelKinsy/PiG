@@ -35,12 +35,24 @@ func hashFile(path string) (hash string, ok bool) {
 		return "", false
 	}
 	defer file.Close()
+	buf := hashBuffers.Get().(*[]byte)
+	defer func() {
+		if cap(*buf) == hashBufferSize {
+			hashBuffers.Put(buf)
+		}
+	}()
 	sum := sha256.New()
-	if _, err := io.Copy(sum, file); err != nil {
+	// The reader is wrapped so that the copy uses buf, not the file's own WriterTo (which allocates a buffer of its own).
+	if _, err := io.CopyBuffer(sum, struct{ io.Reader }{file}, *buf); err != nil {
 		return "", false
 	}
 	return hex.EncodeToString(sum.Sum(nil)), true
 }
+
+// hashBuffers are the buffers files are streamed through to be hashed: a start hashes a whole base directory.
+const hashBufferSize = 32 << 10
+
+var hashBuffers = sync.Pool{New: func() any { buf := make([]byte, hashBufferSize); return &buf }}
 
 // Recorder records what a build read: the one read of each file, its hash kept by path, its bytes for esbuild. It is safe for
 // the goroutines of one build.
