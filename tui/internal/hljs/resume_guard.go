@@ -44,6 +44,7 @@ const guardTokens = 6
 
 // guardTriviaBudget bounds the bytes the trivia check reads for one call, which a long run of comments after the last
 // points would otherwise read for each of them. Points that are not examined within it are dropped, as safe.
+// pig additive (D112): see hlCacheMax in the tui package. The bound is a Go CPU choice; a dropped point only offers fewer resume points, and the HTML of a run is the same.
 const guardTriviaBudget = 1 << 16
 
 // guardPoints keeps the points of a run over code at which every check of g holds. points are in increasing Byte order. A
