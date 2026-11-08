@@ -168,6 +168,7 @@ func serveShares(facet host.FacetHost) error {
 		stored := p2runtime.FollowNative(self,
 			func(changed func()) func() { return db().Subscribe(changed) },
 			func() (delta.JsonValue, error) {
+				//portlint:allow ctxbackground the read runs on the database's change listener (a method's write or the opener), which has no caller context; it ends with the database
 				ctx := context.Background()
 				links, err := db().Links(ctx)
 				if err != nil {
