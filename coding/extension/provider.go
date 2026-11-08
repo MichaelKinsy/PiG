@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/json/jsontext"
-	jsonv2 "encoding/json/v2"
+	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
@@ -237,9 +237,17 @@ func decodeProviderHeaderObject(decoder *jsontext.Decoder) ([]providerHeaderEntr
 			return nil, err
 		}
 		name := nameToken.String() // a Token is void after the next call on the decoder
-		var value string
-		if err := jsonv2.UnmarshalDecode(decoder, &value, jsonopts.Parse); err != nil {
+		valueToken, err := decoder.ReadToken()
+		if err != nil {
 			return nil, err
+		}
+		var value string
+		switch valueToken.Kind() {
+		case '"':
+			value = valueToken.String()
+		case 'n': // a null header value is the empty string, as before
+		default:
+			return nil, fmt.Errorf("header %q must be a string or null", name)
 		}
 		entries = append(entries, providerHeaderEntry{Name: name, Value: value})
 	}

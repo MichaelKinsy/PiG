@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/json/jsontext"
-	jsonv2 "encoding/json/v2"
 	"fmt"
 	"maps"
 	"os"
@@ -295,9 +294,18 @@ func decodeOrderedHeaderObject(decoder *jsontext.Decoder) ([]orderedHeaderEntry,
 			return nil, err
 		}
 		name := nameToken.String() // a Token is void after the next call on the decoder
-		var value *string
-		if err := jsonv2.UnmarshalDecode(decoder, &value, jsonopts.Parse); err != nil {
+		valueToken, err := decoder.ReadToken()
+		if err != nil {
 			return nil, err
+		}
+		var value *string
+		switch valueToken.Kind() {
+		case '"':
+			text := valueToken.String()
+			value = &text
+		case 'n': // a null header value stays nil
+		default:
+			return nil, fmt.Errorf("header %q must be a string or null", name)
 		}
 		entries = append(entries, orderedHeaderEntry{Name: name, Value: value})
 	}
