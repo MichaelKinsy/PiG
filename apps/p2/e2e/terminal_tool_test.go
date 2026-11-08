@@ -110,14 +110,6 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 		}
 		return "terminal " + `{"command":` + jsonString(command) + `,"args":[` + strings.Join(quoted, ",") + `]}`
 	}
-	succeeds := func(prompt string, target *host.Reference) string {
-		t.Helper()
-		result := call(prompt, target)
-		if result.Value("isError") == true {
-			t.Fatalf("%s: %s", prompt, resultText(result))
-		}
-		return resultText(result)
-	}
 	// script runs code in a `codemode` turn and decodes the value it returns.
 	script := func(code string, target *host.Reference, into any) {
 		t.Helper()
