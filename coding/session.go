@@ -1987,7 +1987,7 @@ func (s *Session) consumeQueuedMessage(message agent.AgentMessage) (agent.QueueU
 	if message.User == nil {
 		return agent.QueueUpdateEvent{}, false
 	}
-	// pig divergence (D250): an image-only message has empty text and still leaves the queue display (Pi main a63c4ec5c, #8612).
+	// An image-only message has empty text and still leaves the queue display (Pi main a63c4ec5c, #8612).
 	queuedText := extractUserMessageText(message.User.Content)
 	s.queueMu.Lock()
 	defer s.queueMu.Unlock()
