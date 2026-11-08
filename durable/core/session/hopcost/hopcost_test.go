@@ -90,3 +90,17 @@ func TestRecordReads(t *testing.T) {
 		}
 	}
 }
+
+// The host's callback reaches the core two ticks after the grant (the facade's own pass counter reads 2 as the first operation is sent:
+// host/cf/test/host-callback-lag.test.ts), and Pi's callback starts with the job, or after the decision region for a task's runtime.commit.
+func TestHostCallbackStart(t *testing.T) {
+	if HostFirstOp != 2 {
+		t.Errorf("HostFirstOp = %d, want 2", HostFirstOp)
+	}
+	if got := HostCallbackStart(false); got != 0 {
+		t.Errorf("a Session commit's callback starts at tick %d, want 0", got)
+	}
+	if got := HostCallbackStart(true); got != GatedRegion {
+		t.Errorf("a task commit's callback starts at tick %d, want %d", got, GatedRegion)
+	}
+}

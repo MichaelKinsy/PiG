@@ -588,6 +588,34 @@ func GatedChange(s int) int { return GatedRegion + max(s, 1) + 1 }
 // GatedSyncChange is the Change of a `#gated` callback whose `change` returns a value without awaiting: the callback returns after its region.
 const GatedSyncChange = GatedRegion
 
+// The ticks a host's transaction callback starts after the core granted the Session line. Pi's callback is called by the line job itself
+// (Session.#runCommit, session.ts: `new Transaction(...)` then `await change(tx)` in the tick the job starts); the host's callback runs in the
+// host's facade (host/cf/src/facade/tx.ts runCommit, client.ts TxChannel), which learns of the grant from the core's `ready` answer
+// (core/tx.go grant) and sends the callback's first operation after two promise steps. Each is one tick: a promise reaction runs one
+// microtask after the promise it awaits settled.
+const (
+	// HostBeginResume is `const channel = await begin()` (runCommit): TxChannel.answer resolves the begin's promise with the channel and the awaiting
+	// callback resumes one tick later.
+	HostBeginResume = 1
+	// HostOpDispatch is TxChannel.op's `this.chain.then(() => this.send(...))`: the chain is settled, so the operation leaves one tick after the call.
+	HostOpDispatch = 1
+	// HostFirstOp is the ticks from the grant to the first operation of the host's callback reaching the core (the channel's own pass counter reads
+	// 2 when it sends the first operation: `elapsed` of TxChannel.startCount).
+	HostFirstOp = HostBeginResume + HostOpDispatch
+)
+
+// HostCallbackStart is the tick of Pi's job duration at which Pi's callback starts: with the job for a Session commit (nothing is awaited before
+// `change(tx)`, Session.#runCommit), after its decision region (GatedRegion) for a task's runtime.commit, whose `#gated` callback awaits it first.
+// The host's callback reaches the core HostFirstOp ticks after the grant, so its operations lag Pi's by HostFirstOp - HostCallbackStart less the tick
+// Pi's job starts after the grant when the transaction was queued on an idle line (Loop.HostStart): for a Session commit 2 queued behind another
+// job (the E24 compaction) and 1 on an idle line, for a task's commit 1 and 0.
+func HostCallbackStart(taskCommit bool) int {
+	if taskCommit {
+		return GatedRegion
+	}
+	return 0
+}
+
 // DocLoad is how Session.#loadDocument finds a document for tx.doc (session.ts:505-535).
 type DocLoad uint8
 
