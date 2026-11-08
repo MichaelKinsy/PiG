@@ -137,6 +137,7 @@ func TestPrincipalKey(t *testing.T) {
 // Ports packages/chord/test/data/principal.test.ts, "samePrincipal" (Pi main de229e073): the kit's owner is a principal the
 // app chooses, recognized by canonical JSON.
 func TestSamePrincipal(t *testing.T) {
+	bg := chordctx.Background()
 	ada := user("u1")
 
 	t.Run("matches the same canonical JSON, whatever the property order; nothing else", func(t *testing.T) {
