@@ -227,6 +227,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2a055a7](#bf-2a055a7) | An extension dialog (`select`, `confirm`, `input`, `editor`) opened while a focused `ctx.ui.custom` component… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2a0b22d](#bf-2a0b22d) | LaTeX math that holds a lone UTF-16 surrogate (`$x\ud83d$`, a script, fraction, root, accent, `\text{}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-2a0fb96](#bf-2a0fb96) | `/cost` lists its tools in a stable order: `formatCostSummary` ranged over `snap.ToolTotals`, so the `Tools:`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2a83c43](#bf-2a83c43) | The ordered-object JSON readers keep two object names apart when `JSON.parse` does | PiG's own defect | All platforms | Unreleased |
 | [BF-2a919a4](#bf-2a919a4) | An indented continuation line of a list item loses up to four spaces, a lazy line after a quoted list item… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ab79ce](#bf-2ab79ce) | An extension provider whose `streamSimple` hands its request to pi-ai's compat `streamSimple` (or `stream`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ab79ce-2](#bf-2ab79ce-2) | A provider registered with its own `streamSimple` runs that callback only for its models whose `api` is the… | PiG's own defect | All platforms | 0.5.0 |
@@ -4685,6 +4686,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2a0fb968de` (2026-10-11)
 - **Tests:** `internal/codingagent/slash_cost_order_test.go::TestFormatCostSummaryListsToolsInStableNameOrder`
 - **Release note:** `/cost` lists its tools in a stable order: `formatCostSummary` ranged over `snap.ToolTotals`, so the `Tools:` lines came out in a different order on every call (Go map iteration). They are now sorted by name. Regression `TestFormatCostSummaryListsToolsInStableNameOrder` (red before: fails on the first run with 24 tools). `/cost` has no Pi counterpart, so the name order is PiG's choice. Found by scanning production code for map ranges that feed output; the same pattern (a map range whose first failing entry names the error) remains in `coding/packagecontent` (`validateMCPDocument`, `validateComposeClosure`) and `coding/hookconfig.Parse`, which belong to other lanes.
+
+### BF-2a83c43
+
+**The ordered-object JSON readers keep two object names apart when `JSON.parse` does**
+
+- **Source:** PiG's own defect
+- **Symptom:** The ordered-object JSON readers keep two object names apart when `JSON.parse` does.
+- **Root cause:** "\ud800", "\ud801" and the raw bytes ED A0 80 are three distinct JSON.parse keys; Token.String() made them all U+FFFD and merged them (last wins). jsonopts.ReadName reads a name as the JavaScript key (a lone surrogate is its WTF-8 bytes, ill-formed bytes one U+FFFD per maximal subpart), and the dedup and map sites key on it: ai ordered_json/ordered_json_object/models_store/openai/types, orderedjson (which writes a lone-surrogate key back as its escape), login duplicate scan, configschema, theme keys, remote catalog, modelgen. The login v1 reference reads numbers as raw tokens (UseNumber) so the fuzz target no longer skips a number outside float64 range. The go-directive floor check uses…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2a83c43014` (2026-11-08)
+- **Tests:** `ai/ordered_json_node_test.go::TestOrderedObjectReadersMatchNode`, `internal/jsonopts/name_test.go::TestReadNameMatchesNode`, `internal/jsonopts/name_test.go::TestValidName`, `internal/orderedjson/node_test.go::TestObjectMatchesNode`
+- **Release note:** The ordered-object JSON readers keep two object names apart when `JSON.parse` does. `"\ud800"`, `"\ud801"` and the raw bytes `ED A0 80` are three keys in JavaScript; the readers read each as U+FFFD and merged them into one entry (last value wins). A name with a lone surrogate or ill-formed UTF-8 is now keyed on the string JavaScript has (`jsonopts.ReadName`): an escaped lone surrogate is its WTF-8 bytes, and ill-formed raw bytes become one U+FFFD per maximal subpart, as Node decodes them. `internal/orderedjson` writes a lone-surrogate key back as its escape. The readers that hand the key to `encoding/json` still hold it as U+FFFD.
 
 ### BF-2a919a4
 
