@@ -193,11 +193,12 @@ func extensionsOf(t *testing.T, fixture *p2test.TestHost) *p2runtime.P2Extension
 	var found *p2runtime.P2Extension
 	if err := p2test.Poll(func() (bool, error) {
 		// Read inside a section of the host's loop, where contributions change.
-		value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
+		source, err := fixture.Host.Registry(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
 		if err != nil {
 			return false, nil
 		}
-		table, ok := value.(*p2runtime.KeyedTable[*p2runtime.P2Extension])
+		table, tableErr := p2runtime.Extensions.Table(source)
+		ok := tableErr == nil
 		if !ok {
 			return false, nil
 		}
@@ -243,13 +244,14 @@ func TestReloadPluginsIsOfferedOnlyInDevModeForASessionOnThisP2Checkout(t *testi
 		}
 		fixture := devToolsHost(t, t.TempDir(), cwd)
 		time.Sleep(20 * time.Millisecond)
-		value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
+		source, err := fixture.Host.Registry(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		table, ok := value.(*p2runtime.KeyedTable[*bool])
+		table, tableErr := p2runtime.ExtensionSwitches.Table(source)
+		ok := tableErr == nil
 		if !ok {
-			t.Fatalf("switches = %T", value)
+			t.Fatalf("switches: %v", tableErr)
 		}
 		on, _ := table.Get("p2-dev-tools")
 		return on != nil && *on
