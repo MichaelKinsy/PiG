@@ -39,7 +39,7 @@ func (f *fakeSprite) Close() { f.mu.Lock(); f.closed = true; f.mu.Unlock() }
 
 func (f *fakeSprite) set(key string, svg string) {
 	f.mu.Lock()
-	f.asset, f.has = hosts.SpriteAsset{Key: key, Name: "Name " + key, Tagline: "Tagline " + key, SVG: []byte(svg), LoginLight: []byte("<light " + key + "/>"), LoginDark: []byte("<dark " + key + "/>")}, key != ""
+	f.asset, f.has = hosts.SpriteAsset{Key: key, Name: "Name " + key, SVG: []byte(svg)}, key != ""
 	listeners := append([]func(){}, f.listeners...)
 	f.mu.Unlock()
 	for _, fn := range listeners {
@@ -73,16 +73,7 @@ func TestSelectedSpriteIsServedAsSVG(t *testing.T) {
 		t.Fatalf("revalidation: %d %q", again.Status, again.Body)
 	}
 	page := get(t, port, "/", nil).Body
-	for theme, want := range map[string]string{"light": "<light pink-1111/>", "dark": "<dark pink-1111/>", "": "<dark pink-1111/>"} {
-		banner := get(t, port, hosts.LoginAssetPath+"?v=pink-1111&theme="+theme, nil)
-		if banner.Status != 200 || banner.Body != want || banner.Headers.Get("Content-Type") != "image/svg+xml" {
-			t.Fatalf("banner (%q): %d %q", theme, banner.Status, banner.Body)
-		}
-	}
-	if etag := get(t, port, hosts.LoginAssetPath+"?theme=light", nil).Headers.Get("ETag"); etag != `"pink-1111-login-light"` {
-		t.Fatalf("banner ETag %q", etag)
-	}
-	for _, want := range []string{`data-brand-sprite="{&#34;key&#34;:&#34;pink-1111&#34;,&#34;name&#34;:&#34;Name pink-1111&#34;,&#34;tagline&#34;:&#34;Tagline pink-1111&#34;}"`, `<link rel="icon" href="` + hosts.SpriteAssetPath + `?v=pink-1111" type="image/svg+xml" />`} {
+	for _, want := range []string{`data-brand-sprite="{&#34;key&#34;:&#34;pink-1111&#34;,&#34;name&#34;:&#34;Name pink-1111&#34;}"`, `<link rel="icon" href="` + hosts.SpriteAssetPath + `?v=pink-1111" type="image/svg+xml" />`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page lacks %s", want)
 		}
@@ -108,7 +99,7 @@ func TestNoSelectionFallsBackToTheDefaultPig(t *testing.T) {
 // Stock: without a source (the default) the server has neither route, the attribute nor the sprite favicon.
 func TestWithoutASpriteSourceTheHookIsInert(t *testing.T) {
 	port := spriteFixture(t, nil)
-	for _, path := range []string{hosts.SpriteAssetPath, hosts.LoginAssetPath, hosts.SpriteEventsPath} {
+	for _, path := range []string{hosts.SpriteAssetPath, hosts.SpriteEventsPath} {
 		if got := get(t, port, path, nil).Status; got != 404 {
 			t.Fatalf("%s: %d", path, got)
 		}
@@ -156,11 +147,11 @@ func TestSpriteEventsPushChanges(t *testing.T) {
 			return ""
 		}
 	}
-	if got := next(); got != `{"key":"pink-1111","name":"Name pink-1111","tagline":"Tagline pink-1111"}` {
+	if got := next(); got != `{"key":"pink-1111","name":"Name pink-1111"}` {
 		t.Fatalf("first event %q", got)
 	}
 	source.set("kratos-2222", svgTwo)
-	if got := next(); got != `{"key":"kratos-2222","name":"Name kratos-2222","tagline":"Tagline kratos-2222"}` {
+	if got := next(); got != `{"key":"kratos-2222","name":"Name kratos-2222"}` {
 		t.Fatalf("after a change: %q", got)
 	}
 	// The asset follows: the old URL's key is gone, the new one serves the new sprite.
