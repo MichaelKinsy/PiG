@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"io"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,3 +52,5 @@ func (k *kitHost) close() {
 		k.t.Fatalf("store close: %v", err)
 	}
 }
+
+func stringsReader(text string) io.Reader { return strings.NewReader(text) }
