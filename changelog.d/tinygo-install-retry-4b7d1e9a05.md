@@ -1,3 +1,0 @@
-### Fixed
-
-- `durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a transient error (HTTP 408, 429, 5xx). A single 504 from GitHub's release CDN made the `wasm-tinygo` row of the Durable contract job fail with "tinygo not found" in CI.
