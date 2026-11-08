@@ -21,7 +21,7 @@
  * so each branch sees the values written on its own path.
  */
 import { join } from "node:path";
-import { renderToolOutputType, renderToolSample, toCodemodeIdentifier } from "../../../pi-codemode/declarations.js";
+import { renderToolOutputType, renderToolSample, resolveSchemaRef, toCodemodeIdentifier, } from "../../../pi-codemode/declarations.js";
 import { CODEMODE_SOURCE_GRAMMAR } from "../../../pi-codemode/source.js";
 import { Type } from "../../../../typebox.mjs";
 import { getDocsPath } from "../../config.js";
@@ -161,21 +161,23 @@ export function createCodemodeDescription(tools, options = {}) {
 /**
  * The field names of an object schema, `{ output, exit_code, full_output_path? }`, with the fields of
  * object-typed fields `depth` levels deep: `{ content, structuredContent?: { results } }`, and the
- * value of `const` fields: `{ action: "start", id }`. Undefined for other schemas.
+ * value of `const` fields: `{ action: "start", id }`. Undefined for other schemas. Local `$ref`s resolve
+ * against `root`.
  */
-function describeFields(schema, depth) {
-    if (typeof schema !== "object" || schema === null)
+function describeFields(schema, root, depth) {
+    const resolved = followRef(schema, root);
+    if (typeof resolved !== "object" || resolved === null)
         return undefined;
-    const { type, properties, required } = schema;
+    const { type, properties, required } = resolved;
     if (type !== "object" || typeof properties !== "object" || properties === null)
         return undefined;
     const requiredNames = new Set(Array.isArray(required) ? required : []);
     const fields = Object.entries(properties).map(([name, field]) => {
-        const constValue = field?.const;
+        const constValue = followRef(field, root)?.const;
         const nested = constValue !== undefined
             ? JSON.stringify(constValue)
             : depth > 0
-                ? describeFields(field, depth - 1)
+                ? describeFields(field, root, depth - 1)
                 : undefined;
         return `${name}${requiredNames.has(name) ? "" : "?"}${nested ? `: ${nested}` : ""}`;
     });
@@ -191,7 +193,7 @@ function describeOutput(name, schema) {
     const type = renderToolOutputType(schema);
     if (type === "string")
         return "a string";
-    const fields = describeFields(schema, 1) ?? describeUnionFields(schema);
+    const fields = schema === undefined ? undefined : (describeFields(schema, schema, 1) ?? describeUnionFields(schema, schema));
     if (fields)
         return `\`${fields}\``;
     if (!type.includes("\n"))
@@ -202,15 +204,35 @@ function describeOutput(name, schema) {
  * The field names of each variant of an `anyOf`/`oneOf` whose variants are all objects, joined by
  * `|`.
  */
-function describeUnionFields(schema) {
-    if (typeof schema !== "object" || schema === null)
+function describeUnionFields(schema, root) {
+    const resolved = followRef(schema, root);
+    if (typeof resolved !== "object" || resolved === null)
         return undefined;
-    const { anyOf, oneOf } = schema;
+    const { anyOf, oneOf } = resolved;
     const variants = anyOf ?? oneOf;
     if (!Array.isArray(variants) || variants.length === 0)
         return undefined;
-    const described = variants.map((variant) => describeFields(variant, 0));
+    const described = variants.map((variant) => describeFields(variant, root, 0));
     return described.every((fields) => fields !== undefined) ? described.join(" | ") : undefined;
+}
+/**
+ * The subschema the local `$ref` chain of `schema` names in `root`, so MCP output schemas that put their models in
+ * `$defs` still show field names. Remote, missing, and cyclic references stop at the schema holding them.
+ */
+function followRef(schema, root) {
+    const seen = new Set();
+    let current = schema;
+    while (typeof current === "object" && current !== null && !seen.has(current)) {
+        const ref = current.$ref;
+        if (typeof ref !== "string")
+            break;
+        const target = resolveSchemaRef(ref, root);
+        if (target === undefined)
+            break;
+        seen.add(current);
+        current = target;
+    }
+    return current;
 }
 /**
  * A declared tool's description followed by how scripts call it and what the call resolves to. The

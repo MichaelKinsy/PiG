@@ -32,6 +32,17 @@ export class Validator {
         this.explainer ??= new Explainer(compiler(this.schema, this.options), this.schema);
         return this.explainer.errors(value);
     }
+    /**
+     * `value` itself when it is valid, else its errors: check() and errors() in one result, without coercion.
+     *
+     * Not TypeBox's `Value.Parse`, which also clones, fills defaults, converts and strips undeclared properties before
+     * it checks. This only checks: the strict replacement where `Value.Parse` is used to validate (its other steps
+     * change nothing for a valid value of a schema without defaults or extra properties). Use `parse()` with
+     * `coerce: true` for conversion.
+     */
+    validate(value) {
+        return this.check(value) ? { ok: true, value } : { ok: false, errors: this.errors(value) };
+    }
 }
 /** A validator compiled with `coerce: true`: it also coerces loosely typed input towards the schema. */
 export class CoercingValidator extends Validator {
@@ -48,8 +59,7 @@ export class CoercingValidator extends Validator {
     }
     /** Coerces `value`, then checks it: the coerced value when it is valid, else its errors. */
     parse(value) {
-        const coerced = this.coerce(value);
-        return this.check(coerced) ? { ok: true, value: coerced } : { ok: false, errors: this.errors(coerced) };
+        return this.validate(this.coerce(value));
     }
 }
 function compileCheck(schema, options) {

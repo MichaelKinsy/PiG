@@ -25,14 +25,26 @@ impl ReadonlySessionManager<'_> {
     pub fn get_session_dir(&self) -> io::Result<Value> {
         self.read("getSessionDir", Value::Null)
     }
+    /// The replicated session id (see [`Context::get_session_id`]); a replacement context reads it from the host.
     pub fn get_session_id(&self) -> io::Result<Value> {
+        if let Some(id) = self.context.replicated_session_id()? {
+            return Ok(Value::String(id));
+        }
         self.read("getSessionId", Value::Null)
     }
+    /// The replicated session file, `null` for an in-memory session; the host's for a replacement context.
     pub fn get_session_file(&self) -> io::Result<Value> {
-        self.read("getSessionFile", Value::Null)
+        let file = self
+            .context
+            .replicated_session(|identity| &identity.session_file)?;
+        file.map_or_else(|| self.read("getSessionFile", Value::Null), none_if_empty)
     }
+    /// The replicated session name, `null` for none; the host's for a replacement context.
     pub fn get_session_name(&self) -> io::Result<Value> {
-        self.read("getSessionName", Value::Null)
+        let name = self
+            .context
+            .replicated_session(|identity| &identity.session_name)?;
+        name.map_or_else(|| self.read("getSessionName", Value::Null), none_if_empty)
     }
     pub fn get_leaf_id(&self) -> io::Result<Value> {
         self.read("getLeafId", Value::Null)
@@ -76,4 +88,13 @@ impl ReadonlySessionManager<'_> {
     pub fn uses_default_session_dir(&self) -> io::Result<Value> {
         self.read("usesDefaultSessionDir", Value::Null)
     }
+}
+
+/// The host reads an empty name or file as none, and answers `null` for it.
+fn none_if_empty(text: String) -> io::Result<Value> {
+    Ok(if text.is_empty() {
+        Value::Null
+    } else {
+        Value::String(text)
+    })
 }

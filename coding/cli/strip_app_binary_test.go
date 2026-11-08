@@ -36,7 +36,7 @@ func TestStrippedBinaryAppFeaturesReportStripped(t *testing.T) {
 func TestStrippedBinaryUpdateAllUpdatesPackagesThenReportsSelfUpdate(t *testing.T) {
 	stdout, stderr, code := runStrippedPig(t, "", "update", "--all")
 	want := "pig: " + pigstrip.Error("self-update", pigstrip.ListFeatures, pigstrip.SelfUpdate).Error() + "; update it through its Piglet distribution\n"
-	if code != 1 || !strings.Contains(stdout, "Updated packages\n") || stderr != want {
+	if code != 1 || !strings.Contains(stdout, "Skipped package updates (offline mode)\n") || stderr != want {
 		t.Fatalf("exit %d\nstdout: %q\nstderr: %q\nwant stderr %q", code, stdout, stderr, want)
 	}
 }

@@ -26,6 +26,7 @@ returns. Pi's ``operations`` and ``spawn_hook`` functions stay in this process a
 from __future__ import annotations
 
 import base64
+import itertools
 import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -66,11 +67,14 @@ class ModelImageResizeOptions:
 @dataclass
 class ReadOperations:
     """Pi's ReadOperations: pluggable file reading. ``read_file(path) -> bytes`` and ``access(path)`` are required; ``detect_image_mime_type(path)`` returns a
-    MIME type or None and is optional (without it every file is read as text)."""
+    MIME type or None and is optional (without it every file is read as text). ``create_read_stream(path)`` is Pi's createReadStream and is optional: it returns
+    a binary file-like object (``read(size) -> bytes``, ``close()``), and the read tool then reads a text file through it, keeping only the lines it shows in
+    memory, where ``read_file`` loads the whole file. The host reads it in chunks of at most 64 KB and closes it when the read ends or is aborted."""
 
     read_file: Callable[[str], bytes]
     access: Callable[[str], None]
     detect_image_mime_type: Callable[[str], str | None] | None = None
+    create_read_stream: Callable[[str], Any] | None = None
 
 
 @dataclass
@@ -111,11 +115,10 @@ class EditToolOptions:
 
 @dataclass
 class GrepOperations:
-    """Pi's GrepOperations: ``is_directory(path) -> bool`` (required; raises when the path does not exist) and ``read_file(path) -> str`` (optional; without it
-    matched files are streamed from the local file system)."""
+    """Pi's GrepOperations: ``is_directory(path) -> bool`` (required; raises when the path does not exist). Pi main (8da141c2a) takes grep's context lines from
+    ripgrep and no longer has a ``readFile`` member, so there is none here."""
 
     is_directory: Callable[[str], bool]
-    read_file: Callable[[str], str] | None = None
 
 
 @dataclass
@@ -217,6 +220,46 @@ def _operations_names(options: dict[str, Any], names: list[str]) -> None:
     options["operations"] = names
 
 
+_READ_STREAM_CHUNK = 64 * 1024
+
+
+def _read_stream_callbacks(create: Callable[[str], Any]) -> dict[str, Callable[[dict[str, Any]], Any]]:
+    """The callbacks of ``create_read_stream``: the host opens a stream, reads it a chunk per call (an empty answer is the end) and closes it."""
+    streams: dict[str, Any] = {}
+    lock = threading.Lock()
+    counter = itertools.count(1)
+
+    def open_stream(args: dict[str, Any]) -> str:
+        stream = create(args["path"])
+        with lock:
+            identifier = str(next(counter))
+            streams[identifier] = stream
+        return identifier
+
+    def lookup(identifier: str) -> Any:
+        with lock:
+            if identifier not in streams:
+                raise ValueError(f"read stream {identifier} is not open")
+            return streams[identifier]
+
+    def read_chunk(args: dict[str, Any]) -> str:
+        stream = lookup(args["stream"])
+        chunk = stream.read(_READ_STREAM_CHUNK)
+        if isinstance(chunk, str):
+            chunk = chunk.encode("utf-8")
+        return base64.b64encode(bytes(chunk)).decode("ascii") if chunk else ""
+
+    def close(args: dict[str, Any]) -> None:
+        stream = lookup(args["stream"])
+        with lock:
+            del streams[args["stream"]]
+        closer = getattr(stream, "close", None)
+        if closer is not None:
+            closer()
+
+    return {"operations.createReadStream": open_stream, "operations.readStream": read_chunk, "operations.closeStream": close}
+
+
 def _read_spec(cwd: str, options: Any) -> _Spec:
     spec = _Spec("read", cwd)
     if options is None:
@@ -235,6 +278,11 @@ def _read_spec(cwd: str, options: Any) -> _Spec:
         if detect is not None:
             names.append("detectImageMimeType")
             spec.callbacks["operations.detectImageMimeType"] = lambda args: detect(args["path"]) or None
+        create_stream = _member(ops, "create_read_stream")
+        if create_stream is not None:
+            _require("read", create_read_stream=create_stream)
+            names.append("createReadStream")
+            spec.callbacks.update(_read_stream_callbacks(create_stream))
         _operations_names(spec.options, names)
     return spec
 
@@ -269,14 +317,10 @@ def _grep_spec(cwd: str, options: Any) -> _Spec:
     spec = _Spec("grep", cwd)
     ops = _member(options, "operations")
     if ops is not None:
-        is_directory, read_file = _member(ops, "is_directory"), _member(ops, "read_file")
+        is_directory = _member(ops, "is_directory")
         _require("grep", is_directory=is_directory)
         spec.callbacks["operations.isDirectory"] = lambda args: bool(is_directory(args["path"]))
-        names = ["isDirectory"]
-        if read_file is not None:
-            names.append("readFile")
-            spec.callbacks["operations.readFile"] = lambda args: read_file(args["path"])
-        _operations_names(spec.options, names)
+        _operations_names(spec.options, ["isDirectory"])
     return spec
 
 
