@@ -3868,9 +3868,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/mermaid.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/mermaid_upstream_test.go#TestMermaidRenderingUpstream", "test:internal/codingagent/mermaid_transform_test.go#TestMermaidTransformMatchesUpstream", "test:internal/mermaid/render_test.go#TestRenderMatchesUpstream", "test:internal/mermaid/parse_mutation_test.go#TestRenderMatchesUpstreamOnMutatedSources"]
+rationale = "Pi aceb1bd1 (#8158) replaces grok-mermaid with lovely-mermaid 0.3.3: the theme maps through getFgAnsi and toAnsi, classDef styles apply over it, and a link opens only on node text on terminals with hyperlinks. internal/mermaid is ported from lovely-mermaid 0.3.3 and matches its render() and toAnsi() byte for byte over the corpus and 32k extra mutated sources; themedLines does the mermaid.ts mapping."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
