@@ -843,6 +843,44 @@ func TestFlushScheduler(t *testing.T) {
 		}
 	})
 
+	t.Run("doubles its retry delay from RetryMs up to MaxRetryMs and no further", func(t *testing.T) {
+		fake := &clock{}
+		var attempts []time.Duration
+		scheduler := NewFlushScheduler(FlushSchedulerOptions{
+			Now: fake.Now, SetTimer: fake.SetTimer, OnError: func(error) {}, UrgentMs: 100, RetryMs: 500, MaxRetryMs: 3000,
+			Flush: func() error {
+				attempts = append(attempts, fake.elapsed())
+				if len(attempts) < 7 {
+					return errors.New("offline")
+				}
+				return nil
+			},
+		})
+		scheduler.Notify(true)
+		fake.advance(30_000 * time.Millisecond)
+		// 100, then +500, +1000, +2000, then the cap: +3000 (not 4000, 8000), +3000, +3000.
+		same(t, "attempts", attempts, ms(100, 600, 1600, 3600, 6600, 9600, 12600))
+	})
+
+	t.Run("caps the retry delay at a minute by default", func(t *testing.T) {
+		fake := &clock{}
+		var attempts []time.Duration
+		scheduler := NewFlushScheduler(FlushSchedulerOptions{
+			Now: fake.Now, SetTimer: fake.SetTimer, OnError: func(error) {},
+			Flush: func() error {
+				attempts = append(attempts, fake.elapsed())
+				if len(attempts) < 10 {
+					return errors.New("offline")
+				}
+				return nil
+			},
+		})
+		scheduler.Notify(true)
+		fake.advance(300_000 * time.Millisecond)
+		// 200, then +1s, +2s, +4s, +8s, +16s, +32s, then the cap: +60s (not 64s, 128s), +60s.
+		same(t, "attempts", attempts, ms(200, 1200, 3200, 7200, 15200, 31200, 63200, 123200, 183200, 243200))
+	})
+
 	t.Run("flushes a last time at close, and reports the failure", func(t *testing.T) {
 		fake := &clock{}
 		scheduler := NewFlushScheduler(FlushSchedulerOptions{
