@@ -5,6 +5,10 @@ import { join } from "node:path";
 export default function (pi) {
   const log = (ctx, parts) => appendFileSync(join(ctx.cwd, "runtime-events.log"), parts.join("|") + "\n");
   const cancelling = (ctx) => existsSync(join(ctx.cwd, "cancel-next"));
+  // The run events are logged only while the script observes a run (the disposal of a running session); every other prompt of the row leaves no line.
+  const observing = (ctx) => existsSync(join(ctx.cwd, "observe-run"));
+  pi.on("agent_start", async (_event, ctx) => observing(ctx) && log(ctx, ["agent_start"]));
+  pi.on("agent_end", async (_event, ctx) => observing(ctx) && log(ctx, ["agent_end"]));
   pi.on("session_start", async (event, ctx) => log(ctx, ["start", event.reason, event.previousSessionFile ? "previous" : "-"]));
   pi.on("session_before_switch", async (event, ctx) => {
     log(ctx, ["before_switch", event.reason, event.targetSessionFile ? "target" : "-"]);

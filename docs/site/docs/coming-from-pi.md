@@ -126,6 +126,6 @@ A Package that hard-codes `~/.pi/agent` in its own code keeps writing there. Use
 
 ## Where Pi and PiG meet
 
-PiG tracks one pinned Pi release. The pin and the way it moves are in [the upstream pin record](https://github.com/MichaelKinsy/PiG/blob/main/docs/parity/upstream-pin.md). A change that Pi makes after the pin is not in PiG until the pin moves, unless a divergence record names it. For example, D231 and D234 name two commits that PiG took early.
+PiG tracks one pinned Pi release. The pin and the way it moves are in [the upstream pin record](https://github.com/MichaelKinsy/PiG/blob/main/docs/parity/upstream-pin.md). A change that Pi makes after the pin is not in PiG until the pin moves, unless a divergence record names it. For example, D233 and D237 name two commits that PiG took early.
 
 If you find a difference from Pi that no record names, open an issue with the Pi command and the PiG command that disagree.

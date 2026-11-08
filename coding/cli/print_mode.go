@@ -216,10 +216,10 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	// disposal therefore waits for that result (resultMu) before it disposes the Session.
 	var disposeOnce sync.Once
 	var disposed atomic.Bool
-	// pig divergence (D234): follows Pi main ace560c30 ahead of the v1.5.0 pin. finalDisposing is set while the final disposal (the teardown's rt.Close) runs, and finalDisposed closes when it ends; a signal during it waits for that disposal, as Pi's disposeRuntime() returns the shared in-flight disposal (print-mode.ts), instead of starting a second one or cutting it off.
+	// finalDisposing is set while the final disposal (the teardown's rt.Close) runs, and finalDisposed closes when it ends; a signal during it waits for that disposal, as Pi's disposeRuntime() returns the shared in-flight disposal (print-mode.ts), instead of starting a second one or cutting it off.
 	var finalDisposing atomic.Bool
 	finalDisposed := make(chan struct{})
-	// teardownDone closes when the teardown has ended. The signal handlers live until then, not until the run's ctx ends: a stdout or conversion error cancels ctx before the final disposal, and a signal during it must still be handled, a repeated one by exiting at once (D234).
+	// teardownDone closes when the teardown has ended. The signal handlers live until then, not until the run's ctx ends: a stdout or conversion error cancels ctx before the final disposal, and a signal during it must still be handled, a repeated one by exiting at once.
 	teardownDone := make(chan struct{})
 	defer close(teardownDone)
 	var resultMu sync.Mutex
@@ -305,7 +305,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	go func() {
 		select {
 		case sig := <-intCh:
-			// pig divergence (D234): a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1), including a wait for a credential write (D237). The watcher starts before anything that can wait on that disposal.
+			// a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1), including a wait for a credential write (D237). The watcher starts before anything that can wait on that disposal.
 			go func() {
 				select {
 				case again := <-intCh:
@@ -545,7 +545,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			disposeFromSignal()
 		}
 		// Ordered teardown: shutdown hooks run while the Session is still open,
-		// then closing it ends the Session's event executor. The signal handlers stay until it is done (D234).
+		// then closing it ends the Session's event executor. The signal handlers stay until it is done.
 		finalDisposing.Store(true)
 		_ = rt.Close()
 		close(finalDisposed)

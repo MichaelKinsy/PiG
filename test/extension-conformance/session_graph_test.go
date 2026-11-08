@@ -1,9 +1,11 @@
 package extensionconformance
 
 import (
+	"bytes"
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -497,11 +499,22 @@ func sessionGraphDefaultPackageManagerWantFor(sdkName string) string {
 //go:embed testdata/session-graph-default-package-manager.json
 var sessionGraphDefaultPackageManagerWant string
 
-// sessionGraphModelServer is an OpenAI-compatible chat completions endpoint that answers every request with the stream "hello".
+// sessionGraphHangPrompt is the prompt text whose run the model server never finishes (the agent_session_runtime row's disposal of a running session).
+const sessionGraphHangPrompt = "hang-forever"
+
+// sessionGraphModelServer is an OpenAI-compatible chat completions endpoint that answers every request with the stream "hello", except a request that carries sessionGraphHangPrompt.
 func sessionGraphModelServer(t testing.TB) string {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		body, _ := io.ReadAll(request.Body)
 		w.Header().Set("Content-Type", "text/event-stream")
+		if bytes.Contains(body, []byte(sessionGraphHangPrompt)) {
+			// A run that never ends on its own: the stream stalls after its first chunk until the client gives up, so only an abort settles it.
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", `{"id":"c1","object":"chat.completion.chunk","created":1,"model":"m1","choices":[{"index":0,"delta":{"role":"assistant","content":"hel"},"finish_reason":null}]}`)
+			w.(http.Flusher).Flush()
+			<-request.Context().Done()
+			return
+		}
 		for _, chunk := range []string{
 			`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"m1","choices":[{"index":0,"delta":{"role":"assistant","content":"hel"},"finish_reason":null}]}`,
 			`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"m1","choices":[{"index":0,"delta":{"content":"lo"},"finish_reason":null}]}`,
