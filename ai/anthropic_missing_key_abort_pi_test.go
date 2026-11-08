@@ -23,7 +23,7 @@ func TestAnthropicMessagesAPIMissingKeyIsAbortAwareForStreamAndASetupFailureForS
 		{"stream", AnthropicMessagesAPI().Stream, false, StopReasonError},
 		{"stream", AnthropicMessagesAPI().Stream, true, StopReasonAborted},
 		{"streamSimple", AnthropicMessagesAPI().StreamSimple, false, StopReasonError},
-		{"streamSimple", AnthropicMessagesAPI().StreamSimple, true, StopReasonError},
+		{"streamSimple", AnthropicMessagesAPI().StreamSimple, true, StopReasonAborted}, // lazy.ts:83 (Pi f3a64af07): a setup failure under an aborted signal is "aborted"
 	} {
 		srv, seen := recordingEndpoint(t)
 		model := compatTestModel("anthropic", APIAnthropicMessages)

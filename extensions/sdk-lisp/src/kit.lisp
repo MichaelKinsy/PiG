@@ -667,7 +667,7 @@ background: selectedBg customMessageBg."
       (dolist (handler (cdr job))
         (handler-case (funcall handler (car job))
           (error (e) (unless (extension-shutdown ext)
-                       (format *error-output* "pig: ~A change handler failed: ~A~%" (kit-feed-what feed) e))))))))
+                       (diagnose "pig: ~A change handler failed: ~A~%" (kit-feed-what feed) e))))))))
 
 (defun kit-feed-publish (ext feed value)
   "Queue VALUE for the handlers subscribed now."
