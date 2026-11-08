@@ -565,10 +565,9 @@ func (w *SessionWorkers) whileRunning(ctx context.Context, session string, timeo
 // started blocks until a start of the session's worker the retry began (its holders') is running or failed.
 func (w *SessionWorkers) started(session string) error {
 	// The route resolves its held addresses asynchronously: the start shows within a few turns, or never (unheld).
-	deadline := time.Now().Add(50 * time.Millisecond)
-	for w.statusOf(session) == "" && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	shows, cancel := context.WithTimeout(chordctx.Background(), 50*time.Millisecond)
+	_ = w.until(shows, func(states *delta.JsonObject) bool { return statusIn(states, session) != "" })
+	cancel()
 	if w.statusOf(session) != "starting" {
 		return nil
 	}

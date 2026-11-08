@@ -483,6 +483,12 @@ func durationOr(value *time.Duration, fallback time.Duration) time.Duration {
 	return *value
 }
 
+// onLoop reports whether the caller is running a section of the host's loop (false for a loop that cannot tell).
+func (h *chordHost) onLoop() bool {
+	loop, ok := h.events.(interface{ onLoop() bool })
+	return ok && loop.onLoop()
+}
+
 // loop is the host's event loop.
 func (h *chordHost) loop() sectionLoop { return h.events }
 

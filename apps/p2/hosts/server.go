@@ -170,8 +170,8 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 	}
 	// Listen first so plugins see the actual port, but capture requests and upgrades BEFORE listening: a reconnect can
 	// arrive while plugins load, and the browser would wait forever for its handshake.
-	loaded := make(chan struct{})
-	state := &serverState{host: h, dataDir: dataDir, allowedHosts: allowedHosts, upgrades: chordhttp.NewUpgrades(), loaded: loaded}
+	loaded, failed := make(chan struct{}), make(chan struct{})
+	state := &serverState{host: h, dataDir: dataDir, allowedHosts: allowedHosts, upgrades: chordhttp.NewUpgrades(), loaded: loaded, failed: failed}
 	state.nonce = newNonce()
 	httpServer := &http.Server{Handler: state}
 	port := 8788
@@ -234,6 +234,7 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 	stopLogs := p2runtime.CaptureProcessLogs("server", false)
 	fail := func(cause error) (*P2Server, error) {
 		p2runtime.ProcessLogs.Notice("server", "Server startup failed: "+cause.Error())
+		close(failed)
 		_ = sessionWorkers.Close(ctx)
 		_ = h.Close(ctx)
 		_ = store.Close(ctx)
@@ -354,7 +355,9 @@ type serverState struct {
 	allowedHosts []string
 	upgrades     *chordhttp.Upgrades
 	loaded       chan struct{}
-	nonce        string
+	// failed is closed when the start failed: a request that arrived meanwhile is let go.
+	failed chan struct{}
+	nonce  string
 }
 
 // authenticate is who the request is. Loopback is the device owner, except for a browser request another site made or
@@ -462,7 +465,12 @@ func (s *serverState) resolveAccess(request *http.Request, ctx host.Ctx) (*p2run
 
 // ServeHTTP handles a request once the plugins loaded (an upgrade too: its handshake waits as well).
 func (s *serverState) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	<-s.loaded
+	select {
+	case <-s.loaded:
+	case <-s.failed:
+		http.Error(response, "Server startup failed", http.StatusServiceUnavailable)
+		return
+	}
 	if isUpgrade(request) {
 		s.upgrade(response, request)
 		return
