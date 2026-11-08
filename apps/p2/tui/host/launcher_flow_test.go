@@ -102,19 +102,40 @@ func TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect(t *testing.T) {
 	poll(t, func() bool { return l.draft() == "unsent draft" })
 	selected := l.client.Snapshot().Session
 	l.terminal.Resize(80, 24)
-	l.terminal.SendInput("\x15")
-	l.typed("slow stream")
-	l.terminal.SendInput(keyEnter)
-	// pi's working indicator in the editor border.
-	l.waitScreen(10*time.Second, "Working...")
-	// The fake provider's slow stream lasts about 3 s (200 tokens/s, Pi's too) and Alt+Up must meet the follow-up still queued: the text goes in as one
-	// input, not a render per key.
-	l.terminal.SendInput("queued text")
-	// Alt+Enter in kitty's encoding: the virtual terminal reports the kitty protocol, which the runtime knows.
-	l.terminal.SendInput("\x1b[13;3u")
-	l.waitScreen(10*time.Second, "Follow-up: queued text")
-	l.terminal.SendInput("\x1b[1;3A")
-	l.until(10*time.Second, "Alt+Up restoring the queued text", func() bool { return strings.Contains(l.draft(), "queued text") })
+	// Alt+Up must meet the follow-up still queued, and the fake provider's slow stream lasts about 3 s (200 tokens/s, Pi's too). On a machine so loaded that
+	// the stream ended first, the follow-up went out as a message of its own and there is nothing to restore: the steps then run again on a fresh stream.
+	idle := func() {
+		l.until(30*time.Second, "the run ending", func() bool { return !contains(l.terminal.screen(), "Working...") })
+	}
+	restored := false
+	for attempt := 0; attempt < 5 && !restored; attempt++ {
+		l.terminal.SendInput("\x15")
+		l.typed("slow stream")
+		l.terminal.SendInput(keyEnter)
+		// pi's working indicator in the editor border.
+		l.waitScreen(10*time.Second, "Working...")
+		l.typed("queued text")
+		// Alt+Enter in kitty's encoding: the virtual terminal reports the kitty protocol, which the runtime knows.
+		l.terminal.SendInput("\x1b[13;3u")
+		l.until(10*time.Second, "the follow-up queued or sent", func() bool {
+			screen := l.terminal.screen()
+			return contains(screen, "Follow-up: queued text") || !contains(screen, "Working...")
+		})
+		if !contains(l.terminal.screen(), "Follow-up: queued text") {
+			idle()
+			continue
+		}
+		l.terminal.SendInput("\x1b[1;3A")
+		l.until(10*time.Second, "Alt+Up's answer", func() bool {
+			return strings.Contains(l.draft(), "queued text") || contains(l.terminal.screen(), "queued message") || contains(l.terminal.screen(), "No queued messages")
+		})
+		if restored = strings.Contains(l.draft(), "queued text"); !restored {
+			idle()
+		}
+	}
+	if !restored {
+		t.Fatal("Alt+Up never met a queued follow-up")
+	}
 	l.terminal.SendInput(keyEsc)
 	l.until(10*time.Second, "Esc clearing the working indicator (draft "+l.draft()+")", func() bool { return !contains(l.terminal.screen(), "Working...") })
 	port := fixture.Server.Port
