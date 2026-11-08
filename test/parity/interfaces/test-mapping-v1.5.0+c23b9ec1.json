@@ -1985,6 +1985,9 @@
     {
       "path": "packages/chord/test/contracts/declare.test.ts",
       "disposition": "ported",
+      "protects": "A keyed member cannot be declared in a remote contract.",
+      "pigTest": "chord/next/contracts/declare_types_test.go#TestARemoteVariantsMembersAreTypedSoAKeyedMemberOrMethodCannotBeDeclaredInItsState pins by reflection the types that refuse it: a remote variant's state holds Schema, its methods *Method, and *KeyedMember is assignable to neither.",
+      "whyNot": "The upstream case also expects a runtime error 'keyed members are only in local contracts'. Go has no runtime path to it: VariantDeclaration.State is []Property of Schema, so the declaration does not compile and no value reaches Remote. The type half is pinned; the runtime half cannot exist.",
       "upstreamTestHash": "sha256:179bf56414a9a95212c04b6e137f7b778532a97bda8f956364dada4915253df1",
       "evidence": [
         "chord/next/contracts/declare_test.go#TestDeclarationChecks",
@@ -2067,6 +2070,9 @@
     {
       "path": "packages/chord/test/data/args.test.ts",
       "disposition": "ported",
+      "protects": "A call replacement takes its arguments as values.",
+      "pigTest": "chord/next/data/typelevel_test.go#TestCallReplacementArgumentsAreValues pins CheckedArgs.Call to func(Value, context.Context) (Value, error) by reflection.",
+      "whyNot": "The upstream case is a compile-time assertion with no runtime input. The reflection pin is the PiG form and fails when the type changes; a go/types compile-fail test would duplicate it.",
       "upstreamTestHash": "sha256:f980f2518c939d6a6c611d58c4bf3d12441cf8f8e38d2ac91b0cdad21ee2400d",
       "evidence": [
         "chord/next/data/args_test.go#TestBindProvider",
@@ -2128,6 +2134,9 @@
     {
       "path": "packages/chord/test/delta-append-text.test.ts",
       "disposition": "ported",
+      "protects": "AppendText accepts only keys whose type is exactly string.",
+      "pigTest": "chord/delta/append_text_test.go#TestAppendTextRejectsWhatACallerCanGetWrong runs the runtime half (a missing key, an array, an object are refused with the upstream message). The cost and heap-retention cases are ported as chord/delta/append_text_scaling_norace_test.go#TestScalingTrackerAppendTextStream and chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps.",
+      "whyNot": "StringKeys is a TypeScript type-level check; AppendText takes the key as a string in Go, so the type half has no form. Only that case is designed out.",
       "upstreamTestHash": "sha256:1dace17c787a5a7ac6c97dbd705e967f4a80be0faf9e50648ca5d1983405ba66",
       "evidence": [
         "chord/delta/append_text_test.go#TestAppendTextRecordsAnAppendOpAndTheAppendedValue",
@@ -2135,9 +2144,11 @@
         "chord/delta/append_text_test.go#TestAppendTextFallsBackToTheStringComparisonWhenTheSameKeyIsAlsoAssignedOrDeleted",
         "chord/delta/append_text_test.go#TestAppendTextAppendsInsideABlockTheSameChangeInsertedOrReplaced",
         "chord/delta/append_text_test.go#TestAppendTextRejectsWhatACallerCanGetWrong",
+        "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps",
+        "chord/delta/append_text_scaling_norace_test.go#TestScalingTrackerAppendTextStream",
         "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps"
       ],
-      "rationale": "Five of the eight cases are ported with the same documents and expected ops: the op and value, joined appends beside other changes, the fallback when the key is also assigned or deleted, blocks inserted or replaced in the same change, and the errors (a non-string, a missing key, an array index, a settled overlay); the op-text case checks the op owns its bytes. The StringKeys type case is a TypeScript type test with no Go form, the cost case measures V8 allocation of a 500 KB stream (Go strings are immutable, so every revision holds its own copy of the string and the allocation grows with it; AppendText removes the comparison, not the copy), and the heap-retention case has no Go form."
+      "rationale": "Five of the eight cases are ported with the same documents and expected ops: the op and value, joined appends beside other changes, the fallback when the key is also assigned or deleted, blocks inserted or replaced in the same change, and the errors (a non-string, a missing key, an array index, a settled overlay); the op-text case checks the op owns its bytes. The StringKeys type case is a TypeScript type test (its runtime half, the refused keys, is in TestAppendTextRejectsWhatACallerCanGetWrong). The cost case (a 500 KB stream allocates linearly) is ported as TestScalingTrackerAppendTextStream, which compares allocation growth over a tenfold longer stream and against a control of commits that set a number; AppendText removes the comparison, not the copy. The heap-retention case (an op text cut from a larger string must not keep it alive) is ported in Go form as TestAppendTextOwnsTheTextItKeeps: a Go substring shares its parent's bytes, so the test cuts the appended text from a 1 MiB buffer, overwrites the buffer, and fails when the op did not copy its text (red with the copy removed). Pi's 50-commit heap measurement is not repeated: it passes with the copy removed, (measured in review of this row)."
     },
     {
       "path": "packages/chord/test/delta-apply-immutable.test.ts",
@@ -2198,9 +2209,10 @@
         "chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
         "chord/delta/pending_test.go#TestPendingOpsOwnershipHandsOverAReceivedBatchByIdentityAndNeverMutatesBatchesOrOpTuples",
         "chord/delta/pending_test.go#TestPendingOpsSizeCountsPendingOpsAfterFoldingTheReplacementOnceOverflowedAndNothingOnceTaken",
-        "chord/delta/pending_test.go#TestPendingOpsKeepsOneOpPerLeafPathHoweverManyCommitsWriteIt"
+        "chord/delta/pending_test.go#TestPendingOpsKeepsOneOpPerLeafPathHoweverManyCommitsWriteIt",
+        "chord/delta/pending_cost_norace_test.go#TestPendingOpsBuildNoPathKeyForOneBatch"
       ],
-      "rationale": "The four fuzzers (tracker edits anywhere with appendText, list elements between splices and reorders, a root array, diffRevisions between arbitrary values), the ten adversarial sequences, the cap, ownership and size cases are ported with Pi's seeds' shape and counts; each sequence is replayed on a replica as ops and through the wire codec and must reach the final value, the received ops must be unchanged, and the fuzzers must fold. Go mapping: the codec leg detaches the wire form instead of going through JSON text (which would turn a lone surrogate into U+FFFD); values compare as JSON. Two cases have no Go form: the one that spies on JSON.stringify to count path keys (a JavaScript instrumentation detail; the Go key is built once per leaf op) and the WeakRef collection case (the queue holds no reference after Take, asserted directly)."
+      "rationale": "The four fuzzers (tracker edits anywhere with appendText, list elements between splices and reorders, a root array, diffRevisions between arbitrary values), the ten adversarial sequences, the cap, ownership and size cases are ported with Pi's seeds' shape and counts; each sequence is replayed on a replica as ops and through the wire codec and must reach the final value, the received ops must be unchanged, and the fuzzers must fold. Go mapping: the codec leg detaches the wire form instead of going through JSON text (which would turn a lone surrogate into U+FFFD); values compare as JSON. The two cases with JavaScript instrumentation are ported in Go form: the JSON.stringify spy (no path key for one batch or structural ops) as an allocation count, TestPendingOpsBuildNoPathKeyForOneBatch (a batch kept by reference allocates nothing), and the WeakRef case as TestPendingOpsReleasesWhatItHandedOverAndWhatItFoldedOver, which asserts the queue holds no op after Take."
     },
     {
       "path": "packages/chord/test/delta-tracker/retention.test.ts",
@@ -2475,6 +2487,9 @@
     {
       "path": "packages/chord/test/host/follow.test.ts",
       "disposition": "ported",
+      "protects": "follow infers the value type from the attachment without a type argument.",
+      "pigTest": "chord/next/host/host_follow_test.go: a compile-time declaration that Self.Follow is func(Self, FollowAttach[delta.JsonValue]) chord.Watchable[delta.JsonValue], and TestFollowAttachIsTypedByItsAttachment.",
+      "whyNot": "The upstream case is expectTypeOf with no runtime behavior. Go's Follow is not generic (it is fixed to delta.JsonValue), so there is no inference to test; the declaration fails to compile when either side changes. Every ported follow case also compiles only through that signature.",
       "upstreamTestHash": "sha256:7163597e13d8d64375d364e40bcab6099b3aea1cd82bf1bee2269fccf6934df7",
       "evidence": [
         "chord/next/host/host_follow_test.go"
@@ -3842,6 +3857,9 @@
     {
       "path": "packages/chord/test/store/columns.test.ts",
       "disposition": "ported",
+      "protects": "Row types carry optional opt(...) and defaulted fields.",
+      "pigTest": "chord/next/store/evidence_storeA_test.go#TestEvidenceStoreAColumnsOptionalRowType plus its compile-time declarations over Opt, ColumnSchema.Optional and Row; the defaulted put runs in the ported table and row cases.",
+      "whyNot": "The upstream case is an Equal<RowOf,...> type assertion with no runtime input. A Go row is map[string]any, so the optional and defaulted behavior is the runtime test above.",
       "upstreamTestHash": "sha256:6b2e106cb68743e54c7d3f603a940d98e4558f3082ee4e36e708136842a3146c",
       "evidence": [
         "chord/next/store/columns_test.go"
@@ -4046,12 +4064,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:a5c2f09931f05e2e160cf332bd2a1408cdab703fbfa606cd1a55467563119a2a",
       "evidence": [
-        "chord/next/store/table_test.go"
+        "chord/next/store/table_test.go",
+        "chord/next/store/table_key_types_test.go#TestKeyColumnsTakeTheirColumnTypeAnIntANumberAndAStrAString"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). 1 JS-only cases are designed out (rows/chord-misca2.md; owner approval pending): no Go form (undefined, symbol keys, AbortSignal/performance.now spies, type-level).",
-      "designedOutCases": [
-        "keys › type an int() key column as a number and a str() one as a string (tutorial, 2026-11-03)"
-      ]
+      "rationale": "All 4 upstream cases run in the evidence files. The key typing case (an int() key column takes a number, a str() one a string) runs at the trust boundary: RowCodec.Key accepts {id: 7} and {id: \"a\", at: 1} with the same columns and refuses the other type, TestKeyColumnsTakeTheirColumnTypeAnIntANumberAndAStrAString."
     },
     {
       "path": "packages/chord/test/store/text.test.ts",
@@ -4322,9 +4338,10 @@
         "chord/watch_upstream_test.go#TestWatchReportsARetirementInTheNextCallWithTheValueTheSourceGivesAndGoesOn",
         "chord/watch_upstream_test.go#TestWatchFoldsARetirementAndTheFramesAroundItIntoOneCallThatReportsIt",
         "chord/watch_upstream_test.go#TestWatchKeepsReportingTheRetirementPastAnOverflow",
-        "chord/watch_upstream_test.go#TestWatchTreatsANullValueAsAValueNeverAsARetirement"
+        "chord/watch_upstream_test.go#TestWatchTreatsANullValueAsAValueNeverAsARetirement",
+        "chord/watch_call_plain_test.go#TestWatchCallIsPlainDataOfItsFieldsThatSurvivesAJSONRoundTrip"
       ],
-      "rationale": "Pi 5f312dac: renamed expectations (kind, aborted, EndWith/ObserveAbort), the 'Watch failure calls' group and the NativeWatch failure case; call-object key/structuredClone/identity cases are designed out (Go call is a struct value)."
+      "rationale": "Pi 5f312dac: renamed expectations (kind, aborted, EndWith/ObserveAbort), the 'Watch failure calls' group and the NativeWatch failure case. The call-object cases are ported in Go form: Object.keys is the field list of WatchCall and NativeWatchCall and the structuredClone and JSON round trip is encoding/json, in TestWatchCallIsPlainDataOfItsFieldsThatSurvivesAJSONRoundTrip; the frame delivered alone keeps its identity (TestWatchPassesAFrameDeliveredAloneOnAsTheSourceMadeIt)."
     },
     {
       "path": "packages/codemode/test/declarations.test.ts",
@@ -9583,6 +9600,9 @@
     {
       "path": "packages/schema/test/coerce-typebox.test.ts",
       "disposition": "ported",
+      "protects": "Coercion follows TypeBox's Value.Convert and Value.Check for every value a schema or input can hold.",
+      "pigTest": "schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream runs 186 of the 221 sites from the generated testdata with the upstream expectations by deep equality.",
+      "whyNot": "The 18 designed-out sites need a bigint or undefined in the schema, input or expectation. Go tool arguments reach the coercer through JSON (nil, bool, float64, string, []any, *Object), which holds neither; a Go value standing in for them would test a type the product never receives.",
       "upstreamTestHash": "sha256:3bdde8189ec5cf05e5bc8376d1def0d8bdfdaf6025098b4141d8bb5ed1220e85",
       "evidence": [
         "schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
@@ -9593,6 +9613,9 @@
     {
       "path": "packages/schema/test/coerce.test.ts",
       "disposition": "ported",
+      "protects": "The coercer converts to bigint and undefined as TypeBox's TryBigInt and TryUndefined do.",
+      "pigTest": "schema/coerce_upstream_test.go#TestCoerceUpstream runs the other 42 sites; the JSON-reachable conversions (number, boolean, null, string) are the same inputs and results.",
+      "whyNot": "Both cases convert into bigint or undefined, which no Go JSON value can be (see coerce-typebox).",
       "upstreamTestHash": "sha256:13794a83a21c67b24c5647232b1d850be4b49c15acfb3efc303d1678634f8092",
       "evidence": [
         "schema/coerce_upstream_test.go#TestCoerceUpstream",
@@ -9643,6 +9666,9 @@
     {
       "path": "packages/schema/test/validator.test.ts",
       "disposition": "ported",
+      "protects": "The validator checks TypeBox's JavaScript types (BigInt, Undefined) and a property set to undefined as absent.",
+      "pigTest": "schema/validator_upstream_test.go runs 26 of the 30 cases with the upstream inputs; a Go nil member is JSON null, tested in the values cases.",
+      "whyNot": "The 4 designed-out cases need a bigint or an undefined value. Go has neither: nil is JSON null, not an absent member.",
       "upstreamTestHash": "sha256:92509c88db8868df0dc81d53e8b8ecf5b479f6f962452c274446ed26d67cc601",
       "evidence": [
         "schema/validator_upstream_test.go#TestErrors",
@@ -9911,6 +9937,9 @@
     {
       "path": "packages/tui/test/markdown.test.ts",
       "disposition": "ported",
+      "protects": "Rendered markdown blocks held for reuse are released after a full garbage collection.",
+      "pigTest": "tui/markdown_upstream_test.go#TestUpstreamMarkdownBlockReuse subtest 'releases the reused highlighting when streaming finishes' and TestMarkdownReusedHighlightingEqualsAFreshRender pin the release by FinishStreaming, Invalidate and a theme change.",
+      "whyNot": "The case asserts a JavaScript WeakRef cleared by gc(). Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render; a GC-timed test would be flaky and would assert the opposite design.",
       "upstreamTestHash": "sha256:bc0326a53fa4d8b4c60a7880825ddbfc29fcd4707b80a9f30638838f5f82cbcc",
       "evidence": [
         "tui/markdown_upstream_test.go#TestUpstreamMarkdown",
