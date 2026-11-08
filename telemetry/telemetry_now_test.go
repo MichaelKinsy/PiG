@@ -55,3 +55,42 @@ func TestTelemetryNowFollowsAStepOfTheWallClockPast10ms(t *testing.T) {
 		t.Errorf("after the step = %v, want 3650004.125", got)
 	}
 }
+
+// Ports the in-memory test "stamps starts with telemetryNow: spans of one millisecond apart to the microsecond, in their order"
+// of packages/telemetry/test/store.test.ts (Pi main 378d45a0).
+func TestInMemoryStampsStartsWithTelemetryNowToTheMicrosecondInTheirOrder(t *testing.T) {
+	_, restoreDate := jsclock.MockDateNow(1000)
+	defer restoreDate()
+	clock, restoreClock := jsclock.MockPerformanceNow(100)
+	defer restoreClock()
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	if err := recorder.StartSpan(telemetry.SpanOptions{Name: "first"}, func(telemetry.TelemetrySpan) error {
+		clock.Set(100.25)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := recorder.StartSpan(telemetry.SpanOptions{Name: "second"}, func(telemetry.TelemetrySpan) error {
+		clock.Set(100.5)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	found, err := recorder.FindTraces(telemetry.TraceQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	type stamp struct {
+		name           string
+		started, ended float64
+	}
+	var got []stamp
+	for _, trace := range found.Traces {
+		for _, span := range trace.Spans {
+			got = append(got, stamp{span.Name, span.StartedMs, span.EndedMs})
+		}
+	}
+	if want := []stamp{{"second", 1000.25, 1000.5}, {"first", 1000, 1000.25}}; len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("spans = %v, want %v", got, want)
+	}
+}
