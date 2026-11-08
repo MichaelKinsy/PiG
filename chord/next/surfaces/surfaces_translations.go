@@ -6,7 +6,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
-	"golang.org/x/text/language"
 )
 
 // Ports packages/chord/src/surfaces/translations.ts.
@@ -89,14 +88,4 @@ func ComposeTranslations(table registries.RegistryTable[[]Translation], ctx regi
 	}
 	slices.Sort(locales)
 	return &TranslationIndex{Catalogs: catalogs, Locales: locales}, nil
-}
-
-// CanonicalLocale is locale canonical (`pt-br` is `pt-BR`); false when it is no language tag (`Intl.getCanonicalLocales`
-// throws).
-func CanonicalLocale(locale string) (string, bool) {
-	tag, err := language.Parse(locale)
-	if err != nil {
-		return "", false
-	}
-	return tag.String(), true
 }
