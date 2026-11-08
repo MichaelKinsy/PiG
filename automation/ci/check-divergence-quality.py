@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from dataclasses import dataclass
@@ -45,9 +46,25 @@ def upstream_version(root: Path) -> str:
     return match.group(1)
 
 
-def validate(record: Record, version: str, root: Path) -> list[str]:
+INTENTION_LABELS = ("Protects", "PiG-shaped test considered", "Why not")
+
+
+def test_level_divergences(root: Path, version: str) -> set[str]:
+    """D ids that a reviewed test-mapping entry names: the divergences that design out or change a test."""
+    path = root / "test" / "parity" / "interfaces" / f"test-mapping-v{version}.json"
+    if not path.exists():
+        return set()
+    entries = json.loads(path.read_text(encoding="utf-8")).get("entries", [])
+    return {entry["divergence"] for entry in entries if entry.get("divergence")}
+
+
+def validate(record: Record, version: str, root: Path, test_level: set[str] = frozenset()) -> list[str]:
     errors: list[str] = []
     location = f"{record.ledger}:{record.line}: {record.ident}"
+    if record.ident in test_level and record.ledger.name == "DIVERGENCES.md":
+        for label in INTENTION_LABELS:
+            if not re.search(rf"(?mi)^{re.escape(label)}:\s*\S", record.body):
+                errors.append(f"{location}: test-level divergence missing non-empty '{label}:' (AGENTS.md Upstream test parity: property, PiG-shaped test considered, why impossible or worthless)")
     if "SCRUTINIZED:approved" not in record.body:
         errors.append(f"{location}: missing SCRUTINIZED:approved")
     if not re.search(r"(?mi)^Remove when:", record.body):
@@ -124,6 +141,7 @@ def main() -> int:
     ledgers = [root / "docs/parity/DIVERGENCES.md", root / "docs" / "additive-features.md"]
     errors: list[str] = []
     count = 0
+    test_level = test_level_divergences(root, version)
     for ledger in ledgers:
         ledger_records = records(ledger)
         ids = [int(record.ident[1:]) for record in ledger_records]
@@ -131,7 +149,7 @@ def main() -> int:
             errors.append(f"{ledger}: records must be in ascending numeric order: {ids}")
         for record in ledger_records:
             count += 1
-            errors.extend(validate(record, version, root))
+            errors.extend(validate(record, version, root, test_level))
     errors.extend(parity_prose_errors(root))
     if errors:
         print("divergence quality: FAIL", file=sys.stderr)
