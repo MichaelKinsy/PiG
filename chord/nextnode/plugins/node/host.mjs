@@ -227,9 +227,17 @@ async function load(request, context) {
 		onError: (error) => port.control({ event: "error", error: hostError(error) }),
 	});
 	const runtime = createPluginRuntime();
+	// The names the runtime offered the host (`TestPlugin` tells a plugin that failed before the host, in its build or
+	// evaluation, from one whose setup failed in it: a plugin that never reached the host was not offered).
+	const offered = [];
+	const hostLoad = host.load.bind(host);
+	host.load = (facets, loadContext) => {
+		offered.push(...facets.map(({ name }) => name));
+		return hostLoad(facets, loadContext);
+	};
 	// What the host's work runs under: the app's telemetry parent, when it gave an adapter.
 	const base = telemetry === undefined ? BACKGROUND_CONTEXT : withTelemetry(telemetry, BACKGROUND_CONTEXT);
-	hosted = { host, runtime, store, peer: request.peer, base, core, scripts: request.scripts };
+	hosted = { host, runtime, store, peer: request.peer, base, core, scripts: request.scripts, offered };
 	// The host's keep-alive counts, for the app that supervises it (NodeOptions.OnActivity): now, and at each change.
 	port.control({ event: "activity", counts: host.activity.value });
 	void host.activity.watch(BACKGROUND_CONTEXT).then((watch) =>
