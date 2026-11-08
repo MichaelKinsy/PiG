@@ -188,6 +188,7 @@ func ownTuple(message Message) string {
 		if typed.Old {
 			tail += ",true"
 		}
+		//portlint:allow utf16units head is jsonText's output, ending in the one-byte ASCII ']' that is also one code unit; dropped as .slice(0, -1) at text.ts:77
 		return head[:len(head)-1] + "," + part + "," + lengths + "," + tail + "]"
 	case *AbortMessage:
 		return jsonText([]any{"x", float64(typed.Call)})

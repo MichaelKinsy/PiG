@@ -177,7 +177,7 @@ func (a *App) baseBuilds() []baseBuild {
 	return bases
 }
 
-// linksAfterTheBases holds a link's upgrade until the bases are built: a client that connects while the server builds (a page
+// linksAfterTheBases holds a link's upgrade until the bases are built (pig divergence (D604)): a client that connects while the server builds (a page
 // reconnecting to a restarted server) would hold the scripts object's empty set, and its base is none the page runs (it reloads).
 // Pi's client has that window too; its build is quicker than a Go server's, which starts the plugins' Node. A request the server
 // closes meanwhile is refused. The options are the zero ones the links endpoint gave every socket.

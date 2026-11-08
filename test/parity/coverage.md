@@ -4,11 +4,11 @@ Generated from `1135` PORT_MAP entries and `873` parity scenarios.
 
 ## Status
 
-- **Porting:** 927 / 1031 intended-portable entries ✅ (89.9%).
-- **Behavior verification:** 814 / 927 ported entries (87.8%); 0 weak-only, 113 untested.
-- **Upstream test porting:** 710 ported / 8 partial / 255 pending (8 other dispositions; [file mapping](interfaces/test-mapping-v1.5.0+c23b9ec1.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.0+c23b9ec1.json) (`deferred-0.3.x`).
+- **Porting:** 959 / 1021 intended-portable entries ✅ (93.9%).
+- **Behavior verification:** 815 / 959 ported entries (85.0%); 0 weak-only, 144 untested.
+- **Upstream test porting:** 838 ported / 6 partial / 126 pending (11 other dispositions; [file mapping](interfaces/test-mapping-v1.5.0+c23b9ec1.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.0+c23b9ec1.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1135. Breakdown: 104 n/a (designed out) · 19 🟡 partial · 85 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 20 🟡 partial · 42 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -16,21 +16,21 @@ Raw PORT_MAP rows: 1135. Breakdown: 104 n/a (designed out) · 19 🟡 partial ·
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 270 | 22 | 248 | 246 | 0 | 2 | 99.2% | 97.6% |
-| `chord` | 323 | 29 | 294 | 208 | 6 | 80 | 70.7% | 77.9% |
+| `chord` | 323 | 39 | 284 | 240 | 7 | 37 | 84.5% | 67.5% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
 | `coding-agent` | 263 | 27 | 236 | 235 | 1 | 0 | 99.6% | 96.6% |
 | `durable` | 100 | 10 | 90 | 76 | 11 | 3 | 84.4% | 98.7% |
 | `env` | 25 | 3 | 22 | 21 | 1 | 0 | 95.5% | 90.5% |
 | `evals` | 6 | 0 | 6 | 6 | 0 | 0 | 100.0% | 100.0% |
-| `mcp` | 28 | 3 | 25 | 25 | 0 | 0 | 100.0% | 60.0% |
+| `mcp` | 28 | 3 | 25 | 25 | 0 | 0 | 100.0% | 64.0% |
 | `schema` | 43 | 3 | 40 | 40 | 0 | 0 | 100.0% | 0.0% |
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
 | `tui` | 46 | 1 | 45 | 45 | 0 | 0 | 100.0% | 100.0% |
 
 - **Four core packages (agent, ai, coding-agent, tui):** 531 / 534 intended-portable files ✅ (99.4%) from 585 rows; 517 behavioral (97.4%), 0 weak-only, 14 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 616 / 619 intended-portable files ✅ (99.5%) from 681 rows; 552 behavioral (89.6%), 0 weak-only, 64 untested.
-- **Whole monorepo (12 packages):** 927 / 1031 intended-portable files ✅ (89.9%) from 1135 rows; 814 behavioral (87.8%), 0 weak-only, 113 untested.
-- **Interface closure:** 13943 of 15012 semantic interface IDs closed (295 designed-out, 1069 pending, 13648 ported). A file-level ✅ does not close an interface ID.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 616 / 619 intended-portable files ✅ (99.5%) from 681 rows; 553 behavioral (89.8%), 0 weak-only, 63 untested.
+- **Whole monorepo (12 packages):** 959 / 1021 intended-portable files ✅ (93.9%) from 1135 rows; 815 behavioral (85.0%), 0 weak-only, 144 untested.
+- **Interface closure:** 14252 of 15012 semantic interface IDs closed (307 designed-out, 760 pending, 13945 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
@@ -404,7 +404,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/core/tools/read.ts` | ✅ | 7 (02-print-read-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd, 17-tool-rpc-error-and-bash-wire, 28-rpc-tool-result-wire, 31-extension-runtime-surface, 33-rpc-real-provider-records) | 14 (02-print-read-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd, 17-tool-rpc-error-and-bash-wire, 28-rpc-tool-result-wire, 31-extension-runtime-surface, 33-rpc-real-provider-records, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestToolsOptionsReachEachTool, unit:./internal/codingagent/tools:TestToolsOptionsReachEachTool, unit:./internal/codingagent/tools:TestToolsOptionsReachEachTool) | not run | ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestToolsOptionsReachEachTool, ./internal/codingagent/tools:TestToolsOptionsReachEachTool, ./internal/codingagent/tools:TestToolsOptionsReachEachTool |
 | `packages/coding-agent/src/core/tools/write.ts` | ✅ | 5 (03-print-write-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd, 28-rpc-tool-result-wire, 31-extension-runtime-surface) | 10 (03-print-write-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd, 28-rpc-tool-result-wire, 31-extension-runtime-surface, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue, unit:./internal/codingagent/tools:TestToolsOptionsReachEachTool) | not run | ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue, ./internal/codingagent/tools:TestToolsOptionsReachEachTool |
 | `packages/coding-agent/src/core/tools/edit.ts` | ✅ | 4 (07-print-edit-tool-exec, 15-builtin-tool-wire-details, 15-edit-access-abort, 16-tool-context-cwd) | 9 (07-print-edit-tool-exec, 15-builtin-tool-wire-details, 15-edit-access-abort, 16-tool-context-cwd, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue, unit:./internal/codingagent/tools:TestToolsOptionsReachEachTool) | not run | ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue, ./internal/codingagent/tools:TestToolsOptionsReachEachTool |
-| `packages/coding-agent/src/core/tools/grep.ts` | ✅ | 3 (04-print-grep-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd) | 17 (04-print-grep-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolsTakeCwdAndOptions, unit:./internal/codingagent/tools:TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths, unit:./internal/codingagent/tools:TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths, unit:./internal/codingagent/tools:TestGrepOperationsIsDirectoryErrorIsPathNotFound, unit:./internal/codingagent/tools:TestGrepOperationsIsDirectoryErrorIsPathNotFound, unit:./internal/codingagent/tools:TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePathForm, unit:./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, unit:./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, unit:./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, unit:./internal/codingagent/tools:TestSearchToolBinDirSelectsTheManagedToolsDirectory, unit:./internal/codingagent/tools:TestToolBinDirComesFromOptions) | not run | ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolsTakeCwdAndOptions, ./internal/codingagent/tools:TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths, ./internal/codingagent/tools:TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths, ./internal/codingagent/tools:TestGrepOperationsIsDirectoryErrorIsPathNotFound, ./internal/codingagent/tools:TestGrepOperationsIsDirectoryErrorIsPathNotFound, ./internal/codingagent/tools:TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePathForm, ./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, ./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, ./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, ./internal/codingagent/tools:TestSearchToolBinDirSelectsTheManagedToolsDirectory, ./internal/codingagent/tools:TestToolBinDirComesFromOptions |
+| `packages/coding-agent/src/core/tools/grep.ts` | ✅ | 3 (04-print-grep-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd) | 18 (04-print-grep-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolsTakeCwdAndOptions, unit:./internal/codingagent/tools:TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths, unit:./internal/codingagent/tools:TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths, unit:./internal/codingagent/tools:TestGrepOperationsIsDirectoryErrorIsPathNotFound, unit:./internal/codingagent/tools:TestGrepOperationsIsDirectoryErrorIsPathNotFound, unit:./internal/codingagent/tools:TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePathForm, unit:./internal/codingagent/tools:TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext, unit:./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, unit:./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, unit:./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, unit:./internal/codingagent/tools:TestSearchToolBinDirSelectsTheManagedToolsDirectory, unit:./internal/codingagent/tools:TestToolBinDirComesFromOptions) | not run | ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolsTakeCwdAndOptions, ./internal/codingagent/tools:TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths, ./internal/codingagent/tools:TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths, ./internal/codingagent/tools:TestGrepOperationsIsDirectoryErrorIsPathNotFound, ./internal/codingagent/tools:TestGrepOperationsIsDirectoryErrorIsPathNotFound, ./internal/codingagent/tools:TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePathForm, ./internal/codingagent/tools:TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext, ./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, ./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, ./internal/codingagent/tools:TestGrepToolUsesTheConfiguredOperations, ./internal/codingagent/tools:TestSearchToolBinDirSelectsTheManagedToolsDirectory, ./internal/codingagent/tools:TestToolBinDirComesFromOptions |
 | `packages/coding-agent/src/core/tools/find.ts` | ✅ | 5 (05-print-find-tool-exec, 15-builtin-tool-wire-details, 15-print-find-scoped-ignores, 16-tool-context-cwd, 21-find-operations-and-limits) | 30 (05-print-find-tool-exec, 15-builtin-tool-wire-details, 15-print-find-scoped-ignores, 16-tool-context-cwd, 21-find-operations-and-limits, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolsTakeCwdAndOptions, unit:./internal/codingagent/tools:TestFindCustomGlobRootPort, unit:./internal/codingagent/tools:TestFindCustomGlobRootPort, unit:./internal/codingagent/tools:TestFindCustomGlobRootPort, unit:./internal/codingagent/tools:TestFindCustomGlobRootPort, unit:./internal/codingagent/tools:TestFindCustomGlobRootPort, unit:./internal/codingagent/tools:TestFindCustomGlobRootPort, unit:./internal/codingagent/tools:TestFindGlobFailureIsReportedWithItsOwnMessage, unit:./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, unit:./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, unit:./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, unit:./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, unit:./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, unit:./internal/codingagent/tools:TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob, unit:./internal/codingagent/tools:TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob, unit:./internal/codingagent/tools:TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob, unit:./internal/codingagent/tools:TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob, unit:./internal/codingagent/tools:TestFindOperationsPreserveNumericLimitDetails, unit:./internal/codingagent/tools:TestFindOperationsPreserveNumericLimitDetails, unit:./internal/codingagent/tools:TestFindOperationsPreserveNumericLimitDetails, unit:./internal/codingagent/tools:TestSearchToolBinDirSelectsTheManagedToolsDirectory, unit:./internal/codingagent/tools:TestToolBinDirComesFromOptions) | not run | ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolsTakeCwdAndOptions, ./internal/codingagent/tools:TestFindCustomGlobRootPort, ./internal/codingagent/tools:TestFindCustomGlobRootPort, ./internal/codingagent/tools:TestFindCustomGlobRootPort, ./internal/codingagent/tools:TestFindCustomGlobRootPort, ./internal/codingagent/tools:TestFindCustomGlobRootPort, ./internal/codingagent/tools:TestFindCustomGlobRootPort, ./internal/codingagent/tools:TestFindGlobFailureIsReportedWithItsOwnMessage, ./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, ./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, ./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, ./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, ./internal/codingagent/tools:TestFindOperationsCancellationAndErrors, ./internal/codingagent/tools:TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob, ./internal/codingagent/tools:TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob, ./internal/codingagent/tools:TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob, ./internal/codingagent/tools:TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob, ./internal/codingagent/tools:TestFindOperationsPreserveNumericLimitDetails, ./internal/codingagent/tools:TestFindOperationsPreserveNumericLimitDetails, ./internal/codingagent/tools:TestFindOperationsPreserveNumericLimitDetails, ./internal/codingagent/tools:TestSearchToolBinDirSelectsTheManagedToolsDirectory, ./internal/codingagent/tools:TestToolBinDirComesFromOptions |
 | `packages/coding-agent/src/core/tools/ls.ts` | ✅ | 3 (06-print-ls-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd) | 9 (06-print-ls-tool-exec, 15-builtin-tool-wire-details, 16-tool-context-cwd, unit:./internal/codingagent/tools:TestCreateLsToolBindsItsCwdAndOperations, unit:./internal/codingagent/tools:TestCreateLsToolBindsItsCwdAndOperations, unit:./internal/codingagent/tools:TestCreateLsToolUpstream, unit:./internal/codingagent/tools:TestCreateLsToolUpstream, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, unit:./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions) | not run | ./internal/codingagent/tools:TestCreateLsToolBindsItsCwdAndOperations, ./internal/codingagent/tools:TestCreateLsToolBindsItsCwdAndOperations, ./internal/codingagent/tools:TestCreateLsToolUpstream, ./internal/codingagent/tools:TestCreateLsToolUpstream, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions, ./internal/codingagent/tools:TestCreateToolFactoriesBindTheirCwdAndOptions |
 | `packages/coding-agent/src/core/tools/edit-diff.ts` | ✅ | 4 (07-print-edit-tool-exec, 10-edit-tool-diff, 31-extension-runtime-surface, 49-edit-tool-diff-output-pad-0) | 6 (07-print-edit-tool-exec, 10-edit-tool-diff, 31-extension-runtime-surface, 49-edit-tool-diff-output-pad-0, unit:./internal/codingagent/tools:TestGetReplacementLineRangeRejectsARangeThatEndsPastTheLastLine, unit:./internal/codingagent/tools:TestPrepareEditArgumentsRawNeedsBothTextsToRepairAnEdit) | not run | ./internal/codingagent/tools:TestGetReplacementLineRangeRejectsARangeThatEndsPastTheLastLine, ./internal/codingagent/tools:TestPrepareEditArgumentsRawNeedsBothTextsToRepairAnEdit |
@@ -646,7 +646,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/mcp/src/oauth/client-settings.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/mcp/src/oauth/loopback.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/mcp/src/oauth/sign-in.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/mcp/src/output-limit.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/mcp/src/output-limit.ts` | ✅ | 0 | 1 (unit:./mcp:TestTruncateMiddle) | not run | ./mcp:TestTruncateMiddle |
 | `packages/mcp/src/transports/lines.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/mcp/src/transports/pipe.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/codemode/src/cloudflare-modules.d.ts` | n/a | 0 | 0 | not run |  |
@@ -804,7 +804,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/host/destination.ts` | ✅ | 0 | 4 (unit:./chord/next/host:TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone, unit:./chord/next/host:TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone, unit:./chord/next/host:TestDestinationMisplacedIsNilWhenTheObjectLivesHereElseInvalidHostAddressNamingBothHosts, unit:./chord/next/host:TestSameAddressNamesTheHostWithTheSameKindAndTheSameValueForEachParam) | not run | ./chord/next/host:TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone, ./chord/next/host:TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone, ./chord/next/host:TestDestinationMisplacedIsNilWhenTheObjectLivesHereElseInvalidHostAddressNamingBothHosts, ./chord/next/host:TestSameAddressNamesTheHostWithTheSameKindAndTheSameValueForEachParam |
 | `packages/chord/src/host/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/host/internal.ts` | n/a | 0 | 0 | not run |  |
-| `packages/chord/src/host/host.ts` | ✅ | 0 | 2 (unit:./chord/next/host:TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose, unit:./chord/next/host:TestHostRevokeNeverRevokesTheHostsOwnPrincipal) | not run | ./chord/next/host:TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose, ./chord/next/host:TestHostRevokeNeverRevokesTheHostsOwnPrincipal |
+| `packages/chord/src/host/host.ts` | ✅ | 0 | 3 (unit:./chord/next/host:TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad, unit:./chord/next/host:TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose, unit:./chord/next/host:TestHostRevokeNeverRevokesTheHostsOwnPrincipal) | not run | ./chord/next/host:TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad, ./chord/next/host:TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose, ./chord/next/host:TestHostRevokeNeverRevokesTheHostsOwnPrincipal |
 | `packages/chord/src/host/attempt.ts` | ✅ | 0 | 3 (unit:./chord/next/host:TestAttemptEndingRejectsACallWhoseCallersContextIsAlreadyAbortedBeforeTheHandlerRuns, unit:./chord/next/host:TestAttemptReleasesTheReferencesItAcquired, unit:./chord/next/host:TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNativesCloseWhichIsReported) | not run | ./chord/next/host:TestAttemptEndingRejectsACallWhoseCallersContextIsAlreadyAbortedBeforeTheHandlerRuns, ./chord/next/host:TestAttemptReleasesTheReferencesItAcquired, ./chord/next/host:TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNativesCloseWhichIsReported |
 | `packages/chord/src/host/object.ts` | ✅ | 0 | 4 (unit:./chord/next/host:TestObjectCyclesAcrossHostsKeepTheLast32EntriesOfALongerChainTheOldestIsDroppedALongerCycleGoesUndetected, unit:./chord/next/host:TestObjectLingerKeepsALiveObjectLiveForLingerAfterItsLastReleaseAGetWithinItReusesItWithItsDocuments, unit:./chord/next/host:TestObjectRefRetrySkipsATransientFailuresBackoffWindowAnAttemptNow, unit:./chord/next/host:TestObjectRefRetryStartsAnObjectWaitingForItsIdentitysBackoffWindowAtOnce) | not run | ./chord/next/host:TestObjectCyclesAcrossHostsKeepTheLast32EntriesOfALongerChainTheOldestIsDroppedALongerCycleGoesUndetected, ./chord/next/host:TestObjectLingerKeepsALiveObjectLiveForLingerAfterItsLastReleaseAGetWithinItReusesItWithItsDocuments, ./chord/next/host:TestObjectRefRetrySkipsATransientFailuresBackoffWindowAnAttemptNow, ./chord/next/host:TestObjectRefRetryStartsAnObjectWaitingForItsIdentitysBackoffWindowAtOnce |
 | `packages/chord/src/host/reference.ts` | ✅ | 0 | 2 (unit:./chord/next/host:TestKeyedStateMembersRefMemberGetAndWatchWorkAnywhereAtKeyOnlyInAFactory, unit:./chord/next/host:TestReferencesThrowReleasedOnEveryUseAfterReleaseWhichIsIdempotent) | not run | ./chord/next/host:TestKeyedStateMembersRefMemberGetAndWatchWorkAnywhereAtKeyOnlyInAFactory, ./chord/next/host:TestReferencesThrowReleasedOnEveryUseAfterReleaseWhichIsIdempotent |
@@ -867,7 +867,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/node/http/http.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/incoming.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/index.ts` | n/a | 0 | 0 | not run |  |
-| `packages/chord/src/node/http/node.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/http/node.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/node/http/request.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/response.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/router.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -891,39 +891,39 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/node/workers/main.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/workers/process.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/workers/workers.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/host/old-work.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/host/readiness.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/host/reload-cycle.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/host/old-work.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/host/readiness.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/host/reload-cycle.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/host/unbound-clock.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/app.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/archive.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/app.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/archive.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/blobs.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/data.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/ephemeral-sessions.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/ephemeral.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/ephemeral-sessions.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/ephemeral.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/files-copy.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/files-entry.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/node/app/files-index.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/files.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/folder-views.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/node/app/index.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/info.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/invite.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/index.ts` | n/a | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/info.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/invite.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/layout.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/node/app/owner.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/pairing.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/owner.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/pairing.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/secrets.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/node/app/sessions.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/tar.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/sessions.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/tar.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/uploads.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/node/app/users.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/worker.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/plugins/base-inputs.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/plugins/css-modules.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/plugins/testing.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/users.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/worker.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/plugins/base-inputs.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/plugins/css-modules.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/plugins/testing.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/bundle.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/surfaces/current.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/surfaces/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/node/surfaces/published.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/surfaces/served.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/surfaces/tui.ts` | ⬜ | 0 | 0 | not run |  |
@@ -931,33 +931,33 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/node/tui/actions.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/credentials.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/filter.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/tui/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/tui/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/launcher.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/pipe.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/sandbox.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/workers/base.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/workers/child.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/workers/base.ts` | n/a | 0 | 0 | not run |  |
+| `packages/chord/src/node/workers/child.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/react/hooks.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/react/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/react/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/react/stores.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/store/live-query.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/surfaces/active-language.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/active-theme.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/client.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/connection.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/format.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/index.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/language.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/surfaces/active-language.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/active-theme.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/client.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/connection.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/format.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/index.ts` | n/a | 0 | 0 | not run |  |
+| `packages/chord/src/surfaces/language.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/loaded.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/locale-choice.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/messages.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/page-state.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/preference.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/registered.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/surfaces/locale-choice.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/messages.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/page-state.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/preference.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/registered.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/scripts.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/surfaces/theme-choice.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/themes.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/translations.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/surfaces/themes.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/translations.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/sync/batch.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/sync/client.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/sync/files.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -968,22 +968,22 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/sync/state.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/telemetry-ingest/batch.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/telemetry-ingest/facet.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/telemetry-ingest/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/telemetry-ingest/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/telemetry-ingest/recorder.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/telemetry-ingest/sender.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/telemetry-ingest/sender.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/telemetry-sqlite/node.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/telemetry-sqlite/schema.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/telemetry.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/tui/bridge.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/tui/channel.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/tui/frames.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/tui/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/tui/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/tui/runtime.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/tui/scope.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/tui/scope.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/tui/terminal.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/tui/theme.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/web/environment.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/web/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/web/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/web/language.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/web/page.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/web/scripts.ts` | ⬜ | 0 | 0 | not run |  |
