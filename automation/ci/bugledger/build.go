@@ -213,6 +213,10 @@ func build(root, since string) (*Ledger, error) {
 	if _, merging := r.resolve("MERGE_HEAD"); merging {
 		return nil, fmt.Errorf("a merge is in progress: commit the merge first, then regenerate the ledger, which reads the history of HEAD")
 	}
+	// A shallow clone cuts the history at its boundary, and git then shows each boundary commit as a root that adds every file of the tree: a two-file fix reads as a squash of ~20,000 files and the check fails on the wrong commit. The ledger needs the full history (fetch-depth: 0).
+	if shallow, err := r.git("rev-parse", "--is-shallow-repository"); err == nil && strings.TrimSpace(shallow) == "true" {
+		return nil, fmt.Errorf("the repository is a shallow clone, so its oldest commits read as squashes that add every file: fetch the full history (git fetch --unshallow, or fetch-depth: 0 in CI) and run the ledger again")
+	}
 	base, err := r.releaseBaseline(since)
 	if err != nil {
 		return nil, err
