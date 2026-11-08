@@ -517,6 +517,28 @@ func Extension() *sdk.Extension {
 		ext.UnregisterProvider("conformance-probe")
 		return nil
 	})
+	// registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
+	ext.Command("registry-model-probe", "Register the active model's provider with a new name, then read the model", func(ctx sdk.Context, name string) error {
+		encoded, err := json.Marshal(name)
+		if err != nil {
+			return err
+		}
+		var config sdk.ProviderConfig
+		if err := json.Unmarshal([]byte(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"m","name":`+string(encoded)+`,"reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}`), &config); err != nil {
+			return err
+		}
+		ext.RegisterProvider("replica-reg", config)
+		info, err := ctx.GetModelInfo()
+		if err != nil {
+			return err
+		}
+		read := ""
+		if info != nil {
+			read = info.Name
+		}
+		ctx.Notify("regname="+read, "info")
+		return nil
+	})
 	ext.Command("commands-probe", "Read the host's slash commands", func(ctx sdk.Context, _ string) error {
 		commands, err := ctx.GetCommands()
 		if err != nil {
@@ -826,6 +848,26 @@ func Extension() *sdk.Extension {
 		_, err := sdk.WithFileMutationQueue(file, func() (struct{}, error) {
 			before, _ := os.ReadFile(file)
 			return struct{}{}, os.WriteFile(file, append(before, tag+"\n"...), 0o600)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "mutated " + tag}, nil
+	})
+
+	// mutation_order_ctx_probe makes `calls` getter calls (a host round trip each in the native SDKs, none that returns a Promise in Pi), then takes the file mutation
+	// queue through its Context and appends its tag to the file (TestFileMutationOrderOfTheContextFormAcrossSDKs): the shape of two tools of one batch that reach the
+	// queue after different numbers of round trips.
+	ext.Tool("mutation_order_ctx_probe", "Make getter calls, take the file mutation queue through the context and append a tag to the file", sdk.Schema{"type": "object", "properties": map[string]any{"file": map[string]any{"type": "string"}, "tag": map[string]any{"type": "string"}, "calls": map[string]any{"type": "number"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		file, _ := params["file"].(string)
+		tag, _ := params["tag"].(string)
+		calls, _ := params["calls"].(float64)
+		for range int(calls) {
+			_, _ = ctx.GetContextUsage()
+		}
+		err := ctx.WithFileMutationQueue(file, func() error {
+			before, _ := os.ReadFile(file)
+			return os.WriteFile(file, append(before, tag+"\n"...), 0o600)
 		})
 		if err != nil {
 			return nil, err
@@ -1617,6 +1659,84 @@ func Extension() *sdk.Extension {
 			return err
 		}
 		data, err := json.Marshal(usage)
+		if err != nil {
+			return err
+		}
+		ctx.Notify(string(data), "info")
+		return nil
+	})
+
+	// console-probe writes four lines a console would: stdout (Pi's console.log) and stderr (console.error) alternately, so the row sees where the host puts each and
+	// in which order (TestConformance_ExtensionConsoleReachesTheTerminalInEverySDK). A fused extension shares PiG's own stdout, which it must not write, so the
+	// argument "stderr" writes only the error lines.
+	ext.Command("console-probe", "Write console lines to stdout and stderr", func(ctx sdk.Context, args string) error {
+		for n := 1; n <= 2; n++ {
+			if args != "stderr" {
+				_, _ = fmt.Fprintf(os.Stdout, "probe-out-%d\n", n)
+			}
+			_, _ = fmt.Fprintf(os.Stderr, "probe-err-%d\n", n)
+		}
+		return nil
+	})
+	// panic-probe and the OnLoaded handler panic after a deliberate stderr line the extension itself writes
+	// (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog). The OnLoaded handler panics only when the row asks for it, so no other row meets it.
+	ext.OnLoaded(func(ctx sdk.Context) {
+		if os.Getenv("PIG_FIXTURE_PANIC_PROBE") != "" {
+			_, _ = fmt.Fprintln(os.Stderr, "probe-err-loaded")
+			panic("probe-panic-boom")
+		}
+	})
+	ext.Command("panic-probe", "Panic after an stderr line of the extension's own", func(ctx sdk.Context, args string) error {
+		_, _ = fmt.Fprintln(os.Stderr, "probe-err-command")
+		panic("probe-panic-boom")
+	})
+	// replica-probe (TestReplicatedReadsAreLocalAcrossSDKs) reads the model object, the session id, name and file (from the context and from the session manager) and the context usage, and reports them as one JSON object. Its argument is empty, or "set-model:<provider>/<id>" to call SetModel before it reads. Every SDK fixture reports the same shape.
+	ext.Command("replica-probe", "Report the replicated model object, session ids and context usage", func(ctx sdk.Context, args string) error {
+		if model, ok := strings.CutPrefix(args, "set-model:"); ok {
+			if _, err := ctx.SetModel(model); err != nil {
+				return err
+			}
+		}
+		info, err := ctx.GetModelInfo()
+		if err != nil {
+			return err
+		}
+		sessionID, err := ctx.GetSessionID()
+		if err != nil {
+			return err
+		}
+		managerID, err := ctx.SessionManager().GetSessionID()
+		if err != nil {
+			return err
+		}
+		usage, err := ctx.GetContextUsage()
+		if err != nil {
+			return err
+		}
+		var model any
+		if info != nil {
+			model = map[string]any{
+				"id": info.ID, "name": info.Name, "provider": info.Provider, "contextWindow": info.ContextWindow, "maxOutputTokens": info.MaxOutputTokens, "reasoning": info.Reasoning,
+				"inputCostPer1M": info.InputCostPer1M, "outputCostPer1M": info.OutputCostPer1M, "cacheReadCostPer1M": info.CacheReadCostPer1M, "cacheWriteCostPer1M": info.CacheWriteCostPer1M,
+			}
+		}
+		name, err := ctx.GetSessionName()
+		if err != nil {
+			return err
+		}
+		file, err := ctx.GetSessionFile()
+		if err != nil {
+			return err
+		}
+		managerName, err := ctx.SessionManager().GetSessionName()
+		if err != nil {
+			return err
+		}
+		managerFile, err := ctx.SessionManager().GetSessionFile()
+		if err != nil {
+			return err
+		}
+		data, err := json.Marshal(map[string]any{"model": model, "sessionId": sessionID, "managerSessionId": managerID, "usage": usage, "sessionName": name, "sessionFile": file, "managerSessionName": managerName, "managerSessionFile": managerFile})
 		if err != nil {
 			return err
 		}
@@ -2493,7 +2613,7 @@ func Extension() *sdk.Extension {
 			Window   int                    `json:"window"`
 			Settings sdk.CompactionSettings `json:"settings"`
 			Entries  []map[string]any       `json:"entries"`
-			Message  map[string]any         `json:"message"`
+			Message  json.RawMessage        `json:"message"`
 			Start    int                    `json:"start"`
 			End      int                    `json:"end"`
 			Keep     int                    `json:"keep"`
@@ -2519,7 +2639,12 @@ func Extension() *sdk.Extension {
 		case "turn":
 			result = map[string]any{"index": sdk.FindTurnStartIndex(c.Entries, c.Index, c.Start)}
 		case "estimate":
-			result = map[string]any{"tokens": sdk.EstimateTokens(c.Message)}
+			// The message is decoded the way an extension decodes wire text: with the SDK's decoder, which keeps an unpaired surrogate (WTF-8).
+			var message map[string]any
+			if err := jsjson.Unmarshal(c.Message, &message); err != nil {
+				return err
+			}
+			result = map[string]any{"tokens": sdk.EstimateTokens(message)}
 		case "defaults":
 			result = sdk.DefaultCompactionSettings
 		default:

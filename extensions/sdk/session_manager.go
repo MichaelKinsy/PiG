@@ -36,13 +36,28 @@ func (s ReadonlySessionManager) GetCwd() (string, error) {
 func (s ReadonlySessionManager) GetSessionDir() (string, error) {
 	return sessionValue[string](s, "getSessionDir", nil)
 }
+
+// GetSessionID is `getSessionId()`: the replicated id (see [Context.GetSessionID]) for the Session that owns the context, the host's for a replacement Session.
 func (s ReadonlySessionManager) GetSessionID() (string, error) {
+	if r, known, err := s.context.localSession(); known {
+		return r.id, err
+	}
 	return sessionValue[string](s, "getSessionId", nil)
 }
+
+// GetSessionFile is `getSessionFile()`, replicated like [ReadonlySessionManager.GetSessionID]: nil is an in-memory session.
 func (s ReadonlySessionManager) GetSessionFile() (*string, error) {
+	if r, known, err := s.context.localSession(); known {
+		return optionalString(r.file), err
+	}
 	return sessionValue[*string](s, "getSessionFile", nil)
 }
+
+// GetSessionName is `getSessionName()`, replicated like [ReadonlySessionManager.GetSessionID]: nil is a session with no name.
 func (s ReadonlySessionManager) GetSessionName() (*string, error) {
+	if r, known, err := s.context.localSession(); known {
+		return optionalString(r.name), err
+	}
 	return sessionValue[*string](s, "getSessionName", nil)
 }
 func (s ReadonlySessionManager) GetLeafID() (*string, error) {

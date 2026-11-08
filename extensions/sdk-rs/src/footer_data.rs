@@ -73,9 +73,7 @@ impl FooterState {
             .collect();
         callbacks.sort_by_key(|(id, _)| *id);
         for (_, callback) in callbacks {
-            if let Err(panic) =
-                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| callback()))
-            {
+            if let Err(panic) = crate::diagnostic::recover(|| callback()) {
                 let message = panic
                     .downcast_ref::<&str>()
                     .map(|text| text.to_string())

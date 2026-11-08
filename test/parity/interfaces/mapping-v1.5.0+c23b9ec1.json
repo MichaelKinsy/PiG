@@ -103572,7 +103572,7 @@
       "evidence": [
         "test:chord/next/store/group_commit_test.go#TestGroupCommit",
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost"
       ]
     },
     {
@@ -103594,7 +103594,7 @@
       "evidence": [
         "test:chord/next/store/group_commit_test.go#TestGroupCommit",
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost"
       ]
     },
     {
@@ -103794,8 +103794,8 @@
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit",
-        "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan"
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost",
+        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit"
       ]
     },
     {
@@ -103816,8 +103816,8 @@
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit",
-        "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan"
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost",
+        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit"
       ]
     },
     {
@@ -156309,8 +156309,9 @@
         "call:internal/codingagent/tools/find.go#formatFindResults"
       ],
       "evidence": [
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingGivesTheSameOutputAsTheWholeFileAlgorithm",
         "test:internal/codingagent/tools/truncate_head_test.go#TestTruncationOptionsDefaultsApplyOnlyToOmittedLimits",
-        "test:internal/codingagent/tools/read_text_window_test.go#TestReadTextResultMatchesWholeFileDecode"
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingDecodesChunkSplitCharactersAndInvalidUTF8LikeBufferToString"
       ]
     },
     {
@@ -156327,7 +156328,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/truncate.go#TruncationOptions.limits"
+        "call:internal/codingagent/tools/read_stream.go#selectLinesFromStream"
       ],
       "evidence": [
         "test:internal/codingagent/tools/truncate_head_test.go#TestTruncationOptionsDefaultsApplyOnlyToOmittedLimits"
@@ -156893,7 +156894,7 @@
       "evidence": [
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
+        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
       ]
     },
     {
@@ -156915,7 +156916,7 @@
       "evidence": [
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
+        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
       ]
     },
     {
@@ -157950,7 +157951,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestEditAbortAfterAccessDoesNotRead",
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream",
-        "test:internal/codingagent/tools/mutation_queue_alias_test.go#TestEditPreservesParallelAliasChanges"
+        "test:internal/codingagent/tools/edit_window_test.go#TestEditToolComputesTheDiffBeforeWritingSoADiffFailureLeavesTheFileUnchanged"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -157973,7 +157974,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestEditAbortAfterAccessDoesNotRead",
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream",
-        "test:internal/codingagent/tools/mutation_queue_alias_test.go#TestEditPreservesParallelAliasChanges"
+        "test:internal/codingagent/tools/edit_window_test.go#TestEditToolComputesTheDiffBeforeWritingSoADiffFailureLeavesTheFileUnchanged"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -185744,7 +185745,7 @@
       "evidence": [
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
+        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
       ]
     },
     {
@@ -185766,7 +185767,7 @@
       "evidence": [
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
+        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
       ]
     },
     {
@@ -189192,8 +189193,8 @@
       ],
       "evidence": [
         "test:tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi",
-        "test:tui/diff_render_test.go#TestRenderDiffDrawsALineSeparatorRowAsContext",
-        "test:tui/diff_render_test.go#TestRenderDiffIgnoresItsOptions"
+        "test:tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion",
+        "test:tui/diff_render_test.go#TestRenderDiffDrawsALineSeparatorRowAsContext"
       ]
     },
     {
@@ -189214,8 +189215,8 @@
       ],
       "evidence": [
         "test:tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi",
-        "test:tui/diff_render_test.go#TestRenderDiffDrawsALineSeparatorRowAsContext",
-        "test:tui/diff_render_test.go#TestRenderDiffIgnoresItsOptions"
+        "test:tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion",
+        "test:tui/diff_render_test.go#TestRenderDiffDrawsALineSeparatorRowAsContext"
       ]
     },
     {
@@ -214080,19 +214081,21 @@
       "id": "pkg:coding-agent/.#truncateLine",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:49f8f913e86a250b449605f868984402add70b29b20a25fa6b097ad6865db603",
-      "rationale": "tools/truncate.ts truncateLine(line, maxChars?) returns {text, wasTruncated}; Go TruncateLine(line, maxChars) returns (string, bool), the caller passing GrepMaxLineLengthUpstream for an absent maxChars.",
+      "rationale": "Derived by the interface gap detector: truncateLine is Go internal/codingagent/tools/truncate.go#TruncateLine (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "internal/codingagent/tools/truncate.go#TruncateLine"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/grep.go#grepFormatter.truncate"
+        "call:internal/codingagent/tools/truncate.go#TruncateLine"
       ],
       "evidence": [
+        "test:internal/codingagent/tools/truncate_oracle_test.go#TestTruncateMatchesPi",
+        "test:internal/codingagent/tools/grep_head_test.go#TestTruncatedLineBytesEqualsTruncateLine",
         "test:internal/codingagent/tools/grep_test.go#TestTruncateLine"
       ]
     },
@@ -214100,19 +214103,21 @@
       "id": "pkg:coding-agent/.#truncateLine::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:bf8f82765ef421d7ae38fabb4ff1ed5e231e0b3f3da9c3d908aacddb6304ab54",
-      "rationale": "tools/truncate.ts truncateLine(line, maxChars?) returns {text, wasTruncated}; Go TruncateLine(line, maxChars) returns (string, bool), the caller passing GrepMaxLineLengthUpstream for an absent maxChars.",
+      "rationale": "Derived by the interface gap detector: truncateLine::call:0 is Go internal/codingagent/tools/truncate.go#TruncateLine (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "internal/codingagent/tools/truncate.go#TruncateLine"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/grep.go#grepFormatter.truncate"
+        "call:internal/codingagent/tools/truncate.go#TruncateLine"
       ],
       "evidence": [
+        "test:internal/codingagent/tools/truncate_oracle_test.go#TestTruncateMatchesPi",
+        "test:internal/codingagent/tools/grep_head_test.go#TestTruncatedLineBytesEqualsTruncateLine",
         "test:internal/codingagent/tools/grep_test.go#TestTruncateLine"
       ]
     },
@@ -244579,7 +244584,8 @@
         "call:durable/storage/store/storage.go#StoreStorage.Publishing"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch",
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost"
       ]
     },
     {
@@ -244599,7 +244605,8 @@
         "call:durable/storage/store/storage.go#StoreStorage.Publishing"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch",
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost"
       ]
     },
     {
