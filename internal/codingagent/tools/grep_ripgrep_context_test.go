@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func grepText(t *testing.T, dir string, params map[string]any) string {
@@ -162,7 +164,8 @@ func TestGrepResolvesFolderGlobsRelativeToPath(t *testing.T) {
 	searchPaths := []string{repo}
 	// rg canonicalizes its cwd, so a symlinked path must still anchor the glob.
 	link := filepath.Join(dir, "repo-link")
-	if err := os.Symlink(repo, link); err == nil && runtime.GOOS != "windows" {
+	if runtime.GOOS != "windows" {
+		testenv.RequireDirectoryLink(t, repo, link)
 		searchPaths = append(searchPaths, link)
 	}
 	for _, searchPath := range searchPaths {
@@ -171,8 +174,9 @@ func TestGrepResolvesFolderGlobsRelativeToPath(t *testing.T) {
 			t.Fatalf("%s anchored: %q", searchPath, got)
 		}
 		anyDepth := strings.Split(grepText(t, dir, map[string]any{"pattern": "hello", "path": searchPath, "glob": "**/migrations/main/*.js"}), "\n")
-		if len(anyDepth) != 2 || !(anyDepth[0] == "migrations/main/a.js:1: hello" && anyDepth[1] == "nested/migrations/main/b.js:1: hello" ||
-			anyDepth[1] == "migrations/main/a.js:1: hello" && anyDepth[0] == "nested/migrations/main/b.js:1: hello") {
+		inOrder := len(anyDepth) == 2 && anyDepth[0] == "migrations/main/a.js:1: hello" && anyDepth[1] == "nested/migrations/main/b.js:1: hello"
+		reversed := len(anyDepth) == 2 && anyDepth[1] == "migrations/main/a.js:1: hello" && anyDepth[0] == "nested/migrations/main/b.js:1: hello"
+		if !inOrder && !reversed {
 			t.Fatalf("%s any depth: %q", searchPath, anyDepth)
 		}
 		// rg matches nothing for a leading "./", so the tool drops it.
@@ -182,5 +186,18 @@ func TestGrepResolvesFolderGlobsRelativeToPath(t *testing.T) {
 		if got := grepText(t, dir, map[string]any{"pattern": "hello", "path": searchPath, "glob": "!./migrations/**"}); got != "nested/migrations/main/b.js:1: hello" {
 			t.Fatalf("%s negated dot slash: %q", searchPath, got)
 		}
+	}
+}
+
+// An rg event line longer than the read buffer is joined from pieces: a 200 KB match line is cut to the line limit and the events
+// after it are neither dropped nor misparsed.
+func TestGrepReadsEventLinesLongerThanTheReadBuffer(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "long.txt")
+	writeTestFile(t, path, []byte("match "+strings.Repeat("é", 200_000)+"\nplain\nmatch last\n"))
+	got := strings.SplitN(grepText(t, dir, map[string]any{"pattern": "match", "path": path, "context": 1}), "\n\n", 2)
+	want := "long.txt:1: match " + strings.Repeat("é", GrepMaxLineLength-len("match ")) + "... [truncated]\nlong.txt-2- plain\nlong.txt:3: match last"
+	if got[0] != want {
+		t.Fatalf("got %q, want %q", got[0], want)
 	}
 }
