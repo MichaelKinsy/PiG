@@ -1028,12 +1028,6 @@ snippet = "ChatTemplateArgs            map[string]any `json:\"chatTemplateArgs,o
 check = "emptydrop"
 file = "ai/openai.go"
 func = "(decl)"
-snippet = "AllowedFallbackModels  []AnthropicAllowedFallbackModel `json:\"allowedFallbackModels,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "ai/openai.go"
-func = "(decl)"
 snippet = "ToolCalls        []oaiRequestToolCall `json:\"tool_calls,omitempty\"`"
 
 [[hit]]
@@ -2968,12 +2962,6 @@ check = "mapkeyorder"
 file = "internal/codingagent/interactive_extensions.go"
 func = "subprocessStreamOptions"
 snippet = "data, err := json.Marshal(object)"
-
-[[hit]]
-check = "mapkeyorder"
-file = "internal/codingagent/radius_mcp.go"
-func = "radiusMcpServerConfig"
-snippet = "auth, err := json.Marshal(map[string]string{\"provider\": providerID})"
 
 [[hit]]
 check = "mapkeyorder"
