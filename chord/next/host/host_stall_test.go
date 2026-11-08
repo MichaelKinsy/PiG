@@ -25,7 +25,7 @@ const stallAfter = 2 * time.Second
 // primitive no live goroutine can reach: a span nobody ended).
 func TestMain(m *testing.M) {
 	parking.Watch(stallAfter, failOnStall)
-	os.Exit(testenv.RunWithoutGoroutineLeaks(m))
+	os.Exit(testenv.RunWithoutGoroutineLeaks(m, func() { close(hungClose) }))
 }
 
 // failOnStall is the reporter of the package's tests: the report is the panic, so the binary ends with the text and stacks.

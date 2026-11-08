@@ -612,6 +612,8 @@ func TestFinishThrowingBlocksTheRunAfterFiveFailuresInARowOutcomeStateAndKeyKept
 	if len(drops) != 1 || drops[0].Object != "app.store" || drops[0].Job != "app.shell" || drops[0].ID != run.ID() {
 		t.Fatalf("drops = %+v", drops)
 	}
+	// The other run is still backing off its finish: ending the host ends it, so nothing is left sleeping on the virtual loop.
+	must(t, fixture.Host.Close(background))
 }
 
 // job.test.ts › finish › backing off › leaves no timer behind when its object ends during the backoff
