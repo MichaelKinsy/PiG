@@ -24,14 +24,14 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/prefs"
 )
 
-func record(value any) (map[string]any, bool) {
+func asRecord(value any) (map[string]any, bool) {
 	object, ok := value.(map[string]any)
 	return object, ok
 }
 
 // ValidatePrefsPatch is a valid patch, or why it is refused (errText). Only `keybindings`, `theme` and whitelisted `settings` keys may change.
 func ValidatePrefsPatch(value any) (patch map[string]any, errText string) {
-	object, ok := record(value)
+	object, ok := asRecord(value)
 	if !ok {
 		return nil, "not a patch"
 	}
@@ -47,7 +47,7 @@ func ValidatePrefsPatch(value any) (patch map[string]any, errText string) {
 	}
 	patch = map[string]any{}
 	if raw, present := object["keybindings"]; present {
-		bindings, ok := record(raw)
+		bindings, ok := asRecord(raw)
 		if !ok {
 			return nil, "invalid keybindings"
 		}
@@ -100,7 +100,7 @@ func ValidatePrefsPatch(value any) (patch map[string]any, errText string) {
 		patch["theme"] = raw
 	}
 	if raw, present := object["settings"]; present {
-		settings, ok := record(raw)
+		settings, ok := asRecord(raw)
 		if !ok {
 			return nil, "invalid settings"
 		}
@@ -128,7 +128,7 @@ func stripNulls(input map[string]any) map[string]any {
 		if item == nil {
 			continue
 		}
-		if object, ok := record(item); ok {
+		if object, ok := asRecord(item); ok {
 			out[key] = stripNulls(object)
 		} else {
 			out[key] = item
@@ -148,7 +148,7 @@ func normalize(value map[string]any) map[string]any {
 func dropEmpty(value map[string]any) map[string]any {
 	out := map[string]any{}
 	for key, item := range value {
-		if object, ok := record(item); ok && len(object) == 0 {
+		if object, ok := asRecord(item); ok && len(object) == 0 {
 			continue
 		}
 		out[key] = item
@@ -167,8 +167,8 @@ func ApplyPrefsPatch(current, patch map[string]any) map[string]any {
 		for key, value := range change {
 			if value == nil {
 				delete(next, key)
-			} else if object, ok := record(value); ok {
-				baseObject, _ := record(next[key])
+			} else if object, ok := asRecord(value); ok {
+				baseObject, _ := asRecord(next[key])
 				if merged := merge(baseObject, object); len(merged) > 0 {
 					next[key] = merged
 				} else {
@@ -187,7 +187,7 @@ func ApplyPrefsPatch(current, patch map[string]any) map[string]any {
 func PrefsDiff(before, after map[string]any) []string {
 	var leaves func(value any, path string, out map[string]string)
 	leaves = func(value any, path string, out map[string]string) {
-		if object, ok := record(value); ok && len(object) > 0 {
+		if object, ok := asRecord(value); ok && len(object) > 0 {
 			keys := make([]string, 0, len(object))
 			for key := range object {
 				keys = append(keys, key)
@@ -251,7 +251,7 @@ func ReadPrefsFile(directory string) (map[string]any, error) {
 	if err := json.Unmarshal([]byte(strings.TrimPrefix(string(text), "\ufeff")), &value); err != nil {
 		return nil, err
 	}
-	object, ok := record(value)
+	object, ok := asRecord(value)
 	if !ok {
 		return nil, errors.New("prefs.json is not an object")
 	}
