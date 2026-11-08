@@ -4458,7 +4458,7 @@ path = "packages/mcp/src/oauth/callback.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPlainTextByDefault", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPagesThroughRenderPage", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne"]
-rationale = "Pi main 63ea042ce closes remaining connections when the callback server closes: Go closes the connections that never sent a request and leaves the others to Shutdown (D370, which also records that a wait after Close fails at once and a wait that ends with its context frees its state)."
+rationale = "Pi main 63ea042ce closes remaining connections when the callback server closes: Go closes the connections that never sent a request and leaves the others to Shutdown (a wait after Close also fails at once, and a wait that ends with its context frees its state)."
 
 [[files]]
 path = "packages/mcp/src/oauth/client-settings.ts"
@@ -4486,7 +4486,7 @@ path = "packages/mcp/src/oauth/flow.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401", "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate", "test:mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope"]
-rationale = "Pi main bb266bf35 adds the RefreshOnly and AuthorizationRedirectURL options to the flow; ported in mcp/oauth/flow.go. PiG also drops the single-use PKCE verifier after the exchange (D373)."
+rationale = "Pi main bb266bf35 adds the RefreshOnly and AuthorizationRedirectURL options to the flow; ported in mcp/oauth/flow.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/index.ts"

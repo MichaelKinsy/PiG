@@ -9111,7 +9111,6 @@
         "mcp/oauth/oauth_test.go#TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
         "mcp/oauth/oauth_test.go#TestMCPOAuthRejectsNonHTTPAuthorizationEndpointsWhichThePlatformURLHandlerWouldLaunch",
         "mcp/oauth/oauth_test.go#TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
-        "mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
         "mcp/oauth/behavior_test.go#TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds",
         "mcp/oauth/behavior_test.go#TestOAuthCallbackServerAnswersEachAuthorizationResponseLikeCallbackTS",
         "mcp/oauth/behavior_test.go#TestOAuthCallbackServerRenderedPagesAreHTMLAndNotCached",
@@ -9141,7 +9140,7 @@
         "mcp/oauth/discovery_info_test.go#TestDiscoverOAuthServerInfoFallsBackToTheServerOriginWithoutResourceMetadata",
         "mcp/oauth/discovery_info_test.go#TestDiscoverOAuthServerInfoUsesAConfiguredMetadataDocumentAndSkipsIssuerValidationOnRequest"
       ],
-      "rationale": "Pi main 63ea042ce (callback server closes unused connections, D370) and bb266bf35 (client settings, refresh-only and redirect-URI options of the flow), on top of the earlier cases."
+      "rationale": "Pi main 63ea042ce (callback server closes unused connections) and bb266bf35 (client settings, refresh-only and redirect-URI options of the flow), on top of the earlier cases."
     },
     {
       "path": "packages/mcp/test/output-limit.test.ts",

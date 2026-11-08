@@ -198,7 +198,6 @@
   "package": "./internal/codingagent/tools",
   "tests": [
    "TestGrepOperationsIsDirectoryErrorIsPathNotFound",
-   "TestGrepOperationsSupplyDirectoryCheckAndContextLines",
    "TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePathForm"
   ],
   "upstream_reference": "packages/coding-agent/test/tools.test.ts",
