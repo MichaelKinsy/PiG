@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
@@ -87,9 +88,22 @@ func newFixture(t *testing.T) *fixture {
 			}}
 		}}},
 	})
-	ref, err := p2test.HoldIn(f.test.Client(p2runtime.OwnerPrincipal{Access: p2runtime.AccessLocal}), contract.SessionTree, delta.JsonObjectOf("session", "s1"), "owner")
-	if err != nil {
-		t.Fatal(err)
+	held := make(chan *host.Reference, 1)
+	go func() {
+		ref, err := p2test.HoldIn(f.test.Client(p2runtime.OwnerPrincipal{Access: p2runtime.AccessLocal}), contract.SessionTree, delta.JsonObjectOf("session", "s1"), "owner")
+		if err != nil {
+			t.Error(err)
+		}
+		held <- ref
+	}()
+	var ref *host.Reference
+	select {
+	case ref = <-held:
+	case <-time.After(30 * time.Second):
+		t.Fatalf("the tree never went live; host errors: %+v", f.test.Errors())
+	}
+	if ref == nil {
+		t.FailNow()
 	}
 	t.Cleanup(ref.Release)
 	f.tree = ref
