@@ -49,8 +49,8 @@ func (e *Editor) renderStatusBorder(width, hiddenLineCount int, fallback string)
 	}
 	indicator := e.workingStatusIndicator
 	// Embedded working and compaction indicators take the editor's border color (interactive-mode.ts showWorkingStatusIndicator
-	// and the compaction_start colorFn, Pi 1.2.0); branch summary and retry keep their own colors. p2 keeps its own (KeepIndicatorColors).
-	if !e.KeepIndicatorColors && (indicator.Kind == "working" || indicator.Kind == "compaction") {
+	// and the compaction_start colorFn, Pi 1.2.0); branch summary and retry keep their own colors.
+	if indicator.Kind == "working" || indicator.Kind == "compaction" {
 		loader := &Loader{Message: indicator.Message, Frame: indicator.Frame, Frames: indicator.Frames, IndicatorVerbatim: indicator.IndicatorVerbatim, spinnerColorFn: e.colorEditorBorder, messageColorFn: e.colorEditorBorder}
 		indicator = &StatusIndicator{Loader: loader, Kind: indicator.Kind}
 	}
