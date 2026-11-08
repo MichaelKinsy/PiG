@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	envscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs/contract"
 	projectscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/projects/contract"
-	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	sessionstui "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/tui"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
