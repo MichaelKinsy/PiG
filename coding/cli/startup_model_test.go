@@ -134,7 +134,7 @@ func TestFindInitialModelMatchesUpstream(t *testing.T) {
 	gatewayOpus := codingagent.RuntimeModel{Provider: "vercel-ai-gateway", ID: "anthropic/claude-opus-4-6"}
 	savedDeepSeek := codingagent.RuntimeModel{Provider: "deepseek", ID: "deepseek-v4-flash"}
 	localDeepSeek := codingagent.RuntimeModel{Provider: "spark-two", ID: "deepseek-v4-flash"}
-	anthropicDefault := codingagent.RuntimeModel{Provider: "anthropic", ID: "claude-opus-4-8"}
+	anthropicDefault := codingagent.RuntimeModel{Provider: "anthropic", ID: "claude-opus-5-5"}
 	openAIDefault := codingagent.RuntimeModel{Provider: "openai", ID: "gpt-6.1-sol"}
 	for _, tc := range []struct {
 		name            string
@@ -147,7 +147,7 @@ func TestFindInitialModelMatchesUpstream(t *testing.T) {
 		{name: "selects the ai-gateway default when available", models: []codingagent.RuntimeModel{gatewayOpus}, authenticated: []string{"vercel-ai-gateway"}, want: "vercel-ai-gateway/anthropic/claude-opus-4-6"},
 		{name: "ignores an unauthenticated saved default", models: []codingagent.RuntimeModel{savedDeepSeek, localDeepSeek}, authenticated: []string{"spark-two"}, defaultProvider: "deepseek", defaultModel: "deepseek-v4-flash", want: "spark-two/deepseek-v4-flash"},
 		{name: "uses an authenticated saved default", models: []codingagent.RuntimeModel{openAIDefault, savedDeepSeek}, authenticated: []string{"deepseek", "openai"}, defaultProvider: "deepseek", defaultModel: "deepseek-v4-flash", want: "deepseek/deepseek-v4-flash"},
-		{name: "walks known provider defaults in declaration order", models: []codingagent.RuntimeModel{localDeepSeek, openAIDefault, anthropicDefault}, authenticated: []string{"spark-two", "openai", "anthropic"}, want: "anthropic/claude-opus-4-8"},
+		{name: "walks known provider defaults in declaration order", models: []codingagent.RuntimeModel{localDeepSeek, openAIDefault, anthropicDefault}, authenticated: []string{"spark-two", "openai", "anthropic"}, want: "anthropic/claude-opus-5-5"},
 		{name: "falls back to the first available model", models: []codingagent.RuntimeModel{savedDeepSeek, localDeepSeek}, authenticated: []string{"spark-two"}, want: "spark-two/deepseek-v4-flash"},
 		{name: "no available model", models: []codingagent.RuntimeModel{savedDeepSeek}},
 	} {
@@ -202,19 +202,19 @@ func TestSelectStartupModelMatchesUpstream(t *testing.T) {
 		errContains  string
 		warnContains string
 	}{
-		{name: "built-in env key picks the provider default", want: "anthropic/claude-opus-4-8"},
+		{name: "built-in env key picks the provider default", want: "anthropic/claude-opus-5-5"},
 		{name: "bare --model resolves the provider from the registry", options: startupModelOptions{CLIModel: "claude-sonnet-4-5"}, settings: codingagent.Settings{DefaultProvider: "openai"}, want: "anthropic/claude-sonnet-4-5"},
 		{name: "bare --model with a thinking suffix", options: startupModelOptions{CLIModel: "anthropic/claude-sonnet-4-5:high"}, want: "anthropic/claude-sonnet-4-5", thinking: "high"},
 		{name: "unknown bare --model is an error", options: startupModelOptions{CLIModel: "no-such-model-xyz"}, errContains: `Model "no-such-model-xyz" not found`},
 		{name: "unknown --provider is an error", options: startupModelOptions{CLIProvider: "no-such-provider", CLIModel: "x"}, errContains: `Unknown provider "no-such-provider"`},
 		// Pi 1.0.0 main.ts:469-474 (#10236) rejects --provider without --model instead of running another provider's default model.
 		{name: "--provider without --model is an error", options: startupModelOptions{CLIProvider: "openai"}, errContains: "--provider requires --model (for example: --provider openai --model <pattern>)"},
-		{name: "saved default without auth falls back", settings: codingagent.Settings{DefaultProvider: "openai", DefaultModel: "gpt-4o-mini"}, want: "anthropic/claude-opus-4-8"},
+		{name: "saved default without auth falls back", settings: codingagent.Settings{DefaultProvider: "openai", DefaultModel: "gpt-4o-mini"}, want: "anthropic/claude-opus-5-5"},
 		{name: "saved default with auth is used", settings: codingagent.Settings{DefaultProvider: "anthropic", DefaultModel: "claude-sonnet-4-5"}, want: "anthropic/claude-sonnet-4-5"},
 		{name: "scope picks a new session's model and thinking", options: startupModelOptions{ScopePatterns: []string{"anthropic/claude-sonnet-4-5:low", "anthropic/claude-haiku-4-5"}}, want: "anthropic/claude-sonnet-4-5", thinking: "low"},
 		{name: "scope prefers the saved default in scope", options: startupModelOptions{ScopePatterns: []string{"anthropic/claude-sonnet-4-5", "anthropic/claude-haiku-4-5:high"}}, settings: codingagent.Settings{DefaultProvider: "anthropic", DefaultModel: "claude-haiku-4-5"}, want: "anthropic/claude-haiku-4-5", thinking: "high"},
-		{name: "scope is skipped for a continuing session", options: startupModelOptions{ScopePatterns: []string{"anthropic/claude-sonnet-4-5"}, Continuing: true}, want: "anthropic/claude-opus-4-8"},
-		{name: "scope pattern without a match warns", options: startupModelOptions{ScopePatterns: []string{"missing-model-xyz"}}, want: "anthropic/claude-opus-4-8", warnContains: `No models match pattern "missing-model-xyz"`},
+		{name: "scope is skipped for a continuing session", options: startupModelOptions{ScopePatterns: []string{"anthropic/claude-sonnet-4-5"}, Continuing: true}, want: "anthropic/claude-opus-5-5"},
+		{name: "scope pattern without a match warns", options: startupModelOptions{ScopePatterns: []string{"missing-model-xyz"}}, want: "anthropic/claude-opus-5-5", warnContains: `No models match pattern "missing-model-xyz"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := isolateProviderAuthEnv(t)

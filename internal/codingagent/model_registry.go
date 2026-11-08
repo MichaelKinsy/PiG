@@ -1881,6 +1881,12 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 	if ovr.RequiresAssistantAfterToolResult != nil {
 		merged.RequiresAssistantAfterToolResult = ovr.RequiresAssistantAfterToolResult
 	}
+	if ovr.RequiresNonNullAssistantContent != nil {
+		merged.RequiresNonNullAssistantContent = ovr.RequiresNonNullAssistantContent
+	}
+	if ovr.RequiresToolsWithToolHistory != nil {
+		merged.RequiresToolsWithToolHistory = ovr.RequiresToolsWithToolHistory
+	}
 	if ovr.RequiresThinkingAsText != nil {
 		merged.RequiresThinkingAsText = ovr.RequiresThinkingAsText
 	}
@@ -1944,6 +1950,9 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 	if ovr.SessionAffinityFormat != "" {
 		merged.SessionAffinityFormat = ovr.SessionAffinityFormat
 	}
+	if ovr.PromptCacheKeyMode != "" {
+		merged.PromptCacheKeyMode = ovr.PromptCacheKeyMode
+	}
 	if ovr.SupportsToolSearch != nil {
 		merged.SupportsToolSearch = ovr.SupportsToolSearch
 	}
@@ -1971,6 +1980,9 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 	}
 	if ovr.SupportsMidConvoToolChanges != nil {
 		merged.SupportsMidConvoToolChanges = ovr.SupportsMidConvoToolChanges
+	}
+	if ovr.SupportsMessageThreads != nil {
+		merged.SupportsMessageThreads = ovr.SupportsMessageThreads
 	}
 	if base.Extra != nil || ovr.Extra != nil {
 		merged.Extra = maps.Clone(base.Extra)

@@ -173,7 +173,7 @@ func TestParseAuthCommandMinExpiryUnits(t *testing.T) {
 		t.Fatalf("--json on print-api-key = %v", err)
 	}
 	if _, err := ParseAuthCommand([]string{"auth"}); err == nil ||
-		err.Error() != `Unknown auth command "". Use "pig auth print-api-key", "pig auth print-bearer-token", or "pig auth check".` {
+		err.Error() != `Unknown auth command "". Use "pig auth login", "pig auth logout", "pig auth print-api-key", "pig auth print-bearer-token", or "pig auth check".` {
 		t.Fatalf("bare auth parse = %v", err)
 	}
 }
@@ -292,7 +292,7 @@ func TestAuthCommandExitCodesAndErrors(t *testing.T) {
 		stdout, stderr string
 	}{
 		{"help", []string{}, 0, authCommandHelp + "\n", ""},
-		{"unknown subcommand", []string{"nope"}, 1, "", `Error: Unknown auth command "nope". Use "pig auth print-api-key", "pig auth print-bearer-token", or "pig auth check".` + "\n"},
+		{"unknown subcommand", []string{"nope"}, 1, "", `Error: Unknown auth command "nope". Use "pig auth login", "pig auth logout", "pig auth print-api-key", "pig auth print-bearer-token", or "pig auth check".` + "\n"},
 		{"check without target", []string{"check"}, 2, "", "Error: Auth checks require --provider <provider> or --model <model>\n"},
 		{"print without target", []string{"print-api-key"}, 1, "", "Error: Credential printing requires --provider <provider> or --model <model>\n"},
 		{"check with message", []string{"check", "--provider", "openai", "hello"}, 2, "", "Error: Auth commands only accept --provider and --model\n"},

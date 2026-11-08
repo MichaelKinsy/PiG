@@ -1,6 +1,6 @@
 {
-  "piVersion": "1.5.0",
-  "node": "v24.19.0",
+  "piVersion": "1.5.0+c23b9ec1",
+  "node": "v24.14.1",
   "scenarios": [
     {
       "name": "oneChunk",
@@ -191,7 +191,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 34
+        "durationMs": 36
       }
     },
     {
@@ -2777,7 +2777,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -4496,7 +4496,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Cannot read properties of null (reading 'type')",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {

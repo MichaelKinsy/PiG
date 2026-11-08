@@ -15,6 +15,16 @@ func checkRequestBody(ctx context.Context, api API, body []byte) {
 	requestvalidity.Enforce(ctx, string(api), requestvalidity.CheckBody(string(api), body))
 }
 
+// checkAnthropicPayload is checkRequestBody for an Anthropic request payload that is not yet encoded; it encodes it only when the check runs.
+func checkAnthropicPayload(ctx context.Context, api API, payload any) {
+	if !requestvalidity.Enabled() {
+		return
+	}
+	if body, _, err := anthropicWireBody(payload); err == nil {
+		checkRequestBody(ctx, api, body)
+	}
+}
+
 // checkRequestSegments is checkRequestBody for a body held in segments; it joins them only when the check runs.
 func checkRequestSegments(ctx context.Context, api API, body *requestBody) {
 	if !requestvalidity.Enabled() {
