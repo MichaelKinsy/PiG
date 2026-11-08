@@ -1,0 +1,12 @@
+// The latch plugin's server facet: the same hand on the latches in the server's plugins' process (Pi's server plugins run in the test's own process, where the test reads them directly).
+import { arr, bool, defineFacet, hostKind, method, obj, remote, str } from "@test/app/v1";
+[[.Latch]]
+const Server = hostKind("server");
+const Control = remote("reload.servercontrol", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: {}, methods: {
+	entered: method(str(), bool()), open: method(str()), natives: method(undefined, obj({ opens: arr(str()), closes: arr(str()) })),
+} } } });
+export default defineFacet((host) => host.serve(Control, () => ({ variant: "main", members: {
+	entered: async (name) => { await latch(name).entered.promise; return true; },
+	open: async (name) => { latch(name).open.resolve(); return null; },
+	natives: async () => ({ opens: [...natives.opens], closes: [...natives.closes] }),
+} })));

@@ -38,7 +38,7 @@ func writesEdits(t *testing.T) *TableDefinition {
 }
 
 // openFence is the fence of a commit that is admitted and adopted by nobody.
-var openFence = CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+var openFence = CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 
 // writesJSON is writes as the JSON a replica reads (what the outbox stores).
 func writesJSON(t *testing.T, writes []StoreWrite) any {

@@ -37,7 +37,7 @@ func (e *env) record(name string) *registries.RegistryRecord {
 	if record, ok := e.records[name]; ok {
 		return record
 	}
-	record := registries.NewRegistryRecord(name, e.batch, func(err registries.RegistryError) { e.errors = append(e.errors, err) })
+	record := registries.NewRegistryRecord(name, e.batch, func(err registries.RegistryError) { e.errors = append(e.errors, err) }, nil)
 	e.records[name] = record
 	return record
 }

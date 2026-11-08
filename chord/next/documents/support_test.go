@@ -16,7 +16,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/test/next/support.ts (the helpers the documents tests use).
@@ -171,6 +173,7 @@ type object struct {
 	loop      *loop
 	clock     *fakeClock
 	batch     *state.Batch
+	telemetry telemetry.TelemetryContext
 	scheduler *chord.DeliveryScheduler
 	ctx       context.Context
 	store     *store.ChordStore
@@ -179,6 +182,8 @@ type object struct {
 	mu        sync.Mutex
 	failures  []*data.ChordError
 	reports   []state.BatchError
+	// cancelled are the causes of the transactions reported `transaction_cancelled`.
+	cancelled []error
 	// onFail runs inside Fail (a host fails the live attempt, whose token it seals).
 	onFail func(err *data.ChordError)
 }
@@ -216,8 +221,21 @@ func newObject(t *testing.T, options objectOptions) *object {
 func (o *object) Label() string            { return o.label }
 func (o *object) Batch() *state.Batch      { return o.batch }
 func (o *object) Context() context.Context { return o.ctx }
-func (o *object) Do(work func())           { o.loop.do(work) }
-func (o *object) Now() int64               { return o.clock.Now() }
+func (o *object) Telemetry() telemetry.TelemetryContext {
+	if o.telemetry != nil {
+		return o.telemetry
+	}
+	return telemetry.NoopTelemetryContext
+}
+func (o *object) Metrics() *chordtelemetry.Instruments {
+	if o.telemetry != nil {
+		return chordtelemetry.Metrics(o.telemetry.Metrics())
+	}
+	return chordtelemetry.Metrics(nil)
+}
+func (o *object) Do(work func())  { o.loop.do(work) }
+func (o *object) InSection() bool { return o.loop.holder.Load() == goroutineID() }
+func (o *object) Now() int64      { return o.clock.Now() }
 func (o *object) AfterFunc(d time.Duration, job func()) func() {
 	return o.clock.AfterFunc(d, func() { job() })
 }
@@ -234,6 +252,21 @@ func (o *object) Fail(err *data.ChordError) {
 	if hook != nil {
 		hook(err)
 	}
+}
+
+// TransactionCancelled is the host's `transaction_cancelled` report of a transaction that did not commit while its
+// context was cancelled.
+func (o *object) TransactionCancelled(cause error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.cancelled = append(o.cancelled, cause)
+}
+
+// Cancelled is the causes reported `transaction_cancelled`.
+func (o *object) Cancelled() []error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return append([]error{}, o.cancelled...)
 }
 
 // Failures is the live failures the documents reported.

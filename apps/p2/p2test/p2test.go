@@ -190,6 +190,33 @@ type Fixture struct {
 	browsers []host.Host
 }
 
+// Rebuilds stands in for rebuilt plugin sources: pass Revision as `ServerOptions.BuildRevision`, and Rebuild(plugin)
+// before a Reload that must roll the plugin out (Pi's test writes a changed source; a reload of unchanged code is a no-op).
+type Rebuilds struct {
+	mu    sync.Mutex
+	count map[string]int
+}
+
+// Rebuild changes the plugin's build revision.
+func (r *Rebuilds) Rebuild(plugin string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.count == nil {
+		r.count = map[string]int{}
+	}
+	r.count[plugin]++
+}
+
+// Revision is the plugin's build revision: empty until its first Rebuild, which is the build the server starts on.
+func (r *Rebuilds) Revision(plugin string) string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.count[plugin] == 0 {
+		return ""
+	}
+	return strconv.Itoa(r.count[plugin])
+}
+
 // StartFixture starts a server under the fake provider (`startFixture`): `options` override the defaults (a free port, no
 // extra environment); the test binary is the worker. The fixture closes with the test.
 func StartFixture(t testing.TB, options hosts.ServerOptions) *Fixture {
