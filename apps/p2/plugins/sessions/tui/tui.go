@@ -234,7 +234,11 @@ type Surface struct {
 	// location is the "+ New session" prompt.
 	location *LocationInput
 
-	received  []contract.Session
+	received []contract.Session
+	// rowsRead reads the catalog's rows as they are now (the followed copy in received lags by a post to the owner loop); decoded holds the rows of the list last read.
+	rowsRead  func() (delta.JsonValue, bool)
+	decoded   []contract.Session
+	decodedOf []any
 	shownRows func() []contract.Session
 	editing   chordtui.OptimisticAdd[rowGuess]
 
@@ -298,7 +302,7 @@ func New(rt *runtime.TuiRuntime) *Surface {
 	s.focus = s.Search
 	s.scope = chordtui.NewTuiScope(context.Background(), rt.Host, rt.Ctx.RequestRender)
 	s.probes = NewPlaceProbes(rt.Ctx, func() { rt.Ctx.RequestRender() })
-	s.shownRows, s.editing, _ = chordtui.Optimistic(s.scope, func() []contract.Session { return s.received }, applyRow)
+	s.shownRows, s.editing, _ = chordtui.Optimistic(s.scope, s.catalogRows, applyRow)
 	s.Prompt.OnSubmit = func(string) { s.submitPrompt() }
 	s.sourcesRead = chordtui.Registry(s.scope, runtime.TuiSessionSources.Registry)
 	s.viewed = rt.Session
@@ -347,6 +351,7 @@ func (s *Surface) startSessions() {
 		if variant != "owner" && variant != "guest" {
 			return
 		}
+		s.rowsRead = chordtui.WatchMember(s.scope, ref.Member("sessions"))
 		s.follow(ref, "sessions", func(value delta.JsonValue) {
 			var rows []contract.Session
 			for _, each := range p2tui.JList(value) {
@@ -625,6 +630,27 @@ func (s *Surface) call(ref *host.Reference, method string, args delta.JsonValue)
 }
 
 func (s *Surface) rows() []contract.Session { return s.shownRows() }
+
+// catalogRows are the rows the server's catalog has now, decoded again only when its list changed.
+func (s *Surface) catalogRows() []contract.Session {
+	if s.rowsRead == nil {
+		return s.received
+	}
+	value, ok := s.rowsRead()
+	list, isList := value.([]any)
+	if !ok || !isList {
+		return s.received
+	}
+	if s.decodedOf != nil && len(list) == len(s.decodedOf) && (len(list) == 0 || &list[0] == &s.decodedOf[0]) {
+		return s.decoded
+	}
+	rows := make([]contract.Session, len(list))
+	for i, each := range list {
+		rows[i] = sessionOf(each)
+	}
+	s.decoded, s.decodedOf = rows, list
+	return rows
+}
 
 // Catalog is the owner's live catalog, which every change goes through; nil otherwise.
 func (s *Surface) Catalog() *host.Reference {
