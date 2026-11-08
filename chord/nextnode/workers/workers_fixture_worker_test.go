@@ -424,8 +424,8 @@ func runWorkerFixture() {
 			return &WorkerResult{Busy: host.Expose(busy.Member("counts"))}, nil
 		}
 		if _, err := start.Plugins.Load(ctx, worker, WorkerLoad{
-			Kind: "worker", Core: []plugins.CoreFacet{fixtureCoreModule()}, HostKind: fixtureSession,
-			GoCore:    []host.HostFacet{{Name: fixtureGoCoreName, Facet: fixtureGoCore()}},
+			Kind: "worker", NodeCore: []plugins.CoreFacet{fixtureCoreModule()}, HostKind: fixtureSession,
+			Core:      []host.HostFacet{{Name: fixtureGoCoreName, Facet: fixtureGoCore()}},
 			Bridged:   []plugins.BridgedFacet{{Name: fixtureGoCoreName, Contracts: []*contracts.Contract{fixtureBusy, fixtureEcho}}},
 			Principal: delta.JsonObjectOf("kind", "worker"), Peer: delta.JsonObjectOf("kind", "server"),
 		}); err != nil {

@@ -59,12 +59,12 @@ type WorkerStart struct {
 // no address of its own, which the route would not reach) and loads the Go host.
 type WorkerLoad struct {
 	Kind string
-	// Core is the app's own facets that are JavaScript: modules whose default export is the facet, loaded into the NodeHost
+	// Core is the app's own facets (Pi's `core`) that are Go: they load on the worker's Go host, and the local types the
+	// NodeHost's facets use are named by Bridged.
+	Core []host.HostFacet
+	// NodeCore is the app's own facets that are JavaScript: modules whose default export is the facet, loaded into the NodeHost
 	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord`).
-	Core []plugins.CoreFacet
-	// GoCore are the app's own facets that are Go: they load on the worker's Go host, and the local types the NodeHost's
-	// facets use are named by Bridged.
-	GoCore []host.HostFacet
+	NodeCore []plugins.CoreFacet
 	// Bridged are the Go core facets whose local types the NodeHost's core facets and plugins use (plugins.BridgedFacet): the
 	// NodeHost loads a proxy facet of each, in the same closure as the plugins. A BridgedFacet without a Host is the worker's.
 	Bridged []plugins.BridgedFacet
@@ -338,9 +338,9 @@ var nodeHeartbeat = host.HeartbeatOptions{Ping: new(maxTimer), Close: new(maxTim
 
 const maxTimer = time.Duration(1<<31-1) * time.Millisecond
 
-// Load loads the app's Go core facets (options.GoCore) on h (a host without an address, not loaded yet), routes the worker's
+// Load loads the app's Go core facets (options.Core) on h (a host without an address, not loaded yet), routes the worker's
 // address kind to the link of the NodeHost on h (`Route`, before `Load` of h), starts the NodeHost of the worker's address with
-// the start message's scripts of Kind, the JavaScript Core and a proxy for each of options.Bridged (the Go core facets whose local types
+// the start message's scripts of Kind, the JavaScript NodeCore and a proxy for each of options.Bridged (the Go core facets whose local types
 // the NodeHost's facets use; a BridgedFacet without a Host is h's), and returns the NodeHost's report. The Go host is loaded
 // first: the proxies ask for their Go objects as they activate, inside the NodeHost's own load. When the NodeHost ends before
 // the worker is told to stop, the worker ends with it: it exits with its exit code, or sends `fatal` with the exception it
@@ -368,7 +368,7 @@ func (p *WorkerPlugins) Load(ctx context.Context, h host.Host, options WorkerLoa
 	}, ctx); err != nil {
 		return host.LoadReport{}, err
 	}
-	if _, err := h.Load(options.GoCore, ctx); err != nil {
+	if _, err := h.Load(options.Core, ctx); err != nil {
 		return host.LoadReport{}, err
 	}
 	bridged := slices.Clone(options.Bridged)
@@ -378,7 +378,7 @@ func (p *WorkerPlugins) Load(ctx context.Context, h host.Host, options WorkerLoa
 		}
 	}
 	node, report, err := p.runtime.Load(plugins.RuntimeLoad{
-		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
+		Kind: options.Kind, Core: options.NodeCore, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
 		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout,
 	}, ctx)

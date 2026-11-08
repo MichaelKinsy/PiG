@@ -166,8 +166,8 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		{Name: "chord.app.data.export", Facet: HostDataFacet(kit.Dir, opened, token)},
 	}
 	if _, err := start.Plugins.Load(ctx, relay, workers.WorkerLoad{
-		Kind: kit.Facet, HostKind: hostKind, GoCore: goCore,
-		Core: []plugins.CoreFacet{{Name: "chord.app.data", Module: dataModule}},
+		Kind: kit.Facet, HostKind: hostKind, Core: goCore,
+		NodeCore: []plugins.CoreFacet{{Name: "chord.app.data", Module: dataModule}},
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.worker-info", Contracts: []*contracts.Contract{WorkerInfo}},
 			{Name: "chord.app.data.export", Contracts: []*contracts.Contract{HostDataExport}},
