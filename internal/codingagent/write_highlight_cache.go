@@ -63,10 +63,19 @@ func (cache *writeHighlightCache) line(i int) string {
 	return entry.text
 }
 
-// lineCount is len(trimTrailingEmptyLines(highlightedLines)): only the lines at the end are read.
+// lineCount is len(trimTrailingEmptyLines(highlightedLines)): only the lines at the end are read. A pending line that is not
+// empty is not highlighted to find out: highlighting keeps every character of a line, so the highlighted line is not empty
+// either (TestHighlightedLineOfTextIsNotEmpty), and a card that draws ten lines never reads the last line of a long file.
+// pig additive (D112): the count is the one upstream's highlighted lines give; only a line nothing draws is not highlighted.
 func (cache *writeHighlightCache) lineCount() int {
 	end := len(cache.highlightedLines)
-	for end > 0 && cache.line(end-1) == "" {
+	for end > 0 {
+		if entry := &cache.highlightedLines[end-1]; entry.pending && entry.text != "" {
+			break
+		}
+		if cache.line(end-1) != "" {
+			break
+		}
 		end--
 	}
 	return end
