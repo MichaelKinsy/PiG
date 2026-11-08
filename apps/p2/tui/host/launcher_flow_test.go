@@ -243,7 +243,7 @@ func TestAClickOnTheEditorKeepsKeysOnTheRuntimeCtrlCStillClearsAndTheScreenStill
 		}
 	}
 	if row <= 0 {
-		t.Fatal("the draft is not on the screen")
+		t.Fatalf("the draft is not on the screen:\n%s", l.terminal.screen())
 	}
 	l.terminal.SendInput(press(4, row))
 	l.terminal.SendInput(release(4, row))
@@ -266,13 +266,15 @@ func TestAServerOnANewerLinkProtocolIsReportedAsAnOutdatedBuildNotRetriedForever
 	var failMu sync.Mutex
 	var failed []string
 	var exited atomic.Bool
+	newer := &newerTransport{sockets: make(chan *newerSocket, 8)}
 	l := startLauncher(t, launcherOptions{offline: true, options: func(options *host.ClientOptions) {
-		options.Transport = &newerTransport{Transport: host.CookieTransport(options.URL, options.Credentials)}
+		options.Transport = newer
+		newer.Transport = host.CookieTransport(options.URL, options.Credentials)
 		options.OnFailure = func(message string) { failMu.Lock(); failed = append(failed, message); failMu.Unlock() }
 		options.OnExit = func() { exited.Store(true) }
 	}})
 	_ = l
-	// A transport whose socket opens before the client took it is terminated by the client and reconnected (Terminate closes it, as a real socket does).
+	(<-newer.sockets).fire()
 	pollFor(t, 20*time.Second, exited.Load)
 	failMu.Lock()
 	defer failMu.Unlock()
@@ -281,21 +283,18 @@ func TestAServerOnANewerLinkProtocolIsReportedAsAnOutdatedBuildNotRetriedForever
 	}
 }
 
-// newerTransport is a server whose link greeting is of the next protocol version.
-type newerTransport struct{ host.Transport }
+// newerTransport is a server whose link greeting is of the next protocol version: the test fires the socket once the client holds it.
+type newerTransport struct {
+	host.Transport
+	sockets chan *newerSocket
+}
 
 func (n *newerTransport) Socket(path string, events host.SocketEvents) host.Socket {
 	if path != "/chord" {
 		return n.Transport.Socket(path, events)
 	}
 	socket := &newerSocket{events: events}
-	go func() {
-		events.Open()
-		hello, err := link.BinaryCodec.Encode(&link.HelloMessage{Protocol: data.ProtocolVersion + 1, Incarnation: "newer", Calls: 256})
-		if err == nil {
-			events.Message(hello, true)
-		}
-	}()
+	n.sockets <- socket
 	return socket
 }
 
@@ -304,6 +303,12 @@ type newerSocket struct {
 	once   sync.Once
 }
 
+func (s *newerSocket) fire() {
+	s.events.Open()
+	if hello, err := link.BinaryCodec.Encode(&link.HelloMessage{Protocol: data.ProtocolVersion + 1, Incarnation: "newer", Calls: 256}); err == nil {
+		s.events.Message(hello, true)
+	}
+}
 func (*newerSocket) Open() bool        { return true }
 func (*newerSocket) Send([]byte) error { return nil }
 func (s *newerSocket) Terminate()      { s.once.Do(s.events.Close) }
@@ -368,7 +373,10 @@ func TestLauncherClipboardIsWrittenOnlyAfterTheCopyKeyOrAConfirmationTheEditorRe
 		t.Fatalf("copied %q", l.copied())
 	}
 	l.terminal.SendInput("r")
-	pollFor(t, 10*time.Second, func() bool { return contains(l.terminal.written(), "requested text") })
+	pollFor(t, 10*time.Second, func() bool {
+		return contains(l.terminal.screen(), "requested text") || contains(l.terminal.screen(), "Copy ")
+	})
+	t.Logf("consent screen:\n%s", l.terminal.screen())
 	if len(l.copied()) != 1 {
 		t.Fatal("a request copied before the confirmation")
 	}

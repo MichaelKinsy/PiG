@@ -65,7 +65,13 @@ func (l *launcher) typed(text string) {
 
 func (l *launcher) waitScreen(limit time.Duration, text string) {
 	l.t.Helper()
-	pollFor(l.t, limit, func() bool { return strings.Contains(l.terminal.screen(), text) })
+	deadline := time.Now().Add(limit)
+	for !strings.Contains(l.terminal.screen(), text) {
+		if time.Now().After(deadline) {
+			l.t.Fatalf("the screen never showed %q:\n%s", text, l.terminal.screen())
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 // openNewestSession is the keys of the tests: the newest session is first after "+ New session".
