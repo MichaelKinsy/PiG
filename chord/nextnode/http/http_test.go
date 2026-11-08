@@ -379,6 +379,21 @@ func TestHostAndPrincipalsAnswers401ToARequestNobodyAuthenticatesBeforeARouteNot
 	server.close()
 }
 
+func TestDefaultHeadersNarrowsScriptSrcToContributedScriptPathsOfTheOriginSlice11FixRound1OpusL8(t *testing.T) {
+	server := serving(t, []plugin{{"@app/page", contributing(HttpContribution{
+		Routes: []HttpRouteEntry{publicRoute("GET /page", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			return HttpResponse{Kind: KindHTML, Body: "<p>x</p>"}, nil
+		})},
+		Scripts: []string{"/_chord/web/"},
+	})}}, servedOptions{})
+	page := mustSend(t, server.port, "GET", "/page", sendOptions{})
+	want := regexp.MustCompile(`script-src http://127\.0\.0\.1:` + strconv.Itoa(server.port) + `/_chord/web/ 'nonce-[^']+';`)
+	if got := page.header("content-security-policy"); !want.MatchString(got) {
+		t.Fatalf("content-security-policy = %q, want a match of %v", got, want)
+	}
+	server.close()
+}
+
 func TestDefaultHeadersSendsTheBaselineOnEveryAnswerACSPWithTheResponsesOwnNonceAndTheContributedFramersAndSources(t *testing.T) {
 	nonces := &collector[string]{}
 	lastNonce := func() string {
