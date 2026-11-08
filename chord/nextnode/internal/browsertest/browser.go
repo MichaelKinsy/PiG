@@ -19,8 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
 	"github.com/gorilla/websocket"
+
+	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
 )
 
 // Binary is the Chromium binary, or "" when there is none: `CHROMIUM_BIN`, else `chromium-docker` on the PATH, whichever answers
