@@ -13,8 +13,8 @@ import (
 func TestContractsFingerprintAsPi(t *testing.T) {
 	pi := oracle.Fingerprints(t, "src/runtime/access.ts", "src/runtime/notices.ts", "src/runtime/session-worker.ts")
 	for key, contract := range map[string]*contracts.Contract{
-		"src/runtime/access.ts#Access":                  Access,
-		"src/runtime/notices.ts#LogNotices":             LogNotices,
+		"src/runtime/access.ts#Access":                 Access,
+		"src/runtime/notices.ts#LogNotices":            LogNotices,
 		"src/runtime/session-worker.ts#WorkerBoundary": WorkerBoundary,
 	} {
 		want, ok := pi[key]
