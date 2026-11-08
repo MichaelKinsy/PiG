@@ -1,8 +1,11 @@
 package envs
 
-import "github.com/MichaelKinsy/PiG/apps/p2/hosts"
+import (
+	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
+	envstui "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs/tui"
+)
 
 func init() {
-	server, worker := serverFacet, workerFacet
-	hosts.RegisterPlugin(hosts.Plugin{Name: "envs", Server: &server, Worker: &worker})
+	server, worker, tuiFacet := serverFacet, workerFacet, envstui.Facet
+	hosts.RegisterPlugin(hosts.Plugin{Name: "envs", Server: &server, Worker: &worker, TUI: &tuiFacet})
 }
