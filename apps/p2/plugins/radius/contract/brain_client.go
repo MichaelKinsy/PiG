@@ -214,13 +214,13 @@ func (b *Brain) clientHTTP(conn *websocket.Conn, out *wsConn, request *clientCha
 			end(1011, false)
 			return
 		}
-		response, err := b.http.RoundTrip(upstream)
+		response, capture, err := b.roundTrip(upstream)
 		if err != nil {
 			end(1011, false)
 			return
 		}
 		defer response.Body.Close()
-		answer(response.StatusCode, responseHeaders(response, to))
+		answer(response.StatusCode, responseHeaders(capture, to))
 		buffer := make([]byte, bodyChunkBytes)
 		for {
 			n, err := response.Body.Read(buffer)

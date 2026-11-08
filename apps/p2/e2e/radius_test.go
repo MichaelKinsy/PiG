@@ -550,6 +550,12 @@ func TestRadiusForwardsRelayHTTPAndWebSocketsRewriteOriginsAndRedirectsAndRefuse
 				_ = conn.WriteMessage(kind, append([]byte("echo "), message...))
 			}
 		}
+		if request.URL.Path == "/raw" {
+			// The map key is written as it is: the name's case reaches the relay as the server wrote it, as in Pi.
+			response.Header()["x-Lower-MIXED"] = []string{"1"}
+			_, _ = io.WriteString(response, "raw")
+			return
+		}
 		if request.URL.Path == "/login" {
 			response.Header().Set("Location", "http://localhost:"+itoa(servicePort)+"/home?x=1")
 			response.WriteHeader(http.StatusFound)
@@ -593,6 +599,16 @@ func TestRadiusForwardsRelayHTTPAndWebSocketsRewriteOriginsAndRedirectsAndRefuse
 	redirect, _ := radiustest.Header(f.radius.Response(f.open("/login", radiusOpen{Forward: web.ID})), "location")
 	if redirect != origin+"/home?x=1" {
 		t.Fatalf("location = %q", redirect)
+	}
+	rawPairs, _ := f.radius.Response(f.open("/raw", radiusOpen{Forward: web.ID}))["headers"].([]any)
+	rawName := ""
+	for _, each := range rawPairs {
+		if pair, _ := each.([]any); len(pair) == 2 && strings.EqualFold(fmt.Sprint(pair[0]), "x-lower-mixed") {
+			rawName = fmt.Sprint(pair[0])
+		}
+	}
+	if rawName != "x-Lower-MIXED" {
+		t.Fatalf("response header name = %q, want the server's own case", rawName)
 	}
 	status := func(id string) any { return f.radius.Response(id)["status"] }
 	if got := status(f.open("/", radiusOpen{Forward: "unknown"})); got != float64(404) {
