@@ -1,20 +1,19 @@
 package chat_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
 	draftscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts/contract"
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
-// Ports apps/p2/test/p2/chat-contracts.test.ts (the Chat contracts: compact, abortCompaction, reset, dequeueOwn, the
-// guest-safe model metadata, the owner's name), dequeue.test.ts and the second describe of drafts.test.ts, on the bare
-// session host. Owner, full guest and view guest are principals over memory links, where Pi joins by share links.
+// Ports apps/p2/test/p2/chat-contracts.test.ts (abortCompaction, the owner's name), dequeue.test.ts and the second describe of
+// drafts.test.ts, on the bare session host; the guests of dequeue.test.ts and drafts.test.ts are principals over memory links, as
+// they are in Pi. The cases of chat-contracts.test.ts that take guests through share links (compact, reset and model metadata;
+// dequeueOwn) are in apps/p2/e2e/chat_contracts_test.go, over real joins.
 
 func hasEntry(kind string) func(delta.JsonValue) bool {
 	return func(view delta.JsonValue) bool {
@@ -74,53 +73,6 @@ func send(t *testing.T, chat *host.Reference, message string, requestID string, 
 	return mustCall(t, chat, "send", args)
 }
 
-func TestCompactResetAndModelMetadataOwnerFullGuestAndViewGuest(t *testing.T) {
-	fixture := newSessionHost(t, delta.NewJsonObject(0))
-	ownerChat := fixture.hold(t, owner, "participant")
-	send(t, ownerChat, "first", "a", false)
-	until(t, ownerChat.Member("view"), hasEntry("pi.assistant"))
-	// Guest-safe model metadata: the conversation's model from the catalog, also for a view-only guest.
-	viewer := fixture.hold(t, bob, "viewer")
-	meta := obj(until(t, viewer.Member("model"), func(value delta.JsonValue) bool { return value != nil }))
-	if text(meta, "provider") != "faux" || text(meta, "modelId") != "faux-1" {
-		t.Errorf("meta = %v", meta)
-	}
-	if window, _ := meta.Value("contextWindow").(float64); window <= 0 {
-		t.Errorf("contextWindow = %v", meta.Value("contextWindow"))
-	}
-	if _, ok := meta.Value("thinkingLevels").([]any); !ok {
-		t.Errorf("thinkingLevels = %v", meta.Value("thinkingLevels"))
-	}
-	// A reference carries every variant's members; the viewer's binding refuses the participant's.
-	for method, args := range map[string]delta.JsonValue{"compact": delta.NewJsonObject(0), "reset": delta.NewJsonObject(0), "dequeueOwn": nil} {
-		_, err := call(viewer, method, args)
-		p2test.ExpectChord(t, err, data.CodeInvalid)
-	}
-
-	// Compaction: a task, then a pi.compaction entry in the view; nothing to abort when idle.
-	task := mustCall(t, ownerChat, "compact", delta.JsonObjectOf("instructions", "keep it short"))
-	if id, _ := obj(task).Value("taskId").(float64); id != float64(int(id)) {
-		t.Errorf("taskId = %v", obj(task).Value("taskId"))
-	}
-	until(t, ownerChat.Member("view"), hasEntry("pi.compaction"))
-	equalJSON(t, mustCall(t, ownerChat, "abortCompaction", nil), map[string]any{"aborted": 0})
-
-	// A full guest may compact and abort compaction, but not start a new context.
-	guestChat := fixture.hold(t, alice, "participant")
-	equalJSON(t, mustCall(t, guestChat, "abortCompaction", nil), map[string]any{"aborted": 0})
-	_, err := call(guestChat, "reset", delta.JsonObjectOf("handoff", "x"))
-	p2test.ExpectChord(t, err, data.CodeForbidden)
-
-	// The owner's reset places a pi.reset entry carrying the handoff.
-	mustCall(t, ownerChat, "reset", delta.JsonObjectOf("handoff", "Continue with the tests."))
-	reset := until(t, ownerChat.Member("view"), hasEntry("pi.reset"))
-	for _, each := range list(obj(reset).Value("entries")) {
-		if entry := obj(each); entry.Value("kind") == "pi.reset" && !strings.Contains(marshal(t, entry.Value("model")), "Continue with the tests.") {
-			t.Errorf("reset marker = %v", entry)
-		}
-	}
-}
-
 func TestAbortCompactionAbortsARunningCompaction(t *testing.T) {
 	fixture := newSessionHost(t, delta.NewJsonObject(0))
 	ownerChat := fixture.hold(t, owner, "participant")
@@ -135,28 +87,6 @@ func TestAbortCompactionAbortsARunningCompaction(t *testing.T) {
 	if hasEntry("pi.compaction")(after) {
 		t.Error("aborted: no summary")
 	}
-}
-
-func TestDequeueOwnRestoresOnlyTheCallersQueuedInputsInOrder(t *testing.T) {
-	fixture := newSessionHost(t, delta.NewJsonObject(0))
-	ownerChat := fixture.hold(t, owner, "participant")
-	guestChat := fixture.hold(t, alice, "participant")
-	send(t, ownerChat, "slow run", "run", false)
-	until(t, ownerChat.Member("view"), running)
-	one := send(t, ownerChat, "owner one", "o1", true)
-	theirs := send(t, guestChat, "guest one", "g1", true)
-	two := send(t, ownerChat, "owner two", "o2", true)
-	until(t, ownerChat.Member("view"), func(view delta.JsonValue) bool { return len(queued(view)) == 3 })
-	equalJSON(t, mustCall(t, ownerChat, "dequeueOwn", nil), map[string]any{"restored": []string{"owner one", "owner two"}, "skipped": 0})
-	after := until(t, ownerChat.Member("view"), func(view delta.JsonValue) bool { return len(queued(view)) == 1 })
-	equalJSON(t, queuedIDs(after), []any{obj(theirs).Value("submissionId")})
-	if obj(one).Value("submissionId").(float64) >= obj(two).Value("submissionId").(float64) {
-		t.Error("submissions must ascend")
-	}
-	// The guest's own call returns theirs; nothing of the owner's is left.
-	equalJSON(t, mustCall(t, guestChat, "dequeueOwn", nil), map[string]any{"restored": []string{"guest one"}, "skipped": 0})
-	equalJSON(t, mustCall(t, ownerChat, "dequeueOwn", nil), map[string]any{"restored": []string{}, "skipped": 0})
-	mustCall(t, ownerChat, "stop", nil)
 }
 
 func TestOwnerNameTheOwnersNextEntriesCarryTheConfiguredNameEarlierOnesKeepTheirs(t *testing.T) {
