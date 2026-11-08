@@ -42,7 +42,7 @@ Strings are UTF-8; a lone UTF-16 surrogate is held as WTF-8, as `internal/jsstri
 
 ### Builders
 
-`Str`, `Num`, `Int`, `BigInt`, `Bool`, `Nul`, `Unknown`, `Lit`, `OneOf`, `Obj` (with `Prop`, `Opt`, `Open`), `Arr`, `Tuple`, `Map`, `Union`, `Nullable`, `Bytes` and `Recursive` return the same JSON Schema as Pi's builders, member order included. Options are applied in call order, as the members of the options object Pi's builders spread are, so `Str(Description("d"), MinLength(1))` and `Str(MinLength(1), Description("d"))` write their members in that order. Each builder takes the options that fit its type, and a misplaced option does not compile (`Str(MinItems(1))`, `Num(Open())`):
+`Str`, `Num`, `Int`, `BigInt`, `Bool`, `Nul`, `Unknown`, `Lit`, `OneOf`, `Obj` (with `Prop`, `Opt`, `Open`), `Arr`, `Tuple`, `Map`, `Union`, `Nullable`, `Bytes`, `Recursive` and `Unsafe` (the schema it is given, or `{}`: nothing checks the type the caller has in mind) return the same JSON Schema as Pi's builders, member order included. Options are applied in call order, as the members of the options object Pi's builders spread are, so `Str(Description("d"), MinLength(1))` and `Str(MinLength(1), Description("d"))` write their members in that order. Each builder takes the options that fit its type, and a misplaced option does not compile (`Str(MinItems(1))`, `Num(Open())`):
 
 | option | builders |
 |---|---|
