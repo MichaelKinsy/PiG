@@ -574,7 +574,7 @@ func (c *Connection) connect(ctx context.Context) (*readyStart, error) {
 	}
 	ready := c.ready
 	c.mu.Unlock()
-	// pig divergence (D304): the start takes no cancellation of its own (it ends at its own timeout or at Close), but waiting for it does (Pi main c96e368e2).
+	// the start takes no cancellation of its own (it ends at its own timeout or at Close), but waiting for it does (Pi main c96e368e2).
 	if ctx.Err() != nil {
 		return nil, abortedError()
 	}
@@ -637,7 +637,7 @@ func (c *Connection) send(ctx context.Context, s *session, op string, request Js
 	var grace atomic.Pointer[time.Timer]
 	stopAbort := context.AfterFunc(ctx, func() {
 		c.writeControl(s, frameCancel, id, Json{})
-		// pig divergence (D304): a cancel the daemon does not answer within abortGrace settles the call as aborted (Pi main c96e368e2). A late answer finds
+		// a cancel the daemon does not answer within abortGrace settles the call as aborted (Pi main c96e368e2). A late answer finds
 		// no pending request and is dropped.
 		timer := time.AfterFunc(abortGrace, func() {
 			s.mu.Lock()

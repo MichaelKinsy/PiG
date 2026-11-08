@@ -75,7 +75,7 @@ func TestMainScreenCursorLineCrossesViewportBoundary(t *testing.T) {
 		out.Reset()
 		ui.SetFixedSize(ui.Width(), 2)
 		ui.doRender()
-		// D300 (Pi main 25490ea49): a marker never reaches the terminal, also on a row that left the viewport; the line itself is repainted.
+		// (Pi main 25490ea49): a marker never reaches the terminal, also on a row that left the viewport; the line itself is repainted.
 		if got := out.String(); strings.Contains(got, widthx.CursorMarker) || !strings.Contains(got, "prompt x") {
 			t.Fatalf("marker above viewport reached the terminal, or its line was lost, through reset-cache reuse: %q", got)
 		}

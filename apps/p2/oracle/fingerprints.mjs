@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 const [root, ...modules] = process.argv.slice(2);
 const chord = join(root, "chord/nextnode/plugins/node/pi/chord/src/");
 const answers = {
-	"@earendil-works/chord": join(root, "apps/p2/oracle/chord-shim.mjs"),
+	"@earendil-works/chord": join(chord, "index.ts"),
 	"@earendil-works/chord/context": join(chord, "context/index.ts"),
 	"@earendil-works/pi-schema": join(root, "chord/nextnode/plugins/node/pi/schema/src/index.ts"),
 	"@p2/app/v1": join(root, "apps/p2/web/upstream/src/api/v1/index.ts"),
