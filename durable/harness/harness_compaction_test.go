@@ -3304,6 +3304,14 @@ func TestPerConversationCompactionSettings(t *testing.T) {
 				t.Fatalf("configure accepted %+v", bad)
 			}
 		}
+		// The intention of Pi's 1.5 (a token count that is not an integer is refused, not rounded) is kept for the one way a
+		// fractional count reaches the Go API: decoded JSON, as the SDKs and the wire send it.
+		for _, text := range []string{`{"reserveTokens":1.5}`, `{"modelOverrides":{"faux/faux-1":{"backgroundTokens":1.5}}}`} {
+			var decoded durable.CompactionSettings
+			if err := json.Unmarshal([]byte(text), &decoded); err == nil {
+				t.Fatalf("decoded %s as %+v", text, decoded)
+			}
+		}
 		// A rejected change leaves the stored settings as they were.
 		if got := stored(); got != expected {
 			t.Fatalf("stored after rejection = %s, want %s", got, expected)
