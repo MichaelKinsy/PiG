@@ -24,7 +24,7 @@ var LogSourcesSchema = schema.Arr(schema.Obj(schema.Properties{
 var Logs = func() *contracts.Contract {
 	contract, err := contracts.Remote("p2.logs", contracts.RemoteDeclaration{
 		Version:     1,
-		Params:      contracts.Params{contracts.Prop("source", p2runtime.Contract(schema.Str(schema.MaxLength(128))))},
+		Params:      contracts.Params{contracts.Prop("source", contracts.Str(contracts.Max(128)))},
 		HostAddress: p2runtime.ServerHost,
 		Variants: []contracts.VariantEntry{
 			contracts.Var("owner", contracts.VariantDeclaration{State: []contracts.Property{
