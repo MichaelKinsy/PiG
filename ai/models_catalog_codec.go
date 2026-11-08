@@ -257,13 +257,22 @@ func catalogRecordBaseline(record string) ([]byte, error) {
 
 // CatalogRecordOf is the catalog record model was made from, its built-in catalog entry or the models store record it was
 // decoded from, as a JSON object in the record's member order, or "" for a model of neither. A model built from it again
-// (GeneratedModel.Record) encodes with CatalogModelJSON in that order.
+// (GeneratedModel.Record) encodes with CatalogModelJSON in that order. A built-in entry's record expands its chunk of the
+// compressed catalog (ResolveCatalogRecord); CatalogRecordRefOf does not.
 func CatalogRecordOf(model *Model) string {
+	return ResolveCatalogRecord(CatalogRecordRefOf(model))
+}
+
+// CatalogRecordRefOf is CatalogRecordOf without the expansion: a built-in entry's record stays the reference it is stored as,
+// which stands for the same record. Two models made from the same record have equal references, so a caller that compares
+// records, tests them for "" or hands one to GeneratedModel.Record needs no JSON; one that reads the content calls
+// ResolveCatalogRecord.
+func CatalogRecordRefOf(model *Model) string {
 	switch {
 	case model == nil:
 		return ""
 	case model.catalogRecord != "":
-		return ResolveCatalogRecord(model.catalogRecord)
+		return model.catalogRecord
 	case model.catalog == nil:
 		return ""
 	}

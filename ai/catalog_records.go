@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
@@ -23,6 +24,12 @@ type recordChunk struct {
 	once  sync.Once
 	lines []string
 }
+
+// expandedCatalogChunks counts the chunks expanded so far; CatalogChunksExpanded exposes it so tests can show that a start path reads no record.
+var expandedCatalogChunks atomic.Int32
+
+// CatalogChunksExpanded is the number of built-in catalog record chunks expanded (decompressed) in this process so far.
+func CatalogChunksExpanded() int { return int(expandedCatalogChunks.Load()) }
 
 var recordChunks [(len(generatedRows) + catalogRecordChunk - 1) / catalogRecordChunk]recordChunk
 
@@ -55,6 +62,7 @@ func ResolveCatalogRecord(record string) string {
 			panic("ai: " + name + ": " + err.Error())
 		}
 		chunk.lines = strings.Split(string(raw), "\n")
+		expandedCatalogChunks.Add(1)
 	})
 	base := chunk.lines[row%catalogRecordChunk]
 	if len(record) == 3 {

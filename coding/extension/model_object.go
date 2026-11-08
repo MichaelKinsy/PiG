@@ -22,7 +22,7 @@ func ModelObject(model ai.AnyModel) (json.RawMessage, error) {
 		if typed == nil {
 			return nil, nil
 		}
-		defaultInput := typed.Input == nil && ai.CatalogRecordOf(typed) == ""
+		defaultInput := typed.Input == nil && ai.CatalogRecordRefOf(typed) == ""
 		if (typed.ProviderMeta.ProviderID == "" && typed.Provider != nil) || defaultInput {
 			copied := *typed
 			if copied.ProviderMeta.ProviderID == "" && copied.Provider != nil {

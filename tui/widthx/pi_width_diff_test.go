@@ -101,7 +101,7 @@ func randToken(r *rand.Rand) string {
 	case k < 7:
 		return string(randRune(r))
 	case k < 10:
-		return rgiSequences[r.IntN(len(rgiSequences))]
+		return rgiList[r.IntN(len(rgiList))]
 	case k < 12:
 		return joiners[r.IntN(len(joiners))]
 	case k < 14:
@@ -110,7 +110,7 @@ func randToken(r *rand.Rand) string {
 		return curatedWidthStrings[r.IntN(len(curatedWidthStrings))]
 	case k < 17:
 		// perturbed emoji sequence: drop or duplicate one code point
-		rs := []rune(rgiSequences[r.IntN(len(rgiSequences))])
+		rs := []rune(rgiList[r.IntN(len(rgiList))])
 		i := r.IntN(len(rs))
 		if r.IntN(2) == 0 {
 			rs = append(rs[:i], rs[i+1:]...)
@@ -164,7 +164,7 @@ func buildPiCorpus(t *testing.T) piCorpus {
 			c.Width = append(c.Width, string(cp))
 		}
 	}
-	for _, s := range &rgiSequences {
+	for _, s := range rgiList {
 		c.Width = append(c.Width, s)
 	}
 	c.Width = append(c.Width, curatedWidthStrings...)
