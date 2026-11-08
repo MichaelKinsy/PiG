@@ -1116,7 +1116,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D235](#bf-d235) | A session-graph client's two live runs with no "no run" read between them are one context | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D238](#bf-d238) | The output limit leaves 15% of the estimated input unused | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D240](#bf-d240) | Claude Sonnet 5 takes no temperature | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D246](#bf-d246) | OpenAI Responses sends session-id, not session_id | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D249](#bf-d249) | Images in queued steering and follow-up messages are resized when the message is delivered | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D250](#bf-d250) | A delivered image-only queued message leaves the pending queue | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D254](#bf-d254) | `pig config` loads the user's keybindings | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -16989,21 +16988,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `787c3547c4` (2026-11-05), `bfe1b032a7` (2026-11-05)
 - **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/catalog_model_json_oracle_test.go::TestCatalogModelJSONMatchesPiForEveryBuiltinModel`, `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `ai/registry_test.go::TestCodegenByteIdentical`, `cmd/gen-models/catalog_matches_pi_test.go::TestCatalogGenerationMatchesPi`, `coding/extension/model_object_oracle_test.go::TestModelObjectsMatchPisModelObjects`
 
-### BF-D246
-
-**OpenAI Responses sends session-id, not session_id**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D246)
-- **Symptom:** 1.5.0 sends `session_id` on Responses (#11639).
-- **Root cause:** Proxies such as nginx with `underscores_in_headers off` drop an underscored header silently and Envoy can be configured to reject it, so cache affinity was lost.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains c5d397835. Then the call-site marker and this record go, and the schema description follows the pin.
-- **Fix commits:** `bf094afb3e` (2026-11-05), `bfe1b032a7` (2026-11-05)
-- **Tests:** `ai/cache_affinity_e2e_upstream_test.go::TestOpenAIResponsesCacheAffinityE2EUpstream`, `ai/openai_completions_session_affinity_upstream_test.go::TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat`, `ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatHeadersUpstream`, `ai/xai_responses_upstream_test.go::TestXAIResponsesRequestUpstream`
-
 ### BF-D249
 
 **Images in queued steering and follow-up messages are resized when the message is delivered**
@@ -26094,7 +26078,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D243 | A bash or PowerShell timeout after the shell already exited reports the shell's exit code | [BF-3fe717a](#bf-3fe717a) |
 | D244 | A user bash result whose earlier output was discarded is reported as truncated | [BF-2544a44](#bf-2544a44) |
 | D245 | The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and… | [BF-3b696c8](#bf-3b696c8) |
-| D246 | OpenAI Responses sends session-id, not session_id | [BF-D246](#bf-d246) |
 | D248 | The /tree search line draws a cursor while the selector is focused | [BF-01a63b9](#bf-01a63b9) |
 | D249 | Images in queued steering and follow-up messages are resized when the message is delivered | [BF-D249](#bf-d249) |
 | D250 | A delivered image-only queued message leaves the pending queue | [BF-D250](#bf-d250) |
