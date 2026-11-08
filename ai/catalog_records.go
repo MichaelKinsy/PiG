@@ -92,7 +92,7 @@ func inflateCatalogChunk(data []byte) ([]byte, error) {
 	}
 	var extra [1]byte
 	if count, err := reader.Read(extra[:]); count != 0 || !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("the stream does not end at the trailer's size %d: %v", len(raw), err)
+		return nil, fmt.Errorf("the stream does not end at the trailer's size %d: %w", len(raw), err)
 	}
 	return raw, nil
 }

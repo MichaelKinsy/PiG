@@ -104,7 +104,7 @@ func PinnedCLI() (string, error) {
 	version, err := versionOf(path)
 	switch {
 	case err != nil:
-		return "", fmt.Errorf("zstdblob: %s names %s, which cannot be run (%v): %s", source, path, err, hint)
+		return "", fmt.Errorf("zstdblob: %s names %s, which cannot be run (%w): %s", source, path, err, hint)
 	case version != PinnedCLIVersion:
 		return "", fmt.Errorf("zstdblob: %s names %s, which is zstd %s: %s", source, path, version, hint)
 	}
@@ -117,7 +117,7 @@ func Encode(raw []byte) []byte {
 	if err != nil {
 		panic(err.Error())
 	}
-	cmd := exec.Command(path, "-q", "-c", "--ultra", "-22", "--stream-size="+strconv.Itoa(len(raw)))
+	cmd := exec.Command(path, "-q", "-c", "--ultra", "-22", "--stream-size="+strconv.Itoa(len(raw))) //nolint:gosec // G204: path is the pinned zstd PinnedCLI found and version-checked
 	for _, entry := range os.Environ() {
 		if !strings.HasPrefix(entry, "ZSTD_") {
 			cmd.Env = append(cmd.Env, entry)

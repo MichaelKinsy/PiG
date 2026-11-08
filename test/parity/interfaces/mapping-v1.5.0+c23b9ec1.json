@@ -149991,7 +149991,7 @@
       "evidence": [
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:tui/container_settled_test.go#TestSettledScanEqualsAskingEveryChild"
       ]
     },
     {
@@ -150013,7 +150013,7 @@
       "evidence": [
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:tui/container_settled_test.go#TestSettledScanEqualsAskingEveryChild"
       ]
     },
     {
@@ -155174,7 +155174,7 @@
       "evidence": [
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:tui/container_settled_test.go#TestSettledScanEqualsAskingEveryChild"
       ]
     },
     {
@@ -155196,7 +155196,7 @@
       "evidence": [
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:tui/container_settled_test.go#TestSettledScanEqualsAskingEveryChild"
       ]
     },
     {
@@ -219100,7 +219100,7 @@
       "evidence": [
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:tui/container_settled_test.go#TestSettledScanEqualsAskingEveryChild"
       ]
     },
     {
@@ -219122,7 +219122,7 @@
       "evidence": [
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:tui/container_settled_test.go#TestSettledScanEqualsAskingEveryChild"
       ]
     },
     {
@@ -298662,8 +298662,8 @@
       ],
       "evidence": [
         "test:tui/components_parity_test.go#TestSpacer_SetLines",
-        "test:tui/spacer_select_oklab_semantics_test.go#TestSpacerSetLinesAndSelectListSetSelectedIndexMarkTheComponentDirty",
-        "test:tui/spacer_truncated_stack_test.go#TestSpacerAndTruncatedTextRender"
+        "test:tui/container_settled_test.go#TestSettledScanKeepsAnInvalidationBetweenTheCheckAndTheClaim",
+        "test:tui/container_settled_test.go#TestSettledScanKeepsInvalidationsFromOtherGoroutines"
       ]
     },
     {
@@ -298684,8 +298684,8 @@
       ],
       "evidence": [
         "test:tui/components_parity_test.go#TestSpacer_SetLines",
-        "test:tui/spacer_select_oklab_semantics_test.go#TestSpacerSetLinesAndSelectListSetSelectedIndexMarkTheComponentDirty",
-        "test:tui/spacer_truncated_stack_test.go#TestSpacerAndTruncatedTextRender"
+        "test:tui/container_settled_test.go#TestSettledScanKeepsAnInvalidationBetweenTheCheckAndTheClaim",
+        "test:tui/container_settled_test.go#TestSettledScanKeepsInvalidationsFromOtherGoroutines"
       ]
     },
     {

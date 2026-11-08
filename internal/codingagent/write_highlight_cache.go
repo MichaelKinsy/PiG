@@ -180,6 +180,7 @@ func updateWriteHighlightCacheIncremental(cache *writeHighlightCache, rawPath, f
 // (about a millisecond a 100 KB), so the steps are a sixteenth of the content, between writeWarmMinStep and writeWarmMaxStep: the
 // frame a warm-up falls in absorbs it (TypeScript: about 10 ms for the smallest step, 30 ms for the largest), and a file of 400 KB
 // warms in a few dozen steps.
+// pig additive (D112): the steps move when the highlight is computed, not what it is.
 const (
 	writeWarmMinStep = 8 << 10
 	writeWarmMaxStep = 32 << 10
