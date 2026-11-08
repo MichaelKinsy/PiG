@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"github.com/MichaelKinsy/PiG/telemetry"
 	"context"
 	"errors"
 	"fmt"
@@ -23,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next-node/workers/main.ts. The worker's side (slice 10 §3): `WorkerMain` reads the start

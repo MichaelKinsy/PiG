@@ -510,7 +510,6 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		Api:        &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		PublicPath: &assetsPath,
 		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
-		PrincipalAttributes: options.PrincipalAttributes,
 	}, ctx)
 	a.Plugins = AppPlugins{
 		State:     component.State(),
@@ -629,6 +628,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	node, _, err := a.Plugins.Component.Load(plugins.PluginsLoad{
 		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
+		PrincipalAttributes: options.PrincipalAttributes,
 		Store: &plugins.StoreOptions{Path: pluginsStore},
 		// The delegation the other way: what the Go server host serves (the choices, the telemetry ingest, the app's Go facets) is
 		// bound there when a plugin holds it, as Pi's one server host binds it (D605).
