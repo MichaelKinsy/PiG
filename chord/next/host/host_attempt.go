@@ -823,12 +823,6 @@ func (a *attempt) drainCalls(due int64) *keyedPromise[struct{}] {
 	return result
 }
 
-// drained is `drained` of the work in calls, bounded by `closeTimeout`: the promise settles in a section (at once when there
-// is no work).
-func (a *attempt) drained(calls []*nativeWork) *keyedPromise[withinResult] {
-	return a.drainedWithin(calls, a.object.host.timeouts.close)
-}
-
 // drainedWithin is `drained` of the work in calls, bounded by ms: the promise settles in a section (at once when there is no
 // work).
 func (a *attempt) drainedWithin(calls []*nativeWork, ms time.Duration) *keyedPromise[withinResult] {
@@ -1749,7 +1743,7 @@ func (a *attempt) prepareTables(dl *deadline) *keyedPromise[struct{}] {
 			a.object.host.enter(func() { admitted = !a.token.Sealed() && a.abandoned == nil })
 			return admitted
 		},
-		Adopt: func(int64, []int64) error { return nil },
+		Adopt: func(int64, []int64, int) error { return nil },
 	}
 	dl.pause()
 	prepared := awaitTask(a.object.host, func() (struct{}, error) {
@@ -2031,6 +2025,10 @@ func unwrapMember(value any) any {
 		return wrapped.source
 	case *exposedKeyed:
 		return wrapped.handle
+	case stateWatchable:
+		// `ref.state` for a caller outside the host's sections wraps its source in a section; a derive reads the source
+		// itself, in the sections it computes in.
+		return wrapped.inner
 	}
 	return value
 }
