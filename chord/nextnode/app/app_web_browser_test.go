@@ -253,7 +253,12 @@ func TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStore
 		return false, nil
 	})
 	if err != nil {
-		t.Fatal(err)
+		all, _ := store.FindTraces(telemetry.TraceQuery{})
+		var seen []string
+		for _, trace := range all.Traces {
+			seen = append(seen, traceDuration.ReplaceAllString(telemetry.RenderTrace(trace.Spans), ""))
+		}
+		t.Fatalf("%v; stored traces:\n%s\npage console: %v", err, strings.Join(seen, "\n--\n"), browser.Console())
 	}
 	shown := make([]telemetry.StoredSpan, len(spans))
 	for index, span := range spans {
