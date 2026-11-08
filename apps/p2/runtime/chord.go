@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -70,13 +69,18 @@ func CtxOf(ctx context.Context) host.Ctx {
 // `self.Follow` of a synchronous observer, so the state is the native's, never a copy a routine keeps. Its value is read()
 // at activation and after every change, sent whole (`[["r", value]]`: derives over it diff for the wire). Both run once the
 // object's natives opened, so they may read a native's value. A change the native makes inside a method reaches the source
-// before the method's answer, and the source's last value is the native's state after its last change, however many
-// goroutines change it at once (followedChanges). A read that fails at activation fails the activation with its error (Pi: it
-// throws); after a change, the source fails until the next change.
+// before the method's answer. A read that fails at activation fails the activation with its error (Pi: it throws); after a
+// change, the source fails until the next change.
 func FollowNative(self host.Self, subscribe func(changed func()) (stop func()), read func() (delta.JsonValue, error)) chord.Watchable[delta.JsonValue] {
 	return self.Follow(func(observer host.FollowObserver[any], ctx context.Context) (*host.FollowAttachment[delta.JsonValue], error) {
-		changes := followedChanges{read: read, advance: func(call chord.WatchCall[any]) { observer.Advance(call, ctx) }}
-		detach := subscribe(changes.changed)
+		detach := subscribe(func() {
+			value, err := read()
+			if err != nil {
+				observer.Advance(chord.WatchCall[any]{Kind: chord.WatchCallFailed, Error: err}, ctx)
+				return
+			}
+			observer.Advance(chord.WatchCall[any]{Kind: chord.WatchCallValue, Value: value, Ops: []delta.Op{{"r", value}}}, ctx)
+		})
 		value, err := read()
 		if err != nil {
 			detach()
@@ -84,37 +88,4 @@ func FollowNative(self host.Self, subscribe func(changed func()) (stop func()), 
 		}
 		return &host.FollowAttachment[delta.JsonValue]{Value: value, Detach: detach}, nil
 	})
-}
-
-// followedChanges turns a native's change notifications, which may come from any goroutine at once, into observer calls
-// whose last one carries the native's state after its last change. Pi's observers run in the one synchronous step that
-// made the change, so their calls follow the changes; here a goroutine that read the state, then lost the host's loop to
-// the goroutine that changed it again, would advance its stale read after the newer one and leave the source behind the
-// native for good (a login's cancel against the goroutine closing its prompt). The observer applies calls in the order
-// they arrive and advance returns once its call is applied, so a goroutine that sees another change notified while its
-// call went in reads and advances again: its last call is then made after the last change, and the call applied last is
-// always the last goroutine's, or one made after it.
-type followedChanges struct {
-	// notified counts the notifications.
-	notified atomic.Uint64
-	read     func() (delta.JsonValue, error)
-	advance  func(chord.WatchCall[any])
-}
-
-// changed is the native's notification: it returns once the source holds the state read after the last change notified.
-func (f *followedChanges) changed() {
-	seen := f.notified.Add(1)
-	for {
-		value, err := f.read()
-		if err != nil {
-			f.advance(chord.WatchCall[any]{Kind: chord.WatchCallFailed, Error: err})
-		} else {
-			f.advance(chord.WatchCall[any]{Kind: chord.WatchCallValue, Value: value, Ops: []delta.Op{{"r", value}}})
-		}
-		latest := f.notified.Load()
-		if latest == seen {
-			return
-		}
-		seen = latest
-	}
 }

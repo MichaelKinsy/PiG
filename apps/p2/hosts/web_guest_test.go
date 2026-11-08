@@ -63,7 +63,7 @@ func TestGuestMayLoad(t *testing.T) {
 // The `%`, backslash and normalisation refusals stand on their own: they hold where the page and file tables would accept the
 // path (a session or a file whose name only differs by what the checks refuse).
 func TestGuestMayLoadRefusesEncodedAndUnnormalisedPathsThatWouldMatch(t *testing.T) {
-	served := &Web{Nonce: "n", Bundle: &web.Bundle{Files: map[string]web.File{"a/../b.js": {}, "c//d.js": {}, "e\\f.js": {}}}}
+	served := &Web{Nonce: "n", Bundle: &web.Bundle{Files: map[string]*web.File{"a/../b.js": {}, "c//d.js": {}, "e\\f.js": {}}}}
 	guest := p2runtime.GuestPrincipal{ID: "g", Sessions: map[string]p2runtime.GuestMode{"x%2e%2e": p2runtime.GuestView, "y\\z": p2runtime.GuestView}}
 	for _, c := range []struct {
 		path string

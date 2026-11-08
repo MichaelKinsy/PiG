@@ -59,6 +59,33 @@ func TestBundleHoldsTheLinkedPluginsWebFacets(t *testing.T) {
 			t.Errorf("plugin %s has a web facet in Pi, but it is not vendored: add plugins/%s/web.tsx to web/upstream-files.txt and run vendor.sh", plugin.Name, plugin.Name)
 		}
 	}
+	// Web facets that ship without a Go plugin (web/web-only.txt, each with its reason): Pi's plugin has server or worker parts
+	// not ported yet, so the plugin is not registered (it must not look ported), only its web facet is in the bundle.
+	onlyListed, err := os.ReadFile("../../web/web-only.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	registered := map[string]bool{}
+	for _, plugin := range hosts.ListPlugins() {
+		registered[plugin.Name] = true
+	}
+	for _, line := range strings.Split(string(onlyListed), "\n") {
+		name, _, _ := strings.Cut(strings.TrimSpace(line), " ")
+		if name == "" || strings.HasPrefix(name, "#") {
+			continue
+		}
+		if !hasWeb[name] {
+			t.Errorf("web-only %s has no web facet in Pi", name)
+		}
+		if registered[name] {
+			t.Errorf("web-only %s is a registered plugin: list it in plugins.txt only", name)
+		}
+		if files, _ := filepath.Glob("../../web/upstream/plugins/" + name + "/web.ts*"); len(files) == 0 {
+			t.Errorf("web-only %s is not vendored", name)
+		}
+		want = append(want, name)
+	}
+	slices.Sort(want)
 	if !slices.Equal(want, bundle.Plugins) {
 		t.Errorf("the bundle holds web facets %v, the linked plugins have %v: edit web/plugins.txt and run web/build/rebuild.sh", bundle.Plugins, want)
 	}
