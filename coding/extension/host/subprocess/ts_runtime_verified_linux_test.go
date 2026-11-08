@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && !pig_strip_node_extensions
 
 package subprocess
 
