@@ -15,14 +15,13 @@ pkg:chord/.#AcceptsTable	chord	undecidable	chord/next/contracts/accepts.go#Accep
 pkg:chord/.#AddedColumn	chord	no-go-symbol	
 pkg:chord/.#Address	chord	undecidable	chord/next/contracts/host_kind.go#Address
 pkg:chord/.#ArchiveManifest	chord	undecidable	chord/nextnode/app/archive.go#ArchiveManifest
-pkg:chord/.#BASE_ROLES	chord	no-go-symbol	
+pkg:chord/.#BASE_ROLES	chord	not-exercised	chord/next/surfaces/surfaces_themes.go#BaseRoles
 pkg:chord/.#BaseRole	chord	no-go-symbol	
 pkg:chord/.#BooleanSchema	chord	no-go-symbol	
 pkg:chord/.#BooleanSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
 pkg:chord/.#BooleanSchema::property:type	chord	child-gap	
 pkg:chord/.#Bounds	chord	no-go-symbol	
 pkg:chord/.#CHORD_TELEMETRY_SCHEMA	chord	no-go-symbol	
-pkg:chord/.#Catalog	chord	no-go-symbol	
 pkg:chord/.#CatalogShape	chord	no-go-symbol	
 pkg:chord/.#ChordError	chord	undecidable	chord/next/data/errors.go#ChordError
 pkg:chord/.#ChordError::construct:0	chord	child-gap	chord/next/data/errors.go#ChordError
@@ -68,7 +67,6 @@ pkg:chord/.#EncodedRow	chord	type-mismatch	chord/next/store/rows.go#EncodedRow
 pkg:chord/.#Expression	chord	child-gap	chord/next/store/expression.go#Expression
 pkg:chord/.#Expression::property:~type	chord	member-missing	chord/next/store/expression.go#Expression
 pkg:chord/.#Expression::property:~value	chord	member-missing	chord/next/store/expression.go#Expression
-pkg:chord/.#FALLBACK_THEMES	chord	no-go-symbol	
 pkg:chord/.#Facet	chord	type-mismatch	chord/next/host/host_facet.go#Facet
 pkg:chord/.#FacetFunction	chord	no-go-symbol	
 pkg:chord/.#FacetFunction::call:0	chord	child-gap	
@@ -138,13 +136,10 @@ pkg:chord/.#KeyedHandle::property:change::call:0	chord	undecidable	chord/next/do
 pkg:chord/.#KeyedHandle::property:keys	chord	child-gap	chord/next/documents/handles.go#KeyedHandle.Keys
 pkg:chord/.#KeyedHandle::property:keys::call:0	chord	undecidable	chord/next/documents/handles.go#KeyedHandle.Keys
 pkg:chord/.#KindShape	chord	no-go-symbol	
-pkg:chord/.#Language	chord	no-go-symbol	
-pkg:chord/.#LanguageFollower	chord	no-go-symbol	
 pkg:chord/.#LinkOptions	chord	undecidable	chord/next/host/host_host.go#LinkOptions
 pkg:chord/.#LoadedFacets	chord	no-go-symbol	
 pkg:chord/.#LoadedFacets::property:reload	chord	child-gap	
 pkg:chord/.#LoadedFacets::property:reload::call:0	chord	child-gap	
-pkg:chord/.#LocaleChoice	chord	no-go-symbol	
 pkg:chord/.#LoopEnvironment	chord	no-go-symbol	
 pkg:chord/.#LoopEnvironment::property:after	chord	child-gap	
 pkg:chord/.#LoopEnvironment::property:after::call:0	chord	child-gap	
@@ -161,13 +156,11 @@ pkg:chord/.#LoopLink::property:onClose	chord	child-gap
 pkg:chord/.#LoopLink::property:onClose::call:0	chord	child-gap	
 pkg:chord/.#LoopOptions	chord	no-go-symbol	
 pkg:chord/.#MessageArgs	chord	no-go-symbol	
-pkg:chord/.#MessageData	chord	no-go-symbol	
 pkg:chord/.#MessageParam	chord	no-go-symbol	
-pkg:chord/.#MessageSchema	chord	no-go-symbol	
-pkg:chord/.#MessageValue	chord	no-go-symbol	
-pkg:chord/.#Messages	chord	no-go-symbol	
-pkg:chord/.#Messages::call:0	chord	child-gap	
-pkg:chord/.#MessagesReport	chord	no-go-symbol	
+pkg:chord/.#MessageSchema	chord	not-exercised	chord/next/surfaces/surfaces_messages.go#MessageSchema
+pkg:chord/.#MessageValue	chord	undecidable	chord/next/surfaces/surfaces_messages.go#MessageValue
+pkg:chord/.#Messages	chord	type-mismatch	chord/next/surfaces/surfaces_messages.go#Messages
+pkg:chord/.#Messages::call:0	chord	child-gap	chord/next/surfaces/surfaces_messages.go#Messages
 pkg:chord/.#NullSchema	chord	no-go-symbol	
 pkg:chord/.#NullSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
 pkg:chord/.#NullSchema::property:type	chord	child-gap	
@@ -326,16 +319,9 @@ pkg:chord/.#TableTailEditor::property:index	chord	child-gap
 pkg:chord/.#TableTailEditor::property:index::call:0	chord	child-gap	
 pkg:chord/.#TableTailEditor::property:~columns	chord	child-gap	
 pkg:chord/.#TableTailEditor::property:~key	chord	child-gap	
-pkg:chord/.#Theme	chord	no-go-symbol	
-pkg:chord/.#ThemeChoice	chord	no-go-symbol	
-pkg:chord/.#ThemeFollower	chord	no-go-symbol	
-pkg:chord/.#ThemePick	chord	no-go-symbol	
-pkg:chord/.#Themes	chord	no-go-symbol	
-pkg:chord/.#Translation	chord	no-go-symbol	
-pkg:chord/.#TranslationIndex	chord	no-go-symbol	
-pkg:chord/.#Translations	chord	no-go-symbol	
-pkg:chord/.#Translator	chord	no-go-symbol	
-pkg:chord/.#Translator::call:0	chord	child-gap	
+pkg:chord/.#ThemeFollower	chord	type-mismatch	chord/next/surfaces/surfaces_active_theme.go#ThemeFollower
+pkg:chord/.#Translator	chord	type-mismatch	chord/next/surfaces/surfaces_messages.go#Translator
+pkg:chord/.#Translator::call:0	chord	child-gap	chord/next/surfaces/surfaces_messages.go#Translator
 pkg:chord/.#TuiScripts	chord	no-go-symbol	
 pkg:chord/.#Tx	chord	child-gap	chord/next/documents/transaction.go#Tx
 pkg:chord/.#Tx::property:delete	chord	child-gap	chord/next/documents/transaction.go#Tx.Delete
@@ -375,8 +361,6 @@ pkg:chord/.#WhereNode	chord	type-mismatch	chord/next/store/expression.go#WhereNo
 pkg:chord/.#Writable	chord	child-gap	chord/next/state/writable.go#Writable
 pkg:chord/.#Writable::property:set	chord	not-exercised	chord/next/state/writable.go#Writable.Set
 pkg:chord/.#Writable::property:set::call:0	chord	not-exercised	chord/next/state/writable.go#Writable.Set
-pkg:chord/.#activeTheme	chord	no-go-symbol	
-pkg:chord/.#activeTheme::call:0	chord	child-gap	
 pkg:chord/.#add	chord	child-gap	chord/next/store/expression.go#Add
 pkg:chord/.#add::call:0	chord	undecidable	chord/next/store/expression.go#Add
 pkg:chord/.#arr	chord	child-gap	chord/next/contracts/schema.go#Arr
@@ -392,12 +376,10 @@ pkg:chord/.#concat	chord	child-gap	chord/next/store/expression.go#Concat
 pkg:chord/.#concat::call:0	chord	undecidable	chord/next/store/expression.go#Concat
 pkg:chord/.#constant	chord	not-exercised	chord/nextnode/app/info.go#constant
 pkg:chord/.#constant::call:0	chord	signature-mismatch	chord/nextnode/app/info.go#constant
-pkg:chord/.#createLanguage	chord	no-go-symbol	
-pkg:chord/.#createLanguage::call:0	chord	child-gap	
 pkg:chord/.#decodeJsonl	chord	child-gap	chord/next/store/jsonl.go#DecodeJsonl
 pkg:chord/.#decodeJsonl::call:0	chord	undecidable	chord/next/store/jsonl.go#DecodeJsonl
-pkg:chord/.#defineMessages	chord	no-go-symbol	
-pkg:chord/.#defineMessages::call:0	chord	child-gap	
+pkg:chord/.#defineMessages	chord	child-gap	chord/next/surfaces/surfaces_messages.go#DefineMessages
+pkg:chord/.#defineMessages::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_messages.go#DefineMessages
 pkg:chord/.#encodeJsonl	chord	child-gap	chord/next/store/jsonl.go#EncodeJsonl
 pkg:chord/.#encodeJsonl::call:0	chord	undecidable	chord/next/store/jsonl.go#EncodeJsonl
 pkg:chord/.#evaluateRegistered	chord	no-go-symbol	
@@ -406,20 +388,14 @@ pkg:chord/.#findDocument	chord	child-gap	chord/next/store/engine.go#FindDocument
 pkg:chord/.#findDocument::call:0	chord	undecidable	chord/next/store/engine.go#FindDocument
 pkg:chord/.#findDocumentEntry	chord	child-gap	chord/next/store/engine.go#FindDocumentEntry
 pkg:chord/.#findDocumentEntry::call:0	chord	undecidable	chord/next/store/engine.go#FindDocumentEntry
-pkg:chord/.#followActiveLanguage	chord	no-go-symbol	
-pkg:chord/.#followActiveLanguage::call:0	chord	child-gap	
-pkg:chord/.#followActiveTheme	chord	no-go-symbol	
-pkg:chord/.#followActiveTheme::call:0	chord	child-gap	
 pkg:chord/.#forbidden	chord	no-go-symbol	
 pkg:chord/.#forbidden::call:0	chord	child-gap	
-pkg:chord/.#formatNumber	chord	child-gap	chord/nextnode/http/cookies.go#formatNumber
-pkg:chord/.#formatNumber::call:0	chord	signature-mismatch	chord/nextnode/http/cookies.go#formatNumber
-pkg:chord/.#formatTime	chord	no-go-symbol	
-pkg:chord/.#formatTime::call:0	chord	child-gap	
+pkg:chord/.#formatNumber	chord	child-gap	chord/next/surfaces/surfaces_format.go#FormatNumber
+pkg:chord/.#formatNumber::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_format.go#FormatNumber
+pkg:chord/.#formatTime	chord	child-gap	chord/next/surfaces/intl_time.go#FormatTime
+pkg:chord/.#formatTime::call:0	chord	signature-mismatch	chord/next/surfaces/intl_time.go#FormatTime
 pkg:chord/.#hostKind	chord	no-go-symbol	
 pkg:chord/.#hostKind::call:0	chord	child-gap	
-pkg:chord/.#hostLanguage	chord	no-go-symbol	
-pkg:chord/.#hostLanguage::call:0	chord	child-gap	
 pkg:chord/.#inArray	chord	child-gap	chord/next/store/expression.go#InArray
 pkg:chord/.#inArray::call:0	chord	undecidable	chord/next/store/expression.go#InArray
 pkg:chord/.#int	chord	child-gap	chord/next/store/columns.go#Int
@@ -441,8 +417,6 @@ pkg:chord/.#loadDocument	chord	child-gap	chord/next/store/engine.go#LoadDocument
 pkg:chord/.#loadDocument::call:0	chord	undecidable	chord/next/store/engine.go#LoadDocument
 pkg:chord/.#local	chord	child-gap	chord/next/contracts/declare.go#Local
 pkg:chord/.#local::call:0	chord	undecidable	chord/next/contracts/declare.go#Local
-pkg:chord/.#localeChoiceFacet	chord	no-go-symbol	
-pkg:chord/.#localeChoiceFacet::call:0	chord	child-gap	
 pkg:chord/.#max	chord	child-gap	chord/next/store/expression.go#Max
 pkg:chord/.#max::call:0	chord	undecidable	chord/next/store/expression.go#Max
 pkg:chord/.#method	chord	no-go-symbol	
@@ -482,16 +456,6 @@ pkg:chord/.#str::call:0	chord	signature-mismatch	chord/next/store/columns.go#Str
 pkg:chord/.#str::call:1	chord	signature-mismatch	chord/next/store/columns.go#Str
 pkg:chord/.#sub	chord	child-gap	chord/next/store/expression.go#Sub
 pkg:chord/.#sub::call:0	chord	undecidable	chord/next/store/expression.go#Sub
-pkg:chord/.#terminalColor	chord	no-go-symbol	
-pkg:chord/.#terminalColor::call:0	chord	child-gap	
-pkg:chord/.#themeChoiceFacet	chord	no-go-symbol	
-pkg:chord/.#themeChoiceFacet::call:0	chord	child-gap	
-pkg:chord/.#themeVariables	chord	no-go-symbol	
-pkg:chord/.#themeVariables::call:0	chord	child-gap	
-pkg:chord/.#themesFacet	chord	no-go-symbol	
-pkg:chord/.#themesFacet::call:0	chord	child-gap	
-pkg:chord/.#translationsFacet	chord	no-go-symbol	
-pkg:chord/.#translationsFacet::call:0	chord	child-gap	
 pkg:chord/.#when	chord	child-gap	chord/next/store/expression.go#When
 pkg:chord/.#when::call:0	chord	undecidable	chord/next/store/expression.go#When
 pkg:chord/app#App	chord	child-gap	chord/nextnode/app/app.go#App
@@ -794,9 +758,8 @@ pkg:chord/tui#BridgeTerminal::property:rows	chord	child-gap
 pkg:chord/tui#BridgeTerminal::property:write	chord	child-gap	
 pkg:chord/tui#BridgeTerminal::property:write::call:0	chord	child-gap	
 pkg:chord/tui#LauncherMessage	chord	no-go-symbol	
-pkg:chord/tui#OptimisticAdd	chord	no-go-symbol	
-pkg:chord/tui#OptimisticAdd::call:0	chord	child-gap	
-pkg:chord/tui#PageState	chord	no-go-symbol	
+pkg:chord/tui#OptimisticAdd	chord	not-exercised	chord/next/tui/tui_scope.go#OptimisticAdd
+pkg:chord/tui#OptimisticAdd::call:0	chord	signature-mismatch	chord/next/tui/tui_scope.go#OptimisticAdd
 pkg:chord/tui#SandboxMessage	chord	no-go-symbol	
 pkg:chord/tui#TerminalRuntime	chord	no-go-symbol	
 pkg:chord/tui#TerminalRuntimeOptions	chord	no-go-symbol	
@@ -811,23 +774,13 @@ pkg:chord/tui#TerminalTheme::property:onChange::call:0	chord	child-gap
 pkg:chord/tui#TerminalTheme::property:set	chord	child-gap	
 pkg:chord/tui#TerminalTheme::property:set::call:0	chord	child-gap	
 pkg:chord/tui#TerminalTheme::property:theme	chord	child-gap	
-pkg:chord/tui#TuiScope	chord	child-gap	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::construct:0	chord	no-go-symbol	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:dispose	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:dispose::call:0	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:hold	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:hold::call:0	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:messages	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:messages::call:0	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:optimistic	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:optimistic::call:0	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:optimistic::call:1	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:pageState	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:pageState::call:0	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:registry	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:registry::call:0	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:watch	chord	member-missing	chord/delta/apply.go#scope
-pkg:chord/tui#TuiScope::property:watch::call:0	chord	member-missing	chord/delta/apply.go#scope
+pkg:chord/tui#TuiScope	chord	child-gap	chord/next/tui/tui_scope.go#TuiScope
+pkg:chord/tui#TuiScope::property:hold	chord	not-exercised	chord/next/tui/tui_scope.go#TuiScope.Hold
+pkg:chord/tui#TuiScope::property:hold::call:0	chord	undecidable	chord/next/tui/tui_scope.go#TuiScope.Hold
+pkg:chord/tui#TuiScope::property:messages	chord	not-exercised	chord/next/tui/tui_scope.go#TuiScope.Messages
+pkg:chord/tui#TuiScope::property:messages::call:0	chord	undecidable	chord/next/tui/tui_scope.go#TuiScope.Messages
+pkg:chord/tui#TuiScope::property:watch	chord	member-missing	chord/next/tui/tui_scope.go#TuiScope
+pkg:chord/tui#TuiScope::property:watch::call:0	chord	member-missing	chord/next/tui/tui_scope.go#TuiScope
 pkg:chord/tui#startTerminalRuntime	chord	no-go-symbol	
 pkg:chord/tui#startTerminalRuntime::call:0	chord	child-gap	
 pkg:chord/tui/launcher#PromptTerminal	chord	no-go-symbol	
