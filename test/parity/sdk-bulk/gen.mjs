@@ -22,6 +22,14 @@ if (!srcDir || !eawDir || !outDir) throw new Error("usage: gen.mjs <tui/src> <ge
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), "pig-vectors-"));
 const staged = path.join(stage, "node_modules", "@earendil-works", "pi-tui", "dist");
 fs.cpSync(path.join(srcDir, "dist"), staged, { recursive: true });
+// The installed dist is read-only when it comes from the build cache; the staged copy must stay removable.
+const makeWritable = (p) => {
+	const st = fs.lstatSync(p);
+	if (st.isSymbolicLink()) return;
+	fs.chmodSync(p, st.mode | 0o700);
+	if (st.isDirectory()) for (const entry of fs.readdirSync(p)) makeWritable(path.join(p, entry));
+};
+makeWritable(stage);
 fs.writeFileSync(path.join(stage, "package.json"), '{"type":"module"}');
 const piVersion = JSON.parse(fs.readFileSync(path.join(srcDir, "package.json"), "utf8")).version;
 fs.symlinkSync(path.resolve(eawDir), path.join(stage, "node_modules", "get-east-asian-width"));
