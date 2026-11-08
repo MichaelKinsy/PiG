@@ -13,7 +13,9 @@ func TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfAN
 	dark := surfaces.Theme{ID: "d", Name: "d", Mode: "dark", Colors: map[string]string{"accent": "#ff0000"}}
 	light := surfaces.Theme{ID: "l", Name: "l", Mode: "light", Colors: map[string]string{"accent": "#00ff00"}, Tui: map[string]string{"accent": "42"}}
 	theme := NewTerminalTheme(dark, "truecolor")
-	var _ *TerminalTheme = theme
+	if !isType[*TerminalTheme](theme) {
+		t.Fatalf("NewTerminalTheme returned %T", theme)
+	}
 	assert.Equal(t, "d", theme.Theme().ID)
 	assert.Equal(t, "\x1b[38;2;255;0;0mNotes\x1b[39m", theme.Fg("accent", "Notes"))
 	assert.Equal(t, "\x1b[48;2;255;0;0mNotes\x1b[49m", theme.Bg("accent", "Notes"))
@@ -27,4 +29,10 @@ func TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfAN
 	theme.Set(dark)
 	assert.Equal(t, 1, calls)
 	assert.Equal(t, "\x1b[38;5;196mx\x1b[39m", NewTerminalTheme(dark, "256").Fg("accent", "x"))
+}
+
+// isType is whether v holds a T: what a test asserts to name the type a constructor or factory must return.
+func isType[T any](v any) bool {
+	_, ok := v.(T)
+	return ok
 }

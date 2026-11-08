@@ -6006,6 +6006,21 @@
    "file": "chord/next/surfaces/surfaces_client.go",
    "old": "loaded, report, err := LoadFacets(h, options.Core, entries, ctx)",
    "new": "loaded, report, err := LoadFacets(h, nil, entries, ctx)"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "OnError: func(err host.HostError) { options.OnError(ClientError{Kind: ClientHostError, Host: err}) }",
+   "new": "OnError: func(err host.HostError) {}"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "if len(report.Failed) > 0 {\n\t\toptions.OnError(ClientError{Kind: ClientPluginsError, Failed: report.Failed})\n\t}\n\tleft := map",
+   "new": "if len(report.Failed) > 1 {\n\t\toptions.OnError(ClientError{Kind: ClientPluginsError, Failed: report.Failed})\n\t}\n\tleft := map"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "\t\toptions.OnError(ClientError{Kind: ClientPluginsError, Failed: report.Failed})\n\t}\n\tleft := map",
+   "new": "\t}\n\tleft := map"
   }
  ]
 }

@@ -70,6 +70,17 @@ func script(plugin, digest, text string, failing ...int) RegisteredScript {
 		if _, err := require("@test/chord"); err != nil {
 			return err
 		}
+		if text == "routinefail" {
+			module.Exports = ModuleExports{Default: host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
+				return h.Serve(greeting, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+					self.OnLive(func(host.Ctx) *host.Handled { return host.Threw(errors.New("the routine failed")) })
+					return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+						"text": host.Expose(state.NewConstant("live")),
+					}}}, nil
+				}, host.ServeOptions{})
+			})}
+			return nil
+		}
 		module.Exports = ModuleExports{Default: serving(greeting, text)}
 		return nil
 	}}
@@ -326,6 +337,45 @@ func TestLoadsTheInitialScriptsWithTheCoreFacets(t *testing.T) {
 		t.Fatalf("fetched = %v", f)
 	}
 	s.finish(t)
+}
+
+// client.ts startClient: a plugin whose initial script fails is reported once at the start (a plugins error naming it, with the error),
+// the client starts with the others (Pi: the first `load`'s failed list goes to `onError`).
+func TestStartClientReportsAnInitialScriptThatFailsAndStartsWithTheOthers(t *testing.T) {
+	good, broken := script("@test/b", "d1", "fine"), script("@test/a", "d1", "broken")
+	s := setup(t, []RegisteredScript{good, broken}, nil, more{})
+	kinds := s.errorKinds()
+	s.mu.Lock()
+	var plugins ClientError
+	for _, e := range s.errs {
+		if e.Kind == ClientPluginsError {
+			plugins = e
+		}
+	}
+	s.mu.Unlock()
+	if !slices.Equal(kinds, []ClientErrorKind{ClientPluginsError}) || len(plugins.Failed) != 1 || plugins.Failed[0].Plugin != "@test/a" || plugins.Failed[0].Error == nil {
+		t.Fatalf("errors = %v, failed = %+v; want one plugins error naming @test/a", kinds, plugins.Failed)
+	}
+	if got := valueOf(text(t, s.client.Host, greeting)); got != "fine" {
+		t.Fatalf("greeting = %q, want the good plugin's", got)
+	}
+	s.finish(t)
+}
+
+// A failure of the client's own host (a plugin's onLive routine that throws) reaches onError as a host error (Pi: `onError({ kind: "host", error })` of the host's `onError`).
+func TestStartClientReportsAHostFailureAsAHostError(t *testing.T) {
+	s := setup(t, []RegisteredScript{script("@test/a", "d1", "routinefail")}, nil, more{})
+	reference := text(t, s.client.Host, greeting)
+	defer reference.Release()
+	until(t, func() bool { return slices.Contains(s.errorKinds(), ClientHostError) })
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, e := range s.errs {
+		if e.Kind == ClientHostError && e.Host.Kind == host.ErrRoutineFailed {
+			return
+		}
+	}
+	t.Fatalf("no routine_failed host error among %+v", s.errs)
 }
 
 func TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet(t *testing.T) {

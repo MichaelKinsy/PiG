@@ -98,7 +98,9 @@ func TestStoreOwnerTablesDeclareAndPrepare(t *testing.T) {
 
 func TestOwnerTablePutStampsTheStepsSeqAndReadsDecode(t *testing.T) {
 	store, table := storeBPrepared(t)
-	var _ *OwnerTable = table
+	if !isType[*OwnerTable](table) {
+		t.Fatalf("the prepared table is %T, not an OwnerTable", table)
+	}
 	seq := storeBCommit(t, store, table, "seq",
 		Row{"id": "b", "seq": int64(0), "text": "two", "meta": delta.JsonObjectOf("a", float64(2))},
 		Row{"id": "a", "seq": int64(0)})

@@ -30,7 +30,9 @@ func TestQueries(t *testing.T) {
 
 	t.Run("are immutable; several wheres are and-ed", func(t *testing.T) {
 		base := NewQuery(T)
-		var _ *Query = base
+		if !isType[*Query](base) {
+			t.Fatalf("NewQuery returned %T", base)
+		}
 		one := base.Where(func(e ColumnRefs) Condition { return Eq(e["id"], "a") })
 		two := one.Where(func(e ColumnRefs) Condition { return Gt(e["at"], 1) })
 		must(t, base.Err())
@@ -105,4 +107,10 @@ func TestCursors(t *testing.T) {
 		refuse(T, "app:edits", order, EncodeCursor("app:edits", order, []sqlite.SqliteValue{"x", "a", int64(2)}))
 		refuse(T, "app:edits", order, EncodeCursor("app:edits", order, []sqlite.SqliteValue{int64(5), "a"}))
 	})
+}
+
+// isType is whether v holds a T: what a test asserts to name the type a constructor or factory must return.
+func isType[T any](v any) bool {
+	_, ok := v.(T)
+	return ok
 }
