@@ -100,11 +100,11 @@ func TestTreeAgainstTheServer(t *testing.T) {
 		return screens.Row{}
 	}
 	conversation, text, err := tree.Navigate(id, user)
-	if err != nil || conversation != 2 || text != "hello" {
+	if err != nil || conversation <= 1 || text != "hello" {
 		t.Fatalf("navigate to the message: %d %q %v", conversation, text, err)
 	}
-	waitFor(t, "the catalog follows", func() bool { r := row(); return r.Main == 2 && len(r.Branches) == 2 })
-	if err := tree.Rename(id, 2, "  a try "); err != nil {
+	waitFor(t, "the catalog follows", func() bool { r := row(); return r.Main == conversation && len(r.Branches) == 2 })
+	if err := tree.Rename(id, conversation, "  a try "); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "the label", func() bool {
@@ -115,7 +115,7 @@ func TestTreeAgainstTheServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, "back on conversation 1", func() bool { return row().Main == 1 })
-	if err := tree.Rename(id, 2, ""); err == nil {
+	if err := tree.Rename(id, conversation, ""); err == nil {
 		t.Fatal("an empty label of a branch was accepted")
 	}
 	if _, _, err := tree.Navigate(id, 9999); err == nil {

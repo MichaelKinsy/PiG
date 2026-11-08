@@ -11,15 +11,6 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/surfacehost"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/tree"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/web-shell"
 )
 
