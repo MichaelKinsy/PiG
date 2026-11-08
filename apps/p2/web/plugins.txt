@@ -1,6 +1,8 @@
+agent
 artifacts
 chat
 chat-mode
+codemode
 coding-tools
 conversations
 envs
@@ -8,6 +10,8 @@ history
 login
 logs
 ports
+powershell
+prompt
 send-file
 sessions
 sharing

@@ -2,15 +2,15 @@
 // per-author drafts, live revocation, and the share store across a server restart. The guests are real joins: a POST /join
 // on the tunnel Host, then a WebSocket with the guest cookie.
 //
-// The browser app (`/`, `/s/<id>`, the web bundle's files) is not served by this module's server (the web lane), so the
-// parts of "serves guests the app, never other sessions, sources or data" and of the archive and join cases that load pages
-// are not ported here; what a guest's HTTP requests are refused with is.
+// The app (`/`, `/s/<id>`, the web bundle's files) is served by this server (hosts/web.go): both halves of "serves guests the
+// app, never other sessions, sources or data" are here (what a guest may load, and what its HTTP requests are refused with).
 
 package e2e_test
 
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -327,7 +327,32 @@ func TestSharingFakeProvider(t *testing.T) {
 		}
 	})
 
-	t.Run("refuses a guest's other requests", func(t *testing.T) {
+	// Pi's "serves guests the app, never other sessions, sources or data": the guest loads the app's pages of its session, polls
+	// the manifest and fetches the current bundle's files, and is refused everything else.
+	t.Run("serves guests the app, never other sessions, sources or data", func(t *testing.T) {
+		for _, path := range []string{"/", "/s/" + session, "/s/" + session + "/c/2"} {
+			if status := tunnel(path, alice.cookie, http.MethodGet, "").Status; status != 200 {
+				t.Errorf("%s: %d, want 200", path, status)
+			}
+		}
+		manifest := tunnel("/__p2_web", alice.cookie, http.MethodGet, "")
+		var bundle struct {
+			Script string  `json:"script"`
+			Style  *string `json:"style"`
+		}
+		if manifest.Status != 200 || json.Unmarshal([]byte(manifest.Body), &bundle) != nil || bundle.Script == "" || bundle.Style == nil {
+			t.Fatalf("manifest: %d %s", manifest.Status, manifest.Body)
+		}
+		for _, file := range []string{bundle.Script, *bundle.Style} {
+			if status := tunnel(file, alice.cookie, http.MethodGet, "").Status; status != 200 {
+				t.Errorf("%s: %d, want 200", file, status)
+			}
+		}
+		// Another session's page is not the guest's.
+		if status := tunnel("/s/"+other, alice.cookie, http.MethodGet, "").Status; status != 403 {
+			t.Errorf("/s/%s: %d, want 403", other, status)
+		}
+
 		for _, path := range []string{
 			"/__p2_web/app-UNKNOWN.js", "/src/hosts/server.ts", "/@fs" + fixture.DataDir + "/shares.sqlite",
 			"/src/hosts/web/%2e%2e%2fserver.ts", "/plugins/../src/hosts/server.ts",
