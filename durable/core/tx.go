@@ -179,6 +179,10 @@ func (h *handler) txStorageRead(t *hostTx, name string, op *jv.Object, method st
 	}})
 }
 
+// noStorageArgs are the arguments of a Storage call that takes none (mintId). The hook payload only reads them, so every call
+// shares the one object rather than allocating its own.
+var noStorageArgs = jv.NewObject()
+
 // txRecordRead is txStorageRead of a Storage call that takes one record ID.
 func (h *handler) txRecordRead(t *hostTx, name string, op *jv.Object, method string, id float64, done *bool) {
 	h.txStorageRead(t, name, op, method, []any{id}, done)
@@ -552,7 +556,7 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 		return nil, errTxWaiting
 	}
 	if isMintOp(name) && !t.mintDone && h.gated("mintId") {
-		h.txStorageRead(t, name, op, "mintId", jv.NewObject(), &t.mintDone)
+		h.txStorageRead(t, name, op, "mintId", noStorageArgs, &t.mintDone)
 		return nil, errTxWaiting
 	}
 	// transaction.ts conversation, entry, task, submission and submissionByRequest read the record from the Storage
@@ -897,7 +901,7 @@ func (h *handler) txDoc(t *hostTx, op *jv.Object) (any, error) {
 	}
 	host, err := t.tx.HostDoc(def, args, have, holds)
 	if waitMint {
-		h.txStorageRead(t, "doc", op, "mintId", jv.NewObject(), &t.mintDone)
+		h.txStorageRead(t, "doc", op, "mintId", noStorageArgs, &t.mintDone)
 		return nil, errTxWaiting
 	}
 	if err != nil {
