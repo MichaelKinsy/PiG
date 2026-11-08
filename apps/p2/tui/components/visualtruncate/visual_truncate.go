@@ -1,5 +1,5 @@
 // pi: apps/p2/src/tui/components/visual-truncate.ts (copied verbatim from coding-agent interactive/components/visual-truncate.ts)
-package components
+package visualtruncate
 
 import (
 	"github.com/MichaelKinsy/PiG/tui"

@@ -6,10 +6,11 @@ package render
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/theme"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -86,25 +87,9 @@ func FormatTokens(count int) string {
 	case count < 1000:
 		return fmt.Sprint(count)
 	case count < 10000:
-		return toFixed1(float64(count)/1000) + "k"
+		return jsstring.ToFixed(float64(count)/1000, 1) + "k"
 	case count < 1000000:
-		return fmt.Sprintf("%dk", jsRound(float64(count)/1000))
+		return fmt.Sprintf("%dk", int(jsnumber.Round(float64(count)/1000)))
 	}
-	return toFixed1(float64(count)/1000000) + "M"
-}
-
-// jsRound is Math.round: halves round toward +Infinity.
-func jsRound(x float64) int { return int(x + 0.5) }
-
-// toFixed1 is (x).toFixed(1) for the non-negative values FormatTokens passes: the decimal nearest x, the larger one on an exact tie (strconv rounds ties to even).
-func toFixed1(x float64) string {
-	exact := strconv.FormatFloat(x, 'f', 60, 64)
-	point := strings.IndexByte(exact, '.')
-	tail := exact[point+2:]
-	if strings.HasPrefix(tail, "5") && strings.Trim(tail[1:], "0") == "" {
-		// An exact tie: round the first decimal up.
-		next := strconv.FormatFloat(x+0.05, 'f', 1, 64)
-		return next
-	}
-	return strconv.FormatFloat(x, 'f', 1, 64)
+	return jsstring.ToFixed(float64(count)/1000000, 1) + "M"
 }
