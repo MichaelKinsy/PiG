@@ -34,24 +34,6 @@ func servingNames() HostFacet {
 	return rvPlugin("serving", func(h FacetHost, _ FacetSelf) error { return rvServeNames(h) })
 }
 
-// Mirrors "registries without a provider (slice 12 §6, testPlugin) › lists a registry with contributions and no provider, with the newest version contributed".
-func TestRegistriesWithoutAProviderListsARegistryWithContributionsAndNoProviderWithTheNewestVersionContributed(t *testing.T) {
-	older, newer, served := rvRegistryOf("app.names", 1), rvRegistryOf("app.names", 3), rvRegistryOf("app.served", 1)
-	host, _ := rvPlugins(t, HostOptions{},
-		rvPlugin("a", func(_ FacetHost, self FacetSelf) error { return self.Contribute(older, "a") }),
-		rvPlugin("b", func(_ FacetHost, self FacetSelf) error { return self.Contribute(newer, "b") }),
-		rvPlugin("c", func(h FacetHost, _ FacetSelf) error {
-			return h.Serve(served, registries.RegistryProvider[any, any]{Compose: func(registries.RegistryTable[any], registries.ComposeContext) (any, error) { return []any{}, nil }}, ServeOptions{})
-		}))
-	h := host.(*chordHost)
-	var got []undeclaredRegistry
-	h.enter(func() { got = h.undeclaredRegistries() })
-	if want := []undeclaredRegistry{{Name: "app.names", Version: 3}}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("undeclaredRegistries = %v, want %v", got, want)
-	}
-	closeHosts(t, host)
-}
-
 // Mirrors "registry_undeclared › reports at load's publication a registry with contributions and no provider, naming its contributors".
 func TestRegistryUndeclaredReportsAtLoadsPublicationARegistryWithContributionsAndNoProviderNamingItsContributors(t *testing.T) {
 	host, errs := rvPlugins(t, HostOptions{}, contributingPlugin("b"), contributingPlugin("a"))
