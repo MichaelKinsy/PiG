@@ -28,6 +28,7 @@ func splitFrames(t *testing.T, data string) ([]string, int) {
 	script := filepath.Join(t.TempDir(), "run.mjs")
 	body := `import { FRAME_UNITS, splitFrames } from ` + jsonString(t, "file://"+source) + `;
 let data = "";
+process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) data += chunk;
 process.stdout.write(JSON.stringify({ units: FRAME_UNITS, frames: splitFrames(JSON.parse(data)) }));
 `
