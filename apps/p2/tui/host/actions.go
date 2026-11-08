@@ -387,6 +387,15 @@ type downloadTarget struct {
 	fallback string
 }
 
+// orderedQuery is URLSearchParams' serialization: pairs in the given order, escaped as a form.
+func orderedQuery(pairs ...string) string {
+	parts := make([]string, 0, len(pairs)/2)
+	for i := 0; i+1 < len(pairs); i += 2 {
+		parts = append(parts, url.QueryEscape(pairs[i])+"="+url.QueryEscape(pairs[i+1]))
+	}
+	return strings.Join(parts, "&")
+}
+
 // limitedReader fails once more than limit bytes were read.
 type limitedReader struct {
 	r    io.Reader
@@ -476,10 +485,9 @@ func LauncherActions(options LauncherActionOptions) map[string]LauncherAction {
 	// upload is section 3.4: fixed URL, exact Origin and the launcher's cookie, no redirects, 60 s, at most 25 MiB counted while streaming, a bounded
 	// `{id}` answer. Errors stay in the launcher.
 	upload := func(ctx context.Context, session, name string, body io.Reader, size int64) (UploadedFile, error) {
-		query := url.Values{"session": {session}, "name": {name}}
 		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 		defer cancel()
-		response, err := request(ctx, "/upload?"+query.Encode(), Request{Method: http.MethodPost, Headers: map[string]string{"Content-Type": "application/octet-stream"}, Body: body})
+		response, err := request(ctx, "/upload?"+orderedQuery("session", session, "name", name), Request{Method: http.MethodPost, Headers: map[string]string{"Content-Type": "application/octet-stream"}, Body: body})
 		if err != nil {
 			return UploadedFile{}, err
 		}
@@ -574,19 +582,14 @@ func LauncherActions(options LauncherActionOptions) map[string]LauncherAction {
 		if value == nil || sid == "" || sid != session || !uuidSyntax.MatchString(sid) {
 			return nil
 		}
-		query := url.Values{"session": {sid}}
 		if id, _ := value["id"].(string); value["kind"] == "file" && uuidSyntax.MatchString(id) {
-			query.Set("id", id)
 			name, _ := value["name"].(string)
-			return &downloadTarget{path: "/download?" + query.Encode(), label: value["name"], fallback: name}
+			return &downloadTarget{path: "/download?" + orderedQuery("session", sid, "id", id), label: value["name"], fallback: name}
 		}
 		name, _ := value["name"].(string)
 		version, isNumber := value["version"].(float64)
 		if value["kind"] == "artifact" && artifactName.MatchString(name) && isNumber && version == float64(int(version)) && version >= 0 && version < 1_000_000 {
-			query.Set("name", name)
-			query.Set("version", strconv.Itoa(int(version)))
-			query.Set("download", "1")
-			return &downloadTarget{path: "/artifact?" + query.Encode(), label: fmt.Sprintf("%s v%d", name, int(version)), fallback: name}
+			return &downloadTarget{path: "/artifact?" + orderedQuery("session", sid, "name", name, "version", strconv.Itoa(int(version)), "download", "1"), label: fmt.Sprintf("%s v%d", name, int(version)), fallback: name}
 		}
 		return nil
 	}
