@@ -12,13 +12,35 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
+
+// escaped is text with every control character (C0, C1, DEL) written as a `\uXXXX` escape: a stored id, name or message
+// may come from another process (a carrier), so none reaches a terminal or a viewer raw.
+func escaped(text string) string {
+	if !strings.ContainsFunc(text, isControl) {
+		return text
+	}
+	// CodePoints keeps a lone surrogate (a clipped text has them) as one code point: ranging over the string would turn it into U+FFFD.
+	points := jsstring.CodePoints(text)
+	out := make([]rune, 0, len(points)+16)
+	for _, char := range points {
+		if isControl(char) {
+			out = append(out, []rune(fmt.Sprintf("\\u%04x", char))...)
+		} else {
+			out = append(out, char)
+		}
+	}
+	return jsstring.FromCodePoints(out)
+}
+
+func isControl(char rune) bool { return char <= 0x1f || (char >= 0x7f && char <= 0x9f) }
 
 // formatAttributes is upstream's formatAttributes: Object.entries in insertion order.
 func formatAttributes(attributes SpanAttributes) string {
 	var text strings.Builder
 	for _, attribute := range attributes {
-		text.WriteString(" " + attribute.Name + "=" + jsonStringify(attribute.Value))
+		text.WriteString(" " + escaped(attribute.Name) + "=" + jsonStringify(attribute.Value))
 	}
 	return text.String()
 }
@@ -145,15 +167,15 @@ func RenderTrace(spans []StoredSpan) string {
 		if span.Status.Status == SpanStatusCodeError {
 			failure = " error"
 			if span.Status.Error != nil {
-				failure += " " + span.Status.Error.Name + ": " + span.Status.Error.Message
+				failure += " " + escaped(span.Status.Error.Name) + ": " + escaped(span.Status.Error.Message)
 			}
 		}
-		lines = append(lines, indent+span.Name+formatAttributes(span.Attributes)+" ("+jsnumber.String(span.EndedMs-span.StartedMs)+"ms)"+failure)
+		lines = append(lines, indent+escaped(span.Name)+formatAttributes(span.Attributes)+" ("+jsnumber.String(Microseconds(span.EndedMs-span.StartedMs))+"ms)"+failure)
 		for _, event := range span.Events {
-			lines = append(lines, indent+"  · "+event.Name+formatAttributes(event.Attributes)+" (+"+jsnumber.String(event.TimeMs)+"ms)")
+			lines = append(lines, indent+"  · "+escaped(event.Name)+formatAttributes(event.Attributes)+" (+"+jsnumber.String(Microseconds(event.TimeMs))+"ms)")
 		}
 		for _, link := range span.Links {
-			lines = append(lines, indent+"  → link trace "+link.TraceID+" span "+link.SpanID+formatAttributes(link.Attributes))
+			lines = append(lines, indent+"  → link trace "+escaped(link.TraceID)+" span "+escaped(link.SpanID)+formatAttributes(link.Attributes))
 		}
 		descendants := children[span.ID]
 		for _, descendant := range slices.Backward(descendants) {
