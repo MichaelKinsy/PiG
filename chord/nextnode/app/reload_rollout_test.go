@@ -9,8 +9,8 @@ import (
 
 // Ports packages/chord/test/node/reload/rollout.test.ts (Pi main c23b9ec1), "a rollout across hosts". The row "brings a page whose
 // link was down during the rollout onto the new scripts and the new code" (the page's script drops its link and holds the
-// reconnect, a web plugin updates its script, the kept input survives) and the rollout's `web` step need the web surface and a
-// browser: the browser rows. Here the rollout is the server step and the project workers' step.
+// reconnect, a web plugin updates its script, the kept input survives) and the rollout's `web` step are in reload_web_test.go
+// (real Chromium). Here the rollout is the server step and the project workers' step.
 
 // rolloutApp is the app with the counter on the workers and `alpha` showing p1's, signed in, its counter at 2.
 func rolloutApp(t *testing.T, native bool) (started, *reloadPage) {
@@ -43,7 +43,7 @@ func TestARolloutAcrossHostsReloadsTheServerThenTheRunningWorkersThenTheClientsA
 		}
 		got = append(got, step{each.Name, hosts})
 	}
-	// Pi's rollout ends with the clients' `web` step; the Go app has no web surface in this branch (the browser rows).
+	// Pi's rollout ends with the clients' `web` step: this app has no web surface (reload_web_test.go has the step).
 	expectEqual(t, "steps", got, []step{{"server", []string{"server"}}, {"project", []string{"project|p1"}}})
 	expectEqual(t, "fates", rolloutFates(result), []string{"project/project|p1: reload.store restarted", "project/project|p1: reload.counter(p1) restarted"})
 	// Project p2 had no worker during the rollout: its first hold starts one on the current set.
