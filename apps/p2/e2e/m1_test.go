@@ -348,6 +348,25 @@ func TestM1WorkingChat(t *testing.T) {
 		}, 0)
 	})
 
+	// Go-only: the build revision last rolled out is the state of the unchanged-reload no-op (Pi's digest compare has none).
+	t.Run("rolls a rebuilt plugin out once and a repeat reload of that build is a no-op", func(t *testing.T) {
+		rebuilds.Rebuild("status")
+		first, err := fixture.Server.Reload([]string{"status"}, context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Contains(first.Server.Plugins.Changed, "status") {
+			t.Fatalf("a rebuilt plugin: %+v", first)
+		}
+		again, err := fixture.Server.Reload([]string{"status"}, context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(again.Server.Plugins.Changed) != 0 || len(again.Server.Failed) != 0 || len(again.Workers) != 0 {
+			t.Fatalf("a second reload of the same build = %+v, want a no-op", again)
+		}
+	})
+
 	t.Run("stops a session's worker through p2.hosts right after a reload of a server plugin", func(t *testing.T) {
 		// Hosts.stop waits for the worker's exit; without chordctx.Suspend it blocked the server loop that delivers the exit, and
 		// hung right after P2Server.Reload.
