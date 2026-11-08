@@ -631,7 +631,7 @@ func CallArguments(call ai.ToolCall) *jsvalue.Object {
 	if err != nil {
 		return jsvalue.NewObject()
 	}
-	value, err := jsvalue.Parse([]byte(text))
+	value, err := jsvalue.Parse(text)
 	if err != nil {
 		return jsvalue.NewObject()
 	}
