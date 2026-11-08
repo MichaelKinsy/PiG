@@ -99,7 +99,12 @@ func (c *CustomMessageComponent) rebuild() {
 		}
 	}
 
-	// Default rendering uses the box.
+	c.buildDefault()
+}
+
+// buildDefault shows the default rendering in the box.
+func (c *CustomMessageComponent) buildDefault() {
+	c.Remove(c.box)
 	c.Add(c.box)
 	c.box.Clear()
 	c.box.SetPaddingX(c.outputPad) // custom-message.ts:90
@@ -117,7 +122,10 @@ func (c *CustomMessageComponent) rebuild() {
 // SetMarkdownTransform installs the display-only Markdown transform of the expanded body, which sees the message text without the header, and the state it reads for the Markdown render cache key. It is Pi's markdownTransformers, messageId and timestamp of the custom message component; a nil transform shows the Markdown as it is.
 func (c *CustomMessageComponent) SetMarkdownTransform(transform func(markdown string, availableWidth int) string, state func() string) {
 	c.surface.transform, c.surface.state = transform, state
-	c.rebuild()
+	// Only the default body reads the transform: a custom renderer's component stays, and the renderer is not called again.
+	if c.customComponent == nil {
+		c.buildDefault()
+	}
 }
 
 // renderCustom returns the custom renderer's component, or nil when it returns none or panics (custom-message.ts:68-83 falls
