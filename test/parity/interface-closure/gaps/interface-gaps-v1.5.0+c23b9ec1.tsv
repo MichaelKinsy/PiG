@@ -652,27 +652,3 @@ pkg:chord/workers/child#WorkerPlugins	chord	child-gap	chord/nextnode/workers/wor
 pkg:chord/workers/child#WorkerPlugins::property:load	chord	child-gap	chord/nextnode/workers/workers_main.go#WorkerPlugins.Load
 pkg:chord/workers/child#WorkerPlugins::property:load::call:0	chord	signature-mismatch	chord/nextnode/workers/workers_main.go#WorkerPlugins.Load
 pkg:chord/workers/child#WorkerResult	chord	undecidable	chord/nextnode/workers/workers_main.go#WorkerResult
-pkg:coding-agent/.#BranchSummaryMessageComponent	coding-agent	child-gap	tui/branch_summary.go#BranchSummaryMessageComponent
-pkg:coding-agent/.#BranchSummaryMessageComponent::construct:0	coding-agent	signature-mismatch	tui/branch_summary.go#NewBranchSummaryMessageComponent
-pkg:coding-agent/.#CompactionSummaryMessageComponent	coding-agent	child-gap	tui/compaction_summary.go#CompactionSummaryMessageComponent
-pkg:coding-agent/.#CompactionSummaryMessageComponent::construct:0	coding-agent	signature-mismatch	tui/compaction_summary.go#NewCompactionSummaryMessageComponent
-pkg:coding-agent/.#CustomMessageComponent	coding-agent	child-gap	tui/custom_message.go#CustomMessageComponent
-pkg:coding-agent/.#CustomMessageComponent::construct:0	coding-agent	signature-mismatch	tui/custom_message.go#NewCustomMessageComponent
-pkg:coding-agent/.#Extension	coding-agent	child-gap	coding/extension/extension.go#Extension
-pkg:coding-agent/.#Extension::property:markdownTransformer	coding-agent	undecidable	coding/extension/extension.go#Extension.MarkdownTransformer
-pkg:coding-agent/.#MarkdownTransformerRegistration	coding-agent	no-go-symbol	
-pkg:coding-agent/.#MarkdownTransformerRegistration::property:messageTypes	coding-agent	child-gap	
-pkg:coding-agent/.#MarkdownTransformerRegistration::property:transformer	coding-agent	child-gap	
-pkg:coding-agent/.#MarkdownTransformerRegistration::property:transformer::call:0	coding-agent	child-gap	
-pkg:coding-agent/.#ReadOperations	coding-agent	child-gap	internal/codingagent/tools/read.go#ReadOperations
-pkg:coding-agent/.#ReadOperations::property:createReadStream	coding-agent	signature-mismatch	internal/codingagent/tools/read.go#ReadOperations.CreateReadStream
-pkg:coding-agent/.#SkillInvocationMessageComponent	coding-agent	child-gap	tui/skill_invocation.go#SkillInvocationMessageComponent
-pkg:coding-agent/.#SkillInvocationMessageComponent::construct:0	coding-agent	signature-mismatch	tui/skill_invocation.go#NewSkillInvocationMessageComponent
-pkg:schema/.#BigintBounds	schema	no-go-symbol	
-pkg:schema/.#BigintBounds::property:exclusiveMaximum	schema	child-gap	
-pkg:schema/.#BigintBounds::property:exclusiveMinimum	schema	child-gap	
-pkg:schema/.#BigintBounds::property:maximum	schema	child-gap	
-pkg:schema/.#BigintBounds::property:minimum	schema	child-gap	
-pkg:schema/.#BigintBounds::property:multipleOf	schema	child-gap	
-pkg:schema/.#bigint	schema	child-gap	schema/builders.go#BigInt
-pkg:schema/.#bigint::call:0	schema	undecidable	schema/builders.go#BigInt

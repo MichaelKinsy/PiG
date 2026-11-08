@@ -253323,21 +253323,23 @@
     {
       "id": "pkg:coding-agent/.#MarkdownTransformerRegistration",
       "upstreamShapeHash": "sha256:928454393ffd65a0f4e1e8bb9b7e4ce757ae8710078dc08012435932adb29033",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension#MarkdownTransformerRegistration"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -334806,7 +334808,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "11 normalized-name Pig candidates are ambiguous."
+        "12 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -334826,7 +334828,8 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.Err",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#cancellationOnlyContext.Err",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelTaskBinding.Err",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelTaskContext.Err"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelTaskContext.Err",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadStream.Err"
       ],
       "missingClosure": [
         "candidate-disambiguation",
