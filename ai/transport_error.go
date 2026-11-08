@@ -9,6 +9,7 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,18 +22,11 @@ import (
 type nodeTransportError struct {
 	message string
 	cause   error
-	// withCause appends the cause to the message. pig divergence (D144): undici's "terminated" carries the real failure in error.cause and Pi drops it (Pi #10697).
-	withCause bool
 	// headersTimeout marks a "fetch failed" whose undici cause is HeadersTimeoutError (code UND_ERR_HEADERS_TIMEOUT): the idle deadline passed on an established connection before the response headers arrived.
 	headersTimeout bool
 }
 
-func (err *nodeTransportError) Error() string {
-	if err.withCause && err.cause != nil {
-		return err.message + " (cause: " + err.cause.Error() + ")"
-	}
-	return err.message
-}
+func (err *nodeTransportError) Error() string { return err.message }
 func (err *nodeTransportError) Unwrap() error { return err.cause }
 
 func contextTransportError(ctx context.Context) error {
@@ -64,6 +58,10 @@ type nodeFetchTransport struct {
 }
 
 func (transport *nodeFetchTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	// Only the owned transport is Node's fetch; a caller-supplied fetch client does its own port policy.
+	if transport.connectionIdle && isFetchBadPort(request.URL) {
+		return nil, &nodeTransportError{message: "fetch failed", cause: errFetchBadPort}
+	}
 	prepared := request
 	var responseMu sync.Mutex
 	var owner *bodyReadOwner
@@ -116,6 +114,25 @@ func (transport *nodeFetchTransport) RoundTrip(request *http.Request) (*http.Res
 	return response, nil
 }
 
+// errFetchBadPort is the cause undici gives "fetch failed" for a URL whose port the Fetch standard blocks: the request is refused without a connection.
+var errFetchBadPort = errors.New("bad port")
+
+// fetchBadPorts are the ports Fetch's "bad port" list blocks (https://fetch.spec.whatwg.org/#port-blocking), sorted. Node 24.19's fetch refuses each of them, measured by connecting to every port.
+var fetchBadPorts = [...]int{1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137, 139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 548, 554, 556, 563, 587, 601, 636, 989, 990, 993, 995, 1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10080}
+
+// isFetchBadPort reports whether Node's fetch refuses an http(s) URL because of its explicit port.
+func isFetchBadPort(u *url.URL) bool {
+	if u == nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return false
+	}
+	port, err := strconv.Atoi(u.Port())
+	if err != nil {
+		return false
+	}
+	_, found := slices.BinarySearch(fetchBadPorts[:], port)
+	return found
+}
+
 // isHeadersTimeout reports whether a failure on an established connection is the idle deadline passing before the response headers: net/http's ResponseHeaderTimeout or the connection read/write deadline. A request-context failure never reaches it: RoundTrip returns fetchAbortError first.
 func isHeadersTimeout(err error) bool {
 	timeout, ok := errors.AsType[net.Error](err)
@@ -135,7 +152,7 @@ func (body *nodeFetchBody) Read(buffer []byte) (int, error) {
 	if contextErr := fetchAbortError(body.ctx); contextErr != nil {
 		return count, contextErr
 	}
-	return count, &nodeTransportError{message: "terminated", cause: err, withCause: true}
+	return count, &nodeTransportError{message: "terminated", cause: err}
 }
 
 // openAISDKTransportError reports the OpenAI SDK rejection for a request that failed before response headers. Abort and caller cancellation are left to the caller, which owns those messages.

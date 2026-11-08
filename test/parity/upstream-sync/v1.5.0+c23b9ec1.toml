@@ -11,23 +11,23 @@ rationale = "Pi a758f3ae1 (#11545, Anthropic message threads) adds disableContin
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCreateThenContinue", "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream", "test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicStrictToolSchemas"]
+rationale = "a758f3ae4 adds Anthropic message threads (ai/anthropic_threads.go), 4c992154d keeps the underlying cause in connection error messages (ai/errors.go WithCauseDetail), 4a6a58eb5 keeps root $defs in non-strict tool schemas; each has its upstream cases ported."
 
 [[files]]
 path = "packages/ai/src/api/azure-openai-responses.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"]
+rationale = "0f4d5e960 omits prompt_cache_key when compat.promptCacheKeyMode is \"disabled\"; Azure shares the Responses request builder (ai/openai_responses.go), which reads the mode, and the policy test covers it."
 
 [[files]]
 path = "packages/ai/src/api/bedrock-converse-stream.lazy.ts"
 change = "modified"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "da95cd79c and 5c6ce2b32 change the lazy Bedrock loader for code-split Node bundles; Go links the Bedrock provider statically (ai/providers/bedrock), so there is no loader."
 
 [[files]]
 path = "packages/ai/src/api/lazy.ts"
@@ -39,65 +39,65 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/api/openai-codex-responses.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/openai_codex_retry_backoff_release_test.go#TestCodexSSERetryBackoffReleasesTheCallerContext"]
+rationale = "90b42bca6 removes the abort listener after the SSE retry backoff."
 
 [[files]]
 path = "packages/ai/src/api/openai-completions.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/openai_completions_non_null_assistant_content_upstream_test.go#TestRequiresNonNullAssistantContentSendsEmptyStringWithoutInsertingAnAssistantMessage", "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream", "test:ai/openai_test.go#TestOpenAICompletionsEmptyTools"]
+rationale = "14b804d80 adds requiresNonNullAssistantContent, 0f4d5e960 adds promptCacheKeyMode and 7a6bd5a97 omits the empty tools array for tool history unless requiresToolsWithToolHistory; the revert pair 5bdf988b7 and 7fd1ee050 (tool call id shortening) nets to no change."
 
 [[files]]
 path = "packages/ai/src/api/openai-responses.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatHeadersUpstream", "test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"]
+rationale = "c5d397835 sends session-id instead of session_id and 0f4d5e960 adds promptCacheKeyMode."
 
 [[files]]
 path = "packages/ai/src/api/simple-options.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCreateThenContinue", "test:ai/clamp_max_tokens_test.go"]
+rationale = "a758f3ae4 carries disableContinuation through the simple options (ai SimpleStreamOptions.DisableContinuation) and 0a4fad548 leaves room for the OpenRouter input overcount when clamping max tokens (D238)."
 
 [[files]]
 path = "packages/ai/src/auth/oauth/load.ts"
 change = "modified"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "5c6ce2b32 resolves variable lazy imports against the module URL so Pi's code-split Node bundles load; Go links every OAuth provider statically (ai/oauth_registry.go), so there is no lazy import to resolve."
 
 [[files]]
 path = "packages/ai/src/env-api-keys.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/auth_env_keys_test.go"]
+rationale = "3e4f87265 maps qwen-token-plan-individual-cn to QWEN_TOKEN_PLAN_CN_API_KEY (ai/auth_env_keys.go)."
 
 [[files]]
 path = "packages/ai/src/lazy-bedrock-provider.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "da95cd79c adds a lazy Bedrock provider loader for code-split Node bundles; Go links Bedrock statically."
 
 [[files]]
 path = "packages/ai/src/lazy-oauth.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "da95cd79c adds a lazy OAuth flow loader for code-split Node bundles; Go links the OAuth flows statically."
 
 [[files]]
 path = "packages/ai/src/models.generated.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi", "test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels"]
+rationale = "The generated catalog follows the pin (make model-catalogs; Qwen Token Plan Individual CN, glm-5.3, Azure GPT-6 windows, Copilot Microsoft-Decision-1); fixtures and golden are re-recorded at c23b9ec1."
 
 [[files]]
 path = "packages/ai/src/models.ts"
@@ -109,65 +109,65 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/providers/all.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog"]
+rationale = "3e4f87265 registers qwen-token-plan-individual-cn (ai/builtin_providers.go)."
 
 [[files]]
 path = "packages/ai/src/providers/compat-schema.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "requiresNonNullAssistantContent, requiresToolsWithToolHistory, promptCacheKeyMode (completions, responses, provider), supportsMessageThreads and the session-id wording are in configschema/compat_a.go and compat_b.go; every export is byte-compared with the file at the pin."
 
 [[files]]
 path = "packages/ai/src/providers/github-copilot.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"]
+rationale = "0ec20e157 adds the Microsoft-Decision-1 classifier (ai/github_copilot_filter.go)."
 
 [[files]]
 path = "packages/ai/src/providers/openai-codex.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/api_key_providers_test.go"]
+rationale = "36142c1c7 removes the \"(legacy)\" marker from the OpenAI Codex provider name (ai/provider_names.go)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-individual-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels"]
+rationale = "The Individual CN model shard is the generated catalog (ai/models_generated.go)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-individual-cn.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels", "test:ai/auth_env_keys_test.go"]
+rationale = "ai/provider_constructors.go QwenTokenPlanIndividualCnProvider."
 
 [[files]]
 path = "packages/ai/src/types.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog", "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCreateThenContinue"]
+rationale = "3e4f87265 adds the KnownProvider literal and a758f3ae4 adds StreamOptions.disableContinuation and the supportsMessageThreads compat field (ai/types.go)."
 
 [[files]]
 path = "packages/ai/src/utils/error-body.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"]
+rationale = "4c992154d: ai/errors.go WithCauseDetail (cause depth 5)."
 
 [[files]]
 path = "packages/ai/src/utils/retry.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"]
+rationale = "566344046 makes the gateway wording \"cut short after the reply had begun\" retryable (ai/assistant_retry.go)."
 
 [[files]]
 path = "packages/chord/src/cell.ts"

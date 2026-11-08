@@ -7,7 +7,7 @@ import { selectConfig } from "./cli/config-selector.js";
 import { createProjectTrustContext } from "./cli/project-trust.js";
 import { APP_NAME, CONFIG_DIR_NAME, detectInstallChange, detectInstallMethod, getAgentDir, getConfiguredSelfUpdateArgv, getPackageDir, getSelfUpdateCommand, getSelfUpdateUnavailableInstruction, makeConfiguredSelfUpdateCommand, PACKAGE_NAME, VERSION, } from "./config.js";
 import { ModelRuntime } from "./core/model-runtime.js";
-import { DefaultPackageManager } from "./core/package-manager.js";
+import { DefaultPackageManager, isOfflineModeEnabled } from "./core/package-manager.js";
 import { resolveProjectTrusted } from "./core/project-trust.js";
 import { DefaultResourceLoader, formatPackageInstallWarning, isBuiltinExtension } from "./core/resource-loader.js";
 import { SettingsManager } from "./core/settings-manager.js";
@@ -885,11 +885,19 @@ export async function handlePackageCommand(args, runtimeOptions = {}) {
     reportSettingsErrors(settingsManager, "package command");
     const selfUpdateNpmCommand = settingsManager.getGlobalSettings().npmCommand;
     const packageManager = new DefaultPackageManager({ cwd, agentDir, settingsManager });
+    // Update result events describe a changed package, e.g. "npm:foo 1.2.0 -> 1.3.0".
+    const updatedPackages = [];
+    // Progress messages are warnings, e.g. npm reinstalled the old version from stale registry metadata.
+    let warningCount = 0;
     packageManager.setProgressCallback((event) => {
-        if (event.type === "start") {
+        if (event.type === "result" && event.action === "update" && event.message) {
+            updatedPackages.push(event.message);
+        }
+        else if (event.type === "start") {
             process.stdout.write(chalk.dim(`${event.message}\n`));
         }
         else if (event.type === "progress" && event.message) {
+            warningCount++;
             process.stdout.write(chalk.yellow(`${event.message}\n`));
         }
     });
@@ -948,11 +956,24 @@ export async function handlePackageCommand(args, runtimeOptions = {}) {
                 if (updateTargetIncludesExtensions(target)) {
                     const updateSource = target.type === "extensions" ? target.source : undefined;
                     await packageManager.update(updateSource);
-                    if (updateSource) {
-                        console.log(chalk.green(`Updated ${updateSource}`));
+                    // Only claim "up to date" when the update actually checked and nothing warned.
+                    if (isOfflineModeEnabled()) {
+                        console.log(chalk.yellow("Skipped package updates (offline mode)"));
+                    }
+                    else if (updatedPackages.length === 0 && warningCount > 0) {
+                        console.log(chalk.yellow(updateSource
+                            ? `${updateSource} was not updated, see the warnings above`
+                            : "No packages were updated, see the warnings above"));
+                    }
+                    else if (updatedPackages.length === 0) {
+                        console.log(chalk.green(updateSource ? `${updateSource} is already up to date` : "Packages are already up to date"));
                     }
                     else {
-                        console.log(chalk.green("Updated packages"));
+                        const count = updatedPackages.length;
+                        console.log(chalk.green(`Updated ${count} package${count === 1 ? "" : "s"}:`));
+                        for (const message of updatedPackages) {
+                            console.log(`  ${message}`);
+                        }
                     }
                 }
                 if (updateTargetIncludesSelf(target)) {

@@ -389,7 +389,7 @@ export function composeModelProvider(providerId, base, modelConfig, extension) {
         return simple
             ? api.streamSimple(model, context, options)
             : api.stream(model, context, options);
-    });
+    }, undefined, options?.signal);
     const provider = {
         id: providerId,
         name: extension?.name ?? config?.name ?? base?.name ?? extension?.oauth?.name ?? providerId,

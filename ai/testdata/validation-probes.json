@@ -67,14 +67,14 @@
   "name": "bigint",
   "schema": "{\"type\":\"object\",\"required\":[\"n\"],\"properties\":{\"n\":{\"type\":\"bigint\"}}}",
   "args": "{\"n\":1}",
-  "expected": "REJECT - n: expected bigint, got integer"
+  "expected": "ok {\"n\":\"1n\"}"
  },
  {
   "test": "reviewer probes > bigint {\"n\":\"12\"}",
   "name": "bigint",
   "schema": "{\"type\":\"object\",\"required\":[\"n\"],\"properties\":{\"n\":{\"type\":\"bigint\"}}}",
   "args": "{\"n\":\"12\"}",
-  "expected": "REJECT - n: expected bigint, got string"
+  "expected": "ok {\"n\":\"12n\"}"
  },
  {
   "test": "reviewer probes > refine {\"n\":5}",
@@ -1026,14 +1026,14 @@
   "name": "BigInt from a JSON string",
   "schema": "{\"type\":\"object\",\"required\":[\"n\"],\"properties\":{\"n\":{\"type\":\"bigint\"}}}",
   "args": "{\"n\":\"42\"}",
-  "expected": "REJECT - n: expected bigint, got string"
+  "expected": "ok {\"n\":\"42n\"}"
  },
  {
   "test": "reviewer probes (Sol) > Undefined from JSON null",
   "name": "Undefined from JSON null",
   "schema": "{\"type\":\"object\",\"required\":[\"n\"],\"properties\":{\"n\":{\"type\":\"undefined\"}}}",
   "args": "{\"n\":null}",
-  "expected": "REJECT - n: expected undefined, got null"
+  "expected": "ok {}"
  },
  {
   "test": "reviewer probes (Sol) > additionalProperties on declared properties",

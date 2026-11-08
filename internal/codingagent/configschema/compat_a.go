@@ -143,7 +143,7 @@ func OpenAIResponsesCompatSchema() *Schema {
 	return OpenObject([]Prop{
 		optionalCompatBoolean("supportsDeveloperRole", D("Whether the provider supports the developer role instead of system."), Default(true)),
 		optionalCompatBoolean("supportsMidConvoSystemMessages", D("Whether the exact model accepts developer or system messages after the conversation has started. When false, later system messages are folded into the leading system message. The generated catalog enables this for verified models."), Default(false)),
-		optionalSessionAffinityFormat(D("Session-affinity header format. openai sends session_id and x-client-request-id; openai-nosession sends x-client-request-id; openrouter sends x-session-id. Does not affect prompt_cache_key. Default: auto-detected.")),
+		optionalSessionAffinityFormat(D("Session-affinity header format. openai sends session-id and x-client-request-id; openai-nosession sends x-client-request-id; openrouter sends x-session-id. Does not affect prompt_cache_key. Default: auto-detected.")),
 		optionalPromptCacheKeyMode(D("Controls the prompt_cache_key request field. auto and enabled send it whenever caching is active; disabled never sends it, for compatible proxies that reject it. Default: auto.")),
 		optionalCompatBoolean("supportsLongCacheRetention", D(`Whether the provider supports long prompt cache retention. This uses prompt_cache_options.ttl: "30m" on GPT-5.6+ and prompt_cache_retention: "24h" on earlier models.`), Default(true)),
 		optionalCompatBoolean("supportsStrictMode", D("Whether the provider supports strict JSON-schema function tools. Defaults are API-specific; generated OpenAI models enable it explicitly.")),

@@ -1152,6 +1152,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	}
 
 	builder := newObservedProviderBuilder(ctx, p.cfg.api, p.cfg.ProviderID, p.cfg.Model)
+	builder.transportCauseDetail = true
 	builder.modelCost = opts.ModelCost
 	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, p.cfg.api, p.cfg.ProviderID, p.cfg.Model))
 	builder.abort = abort

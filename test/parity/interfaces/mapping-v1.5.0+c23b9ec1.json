@@ -37900,13 +37900,15 @@
     },
     {
       "id": "pkg:ai/api/bedrock-converse-stream.lazy#setBedrockProviderLoader",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0729b30b3c566756561ac7d1bc5b47633c0e43c410b3f96bc3934c4ff1b9881a"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0729b30b3c566756561ac7d1bc5b47633c0e43c410b3f96bc3934c4ff1b9881a",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/ai/src/api/bedrock-converse-stream.lazy.ts (setBedrockProviderLoader overrides how the bedrock implementation is imported) loads a Node-only implementation through a literal dynamic import so that Node bundles that split at dynamic imports (esbuild splitting, Chord's worker base) keep it in a lazy chunk (Pi da95cd79c, 5c6ce2b32). Go links the Bedrock provider (ai/providers/bedrock) statically, so there is no bundle, chunk or deferred import to register; designed out as a JavaScript bundling mechanic (same decision as setBedrockProviderModule)."
     },
     {
       "id": "pkg:ai/api/bedrock-converse-stream.lazy#setBedrockProviderLoader::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3bd91bcaaaa1f6b10b9d03cdd9f069c21bc24afe40ab6c264f8760bd1d99e3bf"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:3bd91bcaaaa1f6b10b9d03cdd9f069c21bc24afe40ab6c264f8760bd1d99e3bf",
+      "rationale": "The call row belongs to setBedrockProviderLoader, which is designed out as a JavaScript bundling mechanic (Node bundles that split at dynamic imports); Go has no loader parameter to bind."
     },
     {
       "id": "pkg:ai/api/bedrock-converse-stream.lazy#setBedrockProviderModule",
@@ -54447,8 +54449,10 @@
     },
     {
       "id": "pkg:ai/compat#BuiltinProvider",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ca86650a3411cf5ec3e9ef6ba9d9cf309b52878662a8fc90eea2a0d6b71b7f8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9ca86650a3411cf5ec3e9ef6ba9d9cf309b52878662a8fc90eea2a0d6b71b7f8",
+      "rationale": "BuiltinProvider is a type-level declaration (keyof typeof MODELS, the key union of the generated catalog constant; Go keeps provider ids as strings, ai.KnownProvider names the built-in ones (ai/known_provider.go)). It has no runtime value; Go has no type-level derivation from a constant or a schema. Designed out as a TypeScript language mechanic by the lead's ruling of 2026-10-07 15:20 MDT (language mechanics with no Go meaning are designed out with a citation).",
+      "pigTargets": []
     },
     {
       "id": "pkg:ai/compat#CacheRetention",
@@ -77482,13 +77486,15 @@
     },
     {
       "id": "pkg:ai/compat#setBedrockProviderLoader",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0729b30b3c566756561ac7d1bc5b47633c0e43c410b3f96bc3934c4ff1b9881a"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0729b30b3c566756561ac7d1bc5b47633c0e43c410b3f96bc3934c4ff1b9881a",
+      "rationale": "compat re-export of api/bedrock-converse-stream.lazy.ts setBedrockProviderLoader; designed out with it: Pi 1.5.0+c23b9ec1 packages/ai/src/api/bedrock-converse-stream.lazy.ts loads a Node-only implementation through a literal dynamic import so that Node bundles that split at dynamic imports (esbuild splitting, Chord's worker base) keep it in a lazy chunk (Pi da95cd79c, 5c6ce2b32). Go links the Bedrock provider (ai/providers/bedrock) statically, so there is no bundle, chunk or deferred import to register; designed out as a JavaScript bundling mechanic (same decision as setBedrockProviderModule)."
     },
     {
       "id": "pkg:ai/compat#setBedrockProviderLoader::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3bd91bcaaaa1f6b10b9d03cdd9f069c21bc24afe40ab6c264f8760bd1d99e3bf"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:3bd91bcaaaa1f6b10b9d03cdd9f069c21bc24afe40ab6c264f8760bd1d99e3bf",
+      "rationale": "The call row belongs to setBedrockProviderLoader, which is designed out as a JavaScript bundling mechanic (Node bundles that split at dynamic imports); Go has no loader parameter to bind."
     },
     {
       "id": "pkg:ai/compat#setBedrockProviderModule",
@@ -81791,23 +81797,27 @@
     },
     {
       "id": "pkg:ai/lazy-bedrock-provider#registerLazyBedrockProvider",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f131e6177aee1ca5b968e594987da1b75f173e10c22e757862e08eb4c43ceac4"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f131e6177aee1ca5b968e594987da1b75f173e10c22e757862e08eb4c43ceac4",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/ai/src/lazy-bedrock-provider.ts (registerLazyBedrockProvider) loads a Node-only implementation through a literal dynamic import so that Node bundles that split at dynamic imports (esbuild splitting, Chord's worker base) keep it in a lazy chunk (Pi da95cd79c, 5c6ce2b32). Go links the Bedrock provider (ai/providers/bedrock) statically, so there is no bundle, chunk or deferred import to register; designed out as a JavaScript bundling mechanic (same decision as setBedrockProviderModule)."
     },
     {
       "id": "pkg:ai/lazy-bedrock-provider#registerLazyBedrockProvider::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
+      "rationale": "The call row belongs to registerLazyBedrockProvider, which is designed out as a JavaScript bundling mechanic (Node bundles that split at dynamic imports); Go has no loader parameter to bind."
     },
     {
       "id": "pkg:ai/lazy-oauth#registerLazyOAuthFlows",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f131e6177aee1ca5b968e594987da1b75f173e10c22e757862e08eb4c43ceac4"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f131e6177aee1ca5b968e594987da1b75f173e10c22e757862e08eb4c43ceac4",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/ai/src/lazy-oauth.ts (registerLazyOAuthFlows registers a loader for each OAuth flow) loads a Node-only implementation through a literal dynamic import so that Node bundles that split at dynamic imports (esbuild splitting, Chord's worker base) keep it in a lazy chunk (Pi da95cd79c, 5c6ce2b32). Go links the OAuth flows (ai/oauth_registry.go) statically, so there is no bundle, chunk or deferred import to register; designed out as a JavaScript bundling mechanic (same decision as setBedrockProviderModule)."
     },
     {
       "id": "pkg:ai/lazy-oauth#registerLazyOAuthFlows::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
+      "rationale": "The call row belongs to registerLazyOAuthFlows, which is designed out as a JavaScript bundling mechanic (Node bundles that split at dynamic imports); Go has no loader parameter to bind."
     },
     {
       "id": "pkg:ai/models#AI_TELEMETRY_SCHEMA",
@@ -86898,8 +86908,9 @@
     },
     {
       "id": "pkg:ai/providers/all#BuiltinProvider",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:acfede959eb4d3aeb14f4bfe73f1ce4c7ea03528d47ec583a28652cf188b0edd"
+      "upstreamShapeHash": "sha256:acfede959eb4d3aeb14f4bfe73f1ce4c7ea03528d47ec583a28652cf188b0edd",
+      "disposition": "designed-out",
+      "rationale": "ai providers/all.ts:53 `BuiltinProvider = keyof typeof MODELS` is the compile-time union of the keys of the generated model catalog object. Go has no keyof: the built-in provider IDs are the keys of the generated catalog (ai/models_generated.go) and strings elsewhere. Designed out as a TypeScript type-level mechanic."
     },
     {
       "id": "pkg:ai/providers/all#builtinProviders",
@@ -90413,8 +90424,12 @@
     },
     {
       "id": "pkg:ai/providers/compat-schema#ProviderCompat",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:eb547a8d5b2c63b700d06c390cdafa642c57f721fa0dbc6b7f2e404e0d144888"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:eb547a8d5b2c63b700d06c390cdafa642c57f721fa0dbc6b7f2e404e0d144888",
+      "rationale": "OWNER RE-APPROVAL REQUIRED: the 2026-11-02 approval covered the 1.5.0 shape; compat-schema.ts changed in five commits since (a758f3ae4 supportsMessageThreads, 14b804d80, 0f4d5e960 promptCacheKeyMode, 7a6bd5a97 requiresToolsWithToolHistory, c5d397835), so this text is rewritten for Pi 1.5.0+c23b9ec1 and is not yet approved. Pi packages/ai/src/providers/compat-schema.ts:695 ProviderCompat: `ProviderCompat = Static<typeof ProviderCompatSchema>` is the models.json provider and model compat object. ProviderCompatSchema (:688) is openObject(ProviderCompatProperties, { additionalProperties: true }), where ProviderCompatProperties (:676) is mergeCompatProperties (:635) of every API's compat properties (OpenAI completions and responses, Anthropic messages, Bedrock, Mistral, System One) with API-agnostic overrides, and it allows other properties. PiG declares it as `type providerCompat ai.OpenAICompat` (internal/codingagent/model_registry.go:306). The OpenAI completions and Responses fields are typed members, and so are the Anthropic fields PiG reads outside the Anthropic compat struct: supportsMidConvoEffort, supportsMidConvoSystemMessages, supportsMidConvoToolAdditions, supportsMidConvoToolChanges, supportsMessageThreads (a758f3ae4), allowedFallbackModels, plus requiresNonNullAssistantContent, requiresToolsWithToolHistory and promptCacheKeyMode (ai/openai.go). Every other member, the other APIs' fields included (imageInput and sendImageOptInHeader of System One, the Bedrock and Mistral fields), is kept verbatim in OpenAICompat.Extra and written back in order (ai/model_compat_json.go UnmarshalJSON, MarshalJSON appends Extra), as Pi's compat object keeps an additional property. A member of another API is read from Extra where an API uses it (overlaySystemOneCompat, native_provider_composer.go) and the schema is the ProviderCompatSchema of internal/codingagent/configschema/compat_b.go, byte-equal to Pi's (configschema/compat_schema_exports_test.go TestCompatSchemaExportsMatchPi), so a models.json compat object validates and round-trips as in Pi. A member-for-member struct would type fields no code path reads outside their own API's compat struct (ai.AnthropicMessagesCompat, ai.BedrockCompat, ai.MistralConversationsCompat, ai.SystemOneCompat). The ProviderCompat object itself is a type-level view in TypeScript (a Static of a merged property map). Designed out so the typed fields and the verbatim members stay one object, as Pi's open object does. Re-reviewed at Pi c23b9ec1.",
+      "pigTargets": [
+        "internal/codingagent/model_registry.go#providerCompat"
+      ]
     },
     {
       "id": "pkg:ai/providers/compat-schema#ProviderCompatSchema",

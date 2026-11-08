@@ -696,7 +696,7 @@ SOFTWARE.
 | balanced-match | 4.0.4 | MIT | `minimatch/node_modules/brace-expansion/node_modules/balanced-match/LICENSE.md` |
 | hosted-git-info | 9.0.3 | ISC | `hosted-git-info/LICENSE` |
 | lru-cache | 11.4.0 | BlueOak-1.0.0 | `hosted-git-info/node_modules/lru-cache/LICENSE.md` |
-| grok-mermaid | 0.2.3 | Apache-2.0 | `grok-mermaid/LICENSE` |
+| lovely-mermaid | 0.3.3 | Apache-2.0 | `lovely-mermaid/LICENSE` |
 | @silvia-odwyer/photon-node | 0.3.4 | Apache-2.0 | `photon-node/LICENSE.md` |
 | proper-lockfile | 4.1.2 | MIT | `proper-lockfile/LICENSE` |
 | retry | 0.12.0 | MIT | `proper-lockfile/node_modules/retry/License` |

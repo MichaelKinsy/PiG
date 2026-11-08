@@ -71,15 +71,9 @@ func probe(responses bool, test probeCase) error {
 		if responses {
 			api = "responses"
 		}
-		// pig divergence (D246): Pi c5d397835 sends the Responses session-affinity header as session-id where the pinned Pi 1.5.0 (the paired probe)
-		// sends session_id. Only that header name on the Responses path is read under the other name. A session_id header the model configures is
-		// no longer replaced by the affinity header (it is a different header now) and is not reported; any other session_id on a Responses request is.
 		session := r.Header.Get("session_id")
 		if responses {
 			session = r.Header.Get("session-id")
-			if legacy := r.Header.Get("session_id"); legacy != "" && legacy != test.ModelHeaders["session_id"] {
-				session += "+session_id=" + legacy
-			}
 		}
 		requests <- probeResult{api, test.Name, body.Key, body.Retention, session, r.Header.Get("x-client-request-id"), r.Header.Get("x-session-affinity"), r.Header.Get("x-session-id"), body.Reasoning, body.Choice}
 		w.Header().Set("Content-Type", "text/event-stream")
