@@ -2,8 +2,10 @@ package host
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
@@ -40,8 +42,9 @@ func TestResumeRunsAfterAHandlerSuspendedInASectionOfTheLoop(t *testing.T) {
 							}
 							errs <- Resume(ctx, func() { suspended = loop.onLoop() })
 						}()
-						if err := <-errs; err != nil {
-							return nil, err
+						// The handler suspends (it leaves its admitting section) while it waits, as Pi's await does.
+						if err, rerr := chordctx.Receive(ctx, errs); rerr != nil || err != nil {
+							return nil, errors.Join(err, rerr)
 						}
 						// 1: the work ran on the loop inline, 2: after a suspension.
 						answer := 0.0
