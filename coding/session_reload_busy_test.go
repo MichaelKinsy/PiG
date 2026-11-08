@@ -73,7 +73,11 @@ func reloadDuringATurn(t *testing.T) {
 	runner := h.session.ExtensionRunner()
 	prompt := make(chan error, 1)
 	go func() { prompt <- h.session.Prompt(t.Context(), "run the tool", nil) }()
-	<-tool.started
+	select {
+	case <-tool.started:
+	case err := <-prompt:
+		t.Fatalf("the prompt ended without running the tool: %v", err)
+	}
 	err := h.session.Reload(t.Context())
 	close(tool.release)
 	if promptErr := <-prompt; promptErr != nil {
@@ -121,7 +125,20 @@ func reloadDuringATurn(t *testing.T) {
 func reloadDuringCompactionOrTreeNavigation(t *testing.T) {
 	for _, operation := range []string{"compaction", "tree navigation"} {
 		t.Run(operation, func(t *testing.T) {
-			s := newTreeTestSessionWithSettings(t, `{"compaction":{"keepRecentTokens":1}}`)
+			provider := &scriptedProvider{}
+			for range 8 {
+				provider.responses = append(provider.responses, fauxReply("complete summary", ai.StopReasonStop, 0))
+			}
+			model := fakeModelWithProvider(provider)
+			model.ID = "faux-1"
+			model.Capabilities.ContextWindow = 200000
+			model.Capabilities.MaxOutputTokens = 8192
+			s, err := NewSession(newTestServicesSmallKeep(t), SessionOptions{Model: model, SystemPrompt: "You are a helpful assistant. Be concise."})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = s.Events()
+			t.Cleanup(func() { _ = s.Close() })
 			started, release := make(chan struct{}), make(chan struct{})
 			var shutdowns atomic.Int32
 			hold := func(...any) (any, error) {
@@ -140,24 +157,43 @@ func reloadDuringCompactionOrTreeNavigation(t *testing.T) {
 				"session_before_tree":    {holdTree},
 			}}}, t.TempDir())
 			s.ReplaceRunner(runner)
-			seedCancellationCompaction(t, s)
-			target := appendTreeUser(t, s, "navigate here")
-			done := make(chan struct{})
-			go func() {
-				defer close(done)
-				if operation == "compaction" {
-					_, _ = s.Compact(t.Context(), "")
-				} else {
-					_, _ = s.NavigateTree(t.Context(), target, NavigateTreeOptions{})
+			for _, prompt := range []string{"What is 2+2? Reply with just the number.", "What is 3+3? Reply with just the number."} {
+				if _, err := s.Send(t.Context(), prompt); err != nil {
+					t.Fatal(err)
 				}
+				drainEvents(t, s)
+			}
+			target := ""
+			for _, entry := range s.inner.GetEntries() {
+				if entry.Base().Type == "message" {
+					target = entry.Base().ID
+					break
+				}
+			}
+			if target == "" {
+				t.Fatal("no message entry to navigate to")
+			}
+			finished := make(chan error, 1)
+			go func() {
+				var err error
+				if operation == "compaction" {
+					_, err = s.Compact(t.Context(), "")
+				} else {
+					_, err = s.NavigateTree(t.Context(), target, NavigateTreeOptions{})
+				}
+				finished <- err
 			}()
-			<-started
+			select {
+			case <-started:
+			case err := <-finished:
+				t.Fatalf("%s ended without reaching its extension hook: %v", operation, err)
+			}
 			if s.IsStreaming() {
 				t.Fatal("the session streams during the held operation")
 			}
-			err := s.Reload(t.Context())
+			err = s.Reload(t.Context())
 			close(release)
-			<-done
+			<-finished
 			if err == nil || err.Error() != reloadBusyCompaction {
 				t.Fatalf("Reload during %s = %v, want %q", operation, err, reloadBusyCompaction)
 			}

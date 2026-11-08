@@ -400,7 +400,7 @@ func TestSetRemoteEditorKeepsCollapsedPasteContent(t *testing.T) {
 	}
 	// And back: a draft pasted into the replacement editor, which reports its expanded text, returns to the default editor whole.
 	backToDefault := pastedDraft("back to default")
-	custom.host.EditorChanged("[paste #1 +12 lines]", backToDefault)
+	custom.host.EditorChanged("[paste #7 +12 lines]", backToDefault)
 	runPostedTasks(t, mode)
 	mode.setRemoteEditor(nil)
 	if got := mode.editor.GetExpandedText(); got != backToDefault {
