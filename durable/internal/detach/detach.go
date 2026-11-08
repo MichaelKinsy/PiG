@@ -3,12 +3,15 @@
 package detach
 
 import (
+	"maps"
 	"reflect"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // JSON deep-copies a JSON value. JSON containers and scalars take the fast path; any other Go value is copied
@@ -206,4 +209,84 @@ func ContextView(view durable.ContextView) durable.ContextView {
 		}
 	}
 	return out
+}
+
+// Conversation copies a conversation record.
+func Conversation(record durable.ConversationRecord) durable.ConversationRecord {
+	record.Parent = Pointer(record.Parent)
+	record.Owner = Pointer(record.Owner)
+	return record
+}
+
+func jsonPointer(value *durable.JsonValue) *durable.JsonValue {
+	if value == nil {
+		return nil
+	}
+	copied := JSON(*value)
+	return &copied
+}
+
+func carrier(value telemetry.TelemetryCarrier) telemetry.TelemetryCarrier {
+	if value == nil {
+		return nil
+	}
+	return maps.Clone(value)
+}
+
+// Task deep-copies a task record.
+func Task(record durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]) durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue] {
+	record.Trace = carrier(record.Trace)
+	if record.Links != nil {
+		links := make([]telemetry.TelemetryCarrier, len(record.Links))
+		for index, link := range record.Links {
+			links[index] = carrier(link)
+		}
+		record.Links = links
+	}
+	record.Input = JSON(record.Input)
+	record.Owner = Pointer(record.Owner)
+	record.StartedAt = Pointer(record.StartedAt)
+	record.EndedAt = Pointer(record.EndedAt)
+	state := record.State
+	state.Checkpoint = jsonPointer(state.Checkpoint)
+	state.On = slices.Clone(state.On)
+	state.Until = Pointer(state.Until)
+	if state.Outcome != nil {
+		outcome := *state.Outcome
+		outcome.Result = jsonPointer(outcome.Result)
+		if outcome.Error != nil {
+			taskError := *outcome.Error
+			taskError.Detail = JSON(taskError.Detail)
+			outcome.Error = &taskError
+		}
+		outcome.Reason = Pointer(outcome.Reason)
+		state.Outcome = &outcome
+	}
+	record.State = state
+	if record.Memos != nil {
+		memos := make(map[string]durable.JsonValue, len(record.Memos))
+		for key, value := range record.Memos {
+			memos[key] = JSON(value)
+		}
+		record.Memos = memos
+	}
+	return record
+}
+
+// Submission deep-copies a submission record.
+func Submission(record durable.SubmissionRecord) durable.SubmissionRecord {
+	record.Trace = carrier(record.Trace)
+	record.RequestId = Pointer(record.RequestId)
+	record.Entry = Pointer(record.Entry)
+	record.Answer = Pointer(record.Answer)
+	record.Reason = Pointer(record.Reason)
+	record.Detail = JSON(record.Detail)
+	return record
+}
+
+// DocumentRecord copies a document incarnation's lifecycle record.
+func DocumentRecord(record durable.DocumentRecord) durable.DocumentRecord {
+	record.Key = Pointer(record.Key)
+	record.RetiredAt = Pointer(record.RetiredAt)
+	return record
 }

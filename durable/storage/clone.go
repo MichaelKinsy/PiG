@@ -1,84 +1,20 @@
 package storage
 
 import (
-	"maps"
-
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 	"github.com/MichaelKinsy/PiG/durable/storage/internal/writes"
-	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Storage keeps values detached from callers: every write is copied before it is retained and every read returns a
 // copy. Upstream also freezes retained writes; Go has no frozen values, so a prepared commit exposes copies instead.
 
 func cloneConversation(record durable.ConversationRecord) durable.ConversationRecord {
-	record.Parent = clonePointer(record.Parent)
-	record.Owner = clonePointer(record.Owner)
-	return record
+	return detach.Conversation(record)
 }
-
-func cloneJSONPointer(value *durable.JsonValue) *durable.JsonValue {
-	if value == nil {
-		return nil
-	}
-	copied := cloneJSON(*value)
-	return &copied
-}
-
-func cloneCarrier(carrier telemetry.TelemetryCarrier) telemetry.TelemetryCarrier {
-	if carrier == nil {
-		return nil
-	}
-	return maps.Clone(carrier)
-}
-
-func cloneTask(record storedTask) storedTask {
-	record.Trace = cloneCarrier(record.Trace)
-	if record.Links != nil {
-		links := make([]telemetry.TelemetryCarrier, len(record.Links))
-		for index, link := range record.Links {
-			links[index] = cloneCarrier(link)
-		}
-		record.Links = links
-	}
-	record.Input = cloneJSON(record.Input)
-	record.Owner = clonePointer(record.Owner)
-	state := record.State
-	state.Checkpoint = cloneJSONPointer(state.Checkpoint)
-	if state.On != nil {
-		state.On = append([]durable.TaskId(nil), state.On...)
-	}
-	if state.Outcome != nil {
-		outcome := *state.Outcome
-		outcome.Result = cloneJSONPointer(outcome.Result)
-		if outcome.Error != nil {
-			taskError := *outcome.Error
-			taskError.Detail = cloneJSON(taskError.Detail)
-			outcome.Error = &taskError
-		}
-		outcome.Reason = clonePointer(outcome.Reason)
-		state.Outcome = &outcome
-	}
-	record.State = state
-	if record.Memos != nil {
-		memos := make(map[string]durable.JsonValue, len(record.Memos))
-		for key, value := range record.Memos {
-			memos[key] = cloneJSON(value)
-		}
-		record.Memos = memos
-	}
-	return record
-}
-
+func cloneTask(record storedTask) storedTask { return detach.Task(record) }
 func cloneSubmission(record durable.SubmissionRecord) durable.SubmissionRecord {
-	record.Trace = cloneCarrier(record.Trace)
-	record.RequestId = clonePointer(record.RequestId)
-	record.Entry = clonePointer(record.Entry)
-	record.Answer = clonePointer(record.Answer)
-	record.Reason = clonePointer(record.Reason)
-	record.Detail = cloneJSON(record.Detail)
-	return record
+	return detach.Submission(record)
 }
 
 func cloneDocumentCreate(record durable.DocumentCreate) durable.DocumentCreate {
@@ -87,9 +23,7 @@ func cloneDocumentCreate(record durable.DocumentCreate) durable.DocumentCreate {
 }
 
 func cloneDocumentRecord(record durable.DocumentRecord) durable.DocumentRecord {
-	record.Key = clonePointer(record.Key)
-	record.RetiredAt = clonePointer(record.RetiredAt)
-	return record
+	return detach.DocumentRecord(record)
 }
 
 func cloneOps(ops []durable.Op) []durable.Op {
@@ -141,7 +75,6 @@ func cloneWrites(batch []durable.StorageWrite) []durable.StorageWrite {
 	return out
 }
 
-func cloneJSON(value durable.JsonValue) durable.JsonValue       { return detach.JSON(value) }
 func cloneObject(value durable.JsonObject) durable.JsonObject   { return detach.Object(value) }
 func cloneEntry(record durable.EntryRecord) durable.EntryRecord { return detach.Entry(record) }
 func clonePointer[T any](value *T) *T                           { return detach.Pointer(value) }

@@ -268,6 +268,7 @@ type SqliteStorage struct {
 	db SqliteDatabase
 
 	retained *workingSet
+	cache    *readCache
 
 	schema        SqliteSchema
 	statements    *commitStatements
@@ -282,7 +283,7 @@ type SqliteStorage struct {
 
 var _ durable.Storage = (*SqliteStorage)(nil)
 
-// SqliteStorageOptions configures a SqliteStorage (Pi's SqliteStorageOptions, which has Prefix only; WorkingSetBytes is additive, D104).
+// SqliteStorageOptions configures a SqliteStorage (Pi's SqliteStorageOptions, which has Prefix only; WorkingSetBytes and ReadCacheBytes are additive, D104).
 type SqliteStorageOptions struct {
 	// Prefix namespaces every table and index of the durable schema, for a database shared with other tables. It must
 	// be a SQLite identifier and must not use SQLite's reserved `sqlite_` prefix. Existing data is not migrated when it
@@ -292,6 +293,12 @@ type SqliteStorageOptions struct {
 	// WorkingSetBytes bounds the decoded entries the storage retains for context reads: zero selects
 	// DefaultWorkingSetBytes and a negative value retains nothing.
 	WorkingSetBytes int64
+
+	// ReadCacheBytes bounds the estimated size of the results the storage keeps for its reads, as long as no commit is made
+	// to the database file by another connection or process: zero selects DefaultReadCacheBytes and a negative value keeps
+	// nothing. A database that cannot name its committed state (not a WAL file, or not opened by chord/sqlite/node)
+	// keeps nothing.
+	ReadCacheBytes int64
 }
 
 // Open initializes storage over an owned SQLite database facade. A failure closes the database.
@@ -311,6 +318,11 @@ func Open(db SqliteDatabase, options ...SqliteStorageOptions) (*SqliteStorage, e
 		budget = max(options[0].WorkingSetBytes, 0)
 	}
 	storage.retained = newWorkingSet(budget, storage.schema)
+	cacheBytes := int64(DefaultReadCacheBytes)
+	if len(options) > 0 && options[0].ReadCacheBytes != 0 {
+		cacheBytes = max(options[0].ReadCacheBytes, 0)
+	}
+	storage.cache = openReadCache(db, cacheBytes)
 	return storage, nil
 }
 
@@ -414,7 +426,10 @@ func (storage *SqliteStorage) Commit(
 	var committedEntries []committedEntry
 	var refused error
 	candidateNextId := storage.candidateNextId(nil)
+	cacheCommit := storage.cache.beginCommit(values)
 	err := storage.db.Transaction(func(transaction SqliteExecutor) error {
+		// Inside the write transaction no other connection can commit: the state this commit starts from.
+		cacheCommit.start()
 		seqs = seqs[:0]
 		committedEntries = nil
 		refused = nil
@@ -460,6 +475,7 @@ func (storage *SqliteStorage) Commit(
 	if err != nil {
 		return durable.CommitResult{}, err
 	}
+	cacheCommit.done(len(seqs) > 0)
 	storage.mu.Lock()
 	storage.nextId = max(storage.nextId, candidateNextId)
 	storage.mu.Unlock()
@@ -548,8 +564,8 @@ func (storage *SqliteStorage) MintId() (int64, error) {
 	return id, nil
 }
 
-// Conversation looks up one conversation by exact ID.
-func (storage *SqliteStorage) Conversation(
+// uncachedConversation is Conversation without the read cache.
+func (storage *SqliteStorage) uncachedConversation(
 	_ context.Context, id durable.ConversationId,
 ) (*durable.ConversationRecord, error) {
 	if err := storage.assertOpen(); err != nil {
@@ -600,8 +616,8 @@ func taskIdOf(record storedTask) int64                         { return int64(re
 func submissionIdOf(record durable.SubmissionRecord) int64     { return int64(record.Id) }
 func documentIdOf(record durable.DocumentRecord) int64         { return int64(record.Id) }
 
-// ScanConversations scans conversations by ID in query.Order, ascending by default.
-func (storage *SqliteStorage) ScanConversations(
+// uncachedScanConversations is ScanConversations without the read cache.
+func (storage *SqliteStorage) uncachedScanConversations(
 	_ context.Context, query durable.ConversationQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {
 	if err := storage.assertOpen(); err != nil {
@@ -634,8 +650,8 @@ func (storage *SqliteStorage) ScanConversations(
 	return page(records, limit, start.Order, conversationIdOf), nil
 }
 
-// Entry looks up one global entry and the sequence of the commit that persisted it.
-func (storage *SqliteStorage) Entry(_ context.Context, id durable.EntryId) (*durable.EntryAt, error) {
+// uncachedEntry is Entry without the read cache.
+func (storage *SqliteStorage) uncachedEntry(_ context.Context, id durable.EntryId) (*durable.EntryAt, error) {
 	var found *durable.EntryAt
 	err := storage.admitRead(func() (err error) {
 		found, err = storage.readEntry(nil, id)
@@ -644,8 +660,8 @@ func (storage *SqliteStorage) Entry(_ context.Context, id durable.EntryId) (*dur
 	return found, err
 }
 
-// VisibleEntry looks up one entry only when it is visible through the requested conversation's ancestry.
-func (storage *SqliteStorage) VisibleEntry(
+// uncachedVisibleEntry is VisibleEntry without the read cache.
+func (storage *SqliteStorage) uncachedVisibleEntry(
 	_ context.Context, conversationId durable.ConversationId, id durable.EntryId,
 ) (*durable.EntryAt, error) {
 	var found *durable.EntryAt
@@ -656,8 +672,8 @@ func (storage *SqliteStorage) VisibleEntry(
 	return found, err
 }
 
-// FindLatestHeadMarker returns the newest visible entry with a head at or below the optional inclusive cutoff.
-func (storage *SqliteStorage) FindLatestHeadMarker(
+// uncachedFindLatestHeadMarker is FindLatestHeadMarker without the read cache.
+func (storage *SqliteStorage) uncachedFindLatestHeadMarker(
 	_ context.Context, conversationId durable.ConversationId, atOrBeforeEntryId *durable.EntryId,
 ) (*durable.EntryRecord, error) {
 	var found *durable.EntryRecord
@@ -668,9 +684,8 @@ func (storage *SqliteStorage) FindLatestHeadMarker(
 	return found, err
 }
 
-// ScanEntries scans the inclusive visible range in query.Order (descending by default), returning at most limit
-// entries.
-func (storage *SqliteStorage) ScanEntries(
+// uncachedScanEntries is ScanEntries without the read cache.
+func (storage *SqliteStorage) uncachedScanEntries(
 	_ context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
 	var found durable.Page[durable.EntryRecord, durable.Cursor]
@@ -943,16 +958,16 @@ func (storage *SqliteStorage) readEntriesAscending(
 	return page(values, limit, durable.ScanAscending, entryIdOf), nil
 }
 
-// Task looks up the latest complete record for one task.
-func (storage *SqliteStorage) Task(_ context.Context, id durable.TaskId) (*storedTask, error) {
+// uncachedTask is Task without the read cache.
+func (storage *SqliteStorage) uncachedTask(_ context.Context, id durable.TaskId) (*storedTask, error) {
 	if err := storage.assertOpen(); err != nil {
 		return nil, err
 	}
 	return getRecord[storedTask](storage.db, "SELECT record FROM "+storage.schema.Tables.Tasks+" WHERE id = ?", int64(id))
 }
 
-// ScanTasks scans task records matching every supplied filter by ID in query.Order, ascending by default.
-func (storage *SqliteStorage) ScanTasks(
+// uncachedScanTasks is ScanTasks without the read cache.
+func (storage *SqliteStorage) uncachedScanTasks(
 	_ context.Context, query durable.TaskQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[storedTask, durable.Cursor], error) {
 	if err := storage.assertOpen(); err != nil {
@@ -1004,8 +1019,8 @@ func boolInt(value bool) int64 {
 	return 0
 }
 
-// Submission looks up the latest complete record for one admitted submission.
-func (storage *SqliteStorage) Submission(
+// uncachedSubmission is Submission without the read cache.
+func (storage *SqliteStorage) uncachedSubmission(
 	_ context.Context, id durable.SubmissionId,
 ) (*durable.SubmissionRecord, error) {
 	if err := storage.assertOpen(); err != nil {
@@ -1014,8 +1029,8 @@ func (storage *SqliteStorage) Submission(
 	return getRecord[durable.SubmissionRecord](storage.db, "SELECT record FROM "+storage.schema.Tables.Submissions+" WHERE id = ?", int64(id))
 }
 
-// ScanSubmissions scans submissions matching every supplied filter by ID in query.Order, ascending by default.
-func (storage *SqliteStorage) ScanSubmissions(
+// uncachedScanSubmissions is ScanSubmissions without the read cache.
+func (storage *SqliteStorage) uncachedScanSubmissions(
 	_ context.Context, query durable.SubmissionQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {
 	if err := storage.assertOpen(); err != nil {
@@ -1048,8 +1063,8 @@ func (storage *SqliteStorage) ScanSubmissions(
 	return page(records, limit, start.Order, submissionIdOf), nil
 }
 
-// SubmissionByRequest finds a submission by its conversation-scoped host deduplication key.
-func (storage *SqliteStorage) SubmissionByRequest(
+// uncachedSubmissionByRequest is SubmissionByRequest without the read cache.
+func (storage *SqliteStorage) uncachedSubmissionByRequest(
 	_ context.Context, conversationId durable.ConversationId, requestId string,
 ) (*durable.SubmissionRecord, error) {
 	if err := storage.assertOpen(); err != nil {
@@ -1063,8 +1078,8 @@ func (storage *SqliteStorage) SubmissionByRequest(
 	)
 }
 
-// FindDocument resolves the incarnation occupying one exact logical address at the selected point.
-func (storage *SqliteStorage) FindDocument(
+// uncachedFindDocument is FindDocument without the read cache.
+func (storage *SqliteStorage) uncachedFindDocument(
 	_ context.Context, address durable.DocumentAddress, at durable.DocumentPoint,
 ) (*durable.DocumentRecord, error) {
 	if err := storage.assertOpen(); err != nil {
@@ -1084,9 +1099,8 @@ func (storage *SqliteStorage) FindDocument(
 					ORDER BY created_at DESC LIMIT 1`, params...)
 }
 
-// Document materializes one specific incarnation by ID at the selected point without following a replacement at its
-// address.
-func (storage *SqliteStorage) Document(
+// uncachedDocument is Document without the read cache.
+func (storage *SqliteStorage) uncachedDocument(
 	_ context.Context, id durable.DocumentId, at durable.DocumentPoint,
 ) (*durable.StoredDocument, error) {
 	if err := storage.assertOpen(); err != nil {
@@ -1101,8 +1115,8 @@ func (storage *SqliteStorage) Document(
 	return stored, err
 }
 
-// ScanDocuments scans incarnations alive in one exact scope at the selected point.
-func (storage *SqliteStorage) ScanDocuments(
+// uncachedScanDocuments is ScanDocuments without the read cache.
+func (storage *SqliteStorage) uncachedScanDocuments(
 	_ context.Context, query durable.DocumentQuery, limit int, cursor durable.Cursor,
 ) (durable.Page[durable.DocumentRecord, durable.Cursor], error) {
 	if err := storage.assertOpen(); err != nil {
@@ -1161,6 +1175,7 @@ func (storage *SqliteStorage) Close(_ context.Context) error {
 	}
 	storage.closeErr = storage.db.Close()
 	storage.retained.release()
+	storage.cache.release()
 	close(done)
 	return storage.closeErr
 }
