@@ -247,7 +247,10 @@ impl SessionShared {
                 root
             }
             Err(message) => {
-                eprintln!("pig: child session {}: {message}", self.id);
+                crate::diagnostic::diagnose(&format!(
+                    "pig: child session {}: {message}\n",
+                    self.id
+                ));
                 Value::Null
             }
         }
@@ -290,7 +293,7 @@ impl SessionShared {
             };
             for listener in listeners.into_iter().filter(|_| !event.is_null()) {
                 // A panicking listener does not stop Pi's emission.
-                let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| listener(&event)));
+                let _ = crate::diagnostic::recover(|| listener(&event));
             }
             let mut delivery = self.queue.lock().unwrap();
             delivery.delivered = seq;
@@ -615,10 +618,10 @@ impl AgentSession {
         }
         self.shared.stop();
         if let Err(error) = self.call("childSession.dispose", json!({})) {
-            eprintln!(
-                "pig: dispose of child session {} failed: {error}",
+            crate::diagnostic::diagnose(&format!(
+                "pig: dispose of child session {} failed: {error}\n",
                 self.shared.id
-            );
+            ));
         }
     }
 }

@@ -153432,7 +153432,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "81 normalized-name Pig candidates are ambiguous."
+        "82 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -153482,6 +153482,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#typeScriptRuntimeSetting.Store",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewLoaderAnimation.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#busHandlerSeq.Store",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#diagnosticBytes.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#hostTheme.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#installedTheme.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#encoderCache.Store",
@@ -158383,7 +158384,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "105 normalized-name Pig candidates are ambiguous."
+        "106 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -158429,6 +158430,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/packagecontent#rePositions.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#busHandlerSeq.Add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#childSessions.add",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#diagnosticBytes.Add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#graphCallbackRegistry.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#setupRegistry.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#withSessionRegistry.add",
@@ -158545,7 +158547,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "21 normalized-name Pig candidates are ambiguous."
+        "22 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -158571,6 +158573,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reloadPasses.And",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolRenderCardSeq.And",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#busHandlerSeq.And",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#diagnosticBytes.And",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#keyIDCacheCount.And",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#mermaidFoldScanned.And",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.And",
@@ -162737,7 +162740,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "25 normalized-name Pig candidates are ambiguous."
+        "26 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -162767,6 +162770,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/packagecontent#triTrue.or",
         "go:github.com/MichaelKinsy/PiG/coding/packagecontent#triUnset.or",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#busHandlerSeq.Or",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#diagnosticBytes.Or",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#keyIDCacheCount.Or",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#mermaidFoldScanned.Or",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.Or",
@@ -308615,7 +308619,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -308625,6 +308629,8 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.WithFileMutationQueue",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.WithFileMutationQueue",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#WithFileMutationQueue",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WithFileMutationQueue"
       ],

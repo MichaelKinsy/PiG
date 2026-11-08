@@ -671,7 +671,7 @@ impl EditorWorker {
         call: impl FnOnce(&mut dyn EditorComponent) -> Result<T, String>,
     ) -> Option<T> {
         let component = &mut self.component;
-        match catch_unwind(AssertUnwindSafe(|| call(component.as_mut()))) {
+        match crate::diagnostic::recover(|| call(component.as_mut())) {
             Ok(Ok(value)) => Some(value),
             Ok(Err(message)) => {
                 self.fail(what, message);
