@@ -14,7 +14,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
 // Ports packages/chord/test/node/plugins/testing.test.ts: testing a plugin alone (slice 12 §6), the plugin built as production
@@ -30,6 +29,12 @@ import (
 // (registry `acme.panels`, version 2), under a new directory; the Node host's tree is the one extracted under cache.
 func tpModules(t *testing.T, cache string) HostPackages {
 	t.Helper()
+	return tpAppModules(t, cache, `defineRegistry("acme.panels", { version: 2 })`, "Panels")
+}
+
+// tpAppModules is tpModules with the worker module's one registry export: its name and its `defineRegistry` expression.
+func tpAppModules(t *testing.T, cache, registry, name string) HostPackages {
+	t.Helper()
 	tree, err := extractNode(cache)
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +43,7 @@ func tpModules(t *testing.T, cache string) HostPackages {
 	dir := t.TempDir()
 	writeFiles(t, dir, map[string]string{
 		"v3.ts":        `export * from "` + src + `";` + "\n",
-		"v3/worker.ts": `import { defineRegistry } from "` + src + `";` + "\nexport const Panels = defineRegistry(\"acme.panels\", { version: 2 });\n",
+		"v3/worker.ts": `import { defineRegistry } from "` + src + `";` + "\nexport const " + name + " = " + registry + ";\n",
 	})
 	return HostPackages{"@acme/app/v3": filepath.Join(dir, "v3.ts"), "@acme/app/v3/worker": filepath.Join(dir, "v3", "worker.ts")}
 }
@@ -71,9 +76,9 @@ var tpNotesStub = TestStub{
 	Name:      "@acme/notes",
 	Contracts: []*contracts.Contract{tpNotes},
 	Facet: host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(tpNotes, func(*delta.JsonObject, host.Self) (contracts.Implementation, error) {
+		return h.Serve(tpNotes, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 			return contracts.Implementation{Members: contracts.VariantImplementation{
-				State: map[string]chord.Watchable[delta.JsonValue]{"words": state.ConstantOf[delta.JsonValue](42.0)},
+				State: map[string]chord.Watchable[delta.JsonValue]{"words": self.Derive(nil, func([]any) (delta.JsonValue, error) { return 42.0, nil })},
 			}}, nil
 		}, host.ServeOptions{})
 	}),
