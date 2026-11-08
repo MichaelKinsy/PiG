@@ -150,6 +150,10 @@ type more struct {
 	failing int
 	manual  *timers
 	styles  ClientStyles
+	// openDelay holds back each socket's Opened event, as a network connect that is not instant does: the client's Connected
+	// state then lands later than the test's first publish (Pi's setup has it land before the test body, as its `opened()` is a
+	// microtask; a goroutine has no such order).
+	openDelay time.Duration
 }
 
 // setup is a server serving WebScripts with initial, and a client started against it with available to fetch; failing fetches
@@ -208,7 +212,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 			s.mu.Lock()
 			s.sockets = append(s.sockets, socket{events, mine})
 			s.mu.Unlock()
-			go events.Opened()
+			go func() { time.Sleep(opt.openDelay); events.Opened() }()
 			return mine
 		},
 		FetchScript: func(_ context.Context, entry ScriptEntry) (RegisteredScript, error) {
@@ -508,7 +512,7 @@ func TestTriesASetWhoseScriptDidNotLoadAgainAfter1sThen2sUntilItApplies(t *testi
 func TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne(t *testing.T) {
 	a1, a2, a3 := script("@test/a", "d1", "hello"), script("@test/a", "d2", "hello again"), script("@test/a", "d3", "hello at last")
 	manual := &timers{}
-	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 1, manual: manual})
+	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 1, manual: manual, openDelay: 25 * time.Millisecond})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2))
 	until(t, func() bool { return len(manual.withMs(1000)) == 1 })
