@@ -110,8 +110,18 @@ func TestTelemetryASpansOfAPluginAreRecordedInTheAppsAdapter(t *testing.T) {
 	if want := []telemetry.RecordedTelemetryEvent{{Name: "step", Attributes: telemetry.SpanAttributes{telemetry.Attr("k", "v")}}}; !reflect.DeepEqual(work.Events, want) {
 		t.Fatalf("work events = %#v, want %#v", work.Events, want)
 	}
-	if work.ParentID != nil || work.ParentContext != nil {
-		t.Fatalf("work has a parent: %v %v", work.ParentID, work.ParentContext)
+	// The call reaches the plugin through Pi's host, whose `chord.*` span of the call (slice 9) is the parent of the span the
+	// plugin starts in it: the plugin's own span has no other parent.
+	if work.ParentID != nil {
+		var parent string
+		for _, each := range recorder.GetSpans() {
+			if each.ID == *work.ParentID {
+				parent = each.Name
+			}
+		}
+		if !strings.HasPrefix(parent, "chord.") {
+			t.Fatalf("work has the parent %q (%v %v), want a chord.* span of the host's call or none", parent, work.ParentID, work.ParentContext)
+		}
 	}
 	// Children: by the span's own startSpan (local parent) and by the extracted carrier (the same span).
 	for _, each := range []telemetry.RecordedTelemetrySpan{child, continued} {

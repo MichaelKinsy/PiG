@@ -1003,30 +1003,31 @@ func TestPluginsFixRound1AppliesTheRemovalsOfTheBuildItWasGivenNeverALaterDiscov
 }
 
 // pcHoldOps are the probe ops that stand in for Pi's `vi.spyOn(batch, "commit")` that aborts right after the reload's commit.
-// The reload's report waits for each started fate's `attempt.checked` (host.ts `#report`); the ops hold that promise with a
-// gate, so the wait is open, and `reached` resolves when the report began to wait (the commit is done). The test aborts the
-// Go context then, and `release` opens the gate afterwards (the swap's handover waits on the same promise).
+// The reload's report reads each restarted object's `readinessCause` (host.ts `#report`, `#checked`), the first thing it waits
+// for after the commit; the ops make that getter answer a promise held by a gate, so the wait is open, and `reached` resolves
+// when the report began to wait (the commit is done). The test aborts the Go context then, and `release` opens the gate
+// afterwards.
 func pcHoldOps(src string) string {
 	return `holdChecks: async () => {
-	const { Attempt } = await import("` + src + `host/attempt.ts");
-	const proto = Attempt.prototype;
-	const descriptor = Object.getOwnPropertyDescriptor(proto, "checked");
+	const { ChordObject } = await import("` + src + `host/object.ts");
+	const proto = ChordObject.prototype;
+	const descriptor = Object.getOwnPropertyDescriptor(proto, "readinessCause");
 	const gate = Promise.withResolvers();
 	const reached = Promise.withResolvers();
 	globalThis.__hold = { proto, descriptor, gate, reached };
-	Object.defineProperty(proto, "checked", {
+	Object.defineProperty(proto, "readinessCause", {
 		configurable: true,
 		get() {
 			const real = descriptor.get.call(this);
 			reached.resolve();
-			return Promise.all([real, gate.promise]).then(([cause]) => cause);
+			return gate.promise.then(() => real);
 		},
 	});
 },
 reached: async () => { await globalThis.__hold.reached.promise; },
 release: async () => {
 	const { proto, descriptor, gate } = globalThis.__hold;
-	Object.defineProperty(proto, "checked", descriptor);
+	Object.defineProperty(proto, "readinessCause", descriptor);
 	gate.resolve();
 },
 `

@@ -57,7 +57,8 @@ func ApplyLineReset(line string) string {
 	if IsImageLine(line) {
 		return line
 	}
-	return NormalizeTerminalOutput(line) + SegmentReset
+	// cursor markers are internal render metadata and must never reach terminal output (Pi main 25490ea49).
+	return NormalizeTerminalOutput(strings.ReplaceAll(line, CursorMarker, "")) + SegmentReset
 }
 
 // ApplyLineResets returns a new slice where every non-image line has the

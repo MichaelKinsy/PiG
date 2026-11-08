@@ -52,6 +52,7 @@ func newCoercer(c *compiler, schema JsonSchema) *coercer {
 // nodeInfo is one schema object's keywords, parsed once.
 type nodeInfo struct {
 	node jsonObject
+	r    *resolver
 	// base is the base URI the object was indexed under; indexed is false for an object the index never reached, which keeps the base of the schema it was reached from.
 	base    string
 	indexed bool
@@ -129,7 +130,7 @@ func (co *coercer) info(o jsonObject) *nodeInfo {
 	if cached, ok := co.infos.Load(key); ok {
 		return cached.(*nodeInfo)
 	}
-	info := &nodeInfo{node: o}
+	info := &nodeInfo{node: o, r: co.c.r}
 	co.mu.Lock()
 	info.base, info.indexed = co.c.r.baseOf[key]
 	co.mu.Unlock()
@@ -167,12 +168,14 @@ func (co *coercer) info(o jsonObject) *nodeInfo {
 	return actual.(*nodeInfo)
 }
 
-// baseOr is the base URI of the node whose parent has base: the indexed one, else base.
+// baseOr is the base URI of the node whose parent has base: the indexed one, else the one its `$id` gives, else base (Pi's `baseOf` reads
+// `baseFor`; the schema is indexed by now, so reading it mutates nothing).
 func (info *nodeInfo) baseOr(base string) string {
 	if info.indexed {
 		return info.base
 	}
-	return base
+	// Pi main 2bd2c2d0a resolves the base of an object the index never reached through baseFor, not the parent's base.
+	return info.r.baseFor(info.node, base)
 }
 
 // memberInfo parses the object members of the node. A pattern that is not a regular expression fails the compile-error way (the Coerce call returns it).
@@ -1061,8 +1064,9 @@ func matchesAnyType(value any, types []string) bool {
 func matchesType(value any, name string) bool {
 	switch name {
 	case "number":
-		_, ok := asNumber(value)
-		return ok
+		// a number is finite (Pi main 55a5c6914).
+		n, ok := asNumber(value)
+		return ok && isFinite(n)
 	case "integer":
 		n, ok := asNumber(value)
 		return ok && isInteger(n)

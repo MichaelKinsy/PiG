@@ -166,6 +166,9 @@ func (m *InteractiveMode) renderCurrentSessionState() {
 	if m.pendingMessagesContainer != nil {
 		m.pendingMessagesContainer.Clear()
 	}
+	m.pendingBashBlocksMu.Lock()
+	m.pendingBashBlocks = nil
+	m.pendingBashBlocksMu.Unlock()
 	m.compactionQueue = nil
 	m.evCurrentBlock = nil
 	m.repaintInitialMessages()

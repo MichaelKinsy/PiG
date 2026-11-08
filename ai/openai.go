@@ -86,6 +86,8 @@ type OpenAICompat struct {
 	MaxTokensField                              string `json:"maxTokensField,omitempty"`
 	RequiresToolResultName                      *bool  `json:"requiresToolResultName,omitempty"`
 	RequiresAssistantAfterToolResult            *bool  `json:"requiresAssistantAfterToolResult,omitempty"`
+	RequiresNonNullAssistantContent             *bool  `json:"requiresNonNullAssistantContent,omitempty"`
+	RequiresToolsWithToolHistory                *bool  `json:"requiresToolsWithToolHistory,omitempty"`
 	RequiresThinkingAsText                      *bool  `json:"requiresThinkingAsText,omitempty"`
 	RequiresReasoningContentOnAssistantMessages *bool  `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
 	SupportsOpenAIGrammarTools                  *bool  `json:"supportsOpenAIGrammarTools,omitempty"`
@@ -138,6 +140,8 @@ type OpenAICompat struct {
 	// x-session-id. Empty = auto-detect (openrouter base URL => "openrouter",
 	// else "openai"). Replaces the pre-0.81 sendSessionIdHeader flag.
 	SessionAffinityFormat SessionAffinityFormat `json:"sessionAffinityFormat,omitempty"`
+	// PromptCacheKeyMode controls the prompt_cache_key request field. Empty = auto (see PromptCacheKeyAuto).
+	PromptCacheKeyMode PromptCacheKeyMode `json:"promptCacheKeyMode,omitempty"`
 	// SupportsToolSearch indicates the model supports client-executed tool
 	// search for deferred tools (OpenAI Responses). Default: false.
 	SupportsToolSearch      *bool `json:"supportsToolSearch,omitempty"`
@@ -149,13 +153,15 @@ type OpenAICompat struct {
 	ChatTemplateArgs            map[string]any `json:"chatTemplateArgs,omitempty"`
 	SupportsThinkingTokenBudget *bool          `json:"supportsThinkingTokenBudget,omitempty"`
 	// ThinkingTokenBudgetField selects the budget wire field and takes precedence over SupportsThinkingTokenBudget.
-	ThinkingTokenBudgetField       ThinkingTokenBudgetField        `json:"thinkingTokenBudgetField,omitempty"`
-	SupportsAdditionalTools        *bool                           `json:"supportsAdditionalTools,omitempty"`
-	SupportsMidConvoEffort         *bool                           `json:"supportsMidConvoEffort,omitempty"`
-	SupportsMidConvoSystemMessages *bool                           `json:"supportsMidConvoSystemMessages,omitempty"`
-	SupportsMidConvoToolAdditions  *bool                           `json:"supportsMidConvoToolAdditions,omitempty"`
-	SupportsMidConvoToolChanges    *bool                           `json:"supportsMidConvoToolChanges,omitempty"`
-	AllowedFallbackModels          []AnthropicAllowedFallbackModel `json:"allowedFallbackModels,omitempty"`
+	ThinkingTokenBudgetField       ThinkingTokenBudgetField `json:"thinkingTokenBudgetField,omitempty"`
+	SupportsAdditionalTools        *bool                    `json:"supportsAdditionalTools,omitempty"`
+	SupportsMidConvoEffort         *bool                    `json:"supportsMidConvoEffort,omitempty"`
+	SupportsMidConvoSystemMessages *bool                    `json:"supportsMidConvoSystemMessages,omitempty"`
+	SupportsMidConvoToolAdditions  *bool                    `json:"supportsMidConvoToolAdditions,omitempty"`
+	SupportsMidConvoToolChanges    *bool                    `json:"supportsMidConvoToolChanges,omitempty"`
+	// SupportsMessageThreads reports whether the endpoint supports Anthropic message threads. Unset, it is true for provider anthropic on api.anthropic.com and false otherwise.
+	SupportsMessageThreads *bool                           `json:"supportsMessageThreads,omitempty"`
+	AllowedFallbackModels  []AnthropicAllowedFallbackModel `json:"allowedFallbackModels,omitempty"`
 	// Extra holds the members PiG does not model, as written. Pi's compat schemas allow additional properties and a compat object keeps
 	// them (model-config.ts getProvider, provider-composer.ts mergeCompat), so a custom API can read its own compat settings.
 	Extra map[string]json.RawMessage `json:"-"`
@@ -288,6 +294,7 @@ func (anchors toolAnchors) anchored(systemIndex int) bool {
 // Mirrors upstream openai-completions.ts convertMessages (lines 680-870).
 func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps map[string]string, instructionRole string, anchors toolAnchors, isReasoning bool) ([]oaiMessage, error) {
 	requiresAssistant := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresAssistantAfterToolResult }, false)
+	requiresNonNullContent := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresNonNullAssistantContent }, false)
 	requiresName := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresToolResultName }, false)
 	requiresThinkingAsText := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresThinkingAsText }, false)
 	requiresReasoningContent := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresReasoningContentOnAssistantMessages }, false)
@@ -298,6 +305,7 @@ func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps 
 		grammarProps:                     grammarProps,
 		thinkingAsText:                   requiresThinkingAsText,
 		requiresAssistantAfterToolResult: requiresAssistant,
+		requiresNonNullAssistantContent:  requiresNonNullContent,
 		instructionRole:                  instructionRole,
 		systemTools: func(systemIndex int, message SystemMessage) ([]oaiTool, error) {
 			if !anchors.anchored(systemIndex) || len(message.ToolsAdded) == 0 {
@@ -697,6 +705,8 @@ type completionsConvertOptions struct {
 	grammarProps                     map[string]string
 	thinkingAsText                   bool
 	requiresAssistantAfterToolResult bool
+	// requiresNonNullAssistantContent sends "" instead of null content on replayed assistant messages that carry no text.
+	requiresNonNullAssistantContent bool
 	// requiresToolResultName adds the tool result's tool name to its message.
 	requiresToolResultName bool
 	// reasoningContentOnAssistant sets an empty reasoning_content on assistant messages that carry none (compat.requiresReasoningContentOnAssistantMessages with a reasoning model).
@@ -765,7 +775,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 			}
 		case AssistantMessage:
 			converted := oaiMessage{Role: "assistant"}
-			if options.requiresAssistantAfterToolResult {
+			if options.requiresAssistantAfterToolResult || options.requiresNonNullAssistantContent {
 				converted.Content = ""
 			}
 			var textParts []oaiContentPart
@@ -1244,7 +1254,7 @@ func (p *openAIProvider) resolveRequestTools(transcript TranscriptContext, tools
 		}
 		return &converted, nil
 	}
-	if hasToolHistory(transcript) {
+	if p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresToolsWithToolHistory }, false) && hasToolHistory(transcript) {
 		return &[]oaiTool{}, nil
 	}
 	return nil, nil
@@ -1666,7 +1676,10 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	// Prompt-cache body fields and session-affinity headers have independent provider gates.
 	cacheRetention := resolveCompletionsCacheRetention(opts.CacheRetention, mergeProviderEnv(p.cfg.Env, opts.Env))
 	longCache := cacheRetention == CacheRetentionLong && p.supportsLongCacheRetention()
-	if opts.SessionID != "" && (isOpenAIDirectURL(p.cfg.BaseURL) && cacheRetention != CacheRetentionNone || longCache) {
+	promptCacheKeyMode := cmp.Or(p.compat().PromptCacheKeyMode, PromptCacheKeyAuto)
+	supportsPromptCacheKey := promptCacheKeyMode == PromptCacheKeyEnabled ||
+		promptCacheKeyMode == PromptCacheKeyAuto && (isOpenAIDirectURL(p.cfg.BaseURL) || longCache)
+	if opts.SessionID != "" && cacheRetention != CacheRetentionNone && supportsPromptCacheKey {
 		sid := ClampOpenAIPromptCacheKey(opts.SessionID)
 		req.PromptCacheKey = &sid
 	}
