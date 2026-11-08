@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 
@@ -72,7 +73,7 @@ func oracleDaemon(t testing.TB) string {
 	return oracle.binary
 }
 
-// terminalDaemon is the daemon the terminal tests run against; eachDaemon sets it for the duration of a subtest.
+// terminalDaemon is the daemon the terminal and process tests run against; eachDaemon sets it for the duration of a subtest.
 var terminalDaemon string
 
 // skipWithoutPinnedTerminals skips a test that needs Pi's terminal operations when the pinned Pi has none: a pin older than
@@ -89,13 +90,55 @@ func skipWithoutPinnedTerminals(t testing.TB) {
 // eachDaemon runs body against PiG's Go daemon and Pi's Rust daemon.
 func eachDaemon(t *testing.T, body func(t *testing.T)) {
 	t.Helper()
+	eachDaemonWith(t, skipWithoutPinnedTerminals, body)
+}
+
+// pinnedDaemonSource is a source file of the pinned Pi's daemon.
+func pinnedDaemonSource(t testing.TB, name string) string {
+	t.Helper()
+	return filepath.Join(testenv.ModuleRoot(t), ".upstream", "current", "packages", "env", "daemon", "src", name)
+}
+
+// skipWithoutPinnedProcess skips a test that needs Pi's `process` operation when the pinned Pi has none: a pin older than
+// packages/env/daemon/src/process.rs builds a daemon that answers every process request with "unknown operation".
+func skipWithoutPinnedProcess(t testing.TB) {
+	t.Helper()
+	if _, err := os.Stat(pinnedDaemonSource(t, "process.rs")); err != nil {
+		t.Skip("the pinned Pi has no process operation (process.rs is absent)")
+	}
+}
+
+// skipWithoutPinnedProcessEnding skips a test that needs Pi's daemon to kill what a `process` program left running when it
+// exits: a pin before Pi 032656b6c has a process.rs whose programs leave their group alone.
+func skipWithoutPinnedProcessEnding(t testing.TB) {
+	t.Helper()
+	skipWithoutPinnedProcess(t)
+	source, err := os.ReadFile(pinnedDaemonSource(t, "process.rs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(source), "Ending") {
+		t.Skip("the pinned Pi's process operation does not end the group of a program that exited")
+	}
+}
+
+// eachProcessDaemon runs body against PiG's Go daemon and, when the pinned Pi has the `process` operation, Pi's.
+func eachProcessDaemon(t *testing.T, body func(t *testing.T)) {
+	t.Helper()
+	eachDaemonWith(t, skipWithoutPinnedProcess, body)
+}
+
+// eachDaemonWith runs body against PiG's Go daemon and Pi's Rust daemon; skipPi skips the second when the pinned Pi lacks
+// what body needs.
+func eachDaemonWith(t *testing.T, skipPi func(testing.TB), body func(t *testing.T)) {
+	t.Helper()
 	for _, daemon := range []struct {
 		name string
 		path func(testing.TB) string
 	}{{"pig", daemonBinary}, {"pi", oracleDaemon}} {
 		t.Run(daemon.name, func(t *testing.T) {
 			if daemon.name == "pi" {
-				skipWithoutPinnedTerminals(t)
+				skipPi(t)
 			}
 			terminalDaemon = daemon.path(t)
 			t.Cleanup(func() { terminalDaemon = "" })
