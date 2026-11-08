@@ -106063,13 +106063,23 @@
     },
     {
       "id": "pkg:chord/.#Factory",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c563242e68a57ff92c3aaec31a20bbc3f6a6b91790ed9563afcd1dc9741b455b"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:c563242e68a57ff92c3aaec31a20bbc3f6a6b91790ed9563afcd1dc9741b455b",
+      "rationale": "Pi packages/chord/src/host/attempt.ts:181 Factory (Pi 1.5.0+c23b9ec1): Factory\u003cC, P\u003e is a conditional function type: (params, principal, self) for a remote type and (params, self) for one with empty params, computed from the contract (keyof ShapeOf\u003cC\u003e[\"params\"] extends never ? ...); Go has the two forms as the aliases host.LocalFactory and host.RemoteFactory (host/host_attempt.go:60-72), which the host's type switch tells apart. Designed out as a type-level conditional. Exercised by TestHoldGC (chord/next/host/remote_hold_test.go).",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#LocalFactory",
+        "chord/next/host/host_attempt.go#RemoteFactory"
+      ]
     },
     {
       "id": "pkg:chord/.#Factory::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5db4cab3adc5fd342cabba9b94dd175d13bacc91be25469240fa8658c2fd0e1c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:5db4cab3adc5fd342cabba9b94dd175d13bacc91be25469240fa8658c2fd0e1c",
+      "rationale": "Pi packages/chord/src/host/attempt.ts:181 Factory::call:0 (Pi 1.5.0+c23b9ec1): Factory\u003cC, P\u003e is a conditional function type: (params, principal, self) for a remote type and (params, self) for one with empty params, computed from the contract (keyof ShapeOf\u003cC\u003e[\"params\"] extends never ? ...); Go has the two forms as the aliases host.LocalFactory and host.RemoteFactory (host/host_attempt.go:60-72), which the host's type switch tells apart. Designed out as a type-level conditional. Exercised by TestHoldGC (chord/next/host/remote_hold_test.go).",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#LocalFactory",
+        "chord/next/host/host_attempt.go#RemoteFactory"
+      ]
     },
     {
       "id": "pkg:chord/.#FailureCause",
@@ -107340,13 +107350,23 @@
     },
     {
       "id": "pkg:chord/.#isChordError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cc3ffdbb54724cfaed11e8311373ec9b7d703ea3b53a440c53fcb95abda4868d"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:cc3ffdbb54724cfaed11e8311373ec9b7d703ea3b53a440c53fcb95abda4868d",
+      "rationale": "Pi packages/chord/src/data/errors.ts isChordError (Pi 1.5.0+c23b9ec1): `isChordError(error, code?)` is one function whose optional second parameter picks between two questions (is it a ChordError; is it one with this code). Go has no optional parameter, so the function is two: data.IsChordError(err) and data.IsChordErrorCode(err, code) (data/errors.go); the ledger's name rule bound the chord v1 isChordError of the same name, which is not this function. Designed out as an overload folded into two Go functions. Go: chord/next/data/errors.go#IsChordError. Exercised by TestErrorHelpers (chord/next/data/errors_test.go).",
+      "pigTargets": [
+        "chord/next/data/errors.go#IsChordError",
+        "chord/next/data/errors.go#IsChordErrorCode"
+      ]
     },
     {
       "id": "pkg:chord/.#isChordError::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e3c87000cd61b9ea60193db1a86fb21749450ac99732c4c8b2736f825c90dc7e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e3c87000cd61b9ea60193db1a86fb21749450ac99732c4c8b2736f825c90dc7e",
+      "rationale": "Pi packages/chord/src/data/errors.ts isChordError::call:0 (Pi 1.5.0+c23b9ec1): `isChordError(error, code?)` answers for any ChordError and, with a code, for that code only; the optional second parameter picks between the two questions. Go has no optional parameter, so the call is two functions of data/errors.go: IsChordError(err) and IsChordErrorCode(err, code). Designed out as an overload folded into two Go functions. Go: chord/next/data/errors.go#IsChordError. Exercised by TestErrorHelpers (chord/next/data/errors_test.go).",
+      "pigTargets": [
+        "chord/next/data/errors.go#IsChordError",
+        "chord/next/data/errors.go#IsChordErrorCode"
+      ]
     },
     {
       "id": "pkg:chord/.#isNull",
@@ -114990,28 +115010,48 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f29ad200d41465ff3080463acab6a5f11a2e1cb24132e9e8873a331bc19d1507"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f29ad200d41465ff3080463acab6a5f11a2e1cb24132e9e8873a331bc19d1507",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:7 WebSocketLike (Pi 1.5.0+c23b9ec1): the DOM WebSocket's part a link uses. Go's link.WebSocketLike is that part under Go's rules: readyState is ReadyState(), the settable binaryType is SetBinaryType, and the addEventListener/removeEventListener pair is one AddEventListener that returns its own removal (Go funcs are not comparable, so a listener cannot be removed by identity); each member's record is its own row. Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:addEventListener",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4c88cb6eb023cffb09331119ef7ce8457c29aaad21956c8e6d3121ef6ad9275f"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4c88cb6eb023cffb09331119ef7ce8457c29aaad21956c8e6d3121ef6ad9275f",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:14 WebSocketLike::property:addEventListener (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). The Go call returns the removal where Pi's returns nothing. Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:addEventListener::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b51f6b72aa600e3afaf79fc2cb0371b27de700a04bf45a6962a6f3c365ec1751"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b51f6b72aa600e3afaf79fc2cb0371b27de700a04bf45a6962a6f3c365ec1751",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:14 WebSocketLike::property:addEventListener::call:0 (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). The Go call returns the removal where Pi's returns nothing. Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:addEventListener::call:message",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ba9872349aaefec17347d7b1ab1b9145b796936a1431fc2d817575af5a332828"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ba9872349aaefec17347d7b1ab1b9145b796936a1431fc2d817575af5a332828",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:14 WebSocketLike::property:addEventListener::call:message (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). The Go call returns the removal where Pi's returns nothing. Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:binaryType",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:da8364f5f7321de1a5f1caf27a9882e64ab8a4435824c659a53d1ae0fd6a826c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:da8364f5f7321de1a5f1caf27a9882e64ab8a4435824c659a53d1ae0fd6a826c",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:10 WebSocketLike::property:binaryType (Pi 1.5.0+c23b9ec1): binaryType is a settable string property of the browser WebSocket that the link sets to \"arraybuffer\"; Go has no settable properties on an interface, so WebSocketLike.SetBinaryType(binaryType string) is the setter (link/websocket.go:23). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.SetBinaryType"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:close",
@@ -115075,18 +115115,30 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:removeEventListener",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1bbb6176df6faaa8eabd8112dca196633d3713fa1bd71e79ac7613e83a9025f3"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:1bbb6176df6faaa8eabd8112dca196633d3713fa1bd71e79ac7613e83a9025f3",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:16 WebSocketLike::property:removeEventListener (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:removeEventListener::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b51f6b72aa600e3afaf79fc2cb0371b27de700a04bf45a6962a6f3c365ec1751"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b51f6b72aa600e3afaf79fc2cb0371b27de700a04bf45a6962a6f3c365ec1751",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:16 WebSocketLike::property:removeEventListener::call:0 (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:removeEventListener::call:message",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ba9872349aaefec17347d7b1ab1b9145b796936a1431fc2d817575af5a332828"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ba9872349aaefec17347d7b1ab1b9145b796936a1431fc2d817575af5a332828",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:16 WebSocketLike::property:removeEventListener::call:message (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:send",
