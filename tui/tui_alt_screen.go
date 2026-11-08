@@ -920,7 +920,7 @@ func (t *TuiAltScreen) doRender() {
 			imageAnchorsNeedRedraw = true
 		}
 	}
-	// pig divergence (D301): terminals that store Kitty images in the cells they cover (WezTerm, xterm.js's image addon in
+	// terminals that store Kitty images in the cells they cover (WezTerm, xterm.js's image addon in
 	// Orca) erase the image cells a row write touches, so a changed row an image covers redraws the images on every Kitty
 	// terminal, not only WezTerm (upstream tui-alt-screen.ts imageCellsNeedRedraw, Pi main 4622edb79).
 	imageCellsNeedRedraw := false
@@ -971,7 +971,7 @@ func (t *TuiAltScreen) doRender() {
 	}
 	buf.WriteString(evictedImageDeletion)
 
-	// pig divergence (D301): some terminals store Kitty images in the cells they cover (WezTerm, xterm.js's image addon in
+	// some terminals store Kitty images in the cells they cover (WezTerm, xterm.js's image addon in
 	// Orca), so clearing or writing a covered row erases that part of the image, and every Kitty terminal draws images last. Draw image placements after every clear and text write so
 	// nothing later intersects them. Terminals that keep images on a separate layer (Kitty, Ghostty) render the same
 	// result; text-only frames keep the interleaved output. Mirrors upstream drawKittyImagesLast.
