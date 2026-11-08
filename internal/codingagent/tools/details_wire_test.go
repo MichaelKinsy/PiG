@@ -118,7 +118,7 @@ func TestBuiltinToolResultDetailsWire(t *testing.T) {
 		{"find ordinary", &FindTool{CWD: cwd}, `{"pattern":"a.txt"}`, `{}`},
 		{"find limited", &FindTool{CWD: cwd}, `{"pattern":"*.txt","limit":1}`, `{"details":{"resultLimitReached":1}}`},
 		{"grep ordinary", &GrepTool{CWD: cwd}, `{"pattern":"hello","path":"a.txt"}`, `{}`},
-		{"grep fractional limit", &GrepTool{CWD: cwd}, `{"pattern":"hello","limit":1.5}`, `{"details":{"matchLimitReached":1.5}}`},
+		{"grep fractional limit", &GrepTool{CWD: cwd}, `{"pattern":"hello","limit":1.5}`, `{"details":{"matchLimitReached":1}}`},
 		{"grep limited", &GrepTool{CWD: cwd}, `{"pattern":"hello","limit":1}`, `{"details":{"matchLimitReached":1}}`},
 		{"bash ordinary", &BashTool{CWD: cwd}, `{"command":"printf hello"}`, `{}`},
 	} {
