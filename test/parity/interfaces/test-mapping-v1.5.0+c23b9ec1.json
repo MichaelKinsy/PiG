@@ -3766,8 +3766,13 @@
     },
     {
       "path": "packages/codemode/test/declarations.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fa84187ee4b2a01a2055060ac3725f240c452f7ad0a0b0b38071c67b35498bb5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fa84187ee4b2a01a2055060ac3725f240c452f7ad0a0b0b38071c67b35498bb5",
+      "evidence": [
+        "codemode/declarations_test.go#TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments",
+        "codemode/declarations_test.go#TestResolveSchemaRefReturnsNothingForRemoteMissingAndMalformedReferences"
+      ],
+      "rationale": "The resolveSchemaRef cases added at c23b9ec1 are ported in codemode/declarations_test.go."
     },
     {
       "path": "packages/codemode/test/deterministic.test.ts",
@@ -4078,8 +4083,13 @@
     },
     {
       "path": "packages/coding-agent/test/bash-executor-truncation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3af2e5be5a16db20e6d08cc692b2e979c883a43ab932a29f482f07e6e17876a3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3af2e5be5a16db20e6d08cc692b2e979c883a43ab932a29f482f07e6e17876a3",
+      "evidence": [
+        "internal/codingagent/tools/bash_executor_truncation_test.go#TestExecuteBashWithOperationsReportsDiscardedChunks10164",
+        "internal/codingagent/compaction/bash_discarded_output_test.go#TestBashExecutionToTextNamesTheLogOfDiscardedOutput"
+      ],
+      "rationale": "Ports the file (Pi 66c655677, D244)."
     },
     {
       "path": "packages/coding-agent/test/block-images.test.ts",
@@ -4405,8 +4415,12 @@
     },
     {
       "path": "packages/coding-agent/test/config-selector-keybindings.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:392a976c0dd227977187e3881fcd5312d862c6b14cfb4b66516490a9ab41ccc6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:392a976c0dd227977187e3881fcd5312d862c6b14cfb4b66516490a9ab41ccc6",
+      "evidence": [
+        "coding/cli/config_theme_test.go#TestConfigSelectorUIUsesTheUsersKeybindings"
+      ],
+      "rationale": "Ports the file (Pi b0c64f33c)."
     },
     {
       "path": "packages/coding-agent/test/config-value-migration.test.ts",
@@ -6361,13 +6375,21 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11613-bash-timeout-after-shell-exit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6a13a0eac8ad661c76d9d1bf1af4ba8e6b20f5249276ac836596e50ced1c2f11"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6a13a0eac8ad661c76d9d1bf1af4ba8e6b20f5249276ac836596e50ced1c2f11",
+      "evidence": [
+        "internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go#TestBashTimeoutAfterShellExit11613"
+      ],
+      "rationale": "Ports the regression (#11613)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11692-dispose-waits-for-oauth-refresh.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b1ffb8edc385e9a051380f754b20294591ee45ea2e30cf6b7a090fe1e1884751"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b1ffb8edc385e9a051380f754b20294591ee45ea2e30cf6b7a090fe1e1884751",
+      "evidence": [
+        "coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved"
+      ],
+      "rationale": "Ports the regression (Pi b2cb62923, #11692)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -8876,13 +8898,24 @@
     },
     {
       "path": "packages/telemetry/test/render.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:11eaa510a06adb0e81646996adaf974436b2381b6dbffd7a5a5fb36bd5a0f11f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:11eaa510a06adb0e81646996adaf974436b2381b6dbffd7a5a5fb36bd5a0f11f",
+      "evidence": [
+        "telemetry/render_upstream_test.go#TestRenderTraceRendersLengthsOfTimeToTheMicrosecond",
+        "telemetry/render_upstream_test.go#TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessages"
+      ],
+      "rationale": "Both cases Pi 378d45a0 added are ported in telemetry/render_upstream_test.go."
     },
     {
       "path": "packages/telemetry/test/store.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0cc9bf3ced2d9eee4e8bbe9fe8aa5de9c0e969732f13be24bce4d2ed10ec98db"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0cc9bf3ced2d9eee4e8bbe9fe8aa5de9c0e969732f13be24bce4d2ed10ec98db",
+      "evidence": [
+        "telemetry/telemetry_now_test.go#TestInMemoryStampsStartsWithTelemetryNowToTheMicrosecondInTheirOrder",
+        "telemetry/telemetry_now_test.go#TestTelemetryNowCountsSubMillisecondStepsOfTheMonotonicClockWhileTheWallClockStaysInItsMillisecond",
+        "telemetry/telemetry_now_test.go#TestTelemetryNowFollowsAStepOfTheWallClockPast10ms"
+      ],
+      "rationale": "The telemetryNow describe and the in-memory stamp case Pi 378d45a0 added are ported in telemetry/telemetry_now_test.go."
     },
     {
       "path": "packages/telemetry/test/telemetry.test.ts",
