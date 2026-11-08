@@ -35,7 +35,7 @@ func providerImages(messages []ai.Message) (images []ai.ImageContent) {
 	return images
 }
 
-// pi: agent-session-queue.test.ts "removes an image-only steering message after delivery" (Pi main a63c4ec5c, #8612; D250).
+// pi: agent-session-queue.test.ts "removes an image-only steering message after delivery" (Pi main a63c4ec5c, #8612).
 func TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery(t *testing.T) {
 	waiting := createQueueWaitingHarness(t, extension.Extension{})
 	h := waiting.h

@@ -1,3 +1,4 @@
+# Pi 1.5.0+c23b9ec1 loader.ts:365-370 stores registerMarkdownTransformer as {transformer, messageTypes}; the Pi probe reads `.transformer`.
 # Pi0.87.1 extensions-discovery.test.ts:374-397 registers these three callbacks in one source factory; loader.ts:327-340 retains each declaration.
 # This exact original case proves discovery and registration, not callback execution or terminal ordering. The registration-only tag deliberately limits that claim. Scenario33 and Mode callback-order regressions cover display separately.
 name = "62-discovery-renderers"
