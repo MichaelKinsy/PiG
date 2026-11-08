@@ -444,6 +444,30 @@ func HighlightCode(code, lang string) []string {
 	return highlightCodeLines(code, lang)
 }
 
+// WarmHighlight highlights code for the active theme as HighlightCode does and discards the lines. HighlightCode of a longer
+// text that starts with code then continues from the state this leaves, instead of highlighting from the first line, so a
+// caller whose text streams in can pay for the whole text a step at a time and not all at once when the text is complete.
+// The lines are not kept in the memo: each warm-up is a new text that nothing asks for again, and kept lines would fill the
+// memo's budget, whose reset also drops the resume state.
+// It reports whether such a state is held; false means the text cannot resume (a language highlight.js lacks, a build without
+// syntax highlighting, or code the engine cannot resume over), so a caller that warms as the text grows stops warming.
+// pig additive (D112): the lines HighlightCode returns are the same with or without a warm-up; only when they are computed differs.
+func WarmHighlight(code, lang string) bool {
+	if highlightStripped() {
+		return false
+	}
+	t := ActiveTheme()
+	hlMu.Lock()
+	if t != hlTheme {
+		// The active theme changed: drop the colors cached for the old one, as highlightCodeLines does.
+		resetHighlightCacheLocked()
+		hlTheme = t
+	}
+	hlMu.Unlock()
+	highlightResumable(highlightRegistry(), code, lang, t)
+	return highlightResumeHeld(code, lang, t)
+}
+
 // HighlightEpoch is what HighlightCode's lines depend on besides its arguments: the active theme and the highlight.js
 // languages loaded. Within one epoch HighlightCode returns the same lines for the same code and language, so a caller may
 // keep lines it highlighted instead of highlighting the same code again.
