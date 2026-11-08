@@ -565,6 +565,9 @@ plugins/terminals/wasm.d.ts
 test/p2/outbox.test.ts
 test/p2/session-start.test.ts
 plugins/conversations/contract.ts
+plugins/proxy-marker/contract.ts
+plugins/proxy-marker/package.json
+plugins/radius/contract.ts
 plugins/codemode/contract.ts
 plugins/codemode/card.ts
 plugins/codemode/tui.ts
@@ -574,9 +577,9 @@ plugins/powershell/tui.ts
 plugins/subagents/tui.ts
 ||||||||| merged common ancestors
 <<<<<<<<< Temporary merge branch 1
-=======
 ||||||| merged common ancestors
 =========
 <<<<<<<<<<< Temporary merge branch 1
 ||||||||||| 61a9fb49714
 ===========
+=======
