@@ -231,10 +231,6 @@
     "go": "chord/next/data/errors.go#ChordErrorReason",
     "reason": "Pi chord/src/data/errors.ts:29 ChordErrorReason<C> = (typeof CHORD_ERROR_REASONS)[C][number] is the reasons the table allows a code. Go's data.ChordErrorReason is a string type with a constant per reason (ReasonArgs, ...; the empty reason is upstream's undefined) and ChordErrorReasons(code) lists those a code allows; ChordErrorFromJson refuses a reason the code does not allow, as Pi's chordErrorFromJson does. Locked by TestProtocolTable and TestChordError (chord/next/data/errors_test.go)."
   },
-  "pkg:chord/.#ChordStore::property:export::call:0": {
-    "go": "chord/next/store/store.go#ChordStore.Export",
-    "reason": "Pi chord/src/store/store.ts:35 export(context): AsyncIterableIterator<ArchivePart> returns an async iterator of the archive parts. Go has no async iterator: ChordStore.Export(ctx) returns *StoreExport, which implements store.PartIterator (Next(ctx) (part, ok, err) blocks for the next part, Close ends the stream as Pi's return() does; export.go). Locked by the export cases of TestStore and TestJsonl (chord/next/store)."
-  },
   "pkg:chord/.#ClientOptions": {
     "go": "chord/next/surfaces/surfaces_client.go#ClientOptions",
     "reason": "Pi chord/src/surfaces/client.ts:39 ClientOptions<P>.scripts is a ScriptsContract, a type alias of the kind's scripts object contract. Go's ClientOptions.Scripts is the *contracts.Contract that object is; every other member agrees (Promise callbacks take the client's context and block: the forced differences recorded in surfaces_client.go). Locked by surfaces_client_test.go (TestLoadsTheInitialScriptsWithTheCoreFacets)."
@@ -355,6 +351,118 @@
     "go": "chord/next/host/jobs_job.go#RunState.Change",
     "reason": "Pi jobs/job.ts RunState.change<T>(fn: (draft: Draft<S>) => T, context: Context, options?): Promise<T>: Draft<S> is the recording Proxy over the state document, a type-level mechanic Go designs out (pkg:chord/.#Draft); Go passes the mutable view the delta package defines for it, *delta.Object, and the options as ChangeOptions; the Promise is a blocking call with the context first (jobs_job.go)."
   },
+  "pkg:chord/.#ScriptsContract": {
+    "go": "chord/next/surfaces/surfaces_scripts.go#ScriptsContract",
+    "reason": "Pi packages/chord/src/surfaces/scripts.ts:43 `type ScriptsContract = typeof WebScripts | typeof TuiScripts` is the type of the two scripts contracts, each a remote contract made by scriptsContract(name); Go's WebScripts and TuiScripts are both *contracts.Contract (surfaces_scripts.go), so `type ScriptsContract = *contracts.Contract` is the union of their types, and ClientOptions.Scripts (Pi's `scripts: ScriptsContract`) has it. Exercised by TestLoadsTheInitialScriptsWithTheCoreFacets (chord/next/surfaces/surfaces_client_test.go: the client starts with Scripts: WebScripts)."
+  },
+  "pkg:chord/.#Self::property:derive::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Derive",
+    "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
+  },
+  "pkg:chord/.#Self::property:get::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Get",
+    "reason": "Pi `get<C extends Contract>(type: C, params: {[F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]>}): Reference<C>` computes the params object's shape from the contract's declared params; a mapped type over a type parameter that Go generics cannot express. Go's Self.Get(typ *contracts.Contract, params *delta.JsonObject) takes the params as the JSON object, which the attempt checks against the contract's declared params at run time (checkedParams, the same refusals as Pi's runtime check: unknown, missing and mistyped fields) before it binds. Exercised by TestHostGetChecksParamsWithL1 (chord/next/host/host_host_test.go)."
+  },
+  "pkg:chord/.#Self::property:on::call:0": {
+    "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
+    "reason": "Pi `on(source: Watchable<S>, handler)` takes a Chord watchable; Go's RoutineDeclarations.On takes a host.JSONSource, the interface a Chord watchable of JSON implements (Value and Watch, plus the unwrap the host reads), so every Chord watchable Pi accepts is accepted. Exercised by TestExample18Routines (chord/next/host/host_example_18_test.go)."
+  },
+  "pkg:chord/.#Self::property:registry::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Registry",
+    "reason": "Pi `registry<R>(registry: R): RegistryValue<R>` returns the typed value of a registry; Go's Self.Registry(registry registries.Registry[any, any]) returns *registries.RegistryValueSource, the struct that carries the registry's value and its watch (every member of Pi's RegistryValue); the value's type is its dynamic type, as Go generics cannot compute RegistryValue<R> from the registry. Exercised by TestTheDependencyCheckOfRegistryValues (chord/next/host/host_dependencies_test.go)."
+  },
+  "pkg:chord/.#Self::property:state::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.State",
+    "reason": "Pi `state<D>(definition: D): HandleOf<D>` is a conditional type returning the handle of the declared document kind (SingletonHandle or KeyedHandle); Go cannot compute the return from the definition's type, so Self.State(definition documents.AnyDefinition) any returns the *documents.SingletonHandle or *documents.KeyedHandle of the definition, which the caller asserts. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag (chord/next/host/host_keyed_watchable_test.go)."
+  },
+  "pkg:chord/.#SingletonHandle::property:change::call:0": {
+    "go": "chord/next/documents/handles.go#SingletonHandle.Change",
+    "reason": "Pi `change(fn: (draft: Draft<T>) => void)` hands the callback a `Draft<T>` (a readonly-stripping mapped type, designed out as type level: pkg:chord/.#Draft); Go's Change takes a func(draft *delta.Object) whose *delta.Object is the transaction-scoped mutable view over the document (Get/Set), the same draft handle Draft returns. Exercised by TestTransactionsGiveTheSameDraftForTheSameDocument (chord/next/documents/transaction_test.go)."
+  },
+  "pkg:chord/.#StagedWrite": {
+    "go": "chord/next/store/step.go#StagedWrite",
+    "reason": "Pi's StagedWrite is the object type `{ readonly order: WriteOrder; apply(step): Promise<readonly StoreWrite[]> }`; a Go interface has methods, not data members, so `order` is the method StageOrder() WriteOrder (named so because implementers embed a record whose field is Order) and `apply` is Apply(step *Step) ([]StoreWrite, error) (the Promise is Go's second result, AGENTS.md async rule). Exercised by TestTableChanges (chord/next/store/table_writes_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:contribute::call:0": {
+    "go": "chord/next/host/host_attempt.go#StoreSelf.Contribute",
+    "reason": "Pi `contribute<R>(registry: R, value: C | Watchable<C> | NativeWatchable<C>)` is a union of a plain value, a Chord watchable and a native one; Go's Contribute(registry, value any) takes the value as any and decides among the three as contributionOf does at run time (a Chord watchable and a native one are followed, any other value stays plain). Exercised by TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue (chord/next/host/host_members_test.go) and TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns (chord/next/host/host_facet_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:derive::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Derive",
+    "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:get::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Get",
+    "reason": "Pi `get<C extends Contract>(type: C, params: {[F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]>}): Reference<C>` computes the params object's shape from the contract's declared params; a mapped type over a type parameter that Go generics cannot express. Go's Self.Get(typ *contracts.Contract, params *delta.JsonObject) takes the params as the JSON object, which the attempt checks against the contract's declared params at run time (checkedParams, the same refusals as Pi's runtime check: unknown, missing and mistyped fields) before it binds. Exercised by TestHostGetChecksParamsWithL1 (chord/next/host/host_host_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:on::call:0": {
+    "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
+    "reason": "Pi `on(source: Watchable<S>, handler)` takes a Chord watchable; Go's RoutineDeclarations.On takes a host.JSONSource, the interface a Chord watchable of JSON implements (Value and Watch, plus the unwrap the host reads), so every Chord watchable Pi accepts is accepted. Exercised by TestExample18Routines (chord/next/host/host_example_18_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:registry::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Registry",
+    "reason": "Pi `registry<R>(registry: R): RegistryValue<R>` returns the typed value of a registry; Go's Self.Registry(registry registries.Registry[any, any]) returns *registries.RegistryValueSource, the struct that carries the registry's value and its watch (every member of Pi's RegistryValue); the value's type is its dynamic type, as Go generics cannot compute RegistryValue<R> from the registry. Exercised by TestTheDependencyCheckOfRegistryValues (chord/next/host/host_dependencies_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:state::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.State",
+    "reason": "Pi `state<D>(definition: D): HandleOf<D>` is a conditional type returning the handle of the declared document kind (SingletonHandle or KeyedHandle); Go cannot compute the return from the definition's type, so Self.State(definition documents.AnyDefinition) any returns the *documents.SingletonHandle or *documents.KeyedHandle of the definition, which the caller asserts. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag (chord/next/host/host_keyed_watchable_test.go)."
+  },
+  "pkg:chord/.#Table::property:get::call:0": {
+    "go": "chord/next/store/table_handle.go#Table.Get",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Table.Get takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
+  },
+  "pkg:chord/.#Table::property:rows::call:0": {
+    "go": "chord/next/store/table_handle.go#Table.Rows",
+    "reason": "Pi `rows(...)` returns an `AsyncIterable<RowOf<C>>` / `Iterable` of rows read a page of ROWS_PAGE at a time; Go has no iterable protocol, so Table.Rows (*store.RowsIterator) returns an iterator (Next(ctx) (row, ok, err) and Close) that fetches a page only when the previous one was read, as the AsyncIterable does (AGENTS.md async rule). Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
+  },
+  "pkg:chord/.#TableDefinition::property:record": {
+    "go": "chord/next/store/table.go#TableDefinition.Record",
+    "reason": "Pi `record: { readonly [name: string]: ColumnRecord }` is an object whose key order is observable; Go maps are unordered, so store.ColumnRecords is the ordered list of the same name/record pairs (store/columns.go) that fingerprints and archives read in declaration order. Exercised by TestDefineTable (chord/next/store/table_test.go)."
+  },
+  "pkg:chord/.#TableDefinition::property:refs": {
+    "go": "chord/next/store/table.go#TableDefinition.Refs",
+    "reason": "Pi `refs: { readonly [column: string]: ColumnRef<unknown, ColumnType> }` is an index-signature object read by column name; Go has no index signature, so store.ColumnRefs is the ordered list of the same column/ref pairs with a lookup by name (store/query.go). Exercised by TestDefineTable (chord/next/store/table_test.go)."
+  },
+  "pkg:chord/.#TableDefinition::property:schemas": {
+    "go": "chord/next/store/table.go#TableDefinition.Schemas",
+    "reason": "Pi `schemas: Columns` is `{ [name: string]: ColumnSchema }`, an object whose key order is observable (the declared order); Go has no insertion-ordered map, so TableDefinition.Schemas is the declared-order []ColumnProp of the same name/schema pairs (store/columns.go:39). Exercised by TestDefineTable (chord/next/store/table_test.go)."
+  },
+  "pkg:chord/.#TableOptions": {
+    "go": "chord/next/store/table.go#TableOptions",
+    "reason": "Pi TableOptions<C, K> = { columns: C; key: K; indexes? ... } where `key` is typed by a mapped type over the columns (the non-optional str or int ones); Go's TableOptions has Columns []ColumnProp, Key []string and Indexes, and DefineTable checks at run time that each key column exists, is not opt and is a str or int (the checks the mapped type states). Exercised by TestDefineTable (chord/next/store/table_test.go)."
+  },
+  "pkg:chord/.#Tx::property:delete::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Delete",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Delete takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionDeleteTheRowWhenTheTransactionCommits (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:deleteWhere::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.DeleteWhere",
+    "reason": "Pi `where: (row: ColumnRefs<C>) => Condition` is a callback over the table's typed column refs; Go's Tx.DeleteWhere takes where as any, a func(store.ColumnRefs) store.Condition or a Condition already built, and the table changes compile it at run time against the table's columns (store.TableChanges), refusing any other value. Exercised by TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:draft::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Draft",
+    "reason": "Pi's two overloads draft(handle: SingletonHandle<T>) and draft(handle: KeyedHandle<T>, key) are a type-level split; Go's Draft(handle any, key ...string) takes the *SingletonHandle or *KeyedHandle and refuses any other value and a key given to a singleton (or missing for a keyed handle). Exercised by TestTransactionsRejectADraftOfAHandleATransactionCannotUseInsteadOfThrowing and TestTransactionsGiveTheSameDraftForTheSameDocument (chord/next/documents/transaction_test.go)."
+  },
+  "pkg:chord/.#Tx::property:get::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Get",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Get takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:retire::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Retire",
+    "reason": "As Tx.draft: Pi's two overloads of retire (singleton; keyed with a key) are a type-level split; Go's Retire(handle any, key ...string) takes the *SingletonHandle or *KeyedHandle. Exercised by TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt (chord/next/host/host_keyed_slot_host_test.go)."
+  },
+  "pkg:chord/.#Tx::property:rows::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Rows",
+    "reason": "Pi `rows(...)` returns an `AsyncIterable<RowOf<C>>` / `Iterable` of rows read a page of ROWS_PAGE at a time; Go has no iterable protocol, so Tx.Rows (*documents.TxRows) returns an iterator (Next(ctx) (row, ok, err) and Close) that fetches a page only when the previous one was read, as the AsyncIterable does (AGENTS.md async rule). Exercised by TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet (chord/next/documents/transaction_test.go)."
+  },
+  "pkg:chord/.#Tx::property:update::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Update",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Update takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:updateWhere::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.UpdateWhere",
+    "reason": "Pi `where: (row: ColumnRefs<C>) => Condition` is a callback over the table's typed column refs; Go's Tx.UpdateWhere takes where as any, a func(store.ColumnRefs) store.Condition or a Condition already built, and the table changes compile it at run time against the table's columns (store.TableChanges), refusing any other value. Exercised by TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets (chord/next/documents/transaction_writes_test.go)."
+  },
   "pkg:chord/.#add::call:0": {
     "go": "chord/next/store/expression.go#Add",
     "reason": "Pi chord/src/store/expression.ts:163 add(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Add(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
@@ -366,14 +474,6 @@
   "pkg:chord/.#concat::call:0": {
     "go": "chord/next/store/expression.go#Concat",
     "reason": "Pi chord/src/store/expression.ts:183 concat(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Concat(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
-  },
-  "pkg:chord/.#decodeJsonl::call:0": {
-    "go": "chord/next/store/jsonl.go#DecodeJsonl",
-    "reason": "Pi chord/src/store/jsonl.ts:28 decodeJsonl(bytes: AsyncIterable<Uint8Array>) reads an async iterable of byte chunks. Go has no async iterable: DecodeJsonl takes a store.ByteSource (Next(ctx) (chunk, ok, err), Close) and returns the decoded values as a PartSource (Pi's AsyncIterable<unknown>). Locked by TestJsonl (chord/next/store/jsonl_test.go)."
-  },
-  "pkg:chord/.#encodeJsonl::call:0": {
-    "go": "chord/next/store/jsonl.go#EncodeJsonl",
-    "reason": "Pi chord/src/store/jsonl.ts:11 encodeJsonl(parts: AsyncIterable<ArchivePart>) takes the parts as an async iterable and yields AsyncIterable<Uint8Array>. Go takes a store.PartIterator (Next(ctx) (part, ok, err), Close), which StoreExport implements, and returns a ByteSource of whole lines. Locked by TestJsonl (chord/next/store/jsonl_test.go)."
   },
   "pkg:chord/.#findDocument::call:0": {
     "go": "chord/next/store/engine.go#FindDocument",
@@ -438,6 +538,14 @@
   "pkg:chord/.#replacePrefix::call:0": {
     "go": "chord/next/store/expression.go#ReplacePrefix",
     "reason": "Pi store/expression.ts:188 replacePrefix(value: Operand<string, \"str\">, from: string, to: string): Expression<string, \"str\"> takes its value as an Operand, `Expression<string, \"str\"> | string`, a union. Go has no unions, so store.ReplacePrefix(value any, from, to string) takes an *Expression or a string and builds the same expression node (expression.go), which the evaluator checks (expression_test.go, evaluate_test.go)."
+  },
+  "pkg:chord/.#sub::call:0": {
+    "go": "chord/next/store/expression.go#Sub",
+    "reason": "Pi `sub(a: Operand<number, \"int\">, b: ...)` takes an Expression or a number (Operand<T, K> = Expression<T, K> | T); Go's Sub(a, b any) takes an *Expression or a Go number and refuses any other value when the expression is compiled (compileOperand). Exercised by TestCompilingConditions (chord/next/store/expression_test.go)."
+  },
+  "pkg:chord/.#when::call:0": {
+    "go": "chord/next/store/expression.go#When",
+    "reason": "Pi `when(condition, a: Operand<T, K>, b)` takes an Expression or a plain value (Operand<T, K> = Expression<T, K> | T); Go's When(condition Condition, a, b any) takes an *Expression or a Go value and compiles each by its dynamic type. Exercised by TestCompilingConditions (chord/next/store/expression_test.go)."
   },
   "pkg:chord/context#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",
@@ -774,129 +882,5 @@
   "pkg:tui/.#StdinBuffer::property:removeListener::call:0": {
     "go": "tui/stdin_buffer_events.go#StdinBuffer.RemoveListener",
     "reason": "Pi StdinBuffer extends EventEmitter<StdinBufferEventMap> (stdin-buffer.ts) and its listener methods take (event, listener) where the listener receives the event's string payload. Go tui.StdinBuffer carries the listener surface in tui/stdin_buffer_events.go with the event as a typed StdinBufferEvent string and the listener as a *StdinBufferListener that gives a Go callback the identity a JavaScript function has (Off and ListenerCount find it by that identity). TestStdinBufferEventsMatchPi runs Pi's StdinBuffer and compares the events its listeners receive with PiG's. Lead ruling 2026-10-10: the rows are ported."
-  },
-  "pkg:chord/.#Self::property:derive::call:0": {
-    "go": "chord/next/host/host_attempt.go#Self.Derive",
-    "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
-  },
-  "pkg:chord/.#Self::property:get::call:0": {
-    "go": "chord/next/host/host_attempt.go#Self.Get",
-    "reason": "Pi `get<C extends Contract>(type: C, params: {[F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]>}): Reference<C>` computes the params object's shape from the contract's declared params; a mapped type over a type parameter that Go generics cannot express. Go's Self.Get(typ *contracts.Contract, params *delta.JsonObject) takes the params as the JSON object, which the attempt checks against the contract's declared params at run time (checkedParams, the same refusals as Pi's runtime check: unknown, missing and mistyped fields) before it binds. Exercised by TestHostGetChecksParamsWithL1 (chord/next/host/host_host_test.go)."
-  },
-  "pkg:chord/.#Self::property:on::call:0": {
-    "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
-    "reason": "Pi `on(source: Watchable<S>, handler)` takes a Chord watchable; Go's RoutineDeclarations.On takes a host.JSONSource, the interface a Chord watchable of JSON implements (Value and Watch, plus the unwrap the host reads), so every Chord watchable Pi accepts is accepted. Exercised by TestExample18Routines (chord/next/host/host_example_18_test.go)."
-  },
-  "pkg:chord/.#Self::property:registry::call:0": {
-    "go": "chord/next/host/host_attempt.go#Self.Registry",
-    "reason": "Pi `registry<R>(registry: R): RegistryValue<R>` returns the typed value of a registry; Go's Self.Registry(registry registries.Registry[any, any]) returns *registries.RegistryValueSource, the struct that carries the registry's value and its watch (every member of Pi's RegistryValue); the value's type is its dynamic type, as Go generics cannot compute RegistryValue<R> from the registry. Exercised by TestTheDependencyCheckOfRegistryValues (chord/next/host/host_dependencies_test.go)."
-  },
-  "pkg:chord/.#Self::property:state::call:0": {
-    "go": "chord/next/host/host_attempt.go#Self.State",
-    "reason": "Pi `state<D>(definition: D): HandleOf<D>` is a conditional type returning the handle of the declared document kind (SingletonHandle or KeyedHandle); Go cannot compute the return from the definition's type, so Self.State(definition documents.AnyDefinition) any returns the *documents.SingletonHandle or *documents.KeyedHandle of the definition, which the caller asserts. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag (chord/next/host/host_keyed_watchable_test.go)."
-  },
-  "pkg:chord/.#StoreSelf::property:derive::call:0": {
-    "go": "chord/next/host/host_attempt.go#Self.Derive",
-    "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
-  },
-  "pkg:chord/.#StoreSelf::property:get::call:0": {
-    "go": "chord/next/host/host_attempt.go#Self.Get",
-    "reason": "Pi `get<C extends Contract>(type: C, params: {[F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]>}): Reference<C>` computes the params object's shape from the contract's declared params; a mapped type over a type parameter that Go generics cannot express. Go's Self.Get(typ *contracts.Contract, params *delta.JsonObject) takes the params as the JSON object, which the attempt checks against the contract's declared params at run time (checkedParams, the same refusals as Pi's runtime check: unknown, missing and mistyped fields) before it binds. Exercised by TestHostGetChecksParamsWithL1 (chord/next/host/host_host_test.go)."
-  },
-  "pkg:chord/.#StoreSelf::property:on::call:0": {
-    "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
-    "reason": "Pi `on(source: Watchable<S>, handler)` takes a Chord watchable; Go's RoutineDeclarations.On takes a host.JSONSource, the interface a Chord watchable of JSON implements (Value and Watch, plus the unwrap the host reads), so every Chord watchable Pi accepts is accepted. Exercised by TestExample18Routines (chord/next/host/host_example_18_test.go)."
-  },
-  "pkg:chord/.#StoreSelf::property:registry::call:0": {
-    "go": "chord/next/host/host_attempt.go#Self.Registry",
-    "reason": "Pi `registry<R>(registry: R): RegistryValue<R>` returns the typed value of a registry; Go's Self.Registry(registry registries.Registry[any, any]) returns *registries.RegistryValueSource, the struct that carries the registry's value and its watch (every member of Pi's RegistryValue); the value's type is its dynamic type, as Go generics cannot compute RegistryValue<R> from the registry. Exercised by TestTheDependencyCheckOfRegistryValues (chord/next/host/host_dependencies_test.go)."
-  },
-  "pkg:chord/.#StoreSelf::property:state::call:0": {
-    "go": "chord/next/host/host_attempt.go#Self.State",
-    "reason": "Pi `state<D>(definition: D): HandleOf<D>` is a conditional type returning the handle of the declared document kind (SingletonHandle or KeyedHandle); Go cannot compute the return from the definition's type, so Self.State(definition documents.AnyDefinition) any returns the *documents.SingletonHandle or *documents.KeyedHandle of the definition, which the caller asserts. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag (chord/next/host/host_keyed_watchable_test.go)."
-  },
-  "pkg:chord/.#StoreSelf::property:contribute::call:0": {
-    "go": "chord/next/host/host_attempt.go#StoreSelf.Contribute",
-    "reason": "Pi `contribute<R>(registry: R, value: C | Watchable<C> | NativeWatchable<C>)` is a union of a plain value, a Chord watchable and a native one; Go's Contribute(registry, value any) takes the value as any and decides among the three as contributionOf does at run time (a Chord watchable and a native one are followed, any other value stays plain). Exercised by TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue (chord/next/host/host_members_test.go) and TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns (chord/next/host/host_facet_test.go)."
-  },
-  "pkg:chord/.#SingletonHandle::property:change::call:0": {
-    "go": "chord/next/documents/handles.go#SingletonHandle.Change",
-    "reason": "Pi `change(fn: (draft: Draft<T>) => void)` hands the callback a `Draft<T>` (a readonly-stripping mapped type, designed out as type level: pkg:chord/.#Draft); Go's Change takes a func(draft *delta.Object) whose *delta.Object is the transaction-scoped mutable view over the document (Get/Set), the same draft handle Draft returns. Exercised by TestTransactionsGiveTheSameDraftForTheSameDocument (chord/next/documents/transaction_test.go)."
-  },
-  "pkg:chord/.#StagedWrite": {
-    "go": "chord/next/store/step.go#StagedWrite",
-    "reason": "Pi's StagedWrite is the object type `{ readonly order: WriteOrder; apply(step): Promise<readonly StoreWrite[]> }`; a Go interface has methods, not data members, so `order` is the method StageOrder() WriteOrder (named so because implementers embed a record whose field is Order) and `apply` is Apply(step *Step) ([]StoreWrite, error) (the Promise is Go's second result, AGENTS.md async rule). Exercised by TestTableChanges (chord/next/store/table_writes_test.go)."
-  },
-  "pkg:chord/.#Store::property:export::call:0": {
-    "go": "chord/next/store/store.go#Store.Export",
-    "reason": "Pi `export(): Iterable<ArchivePart>` returns a synchronous iterable of archive parts; Go has no Iterable, so Store.Export returns store.StoreExport, a struct whose Next yields each ArchivePart in order, ending with the end marker, as the iterable does. Exercised by TestExample25ExportImport (chord/next/host/host_example_25_test.go)."
-  },
-  "pkg:chord/.#TableDefinition::property:record": {
-    "go": "chord/next/store/table.go#TableDefinition.Record",
-    "reason": "Pi `record: { readonly [name: string]: ColumnRecord }` is an object whose key order is observable; Go maps are unordered, so store.ColumnRecords is the ordered list of the same name/record pairs (store/columns.go) that fingerprints and archives read in declaration order. Exercised by TestDefineTable (chord/next/store/table_test.go)."
-  },
-  "pkg:chord/.#TableDefinition::property:refs": {
-    "go": "chord/next/store/table.go#TableDefinition.Refs",
-    "reason": "Pi `refs: { readonly [column: string]: ColumnRef<unknown, ColumnType> }` is an index-signature object read by column name; Go has no index signature, so store.ColumnRefs is the ordered list of the same column/ref pairs with a lookup by name (store/query.go). Exercised by TestDefineTable (chord/next/store/table_test.go)."
-  },
-  "pkg:chord/.#TableDefinition::property:schemas": {
-    "go": "chord/next/store/table.go#TableDefinition.Schemas",
-    "reason": "Pi `schemas: Columns` is `{ [name: string]: ColumnSchema }`, an object whose key order is observable (the declared order); Go has no insertion-ordered map, so TableDefinition.Schemas is the declared-order []ColumnProp of the same name/schema pairs (store/columns.go:39). Exercised by TestDefineTable (chord/next/store/table_test.go)."
-  },
-  "pkg:chord/.#TableOptions": {
-    "go": "chord/next/store/table.go#TableOptions",
-    "reason": "Pi TableOptions<C, K> = { columns: C; key: K; indexes? ... } where `key` is typed by a mapped type over the columns (the non-optional str or int ones); Go's TableOptions has Columns []ColumnProp, Key []string and Indexes, and DefineTable checks at run time that each key column exists, is not opt and is a str or int (the checks the mapped type states). Exercised by TestDefineTable (chord/next/store/table_test.go)."
-  },
-  "pkg:chord/.#Tx::property:draft::call:0": {
-    "go": "chord/next/documents/transaction.go#Tx.Draft",
-    "reason": "Pi's two overloads draft(handle: SingletonHandle<T>) and draft(handle: KeyedHandle<T>, key) are a type-level split; Go's Draft(handle any, key ...string) takes the *SingletonHandle or *KeyedHandle and refuses any other value and a key given to a singleton (or missing for a keyed handle). Exercised by TestTransactionsRejectADraftOfAHandleATransactionCannotUseInsteadOfThrowing and TestTransactionsGiveTheSameDraftForTheSameDocument (chord/next/documents/transaction_test.go)."
-  },
-  "pkg:chord/.#Tx::property:retire::call:0": {
-    "go": "chord/next/documents/transaction.go#Tx.Retire",
-    "reason": "As Tx.draft: Pi's two overloads of retire (singleton; keyed with a key) are a type-level split; Go's Retire(handle any, key ...string) takes the *SingletonHandle or *KeyedHandle. Exercised by TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt (chord/next/host/host_keyed_slot_host_test.go)."
-  },
-  "pkg:chord/.#sub::call:0": {
-    "go": "chord/next/store/expression.go#Sub",
-    "reason": "Pi `sub(a: Operand<number, \"int\">, b: ...)` takes an Expression or a number (Operand<T, K> = Expression<T, K> | T); Go's Sub(a, b any) takes an *Expression or a Go number and refuses any other value when the expression is compiled (compileOperand). Exercised by TestCompilingConditions (chord/next/store/expression_test.go)."
-  },
-  "pkg:chord/.#when::call:0": {
-    "go": "chord/next/store/expression.go#When",
-    "reason": "Pi `when(condition, a: Operand<T, K>, b)` takes an Expression or a plain value (Operand<T, K> = Expression<T, K> | T); Go's When(condition Condition, a, b any) takes an *Expression or a Go value and compiles each by its dynamic type. Exercised by TestCompilingConditions (chord/next/store/expression_test.go)."
-  },
-  "pkg:chord/.#Tx::property:get::call:0": {
-    "go": "chord/next/documents/transaction.go#Tx.Get",
-    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Get takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet (chord/next/documents/transaction_writes_test.go)."
-  },
-  "pkg:chord/.#Tx::property:update::call:0": {
-    "go": "chord/next/documents/transaction.go#Tx.Update",
-    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Update takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet (chord/next/documents/transaction_writes_test.go)."
-  },
-  "pkg:chord/.#Tx::property:delete::call:0": {
-    "go": "chord/next/documents/transaction.go#Tx.Delete",
-    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Delete takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionDeleteTheRowWhenTheTransactionCommits (chord/next/documents/transaction_writes_test.go)."
-  },
-  "pkg:chord/.#Table::property:get::call:0": {
-    "go": "chord/next/store/table_handle.go#Table.Get",
-    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Table.Get takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
-  },
-  "pkg:chord/.#Tx::property:updateWhere::call:0": {
-    "go": "chord/next/documents/transaction.go#Tx.UpdateWhere",
-    "reason": "Pi `where: (row: ColumnRefs<C>) => Condition` is a callback over the table's typed column refs; Go's Tx.UpdateWhere takes where as any, a func(store.ColumnRefs) store.Condition or a Condition already built, and the table changes compile it at run time against the table's columns (store.TableChanges), refusing any other value. Exercised by TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets (chord/next/documents/transaction_writes_test.go)."
-  },
-  "pkg:chord/.#Tx::property:deleteWhere::call:0": {
-    "go": "chord/next/documents/transaction.go#Tx.DeleteWhere",
-    "reason": "Pi `where: (row: ColumnRefs<C>) => Condition` is a callback over the table's typed column refs; Go's Tx.DeleteWhere takes where as any, a func(store.ColumnRefs) store.Condition or a Condition already built, and the table changes compile it at run time against the table's columns (store.TableChanges), refusing any other value. Exercised by TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets (chord/next/documents/transaction_writes_test.go)."
-  },
-  "pkg:chord/.#Tx::property:rows::call:0": {
-    "go": "chord/next/documents/transaction.go#Tx.Rows",
-    "reason": "Pi `rows(...)` returns an `AsyncIterable<RowOf<C>>` / `Iterable` of rows read a page of ROWS_PAGE at a time; Go has no iterable protocol, so Tx.Rows (*documents.TxRows) returns an iterator (Next(ctx) (row, ok, err) and Close) that fetches a page only when the previous one was read, as the AsyncIterable does (AGENTS.md async rule). Exercised by TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet (chord/next/documents/transaction_test.go)."
-  },
-  "pkg:chord/.#Table::property:rows::call:0": {
-    "go": "chord/next/store/table_handle.go#Table.Rows",
-    "reason": "Pi `rows(...)` returns an `AsyncIterable<RowOf<C>>` / `Iterable` of rows read a page of ROWS_PAGE at a time; Go has no iterable protocol, so Table.Rows (*store.RowsIterator) returns an iterator (Next(ctx) (row, ok, err) and Close) that fetches a page only when the previous one was read, as the AsyncIterable does (AGENTS.md async rule). Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
-  },
-  "pkg:chord/.#ScriptsContract": {
-    "go": "chord/next/surfaces/surfaces_scripts.go#ScriptsContract",
-    "reason": "Pi packages/chord/src/surfaces/scripts.ts:43 `type ScriptsContract = typeof WebScripts | typeof TuiScripts` is the type of the two scripts contracts, each a remote contract made by scriptsContract(name); Go's WebScripts and TuiScripts are both *contracts.Contract (surfaces_scripts.go), so `type ScriptsContract = *contracts.Contract` is the union of their types, and ClientOptions.Scripts (Pi's `scripts: ScriptsContract`) has it. Exercised by TestLoadsTheInitialScriptsWithTheCoreFacets (chord/next/surfaces/surfaces_client_test.go: the client starts with Scripts: WebScripts)."
   }
 }

@@ -3754,9 +3754,9 @@ Evidence: the ported `model-selector.test.ts` and `llama-ui.test.ts` cases of Pi
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 
-## D430 Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking remainder from outside the host package (AwaitingCtx)
+## D430 Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking remainder from outside the host package (AwaitingCtx, Resume)
 
-What: Pi's `ref.method(args)` starts the call at once and returns a Promise. A caller may start several calls before awaiting any (Files v2's pipelined `append`s, which the call window allows) and the host accepts them in the order they were started. A blocking Go `Reference.Call` cannot express that, so `Reference.Start(method, args, ctx)` is the synchronous half (the call is admitted and its handler's synchronous part has run when it returns) and `PendingCall.Wait(ctx)` the awaiting half. `host.AwaitingCtx(ctx, work)` is `Awaiting` for a caller outside the package, which cannot name the host's loop: the blocking remainder of an `onLive` or `on` handler (the awaits of Pi's async function).
+What: Pi's `ref.method(args)` starts the call at once and returns a Promise. A caller may start several calls before awaiting any (Files v2's pipelined `append`s, which the call window allows) and the host accepts them in the order they were started. A blocking Go `Reference.Call` cannot express that, so `Reference.Start(method, args, ctx)` is the synchronous half (the call is admitted and its handler's synchronous part has run when it returns) and `PendingCall.Wait(ctx)` the awaiting half. `host.AwaitingCtx(ctx, work)` is `Awaiting` for a caller outside the package, which cannot name the host's loop: the blocking remainder of an `onLive` or `on` handler (the awaits of Pi's async function). `host.Resume(ctx, work)` is the other way for a Go caller to resume in the loop after a wait: it runs `work` as one synchronous section on the goroutine of a handler that suspended (a transaction, a blocking call), inline when the handler still runs in its admitting section, as the awaits of Pi's handler resume inside the loop.
 
 Why: AGENTS.md "TypeScript async/Promise parity": an awaited Promise is a blocking call, but a Promise started and awaited later is two Go operations. Without Start the pipelined-append behaviour could not be tested or used through a reference; without AwaitingCtx a package outside `chord/next/host` (the app kit) could not declare an `onLive` routine.
 
@@ -3770,9 +3770,9 @@ SCRUTINIZED:approved
 
 Remove when: never; it is the Go form of an un-awaited Promise and of a handler's async remainder.
 
-Call-site markers: `chord/next/host/host_pending.go`, `chord/nextnode/app/files.go` (`FilesFacet`), `chord/nextnode/app/files_support_test.go`.
+Call-site markers: `chord/next/host/host_pending.go` (`AwaitingCtx`, `Resume`), `chord/nextnode/app/files.go` (`FilesFacet`), `chord/nextnode/app/files_support_test.go`.
 
-Evidence: `TestChunkedUploadsWriteAppendsSentWithoutWaitingAtTheirOwnOffsetsByteForByte` and `TestChunkedUploadsFinishAnUploadOnlyOnceTheAppendsSentBeforeItLanded` (`chord/nextnode/app/files_test.go`), `TestChunkedUploadsDropTheUploadsAPreviousRunLeft` (the `onLive` routine).
+Evidence: `TestChunkedUploadsWriteAppendsSentWithoutWaitingAtTheirOwnOffsetsByteForByte` and `TestChunkedUploadsFinishAnUploadOnlyOnceTheAppendsSentBeforeItLanded` (`chord/nextnode/app/files_test.go`), `TestChunkedUploadsDropTheUploadsAPreviousRunLeft` (the `onLive` routine), `TestResumeRunsAfterAHandlerSuspendedInASectionOfTheLoop` (`chord/next/host/host_resume_test.go`).
 
 Parity allowance: none.
 
@@ -4108,7 +4108,7 @@ Pi bug: none.
 
 Scope: `chord/next/host` (`Host.Delegate`, `Host.Serves`, `destination`, the closure rule's placement by the staged table), `chord/nextnode/plugins` (`node/destination.mjs`, `node/resolve.mjs`, `RuntimeLoad.ParentServes`), `chord/nextnode/app` (`start`). Nothing changes for a host without a delegate, or a NodeHost without `ParentServes`.
 
-Owner decision: approved 2026-11-08 (owner, 'proceed and approve').
+Owner decision: approved for 0.8.0 by the owner on 2026-11-08 ('proceed and approve').
 
 Remove when: never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.
 
