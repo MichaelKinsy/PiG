@@ -35,7 +35,7 @@ func TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext(t 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "rg-context.txt")
 	writeTestFile(t, path, []byte(strings.Join([]string{"a", "match one", "b", "match two", "match three", "c", "match four"}, "\n")))
-	got := strings.SplitN(grepText(t, dir, map[string]any{"pattern": "match", "path": path, "context": 1, "limit": 2}), "\n\n", 2)[0]
+	got, _, _ := strings.Cut(grepText(t, dir, map[string]any{"pattern": "match", "path": path, "context": 1, "limit": 2}), "\n\n")
 	want := strings.Join([]string{
 		"rg-context.txt-1- a",
 		"rg-context.txt:2: match one",

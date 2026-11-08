@@ -165,7 +165,7 @@ func tarField(block []byte, offset, length int, text string) error {
 func checkTarPath(path string) error {
 	bad := path == "" || strings.ContainsAny(path, "\\\x00") || strings.HasPrefix(path, "/")
 	if !bad {
-		for _, segment := range strings.Split(path, "/") {
+		for segment := range strings.SplitSeq(path, "/") {
 			if segment == "" || segment == "." || segment == ".." {
 				bad = true
 				break

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net"
 	"os"
 	"path/filepath"
@@ -151,9 +152,7 @@ func startTestApp(t testing.TB, plugins map[string]map[string]string, edit func(
 func writePlugin(t testing.TB, root, dir, name string, files map[string]string) {
 	t.Helper()
 	all := map[string]string{"package.json": fmt.Sprintf(`{"name":%q,"private":true,"type":"module"}`, name)}
-	for file, text := range files {
-		all[file] = text
-	}
+	maps.Copy(all, files)
 	for file, text := range all {
 		path := filepath.Join(root, dir, file)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

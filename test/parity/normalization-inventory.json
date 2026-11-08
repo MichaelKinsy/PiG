@@ -8955,7 +8955,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Select provider to configure",
-            "capture_end_regex": "OpenAI Codex \\(legacy\\)(?:\\x1b\\[[0-9;]*m)* • not configured"
+            "capture_end_regex": "OpenAI Codex(?:\\x1b\\[[0-9;]*m)* • not configured"
           },
           "reason": "Owned visible surface: /login subscription provider picker includes GitHub Copilot and Kimi For Coding with upstream labels.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."

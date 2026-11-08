@@ -213,7 +213,7 @@ func TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessa
 		span.Links = []telemetry.StoredSpanLink{{TraceID: hostile, SpanID: "span\u009b" + hostile}}
 		span.Status = telemetry.SpanStatus{Status: telemetry.SpanStatusCodeError, Error: &telemetry.SpanStatusError{Name: "error" + hostile, Message: "message\u007f" + hostile}}
 	})})
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		for _, char := range line {
 			if char <= 0x1f || (char >= 0x7f && char <= 0x9f) {
 				t.Fatalf("line %q holds control character %U", line, char)

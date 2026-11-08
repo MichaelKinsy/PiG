@@ -182,7 +182,7 @@ func TestRollingCookiesRenewABrowsersCookieOnceItIsOlderThanADayWithAFreshSigned
 	s := newKitServer(t, kitServerOptions{})
 	defer s.close()
 	_, _, cookie := s.issue(delta.JsonObjectOf("kind", "owner"), "b", "browser")
-	signed := strings.SplitN(cookie, ";", 2)[0]
+	signed, _, _ := strings.Cut(cookie, ";")
 	whoami := func() reply { return s.send("GET", "/whoami", map[string]string{"cookie": signed}, "") }
 	// Within the day: nothing set.
 	if reply := whoami(); reply.status != 200 || reply.headers.Get("set-cookie") != "" {

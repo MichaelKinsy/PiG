@@ -126,11 +126,9 @@ func TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed(t *testin
 	untilMarks(t, s.app, "the first edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		_, errs[0] = s.app.ApplyChanges(background)
-	}()
+	})
 	editEcho(t, s.root, "v3")
 	_, errs[1] = s.app.ApplyChanges(background)
 	wg.Wait()
