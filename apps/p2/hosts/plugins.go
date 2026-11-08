@@ -11,10 +11,10 @@ import (
 )
 
 // Ports apps/p2/src/hosts/plugins.ts under D473: p2's plugins are compiled-in Go packages registered at start, not
-// directories built on their own at run time. A plugin package registers its facets of kind `server` and `worker` in an
+// directories built on their own at run time. A plugin package registers its facets of kind `server`, `worker` and `tui` in an
 // init function (RegisterPlugin); the p2 command links the plugin packages it ships, a test links the ones it needs. The
-// server loads the selected plugins' server facets, and each session worker (the same executable) the worker facets of
-// the selection the server sends it (the `P2_PLUGINS` environment variable). TUI and web facets stay in p2's own
+// server loads the selected plugins' server facets, the TUI host their tui facets (TUIFacets), and each session worker (the same executable) the worker facets of
+// the selection the server sends it (the `P2_PLUGINS` environment variable). Web facets stay in p2's own
 // bundles (bundles.go).
 
 // Plugin is a compiled-in plugin: its name (the directory name upstream) and its facets; nil for a kind it has none of.
@@ -22,6 +22,9 @@ type Plugin struct {
 	Name   string
 	Server *host.Facet
 	Worker *host.Facet
+	// TUI is the plugin's terminal-client facet (`tui.ts` upstream): the slots, commands and renderers the TUI host loads
+	// into its own Chord host (TUIFacets). The server and the session workers never load it.
+	TUI *host.Facet
 }
 
 var (
@@ -75,6 +78,17 @@ func serverFacets(selection []Plugin) []host.HostFacet {
 	for _, plugin := range selection {
 		if plugin.Server != nil {
 			facets = append(facets, host.HostFacet{Name: plugin.Name, Facet: *plugin.Server})
+		}
+	}
+	return facets
+}
+
+// TUIFacets are the selection's TUI facets as the TUI host loads them into its Chord host.
+func TUIFacets(selection []Plugin) []host.HostFacet {
+	var facets []host.HostFacet
+	for _, plugin := range selection {
+		if plugin.TUI != nil {
+			facets = append(facets, host.HostFacet{Name: plugin.Name, Facet: *plugin.TUI})
 		}
 	}
 	return facets
