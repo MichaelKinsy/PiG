@@ -1,8 +1,10 @@
 package app
 
 import (
+	"sync"
 	"testing"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -15,26 +17,36 @@ import (
 func TestTheAppsHookStampsTheServerHostsOwnSpans(t *testing.T) {
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	store := &ingested{TelemetryContext: recorder}
+	var mu sync.Mutex
 	var asked []data.Principal
 	s := startTestApp(t, nil, func(o *AppOptions) {
 		o.Telemetry = store
 		o.PrincipalAttributes = func(principal data.Principal) telemetry.SpanAttributes {
+			mu.Lock()
 			asked = append(asked, principal)
+			mu.Unlock()
 			return telemetry.SpanAttributes{telemetry.Attr("chord.principal", "the-hook")}
 		}
 	})
-	_, err := s.app.Host.Root(func(ctx host.Ctx) (any, error) {
-		sessions, err := ctx.Get(Sessions, delta.NewJsonObject(0), host.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-		// `verify` is a traced method call of the kit's sessions object, made as the owner: its `chord.method` span carries the hook's attributes.
-		return sessions.Call("verify", "no-such-token", ctx)
-	}, background, host.RootOptions{Principal: testOwner})
+	// A call records its span under the telemetry parent its context carries (a context with none records nothing).
+	err := recorder.StartSpan(telemetry.SpanOptions{Name: "test.root"}, func(parent telemetry.TelemetrySpan) error {
+		_, err := s.app.Host.Root(func(ctx host.Ctx) (any, error) {
+			sessions, err := ctx.Get(Sessions, delta.NewJsonObject(0), host.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			// `verify` is a traced method call of the kit's sessions object, made as the owner: its `chord.method` span carries the hook's attributes.
+			return sessions.Call("verify", "no-such-token", ctx)
+		}, chordctx.WithTelemetry(background, parent), host.RootOptions{Principal: testOwner})
+		return err
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(asked) == 0 {
+	mu.Lock()
+	count := len(asked)
+	mu.Unlock()
+	if count == 0 {
 		t.Fatal("the app's hook was never asked: the server host does not use AppOptions.PrincipalAttributes")
 	}
 	stamped := false
