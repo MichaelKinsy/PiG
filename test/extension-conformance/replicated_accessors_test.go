@@ -143,39 +143,7 @@ func TestReplicatedAccessorsReadYourWritesAcrossSDKs(t *testing.T) {
 	}
 	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
-			h := tc.make(t)
-			t.Cleanup(func() {
-				if h.cleanup != nil {
-					h.cleanup()
-				}
-				if h.host != nil {
-					h.host.Shutdown("test done")
-				}
-			})
-			if h.bridge == nil {
-				t.Skip("no host bridge for " + tc.name)
-			}
-			session := &replicatedHostSession{session: codingagent.NewSession("replicated-session", "/conformance/replicated"), model: replicatedModelJSON("prov-sentinel", "id-sentinel", "Name Sentinel")}
-			// The log starts with a named session and a custom entry, so the last entry's type is neither "label" nor "custom_message" before a write.
-			session.appendEntry("session_info", `"name":"s-sentinel"`)
-			session.appendEntry("custom", `"customType":"probe","data":"hello"`)
-			session.bind(h.bridge)
-			h.host.BroadcastStateUpdate()
-			command, ok := findCommand(h.runner, "replicated-accessors")
-			if !ok {
-				t.Fatal("replicated-accessors command missing")
-			}
-			*h.notify = nil
-			if err := command.Handler(h.runner.DispatchContext(t.Context()), ""); err != nil {
-				t.Fatal(err)
-			}
-			if len(*h.notify) != 1 {
-				t.Fatalf("notifications = %v", *h.notify)
-			}
-			var got map[string]any
-			if err := json.Unmarshal([]byte(strings.TrimSuffix((*h.notify)[0], ":info")), &got); err != nil {
-				t.Fatalf("decode %q: %v", (*h.notify)[0], err)
-			}
+			got := runReplicatedAccessors(t, tc, "")
 			for key, expected := range want {
 				if got[key] != expected {
 					t.Errorf("%s = %v, want %v (all: %v)", key, got[key], expected, got)
@@ -183,4 +151,75 @@ func TestReplicatedAccessorsReadYourWritesAcrossSDKs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A Node extension's handler reads the log after its writes whenever it makes them, not only in the handler's first synchronous run: after it awaited
+// a timer or a host call, the host's state pushes before each write's result reach the runtime's receive loop, which waits and cannot read them until the
+// handler's synchronous run ends, not the synchronous call the handler makes. The runtime applied them after the calls returned and out of order (the push
+// of the second write before the push of the first), so a read saw the log without its write (here "session_info" where Pi's sessionManager.getEntries()
+// ends in the label or message just written) and the late page then replaced the replicated log with one entry. The Node fixture registers pi.onLoaded,
+// which also delays every request's handler to a microtask after the receive loop waits again: the extension shape that surfaced it (setLabel after
+// onLoaded, read back). Both load modes of the Node runtime (isolated and packed into a shared cell) run it. The log holds the two entries the row
+// starts with and the three it writes, read again after the model write (await pi.setModel) once the serve loop ran, which a push applied twice would collapse to one entry.
+func TestNodeReplicatedWritesReadBackAfterAwait(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	want := map[string]any{
+		"name0": "s-sentinel", "name1": "renamed", "entryAfterName": "session_info", "entryAfterLabel": "label", "entryAfterMessage": "custom_message", "entryCount": float64(5),
+		"entryCountLater": float64(5), "lastLater": "custom_message",
+		"model1": "id-after", "provider1": "prov-after", "qualified1": "prov-after/id-after",
+	}
+	for _, tc := range allHarnessCases() {
+		if tc.extName != "node-sdk-fixture" {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			got := runReplicatedAccessors(t, tc, "after-await")
+			for key, expected := range want {
+				if got[key] != expected {
+					t.Errorf("%s = %v, want %v (all: %v)", key, got[key], expected, got)
+				}
+			}
+		})
+	}
+}
+
+// runReplicatedAccessors binds a replicatedHostSession to tc's extension, runs its replicated-accessors command with args and returns the JSON object the command reports.
+func runReplicatedAccessors(t *testing.T, tc harnessCase, args string) map[string]any {
+	t.Helper()
+	h := tc.make(t)
+	t.Cleanup(func() {
+		if h.cleanup != nil {
+			h.cleanup()
+		}
+		if h.host != nil {
+			h.host.Shutdown("test done")
+		}
+	})
+	if h.bridge == nil {
+		t.Skip("no host bridge for " + tc.name)
+	}
+	session := &replicatedHostSession{session: codingagent.NewSession("replicated-session", "/conformance/replicated"), model: replicatedModelJSON("prov-sentinel", "id-sentinel", "Name Sentinel")}
+	// The log starts with a named session and a custom entry, so the last entry's type is neither "label" nor "custom_message" before a write.
+	session.appendEntry("session_info", `"name":"s-sentinel"`)
+	session.appendEntry("custom", `"customType":"probe","data":"hello"`)
+	session.bind(h.bridge)
+	h.host.BroadcastStateUpdate()
+	command, ok := findCommand(h.runner, "replicated-accessors")
+	if !ok {
+		t.Fatal("replicated-accessors command missing")
+	}
+	*h.notify = nil
+	if err := command.Handler(h.runner.DispatchContext(t.Context()), args); err != nil {
+		t.Fatal(err)
+	}
+	if len(*h.notify) != 1 {
+		t.Fatalf("notifications = %v", *h.notify)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSuffix((*h.notify)[0], ":info")), &got); err != nil {
+		t.Fatalf("decode %q: %v", (*h.notify)[0], err)
+	}
+	return got
 }
