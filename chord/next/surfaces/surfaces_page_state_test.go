@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"testing"
 	"time"
-	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
@@ -80,20 +79,45 @@ func TestPageStateCallsEverySubscriberAfterASetThatChangedTheValueUntilItUnsubsc
 
 func TestPageStateIsCollectedWithItsHost(t *testing.T) {
 	type kept struct{ text string }
-	hostRef, valueRef := func() (weak.Pointer[int], weak.Pointer[kept]) {
+	hostGone, valueGone := make(chan struct{}), make(chan struct{})
+	func() {
 		created := client(t)
 		value := &kept{"oat mi"}
 		PageStateOf(created, "draft", value)
 		created.Close(context.Background())
-		// The weak pointer to the host is taken through its address: the host is the one pointer CreateHost returned.
-		return weak.Make((*int)(reflect.ValueOf(created).UnsafePointer())), weak.Make(value)
+		// The host is the one pointer CreateHost returned.
+		runtime.AddCleanup((*byte)(reflect.ValueOf(created).UnsafePointer()), func(struct{}) { close(hostGone) }, struct{}{})
+		runtime.AddCleanup(value, func(struct{}) { close(valueGone) }, struct{}{})
 	}()
-	deadline := time.Now().Add(5 * time.Second)
-	for (hostRef.Value() != nil || valueRef.Value() != nil) && time.Now().Before(deadline) {
-		runtime.GC()
-		time.Sleep(10 * time.Millisecond)
+	timeout := time.NewTimer(30 * time.Second)
+	defer timeout.Stop()
+	for _, gone := range []chan struct{}{hostGone, valueGone} {
+		for collected := false; !collected; {
+			runtime.GC()
+			select {
+			case <-gone:
+				collected = true
+			case <-timeout.C:
+				t.Fatal("the host or its page state was not collected")
+			default:
+				runtime.Gosched()
+			}
+		}
 	}
-	if hostRef.Value() != nil || valueRef.Value() != nil {
-		t.Errorf("host collected: %v, value collected: %v", hostRef.Value() == nil, valueRef.Value() == nil)
+}
+
+func TestPageStateOfAnInterfaceReadsNilAndAStructHoldingASliceIsNeverTheSame(t *testing.T) {
+	h := client(t)
+	nothing := PageStateOf[any](h, "nothing", nil)
+	if got := nothing.Read(); got != nil {
+		t.Fatalf("Read = %v, want nil", got)
+	}
+	type holder struct{ list any }
+	state := PageStateOf(h, "holder", holder{list: []int{1}})
+	notified := 0
+	state.Subscribe(func() { notified++ })
+	state.Set(holder{list: []int{1}})
+	if notified != 1 {
+		t.Fatalf("notified %d times, want 1 (a struct holding a slice is never the same)", notified)
 	}
 }

@@ -3,6 +3,7 @@ package surfaces
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -30,22 +31,32 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 	var themes []Theme
 	var pick ThemePick
 	current := mode
-	var stopped bool
+	// gate orders Stop against the pick watch's start: a watch is started only while the follower runs.
+	var gate sync.Mutex
+	var stopped atomic.Bool
+	var out outbox
 	update := func() {
 		mu.Lock()
-		defer mu.Unlock()
-		if !stopped {
-			changed(ActiveTheme(themes, pick, current))
+		if stopped.Load() {
+			mu.Unlock()
+			return
 		}
+		theme := ActiveTheme(themes, pick, current)
+		mu.Unlock()
+		out.run(func() {
+			if !stopped.Load() {
+				changed(theme)
+			}
+		})
 	}
 	update()
 	var stopsMu sync.Mutex
 	var stops []func()
 	addStop := func(stop func()) { stopsMu.Lock(); stops = append(stops, stop); stopsMu.Unlock() }
 	stopAll := func() {
-		mu.Lock()
-		stopped = true
-		mu.Unlock()
+		gate.Lock()
+		stopped.Store(true)
+		gate.Unlock()
 		cancel()
 		stopsMu.Lock()
 		defer stopsMu.Unlock()
@@ -87,6 +98,12 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 		watch, err := choice.Member("pick").Watch(ctx)
 		if err != nil {
 			// The hold ended (the follower stopped) before its first value.
+			return
+		}
+		gate.Lock()
+		defer gate.Unlock()
+		if stopped.Load() {
+			_, _ = watch.Stop()
 			return
 		}
 		addStop(func() { _, _ = watch.Stop() })

@@ -5,9 +5,11 @@ import (
 	"errors"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -97,13 +99,54 @@ func serverWith(t testing.TB, path string, facet host.Facet, users ...string) ([
 	return clients, closeAll
 }
 
+// wakeups is signalled by every change a test watch or follower reports: until waits on it, not on the clock.
+var wakeups = &wakeup{ch: make(chan struct{})}
+
+type wakeup struct {
+	mu sync.Mutex
+	ch chan struct{}
+}
+
+// next is the channel the next poke closes.
+func (w *wakeup) next() <-chan struct{} {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.ch
+}
+
+func (w *wakeup) poke() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	close(w.ch)
+	w.ch = make(chan struct{})
+}
+
+// wakeOn pokes the wakeups at every change of member until the test ends.
+func wakeOn(t testing.TB, member *host.ReferenceMember) {
+	t.Helper()
+	watch, err := member.Watch(bg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = watch.Stop() })
+	watch.Start(func(context.Context, chord.WatchCall[delta.JsonValue]) error { wakeups.poke(); return nil })
+}
+
+// until waits until check holds, re-checking at every change a test watch or follower reports (a missing one fails after 30 s).
 func until(t testing.TB, check func() bool) {
 	t.Helper()
-	for i := 0; i < 400 && !check(); i++ {
-		time.Sleep(5 * time.Millisecond)
-	}
-	if !check() {
-		t.Fatal("condition not reached")
+	timeout := time.NewTimer(30 * time.Second)
+	defer timeout.Stop()
+	for {
+		woken := wakeups.next()
+		if check() {
+			return
+		}
+		select {
+		case <-woken:
+		case <-timeout.C:
+			t.Fatal("condition not reached")
+		}
 	}
 }
 
@@ -146,6 +189,7 @@ func TestPreferenceIsNoneBeforeAChoiceAndEachPrincipalsOwnAfter(t *testing.T) {
 	if _, err := ada.Call("choose", 150.0, bg); err != nil {
 		t.Fatal(err)
 	}
+	wakeOn(t, ada.Member("pick"))
 	until(t, func() bool { return pickOf(t, ada) == 150.0 })
 	if got := pickOf(t, grace); got != 100.0 {
 		t.Errorf("grace = %v, want 100", got)

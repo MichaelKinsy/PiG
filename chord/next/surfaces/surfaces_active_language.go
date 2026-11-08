@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -37,24 +38,37 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 	translations := NoTranslations
 	var pick *string
 	device := preferred
-	var stopped bool
+	// gate orders Stop against the pick watch's start: a watch is started only while the follower runs.
+	var gate sync.Mutex
+	var stopped atomic.Bool
+	var current *Language
+	var out outbox
 	update := func() {
 		mu.Lock()
-		defer mu.Unlock()
-		if stopped {
+		if stopped.Load() {
+			mu.Unlock()
 			return
 		}
 		locale := ResolveLocale(pick, device, translations.Locales)
-		if current := state.Read(); current != nil && current.Locale == locale && current.Translations == translations {
+		if current != nil && current.Locale == locale && current.Translations == translations {
+			mu.Unlock()
 			return
 		}
 		language, err := CreateLanguage(locale, translations, once)
 		if err != nil {
+			mu.Unlock()
 			// A locale some catalog offers is a canonical tag (ComposeTranslations checked it).
 			panic(fmt.Sprintf("surfaces: resolved locale %q: %v", locale, err))
 		}
-		state.Set(language)
-		changed(language)
+		current = language
+		mu.Unlock()
+		out.run(func() {
+			if stopped.Load() {
+				return
+			}
+			state.Set(language)
+			changed(language)
+		})
 	}
 	update()
 	var stops []func()
@@ -104,6 +118,14 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 		if err != nil {
 			return
 		}
+		// Stop marks the follower stopped under gate before it ends the watches: one started here is stopped by it, and a
+		// follower stopped already starts nothing (Pi: `watch(ctx).then(start, () => {})`).
+		gate.Lock()
+		defer gate.Unlock()
+		if stopped.Load() {
+			_, _ = watch.Stop()
+			return
+		}
 		addStop(func() { _, _ = watch.Stop() })
 		watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
 			if call.Kind == chord.WatchCallValue {
@@ -127,9 +149,9 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 			update()
 		},
 		Stop: func() {
-			mu.Lock()
-			stopped = true
-			mu.Unlock()
+			gate.Lock()
+			stopped.Store(true)
+			gate.Unlock()
 			cancel()
 			stopsMu.Lock()
 			defer stopsMu.Unlock()

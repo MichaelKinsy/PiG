@@ -106,6 +106,7 @@ func PreferenceFacet(choice *contracts.Contract, store string, pick contracts.Sc
 		}
 		return h.Serve(choice, func(_ *delta.JsonObject, principal data.Principal, self host.Self) (contracts.Implementation, error) {
 			picks := self.Get(pickStore, delta.NewJsonObject(0))
+			//portlint:allow ctxbackground the factory of an object has no context; the key only memoizes the principal's canonical JSON
 			key := data.PrincipalKey(principal, context.Background(), nil)
 			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
