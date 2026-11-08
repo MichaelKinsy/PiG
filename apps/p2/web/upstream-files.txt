@@ -527,3 +527,6 @@ plugins/projects/contract.ts
 plugins/workspace/protocol.ts
 plugins/ports/protocol.ts
 plugins/locations/contract.ts
+plugins/proxy-marker/contract.ts
+plugins/proxy-marker/package.json
+plugins/radius/contract.ts
