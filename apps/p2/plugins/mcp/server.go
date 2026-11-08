@@ -39,11 +39,6 @@ type EnvConnector func(self host.Self) ConnectEnv
 // viewLinger is how long a worker's view outlives its last reference: a worker object restarting does not end its leases.
 const viewLinger = 30 * time.Second
 
-// connectionManager is the part of the envs plugin's SSH manager that connects (`EnvManager.Connection`).
-type connectionManager interface {
-	Connection(name string, config *chordjson.Object) *env.Connection
-}
-
 // sshEnvironments is the environments of envs.json through the envs plugin's SSH manager (its keys and known hosts; read at
 // each connect, as it reopens with a reload).
 func sshEnvironments(self host.Self) ConnectEnv {
@@ -51,10 +46,7 @@ func sshEnvironments(self host.Self) ConnectEnv {
 	return func(name string, config *chordjson.Object) *env.Connection {
 		parts, err := managers()
 		if err == nil {
-			if manager, ok := parts.Manager.(connectionManager); ok {
-				return manager.Connection(name, config)
-			}
-			err = errors.New("the SSH manager does not connect to environments")
+			return parts.Manager.Connection(name, config)
 		}
 		failure := err
 		return env.NewConnection(env.ConnectionOptions{CommandFunc: func(context.Context) ([]string, error) { return nil, failure }})

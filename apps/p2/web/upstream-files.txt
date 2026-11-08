@@ -39,3 +39,10 @@ plugins/logs/style.css
 plugins/sharing/web.tsx
 plugins/mcp/contract.ts
 plugins/mcp/web.tsx
+plugins/envs/web.tsx
+plugins/envs/contract.web.tsx
+plugins/envs/EnvsPanel.tsx
+plugins/envs/DirectoryPicker.tsx
+plugins/envs/SecretsSection.tsx
+plugins/envs/style.css
+plugins/envs/secret-presets.ts
