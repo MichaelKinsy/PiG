@@ -1,4 +1,0 @@
-### Fixed
-
-- Chord's objects no longer answer a call `not_ready` during a reload while the caller sees them `live`: a call over a link to an object whose swap had parked (its new code waiting for a dependency) or whose restart had drained, sent while its hold was still bound to the old instance, got `not_ready: ... not live yet`. Such a call now waits for the object's new attempt (live, failed or ended), bounded by `readyTimeout` (`unavailable/park_timeout`); a parked attempt showing `failed { waiting }` rejects it with that cause. <!-- fix: 0c2b568fd -->
-- `Host.Reload` starts the objects' fates dependents first: removals, then the other fates in the reverse of the order the objects went live (the report keeps its order). A pure dependent reloaded with its provider binds the provider while it is still live and swaps instead of parking until the provider's new instance is live. <!-- fix: 0c2b568fd -->
