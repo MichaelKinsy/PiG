@@ -134,3 +134,15 @@ func TestRealWorkerCtrlXCopiesTheLastAnswerCopyAsksFirstCtrlGEditsTheDraftInTheE
 	poll(t, func() bool { return l.draft() == "draft edited" })
 	l.waitScreen(10*time.Second, "draft edited")
 }
+
+// until polls cond; a failure shows what the screen held.
+func (l *launcher) until(limit time.Duration, what string, cond func() bool) {
+	l.t.Helper()
+	deadline := time.Now().Add(limit)
+	for !cond() {
+		if time.Now().After(deadline) {
+			l.t.Fatalf("%s never held; the screen:\n%s", what, l.terminal.screen())
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
