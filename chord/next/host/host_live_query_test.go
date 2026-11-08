@@ -67,6 +67,8 @@ func mustTableDef(name string, options store.TableOptions) *store.TableDefinitio
 // lqQueries are the live queries collected weakly as they are declared (Pi's `instancesOf(LiveQuery, "load")`).
 type lqQueries struct {
 	refs []weak.Pointer[store.LiveQuery]
+	// live are the queries themselves, for a test that waits for one to detach (the memory test holds weak ones only).
+	live []*store.LiveQuery
 }
 
 // serveBoard serves `Board` with a live query of the newest `limit` items; declare runs first in its factory.
@@ -82,6 +84,7 @@ func (q *lqQueries) serveBoard(h FacetHost, limit int64, declare func(self Store
 		// The recording that stages a reload declares inert queries: only an attempt's own is collected.
 		if live, ok := unwrapMember(query).(*store.LiveQuery); ok && q != nil {
 			q.refs = append(q.refs, weak.Make(live))
+			q.live = append(q.live, live)
 		}
 		tx := func(ctx context.Context, write func(tx documents.Tx) error) (delta.JsonValue, error) {
 			_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, write(tx) }, ctx)
@@ -230,8 +233,13 @@ func TestLiveQueryPublicationAnInsertAnUpdateAndADeleteReachAWatchAsOpsInTheComm
 	b.put(t, 1, "a")
 	// Published in the commit's batch: the value is current once the call returned.
 	equalInts(t, "ids", idsOf(b.items(t)), 1)
+	// Each call's frame is delivered before the next call: a JavaScript caller's `await` lets the delivery run, while a Go
+	// watcher is fed by its own goroutine, which folds the frames of calls made faster than it takes them.
+	turn(b.host)
 	b.put(t, 2, "b")
+	turn(b.host)
 	b.call(t, "rename", jsonObject("id", float64(1), "text", "A"))
+	turn(b.host)
 	b.call(t, "drop", float64(2))
 	turn(b.host)
 	// Splices of the rows at the root (`["p", path, at, deleted, inserted]`) and a set inside one row.
@@ -318,7 +326,8 @@ func TestLiveQueryPublicationACommitWritingAnotherTableRunsNoQueryAndPublishesNo
 }
 
 func TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver(t *testing.T) {
-	b := newBoard(t, memoryStore(t), 3, nil)
+	queries := &lqQueries{}
+	b := newBoard(t, memoryStore(t), 3, queries)
 	for _, id := range []int{1, 2, 3} {
 		b.put(t, id, "t"+string(rune('0'+id)))
 	}
@@ -327,6 +336,8 @@ func TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver(t *te
 		t.Fatalf("objects = %+v, failed = %+v, plugins = %+v", report.Objects, report.Failed, report.Plugins)
 	}
 	turn(b.host)
+	// The old attempt detaches once the swap's teardown ran (Pi's `await flushed()`).
+	eventually(t, "the old attempt's query to detach", func() bool { _, err := queries.live[0].Value(); return err != nil })
 	equalInts(t, "ids", idsOf(b.items(t)), 3, 2)
 	runs := b.counts()["chord.query.runs"]
 	b.put(t, 4, "t4")
