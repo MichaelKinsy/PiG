@@ -190,6 +190,7 @@
 		}
 	},
 	"settled": true,
+	"pending": {"keyAtSettle": "sk-pending", "login": true, "waited": true},
 	"stored": {
 		"stored-prov": {
 			"key": "sk-stored",
