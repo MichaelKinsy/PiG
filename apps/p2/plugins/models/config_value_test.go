@@ -3,6 +3,8 @@ package models
 import (
 	"reflect"
 	"testing"
+
+	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 )
 
 func TestResolveConfigValue(t *testing.T) {
@@ -76,5 +78,18 @@ func TestResolveConfigValueErrors(t *testing.T) {
 	}
 	if headers, err := ResolveHeadersOrError(nil, "x", nil); headers != nil || err != nil {
 		t.Errorf("no headers: %v, %v", headers, err)
+	}
+}
+
+// Ports the case "resolved provider keys and custom auth-header commands are registered before logging" of logs.test.ts.
+func TestResolvedProviderKeysAndCustomAuthHeaderCommandsAreRegisteredBeforeLogging(t *testing.T) {
+	if got, ok := ResolveConfigValueUncached("$CUSTOM", map[string]string{"CUSTOM": "fixture-custom-value"}); !ok || got != "fixture-custom-value" {
+		t.Fatalf("$CUSTOM = %q, %v", got, ok)
+	}
+	if got, ok := ResolveConfigValueUncached("!printf fixture-command-value", nil); !ok || got != "fixture-command-value" {
+		t.Fatalf("!printf = %q, %v", got, ok)
+	}
+	if got := p2runtime.ProcessLogs.Redactor.Redact("fixture-custom-value fixture-command-value"); got != "[redacted] [redacted]" {
+		t.Fatalf("redacted = %q", got)
 	}
 }
