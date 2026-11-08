@@ -23,7 +23,8 @@ const defaultBase = "https://json-schema.invalid/root.json"
 
 // resolver indexes the root schema and resolves references in it and in the registered documents.
 type resolver struct {
-	draft    Draft
+	draft Draft
+	// rootBase is the base URI the root schema is walked from; walkers apply the root's own `$id` through baseFor.
 	rootBase string
 	root     JsonSchema
 	options  CompileOptions
@@ -43,6 +44,7 @@ type resolver struct {
 func newResolver(root JsonSchema, options CompileOptions) *resolver {
 	r := &resolver{
 		draft:          Draft202012,
+		rootBase:       defaultBase,
 		root:           root,
 		options:        options,
 		baseOf:         map[nodeKey]string{},
@@ -56,10 +58,6 @@ func newResolver(root JsonSchema, options CompileOptions) *resolver {
 	if options.Draft == Draft7 {
 		r.draft = Draft7
 	}
-	r.rootBase = defaultBase
-	if o, ok := isSchemaObject(root); ok {
-		r.rootBase = r.baseFor(o, defaultBase)
-	}
 	return r
 }
 
@@ -71,6 +69,14 @@ func (r *resolver) baseFor(node jsonObject, base string) string {
 	id, ok := node.stringMember("$id")
 	if !ok {
 		return base
+	}
+	// pig divergence (D302): index before applying an `$id`: a caller's base may already include it, and the index applies it once
+	// (Pi main 2bd2c2d0a).
+	if !r.indexed {
+		r.ensureIndexed()
+		if indexed, ok := r.baseOf[node.identity()]; ok {
+			return indexed
+		}
 	}
 	if r.draft == Draft7 {
 		if _, hasRef := node.stringMember("$ref"); hasRef || strings.HasPrefix(id, "#") {

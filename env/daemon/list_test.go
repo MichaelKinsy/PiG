@@ -277,7 +277,7 @@ func TestServeListFilesAnswersWithItsPayloadAndStopsOnCancel(t *testing.T) {
 	}
 	p := startServe(t, Options{})
 	p.request(1, Object{"op": "hello", "protocol": float64(1)}, nil)
-	if features, _ := object(t, p.reply(1))["features"].([]any); !slices.Equal(features, []any{"listFiles"}) {
+	if features, _ := object(t, p.reply(1))["features"].([]any); !slices.Equal(features, []any{"listFiles", "process"}) {
 		t.Fatalf("hello features = %v, want [listFiles]", features)
 	}
 	p.request(2, Object{"op": "listFiles", "path": tree.root, "maxEntries": float64(3)}, nil)
