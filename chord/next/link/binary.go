@@ -44,6 +44,10 @@ const (
 const (
 	// originFlag is the kind byte's flag for an origin.
 	originFlag = 0x80
+	// oldFlag is the kind byte's flag for a `call` that is old work of a reload (`call.old`); another kind with it is unknown.
+	oldFlag = 0x20
+	// traceFlag is the kind byte's flag for a trace carrier (a hold's or call's): the carrier follows the origin as JSON.
+	traceFlag = 0x40
 	// payloadPresent and payloadSegments are a payload's flags: present, and carrying byte segments.
 	payloadPresent  = 1
 	payloadSegments = 2
@@ -85,11 +89,21 @@ func (binaryCodec) Encode(message Message) (encoded []byte, err error) {
 	defer recoverCodec(&err)
 	writer := newWriter()
 	kind := kindOf(message)
+	if call, ok := message.(*CallMessage); ok && call.Old {
+		kind |= oldFlag
+	}
+	trace := traceOf(message)
+	if trace != nil {
+		kind |= traceFlag
+	}
 	if origin := OriginOf(message); origin.Ok {
 		writer.byte(kind | originFlag)
 		writer.varint(origin.Value)
 	} else {
 		writer.byte(kind)
+	}
+	if trace != nil {
+		writer.json(carrierValue(trace, traceOrderOf(message)))
 	}
 	encodeFields(message, writer)
 	return writer.finish(), nil
@@ -104,12 +118,28 @@ func (binaryCodec) Decode(bytes []byte) (message Message, err error) {
 	if hasOrigin {
 		origin = reader.varint()
 	}
-	kind := int(first &^ originFlag)
-	if kind >= kindCount {
+	hasOld := first&oldFlag != 0
+	kind := int(first &^ (originFlag | traceFlag | oldFlag))
+	if kind >= kindCount || (hasOld && kind != kindCall) {
 		fail("binary: an unknown kind")
+	}
+	var trace any
+	hasTrace := first&traceFlag != 0
+	if hasTrace {
+		trace = reader.json()
 	}
 	message = decodeFields(kind, reader)
 	reader.end()
+	if hasTrace {
+		// The message schema refuses a carrier on a kind without one, or of another shape.
+		carrier, order, ok := carrierOf(trace)
+		if !ok || !setTrace(message, carrier, order) {
+			failWith(errSchema)
+		}
+	}
+	if hasOld {
+		message.(*CallMessage).Old = true
+	}
 	// A fresh message; the message schema refuses an origin of 0.
 	if hasOrigin && !setOrigin(message, origin) {
 		fail("binary: an origin on a kind without one")
@@ -158,6 +188,61 @@ func kindOf(message Message) int {
 	}
 	fail("binary: an unknown message type %T", message)
 	return 0
+}
+
+// traceOf is a hold's or call's trace carrier; nil for no carrier and for another kind.
+func traceOf(message Message) map[string]string {
+	switch typed := message.(type) {
+	case *HoldMessage:
+		return typed.Trace
+	case *CallMessage:
+		return typed.Trace
+	}
+	return nil
+}
+
+// traceOrderOf is the key order of a hold's or call's carrier, as it was decoded.
+func traceOrderOf(message Message) []string {
+	switch typed := message.(type) {
+	case *HoldMessage:
+		return typed.TraceOrder
+	case *CallMessage:
+		return typed.TraceOrder
+	}
+	return nil
+}
+
+// setTrace sets a decoded hold's or call's carrier; false for another kind.
+func setTrace(message Message, carrier map[string]string, order []string) bool {
+	switch typed := message.(type) {
+	case *HoldMessage:
+		typed.Trace, typed.TraceOrder = carrier, order
+	case *CallMessage:
+		typed.Trace, typed.TraceOrder = carrier, order
+	default:
+		return false
+	}
+	return true
+}
+
+// carrierOf reads a decoded JSON value as a carrier: an object of strings, and its keys in the order they came. The message
+// schema refuses any other shape.
+func carrierOf(value any) (map[string]string, []string, bool) {
+	object, ok := value.(*delta.JsonObject)
+	if !ok {
+		return nil, nil, false
+	}
+	carrier := make(map[string]string, object.Len())
+	order := make([]string, 0, object.Len())
+	for key, member := range object.All() {
+		text, ok := member.(string)
+		if !ok {
+			return nil, nil, false
+		}
+		carrier[key] = text
+		order = append(order, key)
+	}
+	return carrier, order, true
 }
 
 // setOrigin sets a decoded message's origin in place; false for a kind without one.

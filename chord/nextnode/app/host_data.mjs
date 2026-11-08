@@ -2,7 +2,7 @@
 // address. It is the server's only: any other principal is refused when it gets the object. `exportTo` is forwarded to the Go kit's
 // local `HostDataExport` (data.go) with this start's token. The kit writes the module at the worker's start with the server's
 // principal and the token in place of the two markers.
-import { ChordError, defineFacet, local, method, obj, remote, str } from "@earendil-works/chord/next";
+import { ChordError, defineFacet, local, method, obj, remote, str } from "@earendil-works/chord";
 
 const SERVER = __SERVER__;
 const TOKEN = __TOKEN__;

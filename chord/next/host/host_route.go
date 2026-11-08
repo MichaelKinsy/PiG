@@ -4,10 +4,13 @@ import (
 	"context"
 	"slices"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/host/route.ts. Routes (§3): how a host reaches hosts of one kind. `authorize` admits each
@@ -85,6 +88,8 @@ type routed struct {
 	failure *data.ChordError
 	// suspended is whether the address resolves nothing while held.
 	suspended bool
+	// span is the running `resolve`'s span: holders attaching meanwhile link to it; nil when nothing records.
+	span telemetry.TelemetrySpan
 }
 
 // routeLinkEntry is what the route knows of one address's link: its address, and whether it completed its handshake.
@@ -221,10 +226,15 @@ func (r *route) changed(routed *routed, event pathEvent) {
 			r.forget(routed.address.Key)
 		}
 	case pathAttached:
-		if routed.suspended {
+		switch {
+		case routed.suspended:
 			event.holder.unreachable(suspendedError(routed))
-		} else if !routed.resolving {
-			r.resolve(routed)
+		case !routed.resolving:
+			r.resolve(routed, event.holder.span())
+		case routed.span != nil:
+			if held := event.holder.span(); held != nil {
+				held.AddLink(telemetry.SpanLink{Context: routed.span})
+			}
 		}
 	case pathDropped:
 		switch {
@@ -235,7 +245,7 @@ func (r *route) changed(routed *routed, event pathEvent) {
 		case routed.failure != nil:
 			routed.path.unreachable(routed.failure)
 		default:
-			r.resolve(routed)
+			r.resolve(routed, nil)
 		}
 	}
 }
@@ -253,18 +263,36 @@ func (r *route) resolveIfHeld(routed *routed) bool {
 	if !routed.path.held() || routed.path.link() != nil || routed.resolving || r.host.closing() {
 		return false
 	}
-	r.resolve(routed)
+	r.resolve(routed, nil)
 	return true
 }
 
 // resolve runs `resolve` once for the address: its synchronous part inside this section (lent to it), the rest as a
 // section of its own. A rejection, or a link closed already, fails its holders with the error until the next resolve; a
 // link returned after the host closed is closed at once.
-func (r *route) resolve(routed *routed) {
+//
+// Its `chord.resolve` root span (when the host records) is linked to trigger, the span of the hold that started it, which
+// links back.
+func (r *route) resolve(routed *routed, trigger telemetry.TelemetrySpan) {
+	var span *chordtelemetry.OpenSpan
+	baseContext := r.context
+	if adapter := r.host.telemetry; !chordtelemetry.Untraced(adapter) {
+		span = chordtelemetry.NewOpenSpan(adapter, "chord.resolve", telemetry.SpanAttributes{
+			telemetry.Attr("chord.host", r.host.spanHost),
+			telemetry.Attr("kind", r.kind),
+			telemetry.Attr("address", chordtelemetry.Capped(routed.address.Key)),
+		})
+		if trigger != nil {
+			span.Span().AddLink(telemetry.SpanLink{Context: trigger})
+			trigger.AddLink(telemetry.SpanLink{Context: span.Span()})
+		}
+		routed.span = span.Span()
+		baseContext = chordctx.WithTelemetry(baseContext, span.Span())
+	}
 	routed.resolving = true
 	loop := r.host.loop()
 	signal := parking.New()
-	ctx := context.WithValue(r.context, parking.Key, signal)
+	ctx := context.WithValue(baseContext, parking.Key, signal)
 	loop.Lend(signal, func(abandoned bool) {
 		var resolved ResolvedLink
 		var err error
@@ -279,7 +307,7 @@ func (r *route) resolve(routed *routed) {
 		loop.Run(func() {
 			// A Goexit after the result was handled leaves nothing to do.
 			if !abandoned || routed.resolving {
-				r.resolved(routed, resolved, err)
+				r.resolved(routed, resolved, err, span)
 			}
 		})
 	})
@@ -296,10 +324,12 @@ func resolvePlugin(resolve func(contracts.Address, context.Context) (ResolvedLin
 }
 
 // resolved is what `#resolve` does once `resolve` settled, in one section.
-func (r *route) resolved(routed *routed, resolved ResolvedLink, err error) {
+func (r *route) resolved(routed *routed, resolved ResolvedLink, err error, span *chordtelemetry.OpenSpan) {
 	key := routed.address.Key
 	routed.resolving = false
+	routed.span = nil
 	if err != nil {
+		resolveEnded(span, err)
 		if r.host.closing() {
 			return
 		}
@@ -308,6 +338,7 @@ func (r *route) resolved(routed *routed, resolved ResolvedLink, err error) {
 		return
 	}
 	if r.host.closing() {
+		resolveEnded(span, data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonClosed, Message: "the host is closed"}, nil))
 		resolved.Link.Close()
 		return
 	}
@@ -315,15 +346,31 @@ func (r *route) resolved(routed *routed, resolved ResolvedLink, err error) {
 		principal: resolved.Principal, trusted: resolved.Trusted, codec: resolved.Codec, limits: resolved.Limits,
 	}, r.context)
 	if !made.open() {
-		r.settle(routed, data.NewChordError(data.ChordErrorInit{
+		closed := data.NewChordError(data.ChordErrorInit{
 			Code: data.CodeUnavailable, Message: key + ": the link closed before its handshake",
-		}, nil))
+		}, nil)
+		resolveEnded(span, closed)
+		r.settle(routed, closed)
 		return
 	}
+	resolveEnded(span, nil)
 	routed.failure = nil
 	// A peer that greeted first had its `hello` handled while the link was made, before it was registered here.
 	r.links[made] = &routeLinkEntry{routed: routed, greeted: made.greeted()}
 	routed.path.connected(made)
+}
+
+// resolveEnded: a resolve's span ends, `linked`, or `failed` with err.
+func resolveEnded(span *chordtelemetry.OpenSpan, err error) {
+	if span == nil {
+		return
+	}
+	if err != nil {
+		chordtelemetry.SpanFailed(span.Span(), "resolve_failed", err)
+		span.SetOutcome("failed")
+		return
+	}
+	span.SetOutcome("linked")
 }
 
 // settle: a resolve failed with err: its holders fail `failed { waiting }` with it (they stay on its path for its next

@@ -21,6 +21,25 @@
 // channel (a socketpair on Unix, a named pipe on Windows; workers_channel.go) beside its stdout and stderr pipes. `Entry`
 // is the executable and `ExecArgv` its arguments (Node's `execArgv` and module). A test starts its own test binary again.
 //
+// # Lost links, stale lock files, the worker base
+//
+//   - A running worker whose link was lost (the heartbeat, a protocol error, its own close of its link) is stopped, and its
+//     holders' route starts a new worker (`worker_link_lost`); a second lost link within a minute of the last recovery fails
+//     the address ("worker lost its link") until `Retry` or a rollout (decision "A lost worker link is recovered from").
+//   - A worker killed without its exit hooks leaves its lock's socket file on macOS and the BSDs. The component is the one
+//     clearer of its addresses' locks: before each start and after the exit of a child a signal ended, in the address's queue
+//     (decision "Stale lock files are cleared by the starter"); a taker still fails closed on one it finds.
+//   - Pi bundles the worker's Node entry once with the base code it imports (`base.ts`, `child.ts`: esbuild), in memory, writes it
+//     at the first fork into a private directory its component owns, and `close` removes it after every worker exited, so an edit
+//     after the build runs in no worker. A Go worker is this program's own compiled executable: `Build` (run by the kit right
+//     after the server listens, and by a start when nothing did) copies the `Entry` executable into `WorkersOptions.BaseDir` (the
+//     kit's `cache/workers/<kind>/`, emptied first; a new temporary directory without one), records its bytes (`WorkersBuilt.Inputs`:
+//     an edit of the entry marks the app's `base`), every worker forks that copy, and `Close` removes the directory once every
+//     worker exited. A program cannot be held in memory, so the copy is made at the build and not at the first fork; a component
+//     that closed copies nothing and leaves a named directory as it is. It fails when `Entry` cannot be started or copied, as
+//     Pi's rejects when the base does not build: a start fails while it did (`worker failed to start`). There is no esbuild
+//     bundle, `cache/node` or `NODE_COMPILE_CACHE` (docs/parity/DIVERGENCES.md D600).
+//
 // # Async contract (AGENTS.md "TypeScript async/Promise parity")
 //
 //   - Ordering: the control messages and the link's frames share one ordered stream, told to listeners in order by one
