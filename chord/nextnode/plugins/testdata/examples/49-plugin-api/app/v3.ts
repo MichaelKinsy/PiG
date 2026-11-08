@@ -2,7 +2,7 @@
 // the part of Chord Acme supports (plugins never import Chord directly) next to Acme's own part: the `Greetings`
 // registry every kind has. Examples 49 to 52 build against it; a real app keeps it in `src/api/v3/`.
 
-import { defineRegistry } from "../../../../../src/next/index.ts";
+import { defineRegistry } from "../../../../src/index.ts";
 
 export {
 	constant,
@@ -14,7 +14,7 @@ export {
 	method,
 	obj,
 	str,
-} from "../../../../../src/next/index.ts";
+} from "../../../../src/index.ts";
 
 /** Lines of greeting, one per contributing plugin; the app's start-data facet serves it (composing them in order). */
 export const Greetings = defineRegistry<string, readonly string[]>("acme.greetings", { version: 1 });

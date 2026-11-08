@@ -212,8 +212,8 @@ func benchProbeCore(b *testing.B, cacheDir string) CoreFacet {
 		b.Fatal(err)
 	}
 	src := "file://" + filepath.ToSlash(filepath.Join(tree, "pi", "chord", "src")) + "/"
-	module := `import * as next from "` + src + `next/index.ts";
-import * as evaluate from "` + src + `next-node/plugins/evaluate.ts";
+	module := `import * as next from "` + src + `index.ts";
+import * as evaluate from "` + src + `node/plugins/evaluate.ts";
 const { defineFacet, remote, method, str, hostKind } = next;
 const Worker = hostKind("test.worker");
 const Probe = remote("test.probe", {
@@ -293,7 +293,7 @@ func benchModules(b *testing.B, cacheDir string) HostPackages {
 	}
 	src := "file://" + filepath.ToSlash(filepath.Join(tree, "pi", "chord", "src")) + "/"
 	file := filepath.Join(b.TempDir(), "app.mjs")
-	if err := os.WriteFile(file, []byte(`export * from "`+src+`next/index.ts";`), 0o644); err != nil {
+	if err := os.WriteFile(file, []byte(`export * from "`+src+`index.ts";`), 0o644); err != nil {
 		b.Fatal(err)
 	}
 	return HostPackages{benchSpecifier: file}

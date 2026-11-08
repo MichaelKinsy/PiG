@@ -189,7 +189,7 @@ func (h pcLoaded) label(dir string) string {
 func (c *pcComponent) coreFile(t *testing.T, name, imports, body string) CoreFacet {
 	t.Helper()
 	file := filepath.Join(t.TempDir(), "core.mjs")
-	text := `import { ` + imports + ` } from "` + c.src(t) + `next/index.ts";` + "\n" + body
+	text := `import { ` + imports + ` } from "` + c.src(t) + `index.ts";` + "\n" + body
 	if err := os.WriteFile(file, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +321,7 @@ func TestPluginsPerPluginAtReloadRebuildsOnePluginOfThreeOnlyItChangesTheOthersA
 	if want := (host.PluginChanges{Added: []string{}, Changed: []string{"@test/b"}, Removed: []string{}}); !reflect.DeepEqual(report.Plugins, want) {
 		t.Fatalf("plugins = %+v", report.Plugins)
 	}
-	if want := []host.ReloadedObject{{Object: "test.b", Kind: host.ReloadSwapped}}; !reflect.DeepEqual(report.Objects, want) {
+	if want := []host.ReloadedObject{{Object: "test.b", Kind: host.ReloadRestarted}}; !reflect.DeepEqual(report.Objects, want) {
 		t.Fatalf("objects = %+v", report.Objects)
 	}
 	if got := []string{h.label("a"), h.label("b"), h.label("c")}; !slices.Equal(got, []string{"a1", "b2", "c1"}) {
@@ -694,7 +694,7 @@ func TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstThe
 		api: &AppApi{Name: "@acme/app", Versions: []string{"v3"}},
 	})
 	module := filepath.Join(t.TempDir(), "v3.mjs")
-	writeFiles(t, filepath.Dir(module), map[string]string{"v3.mjs": `export { defineFacet } from "` + c.src(t) + `next/index.ts";`})
+	writeFiles(t, filepath.Dir(module), map[string]string{"v3.mjs": `export { defineFacet } from "` + c.src(t) + `index.ts";`})
 	_, err := c.loadErr(t, "worker", HostPackages{"@acme/app/v3": module})
 	failure, ok := errors.AsType[*PluginError](err)
 	if !ok {
@@ -1008,7 +1008,7 @@ func TestPluginsFixRound1AppliesTheRemovalsOfTheBuildItWasGivenNeverALaterDiscov
 // Go context then, and `release` opens the gate afterwards (the swap's handover waits on the same promise).
 func pcHoldOps(src string) string {
 	return `holdChecks: async () => {
-	const { Attempt } = await import("` + src + `next/host/attempt.ts");
+	const { Attempt } = await import("` + src + `host/attempt.ts");
 	const proto = Attempt.prototype;
 	const descriptor = Object.getOwnPropertyDescriptor(proto, "checked");
 	const gate = Promise.withResolvers();
