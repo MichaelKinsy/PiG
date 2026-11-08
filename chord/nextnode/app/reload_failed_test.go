@@ -9,7 +9,7 @@ import (
 
 // Ports the worker rows of packages/chord/test/node/reload/failed.test.ts (Pi main c23b9ec1), "a reload whose new code fails". The
 // two web-plugin rows (a web plugin whose new build fails, or whose new script throws in the page, on its old component and state)
-// need the web step and a page's DOM: the browser rows.
+// need the web step and a page's DOM: reload_web_test.go (real Chromium).
 
 func TestAReloadWhoseNewCodeFailsKeepsAWorkerPluginWhoseNewBuildEvaluationSetupFailsOnItsOldCodeThePageUntouched(t *testing.T) {
 	for _, broken := range []string{"build", "evaluation", "setup"} {
