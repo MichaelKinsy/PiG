@@ -1,6 +1,7 @@
 package hosts
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -37,8 +38,9 @@ func ParseDevCommand(value any) (DevCommand, error) {
 	if action != "reload" {
 		return DevCommand{}, errors.New("Invalid dev action")
 	}
+	// Only an absent `plugins` means everything (JSON.parse's undefined): null is not an array and is refused as Pi does.
 	plugins, present := object["plugins"]
-	if !present || plugins == nil {
+	if !present {
 		return DevCommand{Action: "reload"}, nil
 	}
 	list, ok := plugins.([]any)
@@ -70,8 +72,15 @@ func ReadDevCommand(request *http.Request) (DevCommand, error) {
 	if len(body) > maxDevCommand {
 		return DevCommand{}, errors.New("Dev command too large")
 	}
+	// As JSON.parse reads it: numbers are never range-checked (1e400 is Infinity there), one value and nothing after it.
+	// (The shared option set, internal/jsonopts, is on follow/jsonv2: use it once that lands.)
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
 	var value any
-	if err := json.Unmarshal(body, &value); err != nil {
+	if err := decoder.Decode(&value); err != nil {
+		return DevCommand{}, errors.New("Invalid dev command JSON")
+	}
+	if _, err := decoder.Token(); err != io.EOF {
 		return DevCommand{}, errors.New("Invalid dev command JSON")
 	}
 	return ParseDevCommand(value)
