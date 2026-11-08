@@ -243,7 +243,7 @@ func (t *TuiSurface) SetTerminalColorSchemeNotifications(enabled bool) {
 	t.input.schemeNotifications = enabled
 	t.input.mu.Unlock()
 	t.mu.Lock()
-	stopped := t.stopped
+	stopped := t.stopped.Load()
 	t.mu.Unlock()
 	if !stopped {
 		writeColorSchemeNotifications(t.terminal, enabled)
@@ -293,7 +293,7 @@ func (t *TuiSurface) Start() {
 	t.mu.Lock()
 	resume := t.suspended
 	t.suspended = false
-	t.stopped = false
+	t.stopped.Store(false)
 	t.started = true
 	t.resend = true
 	t.mu.Unlock()
@@ -315,8 +315,8 @@ func (t *TuiSurface) Stop() { t.StopWithOptions(StopOptions{}) }
 // invalidations, and a later start rebuilds every node.
 func (t *TuiSurface) StopWithOptions(StopOptions) {
 	t.mu.Lock()
-	wasStopped := t.stopped
-	t.stopped = true
+	wasStopped := t.stopped.Load()
+	t.stopped.Store(true)
 	t.started = false
 	t.cancelPendingRenderLocked()
 	t.forgetMain()
@@ -339,12 +339,12 @@ func (t *TuiSurface) StopWithOptions(StopOptions) {
 // nothing before Start, after Stop, or while suspended.
 func (t *TuiSurface) Suspend() {
 	t.mu.Lock()
-	if !t.started || t.stopped {
+	if !t.started || t.stopped.Load() {
 		t.mu.Unlock()
 		return
 	}
 	t.suspended = true
-	t.stopped = true
+	t.stopped.Store(true)
 	t.cancelPendingRenderLocked()
 	t.mu.Unlock()
 	// The terminal's light/dark reports stop while another program owns
@@ -378,7 +378,7 @@ func (t *TuiSurface) Resume() {
 	t.mu.Lock()
 	render := t.started
 	if render {
-		t.stopped = false
+		t.stopped.Store(false)
 	}
 	t.mu.Unlock()
 	if render {
@@ -438,7 +438,7 @@ func regionWidth(cols, width int) int {
 func (t *TuiSurface) doRender() {
 	mainCols, dockCols := t.session.Columns()
 	t.lockFrame()
-	if t.stopped || !t.started {
+	if t.stopped.Load() || !t.started {
 		t.unlockFrame()
 		return
 	}
