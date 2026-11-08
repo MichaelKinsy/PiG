@@ -313,6 +313,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3804a5a](#bf-3804a5a) | The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-380ea0e](#bf-380ea0e) | fix(durable/core): a settled outcome without error detail is no cut-off (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-3840820](#bf-3840820) | MCP tool results whose content blocks carry members of another type than the protocol's (a numeric `text`, a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3868dd5](#bf-3868dd5) | MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a… | PiG's own defect | All platforms | Unreleased |
 | [BF-38b0f0c](#bf-38b0f0c) | Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-38e6506](#bf-38e6506) | The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character | PiG's own defect | All platforms | 0.7.0 |
 | [BF-390964d](#bf-390964d) | A program that embeds the alternate-screen renderer without a `CopySelection` function no longer copies a… | PiG's own defect | All platforms | Unreleased |
@@ -5848,6 +5849,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a79de03e7f` (2026-10-07), `d0ad06fc18` (2026-10-07), `3840820cd6` (2026-10-08), `ab8ac8ecfc` (2026-10-08)
 - **Tests:** `coding/cli/package_update_cases_upstream_test.go::TestPackageUpdateLookupPrefixesOriginal`, `coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle`, `coding/mcpext/tools_test.go::TestMCPToolsShowsBlobsOfTextTypesWithBOMPaddedMimeTypesAsText`, `internal/packagemanager/package_capture_test.go::TestPackageCaptureChild`, `internal/packagemanager/package_capture_test.go::TestPackageCaptureOutputAndFailure`, `internal/packagemanager/package_capture_test.go::TestPackageCaptureStartFailure`, `internal/packagemanager/package_capture_test.go::TestPackageCaptureTimeoutWaitsForChild`, `internal/packagemanager/package_manager_test.go::TestPackageManagerPersistsInstallAndRemoval` and 6 more in docs/bug-ledger.json
 - **Release note:** MCP tool results whose content blocks carry members of another type than the protocol's (a numeric `text`, a `size` string, a missing `uri`, a `null` block, a `resource` that is not an object) now convert as Pi converts them: the model sees what Pi's would, and a block Pi cannot read ends the tool call with Pi's error instead of a placeholder.
+
+### BF-3868dd5
+
+**MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3868dd514e` (2026-11-08)
+- **Tests:** `mcp/deepjson_test.go::TestParseWireMessageKeepsACallResultNested12000LevelsDeep`, `mcp/deepjson_test.go::TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep`, `mcp/deepjson_test.go::TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep`
+- **Release note:** MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.
 
 ### BF-38b0f0c
 

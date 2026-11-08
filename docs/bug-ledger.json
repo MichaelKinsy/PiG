@@ -8697,6 +8697,30 @@
       ]
     },
     {
+      "id": "BF-3868dd5",
+      "title": "MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a…",
+      "symptom": "MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3868dd514e",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "mcp/deepjson_test.go::TestParseWireMessageKeepsACallResultNested12000LevelsDeep",
+        "mcp/deepjson_test.go::TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",
+        "mcp/deepjson_test.go::TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep"
+      ]
+    },
+    {
       "id": "BF-38b0f0c",
       "title": "Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code…",
       "symptom": "Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code blocks.",
