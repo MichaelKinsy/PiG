@@ -26,7 +26,7 @@ an empty replacement drops the chunk."
     (sb-thread:with-mutex ((termin-state-lock state)) (mapcar #'cdr (termin-state-handlers state)))))
 
 (def-request "terminal_input" (ext ctx req)
-  ;; The host is blocked on this reply and Pi's listener is synchronous, so the handlers run inline. One that signals is reported on stderr
+  ;; The host is blocked on this reply and Pi's listener is synchronous, so the handlers run inline. One that signals is reported in the extension's log
   ;; and counts as not consuming, rather than capturing the keystroke.
   (let* ((args (jget req "args"))
          (original (let ((data (and (hash-table-p args) (jget args "data")))) (if (stringp data) data "")))
@@ -34,7 +34,7 @@ an empty replacement drops the chunk."
     (dolist (handler (termin-handlers ext))
       (multiple-value-bind (consumes data)
           (handler-case (termin-verdict (funcall handler current))
-            (error (e) (format *error-output* "extension: recovered from exception in a terminal input handler: ~A~%" e) (values nil nil)))
+            (error (e) (diagnose "extension: recovered from exception in a terminal input handler: ~A~%" e) (values nil nil)))
         (when consumes (setf consume t) (return))
         (when data (setf current data))))
     (let ((verdict (obj "consume" (if consume t :false))))

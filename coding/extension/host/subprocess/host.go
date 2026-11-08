@@ -324,6 +324,7 @@ type Host struct {
 	cwd       string
 	mode      string   // run mode: tui|rpc|json|print, sent in ReadyPayload (ctx.mode)
 	hostInfo  HostInfo // getAgentDir, CONFIG_DIR_NAME and VERSION, sent to extension processes in PIG_EXT_HOST_INFO
+	fusedLog  fusedExtLog
 	socketDir string
 
 	// harnessBinary and harnessArgs are the executable and command-line
@@ -491,6 +492,10 @@ type Host struct {
 	drainTasksClosed bool
 	// hostStatePushQueued is set while a fan-out of a host state change waits to run (see hostStateChanged); the fan-out clears it before it reads the targets, so a change that arrives while it runs queues the next one.
 	hostStatePushQueued atomic.Bool
+	// hostStateEpoch counts the host-side state changes reported through hostStateChanged. It is raised before the change's push is queued, so a call result written after the change has an epoch no extension's pushedStateEpoch reached yet.
+	hostStateEpoch atomic.Uint64
+	// hostStateInflight counts the changes of the identity state (the model, the session id, name and file) that have begun and are not settled (hostStateChanging, hostStateSettled). A change becomes visible to a call before hostStateChanged raises the epoch, so while one is in flight every reply flushes the state, and the flush that follows its settling carries it.
+	hostStateInflight atomic.Int32
 	// stopMcpServersObserver removes the observer that reports each change of the runtime's MCP server registry to hostStateChanged. Guarded by h.mu.
 	stopMcpServersObserver func()
 	// retirements are the stops of replaced generations that a running command deferred (retireGeneration). retirementTasks joins the goroutines that run them; retirementsClosed stops new ones once Shutdown has run the pending stops. Guarded by retirementMu.
@@ -681,7 +686,9 @@ type managedExt struct {
 	// state ahead of the host (thinking level, editor text), so
 	// a push the host would otherwise skip still corrects the runtime. A cache
 	// from an older generation is not trusted.
-	runtimeStateGen    atomic.Uint64
+	runtimeStateGen atomic.Uint64
+	// pushedStateEpoch is the hostStateEpoch the last completed push to this extension began at: every change up to it is in a state this extension received.
+	pushedStateEpoch   atomic.Uint64
 	providerNames      []string
 	mcpServerNames     []string          // MCP servers this extension registered, guarded by Host.mu
 	virtualModels      []VirtualModelRef // virtual models this extension registered, guarded by Host.mu
@@ -919,6 +926,8 @@ func (h *Host) SetUIBridge(bridge *UIBridge) {
 		bridge.onRuntimeStateMutated = h.runtimeStateMutated
 		bridge.OnRunSignalChanged = h.runSignalChanged
 		bridge.OnHostStateChanged = h.hostStateChanged
+		bridge.OnHostStateChanging = h.hostStateChanging
+		bridge.OnHostStateSettled = h.hostStateSettled
 		bridge.resolveFlag = h.resolveFlagValue
 		bridge.withSession = h.withSessionCallback
 		bridge.setup = h.setupCallback
@@ -1679,7 +1688,7 @@ func (h *Host) Builder() *Builder { return h.builder }
 // BroadcastStateUpdate sends a "state_update" notify to every connected
 // subprocess extension with a freshly-snapshotted [StatePayload]. Call this
 // after host-side transitions that mutate the synchronous getter surface
-// (thinking level, idle state, system prompt, context usage,
+// (thinking level, idle state, system prompt,
 // flag values, etc.) so extension caches stay accurate.
 //
 // Safe to call when no extensions are loaded or no UIBridge is wired -
@@ -1760,17 +1769,32 @@ func (h *Host) runtimeStateMutated(extName string) {
 }
 
 // pushStateTo sends me's state on conn, one of me's connections.
+func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) error {
+	return h.pushState(ctx, me, conn, false)
+}
+
+// pushState is pushStateTo for a caller that already holds me.entryCursorMu when cursorHeld is set, as a watchSessionLog call does through its reply.
 //
 //pig:hotpath
-func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) error {
+func (h *Host) pushState(ctx context.Context, me *managedExt, conn *Conn, cursorHeld bool) (err error) {
 	if h.uiBridge == nil || me == nil || conn == nil {
 		return nil
 	}
+	// The epoch is read before the snapshot, so the snapshot holds every change up to it.
+	epoch := h.hostStateEpoch.Load()
+	defer func() {
+		if err == nil {
+			for held := me.pushedStateEpoch.Load(); held < epoch && !me.pushedStateEpoch.CompareAndSwap(held, epoch); held = me.pushedStateEpoch.Load() {
+			}
+		}
+	}()
 	if err := h.syncRunSignal(conn); err != nil {
 		return err
 	}
-	me.entryCursorMu.Lock()
-	defer me.entryCursorMu.Unlock()
+	if !cursorHeld {
+		me.entryCursorMu.Lock()
+		defer me.entryCursorMu.Unlock()
+	}
 
 	for {
 		gen := me.runtimeStateGen.Load()
@@ -2599,6 +2623,7 @@ func (h *Host) Shutdown(reason string) {
 	if h.sockRuntimeDir != "" {
 		_ = os.RemoveAll(h.sockRuntimeDir)
 	}
+	h.fusedLog.remove()
 }
 
 // ensureSockRuntimeDir lazily creates this Host's private socket directory under
@@ -3146,6 +3171,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 				return nil, newLoadError(me.config.Name, "spawn", "host_info_failed", err)
 			}
 		}
+		h.fusedLog.export()
 		hostConn, extConn := newFusedConn()
 		serve := me.inProcServe
 		go func() {
@@ -3225,14 +3251,13 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	if cmd == nil {
 		cmd = buildExtCommandSelected(extCtx, binPath, me.config.RuntimeLanguage, runtime.GOOS, exec.LookPath, tsSelection)
 	}
-	nodeOutput := usesNodeRuntime(binPath, me.config.RuntimeLanguage)
 	cmd.Env = append(append(os.Environ(), harnessEnv...),
 		fmt.Sprintf("PIG_EXT_SOCKET=%s", address),
 		fmt.Sprintf("PIG_EXT_NAME=%s", me.config.Name),
 	)
 	cmd.Env = append(cmd.Env, h.hostInfoEnv()...)
 	cmd.Env = append(cmd.Env, typeScriptRuntimeEnv(tsSelection, tsSet)...)
-	if nodeOutput {
+	if me.nodeRuntime {
 		me.nodeRealm = true
 		busRouted := h.busRoutedForSpawn()
 		if busRouted {
@@ -3250,7 +3275,6 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		}
 	}
 	cmd.Dir = h.cwd
-	cmd.Stdout = nil // Extensions shouldn't write to stdout
 	// pig divergence (D56): after the host stops an extension, its output
 	// pipes get this long to drain before they are closed; it never bounds
 	// extension work.
@@ -3277,17 +3301,17 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		installchange.TrackFile(binPath)
 	}
 	// pig divergence (D56): retain stderr only when a subprocess failure diagnostic references it.
-	stderrFile, _ := os.CreateTemp("", fmt.Sprintf("pig-ext-%s-*.log", fileNameComponent(me.config.Name)))
+	stderrFile, _ := createExtLog(fmt.Sprintf("pig-ext-%s-*.log", fileNameComponent(me.config.Name)))
 	var stderrSink io.Writer
+	extLogPath := ""
 	if stderrFile != nil {
-		me.stderrLogPath = stderrFile.Name()
-		me.stderrLog = &processStderrLog{path: stderrFile.Name(), writer: stderrFile}
-		cmd.Stderr = me.stderrLog
+		extLogPath = stderrFile.Name()
+		me.stderrLogPath = extLogPath
+		me.stderrLog = &processStderrLog{path: extLogPath, writer: stderrFile}
 		stderrSink = me.stderrLog
 	}
-	if nodeOutput {
-		cmd.Stdout, cmd.Stderr = h.nodeExtensionOutput(stderrSink)
-	}
+	cmd.Env = withExtLog(cmd.Env, extLogPath)
+	cmd.Stdout, cmd.Stderr = h.extensionOutput(stderrSink)
 	processTree, err := startProcessTree(cmd)
 	if err != nil {
 		// No Cmd.Wait runs to close the writer the host-side copy owns.
@@ -4037,6 +4061,7 @@ func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.Too
 		if window := agent.ToolStartWindowFromContext(ctx, toolCallID); window != nil {
 			defer window.Close()
 			reqCtx = withRequestWindow(reqCtx, window)
+			reqCtx = withRequestEarlierWindows(reqCtx, agent.ToolEarlierStartWindowsFromContext(ctx, toolCallID))
 		}
 		if target.syncState != nil {
 			if err := target.syncState(reqCtx, conn); err != nil {
@@ -5117,16 +5142,19 @@ func resolveSocketDir() string {
 	)
 }
 
-// nodeExtensionOutput is where a Node extension process writes. Pi runs its
-// extensions in its own process, so their console output reaches Pi's
-// terminal: stdout in interactive mode, and stderr otherwise, where Pi has
-// taken stdout over for its own output (main.ts takeOverStdout). Stderr also
-// goes to the extension's log, which load and crash diagnostics read.
+// extensionOutput is where an extension process writes, whatever its runtime.
+// Pi runs its extensions in its own process, so their console output reaches
+// Pi's terminal: stdout in interactive mode, and stderr otherwise, where Pi has
+// taken stdout over for its own output (main.ts takeOverStdout; print, json
+// and rpc). Pi writes interactive-mode stderr to the same terminal as the UI
+// and does not intercept it, so neither does PiG. Stderr also goes to the
+// extension's log, which load and crash diagnostics read.
 //
 // Both are writers rather than PiG's own files, so the process gets pipes
 // the host copies from: Node makes its stdio pipes non-blocking, which on a
-// descriptor shared with PiG would turn PiG's own writes into EAGAIN errors.
-func (h *Host) nodeExtensionOutput(log io.Writer) (stdout, stderr io.Writer) {
+// descriptor shared with PiG would turn PiG's own writes into EAGAIN errors,
+// and the host's copy is where the log's head and tail bounds apply.
+func (h *Host) extensionOutput(log io.Writer) (stdout, stderr io.Writer) {
 	terminal := os.Stderr
 	if h.mode == "tui" {
 		terminal = os.Stdout

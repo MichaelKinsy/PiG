@@ -4,17 +4,21 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/oracle"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// The contract's fingerprint equals Pi's (see sessions/contract). Pi's other contracts of the module (the rest of the
-// plugin's port) are not declared here yet.
-func TestChildStoreFingerprintsAsPi(t *testing.T) {
+// The contracts' fingerprints equal Pi's (see sessions/contract).
+func TestContractFingerprintsAsPi(t *testing.T) {
 	const module = "plugins/subagents/contract.ts"
-	want, ok := oracle.Fingerprints(t, module)[module+"#ChildStore"]
-	if !ok {
-		t.Fatal("Pi exports no ChildStore")
-	}
-	if ChildStore.Name != want.Name || ChildStore.Version != want.Version || ChildStore.Fingerprint != want.Fingerprint {
-		t.Errorf("ChildStore = {%s v%d %s}, Pi has {%s v%d %s}", ChildStore.Name, ChildStore.Version, ChildStore.Fingerprint, want.Name, want.Version, want.Fingerprint)
+	all := oracle.Fingerprints(t, module)
+	for name, got := range map[string]*contracts.Contract{"ChildStore": ChildStore, "Subagents": Subagents, "SubagentControl": SubagentControl} {
+		want, ok := all[module+"#"+name]
+		if !ok {
+			t.Errorf("Pi exports no %s", name)
+			continue
+		}
+		if got.Name != want.Name || got.Version != want.Version || got.Fingerprint != want.Fingerprint {
+			t.Errorf("%s = {%s v%d %s}, Pi has {%s v%d %s}", name, got.Name, got.Version, got.Fingerprint, want.Name, want.Version, want.Fingerprint)
+		}
 	}
 }

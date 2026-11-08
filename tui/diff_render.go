@@ -13,6 +13,7 @@ package tui
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
@@ -115,13 +116,30 @@ func RenderDiff(diffText string, _ ...RenderDiffOptions) string {
 	return strings.Join(result, "\n")
 }
 
+// commonIndentLength is the length in bytes of the whitespace the two lines start with in common.
+func commonIndentLength(oldContent, newContent string) int {
+	length := 0
+	for length < len(oldContent) && length < len(newContent) {
+		r, size := utf8.DecodeRuneInString(oldContent[length:])
+		if !jsstring.IsSpace(r) || !strings.HasPrefix(newContent[length:], oldContent[length:length+size]) {
+			break
+		}
+		length += size
+	}
+	return length
+}
+
 // RenderIntraLineDiff is diff.ts renderIntraLineDiff: the word-level diff of the two lines (jsdiff's diffWords), with inverse on the
-// changed parts and the leading whitespace of the first removed and first added part left outside the highlight.
+// changed parts and the leading whitespace of the first removed and first added part left outside the highlight. The whitespace both
+// lines start with is separated before diffing, so a leading insertion cannot consume it.
 func RenderIntraLineDiff(oldContent, newContent string) (removedLine, addedLine string) {
 	inverse := ChalkInverse
+	indent := commonIndentLength(oldContent, newContent)
 	var removed, added strings.Builder
+	removed.WriteString(oldContent[:indent])
+	added.WriteString(oldContent[:indent])
 	firstRemoved, firstAdded := true, true
-	for _, part := range jsdiff.DiffWords(oldContent, newContent) {
+	for _, part := range jsdiff.DiffWords(oldContent[indent:], newContent[indent:]) {
 		value := part.Value
 		switch {
 		case part.Removed:

@@ -203,8 +203,8 @@ type RequestAccess struct {
 
 // RequestResolver lets trusted transports authenticate a marked loopback request as remote, before ordinary Host checks.
 // Without a principal, the authenticators decide who the request is (a relayed Radius user: see RequestOrigin.RelayUser).
-// nil: not this resolver's request.
-type RequestResolver func(request *http.Request, ctx host.Ctx) *RequestAccess
+// nil: not this resolver's request. An error fails the request, as a throwing resolver does in Pi.
+type RequestResolver func(request *http.Request, ctx host.Ctx) (*RequestAccess, error)
 
 // RequestResolvers is the registry of request resolvers.
 var RequestResolvers = NewKeyedRegistry[RequestResolver]("p2.request-resolvers")

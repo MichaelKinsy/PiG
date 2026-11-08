@@ -187,7 +187,7 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 			return nil, err
 		}
 		state.web = &Web{Nonce: state.nonce, Bundle: bundle}
-		if options.Sprite != nil && bundle.UpstreamVersion != "" {
+		if spriteApplies(options.Sprite, bundle) {
 			state.sprite = newSpriteHub(options.Sprite)
 			state.web.Sprite = state.sprite
 		}
@@ -453,7 +453,10 @@ func (s *serverState) credentialAccess(request *http.Request, ctx host.Ctx) (*p2
 	}
 	for _, key := range table.Keys() {
 		resolve, _ := table.Get(key)
-		access := resolve(request, ctx)
+		access, err := resolve(request, ctx)
+		if err != nil {
+			return nil, err
+		}
 		if access == nil {
 			continue
 		}

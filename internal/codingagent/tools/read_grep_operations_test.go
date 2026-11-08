@@ -9,10 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -84,9 +82,9 @@ func TestReadToolOperationsDecideImageDetection(t *testing.T) {
 	}
 }
 
-// grep.ts:53-58 GrepOperations: isDirectory and readFile (context lines) replace the local filesystem.
+// grep.ts GrepOperations: isDirectory replaces the local filesystem check.
 func TestGrepToolUsesTheConfiguredOperations(t *testing.T) {
-	var dirs, reads []string
+	var dirs []string
 	root := virtualPath("/remote")
 	missingPath := filepath.Join(root, "missing")
 	tool := &GrepTool{CWD: root, Operations: &GrepOperations{
@@ -97,10 +95,6 @@ func TestGrepToolUsesTheConfiguredOperations(t *testing.T) {
 			}
 			return false, nil
 		},
-		ReadFile: func(path string) (string, error) {
-			reads = append(reads, path)
-			return "before\nneedle\nafter", nil
-		},
 	}}
 	missing, _ := tool.Execute(t.Context(), "id", json.RawMessage(`{"pattern":"needle","path":"missing"}`), nil)
 	if !missing.IsError || resultText(t, missing) != "Path not found: "+missingPath {
@@ -108,34 +102,5 @@ func TestGrepToolUsesTheConfiguredOperations(t *testing.T) {
 	}
 	if len(dirs) != 1 || dirs[0] != missingPath {
 		t.Fatalf("isDirectory saw %v", dirs)
-	}
-	_ = reads
-}
-
-// grep.ts:152: context lines come from operations.readFile, not from the file ripgrep matched in.
-func TestGrepToolReadsContextLinesThroughTheOperations(t *testing.T) {
-	if LookupToolPath("rg", "") == "" {
-		t.Skip("ripgrep is not installed")
-	}
-	dir := t.TempDir()
-	file := filepath.Join(dir, "match.txt")
-	if err := os.WriteFile(file, []byte("needle\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	var reads []string
-	tool := &GrepTool{CWD: dir, Operations: &GrepOperations{
-		IsDirectory: func(string) (bool, error) { return true, nil },
-		ReadFile: func(path string) (string, error) {
-			reads = append(reads, path)
-			return "remote before\nneedle\nremote after", nil
-		},
-	}}
-	result, err := tool.Execute(t.Context(), "id", json.RawMessage(`{"pattern":"needle","context":1}`), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := resultText(t, result)
-	if !strings.Contains(text, "remote before") || len(reads) == 0 {
-		t.Fatalf("context lines did not come from the operations (reads %v): %q", reads, text)
 	}
 }

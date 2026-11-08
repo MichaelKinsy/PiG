@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func TestRenderDiff_BasicColoring(t *testing.T) {
@@ -100,5 +102,38 @@ func TestRenderDiffIgnoresItsOptions(t *testing.T) {
 	diff := "+1 added\n-2 removed\n 3 context"
 	if got, want := RenderDiff(diff, RenderDiffOptions{FilePath: "a.go"}), RenderDiff(diff); got != want || got == "" {
 		t.Fatalf("options changed the output:\n%q\n%q", got, want)
+	}
+}
+
+// pi: packages/coding-agent/test/diff.test.ts (dca1f5552, #9274)
+func TestRenderDiffPreservesIndentation(t *testing.T) {
+	for _, tc := range []struct {
+		name, diff string
+		expected   []string
+	}{
+		{
+			name:     "text is inserted at the start of a line",
+			diff:     "-83   await commitRecordingChunk({\n+83   const result = await commitRecordingChunk({",
+			expected: []string{"-83   await commitRecordingChunk({", "+83   const result = await commitRecordingChunk({"},
+		},
+		{
+			name:     "indented text is replaced",
+			diff:     "-12     const value = oldValue\n+12     const value = newValue",
+			expected: []string{"-12     const value = oldValue", "+12     const value = newValue"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := strings.Split(widthx.StripAnsi(RenderDiff(tc.diff)), "\n"); !slices.Equal(got, tc.expected) {
+				t.Fatalf("rendered %q, want %q", got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion(t *testing.T) {
+	rendered := RenderDiff("-83   await commitRecordingChunk({\n+83   const result = await commitRecordingChunk({")
+	inverseInsertion := ChalkInverse("const result = ")
+	if !strings.Contains(rendered, inverseInsertion) || strings.Index(rendered, "+83   ") >= strings.Index(rendered, inverseInsertion) {
+		t.Fatalf("rendered = %q", rendered)
 	}
 }

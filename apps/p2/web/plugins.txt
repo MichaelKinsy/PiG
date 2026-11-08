@@ -1,10 +1,15 @@
 artifacts
 chat
+coding-tools
+devices
+discord
 envs
 login
 logs
+ports
 send-file
 sessions
 sharing
 subagents
+terminals
 web-shell
