@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"hash"
 	"io"
+	"maps"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -90,9 +91,7 @@ func (r *Recorder) Inputs() BaseInputs {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	out := make(BaseInputs, len(r.inputs))
-	for path, hash := range r.inputs {
-		out[path] = hash
-	}
+	maps.Copy(out, r.inputs)
 	return out
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -125,9 +126,7 @@ func started2(a *app.App, port int, root string) started {
 func writePlugin(t testing.TB, root, dir, name string, files map[string]string) {
 	t.Helper()
 	all := map[string]string{"package.json": fmt.Sprintf(`{"name":%q,"private":true,"type":"module"}`, name)}
-	for file, text := range files {
-		all[file] = text
-	}
+	maps.Copy(all, files)
 	for file, text := range all {
 		path := filepath.Join(root, dir, file)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -345,7 +344,7 @@ func noGoroutinesOf(t testing.TB, markers ...string) {
 		buf := make([]byte, 1<<20)
 		buf = buf[:runtime.Stack(buf, true)]
 		var leaked []string
-		for _, stack := range strings.Split(string(buf), "\n\n") {
+		for stack := range strings.SplitSeq(string(buf), "\n\n") {
 			if slices.ContainsFunc(markers, func(marker string) bool { return strings.Contains(stack, marker) }) &&
 				!strings.Contains(stack, "testing.tRunner") && !strings.Contains(stack, "runtime.Stack") {
 				leaked = append(leaked, stack)
