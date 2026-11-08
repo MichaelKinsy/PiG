@@ -82,12 +82,18 @@ func waitClosed(t *testing.T, closed chan struct{}) {
 func TestPipeTransportOverARemoteProcessRunsInitializeAndToolsListThenClosesStdinAndTheProgramExits(t *testing.T) {
 	eachProcessDaemon(t, func(t *testing.T) {
 		connection, cwd := processConnection(t)
-		transport, pid, closed := openMcpPipeTransport(t, connection, cwd, mcpServerProgram(false), mcp.PipeTransportOptions{CloseTimeoutMs: 10_000})
+		const closeTimeoutMs = 10_000
+		transport, pid, closed := openMcpPipeTransport(t, connection, cwd, mcpServerProgram(false), mcp.PipeTransportOptions{CloseTimeoutMs: closeTimeoutMs})
 		client := connectOverPipe(t, transport)
+		started := time.Now()
 		if err := client.Close(); err != nil {
 			t.Fatal(err)
 		}
 		waitClosed(t, closed)
+		// The program ends because its stdin ended, not because Close killed it after CloseTimeoutMs.
+		if elapsed := time.Since(started); elapsed >= closeTimeoutMs*time.Millisecond/2 {
+			t.Fatalf("the program took %v to end after its stdin was closed; CloseStdin did not end it", elapsed)
+		}
 		if !waitUntilGone(*pid) {
 			t.Fatalf("program %d still runs after its stdin ended", *pid)
 		}
