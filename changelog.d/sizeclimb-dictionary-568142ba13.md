@@ -1,0 +1,3 @@
+### Changed
+
+- The `pig` binary is about 3.5 MB smaller: the word-segmentation dictionaries (Chinese, Japanese, Thai, Lao, Khmer and Burmese) are 2.78 MB where they were 6.32 MB. They are stored as shared-prefix tries that are read in place, so nothing is decompressed, allocated or kept in memory. Word movement and deletion in the editor, double-click word selection and tool search segment text about three times faster than before (a Japanese line in 31 µs instead of 91 µs), the first Chinese or Japanese lookup in a process takes about 0.1 ms instead of 0.23 ms, a process holds less file-backed memory after its first segmentation, and the segmentation is unchanged.

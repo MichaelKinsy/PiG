@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -52,7 +53,7 @@ import (
 //
 // Not ported yet (pending, no divergence): the `principalAttributes` hook (T6 host spans: the Go host has none).
 
-// pig divergence (D600): a Go worker is the program's own executable, so Pi's esbuild bundle of the worker's Node entry (base.ts, child.ts) has no Go
+// A Go worker is the program's own executable, so Pi's esbuild bundle of the worker's Node entry (base.ts, child.ts) has no Go
 // form: the worker base is a copy of the executable made by `Workers.Build` into `cache/workers/<kind>/`.
 
 // Server is the server's host kind: the kit's server host is Server().
@@ -580,13 +581,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		}
 	}
 	modules := plugins.HostPackages{}
-	for name, path := range options.API.Modules {
-		modules[name] = path
-	}
+	maps.Copy(modules, options.API.Modules)
 	if serverKind != nil {
-		for name, path := range serverKind.Packages {
-			modules[name] = path
-		}
+		maps.Copy(modules, serverKind.Packages)
 	}
 	// The server host's own store is the kit's; the plugins' is another file (two chord stores cannot share one).
 	pluginsStore := filepath.Join(opened.layout.Server, "plugins.sqlite")

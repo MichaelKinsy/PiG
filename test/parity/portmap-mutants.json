@@ -4252,6 +4252,11 @@
    "file": "ai/openai_responses.go",
    "old": "Type: \"additional_tools\", Role: \"developer\"",
    "new": "Type: \"additional_tools\", Role: \"user\""
+  },
+  {
+   "file": "ai/openai_responses.go",
+   "old": "\tif options.SupportsToolSearch {\n\t\treturn TranscriptToolSupportAdditions",
+   "new": "\tif options.SupportsToolSearch && options.SupportsAdditionalTools {\n\t\treturn TranscriptToolSupportAdditions"
   }
  ],
  "packages/ai/src/api/openai-codex-responses.ts": [
@@ -4273,6 +4278,11 @@
    "file": "ai/tool_flow.go",
    "old": "ToolResultMessage{ToolCallID: call.ID, ToolName: call.Name,",
    "new": "ToolResultMessage{ToolCallID: call.Name, ToolName: call.Name,"
+  },
+  {
+   "file": "ai/transform_messages.go",
+   "old": "\tif !message.IsError {\n\t\treturn nil\n\t}\n\tvar images",
+   "new": "\tvar images"
   }
  ],
  "packages/ai/src/api/openrouter-images.ts": [
@@ -4629,6 +4639,11 @@
    "file": "coding/extension/opaque_types.go",
    "old": "orderedjson.UnmarshalFields(data, (*plain)(r), \"details\")",
    "new": "orderedjson.UnmarshalFields(data, (*plain)(r), \"detailz\")"
+  },
+  {
+   "file": "coding/extension/keybinding_hints.go",
+   "old": "func (ToolRenderContext) KeyHint(keybinding, description string) string {\n\treturn tui.KeyHint(tui.ActionKeyText(keybinding), description)",
+   "new": "func (ToolRenderContext) KeyHint(keybinding, description string) string {\n\treturn tui.KeyHint(tui.ActionKeyText(keybinding), \"\")"
   }
  ],
  "packages/coding-agent/src/core/extensions/virtual-modules.ts": [
@@ -5510,6 +5525,181 @@
    "file": "internal/evals/evalsuites/audit.go",
    "old": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"match\")",
    "new": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"mutant\")"
+  }
+ ],
+ "packages/schema/src/builders.ts": [
+  {
+   "file": "schema/builders.go",
+   "old": "chordjson.ObjectOf(\"type\", \"string\"), options)",
+   "new": "chordjson.ObjectOf(\"type\", \"number\"), options)"
+  },
+  {
+   "file": "schema/builders.go",
+   "old": "\tif len(schema) > 0 {\n\t\treturn schema[0]\n\t}\n\treturn &Object{}",
+   "new": "\treturn &Object{}"
+  },
+  {
+   "file": "schema/builders.go",
+   "old": "ObjectOf(\"anyOf\", schemaList(schemas))",
+   "new": "ObjectOf(\"oneOf\", schemaList(schemas))"
+  }
+ ],
+ "packages/schema/src/types.ts": [
+  {
+   "file": "schema/types.go",
+   "old": "Draft7 Draft = \"7\"",
+   "new": "Draft7 Draft = \"\""
+  }
+ ],
+ "packages/schema/src/validator.ts": [
+  {
+   "file": "schema/validator.go",
+   "old": "return ParseResult{OK: true, Value: value}, nil",
+   "new": "return ParseResult{OK: false, Value: value}, nil"
+  }
+ ],
+ "packages/mcp/src/config.ts": [
+  {
+   "file": "mcp/config.go",
+   "old": "mcpshared.ValidateMcpServerConfig(name, raw, options)",
+   "new": "mcpshared.ValidateMcpServerConfig(name+\"x\", raw, options)"
+  }
+ ],
+ "packages/mcp/src/input-schema.ts": [
+  {
+   "file": "mcp/input_schema.go",
+   "old": "!obj.Has(\"properties\")",
+   "new": "obj.Has(\"properties\")"
+  }
+ ],
+ "packages/mcp/src/naming.ts": [
+  {
+   "file": "mcp/naming.go",
+   "old": "return mcpshared.McpNamespace(server)",
+   "new": "return mcpshared.McpNamespace(server + \"_\")"
+  }
+ ],
+ "packages/mcp/src/oauth/client-settings.ts": [
+  {
+   "file": "mcp/oauth/client_settings.go",
+   "old": "settings.ClientID == \"\" && settings.ClientName == \"\" && documents != nil",
+   "new": "settings.ClientID == \"\" && settings.ClientName != \"\" && documents != nil"
+  }
+ ],
+ "packages/mcp/src/oauth/errors.ts": [
+  {
+   "file": "mcp/oauth/errors.go",
+   "old": "\treturn \"Another process is refreshing the MCP server's tokens\"",
+   "new": "\treturn \"Another process is refreshing the MCP server tokens\""
+  }
+ ],
+ "packages/mcp/src/oauth/sign-in.ts": [
+  {
+   "file": "mcp/oauth/sign_in.go",
+   "old": "return \"Sign-in cancelled\"",
+   "new": "return \"Sign-in canceled\""
+  }
+ ],
+ "packages/mcp/src/output-limit.ts": [
+  {
+   "file": "mcp/output_limit.go",
+   "old": "tokens := (truncation.totalBytes + 3) / 4",
+   "new": "tokens := (truncation.totalBytes + 2) / 4"
+  }
+ ],
+ "packages/mcp/src/transports/pipe.ts": [
+  {
+   "file": "mcp/pipe.go",
+   "old": "t.lines.readStdout(bytes)",
+   "new": "t.lines.readStdout(nil)"
+  }
+ ],
+ "packages/mcp/src/oauth/auth-provider.ts": [
+  {
+   "file": "mcp/oauth/auth_provider.go",
+   "old": "if state == nil || state.Tokens == nil || state.Tokens.RefreshToken == \"\" {",
+   "new": "if state == nil || state.Tokens == nil || state.Tokens.RefreshToken != \"\" {"
+  }
+ ],
+ "packages/mcp/src/oauth/loopback.ts": [
+  {
+   "file": "mcp/oauth/loopback.go",
+   "old": "if strings.TrimFunc(input, jsstring.IsSpace) == \"\" {",
+   "new": "if input == \"\" {"
+  }
+ ],
+ "packages/telemetry/src/memory.ts": [
+  {
+   "file": "telemetry/memory.go",
+   "old": "timed.intervalMs > *query.StartMax",
+   "new": "timed.intervalMs >= *query.StartMax"
+  },
+  {
+   "file": "telemetry/memory.go",
+   "old": "\tif len(spans) == 0 {\n\t\treturn nil, nil\n\t}\n\treturn &StoredTrace{TraceID: traceID, Spans: spans}, nil",
+   "new": "\tif len(spans) < 2 {\n\t\treturn nil, nil\n\t}\n\treturn &StoredTrace{TraceID: traceID, Spans: spans}, nil"
+  },
+  {
+   "file": "telemetry/memory_now.go",
+   "old": "math.Abs(anchor+clock-wall) > telemetryToleranceMs",
+   "new": "math.Abs(anchor+clock-wall) > 0"
+  }
+ ],
+ "packages/tui/src/components/editor.ts": [
+  {
+   "file": "tui/editor.go",
+   "old": "func (e *Editor) AutocompleteOpen() bool { return !e.forwards() && len(e.autocompleteItems) > 0 }",
+   "new": "func (e *Editor) AutocompleteOpen() bool { return !e.forwards() && len(e.autocompleteItems) >= 0 }"
+  }
+ ],
+ "packages/tui/src/terminal.ts": [
+  {
+   "file": "tui/terminal_exit_restore.go",
+   "old": "sequence += \"\\x1b[?2004l\"",
+   "new": "sequence += \"\""
+  }
+ ],
+ "packages/tui/src/keybindings.ts": [
+  {
+   "file": "tui/selection_navigation.go",
+   "old": "selectedIndex+direction*pageSize",
+   "new": "selectedIndex-direction*pageSize"
+  }
+ ],
+ "packages/ai/src/utils/identity.ts": [
+  {
+   "file": "ai/identity.go",
+   "old": "headers[\"User-Agent\"] = FormatUserAgent(identity)",
+   "new": "headers[\"User-Agent\"] = \"\""
+  },
+  {
+   "file": "ai/identity.go",
+   "old": "\t\tif source.Version != nil {",
+   "new": "\t\tif source.Version == nil {"
+  },
+  {
+   "file": "ai/identity_models.go",
+   "old": "MergeClientIdentity(identity, merged.Identity)",
+   "new": "MergeClientIdentity(merged.Identity, identity)"
+  }
+ ],
+ "packages/ai/src/utils/streaming-json.ts": [
+  {
+   "file": "ai/streaming_json_parser.go",
+   "old": "return parseToolCallArguments(stream.text.String())",
+   "new": "return stream.arguments, stream.order, \"\""
+  },
+  {
+   "file": "ai/streaming_json_parser.go",
+   "old": "return &ToolCallArgumentsStream{arguments: JsonObject{}, valid: true}",
+   "new": "return &ToolCallArgumentsStream{arguments: JsonObject{\"x\": nil}, valid: true}"
+  }
+ ],
+ "packages/ai/src/utils/json-parse.ts": [
+  {
+   "file": "ai/json_repair.go",
+   "old": "\t\treturn JsonObject{}, nil, \"\"\n\t}\n\t// The common case",
+   "new": "\t\treturn JsonObject{\"x\": nil}, nil, \"\"\n\t}\n\t// The common case"
   }
  ]
 }

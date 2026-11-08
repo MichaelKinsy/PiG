@@ -21,6 +21,7 @@ import (
 	"unicode"
 	"unicode/utf16"
 	"unicode/utf8"
+	"unsafe"
 )
 
 // Unmarshal parses the JSON-encoded data and stores the result
@@ -107,7 +108,7 @@ func Unmarshal(data []byte, v any) error {
 	// before discovering a JSON syntax error.
 	d := decodeStatePool.Get().(*decodeState)
 	defer releaseDecodeState(d)
-	err := checkValid(data, &d.scan)
+	err := validate(data, &d.scan)
 	if err != nil {
 		return err
 	}
@@ -122,10 +123,11 @@ func UnmarshalFrame(data []byte, v any) error {
 	d := decodeStatePool.Get().(*decodeState)
 	defer releaseDecodeState(d)
 	d.scan.maxDepth = frameNestingDepth
-	if err := checkValid(data, &d.scan); err != nil {
+	if err := validate(data, &d.scan); err != nil {
 		return err
 	}
 	d.init(data)
+	d.aliasRaw = true
 	return d.unmarshal(v)
 }
 
@@ -157,7 +159,7 @@ func releaseDecodeState(d *decodeState) {
 	if cap(parseState) > 1024 {
 		parseState = nil
 	}
-	context := d.errorContext
+	context, names := d.errorContext, d.names
 	if context != nil {
 		context.Struct = nil
 		if cap(context.FieldStack) > 64 {
@@ -168,7 +170,7 @@ func releaseDecodeState(d *decodeState) {
 	}
 	*d = decodeState{}
 	d.scan.parseState = parseState[:0]
-	d.errorContext = context
+	d.errorContext, d.names = context, names
 	decodeStatePool.Put(d)
 }
 
@@ -265,6 +267,12 @@ type decodeState struct {
 	savedError            error
 	useNumber             bool
 	disallowUnknownFields bool
+	// aliasRaw makes a RawMessage member hold the slice of data it was read from, capacity-limited, instead of a copy (UnmarshalFrame).
+	aliasRaw bool
+	// names interns the short strings of interface values (see internedString); it outlives the decode with the pooled state.
+	names *nameCache
+	// order, when not nil, records the member order of every map[string]any the decode builds (UnmarshalObject).
+	order *ObjectOrder
 }
 
 // readIndex returns the position of the last byte read.
@@ -312,18 +320,62 @@ func (d *decodeState) addErrorContext(err error) error {
 	return err
 }
 
-// skip scans to the end of what was started.
+// callUnmarshaler is u.UnmarshalJSON(raw), except that a frame decode (aliasRaw) hands a *RawMessage the bytes themselves.
+func (d *decodeState) callUnmarshaler(u Unmarshaler, raw []byte) error {
+	if d.aliasRaw {
+		if m, ok := u.(*RawMessage); ok {
+			*m = raw[:len(raw):len(raw)]
+			return nil
+		}
+	}
+	return u.UnmarshalJSON(raw)
+}
+
+// skip scans to the end of what was started: the object or array whose opening byte was read last. Every document the decoder sees has
+// been validated, so it counts brackets and crosses strings eight bytes at a time instead of stepping the scanner, then leaves the scanner
+// where stepping the closing byte would: the container popped, the opcode of the closing byte.
 func (d *decodeState) skip() {
 	s, data, i := &d.scan, d.data, d.off
-	depth := len(s.parseState)
-	for {
-		op := s.step(s, data[i])
-		i++
-		if len(s.parseState) < depth {
-			d.off = i
-			d.opcode = op
+	for depth := 1; ; i++ {
+		switch data[i] {
+		case '"':
+			i = stringEndTrusted(data, i+1) - 1
+		case '{', '[':
+			depth++
+		case '}', ']':
+			if depth--; depth > 0 {
+				continue
+			}
+			n := len(s.parseState) - 1
+			s.parseState = s.parseState[:n]
+			if n == 0 {
+				s.step = stateEndTop
+				s.endTop = true
+			} else {
+				s.step = stateEndValue
+			}
+			if data[i] == '}' {
+				d.opcode = scanEndObject
+			} else {
+				d.opcode = scanEndArray
+			}
+			d.off = i + 1
 			return
 		}
+	}
+}
+
+// stringEndTrusted is the index after the closing quote of the valid string whose content starts at data[i].
+func stringEndTrusted(data []byte, i int) int {
+	for {
+		i = stringContentEnd(data, i)
+		if i >= len(data) {
+			return len(data)
+		}
+		if data[i] == '"' {
+			return i + 1
+		}
+		i += 2 // an escape: the four hex digits of \u are no quote or backslash
 	}
 }
 
@@ -369,15 +421,7 @@ func (d *decodeState) rescanLiteral() {
 Switch:
 	switch data[i-1] {
 	case '"': // string
-		for ; i < len(data); i++ {
-			switch data[i] {
-			case '\\':
-				i++ // escaped char
-			case '"':
-				i++ // tokenize the closing quote too
-				break Switch
-			}
-		}
+		i = stringEndTrusted(data, i) // the closing quote is part of the literal
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-': // number
 		for ; i < len(data); i++ {
 			switch data[i] {
@@ -555,7 +599,7 @@ func (d *decodeState) array(v reflect.Value) error {
 	if u != nil {
 		start := d.readIndex()
 		d.skip()
-		return u.UnmarshalJSON(d.data[start:d.off])
+		return d.callUnmarshaler(u, d.data[start:d.off])
 	}
 	if ut != nil {
 		d.saveError(&UnmarshalTypeError{Value: "array", Type: v.Type(), Offset: int64(d.off)})
@@ -652,7 +696,7 @@ func (d *decodeState) object(v reflect.Value) error {
 	if u != nil {
 		start := d.readIndex()
 		d.skip()
-		return u.UnmarshalJSON(d.data[start:d.off])
+		return d.callUnmarshaler(u, d.data[start:d.off])
 	}
 	if ut != nil {
 		d.saveError(&UnmarshalTypeError{Value: "object", Type: v.Type(), Offset: int64(d.off)})
@@ -914,7 +958,7 @@ func (d *decodeState) literalStore(item []byte, v reflect.Value, fromQuoted bool
 	isNull := item[0] == 'n' // null
 	u, ut, pv := indirect(v, isNull)
 	if u != nil {
-		return u.UnmarshalJSON(item)
+		return d.callUnmarshaler(u, item)
 	}
 	if ut != nil {
 		if item[0] != '"' {
@@ -1128,6 +1172,12 @@ func (d *decodeState) arrayInterface() []any {
 // objectInterface is like object but returns map[string]any.
 func (d *decodeState) objectInterface() map[string]any {
 	m := make(map[string]any)
+	// pig additive (key-order): the keys of this object are the top of order.scratch from base on; the objects below it stack theirs above.
+	order := d.order
+	base := 0
+	if order != nil {
+		base = len(order.scratch)
+	}
 	for {
 		// Read opening " of string key or closing }.
 		d.scanWhile(scanSkipSpace)
@@ -1143,7 +1193,7 @@ func (d *decodeState) objectInterface() map[string]any {
 		start := d.readIndex()
 		d.rescanLiteral()
 		item := d.data[start:d.readIndex()]
-		key, ok := unquote(item)
+		key, ok := d.internedString(item)
 		if !ok {
 			panic(phasePanicMsg)
 		}
@@ -1158,6 +1208,9 @@ func (d *decodeState) objectInterface() map[string]any {
 		d.scanWhile(scanSkipSpace)
 
 		// Read value.
+		if order != nil {
+			order.scratch = append(order.scratch, key)
+		}
 		m[key] = d.valueInterface()
 
 		// Next token must be , or }.
@@ -1170,6 +1223,9 @@ func (d *decodeState) objectInterface() map[string]any {
 		if d.opcode != scanObjectValue {
 			panic(phasePanicMsg)
 		}
+	}
+	if order != nil {
+		order.finish(m, base)
 	}
 	return m
 }
@@ -1192,7 +1248,7 @@ func (d *decodeState) literalInterface() any {
 		return c == 't'
 
 	case '"': // string
-		s, ok := unquote(item)
+		s, ok := d.internedString(item)
 		if !ok {
 			panic(phasePanicMsg)
 		}
@@ -1202,6 +1258,25 @@ func (d *decodeState) literalInterface() any {
 		if c != '-' && (c < '0' || c > '9') {
 			panic(phasePanicMsg)
 		}
+		if !d.useNumber {
+			// A small integer is one boxed value shared by every decode; any other number is parsed in place, without a string of its digits.
+			if len(item) <= 3 {
+				n, digits := 0, true
+				for _, c := range item {
+					if c < '0' || c > '9' {
+						digits = false
+						break
+					}
+					n = n*10 + int(c-'0')
+				}
+				if digits && n < len(smallNumbers) {
+					return smallNumbers[n]
+				}
+			}
+			if f, err := strconv.ParseFloat(unsafe.String(unsafe.SliceData(item), len(item)), 64); err == nil { //nolint:gosec // G103: item is an immutable slice of the frame that outlives this call, and ParseFloat does not retain the string.
+				return f
+			}
+		}
 		n, err := d.convertNumber(string(item))
 		if err != nil {
 			d.saveError(err)
@@ -1209,6 +1284,15 @@ func (d *decodeState) literalInterface() any {
 		return n
 	}
 }
+
+// smallNumbers holds the interface values of the integers 0 to 255 (JSON numbers decode to float64): a decode returns one of them for such a
+// number instead of boxing a new float64. pig additive (D19).
+var smallNumbers = func() (numbers [256]any) {
+	for i := range numbers {
+		numbers[i] = float64(i)
+	}
+	return numbers
+}()
 
 // getu4 decodes \uXXXX from the beginning of s, returning the hex value,
 // or it returns -1.
@@ -1233,25 +1317,83 @@ func getu4(s []byte) rune {
 	return r
 }
 
+// nameCache is a small direct-mapped table of the short strings a decode has built. An object of an interface value repeats its keys, and
+// its values repeat short names ("role", "type", "function", "assistant"), thousands of times in a large payload; one string each is shared
+// instead of one allocation each. A string is immutable, so sharing one is not observable.
+//
+// pig additive (D19): measured on tool definitions and chat messages, the allocations of short strings were a tenth of a decode.
+type nameCache [nameCacheSize]string
+
+const (
+	nameCacheSize   = 512
+	nameCacheMaxLen = 32
+)
+
+// internedString is unquote for the literal item of an interface value: a string of up to nameCacheMaxLen printable ASCII characters
+// without an escape is shared through d.names, any other string is unquoted as it is.
+func (d *decodeState) internedString(item []byte) (string, bool) {
+	if len(item) < 2 || len(item) > nameCacheMaxLen+2 {
+		return unquote(item)
+	}
+	inner := item[1 : len(item)-1]
+	hash := uint32(2166136261)
+	for _, c := range inner {
+		if c < ' ' || c >= 0x7f || c == '\\' || c == '"' {
+			return unquote(item)
+		}
+		hash = (hash ^ uint32(c)) * 16777619
+	}
+	if len(inner) == 0 {
+		return "", item[0] == '"' && item[len(item)-1] == '"'
+	}
+	if item[0] != '"' || item[len(item)-1] != '"' {
+		return "", false
+	}
+	if d.names == nil {
+		d.names = new(nameCache)
+	}
+	slot := &d.names[hash&(nameCacheSize-1)]
+	if *slot != string(inner) {
+		*slot = string(inner)
+	}
+	return *slot, true
+}
+
 // unquote converts a quoted JSON string literal s into an actual string t.
 // The rules are different than for Go, so cannot use strconv.Unquote.
 func unquote(s []byte) (t string, ok bool) {
-	s, ok = unquoteBytes(s)
-	t = string(s)
-	return
+	b, owned, ok := unquoteOwned(s)
+	if !ok || len(b) == 0 {
+		return "", ok
+	}
+	if owned {
+		// b was built here and nothing else holds it: the string takes it over instead of copying it.
+		return unsafe.String(unsafe.SliceData(b), len(b)), true //nolint:gosec // G103: b was built here and nothing else holds it, so the string takes it over and nothing mutates it afterwards.
+	}
+	return string(b), true
 }
 
 func unquoteBytes(s []byte) (t []byte, ok bool) {
+	t, _, ok = unquoteOwned(s)
+	return t, ok
+}
+
+// unquoteOwned is the unquoted content of the quoted string literal s. When s has nothing to unquote it returns the content of s itself and
+// owned is false; otherwise it returns a new slice, owned by the caller. Pig decodes a lone surrogate to the WTF-8 form of one JavaScript
+// string unit and any other ill-formed UTF-8 to U+FFFD, a byte at a time.
+func unquoteOwned(s []byte) (t []byte, owned, ok bool) {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
-		return
+		return nil, false, false
 	}
 	s = s[1 : len(s)-1]
 
-	// Check for unusual characters. If there are none,
-	// then no unquoting is needed, so return a slice of the
-	// original bytes.
+	// The bytes that need no unquoting, eight at a time: if the whole content is such, it is the result.
 	r := 0
 	for r < len(s) {
+		r = stringStopIndex(s, r, false)
+		if r >= len(s) {
+			break
+		}
 		c := s[r]
 		if c == '\\' || c == '"' || c < ' ' {
 			break
@@ -1268,58 +1410,51 @@ func unquoteBytes(s []byte) (t []byte, ok bool) {
 		r += size
 	}
 	if r == len(s) {
-		return s, true
+		return s, false, true
 	}
 
-	b := make([]byte, addSize(len(s), 2*utf8.UTFMax))
-	w := copy(b, s[0:r])
+	// The content up to s[r] is as it is; the rest is copied a run at a time, an escape or an ill-formed byte decoded between runs. The result
+	// is no longer than s unless it replaces ill-formed bytes (one byte to three), which append handles.
+	b := append(make([]byte, 0, len(s)), s[:r]...)
 	for r < len(s) {
-		// Out of room? Can only happen if s is full of
-		// malformed UTF-8 and we're replacing each
-		// byte with RuneError.
-		if w >= len(b)-2*utf8.UTFMax {
-			nb := make([]byte, mulSize(addSize(len(b), utf8.UTFMax), 2))
-			copy(nb, b[0:w])
-			b = nb
+		end := stringStopIndex(s, r, false)
+		b = append(b, s[r:end]...)
+		r = end
+		if r >= len(s) {
+			break
 		}
 		switch c := s[r]; {
 		case c == '\\':
 			r++
 			if r >= len(s) {
-				return
+				return nil, false, false
 			}
 			switch s[r] {
 			default:
-				return
+				return nil, false, false
 			case '"', '\\', '/', '\'':
-				b[w] = s[r]
+				b = append(b, s[r])
 				r++
-				w++
 			case 'b':
-				b[w] = '\b'
+				b = append(b, '\b')
 				r++
-				w++
 			case 'f':
-				b[w] = '\f'
+				b = append(b, '\f')
 				r++
-				w++
 			case 'n':
-				b[w] = '\n'
+				b = append(b, '\n')
 				r++
-				w++
 			case 'r':
-				b[w] = '\r'
+				b = append(b, '\r')
 				r++
-				w++
 			case 't':
-				b[w] = '\t'
+				b = append(b, '\t')
 				r++
-				w++
 			case 'u':
 				r--
 				rr := getu4(s[r:])
 				if rr < 0 {
-					return
+					return nil, false, false
 				}
 				r += 6
 				if utf16.IsSurrogate(rr) {
@@ -1327,42 +1462,45 @@ func unquoteBytes(s []byte) (t []byte, ok bool) {
 					if dec := utf16.DecodeRune(rr, rr1); dec != unicode.ReplacementChar {
 						// A valid pair; consume.
 						r += 6
-						w += utf8.EncodeRune(b[w:], dec)
+						b = utf8.AppendRune(b, dec)
 						break
 					}
 					// Match internal/jsstring's WTF-8 convention without converting the rest of the string.
-					b[w] = byte(0xe0 | rr>>12)
-					b[w+1] = byte(0x80 | (rr>>6)&63)
-					b[w+2] = byte(0x80 | rr&63)
-					w += 3
+					b = append(b, byte(0xe0|rr>>12), byte(0x80|(rr>>6)&63), byte(0x80|rr&63))
 					break
 				}
-				w += utf8.EncodeRune(b[w:], rr)
+				b = utf8.AppendRune(b, rr)
 			}
 
 		// Quote, control characters are invalid.
 		case c == '"', c < ' ':
-			return
-
-		// ASCII
-		case c < utf8.RuneSelf:
-			b[w] = c
-			r++
-			w++
+			return nil, false, false
 
 		// pig: keep a lone surrogate in WTF-8 form (one JavaScript string unit); coerce anything else to well-formed UTF-8.
 		case isWTF8Surrogate(s[r:]):
-			w += copy(b[w:], s[r:r+3])
+			b = append(b, s[r:r+3]...)
 			r += 3
 
-		// Coerce to well-formed UTF-8.
+		// A run of well-formed multi-byte characters is copied as it is (re-encoding a well-formed rune writes its own bytes); one ill-formed
+		// byte is coerced to U+FFFD.
 		default:
-			rr, size := utf8.DecodeRune(s[r:])
-			r += size
-			w += utf8.EncodeRune(b[w:], rr)
+			run := r
+			for r < len(s) && s[r] >= utf8.RuneSelf {
+				if rr, size := utf8.DecodeRune(s[r:]); rr != utf8.RuneError || size != 1 {
+					r += size
+					continue
+				}
+				break
+			}
+			if r > run {
+				b = append(b, s[run:r]...)
+				break
+			}
+			b = utf8.AppendRune(b, utf8.RuneError)
+			r++
 		}
 	}
-	return b[0:w], true
+	return b, true, true
 }
 
 // isWTF8Surrogate reports whether p starts with a UTF-16 surrogate code unit in WTF-8 form (ED A0..BF 80..BF), the encoding

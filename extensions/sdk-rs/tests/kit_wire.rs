@@ -594,3 +594,206 @@ fn views_are_shared_across_threads() {
         .join()
         .unwrap();
 }
+
+/// A card of clicks: the event handler counts the clicks of node "card" in the options' state and fails on node "fail"; the view shows the first
+/// decoded message, the state and `expanded`.
+fn click_extension() -> Extension {
+    fn click(state: &pig_sdk::RenderState, event: &Event) -> Result<(), String> {
+        if event.node == "fail" {
+            return Err("boom".into());
+        }
+        if event.kind != EventKind::Mouse || event.node != "card" {
+            return Ok(());
+        }
+        let mouse = event.mouse.as_ref().unwrap();
+        let mut state = state.lock().unwrap();
+        let clicks = state.get("clicks").and_then(Value::as_i64).unwrap_or(0);
+        state.insert("clicks".into(), json!(clicks + 1));
+        state.insert("last".into(), json!(format!("{},{}", mouse.x, mouse.y)));
+        Ok(())
+    }
+    fn show(subject: &str, state: &pig_sdk::RenderState, expanded: bool) -> View {
+        let state = state.lock().unwrap();
+        View::new(Text::new(
+            format!(
+                "{subject}:clicks={}:last={}:expanded={expanded}",
+                state.get("clicks").and_then(Value::as_i64).unwrap_or(0),
+                state.get("last").and_then(Value::as_str).unwrap_or("none"),
+            ),
+            0,
+            0,
+        ))
+    }
+    let mut ext = Extension::new("kit-click");
+    ext.message_view_renderer("card", |_, message, options, _| {
+        Ok(show(
+            message["content"].as_str().unwrap_or(""),
+            &options.state,
+            options.expanded,
+        ))
+    });
+    ext.message_view_event("card", |_, _, options, event| click(&options.state, &event));
+    ext.entry_view_renderer("entry-card", |_, entry, options, _| {
+        Ok(show(
+            entry["data"].as_str().unwrap_or(""),
+            &options.state,
+            options.expanded,
+        ))
+    });
+    ext.entry_view_event("entry-card", |_, _, options, event| {
+        click(&options.state, &event)
+    });
+    // A view renderer without an event handler.
+    ext.message_view_renderer("plain", |_, message, options, _| {
+        Ok(show(
+            message["content"].as_str().unwrap_or(""),
+            &options.state,
+            options.expanded,
+        ))
+    });
+    ext
+}
+
+fn click_event(key: &str, node: &str, x: i64, y: i64) -> Value {
+    json!({"key": key, "node": node, "type": "mouse", "index": 0,
+        "mouse": {"type": "click", "button": "left", "x": x, "y": y, "screenX": 9, "screenY": 9, "width": 5, "height": 1}})
+}
+
+fn card_text(frame: &Value) -> String {
+    assert!(frame["response"]["error"].is_null(), "{frame}");
+    frame["response"]["result"]["view"]["root"]["text"]
+        .as_str()
+        .unwrap_or_else(|| panic!("no text in {frame}"))
+        .to_string()
+}
+
+/// A `render_message` or `render_entry` request of the host for the displayed message or entry `key`, and the frame that answers it.
+fn render(
+    s: &mut UnixStream,
+    id: &str,
+    method: &str,
+    tool: &str,
+    (body, key): (&str, &str),
+    events: Vec<Value>,
+) -> Value {
+    let mut args = if method == "render_message" {
+        json!({"message": {"content": body}})
+    } else {
+        json!({"entry": {"data": body}})
+    };
+    args["options"] = json!({"expanded": true, "outputPad": 1});
+    args["width"] = json!(40);
+    args["key"] = json!(key);
+    args["rerender"] = json!(true);
+    args["events"] = Value::Array(events);
+    request(s, id, method, tool, args);
+    next(s)
+}
+
+#[test]
+fn render_events_run_the_handler_before_the_render_and_a_card_keeps_its_state() {
+    let mut rt = Runtime::start("click", click_extension(), json!({"hasUI": true}));
+    let s = &mut rt.stream;
+    let m = "render_message";
+
+    // The events apply, in order, before the render, which sees the state they made.
+    let events = vec![
+        click_event("k1", "card", 3, 1),
+        click_event("k1", "card", 4, 2),
+    ];
+    let frame = render(s, "1", m, "card", ("first", "k1"), events);
+    assert_eq!(card_text(&frame), "first:clicks=2:last=4,2:expanded=true");
+
+    // The same key keeps the state and the message of its first request, whatever a later request carries.
+    let frame = render(s, "2", m, "card", ("second", "k1"), vec![]);
+    assert_eq!(card_text(&frame), "first:clicks=2:last=4,2:expanded=true");
+    let events = vec![click_event("k1", "card", 0, 0)];
+    let frame = render(s, "3", m, "card", ("third", "k1"), events);
+    assert_eq!(card_text(&frame), "first:clicks=3:last=0,0:expanded=true");
+
+    // Another key is a card of its own.
+    let frame = render(s, "4", m, "card", ("other", "k2"), vec![]);
+    assert_eq!(card_text(&frame), "other:clicks=0:last=none:expanded=true");
+
+    // render_release forgets the state and the message of its key only.
+    notify(s, "render_release", json!({"key": "k1"}));
+    let frame = render(s, "5", m, "card", ("again", "k1"), vec![]);
+    assert_eq!(card_text(&frame), "again:clicks=0:last=none:expanded=true");
+    let frame = render(s, "6", m, "card", ("ignored", "k2"), vec![]);
+    assert_eq!(card_text(&frame), "other:clicks=0:last=none:expanded=true");
+
+    // An empty key keeps nothing: the events of the request apply to the request's own state.
+    let frame = render(
+        s,
+        "7",
+        m,
+        "card",
+        ("a", ""),
+        vec![click_event("", "card", 1, 1)],
+    );
+    assert_eq!(card_text(&frame), "a:clicks=1:last=1,1:expanded=true");
+    let frame = render(s, "8", m, "card", ("b", ""), vec![]);
+    assert_eq!(card_text(&frame), "b:clicks=0:last=none:expanded=true");
+    rt.shutdown();
+}
+
+#[test]
+fn render_events_without_a_handler_are_ignored() {
+    let mut rt = Runtime::start("click-plain", click_extension(), json!({"hasUI": true}));
+    let s = &mut rt.stream;
+    let m = "render_message";
+    let frame = render(
+        s,
+        "1",
+        m,
+        "plain",
+        ("p", "kp"),
+        vec![click_event("kp", "card", 3, 1)],
+    );
+    assert_eq!(card_text(&frame), "p:clicks=0:last=none:expanded=true");
+    // An event of a type this SDK does not know is not delivered.
+    let unknown = json!({"key": "kc", "node": "card", "type": "unheard-of"});
+    let frame = render(s, "2", m, "card", ("c", "kc"), vec![unknown]);
+    assert_eq!(card_text(&frame), "c:clicks=0:last=none:expanded=true");
+    rt.shutdown();
+}
+
+#[test]
+fn render_event_handler_error_does_not_stop_later_events_or_the_render() {
+    let mut rt = Runtime::start("click-error", click_extension(), json!({"hasUI": true}));
+    let s = &mut rt.stream;
+    let m = "render_message";
+    let events = vec![
+        click_event("ke", "card", 1, 1),
+        click_event("ke", "fail", 0, 0),
+        click_event("ke", "card", 2, 2),
+    ];
+    let failing = render(s, "1", m, "card", ("e", "ke"), events);
+    assert_eq!(failing["response"]["error"]["message"], "boom", "{failing}");
+    // The events after the failing one applied, and the render ran.
+    let frame = render(s, "2", m, "card", ("e", "ke"), vec![]);
+    assert_eq!(card_text(&frame), "e:clicks=2:last=2,2:expanded=true");
+    rt.shutdown();
+}
+
+#[test]
+fn entry_render_events_keep_a_card_by_key() {
+    let mut rt = Runtime::start("click-entry", click_extension(), json!({"hasUI": true}));
+    let s = &mut rt.stream;
+    let e = "render_entry";
+    let frame = render(
+        s,
+        "1",
+        e,
+        "entry-card",
+        ("d1", "ke"),
+        vec![click_event("ke", "card", 5, 0)],
+    );
+    assert_eq!(card_text(&frame), "d1:clicks=1:last=5,0:expanded=true");
+    let frame = render(s, "2", e, "entry-card", ("d2", "ke"), vec![]);
+    assert_eq!(card_text(&frame), "d1:clicks=1:last=5,0:expanded=true");
+    notify(s, "render_release", json!({"key": "ke"}));
+    let frame = render(s, "3", e, "entry-card", ("d3", "ke"), vec![]);
+    assert_eq!(card_text(&frame), "d3:clicks=0:last=none:expanded=true");
+    rt.shutdown();
+}

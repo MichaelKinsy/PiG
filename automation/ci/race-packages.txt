@@ -20,6 +20,7 @@ host  ./coding/extension
 host  ./coding/extension/host/inproc
 host  ./coding/extension/host/runtimecell
 host  ./coding/extension/host/cellpack
+host  ./coding/extension/host/tsruntime
 host  ./coding/mcpext
 host  ./coding/rpcclient
 host  ./internal/packagemanager
@@ -31,6 +32,7 @@ coding  ./internal/codingagent/tools
 cli   ./coding/cli
 libs  ./chord
 libs  ./chord/output
+libs  ./chord/sync
 libs  ./chord/telemetrysqlite
 libs  ./chord/internal/parking
 exempt ./internal/chord/winpipe Windows-only tests; the nightly race matrix has no Windows job
@@ -45,6 +47,8 @@ libs  ./chord/nextnode/app
 libs  ./chord/nextnode/http
 libs  ./chord/nextnode/plugins
 libs  ./chord/nextnode/workers
+libs  ./chord/nextnode/surfaces
+libs  ./chord/nextnode/tui
 libs  ./codemode
 libs  ./coding/extension/builtin/codemode
 libs  ./durable
@@ -70,9 +74,10 @@ libs  ./durable/durabletest
 libs  ./durable/images/node
 libs  ./internal/entered
 libs  ./internal/requestvalidity
+libs  ./internal/terminalquestion
 libs  ./internal/testenv
 libs  ./mcp/mcptest
-libs  ./piglets/aot
+libs  ./piglets/pig-bolt
 libs  ./piglets/porter/extensions/pig-porter
 libs  ./piglets/standard
 libs  ./durable/images

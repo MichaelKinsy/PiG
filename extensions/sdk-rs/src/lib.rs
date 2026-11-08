@@ -240,6 +240,8 @@ pub use theme_helpers::{
     StyleFn, get_editor_theme, get_markdown_theme, get_select_list_theme, get_settings_list_theme,
     highlight_code, init_theme,
 };
+mod render_card;
+pub use render_card::RenderState;
 mod request_start_order;
 mod tool_render;
 mod tool_start_order;
@@ -308,7 +310,7 @@ pub use agent_session_runtime::{
 pub use extension::report_load_failure;
 pub use extension::{
     CommandResult, EventSubscriber, EventSubscription, Extension, Factory, FlagOptions, FlagType,
-    MarkdownTransformContext, ProjectTrustDecision, ProjectTrustResult, ToolDefinition,
+    MarkdownTransformContext, MarkdownTransformerOptions, ProjectTrustDecision, ProjectTrustResult, ToolDefinition,
     ToolHandler, ToolPrepareArguments, ToolResult, context_unchanged,
 };
 pub use host_subscriptions::HostSubscription;

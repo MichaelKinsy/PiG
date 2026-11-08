@@ -68,7 +68,7 @@ func baseline() (inventory, mapping, map[string]string, string) {
 		UpstreamVersion: coding.UpstreamVersion,
 		Entries: []mappingEntry{
 			{Path: "packages/ai/test/a.test.ts", Disposition: "ported", UpstreamTestHash: hashA, Evidence: []string{"ai/a_test.go#packages/ai/test/a.test.ts"}, Rationale: "ported"},
-			{Path: "packages/server/test/b.test.ts", Disposition: "designed-out", UpstreamTestHash: hashB, Rationale: "server package outside pig scope"},
+			{Path: "packages/server/test/b.test.ts", Disposition: "designed-out", UpstreamTestHash: hashB, Rationale: "server package outside pig scope", Protects: "server request routing", PigTest: "none: PiG has no HTTP server package to host the case", WhyNot: "the package is outside the PiG product; no Go API or Node-host form exists"},
 		},
 	}
 	evidence := map[string]string{"ai/a_test.go": "// upstream: packages/ai/test/a.test.ts\nfunc TestA(t *testing.T){}"}
@@ -190,7 +190,48 @@ func mixedClosure() (inventory, mapping, map[string]string, string) {
 		Line      int      `json:"line"`
 	}{{ID: "official › runs", Kind: "it", Line: 10}, {ID: "analytics › ported", Kind: "it", Line: 20}}
 	m.Entries[0].DesignedOutCases = []string{"official › runs"}
+	m.Entries[0].Protects = "runs reports the official provider"
+	m.Entries[0].PigTest = "vendored Pi TypeScript in the Node host"
+	m.Entries[0].WhyNot = "the case reads a TS-only module global"
 	return inv, m, evidence, div
+}
+
+// TestCheckIntentionFields proves a designed-out entry, a divergence entry and a
+// mixed closure each reject a missing or blank protects, pigTest or whyNot.
+func TestCheckIntentionFields(t *testing.T) {
+	fields := map[string]func(*mappingEntry, string){
+		"protects": func(e *mappingEntry, v string) { e.Protects = v },
+		"pigTest":  func(e *mappingEntry, v string) { e.PigTest = v },
+		"whyNot":   func(e *mappingEntry, v string) { e.WhyNot = v },
+	}
+	shapes := map[string]struct {
+		build func() (inventory, mapping, map[string]string, string)
+		entry int
+	}{
+		"designed-out":  {baseline, 1},
+		"mixed closure": {mixedClosure, 0},
+		"divergence entry": {func() (inventory, mapping, map[string]string, string) {
+			inv, m, e, _ := baseline()
+			m.Entries[1].Disposition = "divergence"
+			m.Entries[1].Divergence = "D77"
+			return inv, m, e, "## D77 something\n"
+		}, 1},
+	}
+	for shape, sh := range shapes {
+		for name, set := range fields {
+			for _, blank := range []string{"", "  \t"} {
+				t.Run(shape+"/"+name+"/"+strings.TrimSpace(blank)+"blank", func(t *testing.T) {
+					inv, m, evidence, div := sh.build()
+					set(&m.Entries[sh.entry], blank)
+					root, invPath, mapPath := writeRepo(t, inv, m, evidence, div)
+					err := check(invPath, mapPath, "docs/parity/DIVERGENCES.md", root, false)
+					if err == nil || !strings.Contains(err.Error(), "non-empty "+name) {
+						t.Fatalf("error %v does not demand a non-empty %s", err, name)
+					}
+				})
+			}
+		}
+	}
 }
 
 // TestCheckMixedClosure proves each designedOutCases rule rejects its own
@@ -357,6 +398,9 @@ func TestCheckDivergenceCloses(t *testing.T) {
 	m.Entries[1].Disposition = "divergence"
 	m.Entries[1].Divergence = "D77"
 	m.Entries[1].Rationale = "pig differs"
+	m.Entries[1].Protects = "user agent format"
+	m.Entries[1].PigTest = "Go test of the bug report environment"
+	m.Entries[1].WhyNot = "n/a: the Go test exists and asserts the divergent form"
 	root, invPath, mapPath := writeRepo(t, inv, m, evidence, "## D77 something\n")
 	if err := check(invPath, mapPath, "docs/parity/DIVERGENCES.md", root, false); err != nil {
 		t.Fatalf("divergence with a ledger entry rejected: %v", err)

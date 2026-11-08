@@ -231,6 +231,13 @@ func TestExecCommandMatchesPi(t *testing.T) {
 				continue
 			}
 		}
+		// A timer that ends Git for Windows' sh while it is starting `exec sleep 60` leaves the starting process with a parent that is gone, and
+		// the MSYS runtime prints its child_copy failure on the inherited stderr. exec.ts appends whatever reaches the pipes until they end or
+		// fall idle (core/exec.ts:81-87 has no kill check, utils/child-process.ts:93-97 re-arms the grace on every chunk), in Pi as in Pig, so
+		// whether the line lands inside the grace is the race between a loaded host and a 100 ms timer on either side.
+		if runtime.GOOS == "windows" && sameButForCygwinKillNoise(scenario, normalized, want) {
+			continue
+		}
 		if failures++; failures > 8 {
 			continue
 		}

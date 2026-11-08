@@ -61,6 +61,10 @@ import (
 // record is composed once per registration (it was once per read: 1,569 -> 746 allocs for a registration and six reads, BenchmarkRegisterExtensionProviderAndRead). Byte budgets and
 // production (no PIG_TEST_FAUX) budgets are unchanged. Profiles: xd670 ~/tern-v5/trees/faux-reg/tmp/prof1 against ~/tern-v5/trees/faux-main/tmp/prof0.
 //
+// Ratchet down on Linux after 8c9125d214 (the Radius baseline is built on the first GetModels, not at start): warm first prompt 17,700 -> 17,050 (measured 17,019, min of 3, two runs 17,019-17,021) and with models.json 21,800 -> 21,260
+// (measured 21,217-21,228), on tern-ci:v7 on xd6702. The Pi c23b9ec1 catch-up before it had raised both: the four ai/*_generated.go files add about 240 objects, and 7dd0dc1be1 (the promptCacheKeyMode and
+// requiresToolsWithToolHistory schema properties, built once per process) about 97 objects on the models.json path. The darwin and windows budgets are not lowered: they were not measured on those hosts.
+//
 // Platform siblings of that raise (the same owner approval, 2026-10-25): darwin models.json 18,950 -> 21,850, windows warm first prompt 18,950 -> 21,100 and windows models.json
 // 22,370 -> 25,200, each about 0.5% over the measured value, as the Linux raises are. Measured on the hosted runners, min of 3, main f2f028f845 against the batch 4a384df786 (diag runs 40304098670
 // and 40305356345; the 0.6.0 CI run 40287205705 read 21,756 on macOS and 20,980 / 25,098 on Windows): warm first prompt Windows 18,363 -> 21,001, macOS 15,236 -> 17,658 (the darwin budget of 20,200 already
@@ -75,6 +79,16 @@ import (
 // engine's member table and its two prototype name sets (4,264 bytes / 12), the JSON Schema keyword sets of ai/google.go (1.2 KB / 6), the tui word selection joiners (256 / 2), chord's default
 // delivery scheduler (136 / 2) and the compiled-in registry (304 / 2). Each is now built on first use or is a switch: --version measures 718,056-718,696 bytes / 3,798-3,802 objects (main
 // 718,000-718,480 / 3,796-3,799, same test, six runs each; one run of each of the six read 5.3 KB more, the extra OS thread's allocation); with models.json 2,920,472-2,921,736 / 21,720-21,724 (main 2,921,920).
+// The 0.7.1 line moved the Windows runner's models.json prompt from under its budget to 3,272,336 bytes / 25,179 objects (3,265,000 / 25,200), and the --listen
+// lane adds 27 objects on top. On the Linux host the line (main 989927eff4 -> fix/071-next) measured --version 722,712 -> 722,800 bytes / 3,776 -> 3,783 objects, warm first prompt 2,483,968 -> 2,488,536 / 17,521 -> 17,552, with models.json
+// 2,925,552 -> 2,928,408 / 21,620 -> 21,655. Two startup costs were avoidable and are gone on every platform: third_party/jsonschema's package initializers (147
+// allocations, 9,144 bytes of the Draft tables, the format map and the message printer, linked into every start since the type engine serves Value.Check; they are
+// built on first use, third_party/jsonschema/FORK.md 8) and the decode of the stock cell manifest through reflection (cellpack.loadManifest, 46 objects and 2.7 KB
+// with the JSON decoder it builds for the Manifest type; the stock manifest is read as the constant it is). Measured the same way: --version 713,496 bytes / 3,643 objects,
+// warm first prompt 2,477,376 / 17,371, with models.json 2,916,112-2,916,976 / 21,469-21,473. A third cut applies to a models.json: modelsJSONProviderOrder, which startup asks for three times over the same bytes
+// (the available models, the provider auth checks, the native provider data), strips the comments of the file and tokenizes it each time (27 KB, about 145 allocations a call) and now answers
+// a read of the bytes it last parsed from memory: with models.json 2,838,624 / 21,155. The Linux budgets are lowered to those measurements plus under 2.5%; the darwin and Windows
+// budgets stay until their runners measure the line (the Windows runner's init and manifest costs are the same code).
 type startupAllocBudget struct{ versionBytes, versionObjects, promptBytes, promptObjects uint64 }
 
 func startupAllocBudgetFor(goos string) startupAllocBudget {
@@ -143,7 +157,7 @@ func startupModelsAllocBudgetFor(goos string) (bytes, objects uint64) {
 	if goos == "darwin" {
 		return 2_934_000, 21_850
 	}
-	return 2_940_000, 21_800
+	return 2_940_000, 21_600
 }
 
 func TestStartupAllocationBudgetWithModelsJSON(t *testing.T) {

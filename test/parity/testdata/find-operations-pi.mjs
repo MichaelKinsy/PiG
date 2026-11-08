@@ -12,18 +12,19 @@ const print=(name,result)=>console.log("FIND_OPS "+name+" "+JSON.stringify([text
 const tool=createFindToolDefinition("/",{operations:{exists:()=>true,glob:()=>["/home/user/project/","/home/user/project/file.txt"]}});
 const result=await tool.execute("call-1",{pattern:"**"});
 assert.equal(text(result),"home/user/project/\nhome/user/project/file.txt");print("root",result);
+// Pi main 676af1d77 (#11747): a limit below 1 reads as 1, a fraction is floored, and a glob that ignores the limit is cut to it.
 for(const limit of [0,1.5]){
  const tool=createFindToolDefinition("/",{operations:{exists:()=>true,glob:()=>["a","b"]}});
  const result=await tool.execute("call",{pattern:"*",limit});
- assert.deepEqual(result.details,{resultLimitReached:limit});
- assert.equal(text(result),`a\nb\n\n[${limit} results limit reached]`);
+ assert.deepEqual(result.details,{resultLimitReached:1});
+ assert.equal(text(result),"a\n\n[1 results limit reached]");
  print("limit-"+limit,result);
 }
 const dir=mkdtempSync(join(tmpdir(),"find-zero-"));
 try{
  writeFileSync(join(dir,"a.txt"),"");
  const result=await createFindToolDefinition(dir).execute("call",{pattern:"*.txt",limit:0});
- assert.deepEqual(result.details,{resultLimitReached:0});
- assert.equal(text(result),"a.txt\n\n[0 results limit reached. Use limit=0 for more, or refine pattern]");
+ assert.equal(result.details,undefined);
+ assert.equal(text(result),"a.txt");
  print("fd-zero",result);
 }finally{rmSync(dir,{recursive:true,force:true});}

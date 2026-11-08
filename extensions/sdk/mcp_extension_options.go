@@ -594,9 +594,11 @@ func (c *mcpCredentialsShim) lock(storeID string, store McpOAuthServerStore) (an
 	lockID := storeID + "." + strconv.FormatUint(c.next.Add(1), 10)
 	entered := make(chan struct{})
 	go func() {
-		held.done <- store.WithRefreshLock(func() error {
-			close(entered)
-			return <-held.unlock
+		held.done <- callbackError("the MCP credential store's WithRefreshLock", func() error {
+			return store.WithRefreshLock(func() error {
+				close(entered)
+				return <-held.unlock
+			})
 		})
 	}()
 	select {

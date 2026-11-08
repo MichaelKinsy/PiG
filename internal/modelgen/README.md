@@ -52,14 +52,5 @@ test/parity/testdata/catalog-generation/equivalence.sh compare build/catalog-fix
 a pruned set of recorded responses (`cmd/gen-models/testdata/catalog-generation`). After a pin bump, re-record, prune
 (`prune.mjs`), and refresh the golden file with `equivalence.sh golden`.
 
-The golden file holds the sha256 of Pi's generator at the pin (`b556cfe5`) with Pi 9ee7586a9 (OpenCode Zen and Go Claude models get
-per-message effort, #10954; it changes only `catalog/providers/opencode.ts`) and Pi 4b9777737 (Claude Sonnet 5 takes no temperature, #7961; it changes only `catalog/families/anthropic.ts`) applied. Pi v1.5.0 comes before that commit, so the first pin that
-contains it is the move to Pi main. Until then a re-record from the mirrored pin produces the old golden and fails eight checksums
-(`models.json`, `models.all.json`, `catalog/providers/opencode*.json`, `data/opencode*.json`, plus the Anthropic-messages providers' files for 4b9777737). Apply each commit's change to the mirror first:
-
-```sh
-git -C <pi checkout> diff b556cfe5 9ee7586a9 -- packages/ai/catalog/providers/opencode.ts | git apply --directory=.upstream/v1.4.0+b556cfe5 -
-```
-
-`.upstream/v1.4.0+b556cfe5` is the mirror directory of the pin (`.upstream/current` points at it); the patch paths start at `packages/ai`. The
-pin bump that reaches 9ee7586a9 re-records the golden from the mirror without this step.
+The golden file holds the sha256 of Pi's generator at the pin (`c23b9ec1`), recorded from the mirror with no patches applied: the pin
+contains the OpenCode (9ee7586a9) and Claude Sonnet 5 (4b9777737) changes, and the Qwen Token Plan Individual CN provider and glm-5.3.

@@ -263,6 +263,14 @@ func TestHelpTextUsesPigSelfUpdateTargets(t *testing.T) {
 	}
 }
 
+// Pi main c23b9ec1 args.ts: the auth line reads "Log in or out, print credentials, or check provider readiness" now that auth login and logout exist.
+func TestHelpTextDescribesAuthLoginLogoutAndStatus(t *testing.T) {
+	help := captureStdout(func() { printHelp(os.Stdout, false) })
+	if want := "pig auth <command>            Log in or out, print credentials, or check provider readiness"; !strings.Contains(help, want) {
+		t.Fatalf("help lacks the auth line %q:\n%s", want, help)
+	}
+}
+
 func TestHelpTextMentionsProviderEnvVars(t *testing.T) {
 	help := captureStdout(func() { printHelp(os.Stdout, false) })
 	for _, envVar := range []string{

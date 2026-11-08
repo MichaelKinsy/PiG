@@ -79,6 +79,7 @@
   :pathname "tests/"
   :components ((:file "harness")
                (:file "json-tests")
+               (:file "deep-tests")
                (:file "sdk-tests")
                (:file "core-tests")
                 (:file "type-tests")

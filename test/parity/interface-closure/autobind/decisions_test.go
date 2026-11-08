@@ -222,3 +222,44 @@ func TestWriteDecisionsIfChanged(t *testing.T) {
 		t.Error("an identical file is left untouched")
 	}
 }
+
+// A designed-out row about a test helper (a testing package) carries the intention check; each missing or blank field is rejected, and an
+// ordinary product row needs none.
+func TestReadReviewedDecisionsRequiresIntentionOnTestHelperRows(t *testing.T) {
+	full := map[string]string{"protects": "assertion text", "pigTest": "Go testing helpers", "whyNot": "no Go analogue"}
+	build := func(id string, drop, blank string) string {
+		row := `{"disposition":"designed-out","upstreamShapeHash":"sha256:aa","rationale":"r"`
+		for _, key := range intentionKeys {
+			value := full[key]
+			if key == blank {
+				value = "  "
+			}
+			if key != drop {
+				row += `,"` + key + `":"` + value + `"`
+			}
+		}
+		return `{"` + id + `": ` + row + `}}`
+	}
+	read := func(content string) error {
+		path := filepath.Join(t.TempDir(), "reviewed.json")
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := readReviewedDecisions(path)
+		return err
+	}
+	const helper = "pkg:durable/testing#ExpectLike"
+	if err := read(build(helper, "", "")); err != nil {
+		t.Fatalf("complete test-helper row rejected: %v", err)
+	}
+	if err := read(build("pkg:ai/.#Product", "protects", "")); err != nil {
+		t.Fatalf("product row needs no intention fields: %v", err)
+	}
+	for _, key := range intentionKeys {
+		for name, content := range map[string]string{"missing": build(helper, key, ""), "blank": build(helper, "", key)} {
+			if err := read(content); err == nil || !strings.Contains(err.Error(), "non-empty "+key) {
+				t.Errorf("%s %s: error %v does not demand %s", name, key, err, key)
+			}
+		}
+	}
+}

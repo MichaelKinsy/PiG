@@ -5,6 +5,8 @@
 members in the order TypeBox wrote them and the hidden ones (``~kind``, ``~optional``, ...). What TypeBox throws raises ``ValueError`` with its message."""
 from typing import Any, Callable, Mapping, NamedTuple, Optional, Sequence
 
+from ._diagnostic import diagnose
+
 _ENVELOPE = "\x00"
 _CALL_TYPE_ENGINE = "type.engine"
 
@@ -151,7 +153,7 @@ def _value_call(member: str, schema: Any, value: Any) -> Any:
     {"token", "id", "message", "value"}}`` wants the check of refinement ``id`` on ``value`` (``message`` false; the answer is whether it passed) or its error message (``message`` true). The
     schema and the value are sent once, in the first request; each call is run here and answered with ``Value.Answer`` (the token and the one answer), so each refinement runs once, in the order
     TypeBox calls them, and the cost is linear in the calls. What a refinement raises (or an error function returning a non-str) ends the call: ``Value.Cancel`` tells the host to drop the walk
-    (best effort, its failure is ignored) and the exception propagates unchanged. A host ``error`` raises ``ValueError`` with its message, as ``engine_call`` does; the host drops the walk itself."""
+    (best effort: its failure is written to the SDK's diagnostic log and does not replace the exception) and the exception propagates unchanged. A host ``error`` raises ``ValueError`` with its message, as ``engine_call`` does; the host drops the walk itself."""
     from . import host_helpers
 
     refs: list = []
@@ -176,8 +178,8 @@ def _value_call(member: str, schema: Any, value: Any) -> Any:
         except BaseException:
             try:
                 host_helpers._helper_call(_CALL_TYPE_ENGINE, {"member": "Value.Cancel", "args": [token]})
-            except Exception:
-                pass
+            except Exception as cancel_failure:
+                diagnose(f"pig_sdk: Value.Cancel failed while a refinement's failure propagates: {type(cancel_failure).__name__}: {cancel_failure}\n")
             raise
         reply = host_helpers._helper_call(_CALL_TYPE_ENGINE, {"member": "Value.Answer", "args": [token, answer]})
 

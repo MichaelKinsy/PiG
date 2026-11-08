@@ -66,7 +66,7 @@
           :operations (cond ((custom) (pig:make-grep-operations :is-directory (lambda (path) (note (format nil "isDirectory:~A" path)) (error "no such path for the probe"))))
                             ((equal (bp-case case "ops") "grepdir") (pig:make-grep-operations :is-directory (lambda (path) (note (format nil "isDirectory:~A" path)) t))))))
         ((and (equal tool "find") (equal (bp-case case "ops") "globlimit"))
-         ;; Pi main 676af1d77 (pig divergence (D253)): the tool asks glob for one result past its limit.
+         ;; Pi main 676af1d77 (#11747): the tool asks glob for one result past its limit.
          (pig:make-find-tool-options
           :operations (pig:make-find-operations :exists (lambda (path) (note (format nil "exists:~A" path)) t)
                                                 :glob (lambda (pattern cwd options)

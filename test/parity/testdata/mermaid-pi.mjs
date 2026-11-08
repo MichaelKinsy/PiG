@@ -1,30 +1,19 @@
 #!/usr/bin/env node
-// Upstream oracle for the grok-mermaid Go port (internal/mermaid). Drives pi's
-// own bundled grok-mermaid@0.2.2 render() from the pinned pi dist so the Go port
+// Upstream oracle for the lovely-mermaid Go port (internal/mermaid). Drives the
+// lovely-mermaid@0.3.3 render() that Pi's coding-agent depends on so the Go port
 // can be diffed byte-for-byte. Reads one JSON-quoted mermaid source per line
 // (newlines survive JSON quoting) from the corpus in argv[2] and prints, per
 // source, {input, kind, art} where art is null (render returned null) or
-// {plain, width, warnings, styled}. Regenerate goldens:
-//   node test/parity/testdata/mermaid-pi.mjs internal/mermaid/testdata/corpus.txt > internal/mermaid/testdata/golden.jsonl
-import { homedir } from "node:os";
-import { pathToFileURL } from "node:url";
+// {plain, width, warnings, classDefs, styled, ansi, ansiAlt}, where ansi / ansiAlt are
+// toAnsi(art) with the default theme and with an all-roles theme. Regenerate goldens:
+//   node test/parity/testdata/mermaid-pi.mjs internal/mermaid/testdata/corpus.txt > internal/mermaid/testdata/render-golden.jsonl
+// See mermaid-oracle.mjs for how the package is located.
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { importLovely } from "./mermaid-oracle.mjs";
 
-function version() {
-	const m = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/UpstreamPackageVersion = "([^"]+)"/);
-	if (!m) throw new Error("cannot read UpstreamPackageVersion");
-	return m[1];
-}
-
-const root = process.env.PI_PACKAGE_ROOT ?? join(
-	homedir(),
-	".local/share/mise/installs/npm-earendil-works-pi-coding-agent",
-	version(),
-	"lib/node_modules/@earendil-works/pi-coding-agent",
-);
-const gm = join(root, "node_modules/grok-mermaid/dist/index.js");
-const { render, diagramKind } = await import(pathToFileURL(gm).href);
+const { render, diagramKind, toAnsi, DEFAULT_THEME } = await importLovely("index.js");
+// A second theme with every role set, as the Pi transformer builds one from its colours.
+const ALT_THEME = { border: "38;5;240", text: "38;5;255", edge: "38;5;45", edgeLabel: "38;5;255", title: "1;38;5;45" };
 
 const corpusPath = process.argv[2];
 if (!corpusPath) {
@@ -44,7 +33,10 @@ for (const raw of readFileSync(corpusPath, "utf8").split("\n")) {
 				plain: art.plain,
 				width: art.width,
 				warnings: art.warnings,
+				classDefs: art.classDefs,
 				styled: art.styled,
+				ansi: toAnsi(art, DEFAULT_THEME),
+				ansiAlt: toAnsi(art, ALT_THEME),
 			},
 		}) + "\n",
 	);

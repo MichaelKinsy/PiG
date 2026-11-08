@@ -4,7 +4,8 @@ package telemetry
 //
 // The expectTypeOf and @ts-expect-error assertions check TypeScript inference of exact attributes, closed value sets,
 // narrowed span names and duplicate span names; they have no Go form and upstream performs no runtime validation for
-// them. Object.isFrozen has no Go form either: the noop span is a stateless value.
+// them. Object.isFrozen checks that no caller can change the inert span; its Go form asserts that the span is a value of a struct type with
+// no fields, in the subtest of the case.
 
 import (
 	"encoding/json"
@@ -166,6 +167,13 @@ func TestTelemetryUpstream(t *testing.T) {
 		}
 		if firstSpan != NoopTelemetryContext {
 			t.Fatalf("callback span = %#v, want NOOP_TELEMETRY_CONTEXT", firstSpan)
+		}
+		// Object.isFrozen(firstSpan): the span holds no state a caller could change.
+		if kind := reflect.TypeOf(firstSpan); kind.Kind() != reflect.Struct || kind.NumField() != 0 {
+			t.Errorf("the inert span is a %s with state a caller could change; want a struct with no fields", kind)
+		}
+		if NoopTelemetryContext.Metrics() != NoopTelemetryMetrics || NoopTelemetryContext.Propagation() != NoopTelemetryPropagation || firstSpan.Metrics() != NoopTelemetryMetrics || firstSpan.Propagation() != NoopTelemetryPropagation {
+			t.Error("the inert span does not share the no-op metrics and propagation")
 		}
 	})
 

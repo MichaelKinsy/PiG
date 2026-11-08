@@ -1,0 +1,109 @@
+# SPDX-License-Identifier: MIT
+#
+# The packages a release binary may link, read by test/perfgate TestReleaseBinaryLinksOnlyAllowedPackages from the symbol table of an unstripped build of each target.
+# The size ceilings in ratchet.toml say that a binary grew; this file says which package made it grow. The linker removes code that nothing calls, so a package that is in the dependency graph costs nothing until a call reaches it, and then all of it comes into the binary (0.7.1: one call from the TypeBox check path made a vendored JSON Schema validator live, +766 KB).
+#
+# - A package that is not in the Go distribution and has at least heavy_bytes of symbols in a binary must be in that binary's allow list. A package that crosses the line fails the test with its name; `go run ./automation/ci/sizereport -why <package>` prints the chain of references that keeps it. Remove the call that reaches it. A third-party package joins the list only with the owner's approval; a package under `third_party/` counts as third-party. A package of PiG itself needs no approval, but it joins the list only in the commit that makes it that large, and that commit message gives the size report (AGENTS.md, Binary size and dependencies).
+# - A package on the list that no target links as heavyweight any more fails the test too, so the list only shrinks.
+# - A package in a forbid table must not be linked at all, whatever its size. The value says why.
+# `go run ./automation/ci/sizereport -goos <os> -goarch <arch> -allowlist 32768` prints the packages of one target in this format.
+
+heavy_bytes = 32768
+targets = ["linux_amd64", "darwin_arm64", "windows_amd64"]
+
+[binary.pig]
+build = "./cmd/pig"
+allow = [
+	"github.com/BurntSushi/toml",
+	"github.com/MichaelKinsy/PiG",
+	"github.com/MichaelKinsy/PiG/agent",
+	"github.com/MichaelKinsy/PiG/ai",
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock",
+	"github.com/MichaelKinsy/PiG/codemode",
+	"github.com/MichaelKinsy/PiG/coding",
+	"github.com/MichaelKinsy/PiG/coding/cli",
+	"github.com/MichaelKinsy/PiG/coding/extension",
+	"github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode",
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+	# 39,766 B on linux_amd64 and windows_amd64 (under 32 KiB on darwin_arm64): the digest cache, verified launch and platform report grew past the line. cli.runExtensionsRuntime calls tsruntime.Platform and the subprocess host launches the TS runtime through the package.
+	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+	"github.com/MichaelKinsy/PiG/coding/extension/source",
+	"github.com/MichaelKinsy/PiG/coding/mcpext",
+	"github.com/MichaelKinsy/PiG/coding/packagecontent",
+	"github.com/MichaelKinsy/PiG/coding/piglet",
+	"github.com/MichaelKinsy/PiG/coding/piglet/artifact",
+	"github.com/MichaelKinsy/PiG/coding/piglet/release",
+	"github.com/MichaelKinsy/PiG/coding/piglet/signature",
+	"github.com/MichaelKinsy/PiG/coding/pigletbuild",
+	"github.com/MichaelKinsy/PiG/coding/piglogin",
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json",
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+	"github.com/MichaelKinsy/PiG/internal/codingagent",
+	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
+	"github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+	"github.com/MichaelKinsy/PiG/internal/codingagent/llama",
+	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts",
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+	"github.com/MichaelKinsy/PiG/internal/latex",
+	"github.com/MichaelKinsy/PiG/internal/mermaid",
+	"github.com/MichaelKinsy/PiG/internal/minimatch",
+	"github.com/MichaelKinsy/PiG/internal/nodeurl",
+	"github.com/MichaelKinsy/PiG/internal/packagemanager",
+	"github.com/MichaelKinsy/PiG/internal/photonimage",
+	"github.com/MichaelKinsy/PiG/internal/pigdocs",
+	"github.com/MichaelKinsy/PiG/internal/sessionentry",
+	"github.com/MichaelKinsy/PiG/internal/sortx",
+	"github.com/MichaelKinsy/PiG/internal/typebox",
+	"github.com/MichaelKinsy/PiG/internal/typebox/engine",
+	"github.com/MichaelKinsy/PiG/internal/wordsegmenter",
+	"github.com/MichaelKinsy/PiG/internal/yaml12",
+	"github.com/MichaelKinsy/PiG/mcp",
+	"github.com/MichaelKinsy/PiG/mcp/oauth",
+	"github.com/MichaelKinsy/PiG/schema",
+	"github.com/MichaelKinsy/PiG/schema/internal/ecmaregex",
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/config",
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime",
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/signin",
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/sso",
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/ssooidc",
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/sts",
+	# approved by owner Michael Kinsy on 2026-11-07: the root-locale collation fork (about 166 KB of Go source tables; x/text/collate was 1.26 MB).
+	"github.com/MichaelKinsy/PiG/third_party/collate",
+	"github.com/MichaelKinsy/PiG/third_party/goldmark/ast",
+	"github.com/MichaelKinsy/PiG/third_party/goldmark/parser",
+	"github.com/MichaelKinsy/PiG/tui",
+	"github.com/MichaelKinsy/PiG/tui/internal/hljs",
+	"github.com/MichaelKinsy/PiG/tui/widthx",
+	"github.com/aws/aws-sdk-go-v2/aws/retry",
+	"github.com/clipperhouse/uax29/v2/graphemes",
+	"github.com/clipperhouse/uax29/v2/words",
+	"github.com/dlclark/regexp2",
+	"github.com/dlclark/regexp2/syntax",
+	"github.com/gorilla/websocket",
+	# approved by owner Michael Kinsy on 2026-11-08 (Pi's changelog: "Added inherited zstd request-body compression for the OpenAI Codex Responses SSE transport"). 42,646 B on linux_amd64 and windows_amd64: the entropy coder of the zstd package below, which is already listed. Pi zstd-compresses Codex SSE request bodies (openai-codex-responses.ts compressRequestBodyZstd, zlib.zstdCompressSync level 3), so ai/zstd_codex.go does the same.
+	"github.com/klauspost/compress/huff0",
+	"github.com/klauspost/compress/zstd",
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1",
+	"github.com/tetratelabs/wazero/internal/engine/interpreter",
+	"github.com/tetratelabs/wazero/internal/engine/wazevo",
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/isa/amd64",
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/isa/arm64",
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc",
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/frontend",
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa",
+	"github.com/tetratelabs/wazero/internal/wasm",
+	"github.com/tetratelabs/wazero/internal/wasm/binary",
+	"go.yaml.in/yaml/v3",
+	"golang.org/x/mod/modfile",
+	"golang.org/x/net/idna",
+	"golang.org/x/oauth2/google/externalaccount",
+	"golang.org/x/sys/unix",
+	"golang.org/x/sys/windows",
+	"golang.org/x/text/unicode/norm",
+]
+
+[binary.pig.forbid]
+"github.com/MichaelKinsy/PiG/third_party/jsonschema" = "the generic JSON Schema validator is not part of any binary: internal/typebox checks with its own walker and coding/piglet validates with schema (0.7.1, +146 KB of symbols)"
+"golang.org/x/text/message" = "the localized message printer comes only with the JSON Schema validator (0.7.1, +47 KB of symbols); print with fmt"

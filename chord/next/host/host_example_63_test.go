@@ -81,7 +81,7 @@ func TestExample63OptimisticAnswers(t *testing.T) {
 			return h.Serve(sessions, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
 				index := self.Get(sessionIndex, jsonObject())
 				return contracts.Implementation{Variant: "all", Members: contracts.VariantImplementation{
-					State: map[string]chord.Watchable[delta.JsonValue]{"titles": self.Derive([]any{index.Member("titles")}, func(values []any) (delta.JsonValue, error) { return values[0].(delta.JsonValue), nil })},
+					State: map[string]chord.Watchable[delta.JsonValue]{"titles": self.Derive([]any{index.Member("titles")}, func(values []any) (delta.JsonValue, error) { return values[0], nil })},
 					Methods: map[string]contracts.MethodFunction{"report": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						return index.Call("report", args, ctx)
 					}},

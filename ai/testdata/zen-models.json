@@ -149,6 +149,14 @@
   },
   {
     "provider": "opencode",
+    "id": "iceman-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "inkling-2-small-free"
+  },
+  {
+    "provider": "opencode",
     "id": "kimi-k2.5"
   },
   {
@@ -194,6 +202,10 @@
   {
     "provider": "opencode",
     "id": "qwen3.8-max"
+  },
+  {
+    "provider": "opencode",
+    "id": "crouton-alpha-free"
   },
   {
     "provider": "opencode",
@@ -369,6 +381,10 @@
   },
   {
     "provider": "opencode-go",
+    "id": "hy4"
+  },
+  {
+    "provider": "opencode-go",
     "id": "hy4-preview"
   },
   {
@@ -414,6 +430,10 @@
   {
     "provider": "opencode-go",
     "id": "step-5-preview"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "crouton-alpha-free"
   },
   {
     "provider": "opencode-go",

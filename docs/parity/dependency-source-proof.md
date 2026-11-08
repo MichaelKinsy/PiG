@@ -68,14 +68,29 @@ A package that no workspace manifest declares is admitted through the root lockf
 | Property | Proof |
 |---|---|
 | Upstream owner | Node, not Pi: `fs.globSync` (Pi's `expandPackageGlob`, `package-manager.ts`) runs the minimatch that ships in Node's own `deps/minimatch`, not the `minimatch` that Pi's `package.json` pins |
-| Exact release | Node 24.22.1, the release `.node-version` pins and the parity oracle runs; the record cites `.node-version` as its manifest and the guard requires the record's version to equal it |
-| Source | `test/parity/dependency-sources/node/24.22.1/deps/minimatch/index.js`, cited as `upstream: node-deps/minimatch/index.js:<symbol>` (the `node-deps/` prefix cannot be mistaken for an npm pin) |
-| Integrity | `sha256-` of `node-v24.22.1.tar.gz` from nodejs.org `SHASUMS256.txt`; capture verifies the archive before extracting `deps/minimatch/index.js` |
+| Exact release | Node 24.22.2, the release `.node-version` pins and the parity oracle runs; the record cites `.node-version` as its manifest and the guard requires the record's version to equal it |
+| Source | `test/parity/dependency-sources/node/24.22.2/deps/minimatch/index.js`, cited as `upstream: node-deps/minimatch/index.js:<symbol>` (the `node-deps/` prefix cannot be mistaken for an npm pin) |
+| Integrity | `sha256-` of `node-v24.22.2.tar.gz` from nodejs.org `SHASUMS256.txt`; capture verifies the archive before extracting `deps/minimatch/index.js` |
 | Symbols | `maxExtglobRecursion` |
 | Rule | Node's matcher parses extglobs with the regular-expression AST of minimatch 10.2.6 and nests them two deep; Pi's own `minimatch()` calls run minimatch 11.0.3, which has no AST |
 | Literal consumer | `coding/packagecontent/glob_ast.go` (`globMaxExtglobRecursion`) |
 
 Advancing `.node-version` fails the guard until the snapshot is re-captured from the new release.
+
+## lovely-mermaid renderer limits
+
+| Property | Proof |
+|---|---|
+| Upstream owner | `.upstream/current/packages/coding-agent/package.json` |
+| Exact dependency | `lovely-mermaid` 0.3.3 (archive SHA-256 `b9426cfb1cb7625a5e5ba29d625a39bf786ef424d5d398372b3e623497a802d3`, npm integrity as in `Published npm integrity` of `THIRD_PARTY_NOTICES.md`; git revision `a28f683ef3d9eda3497e5818f4f18dfdc3a87ed9`) |
+| Source | `test/parity/dependency-sources/lovely-mermaid/0.3.3/src/graph.ts`, `src/labels.ts` and `src/diagrams/pie.ts` |
+| License | `test/parity/dependency-sources/lovely-mermaid/0.3.3/LICENSE` |
+| Symbols | `MAX_NODES`, `MAX_EDGES`, `MAX_GROUPS`, `MAX_GROUP_DEPTH`, `MAX_MEMBERS` (graph.ts), `WRAP_WIDTH`, `MAX_LABEL`, `MAX_LINES` (labels.ts) and `BAR_W` (pie.ts) |
+| Rule | A diagram renders its prefix once it passes 128 nodes, 512 edges, 24 subgraphs, 6 subgraph levels or 8 members per box; node labels wrap at 24 columns over at most 4 lines, edge labels cut at 28 columns, and a pie bar is 20 columns wide |
+| Literal consumer | `internal/mermaid` (`maxNodes`, `maxEdges`, `maxGroups`, `maxGroupDepth`, `maxMembers` in graph.go; `wrapWidth`, `maxLines`, `maxLabel` in labels.go; `pieBarW` in pie.go) |
+| Behavioral proof | `TestRenderMatchesUpstream`, `TestParseMatchesUpstream` and the mutated-source tests in `internal/mermaid`, which run the installed lovely-mermaid package over the corpus, including the size-cap cases |
+
+The capture follows the steps below with the three files and `LICENSE` extracted from the 0.3.3 archive after its `dist.integrity` matched the one `package-lock.json` records for Pi's build.
 
 ## Capture and review
 

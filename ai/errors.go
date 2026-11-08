@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"strings"
 	"sync"
+	"syscall"
 	"unicode"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
@@ -85,10 +87,18 @@ func WithCauseDetail(err error) string {
 	message := err.Error()
 	var detail, code string
 	if transport, ok := errors.AsType[*nodeTransportError](err); ok {
-		if transport.message != "fetch failed" {
-			return message
+		// An SDK's "Connection error." wraps the "fetch failed" rejection whose cause names the failure.
+		if transport.message == "Connection error." {
+			if inner, ok := errors.AsType[*nodeTransportError](transport.cause); ok {
+				transport = inner
+			}
 		}
-		detail, code = nodeConnectionFailure(transport.cause)
+		switch transport.message {
+		case "fetch failed":
+			detail, code = nodeConnectionFailure(transport.cause)
+		case "terminated":
+			detail, code = nodeBodyFailure(transport.cause)
+		}
 		if detail == "" {
 			return message
 		}
@@ -233,17 +243,59 @@ func (state *safeJSONEncoder) stringify(value any) []byte {
 	return canonical
 }
 
+// nodeBodyFailure is the message and code of the cause undici attaches to "terminated" for a response body that failed after the headers:
+// SocketError `other side closed` (UND_ERR_SOCKET) for a connection the peer closed or reset, BodyTimeoutError (UND_ERR_BODY_TIMEOUT) for an idle body.
+// It is empty for a failure with no such Node counterpart.
+func nodeBodyFailure(cause error) (message, code string) {
+	if idle, ok := errors.AsType[*sseIdleError](cause); ok {
+		return idle.Error(), ""
+	}
+	if timeout, ok := errors.AsType[net.Error](cause); ok && timeout.Timeout() {
+		return "Body Timeout Error", "UND_ERR_BODY_TIMEOUT"
+	}
+	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || errors.Is(cause, syscall.ECONNRESET) || errors.Is(cause, syscall.EPIPE) || errors.Is(cause, net.ErrClosed) {
+		return "other side closed", "UND_ERR_SOCKET"
+	}
+	return "", ""
+}
+
 // nodeConnectionFailure is the message and code of the cause undici attaches to "fetch failed" for a failed connection: Node's
 // `connect ECONNREFUSED 127.0.0.1:8080` for a refused or unreachable dial and `getaddrinfo ENOTFOUND host` for a name that does not
-// resolve. It is empty for a failure with no such Node counterpart.
+// resolve, and the socket errors undici's connection reports before the response headers: `write ECONNRESET` and `write EPIPE` for a request
+// the peer reset while it was written, `read ECONNRESET` for a reset while the response was awaited, and SocketError `other side closed`
+// (UND_ERR_SOCKET) for a connection the peer closed. It is empty for a failure with no such Node counterpart.
+//
+// A peer that resets on accept is reported by Node mostly as `connect ECONNRESET <addr>` (libuv sees the reset before the connect completes) but by Go
+// as `read ECONNRESET`, because Go's dial returns first and the request write lands in the socket buffer; D520 records the difference.
 func nodeConnectionFailure(cause error) (message, code string) {
+	if errors.Is(cause, errFetchBadPort) {
+		return "bad port", ""
+	}
 	if dns, ok := errors.AsType[*net.DNSError](cause); ok && dns.IsNotFound {
 		return "getaddrinfo ENOTFOUND " + dns.Name, "ENOTFOUND"
 	}
-	if op, ok := errors.AsType[*net.OpError](cause); ok && op.Op == "dial" && op.Addr != nil {
-		if code = nodeerrno.ErrorCode(op.Err); code != "" {
-			return "connect " + code + " " + op.Addr.String(), code
+	if op, ok := errors.AsType[*net.OpError](cause); ok {
+		switch {
+		case op.Op == "dial" && op.Addr != nil:
+			if code = nodeerrno.ErrorCode(op.Err); code != "" {
+				return "connect " + code + " " + op.Addr.String(), code
+			}
+		// Node's read and write errors name the syscall and the code, not an address.
+		// pig divergence (D520): a reset on accept reaches Go's response read, where Node mostly reports it on the connect.
+		case op.Op == "write" && (errors.Is(op.Err, syscall.ECONNRESET) || errors.Is(op.Err, syscall.EPIPE)), op.Op == "read" && errors.Is(op.Err, syscall.ECONNRESET):
+			code = nodeerrno.ErrorCode(op.Err)
+			return op.Op + " " + code, code
 		}
 	}
+	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || errors.Is(cause, net.ErrClosed) || isServerClosedIdle(cause) {
+		return "other side closed", "UND_ERR_SOCKET"
+	}
 	return "", ""
+}
+
+// isServerClosedIdle reports net/http's unexported errServerClosedIdle, the error a transport gives a request whose connection the server
+// closed before the request's first byte was read: a peer's FIN that the connection's reader sees before the request's own write or read does.
+func isServerClosedIdle(err error) bool {
+	//portlint:allow erroridentity net/http exports no value or type for errServerClosedIdle (transport.go), so its text is its identity
+	return err != nil && err.Error() == "http: server closed idle connection"
 }

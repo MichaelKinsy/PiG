@@ -166,7 +166,7 @@ func (rr *roots) _collectResources(r *root, sch any, base url, schPtr jsonPointe
 
 	// process subschemas
 	subschemas := map[jsonPointer]any{}
-	for _, sp := range draft.subschemas {
+	for _, sp := range draft.subschemaPaths() {
 		ss := sp.collect(obj, schPtr)
 		maps.Copy(subschemas, ss)
 	}

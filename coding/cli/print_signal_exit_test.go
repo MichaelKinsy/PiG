@@ -181,10 +181,9 @@ func TestPrintModeJSONSignalStopsOutputAndPersistence(t *testing.T) {
 		t.Skip("runs the binary")
 	}
 	bin := buildPigBinaryForSignalTest(t)
-	// A session_shutdown handler that takes a while keeps the process alive after the tracked child is killed, so the aborted
-	// tool settles and the run goes on while disposeRuntime awaits it. Pi has unsubscribed the JSON writer first, so stdout
-	// still ends at the signal; the session file does get the run's next records then, in Pi as in PiG (probed with Pi
-	// 1.1.0: toolResult and a second toolUse assistant message, two provider requests), so it is not asserted for this case.
+	// Pi's runtimeHost.dispose() awaits session.abort() before it emits session_shutdown (agent-session-runtime.ts dispose, Pi main 7a53c310a, #9126),
+	// so the killed tool's turn settles first: the session file gets the tool result and the aborted assistant message in every case, with or without a
+	// slow session_shutdown handler. Pi has unsubscribed the JSON writer first, so stdout still ends at the signal (scenario print/09 compares both).
 	slowShutdown := filepath.Join(t.TempDir(), "slow-shutdown.mjs")
 	if err := os.WriteFile(slowShutdown, []byte(`export default function (pi) { pi.on("session_shutdown", () => new Promise((resolve) => setTimeout(resolve, 1500))); }`), 0o600); err != nil {
 		t.Fatal(err)
@@ -246,9 +245,6 @@ func TestPrintModeJSONSignalStopsOutputAndPersistence(t *testing.T) {
 					}
 				}
 			}
-			if tc.extension != "" {
-				return
-			}
 			files, _ := filepath.Glob(filepath.Join(sessionDir, "*.jsonl"))
 			if len(files) != 1 {
 				t.Fatalf("session files = %v", files)
@@ -257,24 +253,23 @@ func TestPrintModeJSONSignalStopsOutputAndPersistence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if strings.Contains(string(data), `"role":"toolResult"`) || strings.Contains(string(data), `"stopReason":"aborted"`) {
-				t.Fatalf("session persisted the aborted run after the signal:\n%s", data)
+			if !strings.Contains(string(data), `"role":"toolResult"`) || !strings.Contains(string(data), `"stopReason":"aborted"`) {
+				t.Fatalf("session did not persist the settled aborted run before the exit:\n%s", data)
 			}
 		})
 	}
 }
 
-// TestPrintModeSignalDisposalRunsLikePisEventLoop pins what a run in flight does while a signal's disposal runs the
-// session_shutdown handlers. Pi's handler (print-mode.ts:50-63) starts disposeRuntime on its one event loop and exits
-// when it settles; runPrintMode's finally finds it started (print-mode.ts:42-48,162-167).
-//   - A handler that throws at once ends the disposal within microtasks, before the killed tool's exit is seen: the run
-//     stops at the tool (the session ends at the toolUse message) and stderr has the handler's error. PiG let the run go
-//     on during the handler's IPC round trip and, closing the runtime under it, printed "connection closed".
-//   - A handler that waits on a timer lets the loop turn: the killed tool settles, the run makes its next request, and
-//     the prompt resolves, so text mode reports the result (here the faux's unhandled-request error) before the exit.
-//     PiG printed nothing after any signal.
+// TestPrintModeSignalDisposalRunsLikePisEventLoop pins what a run in flight does while a signal's disposal runs. Pi's handler
+// (print-mode.ts:50-63) starts disposeRuntime on its one event loop and exits when it settles; dispose() awaits session.abort()
+// before session_shutdown (agent-session-runtime.ts, Pi main 7a53c310a, #9126):
+//   - The interrupted run settles first, as aborted: the tool result and the aborted assistant message are persisted and no
+//     second request is made, whatever the handler does.
+//   - A handler that throws at once has its error on stderr first; the prompt's continuation then reports the aborted result
+//     ("This operation was aborted") in text mode, before the exit.
+//   - A handler that waits on a timer lets the loop turn, so text mode reports the aborted result while it waits.
 //
-// Probed with Pi 1.1.0 through an openai-completions mock (scenario print/09, the *-shutdown cases).
+// Probed with the pinned Pi through an openai-completions mock (scenario print/09, the *-shutdown cases).
 func TestPrintModeSignalDisposalRunsLikePisEventLoop(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs the binary")
@@ -313,10 +308,10 @@ def new_extension() -> pig_sdk.Extension:
 		wantStderr            string
 		wantToolResult        bool
 	}{
-		{"throwing handler/text", "text", throwing, "Extension error (" + throwing + "): shutdown boom\n", false},
-		{"throwing handler/json", "json", throwing, "Extension error (" + throwing + "): shutdown boom\n", false},
-		{"slow handler/text", "text", slow, "test-faux: unhandled request \"(no output)\n\nCommand exited with code 137\"\n", true},
-		{"python handler waiting for idle/text", "text", waitsForIdle, "test-faux: unhandled request \"(no output)\n\nCommand exited with code 137\"\n", true},
+		{"throwing handler/text", "text", throwing, "Extension error (" + throwing + "): shutdown boom\nThis operation was aborted\n", true},
+		{"throwing handler/json", "json", throwing, "Extension error (" + throwing + "): shutdown boom\n", true},
+		{"slow handler/text", "text", slow, "This operation was aborted\n", true},
+		{"python handler waiting for idle/text", "text", waitsForIdle, "This operation was aborted\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workDir, agentDir, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()

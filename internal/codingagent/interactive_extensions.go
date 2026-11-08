@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -439,7 +440,7 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 		entries = append(entries, widgetEntry{component: proxy, below: placement == string(extension.WidgetPlacementBelowEditor), order: order})
 	}
 	// A proxy seen for the first time, or with a new bridge order (replaced or moved), was set now: it takes the next sequences in bridge order.
-	slices.SortFunc(entries, func(a, b widgetEntry) int { return cmp.Compare(a.order, b.order) })
+	sortx.Func(entries, func(a, b widgetEntry) int { return cmp.Compare(a.order, b.order) })
 	seqs := make(map[*subprocess.PushProxy]bridgeWidgetSeq, len(entries))
 	for i := range entries {
 		proxy := entries[i].component.(*subprocess.PushProxy)
@@ -468,7 +469,7 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 	for _, widget := range m.inprocessWidgets {
 		entries = append(entries, widgetEntry{component: widget.component, below: widget.placement == extension.WidgetPlacementBelowEditor, seq: widget.seq})
 	}
-	slices.SortFunc(entries, func(a, b widgetEntry) int { return cmp.Compare(a.seq, b.seq) })
+	sortx.Func(entries, func(a, b widgetEntry) int { return cmp.Compare(a.seq, b.seq) })
 	above := []tui.Component{tui.NewSpacer(1)}
 	var below []tui.Component
 	for _, entry := range entries {
@@ -666,6 +667,12 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 			leafID = *leaf
 		}
 		return page, next, next < total, leafID
+	})
+	b.SetHostAction("getMessageEntries", func(cursor int) ([]sessionentry.MessageSeq, int) {
+		if m.currentSession() == nil {
+			return nil, 0
+		}
+		return m.currentSession().MessageEntriesAfter(cursor)
 	})
 	b.SetHostAction("sessionRead", func(method string, args json.RawMessage) (any, error) {
 		return ExtensionSessionRead(ExtensionSessionView{Session: m.currentSession(), CWD: m.opts.CWD, SessionDir: ExtensionSessionDir(m.opts.SessionDir)}, method, args)

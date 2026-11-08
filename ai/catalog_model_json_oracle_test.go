@@ -106,7 +106,7 @@ func TestCatalogModelJSONIsSafeForConcurrentEncodings(t *testing.T) {
 		}
 	}
 	for i, model := range models {
-		if want := models[i].catalogRecord; results[0][i] != want {
+		if want := ResolveCatalogRecord(models[i].catalogRecord); results[0][i] != want {
 			t.Errorf("%s: got %s, want its record %s", model.ID, results[0][i], want)
 		}
 	}

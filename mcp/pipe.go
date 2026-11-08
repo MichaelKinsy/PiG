@@ -126,12 +126,16 @@ func (t *PipeTransport) Start() error {
 }
 
 // Send writes one message as a line to the program's stdin. Like Pi's pipe send it ignores the send signal (ctx): a line is written at once.
-func (t *PipeTransport) Send(ctx context.Context, message JSONRPCMessage) error {
-	return t.SendOrdered(ctx, message, nil)
+func (t *PipeTransport) Send(_ context.Context, message JSONRPCMessage) error {
+	return t.send(message, nil)
 }
 
 // SendOrdered is Send that calls placed, if not nil, once the write holds its place: a later Send writes after it.
 func (t *PipeTransport) SendOrdered(_ context.Context, message JSONRPCMessage, placed func()) error {
+	return t.send(message, placed)
+}
+
+func (t *PipeTransport) send(message JSONRPCMessage, placed func()) error {
 	t.mu.Lock()
 	pipe, ok := t.pipe, t.pipe != nil && !t.closed && !t.ended
 	t.mu.Unlock()
@@ -188,7 +192,7 @@ func (t *PipeTransport) Close() error {
 	case <-timer.C:
 	}
 	pipe.Close()
-	// Pi awaits `exited` after the kill; Go bounds the wait by the same time, so a pipe that never reports the exit cannot hold Close forever.
+	// Pi awaits `exited` after the kill; Go bounds the wait by the same time and reports the failure, so a pipe that never reports the exit cannot hold Close forever.
 	kill := time.NewTimer(timeout)
 	defer kill.Stop()
 	select {

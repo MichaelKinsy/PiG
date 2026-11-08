@@ -14,6 +14,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // SetCommandLine gives cmd the Windows command line Node's spawn builds for
@@ -66,7 +68,7 @@ func createEnvBlockOrder(env []string) []string {
 		return env
 	}
 	env = slices.Clone(env)
-	slices.SortStableFunc(env, compare)
+	sortx.Stable(env, compare)
 	return env
 }
 

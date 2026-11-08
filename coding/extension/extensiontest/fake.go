@@ -81,16 +81,18 @@ type Fake struct {
 	RegisterMessageRendererCalls []RegisterMessageRendererCall
 	RegisterEntryRendererCalls   []RegisterEntryRendererCall
 	RegisterMarkdownTransformers []extension.MarkdownTransformer
-	OwnThinkingRunsCalls         []bool
-	RegisterToolRenderers        []extension.ToolRendererResolver
-	RegisterProviderCalls        []RegisterProviderCall
-	RegisterNativeProviderCalls  []*ai.ModelsProvider
-	UnregisterProviderCalls      []string
-	RegisterMcpServerCalls       []RegisterMcpServerCall
-	UnregisterMcpServerCalls     []string
-	McpServers                   []extension.RegisteredMcpServer
-	RegisterVirtualModelCalls    []extension.ExtensionVirtualModel
-	UnregisterVirtualModelCalls  []UnregisterVirtualModelCall
+	// RegisterMarkdownTransformerOptions holds the options of each registration, in the order of RegisterMarkdownTransformers (the zero value when it had none).
+	RegisterMarkdownTransformerOptions []extension.MarkdownTransformerOptions
+	OwnThinkingRunsCalls               []bool
+	RegisterToolRenderers              []extension.ToolRendererResolver
+	RegisterProviderCalls              []RegisterProviderCall
+	RegisterNativeProviderCalls        []*ai.ModelsProvider
+	UnregisterProviderCalls            []string
+	RegisterMcpServerCalls             []RegisterMcpServerCall
+	UnregisterMcpServerCalls           []string
+	McpServers                         []extension.RegisteredMcpServer
+	RegisterVirtualModelCalls          []extension.ExtensionVirtualModel
+	UnregisterVirtualModelCalls        []UnregisterVirtualModelCall
 
 	// ── Actions ──
 	SendMessageCalls     []SendMessageCall
@@ -354,8 +356,13 @@ func (f *Fake) RegisterToolRenderer(resolver extension.ToolRendererResolver) {
 	f.RegisterToolRenderers = append(f.RegisterToolRenderers, resolver)
 }
 
-func (f *Fake) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer) {
+func (f *Fake) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer, options ...extension.MarkdownTransformerOptions) {
 	f.RegisterMarkdownTransformers = append(f.RegisterMarkdownTransformers, transformer)
+	var opts extension.MarkdownTransformerOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	f.RegisterMarkdownTransformerOptions = append(f.RegisterMarkdownTransformerOptions, opts)
 }
 
 // OwnThinkingRuns records the calls in order.

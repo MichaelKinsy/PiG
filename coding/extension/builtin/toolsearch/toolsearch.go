@@ -16,10 +16,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsmath"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/schemaref"
 	"github.com/MichaelKinsy/PiG/internal/searchtext"
 )
 
@@ -61,7 +61,7 @@ func schemaText(schema, root any, parts *[]string, seen map[uintptr]bool) {
 		return
 	}
 	if ref, ok := object["$ref"].(string); ok {
-		if target, ok := codemode.ResolveSchemaRef(ref, root); ok {
+		if target, ok := schemaref.Resolve(ref, root); ok {
 			if targetObject, isObject := target.(map[string]any); isObject && !seen[reflect.ValueOf(targetObject).Pointer()] {
 				seen[reflect.ValueOf(targetObject).Pointer()] = true
 				schemaText(target, root, parts, seen)

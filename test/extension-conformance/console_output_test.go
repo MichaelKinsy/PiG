@@ -79,7 +79,7 @@ func equalLines(a, b []string) bool {
 // probeLines are the console-probe lines of text, in order: the rest of PiG's output (diagnostics from other parts of the run) is not the row's concern.
 func probeLines(text string) []string {
 	var lines []string
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.HasPrefix(line, "probe-out-") || strings.HasPrefix(line, "probe-err-") {
 			lines = append(lines, line)
 		}
@@ -98,8 +98,12 @@ type processStd struct {
 func (p *processStd) snapshot() (string, string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.out.String(), p.errOut.String()
+	return lineEndings(p.out.String()), lineEndings(p.errOut.String())
 }
+
+// lineEndings reads the terminal's bytes as lines: a Python extension's print writes "\r\n" on Windows, where its stdio translates "\n" (as C stdio does), and the
+// host forwards the bytes as written. The row binds the lines the extension wrote, not its runtime's newline.
+func lineEndings(text string) string { return strings.ReplaceAll(text, "\r\n", "\n") }
 
 func swapProcessStd(t *testing.T) *processStd {
 	t.Helper()
@@ -149,7 +153,7 @@ func swapProcessStd(t *testing.T) *processStd {
 			<-errc.done
 			_ = out.r.Close()
 			_ = errc.r.Close()
-			gotOut, gotErr = p.out.String(), p.errOut.String()
+			gotOut, gotErr = lineEndings(p.out.String()), lineEndings(p.errOut.String())
 		})
 	}
 	t.Cleanup(restore)

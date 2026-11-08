@@ -106,7 +106,7 @@ type rpcHost struct {
 	detached atomic.Bool
 	// forwarding counts running event forwarders; shutdown flushes only while one runs.
 	forwarding atomic.Int32
-	// requestShutdown is an extension's ctx.shutdown(); shutdown counts the commands in flight, and afterSettled is where upstream checks for the request again (D231).
+	// requestShutdown is an extension's ctx.shutdown(); shutdown counts the commands in flight, and afterSettled is where upstream checks for the request again.
 	requestShutdown func()
 	shutdown        *rpcShutdownGate
 	afterSettled    func()

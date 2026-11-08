@@ -70,6 +70,8 @@ type registerMsg struct {
 	// MarkdownTransformer reports a registered Markdown transformer; the host
 	// runs it with markdown_transform requests.
 	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
+	// MarkdownMessageTypes are the surfaces the transformer runs on, always listed when one is registered (an empty list runs it nowhere).
+	MarkdownMessageTypes *[]string `json:"markdown_message_types,omitempty"`
 	// OwnsThinkingRuns reports that the extension owns the thinking runs of assistant messages (PiG-only).
 	// pig additive (D214)
 	OwnsThinkingRuns bool `json:"owns_thinking_runs,omitempty"`
@@ -204,6 +206,9 @@ type requestMsg struct {
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any
 	streamErr  error
+	// keyOrder is the member order of the objects of the payload an event handler was given, recorded when it was decoded (Context.ObjectKeys), until the reply.
+	keyOrder *json.ObjectOrder
+	keyMu    sync.Mutex
 }
 
 type responseMsg struct {
@@ -793,6 +798,12 @@ func (c *conn) respond(id string, result any, respErr error) error {
 	return c.writeFrameLocked(response)
 }
 
+// orderedReply is a result whose objects the host sent, written with the member order it sent them in (json.ObjectOrder).
+type orderedReply struct {
+	value any
+	order json.KeyOrder
+}
+
 // encodeResponse is the response frame of a request. A result that cannot be encoded, or that cannot be framed (past MaxFrameSize), is answered with that
 // failure, as the Node and Python SDKs answer it, rather than leaving the host waiting for a response until the call is aborted.
 func encodeResponse(id string, result any, respErr error) ([]byte, error) {
@@ -801,7 +812,13 @@ func encodeResponse(id string, result any, respErr error) ([]byte, error) {
 		resp.Error = &errorInfo{Message: respErr.Error()}
 	}
 	if result != nil {
-		data, err := json.MarshalJS(result)
+		var data []byte
+		var err error
+		if reply, ok := result.(orderedReply); ok {
+			data, err = json.MarshalJSOrdered(reply.value, reply.order)
+		} else {
+			data, err = json.MarshalJS(result)
+		}
 		if err != nil {
 			resp.Error = &errorInfo{Message: err.Error()}
 		} else {

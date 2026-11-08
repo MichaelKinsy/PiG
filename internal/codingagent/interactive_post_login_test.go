@@ -49,7 +49,7 @@ func newPostLoginTestMode(t *testing.T) *InteractiveMode {
 func TestAPIKeyLoginSelectsProviderDefault(t *testing.T) {
 	for _, tc := range []struct{ provider, name, model string }{
 		{"openai", "OpenAI", "gpt-6.1-sol"},
-		{"anthropic", "Anthropic", "claude-opus-4-8"},
+		{"anthropic", "Anthropic", "claude-opus-5-5"},
 	} {
 		t.Run(tc.provider, func(t *testing.T) {
 			m := newPostLoginTestMode(t)
@@ -88,7 +88,7 @@ func waitPostLoginStatus(t *testing.T, m *InteractiveMode, want string) {
 
 func TestRegisteredOAuthLoginSelectsProviderDefault(t *testing.T) {
 	for _, tc := range []struct{ provider, name, model string }{
-		{"anthropic", "Anthropic", "claude-opus-4-8"},
+		{"anthropic", "Anthropic", "claude-opus-5-5"},
 		{"kimi-coding", "Kimi For Coding", "kimi-for-coding"},
 		{"custom-oauth", "Custom OAuth", ""},
 	} {

@@ -8,29 +8,37 @@ import (
 	"testing"
 )
 
-// Pi flushRawStdout (output-guard.ts:95-108) flushes writes and immediately fulfilled continuations, not future timers in post-disposal turn_end callbacks.
-func TestRPCInputEndDoesNotJoinDelayedTurnEnd(t *testing.T) {
+// Pi's dispose() awaits session.abort() before session_shutdown (agent-session-runtime.ts:409-417), and abort() waits for the idle
+// Session (agent-session.ts:2601-2612): the aborted run's turn_end handlers, including one that awaits a timer, finish before
+// session_shutdown is emitted. flushRawStdout (output-guard.ts:95-108) then finds nothing left to join.
+func TestRPCInputEndJoinsDelayedTurnEndBeforeShutdown(t *testing.T) {
+	var wantEvents []string
+	for _, event := range rpcMidPromptInputEndExtensionEvents {
+		wantEvents = append(wantEvents, event)
+		if event == "turn_end" {
+			wantEvents = append(wantEvents, "tail_timer")
+		}
+	}
 	for _, impl := range rpcShutdownImplementations {
 		t.Run(impl.name, func(t *testing.T) {
 			p, report := impl.start(t, "RPC_SHUTDOWN_TAIL_DELAY=1")
 			afterEOF, events := endInputMidPrompt(p, report)
-			wantEvents := rpcMidPromptInputEndExtensionEvents[:len(rpcMidPromptInputEndExtensionEvents)-1]
 			if !reflect.DeepEqual(afterEOF, []rpcRecord{rpcShutdownStartedNotify}) || !slices.Equal(events, wantEvents) {
-				t.Fatalf("shutdown joined a delayed boundary: stdout=%v events=%v; want only shutdown, events=%v", afterEOF, events, wantEvents)
+				t.Fatalf("delayed boundary: stdout=%v events=%v; want only shutdown, events=%v", afterEOF, events, wantEvents)
 			}
 		})
 	}
 }
 
-// Pi rpc-mode.ts:738 never resumes when a shutdown handler's Promise remains pending. Node exits on event-loop drain without aborting the tool or completing the handler.
+// Pi rpc-mode.ts:751 never resumes when a shutdown handler's Promise remains pending. Node exits on event-loop drain without completing
+// the handler. The tool was aborted before the handler ran: dispose() awaits session.abort() first, so the run settled.
 func TestRPCInputEndMidToolDoesNotCompletePendingShutdown(t *testing.T) {
 	for _, impl := range rpcShutdownImplementations {
 		t.Run(impl.name, func(t *testing.T) {
 			p, report := impl.start(t, "RPC_SHUTDOWN_BLOCK=1")
 			afterEOF, events := endInputMidPrompt(p, report)
-			wantEvents := rpcMidPromptInputEndExtensionEvents[:len(rpcMidPromptInputEndExtensionEvents)-2]
-			if !reflect.DeepEqual(afterEOF, []rpcRecord{rpcShutdownStartedNotify}) || !slices.Equal(events, wantEvents) {
-				t.Fatalf("pending shutdown resumed: stdout=%v events=%v; want only shutdown, events=%v", afterEOF, events, wantEvents)
+			if !reflect.DeepEqual(afterEOF, []rpcRecord{rpcShutdownStartedNotify}) || !slices.Equal(events, rpcMidPromptInputEndExtensionEvents) {
+				t.Fatalf("pending shutdown resumed: stdout=%v events=%v; want only shutdown, events=%v", afterEOF, events, rpcMidPromptInputEndExtensionEvents)
 			}
 		})
 	}

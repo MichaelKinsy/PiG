@@ -114,14 +114,14 @@ func TestValidateMcpServerConfigAllowsCimdOnlyWithTheApplicationsCheckOfTheCallb
 	if got := errorOfEntry("s", entry(`{"clientRegistration":"cimd"}`), mcp.McpServerConfigOptions{}); got != `server "s": oauth.clientRegistration "cimd" is not supported: there are no Client ID Metadata Documents` {
 		t.Fatalf("error = %q", got)
 	}
-	type check struct {
-		url string
-		set bool
-	}
-	var checked []check
-	options := mcp.McpServerConfigOptions{CheckMetadataDocumentCallback: func(callbackURL string, set bool) string {
-		checked = append(checked, check{callbackURL, set})
-		if set && strings.HasSuffix(callbackURL, "/other") {
+	var checked []string
+	options := mcp.McpServerConfigOptions{CheckMetadataDocumentCallback: func(callbackURL *string) string {
+		if callbackURL == nil {
+			checked = append(checked, "undefined")
+		} else {
+			checked = append(checked, *callbackURL)
+		}
+		if callbackURL != nil && strings.HasSuffix(*callbackURL, "/other") {
 			return "the documents do not list it"
 		}
 		return ""
@@ -132,7 +132,7 @@ func TestValidateMcpServerConfigAllowsCimdOnlyWithTheApplicationsCheckOfTheCallb
 	if got := errorOfEntry("s", entry(`{"clientRegistration":"cimd","callbackUrl":"http://localhost/other"}`), options); got != `server "s": the documents do not list it` {
 		t.Fatalf("error = %q", got)
 	}
-	if !reflect.DeepEqual(checked, []check{{"", false}, {"http://localhost/other", true}}) {
+	if !reflect.DeepEqual(checked, []string{"undefined", "http://localhost/other"}) {
 		t.Fatalf("checked = %+v", checked)
 	}
 	if got := errorOfEntry("s", entry(`{"clientRegistration":"cimd","clientId":"id"}`), options); got != `server "s": oauth.clientRegistration "cimd" cannot be combined with oauth.clientId or oauth.clientName` {
