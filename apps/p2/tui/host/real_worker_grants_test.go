@@ -1,6 +1,7 @@
 package host_test
 
 import (
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -40,7 +41,7 @@ func TestKeyContextWhileTranscriptSearchHasFocusTheRuntimeSuspendsInterceptionSo
 	}})
 	l.openNewestSession()
 	l.terminal.SendInput(keyCtrlG)
-	poll(t, func() bool { return edited.Load() == 1 })
+	l.until(10*time.Second, fmt.Sprintf("Ctrl+G reaching the launcher action (focus %T)", l.client.TUI().GetFocusedComponent()), func() bool { return edited.Load() == 1 })
 	// Ctrl+Shift+F (kitty-encoded) opens the transcript search; the runtime reports the suspension.
 	l.terminal.SendInput("\x1b[102;6u")
 	time.Sleep(300 * time.Millisecond)
