@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
@@ -135,6 +137,13 @@ func startReloadWebApp(t testing.TB, entry string, port int, files map[string]ma
 	})
 }
 
+// startReload starts the suite's app with the web surface (the suite's base bundle at version 1, a free port) and plugins (directory name
+// to files; each plugin is `@test/<dir>`) and project workers: Pi's `startReloadApp`.
+func startReload(t testing.TB, plugins map[string]map[string]string) started {
+	t.Helper()
+	return startReloadWebApp(t, reloadEntry(t, "1", ""), freePort(t), plugins, nil)
+}
+
 // reloadTab is Pi's `ReloadPage`: the page as the tests see and drive it: its DOM, the probe's records, calls from its references.
 type reloadTab struct {
 	t       testing.TB
@@ -183,7 +192,36 @@ func (r *reloadTab) signIn(s started, views ...string) {
 	}
 }
 
-// selector is the query of selector within view.
+// signInAgain signs in with a new owner browser session (the owner link is single use: a second page needs its own session) and
+// waits as signIn does, and until each view (each holding the counter) registered its reference.
+func (r *reloadTab) signInAgain(s started, views ...string) {
+	r.t.Helper()
+	sessions, err := s.app.Host.Get(background, Sessions, delta.NewJsonObject(0), host.GetOptions{})
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	defer sessions.Release()
+	issued, err := sessions.Call("issue", delta.JsonObjectOf("principal", testOwner, "label", "second page", "kind", "browser"), background)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	pair, _, _ := strings.Cut(issued.(*delta.JsonObject).Value("cookie").(string), ";")
+	name, value, _ := strings.Cut(pair, "=")
+	url := "http://127.0.0.1:" + strconv.Itoa(s.port) + "/"
+	ctx, cancel := context.WithTimeout(context.Background(), reloadWait)
+	defer cancel()
+	if _, err := r.browser.Call(ctx, "Network.setCookie", map[string]any{"name": name, "value": value, "url": url}); err != nil {
+		r.t.Fatal(err)
+	}
+	r.browser.Open(url)
+	r.browser.Wait(`globalThis.page?.connection === "connected"`)
+	for _, view := range views {
+		r.browser.Wait(`document.querySelector('[data-view="` + view + `"]')`)
+		r.browser.Wait(`globalThis.reload.refs[` + quoted(view) + `] !== undefined`)
+	}
+}
+
+// viewSelector is the query of selector within view.
 func viewSelector(view, selector string) string {
 	return `document.querySelector('[data-view="` + view + `"] ` + selector + `')`
 }
@@ -236,9 +274,15 @@ func (r *reloadTab) states(name string) []string {
 // waitState waits until the reference tracked as name is in state (as the probe writes it).
 func (r *reloadTab) waitState(name, state string) {
 	r.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), reloadWait)
+	r.waitStateWithin(name, state, reloadWait)
+}
+
+// waitStateWithin is waitState with its own bound.
+func (r *reloadTab) waitStateWithin(name, state string, timeout time.Duration) {
+	r.t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	err := browsertest.Poll(ctx, reloadWait, name+" in "+state, func(ctx context.Context) (bool, error) {
+	err := browsertest.Poll(ctx, timeout, name+" in "+state, func(ctx context.Context) (bool, error) {
 		var ok bool
 		err := r.browser.Evaluate(ctx, `globalThis.reload.states[`+quoted(name)+`]?.at(-1) === `+quoted(state), &ok)
 		return ok, err
@@ -248,17 +292,20 @@ func (r *reloadTab) waitState(name, state string) {
 	}
 }
 
-// frames are every value its watched member had (or `failed:<reason>`), as JSON.
-func (r *reloadTab) frames(name string) []json.RawMessage {
+// frames are every value its watched member had (or `failed:<reason>`), as decoded JSON.
+func (r *reloadTab) frames(name string) []any {
 	r.t.Helper()
-	return evalAs[[]json.RawMessage](r, `globalThis.reload.frames[`+quoted(name)+`] ?? []`)
+	return evalAs[[]any](r, `globalThis.reload.frames[`+quoted(name)+`] ?? []`)
 }
 
-// hold holds the object of project id as the web plugin contract registered its contract, as name, its calls parking readyTimeout,
+// hold holds the object of project id (the server's, with no params, for an empty id) as the web plugin contract registered its contract, as name, its calls parking readyTimeout,
 // its member member watched.
 func (r *reloadTab) hold(name, contract string, readyTimeout time.Duration, id, member string) {
 	r.t.Helper()
-	params, _ := json.Marshal(map[string]string{"id": id})
+	params := []byte("{}")
+	if id != "" {
+		params, _ = json.Marshal(map[string]string{"id": id})
+	}
 	r.browser.Run(`globalThis.reload.hold(` + quoted(name) + `, ` + quoted(contract) + `, ` + string(params) + `, ` + strconv.FormatInt(readyTimeout.Milliseconds(), 10) + `, ` + quoted(member) + `)`)
 }
 
@@ -296,11 +343,17 @@ func (b browserResult) answer() callResult {
 	return result
 }
 
+// peek is call index's answer now (pending or not).
+func (r *reloadTab) peek(index int) callResult {
+	r.t.Helper()
+	return evalAs[browserResult](r, `globalThis.reload.results[`+strconv.Itoa(index)+`]`).answer()
+}
+
 // result is call index's answer, once it has one.
 func (r *reloadTab) result(index int) callResult {
 	r.t.Helper()
 	r.browser.Wait(`globalThis.reload.results[`+strconv.Itoa(index)+`].status !== "pending"`, reloadWait)
-	return evalAs[browserResult](r, `globalThis.reload.results[`+strconv.Itoa(index)+`]`).answer()
+	return r.peek(index)
 }
 
 // loads is how often the page loaded (its base bundle ran) since the browser opened it.
