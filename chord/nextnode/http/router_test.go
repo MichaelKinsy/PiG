@@ -153,16 +153,38 @@ func TestRouterPatternsAndPrecedence(t *testing.T) {
 		routerExpect(t, router, "GET", "/v/b", "GET /:name/b", map[string]string{"name": "v"}, true)
 	})
 
-	t.Run("takes a route with options: page and crossSite", func(t *testing.T) {
-		router, _ := routerCompose(t, routerEntry{"@app/a", HttpContribution{Routes: []HttpRouteEntry{
-			{Key: "GET /p", Route: HttpRouteOptions{Handler: routerRoute("p"), Page: true}},
-			{Key: "POST /hook", Route: HttpRouteOptions{Handler: routerRoute("h"), CrossSite: true}},
-		}}})
-		if match, _ := router.Route("GET", "/p"); match == nil || !match.Page || match.CrossSite {
-			t.Fatalf("GET /p = %+v, want page and not crossSite", match)
+	t.Run("takes a route with options: page, crossSite and public (a cross-site route is public: always anonymous)", func(t *testing.T) {
+		router, _ := routerCompose(t, routerEntry{"@app/a", HttpContribution{
+			Routes: []HttpRouteEntry{
+				{Key: "GET /p", Route: HttpRouteOptions{Handler: routerRoute("p"), Page: true}},
+				{Key: "POST /hook", Route: HttpRouteOptions{Handler: routerRoute("h"), CrossSite: true}},
+				{Key: "GET /open", Route: HttpRouteOptions{Handler: routerRoute("o"), Public: true}},
+				{Key: "GET /closed", Route: HttpRouteOptions{Handler: routerRoute("c")}},
+			},
+			Sockets: []HttpSocketEntry{
+				{Pattern: "/s", Handler: &HttpSocket{}, Public: true},
+				{Pattern: "/t", Handler: &HttpSocket{}},
+			},
+		}})
+		for _, want := range []struct {
+			method, path            string
+			page, crossSite, public bool
+		}{
+			{"GET", "/p", true, false, false},
+			{"POST", "/hook", false, true, true},
+			{"GET", "/open", false, false, true},
+			{"GET", "/closed", false, false, false},
+		} {
+			match, _ := router.Route(want.method, want.path)
+			if match == nil || match.Page != want.page || match.CrossSite != want.crossSite || match.Public != want.public {
+				t.Fatalf("%s %s = %+v, want page=%v crossSite=%v public=%v", want.method, want.path, match, want.page, want.crossSite, want.public)
+			}
 		}
-		if match, _ := router.Route("POST", "/hook"); match == nil || match.Page || !match.CrossSite || !match.Public {
-			t.Fatalf("POST /hook = %+v, want crossSite and not page", match)
+		if match, _ := router.Socket("/s"); match == nil || !match.Public {
+			t.Fatalf("/s = %+v, want public", match)
+		}
+		if match, _ := router.Socket("/t"); match == nil || match.Public {
+			t.Fatalf("/t = %+v, want not public", match)
 		}
 		routerExpectLookup(t, router, "GET", "/notes", NoMatch)
 	})
