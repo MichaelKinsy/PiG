@@ -246,6 +246,8 @@ func newProjectsSetup(t *testing.T, facets ...host.Facet) *projectsSetup {
 	s.Topology = tuitest.NewTopology(t, tuitest.TopologyOptions{
 		Server: []p2test.Stub{sessions, envs, projects}, Facets: append([]host.Facet{tui.CoreFacet, sessionstui.Facet}, facets...), Columns: 100,
 	})
+	// A probe left waiting would hold the teardown: the cleanups run last-in first, so mac answers before the host closes.
+	t.Cleanup(s.openMac)
 	return s
 }
 
