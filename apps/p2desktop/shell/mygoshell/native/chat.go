@@ -17,7 +17,7 @@ import (
 // markdown view (streaming while the answer is written); the prompt bar is a text area with the model and usage row.
 
 // chatMaxWidth is the conversation's column, as the web's.
-const chatMaxWidth = 760
+const chatMaxWidth = 832
 
 // chatOf makes sure the chat screen holds session id's conversation (and lets go of the one it held), and returns it.
 func (a *App) chatOf(h *surfacehost.Host, id string) *screens.Chat {
@@ -96,7 +96,7 @@ func (a *App) transcriptList(c *ui.Context, chat *screens.Chat, tr *transcript.T
 	count := n + more + 1 // the tail: the working line
 	ui.List(c, &a.chatList, count, func(i int) {
 		ui.Column(c).Padding(0, 24).AlignItems(ui.Center).Children(func() {
-			ui.Column(c).MaxWidth(chatMaxWidth).Fill().Children(func() {
+			ui.Column(c).MaxWidth(chatMaxWidth).FillWidth().Children(func() {
 				switch {
 				case more == 1 && i == 0:
 					if ui.Button(c, "Load earlier messages").Clicked() {
@@ -144,17 +144,20 @@ func (a *App) item(c *ui.Context, item transcript.Item, chat *screens.Chat) {
 	case transcript.UserItem:
 		ui.Row(c).Padding(10, 0).Children(func() {
 			ui.Spacer(c)
-			ui.Column(c).MaxWidth(560).Padding(10, 14).Radius(12).Background(t.SurfaceHover).Gap(6).Children(func() {
-				if it.Peer != nil || it.Agent != nil {
-					who := ""
-					if it.Agent != nil {
-						who = it.Agent.From
-					} else {
-						who = it.Peer.Title
-					}
+			ui.Column(c).MaxWidth(560).Padding(10, 14).Radius(6).Background(t.SurfaceHover).Gap(4).Children(func() {
+				who := ""
+				switch {
+				case it.Agent != nil:
+					who = it.Agent.From
+				case it.Peer != nil:
+					who = it.Peer.Title
+				case it.Author != nil:
+					who = it.Author.Name
+				}
+				if who != "" {
 					ui.Text(c, who).FontSize(11).TextColor(t.TextMuted)
 				}
-				ui.Text(c, it.Text).Selectable()
+				ui.Text(c, it.Text).FontSize(15).Selectable()
 				for _, f := range it.Files {
 					ui.Text(c, f).FontSize(12).Font("monospace").TextColor(t.TextMuted)
 				}
@@ -212,13 +215,13 @@ func (a *App) thought(c *ui.Context, key string, b ai.ThinkingContent) {
 		return
 	}
 	open := a.thinking[key]
-	head := ui.Row(c.Key(key + "/head")).Gap(6).AlignItems(ui.Center).Focusable().Label("Thinking").Children(func() {
+	head := ui.Row(c.Key(key + "/head")).Gap(6).AlignItems(ui.Center).Focusable().Label("Thought").Children(func() {
 		icon := iconChevronR
 		if open {
 			icon = iconChevronU
 		}
 		ui.Icon(c, icon).Size(12, 12).TextColor(t.TextMuted)
-		ui.Text(c, "Thinking").FontSize(12).TextColor(t.TextMuted)
+		ui.Text(c, "Thought").FontSize(12).TextColor(t.TextMuted)
 	})
 	if head.Clicked() {
 		a.thinking[key] = !open
@@ -306,7 +309,7 @@ type promptBar struct {
 func (a *App) promptBar(c *ui.Context, p promptBar) {
 	t := c.Theme()
 	ui.Column(c).Padding(0, 24, 12).AlignItems(ui.Center).Children(func() {
-		ui.Column(c).MaxWidth(chatMaxWidth).Fill().Radius(12).Border(1, t.Border).Children(func() {
+		ui.Column(c).MaxWidth(chatMaxWidth).FillWidth().Radius(12).Border(1, t.Border).Children(func() {
 			input := ui.TextArea(c.Key("prompt"), &a.draftText).Placeholder("Message PiG…").Label("Message PiG").
 				BorderWidth(0).Background(ui.Color{}).Lines(1, 8).AutoFocus()
 			send := input.Shortcut(0, ui.KeyEnter)

@@ -35,7 +35,7 @@ func Theme(p surfacehost.Palette) *ui.Theme {
 	t.Danger = color("error")
 	t.Warning = color("warning")
 	t.Success = color("success")
-	t.Selection = color("accent").Alpha(0.35)
+	t.Selection = color(surfacehost.RoleSoft) // the chosen row, as the web's soft fill
 	t.Focus = color("accent")
 	t.Scrollbar = t.TextMuted.Alpha(0.5)
 	return &t

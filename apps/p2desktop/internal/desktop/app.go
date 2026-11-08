@@ -274,6 +274,9 @@ func (a *App) listen() (*hosts.P2Server, error) {
 	}
 	withSprite()
 	server, err := hosts.StartServer(options)
+	if err != nil && options.Sprite != nil {
+		options.Sprite.Close() // a server that did not start never took it
+	}
 	var listenErr *net.OpError
 	if err != nil && port != 0 && errors.As(err, &listenErr) {
 		// The port of the last launch is taken: any free one, and the web UI starts with its defaults on the new origin.
@@ -281,6 +284,9 @@ func (a *App) listen() (*hosts.P2Server, error) {
 		options.Port = &zero
 		withSprite()
 		server, err = hosts.StartServer(options)
+		if err != nil && options.Sprite != nil {
+			options.Sprite.Close()
+		}
 	}
 	return server, err
 }

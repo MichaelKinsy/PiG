@@ -74,8 +74,36 @@ func TestGateShot(t *testing.T) {
 		}
 		want = "Plan the week"
 	}
-	until(t, tt, "the first frame", func() bool { return tt.HasText(want) && tt.HasText("What should PiG do?") })
+	opened := ""
+	if os.Getenv("P2_GATE_CHAT") == "1" {
+		// The chat screen: the pinned session, one exchange with the faux provider, shown open.
+		for _, item := range app.sessions.Items("", false) {
+			if item.Row != nil && item.Row.Title == "Fix the flaky sync test" {
+				opened = item.Row.ID
+			}
+		}
+		if opened == "" {
+			t.Fatal("the gate's session is missing")
+		}
+		app.setSel(opened)
+		until(t, tt, "the chat", func() bool { return app.chat != nil && tt.HasText("Say something to start.") })
+		if err := app.chat.Send("Explain what the surface host does, with a short list."); err != nil {
+			t.Fatal(err)
+		}
+		worked := false
+		until(t, tt, "the answer", func() bool {
+			worked = worked || tt.HasText("Working…") || tt.HasText("Stop")
+			return worked && !tt.HasText("Working…") && !tt.HasText("Stop")
+		})
+		want = "Explain what the surface host does, with a short list."
+	}
+	if opened == "" {
+		until(t, tt, "the first frame", func() bool { return tt.HasText(want) && tt.HasText("What should PiG do?") })
+	} else {
+		until(t, tt, "the first frame", func() bool { return tt.HasText(want) })
+	}
 	time.Sleep(500 * time.Millisecond)
+	tt.Advance(3 * time.Second) // the reveal of streamed text and the fades are done
 	tt.Frame()
 	file, err := os.Create(out)
 	if err != nil {
@@ -86,7 +114,7 @@ func TestGateShot(t *testing.T) {
 	}
 	_ = file.Close()
 	if portFile := os.Getenv("P2_GATE_PORT_FILE"); portFile != "" {
-		if err := os.WriteFile(portFile, []byte(strconv.Itoa(server.Port)), 0o600); err != nil {
+		if err := os.WriteFile(portFile, []byte(strconv.Itoa(server.Port)+"\n"+opened), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		deadline := time.Now().Add(120 * time.Second)
