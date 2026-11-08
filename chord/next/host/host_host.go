@@ -224,8 +224,6 @@ type Host interface {
 	// and every route link is sent `revoke`, which the host there applies with its own `RevokedBy`. Nothing is replayed to
 	// links made later.
 	Revoke(revocation delta.JsonValue, ctx context.Context) error
-	// Address is this host's address (`HostOptions.Address`); nil for a client.
-	Address() *contracts.Address
 	// References is the references to objects of typ on this host (§19), one entry per reference: the object's params, the
 	// principal it acts as (remote types) and its origin, the incarnation of the host it was made for (two tabs are two
 	// origins). Changes in the batch where a reference binds or ends; a link drop is a departure.
@@ -545,9 +543,6 @@ func (h *chordHost) enter(work func()) {
 		work()
 	})
 }
-
-// Address implements Host.
-func (h *chordHost) Address() *contracts.Address { return h.address }
 
 // Incarnation implements Host.
 func (h *chordHost) Incarnation() string { return h.incarnation }
