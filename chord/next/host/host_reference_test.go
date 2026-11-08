@@ -411,11 +411,10 @@ func TestGCAReleasedReferenceWhoseStateWasReadAfterAFailureKeepsNeitherTheFailur
 	}
 }
 
-// reference.test.ts › GC › a hold released while it waits unbound keeps nothing: the reference and its contract leave the
-// index and its clock.
-func TestGCAHoldReleasedWhileItWaitsUnboundKeepsNothingTheReferenceAndItsContractLeaveTheIndexAndItsClock(t *testing.T) {
+// reference.test.ts › GC › a hold released before load keeps nothing: the reference and its contract go while the host
+// waits.
+func TestGCAHoldReleasedBeforeLoadKeepsNothingTheReferenceAndItsContractGoWhileTheHostWaits(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
-	mustLoad(t)(host.Load(nil, background))
 	var references []weak.Pointer[Reference]
 	var contractRefs []weak.Pointer[contracts.Contract]
 	func() {
@@ -644,9 +643,8 @@ func TestRemoteReferenceTypesNarrowOnVariantRefInPicksVariants(t *testing.T) {
 // reference.test.ts › remote reference types › a held reference's variant may be undefined (before its first binding) and
 // still narrows. Type-level in Pi: Held is Reference, and Variant reports bound false before the first binding.
 func TestRemoteReferenceTypesAHeldReferencesVariantMayBeUndefinedBeforeItsFirstBindingAndStillNarrows(t *testing.T) {
-	// A type nobody serves: a held reference waits unbound.
+	// A host that is not loaded has no publication: a held reference waits unbound.
 	host := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: ownerPrincipal(), OnError: func(HostError) {}})
-	mustLoad(t)(host.Load(nil, background))
 	var held *Held
 	var err error
 	held, err = host.Hold(background, refTwo, jsonObject(), GetOptions{})
@@ -654,8 +652,8 @@ func TestRemoteReferenceTypesAHeldReferencesVariantMayBeUndefinedBeforeItsFirstB
 	if variant, bound, err := held.Variant(); err != nil || bound || variant != "" {
 		t.Fatalf("variant before the first binding = %q, %v, %v, want none", variant, bound, err)
 	}
-	if kind := refKind(held); kind != RefStateFailed {
-		t.Fatalf("held state = %s, want failed (waiting)", kind)
+	if kind := refKind(held); kind != RefStateLoading {
+		t.Fatalf("held state = %s, want loading", kind)
 	}
 	held.Retry()
 	held.Release()

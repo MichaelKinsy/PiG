@@ -45,11 +45,11 @@ func unboundLogsOf(requests ...*recordingRequest) [][]string {
 }
 
 func TestTheIndexWakesEveryRequestAtThePublicationOutOfTheIndexFirstADeletedOneIsNotWoken(t *testing.T) {
-	index := newUnboundIndex(newUnboundClock(nil, func(unboundLong) {}))
+	index := newUnboundIndex()
 	a, b, c := unboundRequestOf(nil), unboundRequestOf(nil), unboundRequestOf(nil)
-	index.add("app.a", a, nil)
-	index.add("app.a", b, nil)
-	index.add("app.b", c, nil)
+	index.add("app.a", a)
+	index.add("app.a", b)
+	index.add("app.b", c)
 	index.delete("app.a", b)
 	index.wakeAll()
 	if got, want := unboundLogsOf(a, b, c), [][]string{{"wake"}, nil, {"wake"}}; !reflect.DeepEqual(got, want) {
@@ -63,11 +63,11 @@ func TestTheIndexWakesEveryRequestAtThePublicationOutOfTheIndexFirstADeletedOneI
 }
 
 func TestTheIndexWakesTheRequestsOfTheNamesAReloadServesOnlyCarryOverPublicationsWakePerName(t *testing.T) {
-	index := newUnboundIndex(newUnboundClock(nil, func(unboundLong) {}))
+	index := newUnboundIndex()
 	a, b, c := unboundRequestOf(nil), unboundRequestOf(nil), unboundRequestOf(nil)
-	index.add("app.a", a, nil)
-	index.add("app.b", b, nil)
-	index.add("app.c", c, nil)
+	index.add("app.a", a)
+	index.add("app.b", b)
+	index.add("app.c", c)
 	index.wake([]string{"app.a", "app.c", "app.unknown"})
 	if got, want := unboundLogsOf(a, b, c), [][]string{{"wake"}, nil, {"wake"}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("logs = %v, want %v", got, want)
@@ -85,12 +85,12 @@ func TestTheIndexWakesTheRequestsOfTheNamesAReloadServesOnlyCarryOverPublication
 }
 
 func TestTheIndexEndsTheRequestsOfARevokedPrincipalOnlyAndEveryRequestAtTheHostsClose(t *testing.T) {
-	index := newUnboundIndex(newUnboundClock(nil, func(unboundLong) {}))
+	index := newUnboundIndex()
 	guest := unboundRequestOf(unboundGuest("guest"))
 	owner := unboundRequestOf(unboundGuest("owner"))
 	own := unboundRequestOf(nil)
 	for _, each := range []*recordingRequest{guest, owner, own} {
-		index.add("app.a", each, nil)
+		index.add("app.a", each)
 	}
 	revoked := data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Reason: data.ReasonRevoked, Message: "revoked"}, nil)
 	index.revoke(func(principal data.Principal) bool { return principal.Value("kind") == "guest" }, revoked)
@@ -106,20 +106,20 @@ func TestTheIndexEndsTheRequestsOfARevokedPrincipalOnlyAndEveryRequestAtTheHosts
 // Own test, mirroring the wake order Pi's `Map` of names gives (insertion order of the names, the requests of a name in the
 // order they were added): a name that left the index and came back is woken last.
 func TestTheIndexWakesInInsertionOrderOfNamesAndRequests(t *testing.T) {
-	index := newUnboundIndex(newUnboundClock(nil, func(unboundLong) {}))
+	index := newUnboundIndex()
 	var order []string
 	named := func(name string) *funcRequest {
 		return &funcRequest{wakeFn: func() { order = append(order, name) }}
 	}
 	a1, b1, a2, c1 := named("a1"), named("b1"), named("a2"), named("c1")
-	index.add("app.a", a1, nil)
-	index.add("app.b", b1, nil)
-	index.add("app.a", a2, nil)
-	index.add("app.c", c1, nil)
+	index.add("app.a", a1)
+	index.add("app.b", b1)
+	index.add("app.a", a2)
+	index.add("app.c", c1)
 	// app.a leaves and comes back: it is the last name now.
 	index.delete("app.a", a1)
 	index.delete("app.a", a2)
-	index.add("app.a", a1, nil)
+	index.add("app.a", a1)
 	index.wakeAll()
 	if want := []string{"b1", "c1", "a1"}; !reflect.DeepEqual(order, want) {
 		t.Fatalf("wake order = %v, want %v", order, want)
@@ -129,7 +129,7 @@ func TestTheIndexWakesInInsertionOrderOfNamesAndRequests(t *testing.T) {
 // Own test, mirroring `revoke`: a request an earlier end removed from the index is not visited again, though it was in
 // the index under two names when the walk began.
 func TestTheIndexRevokeSkipsARequestAnEarlierEndRemoved(t *testing.T) {
-	index := newUnboundIndex(newUnboundClock(nil, func(unboundLong) {}))
+	index := newUnboundIndex()
 	var ends []string
 	var shared *funcRequest
 	shared = &funcRequest{who: unboundGuest("guest"), endFn: func(err *data.ChordError) {
@@ -137,8 +137,8 @@ func TestTheIndexRevokeSkipsARequestAnEarlierEndRemoved(t *testing.T) {
 		index.delete("app.a", shared)
 		index.delete("app.b", shared)
 	}}
-	index.add("app.a", shared, nil)
-	index.add("app.b", shared, nil)
+	index.add("app.a", shared)
+	index.add("app.b", shared)
 	index.revoke(func(data.Principal) bool { return true }, data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Reason: data.ReasonRevoked, Message: "revoked"}, nil))
 	if want := []string{"revoked"}; !reflect.DeepEqual(ends, want) {
 		t.Fatalf("ends = %v, want %v", ends, want)
@@ -219,14 +219,19 @@ func indexedHolds(host Host) []weak.Pointer[hold] {
 	return weaks
 }
 
-// Mirrors unbound.test.ts "references waiting in the index › after the publication: a type served binds; one not served waits failed { waiting }".
-func TestHostReferencesWaitingInTheIndexAfterThePublicationATypeServedBindsOneNotServedWaitsFailedWaiting(t *testing.T) {
+// Mirrors unbound.test.ts "references waiting in the index › before the publication: loading, placed by it; a type not served then waits failed { waiting }".
+func TestHostReferencesWaitingInTheIndexBeforeThePublicationAreLoadingPlacedByIt(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
-	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/a", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfo(h) })}}, background))
 	info, err := host.Hold(background, unboundInfo, jsonObject(), GetOptions{})
 	must(t, err)
 	missing, err := host.Hold(background, unboundMissing, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
+	for _, ref := range []*Reference{info, missing} {
+		if kind := refStateOf(ref).Kind; kind != RefStateLoading {
+			t.Fatalf("state before the publication = %s, want loading", kind)
+		}
+	}
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/a", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfo(h) })}}, background))
 	turn(host)
 	if kind := refStateOf(info).Kind; kind != RefStateLive {
 		t.Fatalf("info state = %s, want live", kind)
@@ -247,35 +252,16 @@ func TestHostReferencesWaitingInTheIndexAfterThePublicationATypeServedBindsOneNo
 	}
 }
 
-// Mirrors "what waits unserved (slice 12 §6, testPlugin) › lists the index's names sorted, and the host the names no plugin serves".
-func TestWhatWaitsUnservedListsTheIndexsNamesSortedAndTheHostTheNamesNoPluginServes(t *testing.T) {
-	index := newUnboundIndex(newUnboundClock(newFakeLoop(), func(unboundLong) {}))
-	index.add("b", unboundRequestOf(nil), nil)
-	index.add("a", unboundRequestOf(nil), nil)
-	if got := index.sortedNames(); !reflect.DeepEqual(got, []string{"a", "b"}) {
-		t.Fatalf("names = %v, want [a b]", got)
-	}
-	host := newHost(t, HostOptions{OnError: func(HostError) {}})
-	mustLoad(t)(host.Load([]HostFacet{{Name: "info", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfo(h) })}}, background))
-	held, err := host.Hold(background, unboundMissing, jsonObject("id", float64(1)), GetOptions{})
-	must(t, err)
-	turn(host)
-	h := host.(*chordHost)
-	var unserved []string
-	h.enter(func() { unserved = h.unservedNames() })
-	if !reflect.DeepEqual(unserved, []string{"app.missing"}) {
-		t.Fatalf("unservedNames = %v, want [app.missing]", unserved)
-	}
-	held.Release()
-	must(t, host.Close(background))
-}
-
 // Mirrors "references waiting in the index › leave nothing behind once released, before and after the publication (GC)".
 func TestHostReferencesWaitingInTheIndexLeaveNothingBehindOnceReleased(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	defer closeHosts(t, host)
 	var weaks []weak.Pointer[binding]
 	func() {
+		first, err := host.Hold(background, unboundMissing, jsonObject("id", float64(1)), GetOptions{})
+		must(t, err)
+		weaks = append(weaks, weak.Make(first.binding))
+		first.Release()
 		mustLoad(t)(host.Load(nil, background))
 		second, err := host.Hold(background, unboundMissing, jsonObject("id", float64(2)), GetOptions{})
 		must(t, err)
