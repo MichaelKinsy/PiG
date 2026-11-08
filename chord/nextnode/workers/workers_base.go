@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/node/workers/base.ts `nodeBaseInputs`. The files an entry's code is made of, each with the hash of its
@@ -20,7 +20,7 @@ import (
 
 // NodeBaseInputs is the record of the code of entry: its absolute path with the hash of its bytes. It fails when entry is not a
 // regular file that can be read.
-func NodeBaseInputs(entry string, conditions []string) (plugins.BaseInputs, error) {
+func NodeBaseInputs(entry string, conditions []string) (model.BaseInputs, error) {
 	_ = conditions
 	path, err := filepath.Abs(entry)
 	if err != nil {
@@ -33,9 +33,9 @@ func NodeBaseInputs(entry string, conditions []string) (plugins.BaseInputs, erro
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("%s is not a regular file", path)
 	}
-	hash, ok := plugins.HashFile(path)
+	hash, ok := model.HashFile(path)
 	if !ok {
 		return nil, fmt.Errorf("%s cannot be read", path)
 	}
-	return plugins.BaseInputs{path: hash}, nil
+	return model.BaseInputs{path: hash}, nil
 }

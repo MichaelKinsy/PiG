@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/04-watches.ts
+// pi: packages/chord/test/examples/04-watches.ts
 
 import (
 	"context"

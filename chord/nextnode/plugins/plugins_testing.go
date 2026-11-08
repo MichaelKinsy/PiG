@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/node/plugins/testing.ts (`testPlugin`, slice 12 §6, "Testing a plugin alone"): a plugin built as
@@ -47,18 +48,20 @@ type TestStub struct {
 
 // TestPluginOptions is what TestPlugin takes besides the plugin's directory.
 type TestPluginOptions struct {
+	// Build builds the plugin's facet (build.BuildFacet): required.
+	Build Builder
 	// Kind is the facet kind to test (`worker`): the plugin's facet of it is built and loaded.
 	Kind string
 	// Modules are the app's API modules by specifier (files the Node host imports: definitions only), as the kind's
 	// production host has them.
 	Modules HostPackages
 	// Api is the app's API, checked as production checks it; required when Modules hold versioned API modules.
-	Api *AppApi
+	Api *model.AppApi
 	// Kinds are the app's facet kinds, for the per-kind file check: by default Kind and every kind the files of the plugin's
 	// root name (`contract.web.tsx`: `web`), so the check is active as in production.
 	Kinds []string
 	// Platform is where the kind's builds run (PlatformNode by default).
-	Platform Platform
+	Platform model.Platform
 	// Stubs are Go facets serving what the plugin uses (other plugins' contracts, core objects), bridged to its host.
 	Stubs []TestStub
 	// Core are JavaScript facets loaded beside the plugin on its host: stubs that serve or contribute to registries, or
@@ -89,7 +92,7 @@ type TestedPlugin struct {
 	// Stubs is the Go host the Go stubs are loaded on.
 	Stubs host.Host
 	// Plugin is the plugin as discovered.
-	Plugin Plugin
+	Plugin model.Plugin
 
 	runtime *PluginRuntime
 
@@ -150,15 +153,17 @@ func TestPlugin(dir string, options TestPluginOptions, ctx context.Context) (*Te
 	}
 	platform := options.Platform
 	if platform == "" {
-		platform = PlatformNode
+		platform = model.PlatformNode
 	}
-	built, err := BuildFacet(found, options.Kind, BuildOptions{
-		HostPackages: modules, Platform: platform, Kinds: kinds, Plugins: others, Api: options.Api,
+	mappings := newMappingEvaluator(NodeOptions{})
+	defer mappings.close()
+	built, err := options.Build(found, options.Kind, model.BuildOptions{
+		HostPackages: modules, Platform: platform, Kinds: kinds, Plugins: others, Api: options.Api, Mappings: mappings,
 	}, ctx)
 	if err != nil {
 		return nil, err
 	}
-	if built.Kind == BuiltFacetFailed {
+	if built.Kind == model.BuiltFacetFailed {
 		return nil, fmt.Errorf("testPlugin: %q failed to build:\n%s", found.Name, strings.Join(built.Errors, "\n"))
 	}
 
@@ -332,13 +337,13 @@ func kindsNamedIn(root string) ([]string, error) {
 }
 
 // testPluginIn is the plugin at real (its directory, or a single-file plugin's file), discovered with the others of root.
-func testPluginIn(real, root string, kinds []string, ctx context.Context) (Plugin, []Plugin, error) {
-	discovery, err := DiscoverPlugins([]PluginRoot{{Path: root}}, DiscoveryOptions{Kinds: kinds}, ctx)
+func testPluginIn(real, root string, kinds []string, ctx context.Context) (model.Plugin, []model.Plugin, error) {
+	discovery, err := model.DiscoverPlugins([]model.PluginRoot{{Path: root}}, model.DiscoveryOptions{Kinds: kinds}, ctx)
 	if err != nil {
-		return Plugin{}, nil, err
+		return model.Plugin{}, nil, err
 	}
 	for _, each := range discovery.Plugins {
-		if each.Layout == LayoutDirectory && each.Dir == real || each.Layout != LayoutDirectory && slices.Contains(mapValues(each.Facets), real) {
+		if each.Layout == model.LayoutDirectory && each.Dir == real || each.Layout != model.LayoutDirectory && slices.Contains(mapValues(each.Facets), real) {
 			return each, discovery.Plugins, nil
 		}
 	}
@@ -349,7 +354,7 @@ func testPluginIn(real, root string, kinds []string, ctx context.Context) (Plugi
 			break
 		}
 	}
-	return Plugin{}, nil, fmt.Errorf("testPlugin: %s is no plugin%s", real, reason)
+	return model.Plugin{}, nil, fmt.Errorf("testPlugin: %s is no plugin%s", real, reason)
 }
 
 // mapValues are the values of m.

@@ -329,6 +329,71 @@ func TestAMessageWithNoArgumentsHasEmptyParamsAndRenders(t *testing.T) {
 	}
 }
 
+// Intention of language.test.ts "the render scope › is current only while a render runs, and a nested render restores the
+// outer" (Pi's inLanguage/currentLanguage, which Go has no form of: D450): a render in one language that renders another
+// message in a second language leaves the first render in its own language afterwards, whether the nested render
+// returns, fails or panics, and nothing of either outlives them. Go's scope is the explicit `lang` argument, so the guard
+// is that nesting `other.In(fr)` inside a message function never changes what the outer function's own `lang` formats.
+func TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNestedOneFailsOrPanics(t *testing.T) {
+	var reports []MessagesReport
+	de, fr := languageOf(t, "de", &reports), languageOf(t, "fr", &reports)
+	inner := mustMessages(t, "inner",
+		LocaleCatalog{"en", Catalog{
+			"number": MessageFunc(func(lang *Language, args ...any) (string, error) { return FormatNumber(lang, args[0].(float64), nil) }),
+			"throws": MessageFunc(func(*Language, ...any) (string, error) { return "", errors.New("render failed") }),
+			"panics": MessageFunc(func(*Language, ...any) (string, error) { panic("render panicked") }),
+		}})
+	var nested [3]string
+	var nestedErrors [2]error
+	outer := mustMessages(t, "outer",
+		LocaleCatalog{"en", Catalog{
+			"both": MessageFunc(func(lang *Language, args ...any) (string, error) {
+				var err error
+				if nested[0], err = FormatNumber(lang, 1234.5, nil); err != nil {
+					return "", err
+				}
+				if nested[1], err = inner.In(fr).T("number", 1234.5); err != nil {
+					return "", err
+				}
+				_, nestedErrors[0] = inner.In(fr).T("throws")
+				_, nestedErrors[1] = inner.In(fr).T("panics")
+				if nested[2], err = FormatNumber(lang, 1234.5, nil); err != nil {
+					return "", err
+				}
+				return nested[0] + "|" + nested[1] + "|" + nested[2], nil
+			}),
+			"after": MessageFunc(func(lang *Language, args ...any) (string, error) { return FormatNumber(lang, 1234.5, nil) }),
+		}})
+	inDe, err := FormatNumber(de, 1234.5, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inFr, err := FormatNumber(fr, 1234.5, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inDe == inFr {
+		t.Fatalf("de and fr format 1234.5 alike (%q): the test cannot tell the languages apart", inDe)
+	}
+	got, err := outer.In(de).T("both")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := inDe + "|" + inFr + "|" + inDe; got != want {
+		t.Fatalf("outer render = %q, want %q: the outer language before, the nested one inside, the outer one restored", got, want)
+	}
+	if nestedErrors[0] == nil || nestedErrors[1] == nil {
+		t.Fatalf("nested errors = %v, want the failure and the panic as errors", nestedErrors)
+	}
+	// Nothing of the nested renders outlives them: a render with no language is the source language again.
+	if text, err := outer.In(nil).T("after"); err != nil || text == inDe || text == inFr {
+		t.Fatalf("a render in no language = %q, %v, want the root locale's own formatting", text, err)
+	}
+	if text, err := outer.In(de).T("after"); err != nil || text != inDe {
+		t.Fatalf("a later render in de = %q, %v, want %q", text, err, inDe)
+	}
+}
+
 // Intention of packages/chord/test/surfaces/messages.test.ts:51-61 ("types every catalog by the first", @ts-expect-error): a catalog
 // that lacks a key of the first, has a key the first lacks, or has a text where the first has a function is a declaration
 // mistake. Pi stops it at compile time (CatalogShape); PiG stops it where the catalogs are declared.

@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// Ports packages/chord/test/next-node/plugins/support.ts (FIXTURES, KINDS, tempRoot, writeFiles, writePlugin, gitRepository). The host
+// Ports packages/chord/test/node/plugins/support.ts (FIXTURES, KINDS, tempRoot, writeFiles, writePlugin, gitRepository). The host
 // packages (`HOST_PACKAGES`, `kindsOf`) and `writePackage` serve the esbuild and `vm` tests, which this package replaces
 // by the Builder and Evaluator seams (plugins_build.go, plugins_evaluate.go).
 

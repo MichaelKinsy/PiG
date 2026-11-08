@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -27,8 +28,8 @@ import (
 
 // PluginScript is one plugin's facet of a kind as shipped to a host (plain data): its build and its plugin record.
 type PluginScript struct {
-	Plugin Plugin
-	Built  BuiltFacet
+	Plugin model.Plugin
+	Built  model.BuiltFacet
 }
 
 // HostPackages are the host packages a script's imports are answered with, by specifier: the file of the module (an absolute
@@ -131,11 +132,11 @@ type PluginError struct {
 	// Failed is every plugin the load left out, required or not.
 	Failed []host.PluginFailure
 	// Problems is what discovery reported in required roots.
-	Problems []DiscoveryProblem
+	Problems []model.DiscoveryProblem
 }
 
 // NewPluginError is upstream's `new PluginError(required, failed, problems = [])`.
-func NewPluginError(required []host.PluginFailure, failed []host.PluginFailure, problems ...DiscoveryProblem) *PluginError {
+func NewPluginError(required []host.PluginFailure, failed []host.PluginFailure, problems ...model.DiscoveryProblem) *PluginError {
 	return &PluginError{Required: required, Failed: failed, Problems: problems}
 }
 
@@ -217,26 +218,26 @@ type scriptWire struct {
 }
 
 type pluginWire struct {
-	Name         string            `json:"name"`
-	Dir          string            `json:"dir"`
-	Root         string            `json:"root"`
-	Required     bool              `json:"required"`
-	Layout       PluginLayout      `json:"layout"`
-	Facets       map[string]string `json:"facets"`
-	Dependencies []string          `json:"dependencies"`
-	External     []string          `json:"external"`
+	Name         string             `json:"name"`
+	Dir          string             `json:"dir"`
+	Root         string             `json:"root"`
+	Required     bool               `json:"required"`
+	Layout       model.PluginLayout `json:"layout"`
+	Facets       map[string]string  `json:"facets"`
+	Dependencies []string           `json:"dependencies"`
+	External     []string           `json:"external"`
 }
 
 // builtWire is a BuiltFacet as Pi's data has it: a script has its source and digest, a failed build its errors, an array
 // that is there when it is empty too (omitzero drops only the nil one: a failed build sets it, see scriptsWire).
 type builtWire struct {
-	Kind   BuiltKind `json:"kind"`
-	Plugin string    `json:"plugin"`
-	Facet  string    `json:"facet"`
-	Source string    `json:"source,omitempty"`
-	Digest string    `json:"digest,omitempty"`
-	Errors []string  `json:"errors,omitzero"`
-	Api    *apiWire  `json:"api,omitempty"`
+	Kind   model.BuiltKind `json:"kind"`
+	Plugin string          `json:"plugin"`
+	Facet  string          `json:"facet"`
+	Source string          `json:"source,omitempty"`
+	Digest string          `json:"digest,omitempty"`
+	Errors []string        `json:"errors,omitzero"`
+	Api    *apiWire        `json:"api,omitempty"`
 }
 
 // apiWire is a BuiltApi: the version is there when the script uses one (upstream's `undefined` is no key).
@@ -262,7 +263,7 @@ func scriptsWire(scripts []PluginScript) []scriptWire {
 		if api := script.Built.Api; api != nil {
 			wire[i].Built.Api = &apiWire{Name: api.Name, Version: api.Version}
 		}
-		if script.Built.Kind == BuiltFacetFailed {
+		if script.Built.Kind == model.BuiltFacetFailed {
 			wire[i].Built.Errors = nonNil(script.Built.Errors)
 		}
 	}

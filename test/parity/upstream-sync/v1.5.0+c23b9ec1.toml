@@ -473,9 +473,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/host/attempt.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_attempt_test.go", "test:chord/next/host/host_spans_test.go#TestNativeSpansOpenEachNativeInAChordOpenSpanOfItsAttemptsAndCloseItInAChordCloseRoot"]
+rationale = "Moved from next/host/attempt.ts by the root move (Pi e9c0ff4d8). Content delta: import moves, plus the native chord.open/close span plumbing and the live-query/native open arguments the attempt hands its members. Go: host_attempt.go and host_attempt_trace.go carry both (the v1.5.0 port stays the port); host_attempt_test.go drives the attempt through host.Object and host_spans_test.go the span tree (TestNativeSpansOpenEachNativeInAChordOpenSpanOfItsAttemptsAndCloseItInAChordCloseRoot)."
 
 [[files]]
 path = "packages/chord/src/host/backoff.ts"
@@ -487,9 +487,9 @@ rationale = "Moved from packages/chord/src/next/host/backoff.ts by the root move
 [[files]]
 path = "packages/chord/src/host/ctx.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_ctx_test.go", "test:chord/next/host/host_spans_test.go#TestCtxTraceRunsFnInAChildSpanOfTheHandlersWithAChildCtxTheSamePrincipalSignalAndReferences", "test:chord/next/host/host_spans_test.go#TestCtxTraceReturnsAnErrorNeverPanicsWhenFnPanicsRecordedOrNot"]
+rationale = "Moved from next/host/ctx.ts (Pi e9c0ff4d8). Content delta: Ctx.trace(name, attributes, fn) and the CallContext's chain node on an attempt (OldWorkSource). Go: host_ctx.go and host_ctx_trace.go (Ctx.Trace); host_spans_test.go TestCtxTraceRunsFnInAChildSpanOfTheHandlersWithAChildCtxTheSamePrincipalSignalAndReferences, TestCtxTraceMarksItsSpanFailedTraceFailedAndReturnsTheError, TestCtxTraceReturnsAnErrorNeverPanicsWhenFnPanicsRecordedOrNot and TestCtxTraceGivesFnTheHandlersOwnCtxWhenNothingRecords cover every observable of the new method; host_ctx_test.go the rest of Ctx."
 
 [[files]]
 path = "packages/chord/src/host/deadline.ts"
@@ -529,9 +529,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/host/host.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_host_test.go", "test:chord/next/host/host_spans_test.go#TestHostSpansTraceAReloadWithOneEventPerObjectsFate", "test:chord/next/host/host_telemetry_test.go"]
+rationale = "Moved from next/host/host.ts (Pi e9c0ff4d8). Content delta: the host's telemetry context (HostOptions.telemetry, NOOP by default), its chord.* spans (load, activation, reload with one event per object's fate, revocation count) and cost metrics (links, roots, adapter). Go: host_host.go with host_telemetry.go; host_spans_test.go TestHostSpansTraceLoadUnderItsCallersSpanPluginsGivenAndLeftOutHostLifetimeActivationsLinkToIt, ...TraceAReloadWithOneEventPerObjectsFate, ...CountTheCostCountersOfItsLinksAndRootsWorkOnItsAdapterUnderContextsWithoutASpan, ...RecordARevocationsCountAfterItUnderTheCallersSpan; host_host_test.go and host_telemetry_test.go cover the rest."
 
 [[files]]
 path = "packages/chord/src/host/index.ts"
@@ -557,9 +557,9 @@ rationale = "Moved from packages/chord/src/next/host/members.ts by the root move
 [[files]]
 path = "packages/chord/src/host/native.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_native_test.go", "test:chord/next/host/host_spans_test.go#TestNativeSpansKeepAnOpenItsAttemptAbandonedCancelledOk", "test:chord/next/host/host_spans_test.go#TestNativeSpansMarkACloseThatFailedFailed"]
+rationale = "Moved from next/host/native.ts (Pi e9c0ff4d8). Content delta: a native member opens in its own chord.open span of the attempt (a late value, closed at once, reported) and closes in a chord.close root; type/telemetry/host fields on the owner. Go: host_native.go; host_spans_test.go TestNativeSpansOpenEachNativeInAChordOpenSpanOfItsAttemptsAndCloseItInAChordCloseRoot, TestNativeSpansKeepAnOpenItsAttemptAbandonedCancelledOk, TestNativeSpansMarkACloseThatFailedFailed; host_native_test.go the open/close/late-value behavior."
 
 [[files]]
 path = "packages/chord/src/host/object.ts"
@@ -648,9 +648,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/host/root.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_root_test.go", "test:chord/next/host/host_spans_test.go#TestHostRootRunsItsScopeInANewRootSpanOfItsAdapterWithItsHostAndAttributesAFailureMarksItFailed", "test:chord/next/host/host_spans_test.go#TestHostRootStartsNothingWithoutAnAdapterThatRecords"]
+rationale = "Moved from next/host/root.ts (Pi e9c0ff4d8). Content delta: RootOptions.trace {name, attributes}: the root's scope runs in a new root span of the host's adapter, ctx.telemetry that span, a throw marks it failed, nothing started without a recording adapter. Go: host_root.go RootTrace; host_spans_test.go TestHostRootRunsItsScopeInANewRootSpanOfItsAdapterWithItsHostAndAttributesAFailureMarksItFailed and TestHostRootStartsNothingWithoutAnAdapterThatRecords; host_root_test.go the rest of Root."
 
 [[files]]
 path = "packages/chord/src/host/route.ts"
@@ -662,9 +662,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/host/routines.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_routines_test.go", "test:chord/next/host/host_spans_test.go#TestHostSpansTraceLoadUnderItsCallersSpanPluginsGivenAndLeftOutHostLifetimeActivationsLinkToIt"]
+rationale = "Moved from next/host/routines.ts (Pi e9c0ff4d8). Content delta: each on/onLive routine call runs in a chord.routine span (RoutinePosition, type name on the owner), ended with the call. Go: host_routines.go; host_routines_test.go and host_spans_test.go (principal attributes on routine spans: TestPrincipalAttributesRecordACallSpansPrincipalWhomItsReferenceActsFor)."
 
 [[files]]
 path = "packages/chord/src/host/sleep.ts"
@@ -753,9 +753,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/jobs/run-states.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_run_test.go", "test:chord/next/host/jobs_running_test.go", "test:chord/next/host/jobs_run_states_deadline_test.go"]
+rationale = "Moved from next/jobs/run-states.ts (Pi e9c0ff4d8); the delta is an import move, no behavior. Go jobs_run_states.go unchanged; jobs_run_test.go, jobs_running_test.go and jobs_run_states_deadline_test.go drive the run states."
 
 [[files]]
 path = "packages/chord/src/jobs/run.ts"
@@ -774,9 +774,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/jobs/stored.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_persisted_test.go", "test:chord/next/host/jobs_records_test.go"]
+rationale = "Moved from next/jobs/stored.ts (Pi e9c0ff4d8); the delta is an import move (store/ now at the package root), no behavior. Go jobs_stored.go is unchanged and jobs_persisted_test.go drives the stored records through the host."
 
 [[files]]
 path = "packages/chord/src/link.ts"
@@ -788,9 +788,9 @@ rationale = "Pi deletes the v1 chord layer (src/link.ts is the pre-next root fil
 [[files]]
 path = "packages/chord/src/link/binary.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_trace_test.go#TestTheBinaryCodecFlagsATrace", "test:chord/next/link/message_trace_test.go#TestMessagesCarryATraceCarrier", "test:chord/next/link/message_test.go"]
+rationale = "Moved from next/link/binary.ts (Pi e9c0ff4d8). Content delta: the trace flag (0x40: a hold or call carries its trace carrier as JSON after the origin) and the old-work flag (0x20, call only; an unknown flag combination is an unknown kind). Go: link/binary.go; message_trace_test.go TestTheBinaryCodecFlagsATrace and TestMessagesCarryATraceCarrier; message_test.go the rest of the codec."
 
 [[files]]
 path = "packages/chord/src/link/channel.ts"
@@ -851,16 +851,16 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/link/text.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_trace_test.go#TestTheTextCodecWritesATrace", "test:chord/next/link/message_trace_test.go#TestACarrierKeepsTheOrderOfItsKeysAsItArrivedAndIsWrittenSortedWhenMade", "test:chord/next/link/message_test.go"]
+rationale = "Moved from next/link/text.ts (Pi e9c0ff4d8). Content delta: hold/call carry a positional trace carrier (null when absent, the old-work flag last), arity 6-11 accepted on read. Go: link/text.go; message_trace_test.go TestTheTextCodecWritesATrace and TestACarrierKeepsTheOrderOfItsKeysAsItArrivedAndIsWrittenSortedWhenMade."
 
 [[files]]
 path = "packages/chord/src/link/values.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/values_test.go"]
+rationale = "Moved from next/link/values.ts (Pi e9c0ff4d8). Content delta: a Uint8Array subclass with toJSON (Node's Buffer) crosses as bytes (the holder's own value, not what toJSON made) and '$bytes' is reserved. Go: link/values.go carries []byte leaves as member, element and whole in their own segment; values_test.go (the new Buffer-subclass subtest on this branch, run on xd6702) and the reserved-$bytes refusal."
 
 [[files]]
 path = "packages/chord/src/link/websocket.ts"
@@ -986,14 +986,14 @@ path = "packages/chord/src/next-node/plugins/build.ts"
 change = "removed"
 disposition = "ported"
 evidence = ["test:chord/nextnode/plugins/plugins_build_test.go", "test:chord/nextnode/plugins/plugins_sourcemap_test.go"]
-rationale = "Moved to packages/chord/src/node/plugins/build.ts by the root move (Pi e9c0ff4d8; 334 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/plugins_build.go, chord/nextnode/plugins/plugins_sourcemap.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
+rationale = "Moved to packages/chord/src/node/plugins/build.ts by the root move (Pi e9c0ff4d8; 334 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/build/build_facet.go, chord/nextnode/plugins/build/build_sourcemap.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/discover.ts"
 change = "removed"
 disposition = "ported"
 evidence = ["test:chord/nextnode/plugins/plugins_discover_test.go"]
-rationale = "Moved to packages/chord/src/node/plugins/discover.ts by the root move (Pi e9c0ff4d8; 345 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/plugins_discover.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
+rationale = "Moved to packages/chord/src/node/plugins/discover.ts by the root move (Pi e9c0ff4d8; 345 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/model/model_discover.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/evaluate.ts"
@@ -2139,9 +2139,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/node/app/data.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore", "test:chord/nextnode/app/app_export_test.go#TestAppRefusesTheWorkersDataObjectToAnyPrincipalButTheServers"]
+rationale = "New at c23b9ec1: HostData, the facet a running worker serves so the server exports its data without stopping it (the worker packs its own open store and its files, only the server's principal may ask). Go: nextnode/app/data.go with host_data.mjs (D460: no generic principal parameter); app_export_test.go drives it through the app (TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore, TestAppRefusesTheWorkersDataObjectToAnyPrincipalButTheServers)."
 
 [[files]]
 path = "packages/chord/src/node/app/ephemeral-sessions.ts"
@@ -2167,9 +2167,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/node/app/files-entry.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/files_test.go", "test:chord/nextnode/app/files_copy_test.go"]
+rationale = "New barrel at c23b9ec1 (the files entry: FilesFacet, Files, FilesFolder, CopyFiles, PrivateDirectory, PrivateStore and their types). Go packages export names directly: chord/nextnode/app/files*.go; files_test.go, files_copy_test.go and files_index_test.go drive them."
 
 [[files]]
 path = "packages/chord/src/node/app/files-index.ts"
@@ -2195,9 +2195,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/node/app/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_test.go"]
+rationale = "New barrel at c23b9ec1: the app kit's exports are the Go package chord/nextnode/app (doc.go lists the set). app_test.go and the package's other tests drive every export through App."
 
 [[files]]
 path = "packages/chord/src/node/app/info.ts"
@@ -2321,9 +2321,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/node/http/http.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/http_spans_test.go#TestRequestSpansTracesARoutedRequestItsMethodRoutePatternAndStatusNeverItsPathItsHandlersCtxUnderIt", "test:chord/nextnode/http/http_spans_test.go#TestRequestSpansContinuesAW3CTraceparentOnlyFromARequestAContributedRelayVerified", "test:chord/nextnode/http/http_test.go#TestHostAndPrincipalsAnswers401ToARequestNobodyAuthenticatesBeforeARouteNotMarkedPublicRunsServesAPublicOne"]
+rationale = "Moved from next-node/http/http.ts (Pi e9c0ff4d8). Content delta: HttpOptions.telemetry (each routed request a chord.http root span, its scope's ctx under it; a W3C traceparent extracted only from a request a contributed relay verified), links.opened (called once a link is accepted, its result when the link closes), public routes served without a principal, the request's remoteAddress. Go: nextnode/http/http.go; http_spans_test.go TestRequestSpansTracesARoutedRequestItsMethodRoutePatternAndStatusNeverItsPathItsHandlersCtxUnderIt, TestRequestSpansContinuesAW3CTraceparentOnlyFromARequestAContributedRelayVerified, TestRequestSpansTakesARelayedTraceparentAndTracestateOnlyWithinTheirBoundsAndPrintableReviewL2; http_test.go TestHostAndPrincipalsAnswers401ToARequestNobodyAuthenticatesBeforeARouteNotMarkedPublicRunsServesAPublicOne; the links.opened cases in upgrades_test.go."
 
 [[files]]
 path = "packages/chord/src/node/http/incoming.ts"
@@ -2343,37 +2343,37 @@ rationale = "Moved from packages/chord/src/next-node/http/index.ts by the root m
 
 path = "packages/chord/src/node/http/node.ts"
 change = "added"
-disposition = "pending"
-evidence = ["test:chord/nextnode/http/node_test.go"]
-rationale = "Pending a port (no lane has these cases; owner ChordT11) (not a 0.8.0 release deferral; the row becomes ported when it does): the twin test file test/node/http/node.test.ts is partial in test-mapping; its 1 missing case: \"Web requests › makes a Web Request only when something reads the headers or the body (here: no authenticator does)\" (needs porting: no Go test on any lane). Otherwise the module is ported; evidence is the Go twin."
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/node_test.go", "test:chord/nextnode/http/admission_test.go"]
+rationale = "Moved from next-node/http/node.ts (Pi e9c0ff4d8); the delta is the HttpRequest remoteAddress the node listener passes (the listener's peer; a relayed request: the relay's) and import moves. Go: nextnode/http/node.go sets Connection.RemoteAddress and the request reads it (RemoteAddress()); node_test.go drives the listener (TestTargetsRefuseAHostWithUserinfo403AndAMethodAWebRequestCannotCarry501 and the target cases), admission_test.go the Connection the limits use."
 
 [[files]]
 path = "packages/chord/src/node/http/request.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/request_test.go#TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce", "test:chord/nextnode/http/request_test.go#TestBodiesParseJSONWithinItsLimitMalformedIs400LargerIs413"]
+rationale = "Moved from next-node/http/request.ts (Pi e9c0ff4d8). Content delta: HttpRequest.remoteAddress (the peer address as the listener knows it, undefined without a connection; for limits per client, never an identity). Go: request.go RemoteAddress() set from Connection.RemoteAddress (http.go newWebRequest); request_test.go TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce and TestBodiesParseJSONWithinItsLimitMalformedIs400LargerIs413."
 
 [[files]]
 path = "packages/chord/src/node/http/response.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/response_test.go"]
+rationale = "Moved from next-node/http/response.ts (Pi e9c0ff4d8); the delta is an import move. Go response.go unchanged; response_test.go TestDescriptionsAnswer500ForAHeaderWithACROrLF..., TestBytesSendContentLength... and TestBytesRefuseAForeignRequest... plus the descriptions cases."
 
 [[files]]
 path = "packages/chord/src/node/http/router.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/http_test.go#TestDefaultHeadersNarrowsScriptSrcToContributedScriptPathsOfTheOriginSlice11FixRound1OpusL8", "test:chord/nextnode/http/router_test.go", "test:chord/nextnode/http/http_test.go#TestHostAndPrincipalsAnswers401ToARequestNobodyAuthenticatesBeforeARouteNotMarkedPublicRunsServesAPublicOne"]
+rationale = "Moved from next-node/http/router.ts (Pi e9c0ff4d8). Content delta: RouterOptions.scripts (script-src narrowed to the contributed script paths of the origin and the response's nonce), routes and sockets marked public, HttpSocketOptions {handler, public}. Go: router.go; http_test.go TestDefaultHeadersNarrowsScriptSrcToContributedScriptPathsOfTheOriginSlice11FixRound1OpusL8 and TestDefaultHeadersSendsTheBaselineOnEveryAnswerACSPWithTheResponsesOwnNonceAndTheContributedFramersAndSources; router_test.go; public routes in http_test.go."
 
 [[files]]
 path = "packages/chord/src/node/http/upgrades.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/upgrades_test.go#TestAPublicSocketIsAcceptedWithoutAPrincipalAndRunsAnonymousAnotherIsRefused401", "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSocketCloses", "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointReportsAFailingOpenedAsHookFailedAndKeepsTheLink"]
+rationale = "Moved from next-node/http/upgrades.ts (Pi e9c0ff4d8). Content delta: a public socket is admitted without a principal (anonymous), and links.opened runs once the link is accepted with its result run when the socket closes. Go: upgrades.go; upgrades_test.go TestAPublicSocketIsAcceptedWithoutAPrincipalAndRunsAnonymousAnotherIsRefused401, TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSocketCloses, TestTheLinksEndpointReportsAFailingOpenedAsHookFailedAndKeepsTheLink."
 
 [[files]]
 path = "packages/chord/src/node/plugins/base-inputs.ts"
@@ -2392,9 +2392,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/node/plugins/css-modules.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_cssmodules_test.go", "test:chord/nextnode/plugins/plugins_cssmodules_pi_test.go", "test:chord/nextnode/plugins/plugins_cssmodules_cases_test.go"]
+rationale = "New at c23b9ec1: the CSS-modules build plugin (class names scoped per file, the exports object). Go: nextnode/plugins/plugins_cssmodules.go with a Node transform (plugins_cssmodules_node.go); plugins_cssmodules_test.go, plugins_cssmodules_cases_test.go, plugins_cssmodules_pi_test.go (Pi's cases) and plugins_cssmodules_decode_test.go."
 
 [[files]]
 path = "packages/chord/src/node/plugins/discover.ts"
@@ -2462,37 +2462,37 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/node/surfaces/bundle.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash", "test:chord/nextnode/surfaces/surfaces_build_test.go"]
+rationale = "New at c23b9ec1: a client kind's base bundle (conditions, inputs with their bytes' hashes, the base hash). Go: surfaces_bundle.go; surfaces_bundle_test.go (TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash and the default conditions) is Pi's bundle.test.ts."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/current.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_current_test.go#TestScriptsFacetRefusesAnUnknownSurface", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession"]
+rationale = "New at c23b9ec1: the scripts objects a surface serves (the current base hash answered publicly, the set of scripts). Go: surfaces_current.go; surfaces_current_test.go (TestScriptsFacetRefusesAnUnknownSurface) and app_surfaces_test.go TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_bundle_test.go", "test:chord/nextnode/surfaces/surfaces_current_test.go"]
+rationale = "New barrel at c23b9ec1: the exports are the Go package chord/nextnode/surfaces (doc.go). The package tests drive them."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/published.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed"]
+rationale = "New at c23b9ec1: a client kind's published scripts (a new set published on a rollout, the previous files stay served). Go: surfaces_published.go; app_surfaces_test.go TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed and TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuilds...."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/served.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFilesForever", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceServesEachWebFacetAsAScriptThatRegistersItselfAndTheSetAsOneCombinedFileNoEval"]
+rationale = "New at c23b9ec1: the files the surfaces serve (base bundles, plugin scripts, assets; content-addressed, immutable). Go: surfaces_served.go; app_surfaces_test.go TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFilesForever and TestWebSurfaceServesEachWebFacetAsAScriptThatRegistersItselfAndTheSetAsOneCombinedFileNoEval."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/tui.ts"
@@ -2504,16 +2504,16 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/node/surfaces/web.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOtherCodeAnother", "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles"]
+rationale = "New at c23b9ec1: the web surface's server side (page, bootstrap, scripts, styles, base hash). Go: surfaces_web.go; app_surfaces_test.go (the WebSurface cases) is Pi's web.test.ts."
 
 [[files]]
 path = "packages/chord/src/node/tui/actions.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_actions_test.go"]
+rationale = "New at c23b9ec1: the launcher's actions (login, logout, the credentials actions run in the trusted launcher). Go: tui_actions.go (+ _unix/_other); tui_actions_test.go is Pi's actions.test.ts."
 
 [[files]]
 path = "packages/chord/src/node/tui/credentials.ts"
@@ -2525,37 +2525,37 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/node/tui/filter.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_filter_test.go"]
+rationale = "New at c23b9ec1: the terminal's output filter, the only path from the sandbox's bytes to the user's terminal. Go: tui_filter.go; tui_filter_test.go."
 
 [[files]]
 path = "packages/chord/src/node/tui/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_launcher_test.go", "test:chord/nextnode/tui/tui_kit_upstream_test.go"]
+rationale = "New barrel at c23b9ec1: the exports are the Go package chord/nextnode/tui (doc.go). tui_launcher_test.go and tui_kit_upstream_test.go drive StartTerminal."
 
 [[files]]
 path = "packages/chord/src/node/tui/launcher.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_launcher_test.go", "test:chord/nextnode/tui/tui_launcher_hazards_test.go", "test:chord/nextnode/tui/tui_kit_upstream_test.go"]
+rationale = "New at c23b9ec1: StartTerminal, the trusted launcher of the terminal sandbox. Go: tui_launcher.go; tui_launcher_test.go, tui_launcher_hazards_test.go, tui_launcher_send_closed_test.go and tui_kit_upstream_test.go (Pi's launcher.test.ts)."
 
 [[files]]
 path = "packages/chord/src/node/tui/pipe.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_pipe_test.go"]
+rationale = "New at c23b9ec1: the launcher's end of the sandbox's pipes. Go: tui_pipe.go; tui_pipe_test.go."
 
 [[files]]
 path = "packages/chord/src/node/tui/sandbox.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_sandbox_test.go"]
+rationale = "New at c23b9ec1: the terminal's sandbox process. Go: tui_sandbox.go; tui_sandbox_test.go."
 
 [[files]]
 path = "packages/chord/src/node/workers/base.ts"
@@ -2609,9 +2609,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/node/workers/workers.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go", "test:chord/nextnode/workers/workers_blocked_unix_test.go", "test:chord/nextnode/workers/workers_rollout_test.go"]
+rationale = "Moved from next-node/workers/workers.ts (Pi e9c0ff4d8). Content delta: the worker_link_lost event (a running worker's link lost to the heartbeat or a protocol error: stopped, its holders start anew) and base inputs for the app's base code. Go: workers_workers.go and workers_outcome.go (WorkerLinkLostError); workers_blocked_unix_test.go asserts the worker_link_lost error with its address, workers_workers_test.go and workers_rollout_test.go the lifecycle. The worker-base build (esbuild bundle of the Node entry) is D600-designed out, listed in the owner question, not in this row's evidence."
 
 [[files]]
 path = "packages/chord/src/object.ts"
@@ -2630,23 +2630,23 @@ rationale = "Pi deletes the v1 chord layer (src/publish.ts is the pre-next root 
 [[files]]
 path = "packages/chord/src/react/hooks.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount", "test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the React hooks (useWatchable, usePageState, useMessage ...). Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; hooks are driven in Chromium by app_web_browser_test.go (TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, ...KeepPageStateAcrossARemount..., ...ReRenderMessagesInALanguageChosenLive...)."
 
 [[files]]
 path = "packages/chord/src/react/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go", "test:chord/nextnode/surfaces/surfaces_react_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New barrel at c23b9ec1. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; the exports are those of hooks.ts and stores.ts, driven by the same browser tests."
 
 [[files]]
 path = "packages/chord/src/react/stores.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_react_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the React stores over a watchable. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; surfaces_react_test.go (Pi's stores.test.ts) drives it."
 
 [[files]]
 path = "packages/chord/src/registries/contribution.ts"
@@ -2861,9 +2861,9 @@ rationale = "Moved from packages/chord/src/next/state/writable.ts by the root mo
 [[files]]
 path = "packages/chord/src/store/adapter.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/evidence_storeB_adapter_test.go", "test:chord/next/store/store_test.go"]
+rationale = "Moved from next/store/adapter.ts (Pi e9c0ff4d8); the delta is an import move. Go store/adapter.go unchanged; evidence_storeB_adapter_test.go and store_test.go drive the adapter through Store."
 
 [[files]]
 path = "packages/chord/src/store/allocator.ts"
@@ -3029,9 +3029,9 @@ rationale = "Moved from packages/chord/src/next/store/sql.ts by the root move (P
 [[files]]
 path = "packages/chord/src/store/step.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged", "test:chord/next/store/store_test.go"]
+rationale = "Moved from next/store/step.ts (Pi e9c0ff4d8). Content delta: Step.rows, the table rows a commit's writes changed (a put counts one, the others the count their statement returned), read by the commit's telemetry. Go: store/step.go Rows; documents_telemetry_test.go TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged."
 
 [[files]]
 path = "packages/chord/src/store/store.ts"
@@ -3141,9 +3141,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/surfaces/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go", "test:chord/next/surfaces/surfaces_registered_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New barrel at c23b9ec1: the exports are the Go package chord/next/surfaces (doc.go), the page/worker surface runtime; the TS source is also vendored (D601). Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; the surface runtime's cases run in surfaces_*_test.go."
 
 [[files]]
 path = "packages/chord/src/surfaces/language.ts"
@@ -3155,9 +3155,9 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/surfaces/loaded.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go", "test:chord/nextnode/app/app_web_browser_test.go#TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: what a surface has loaded (the plugins' facets and their base hash). Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; Go side: surfaces_loaded.go; surfaces_client_test.go and surfaces_preference_test.go exercise it, app_web_browser_test.go runs it in Chromium (TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme)."
 
 [[files]]
 path = "packages/chord/src/surfaces/locale-choice.ts"
@@ -3197,16 +3197,16 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/surfaces/scripts.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_registered_test.go", "test:chord/next/surfaces/surfaces_client_test.go", "test:chord/nextnode/surfaces/surfaces_current_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the scripts objects a page asks the server for. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; Go side: surfaces_scripts.go; surfaces_registered_test.go, surfaces_client_test.go, and the server end in surfaces_current_test.go."
 
 [[files]]
 path = "packages/chord/src/surfaces/theme-choice.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_active_theme_test.go", "test:chord/next/surfaces/surfaces_preference_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the theme a device and a user choose. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; Go side: surfaces_theme_choice.go; surfaces_active_theme_test.go and surfaces_preference_test.go."
 
 [[files]]
 path = "packages/chord/src/surfaces/themes.ts"
@@ -3225,37 +3225,37 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/sync/batch.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go", "test:chord/sync/lines_test.go"]
+rationale = "New at c23b9ec1: a batch of outbox commits as versioned lines. Go: chord/sync/batch.go (the whole package is new in Go); sync_test.go (Pi's sync.test.ts) and lines_test.go (lines.test.ts) drive it through the public API, limits_test.go the bounds and fuzz_test.go the wire."
 
 [[files]]
 path = "packages/chord/src/sync/client.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go", "test:chord/sync/lines_test.go"]
+rationale = "New at c23b9ec1: the sync client and its flush scheduler (scheduler.go). Go: chord/sync/client.go and scheduler.go (the whole package is new in Go); sync_test.go (Pi's sync.test.ts) and lines_test.go (lines.test.ts) drive it through the public API, limits_test.go the bounds and fuzz_test.go the wire."
 
 [[files]]
 path = "packages/chord/src/sync/files.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go", "test:chord/sync/lines_test.go"]
+rationale = "New at c23b9ec1: the file sync (tree, hashes, uploads). Go: chord/sync/files.go (the whole package is new in Go); sync_test.go (Pi's sync.test.ts) and lines_test.go (lines.test.ts) drive it through the public API, limits_test.go the bounds and fuzz_test.go the wire."
 
 [[files]]
 path = "packages/chord/src/sync/filesystem.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go", "test:chord/sync/lines_test.go"]
+rationale = "New at c23b9ec1: the synced filesystem's operations. Go: chord/sync/filesystem.go (the whole package is new in Go); sync_test.go (Pi's sync.test.ts) and lines_test.go (lines.test.ts) drive it through the public API, limits_test.go the bounds and fuzz_test.go the wire."
 
 [[files]]
 path = "packages/chord/src/sync/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go", "test:chord/sync/lines_test.go"]
+rationale = "New barrel at c23b9ec1: the exports are the Go package chord/sync; sync_test.go and lines_test.go drive every export."
 
 [[files]]
 path = "packages/chord/src/sync/lines.ts"
@@ -3267,44 +3267,44 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/sync/remote.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go", "test:chord/sync/lines_test.go"]
+rationale = "New at c23b9ec1: the sync remote (the server's end). Go: chord/sync/remote.go (the whole package is new in Go); sync_test.go (Pi's sync.test.ts) and lines_test.go (lines.test.ts) drive it through the public API, limits_test.go the bounds and fuzz_test.go the wire."
 
 [[files]]
 path = "packages/chord/src/sync/state.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sync/sync_test.go", "test:chord/sync/lines_test.go"]
+rationale = "New at c23b9ec1: the sync state's slots and cursors. Go: chord/sync/state.go (the whole package is new in Go); sync_test.go (Pi's sync.test.ts) and lines_test.go (lines.test.ts) drive it through the public API, limits_test.go the bounds and fuzz_test.go the wire."
 
 [[files]]
 path = "packages/chord/src/telemetry-ingest/batch.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the batch of spans and metrics pages and workers send the server. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; the Go server's end is telemetryingest/batch.go, decode.go and encode.go (Go and TS agree on the wire); ingest_upstream_test.go drives it."
 
 [[files]]
 path = "packages/chord/src/telemetry-ingest/facet.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the server's telemetry ingest facet (a page's batches write its own spans marked chord.host browser with its link's principal; a span posing as another's is dropped). Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; Go: telemetryingest/facet.go; ingest_upstream_test.go (Pi's facet.test.ts, including TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding)."
 
 [[files]]
 path = "packages/chord/src/telemetry-ingest/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go", "test:chord/next/telemetryingest/recorder_upstream_test.go"]
+rationale = "New barrel at c23b9ec1: the Go package chord/next/telemetryingest exports the set; the package tests drive it."
 
 [[files]]
 path = "packages/chord/src/telemetry-ingest/recorder.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/telemetryingest/recorder_upstream_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: Chord's telemetry recorder, the adapter that buffers finished spans and metrics for a batch. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; Go: telemetryingest/recorder.go; recorder_upstream_test.go is Pi's recorder.test.ts."
 
 [[files]]
 path = "packages/chord/src/telemetry-ingest/sender.ts"
@@ -3316,51 +3316,51 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan", "test:chord/telemetrysqlite/telemetry_sqlite_test.go"]
+rationale = "Content delta from v1.5.0: the store takes spans and metric rows another process recorded (ingest: queued, written with the next flush, a stored span id kept as it was, the rest dropped and counted past the bound) and re-exports TelemetryBatch. Go: telemetrysqlite/index.go Ingest; telemetry_sqlite_v2_test.go TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan."
 
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/node.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go"]
+rationale = "New at c23b9ec1: the SQLite telemetry store read-only on a file. Go: telemetrysqlite/node.go; telemetry_sqlite_v2_test.go (Pi's telemetry-sqlite-node.test.ts)."
 
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept", "test:chord/telemetrysqlite/telemetry_sqlite_test.go"]
+rationale = "New at c23b9ec1: the SQLite telemetry store's tables and migrations (microsecond columns, the version 1 migration). Go: telemetrysqlite/schema.go; telemetry_sqlite_v2_test.go TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept."
 
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/store.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestOrdersSpansStartedInTheSameMillisecondAsTheyStarted", "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestStoresSpanTimesInWholeMicrosecondsReadBackAsMilliseconds", "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept", "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go"]
+rationale = "Content delta from v1.5.0: span times stored in whole microseconds (started_us/ended_us, read back as milliseconds), spans ordered by started_us, length(id), id, and the time filters on started_us. Go: telemetrysqlite/store.go; telemetry_sqlite_v2_test.go TestOrdersSpansStartedInTheSameMillisecondAsTheyStarted, TestStoresSpanTimesInWholeMicrosecondsReadBackAsMilliseconds, TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept; telemetry_sqlite_store_test.go the reads."
 
 [[files]]
 path = "packages/chord/src/telemetry.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/telemetry/telemetry_upstream_test.go", "test:chord/next/telemetry/telemetry_metrics_cache_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: Chord's telemetry schema (every span, event and metric Chord records, with their attributes) and its helpers. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; the Go server's schema is next/telemetry/schema.go and telemetry.go, ported from this file; telemetry_upstream_test.go (Pi's telemetry.test.ts) and telemetry_metrics_cache_test.go drive it."
 
 [[files]]
 path = "packages/chord/src/tui/bridge.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_kit_upstream_test.go", "test:chord/nextnode/tui/tui_kit_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the terminal's bridge messages between the sandbox and the launcher. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; the launcher side in Go is nextnode/tui/tui_bridge.go; the bridge runs under tui_kit_upstream_test.go, which starts the vendored runtime."
 
 [[files]]
 path = "packages/chord/src/tui/channel.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_kit_upstream_test.go", "test:chord/nextnode/tui/tui_kit_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the terminal's channel to the server. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run by tui_kit_upstream_test.go and tui_kit_test.go."
 
 [[files]]
 path = "packages/chord/src/tui/frames.ts"
@@ -3372,16 +3372,16 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/tui/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_kit_upstream_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New barrel at c23b9ec1 for the terminal runtime. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run by the kit tests."
 
 [[files]]
 path = "packages/chord/src/tui/runtime.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_kit_upstream_test.go", "test:chord/next/tui/tui_scope_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the terminal runtime in the sandbox. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run by tui_kit_upstream_test.go; the scope it keeps is chord/next/tui/tui_scope.go (tui_scope_test.go)."
 
 [[files]]
 path = "packages/chord/src/tui/scope.ts"
@@ -3393,16 +3393,16 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 [[files]]
 path = "packages/chord/src/tui/terminal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_kit_test.go", "test:chord/nextnode/tui/tui_frames_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the terminal's screen and input handling. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; Go side: nextnode/tui/tui_terminal.go; tui_kit_test.go and tui_frames_test.go."
 
 [[files]]
 path = "packages/chord/src/tui/theme.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_kit_upstream_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the terminal's theme. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run by tui_kit_upstream_test.go; the theme choice is surfaces/theme-choice."
 
 [[files]]
 path = "packages/chord/src/types.ts"
@@ -3414,51 +3414,51 @@ rationale = "Pi deletes the v1 chord layer (src/types.ts is the pre-next root fi
 [[files]]
 path = "packages/chord/src/web/environment.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the page's environment (device language, theme, connection state). Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run in Chromium by the app's browser tests (app_web_browser_test.go, app_web_styles_test.go)."
 
 [[files]]
 path = "packages/chord/src/web/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the web entry barrel. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run in Chromium by the app's browser tests (app_web_browser_test.go, app_web_styles_test.go)."
 
 [[files]]
 path = "packages/chord/src/web/language.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the page's language (lang and dir on the root element from the device, then the user's pick). Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run in Chromium by the app's browser tests (app_web_browser_test.go, app_web_styles_test.go)."
 
 [[files]]
 path = "packages/chord/src/web/page.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme", "test:chord/nextnode/app/app_web_browser_test.go#TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the page: loads the plugins, applies an edit in place keeping the page's state, follows the theme, records a click as the root of one trace. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run in Chromium by the app's browser tests (app_web_browser_test.go, app_web_styles_test.go)."
 
 [[files]]
 path = "packages/chord/src/web/scripts.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceServesEachWebFacetAsAScriptThatRegistersItselfAndTheSetAsOneCombinedFileNoEval", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the page's script loading. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run in Chromium by the app's browser tests (app_web_browser_test.go, app_web_styles_test.go)."
 
 [[files]]
 path = "packages/chord/src/web/styles.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_styles_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the page's stylesheets. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run in Chromium by the app's browser tests (app_web_browser_test.go, app_web_styles_test.go)."
 
 [[files]]
 path = "packages/chord/src/web/themes.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme", "test:chord/next/surfaces/surfaces_themes_test.go", "test:chord/nextnode/surfaces/client_manifest_test.go"]
+rationale = "New at c23b9ec1: the page's themes. Vendored client: this file is shipped byte-for-byte (D601, chord/nextnode/surfaces/client, pin c23b9ec1) and its sha256 in manifest.json equals the file in the pinned mirror (verified on xd6702: every chord/src entry of the manifest equal .upstream/current), which client_manifest_test.go re-checks on every run; run in Chromium by the app's browser tests (app_web_browser_test.go, app_web_styles_test.go)."
 
 [[files]]
 path = "packages/chord/src/websocket.ts"

@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
-// Ports the end-to-end half of packages/chord/test/next/bench/compression.ts: a 500 KB snapshot and a 1 MiB call result over
+// Ports the end-to-end half of packages/chord/test/bench/compression.ts: a 500 KB snapshot and a 1 MiB call result over
 // one memory link, uncompressed, deflated and inflated synchronously (a Node client) and deflated and inflated
 // asynchronously (a client without a compressor, a browser), as the bytes the client received and the time to a live
 // hold and to a call's result. The other half (deflate at the origin, synchronous and asynchronous inflate of the two

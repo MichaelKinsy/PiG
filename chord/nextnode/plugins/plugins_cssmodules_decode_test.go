@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 )
 
 // decodeUTF8 is `new TextDecoder().decode(data)`: the WHATWG vectors, then every byte string of up to three bytes from the
@@ -31,7 +33,7 @@ func TestDecodeUTF8GivesTheWHATWGDecodersMaximalSubpartReplacements(t *testing.T
 		{"\xc3(", "\ufffd("},
 		{"a\xffb", "a\ufffdb"},
 	} {
-		if got := decodeUTF8([]byte(each.in)); got != each.want {
+		if got := build.DecodeUTF8([]byte(each.in)); got != each.want {
 			t.Errorf("decodeUTF8(%q) = %q, want %q", each.in, got, each.want)
 		}
 	}
@@ -87,7 +89,7 @@ process.stdout.write(lines.map((line) => Buffer.from(new TextDecoder().decode(Bu
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := decodeUTF8(data); got != string(want) {
+		if got := build.DecodeUTF8(data); got != string(want) {
 			differing++
 			if differing <= 8 {
 				t.Errorf("decodeUTF8(%x) = %q, Node's is %q", data, got, want)

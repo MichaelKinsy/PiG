@@ -18,10 +18,12 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Ports packages/chord/test/next-node/plugins/install.test.ts. Tests of installing (slice 7c §5, slice 12 §2, §5): the npm
+// Ports packages/chord/test/node/plugins/install.test.ts. Tests of installing (slice 7c §5, slice 12 §2, §5): the npm
 // arguments, run in the plugin's real directory, the command overridable; a failure and an abort reject; git dependencies
 // with a ref, a plugin inside a repository of several reached by path; plugins installed from git and npm (a package's
 // chord.plugins manifest, the refusals, claims and cleanup). Git repositories and tarballs are local: no network.
@@ -56,7 +58,7 @@ func TestInstallDependenciesRunsNpmInstallWithoutDevDependenciesPeersScriptsAudi
 		"dependencies": map[string]any{"a": "1.0.0"},
 	})
 	testenv.RequireDirectoryLink(t, dir, filepath.Join(root, "deps"))
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +79,7 @@ func TestInstallDependenciesRejectsWithTheCommandsOutputWhenItFailsAndWhenTheCon
 	tools := tempRoot(t)
 	root := tempRoot(t)
 	writePlugin(t, root, "deps", "@test/deps", map[string]string{}, nil)
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +100,7 @@ func TestInstallDependenciesRejectsWithTheCommandsOutputWhenItFailsAndWhenTheCon
 func TestInstallDependenciesRefusesAnEmptyCommandAndAnAbortedContextBeforeRunningAnything(t *testing.T) {
 	root := tempRoot(t)
 	writePlugin(t, root, "deps", "@test/deps", map[string]string{}, nil)
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +132,7 @@ func TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPip
 			tools := tempRoot(t)
 			root := tempRoot(t)
 			writePlugin(t, root, "deps", "@test/deps", map[string]string{}, nil)
-			discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+			discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -189,11 +191,11 @@ func workerOf(t *testing.T, root, name string) string {
 		if plugin.Name != name {
 			continue
 		}
-		built, err := BuildFacet(plugin, "worker", BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: PlatformNode, Plugins: discovery.Plugins}, background)
+		built, err := build.BuildFacet(plugin, "worker", model.BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: model.PlatformNode, Plugins: discovery.Plugins}, background)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if built.Kind == BuiltFacetFailed {
+		if built.Kind == model.BuiltFacetFailed {
 			t.Fatal(strings.Join(built.Errors, "\n"))
 		}
 		return built.Source
@@ -241,7 +243,7 @@ func recordedDir(t *testing.T, tools string) string {
 
 // Not upstream's: a single-file plugin has no package.json (installDependencies's first line).
 func TestInstallDependenciesRefusesASingleFilePlugin(t *testing.T) {
-	err := InstallDependencies(Plugin{Name: "hello", Layout: LayoutFile}, background, InstallOptions{})
+	err := InstallDependencies(model.Plugin{Name: "hello", Layout: model.LayoutFile}, background, InstallOptions{})
 	if err == nil || err.Error() != `plugin "hello": a single-file plugin has no package.json` {
 		t.Fatalf("error = %v", err)
 	}

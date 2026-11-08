@@ -19,7 +19,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/dependencies.ts
-// Ports packages/chord/test/next/host/dependencies.test.ts. Its cases run hosts (loaded/createHost with defineFacet,
+// Ports packages/chord/test/host/dependencies.test.ts. Its cases run hosts (loaded/createHost with defineFacet,
 // host.hold, raw parent peers, relayed hosts): "the dependency check" breaks or parks a view object by what its
 // dependencies do, "parked_long" counts readyTimeout on a hold that is on a link, and "a getter of a parked object" is
 // host.get's. Two own tests of the registry dependencies and `waitingOn` follow the file's cases (no host needed).

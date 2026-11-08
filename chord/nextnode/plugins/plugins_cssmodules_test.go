@@ -11,6 +11,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/test/node/plugins/build.test.ts's CSS cases (slice 11 §4b, fix round 1 Opus L1): a plugin's
@@ -135,19 +138,23 @@ func TestEsbuildBuildReadsACSSModuleAsUTF8LikeTextDecoderInvalidBytesAreU_FFFDBe
 	}
 }
 
-// A facet build that has a CSS module starts one Node subprocess for the mappings, started with NodeOptions.Command, and ends it
-// with the build: no process is left, and a build with no CSS module starts none.
+// The evaluator a build is given starts one Node subprocess for the mappings of its CSS modules, started with NodeOptions.Command,
+// and ends it when it is closed: a build with no CSS module starts none, and no process is left.
 func TestEsbuildBuildEndsTheNodeSubprocessThatReadsCSSModuleMappings(t *testing.T) {
 	var mu sync.Mutex
 	var started []*exec.Cmd
 	options := esbuildBrowser
-	options.Node.Command = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+	node := NodeOptions{}
+	node.Command = func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		cmd := exec.CommandContext(ctx, name, args...)
 		mu.Lock()
 		started = append(started, cmd)
 		mu.Unlock()
 		return cmd
 	}
+	evaluator := newMappingEvaluator(node)
+	options.Mappings = evaluator
+	closed := false
 	evaluators := func() (count int) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -155,8 +162,8 @@ func TestEsbuildBuildEndsTheNodeSubprocessThatReadsCSSModuleMappings(t *testing.
 			if slices.Contains(cmd.Args, "-e") {
 				count++
 			}
-			if cmd.ProcessState == nil {
-				t.Errorf("%v is still running after the build", cmd.Args[1:])
+			if cmd.ProcessState == nil && closed {
+				t.Errorf("%v is still running after the evaluator was closed", cmd.Args[1:])
 			}
 		}
 		return count
@@ -178,6 +185,9 @@ func TestEsbuildBuildEndsTheNodeSubprocessThatReadsCSSModuleMappings(t *testing.
 	if got := evaluators(); got != 1 {
 		t.Fatalf("%d evaluator processes for a build with two CSS modules, want 1", got)
 	}
+	evaluator.close()
+	closed = true
+	evaluators()
 }
 
 // Builds that share an evaluator (the component's) start one Node subprocess between them, however many facets with CSS modules
@@ -186,7 +196,8 @@ func TestEsbuildBuildsThatShareAnEvaluatorStartOneNodeSubprocessBetweenThem(t *t
 	var mu sync.Mutex
 	var started []*exec.Cmd
 	options := esbuildBrowser
-	options.Node.Command = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+	node := NodeOptions{}
+	node.Command = func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		cmd := exec.CommandContext(ctx, name, args...)
 		if slices.Contains(args, "-e") {
 			mu.Lock()
@@ -195,8 +206,8 @@ func TestEsbuildBuildsThatShareAnEvaluatorStartOneNodeSubprocessBetweenThem(t *t
 		}
 		return cmd
 	}
-	shared := newMappingEvaluator(options.Node)
-	options.mappings = shared
+	shared := newMappingEvaluator(node)
+	options.Mappings = shared
 	root := tempRoot(t)
 	const plugins = 6
 	for i := range plugins {
@@ -248,7 +259,7 @@ func TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt(t *testing.T) {
 		}, nil)
 		names = append(names, "@test/"+name)
 	}
-	component := CreatePlugins(PluginsOptions{Roots: []PluginRoot{{Path: root}}, Kinds: pcKinds(nil), Node: node}, background)
+	component := CreatePlugins(PluginsOptions{Build: build.BuildFacet, Roots: []model.PluginRoot{{Path: root}}, Kinds: pcKinds(nil), Node: node}, background)
 	closed := false
 	defer func() {
 		if !closed {
@@ -263,7 +274,7 @@ func TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt(t *testing.T) {
 		t.Fatalf("%d facets built, want %d: %+v", len(built.Facets), len(names), built)
 	}
 	for _, facet := range built.Facets {
-		if facet.Kind != BuiltFacetScript {
+		if facet.Kind != model.BuiltFacetScript {
 			t.Fatalf("facet did not build: %+v", facet)
 		}
 	}

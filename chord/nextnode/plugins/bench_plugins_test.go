@@ -13,9 +13,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/test/next/bench/plugins.ts: the benchmark of the plugins component (slice 7c section 7, slice 12): a
+// Ports packages/chord/test/bench/plugins.ts: the benchmark of the plugins component (slice 7c section 7, slice 12): a
 // cold build of a 20-plugin set (one worker facet each, its own files, a copied contract, the app's API and kinds checked), a
 // rebuild of one facet after an edit, the evaluation of a facet, and the heap after 100 reloads of one plugin on a host (old
 // facets collected). Upstream reports medians over 7 runs by hand; Go's `testing.B` repeats and reports ns/op, and the other
@@ -31,7 +33,7 @@ import (
 // probe module and client are written again here for a *testing.B.
 
 // benchApp is the app's API of the benchmarks (bench/plugins.ts's `API`, `HOST_PACKAGES`' `@bench/app/v1`).
-var benchApp = AppApi{Name: "@bench/app", Versions: []string{"v1"}}
+var benchApp = model.AppApi{Name: "@bench/app", Versions: []string{"v1"}}
 
 // benchSpecifier is the one host package of the benchmarks' plugins: the app's v1, which is Chord's surface.
 const benchSpecifier = "@bench/app/v1"
@@ -100,18 +102,20 @@ func benchPluginSet(b *testing.B) string {
 // benchSetup is the discovered set: the root, its worker plugins and the build options.
 type benchSetup struct {
 	root    string
-	facets  []Plugin
-	options BuildOptions
+	facets  []model.Plugin
+	options model.BuildOptions
+	// alone gives each build an evaluator of its own (a Node subprocess started and ended by it), where the options' is shared.
+	alone bool
 }
 
 func benchDiscovered(b *testing.B) benchSetup {
 	b.Helper()
 	root := benchPluginSet(b)
-	discovery, err := DiscoverPlugins([]PluginRoot{{Path: root}}, DiscoveryOptions{Kinds: benchKinds}, background)
+	discovery, err := model.DiscoverPlugins([]model.PluginRoot{{Path: root}}, model.DiscoveryOptions{Kinds: benchKinds}, background)
 	if err != nil {
 		b.Fatal(err)
 	}
-	setup := benchSetup{root: root, options: BuildOptions{HostPackages: []string{benchSpecifier}, Platform: PlatformNode, Api: &benchApp, Kinds: benchKinds, Plugins: discovery.Plugins}}
+	setup := benchSetup{root: root, options: model.BuildOptions{HostPackages: []string{benchSpecifier}, Platform: model.PlatformNode, Api: &benchApp, Kinds: benchKinds, Plugins: discovery.Plugins}}
 	for _, plugin := range discovery.Plugins {
 		if _, found := plugin.Facets["worker"]; found {
 			setup.facets = append(setup.facets, plugin)
@@ -124,20 +128,28 @@ func benchDiscovered(b *testing.B) benchSetup {
 }
 
 // buildAll builds every worker facet at once, each on its own goroutine as the component runs them (Promise.all).
-func (s benchSetup) buildAll(b *testing.B) []BuiltFacet {
+func (s benchSetup) buildAll(b *testing.B) []model.BuiltFacet {
 	b.Helper()
-	built := make([]BuiltFacet, len(s.facets))
+	built := make([]model.BuiltFacet, len(s.facets))
 	errs := make([]error, len(s.facets))
 	var wait sync.WaitGroup
 	for index, plugin := range s.facets {
-		wait.Go(func() { built[index], errs[index] = BuildFacet(plugin, "worker", s.options, background) })
+		wait.Go(func() {
+			options := s.options
+			if s.alone {
+				own := newMappingEvaluator(NodeOptions{})
+				defer own.close()
+				options.Mappings = own
+			}
+			built[index], errs[index] = build.BuildFacet(plugin, "worker", options, background)
+		})
 	}
 	wait.Wait()
 	for index, err := range errs {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if built[index].Kind != BuiltFacetScript {
+		if built[index].Kind != model.BuiltFacetScript {
 			b.Fatalf("plugin %s: build %v", s.facets[index].Name, built[index].Errors)
 		}
 	}
@@ -169,7 +181,7 @@ func BenchmarkPluginsRebuild(b *testing.B) {
 			b.Fatal(err)
 		}
 		b.StartTimer()
-		if built, err := BuildFacet(setup.facets[0], "worker", setup.options, background); err != nil || built.Kind != BuiltFacetScript {
+		if built, err := build.BuildFacet(setup.facets[0], "worker", setup.options, background); err != nil || built.Kind != model.BuiltFacetScript {
 			b.Fatalf("rebuild = %+v, %v", built, err)
 		}
 	}
@@ -332,10 +344,10 @@ func BenchmarkPluginsReload(b *testing.B) {
 	cache := b.TempDir()
 	modules := benchModules(b, cache)
 	kind := func(name string) KindEntry {
-		return KindEntry{Name: name, Definition: KindDefinition{Platform: PlatformNode, HostPackages: []string{benchSpecifier}}}
+		return KindEntry{Name: name, Definition: KindDefinition{Platform: model.PlatformNode, HostPackages: []string{benchSpecifier}}}
 	}
 	component := CreatePlugins(PluginsOptions{
-		Roots: []PluginRoot{{Path: root}}, Api: &benchApp, Kinds: []KindEntry{kind("server"), kind("worker")}, OnError: func(PluginsError) {},
+		Build: build.BuildFacet, Roots: []model.PluginRoot{{Path: root}}, Api: &benchApp, Kinds: []KindEntry{kind("server"), kind("worker")}, OnError: func(PluginsError) {},
 		Node: benchNodeOptions(cache),
 	}, background)
 	defer component.Close()
@@ -406,7 +418,7 @@ func benchCSSModules(b *testing.B) benchSetup {
 			b.Fatal(err)
 		}
 	}
-	setup.options.Platform = PlatformBrowser
+	setup.options.Platform = model.PlatformBrowser
 	return setup
 }
 
@@ -421,9 +433,11 @@ func BenchmarkPluginsColdBuildWithCSSModules(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			setup := benchCSSModules(b)
 			if shared {
-				evaluator := newMappingEvaluator(setup.options.Node)
+				evaluator := newMappingEvaluator(NodeOptions{})
 				defer evaluator.close()
-				setup.options.mappings = evaluator
+				setup.options.Mappings = evaluator
+			} else {
+				setup.alone = true
 			}
 			b.ReportAllocs()
 			b.ResetTimer()

@@ -7,7 +7,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/backoff.ts
-// Ports packages/chord/test/next/host/backoff.test.ts.
+// Ports packages/chord/test/host/backoff.test.ts.
 
 // backoffWindow is the length of the window `failed` opens for identity, measured until `due` runs (the test's `window`).
 func backoffWindow(loop *fakeLoop, backoff *backoff, dues *[]string, identity string) int64 {

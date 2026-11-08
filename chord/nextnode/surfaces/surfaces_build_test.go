@@ -17,6 +17,8 @@ import (
 	next "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/test/node/surfaces/surface-build.test.ts (Pi 284e63d9): a surface's build (surface-build.ts; owner decision
@@ -47,7 +49,7 @@ func newBuildFixture(t *testing.T, entry string) *buildFixture {
 		t.Fatal(err)
 	}
 	created := plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots: []plugins.PluginRoot{{Path: root}}, Kinds: []plugins.KindEntry{{Name: "web", Definition: plugins.KindDefinition{Platform: plugins.PlatformBrowser}}},
+		Build: build.BuildFacet, Roots: []model.PluginRoot{{Path: root}}, Kinds: []plugins.KindEntry{{Name: "web", Definition: plugins.KindDefinition{Platform: model.PlatformBrowser}}},
 	}, chordctx.Background())
 	building := newSurfaceBuild(Web, PlatformBrowser, WebPrefix, surfaceBuildOptions{kind: "web", entry: entry, plugins: created}, server)
 	report, err := server.Load([]host.HostFacet{{Name: "chord.web", Facet: ScriptsFacet(Web, building.set)}}, chordctx.Background())

@@ -1,4 +1,4 @@
-package plugins
+package model
 
 import (
 	"context"
@@ -120,7 +120,7 @@ func DiscoverPlugins(roots []PluginRoot, options DiscoveryOptions, ctx context.C
 	for _, plugin := range plugins {
 		sorted = append(sorted, plugin)
 	}
-	slices.SortFunc(sorted, func(a, b Plugin) int { return compareUTF16(a.Name, b.Name) })
+	slices.SortFunc(sorted, func(a, b Plugin) int { return CompareUTF16(a.Name, b.Name) })
 	return Discovery{Plugins: sorted, Problems: problems}, nil
 }
 
@@ -133,7 +133,7 @@ func DiscoverPackage(dir string, at RootContext, ctx context.Context) (Discovery
 	}
 	plugins := []Plugin{}
 	problems := []DiscoveryProblem{}
-	real, err := realpath(dir)
+	real, err := Realpath(dir)
 	if err != nil {
 		return Discovery{}, err
 	}
@@ -179,7 +179,7 @@ func listRoot(path string, required bool, kinds []string, ctx context.Context) (
 		}
 		return rootListing{problems: []DiscoveryProblem{{Path: path, Error: "the required root does not exist", Root: path, Required: required}}}, nil
 	}
-	root, err := realpath(path)
+	root, err := Realpath(path)
 	if err != nil {
 		return rootListing{}, err
 	}
@@ -219,8 +219,8 @@ type found struct {
 	error  string
 }
 
-// compareUTF16 orders strings as JavaScript's `<` and the default `sort` do: by UTF-16 code unit.
-func compareUTF16(a, b string) int {
+// CompareUTF16 orders strings as JavaScript's `<` and the default `sort` do: by UTF-16 code unit.
+func CompareUTF16(a, b string) int {
 	return slices.Compare(utf16.Encode([]rune(a)), utf16.Encode([]rune(b)))
 }
 
@@ -240,7 +240,7 @@ func entriesOf(path string) (dirs, files []string, exists bool, err error) {
 	if err != nil {
 		return nil, nil, false, err
 	}
-	slices.SortFunc(names, compareUTF16)
+	slices.SortFunc(names, CompareUTF16)
 	dirs = []string{}
 	files = []string{}
 	for _, name := range names {
@@ -254,7 +254,7 @@ func entriesOf(path string) (dirs, files []string, exists bool, err error) {
 			continue
 		}
 		if info.IsDir() {
-			real, err := realpath(entry)
+			real, err := Realpath(entry)
 			if err != nil {
 				return nil, nil, false, err
 			}
@@ -266,8 +266,8 @@ func entriesOf(path string) (dirs, files []string, exists bool, err error) {
 	return dirs, files, true, nil
 }
 
-// realpath is path absolute and with its symlinks followed.
-func realpath(path string) (string, error) {
+// Realpath is path absolute and with its symlinks followed.
+func Realpath(path string) (string, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return "", err
@@ -307,8 +307,8 @@ func manifestOf(dir string) manifest {
 	return manifest{kind: manifestRead, value: value}
 }
 
-// member is `object[key]` of a `package.json` value that may be no object: present false is `undefined`.
-func member(object *delta.JsonObject, key string) (any, bool) {
+// Member is `object[key]` of a `package.json` value that may be no object: present false is `undefined`.
+func Member(object *delta.JsonObject, key string) (any, bool) {
 	if object == nil {
 		return nil, false
 	}
@@ -327,9 +327,9 @@ func packageAt(dir string, at RootContext) ([]found, error) {
 	var hasListed bool
 	if read.kind == manifestRead {
 		object, _ := read.value.(*delta.JsonObject)
-		chord, _ := member(object, "chord")
+		chord, _ := Member(object, "chord")
 		chordObject, _ := chord.(*delta.JsonObject)
-		listed, hasListed = member(chordObject, "plugins")
+		listed, hasListed = Member(chordObject, "plugins")
 	}
 	if hasListed {
 		return manifestPlugins(dir, listed, at)
@@ -389,8 +389,8 @@ func hasFacetFile(dir string, kinds []string) (bool, error) {
 // leaves is whether folder lies outside the package dir: its relative path starts with `..` or is absolute (a path on
 // another drive).
 func leaves(dir, folder string) bool {
-	rest, err := relative(dir, folder)
-	return err != nil || hasDotDotPrefix(rest) || filepath.IsAbs(rest)
+	rest, err := Relative(dir, folder)
+	return err != nil || HasDotDotPrefix(rest) || filepath.IsAbs(rest)
 }
 
 // manifestPlugins is the plugins `chord.plugins` (listed: folders of the package, as paths, globs and `!` exclusions, as
@@ -417,7 +417,7 @@ func manifestPlugins(dir string, listed any, at RootContext) ([]found, error) {
 	excludes := []string{}
 	for _, each := range entries {
 		if strings.HasPrefix(each, "!") {
-			excludes = append(excludes, posix(each[1:]))
+			excludes = append(excludes, Posix(each[1:]))
 		}
 	}
 	seen := map[string]struct{}{}
@@ -428,16 +428,16 @@ func manifestPlugins(dir string, listed any, at RootContext) ([]found, error) {
 		}
 		var matched []string
 		if strings.ContainsAny(entry, "*?") {
-			matched = globFolders(dir, posix(entry))
+			matched = globFolders(dir, Posix(entry))
 		} else {
-			matched = []string{resolvePath(dir, entry)}
+			matched = []string{ResolvePath(dir, entry)}
 		}
 		for _, folder := range matched {
 			if leaves(dir, folder) {
 				return problem(`"` + entry + `" leaves the package`)
 			}
-			rest, _ := relative(dir, folder)
-			rest = posix(rest)
+			rest, _ := Relative(dir, folder)
+			rest = Posix(rest)
 			if rest == "" {
 				rest = "."
 			}
@@ -451,12 +451,12 @@ func manifestPlugins(dir string, listed any, at RootContext) ([]found, error) {
 	}
 	// One plugin inside another's directory would make the outer one's imports of it its own files, not copies.
 	sorted := slices.Clone(folders)
-	slices.SortFunc(sorted, compareUTF16)
+	slices.SortFunc(sorted, CompareUTF16)
 	for _, inner := range sorted {
-		if outer := slices.IndexFunc(sorted, func(folder string) bool { return inside(folder, inner) }); outer >= 0 {
+		if outer := slices.IndexFunc(sorted, func(folder string) bool { return Inside(folder, inner) }); outer >= 0 {
 			name := func(folder string) string {
-				rest, _ := relative(dir, folder)
-				if rest = posix(rest); rest == "" {
+				rest, _ := Relative(dir, folder)
+				if rest = Posix(rest); rest == "" {
 					return "."
 				}
 				return rest
@@ -473,7 +473,7 @@ func manifestPlugins(dir string, listed any, at RootContext) ([]found, error) {
 			result = append(result, found{path: folder, error: "listed in chord.plugins, not a directory"})
 			continue
 		}
-		real, err := realpath(folder)
+		real, err := Realpath(folder)
 		if err != nil {
 			return nil, err
 		}
@@ -490,8 +490,8 @@ func manifestPlugins(dir string, listed any, at RootContext) ([]found, error) {
 	return result, nil
 }
 
-// posix is path with `/` separators and no leading `./` (as manifests and globs write paths).
-func posix(path string) string {
+// Posix is path with `/` separators and no leading `./` (as manifests and globs write paths).
+func Posix(path string) string {
 	return strings.TrimPrefix(filepath.ToSlash(path), "./")
 }
 
@@ -602,8 +602,8 @@ func globFolders(dir, pattern string) []string {
 				continue
 			}
 			path := filepath.Join(at, entry.Name())
-			rest, _ := relative(dir, path)
-			if matchesGlob(posix(rest), pattern) {
+			rest, _ := Relative(dir, path)
+			if matchesGlob(Posix(rest), pattern) {
 				matched = append(matched, path)
 			}
 			walk(path, depth+1)
@@ -624,15 +624,15 @@ func pluginAt(dir string, read manifest, at RootContext) (found, error) {
 	}
 	// A trust boundary: a plugin's own `package.json`. Anything but an object has none of the three.
 	object, _ := read.value.(*delta.JsonObject)
-	name, hasName := member(object, "name")
+	name, hasName := Member(object, "name")
 	nameText, isText := name.(string)
 	if !isText || !host.IsPluginName(nameText) {
-		return problem("package.json: " + stringify(name, hasName) + " is not a valid plugin name")
+		return problem("package.json: " + Stringify(name, hasName) + " is not a valid plugin name")
 	}
-	chord, _ := member(object, "chord")
+	chord, _ := Member(object, "chord")
 	chordObject, _ := chord.(*delta.JsonObject)
 	external := []string{}
-	if listed, present := member(chordObject, "external"); present && listed != nil {
+	if listed, present := Member(chordObject, "external"); present && listed != nil {
 		items, isList := listed.([]any)
 		if !isList {
 			return problem("package.json: chord.external is not a list of package names")
@@ -668,7 +668,7 @@ func pluginAt(dir string, read manifest, at RootContext) (found, error) {
 			facets[kind] = filepath.Join(dir, named[0])
 		}
 	}
-	dependencies, _ := member(object, "dependencies")
+	dependencies, _ := Member(object, "dependencies")
 	return found{plugin: &Plugin{
 		Name: nameText, Dir: dir, Root: at.Root, Required: at.Required, Layout: LayoutDirectory,
 		Facets: facets, Dependencies: keysOf(dependencies), External: external,
@@ -770,8 +770,8 @@ func keysOf(value any) []string {
 	return []string{}
 }
 
-// stringify is `JSON.stringify(value)` as a template literal shows it: present false is `undefined`.
-func stringify(value any, present bool) string {
+// Stringify is `JSON.stringify(value)` as a template literal shows it: present false is `undefined`.
+func Stringify(value any, present bool) string {
 	if !present {
 		return "undefined"
 	}

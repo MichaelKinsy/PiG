@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/store/evaluate.test.ts: the evaluator of the table vocabulary, and that it agrees
+// Ports packages/chord/test/store/evaluate.test.ts: the evaluator of the table vocabulary, and that it agrees
 // with SQLite on the same nodes.
 //
 // pi: packages/chord/src/next/store/evaluate.ts

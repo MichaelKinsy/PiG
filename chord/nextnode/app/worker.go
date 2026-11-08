@@ -175,7 +175,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		{Name: "chord.app.files", Facet: FilesFacet(files, kit.Files, kit.Uploads)},
 		{Name: "chord.app.data.export", Facet: HostDataFacet(kit.Dir, opened, token)},
 	}
-	if _, err := start.Plugins.Load(ctx, relay, workers.WorkerLoad{
+	load := workers.WorkerLoad{
 		Kind: kit.Facet, HostKind: hostKind, Core: goCore,
 		NodeCore: []plugins.CoreFacet{{Name: "chord.app.data", Module: dataModule}},
 		Bridged: []plugins.BridgedFacet{
@@ -184,7 +184,12 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		},
 		Principal: kit.Principal, Peer: kit.Server, PrincipalAttributes: options.PrincipalAttributes,
 		Store: &plugins.StoreOptions{Path: storePath}, CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(), ReloadDrainTimeout: kit.Timeouts.reloadDrain(),
-	}); err != nil {
+	}
+	// The NodeHost's spans are the worker's: its recorder takes them (a nil *Recorder is no adapter, so none is set without one).
+	if recorder != nil {
+		load.Telemetry = recorder
+	}
+	if _, err := start.Plugins.Load(ctx, relay, load); err != nil {
 		return nil, err
 	}
 	if recorder != nil {

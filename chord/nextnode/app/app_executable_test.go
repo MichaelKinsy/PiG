@@ -6,17 +6,19 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports the "base code" tests of packages/chord/test/node/app/app.test.ts that start a server with no `base` given (Pi's `runStart`).
 // Pi compares the static import graph of its start script; the server's own code in Go is its executable (D603). Test 1 ("compares
 // the server's own code ... with no `base` given", marked and cleared at the revert) and test 3 ("starts when the scan of its entry
 // fails ...: reported, not compared") are ported with a helper program the test builds; test 2 (a lazy optional import that is
-// missing) has no Go form.
+// missing) has no Go form for the executable; its intention is tested on the plugins' import graph (the last test of this file).
 
 // serverProgram builds a program printing label into bin; Go builds are reproducible, so one label is one set of bytes.
 type serverProgram struct {
@@ -215,4 +217,37 @@ func TestAppSkipsAGoBuildProgramBeforeReadingIt(t *testing.T) {
 	if got := s.errors.kinds(); len(got) != 0 {
 		t.Fatalf("reported %v, want nothing for a go-build program", got)
 	}
+}
+
+// Intention of app.test.ts "base code › starts with an entry whose inactive optional import is missing: the import is left out,
+// the rest compared" (D603: the Go server's own code is its executable, so it has no import graph to scan). What the case
+// protects is that a missing file an import graph names never stops the server from starting. The Node-hosted code of an app is
+// its plugins, and the graph of a plugin is what its build reads (BuildFacet's inputs, compared by the plugins' watcher). A
+// plugin of the user's root whose facet imports a file that is not there has a failed build (a result naming the file, line and
+// import) and the server starts with the app's own plugins running; only the app's root (required) stops a start (see
+// TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed).
+func TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFailsAndTheRestRuns(t *testing.T) {
+	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, func(o *AppOptions) {
+		writePlugin(t, filepath.Join(o.DataDir, "plugins"), "optional", "@test/optional", map[string]string{
+			"server.ts": "import { missing } from \"./missing.ts\";\nexport default { setup: () => missing };",
+		})
+	})
+	if s.app.OwnerLink() == "" {
+		t.Fatal("the app has no owner link")
+	}
+	scripts, ok := s.app.Plugins.Component.Current("server")
+	if !ok {
+		t.Fatal("the server's plugins were never built")
+	}
+	for _, script := range scripts {
+		if script.Plugin.Name != "@test/optional" {
+			continue
+		}
+		if script.Built.Kind != model.BuiltFacetFailed || !strings.Contains(strings.Join(script.Built.Errors, "\n"), `server.ts:1:`) ||
+			!strings.Contains(strings.Join(script.Built.Errors, "\n"), `Could not resolve "./missing.ts"`) {
+			t.Fatalf("built = %+v, want a failed build naming server.ts:1 and the import", script.Built)
+		}
+		return
+	}
+	t.Fatalf("no built server facet of @test/optional in %d scripts", len(scripts))
 }

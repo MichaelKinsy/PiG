@@ -82,8 +82,17 @@ type WorkerLoad struct {
 	ReadyTimeout *time.Duration
 	// ReloadDrainTimeout is the NodeHost's `reloadDrainTimeout` (RuntimeLoad's). Nil: the host's default.
 	ReloadDrainTimeout *time.Duration
+	// Telemetry is the NodeHost's telemetry adapter (RuntimeLoad's): the worker's recorder, so the spans of the methods and
+	// routines the NodeHost runs are the worker's, as the spans of a Pi worker's host are. Nil: none.
+	Telemetry telemetry.TelemetryContext
 	// PrincipalAttributes is the NodeHost's `principalAttributes` (RuntimeLoad's): who a span was for. Nil: the host's own.
 	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
+}
+
+// BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
+type BusyWatchable interface {
+	Value() (delta.JsonValue, error)
+	Watch(ctx context.Context) (chord.WatchHandle[delta.JsonValue], error)
 }
 
 // WorkerResult is what the app's function returns: extra keep-alive counts (busy while any is nonzero).
@@ -384,6 +393,7 @@ func (p *WorkerPlugins) Load(ctx context.Context, h host.Host, options WorkerLoa
 		Kind: options.Kind, Core: options.NodeCore, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
 		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout,
+		Telemetry:           options.Telemetry,
 		PrincipalAttributes: options.PrincipalAttributes,
 	}, ctx)
 	if err != nil {

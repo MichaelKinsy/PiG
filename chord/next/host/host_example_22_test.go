@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/22-migrations.ts
+// pi: packages/chord/test/examples/22-migrations.ts
 
 import (
 	"context"

@@ -25,6 +25,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/telemetryingest"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
@@ -89,7 +91,7 @@ type AppAPI struct {
 // AppKind is a facet kind of the app: where its builds run, and the packages besides the API its plugins share (`react`).
 // Its API modules are named by convention: `<api>/<version>` and `<api>/<version>/<kind>` for every version.
 type AppKind struct {
-	Platform plugins.Platform
+	Platform model.Platform
 	Packages plugins.HostPackages
 }
 
@@ -418,7 +420,7 @@ func (a *App) report(kind AppErrorKind, err any) {
 // serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`, workers.NodeBaseInputs):
 // not one under the Go build cache (the analog of an entry under `node_modules`: a test runner, `go run`), and one that cannot be
 // read is reported as `server_scan` and left out.
-func (a *App) serverExecutable() (plugins.BaseInputs, bool) {
+func (a *App) serverExecutable() (model.BaseInputs, bool) {
 	lookup := a.options.executable
 	if lookup == nil {
 		lookup = os.Executable
@@ -433,7 +435,7 @@ func (a *App) serverExecutable() (plugins.BaseInputs, bool) {
 			return nil, false
 		}
 	}
-	var inputs plugins.BaseInputs
+	var inputs model.BaseInputs
 	if err == nil {
 		// Readable now; the record is handed on, the watcher does not hash it again.
 		inputs, err = workers.NodeBaseInputs(exe, nil)
@@ -483,13 +485,19 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if listen == nil {
 		listen = &chordhttp.ListenAddress{Host: "127.0.0.1", Port: 0}
 	}
-	a.HTTP = chordhttp.CreateHttp(h, chordhttp.HttpOptions{
+	httpOptions := chordhttp.HttpOptions{
 		Listen: listen,
 		Links: &chordhttp.LinksOptions{Path: "/chord", OptionsFunc: a.linksAfterTheBases, Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
 			return sessions.Opened(request), nil
 		}},
 		OnError: func(err chordhttp.HttpError) { a.report(AppErrorHTTP, err) },
-	}, ctx)
+	}
+	// The HTTP component records with the server host's adapter, as Pi's `createHttp` gets the app's `telemetry`: each request is a
+	// `chord.http` span. A nil store stays a nil adapter (a nil AppTelemetry is not a nil interface of the option's type).
+	if options.Telemetry != nil {
+		httpOptions.Telemetry = options.Telemetry
+	}
+	a.HTTP = chordhttp.CreateHttp(h, httpOptions, ctx)
 	root := options.Root
 	if root == "" {
 		root = "plugins"
@@ -511,8 +519,8 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	// The web surface serves a browser build's assets under its prefix (Pi's `publicPath: ${WEB_PREFIX}assets/`).
 	assetsPath := nodesurfaces.WebPrefix + "assets/"
 	component := plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
-		Api:        &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
+		Build: build.BuildFacet, Roots: []model.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
+		Api:        &model.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		PublicPath: &assetsPath,
 		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
@@ -558,10 +566,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 				return workerHosts.get(data.PrincipalKey(principal, chordctx.Background(), nil))
 			},
 			PrincipalAttributes: func(principal data.Principal) telemetry.SpanAttributes {
-				if options.PrincipalAttributes == nil {
-					return nil
-				}
-				return options.PrincipalAttributes(principal)
+				return a.Host.PrincipalAttributes(principal, chordctx.Background())
 			},
 		})})
 	}

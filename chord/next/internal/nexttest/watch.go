@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 )
 
-// Ports packages/chord/test/next/support.ts (framesOf, changesOf, valuesOf, flushed).
+// Ports packages/chord/test/support.ts (framesOf, changesOf, valuesOf, flushed).
 
 // Collector gathers what a watch's listener, which runs on a delivery goroutine, was called with. Items is safe to call
 // while the listener still runs; the TypeScript arrays the helpers return are read by the one event loop, the Go ones

@@ -18,7 +18,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/staging.ts
-// Ports packages/chord/test/next/host/staging.test.ts: staging (slice 7b §2, per plugin since slice 7c): a reload's setups
+// Ports packages/chord/test/host/staging.test.ts: staging (slice 7b §2, per plugin since slice 7c): a reload's setups
 // and recorded factories; each kind of throw keeps the failing plugin on its old code, reported; recorded declarations decide
 // an object's fate.
 

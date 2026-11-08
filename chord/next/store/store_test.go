@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/store/store.test.ts
+// Ports packages/chord/test/store/store.test.ts
 //
 // The store (slice 6a §2, §3, slice 6b §1): opening, the commit step, refusals and unknown outcomes (D4), the id
 // allocator (D3), one host per store (rule 7), close.
@@ -113,7 +113,7 @@ func TestStore(t *testing.T) {
 	t.Run("opening", func(t *testing.T) {
 		t.Run("creates a new store at seq 0 without an outbox, and reopens a file at its last seq and ids", func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "store.sqlite")
-			// Ports packages/chord/test/next/store/store.test.ts:64 (the it() through :77). LastSeq, Outbox and Close go
+			// Ports packages/chord/test/store/store.test.ts:64 (the it() through :77). LastSeq, Outbox and Close go
 			// through the Store OpenStore returned, as store.test.ts:68 (lastSeq, outbox), :70 (close) and :72 (lastSeq of
 			// the reopened store) read them; Commit is ChordStore's.
 			store := openStoreValueAt(t, path)

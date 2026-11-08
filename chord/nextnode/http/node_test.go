@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
@@ -20,8 +21,9 @@ import (
 // never crashes or reroutes), raw `Host` headers, the request's scope lasting until its response is flushed (and `close`
 // waiting for it), and a client's disconnect aborting the scope. Ports packages/chord/test/node/http/node.test.ts.
 //
-// Not ported: "makes a Web Request only when something reads the headers or the body" counts `new Request` calls
-// (designed out: Go's *net/http.Request exists when the server hands it over, there is no lazily made Web object).
+// "makes a Web Request only when something reads the headers or the body" counts `new Request` calls, which Go has no form of
+// (the *net/http.Request exists when the server hands it over); TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBodyOrNeither
+// ports what the case observes: three public routes, no authenticator naming a principal, and their three answers.
 //
 // Forced difference (node.go): net/http refuses two `Host` headers itself, 400, where Node's parser keeps them and the
 // component answers 403; the component's 403 for them is covered through Fetch (TestFetchRefusesTwoHostHeaders).
@@ -242,6 +244,34 @@ func TestNodeRequestRefusesWhatTheListenerRefuses(t *testing.T) {
 	if converted.Kind != NodeRequestRequest || converted.Request.URL.Path != "/who" || converted.Request.URL.RawQuery != "x=1" || converted.Request.Header.Get("Host") != "127.0.0.1:8788" {
 		t.Fatalf("converted = %+v", converted)
 	}
+}
+
+func TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBodyOrNeither(t *testing.T) {
+	server := serving(t, []plugin{{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
+		publicRoute("GET /plain", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+			return jsonOf(request.Path()), nil
+		}),
+		publicRoute("GET /headers", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+			return jsonOf(request.Headers().Get("x-thing")), nil
+		}),
+		publicRoute("POST /body", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+			value, err := request.JSON()
+			if err != nil {
+				return HttpResponse{}, err
+			}
+			return jsonOf(value), nil
+		}),
+	}})}}, servedOptions{
+		authenticate: func(context.Context, HttpRequest) (data.Principal, error) { return nil, nil },
+	})
+	hostLine := "Host: 127.0.0.1:" + strconv.Itoa(server.port) + "\r\nConnection: close"
+	_, plain := rawExchange(t, server.port, "GET /plain HTTP/1.1\r\n"+hostLine+"\r\n\r\n")
+	_, read := rawExchange(t, server.port, "GET /headers HTTP/1.1\r\n"+hostLine+"\r\nX-Thing: t\r\n\r\n")
+	_, posted := rawExchange(t, server.port, "POST /body HTTP/1.1\r\n"+hostLine+"\r\nContent-Length: 3\r\n\r\n\"a\"")
+	if plain != `"/plain"` || read != `"t"` || posted != `"a"` {
+		t.Fatalf("answers = %q, %q, %q, want \"/plain\", \"t\", \"a\"", plain, read, posted)
+	}
+	server.close()
 }
 
 // Pi's NodeIncoming.cancelled (node.ts:119-140, node.test.ts:84): a request an app mounts on its own server aborts when the client

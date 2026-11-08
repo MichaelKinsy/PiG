@@ -36051,7 +36051,7 @@
         }
       ],
       "tests": [
-        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText",
+        "chord/nextnode/plugins/build/build_nodeerror_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText",
         "chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
         "chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess",
         "chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause",
@@ -41254,6 +41254,33 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-d06b3d2",
+      "title": "The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request…",
+      "symptom": "The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request is recorded as a `chord.http` trace of the server.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request is recorded as a `chord.http` trace of the server.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d06b3d225b",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "examples/chord-todo/lists_test.go::TestTheListsPluginAddsATodoAsThePrincipalThatCalled",
+        "examples/chord-todo/lists_test.go::TestTheListsPluginLetsTheOwnerClearTheDoneTodos",
+        "examples/chord-todo/lists_test.go::TestTheListsPluginRefusesATodoWithoutTextWithInvalidArgs",
+        "examples/chord-todo/screens_test.go::TestTheTutorialTakesTheScreenshots",
+        "examples/chord-todo/tutorial_test.go::TestTheTutorialsBlocksMatchTheExamplesFiles",
+        "examples/chord-todo/tutorial_test.go::TestTheTutorialsStepsPrintWhatTheBookShows"
+      ]
     },
     {
       "id": "BF-d0c2727",

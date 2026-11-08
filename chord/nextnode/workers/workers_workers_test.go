@@ -20,11 +20,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // pi: packages/chord/src/next-node/workers/workers.ts
-// Ports packages/chord/test/next-node/workers/workers.test.ts (the parts that need no rollout, and no blocked worker): starts
+// Ports packages/chord/test/node/workers/workers.test.ts (the parts that need no rollout, and no blocked worker): starts
 // on demand (the link made at the fork, `started` on `connect`, the start timer covering only the start), failures that
 // stay (a crash, a `fatal`, a failed start: no fork for a new hold, holders `failed { waiting }`) until `retry` or a
 // rollout, a running worker's lost link recovered from once a minute (workers_blocked_unix_test.go), idle stops and `busy`,
@@ -810,7 +810,7 @@ func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeT
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want, ok := built.Inputs[resolved]; built.Err != nil || !ok || len(built.Inputs) != 1 || want != plugins.ContentHash(mustRead(t, entry)) {
+	if want, ok := built.Inputs[resolved]; built.Err != nil || !ok || len(built.Inputs) != 1 || want != model.ContentHash(mustRead(t, entry)) {
 		t.Fatalf("build = %+v, want the entry with its bytes' hash", built)
 	}
 	if inputs := f.workers.Inputs(); len(inputs) != 1 || inputs[resolved] != built.Inputs[resolved] {

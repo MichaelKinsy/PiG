@@ -2060,12 +2060,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:a708093d51b16658f44fe0993b4d3d83b65857b3d87ca348d817da8d00cc3e38",
       "evidence": [
-        "chord/next/contracts/snapshot_test.go"
+        "chord/next/contracts/snapshot_test.go",
+        "chord/nextnode/plugins/plugins_vendored_pi_test.go"
       ],
-      "rationale": "All 15 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). 1 JS-only cases are designed out (rows/chord-misca2.md; owner approval pending): no Go form (undefined, symbol keys, AbortSignal/performance.now spies, type-level).",
-      "designedOutCases": [
-        "vocabulary › refuses symbol keys, accessors and cycles, naming the path"
-      ]
+      "rationale": "14 of 15 upstream cases run in snapshot_test.go. The fifteenth, \"vocabulary › refuses symbol keys, accessors and cycles, naming the path\", runs in two halves. Intention check: a schema a plugin declares in JavaScript is read once into a plain copy, and what cannot be copied (a Symbol key, a getter, a cycle, a non-vocabulary type) is refused naming where it sits. Go's schema is JSON data, so its half is the cycles and unsupported-type assertions (snapshot_test.go); the Symbol-key and accessor assertions are about a TypeScript plugin's schema objects, which the Node host reads through the vendored snapshot.ts (node/pi, verbatim from Pi), so Pi's case runs there as TestNodeHostSnapshotSchemaRefusesSymbolKeysAccessorsAndCyclesNamingThePath, over the extracted tree the subprocess runs. Not designed out."
     },
     {
       "path": "packages/chord/test/data/args.test.ts",
@@ -2187,12 +2185,14 @@
     },
     {
       "path": "packages/chord/test/delta-op-text-retention.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:262f4f728505051753a57de57f0a279cd31f958c0452e5662f57415ae354666e",
       "evidence": [
+        "chord/delta/op_text_retention_norace_test.go#TestAppendOpsDoNotRetainTheirSourceText",
+        "chord/delta/op_text_retention_norace_test.go#TestReplicaOfAppendsRetainsTheTextOnce",
         "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps"
       ],
-      "rationale": "The test measures V8 heap use after the tracker, diffRevisions and applyImmutable produce append ops from a long, growing string: V8 represents a long slice as a view of its source, so the ops kept every revision of the text alive until ownedSlice copied them. Go ops hold the substring they were cut from (the same text) and the strings the tracker keeps are whole copies; AppendText clones the text it is given (TestAppendTextOwnsTheTextItKeeps), and no Go behavior depends on how a slice is represented. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/delta-op-text-retention.test.ts, identical modulo import paths."
+      "rationale": "All 3 upstream cases run. Pi measures V8 heap use after the tracker, diffRevisions and applyImmutable produce append ops from a long, growing string (a V8 slice is a view of its source, so ops kept every revision alive until ownedSlice copied them). A Go substring shares its parent's bytes in the same way, so the emit sites clone; TestAppendOpsDoNotRetainTheirSourceText (tracker and diff subtests) measures the heap after GC while the ops of a text grown 8 bytes a commit are still held, and TestReplicaOfAppendsRetainsTheTextOnce does it for a replica applying a long stream of appends; AppendText clones the text it is given (TestAppendTextOwnsTheTextItKeeps). The retention tests are !race: the race detector inflates allocations."
     },
     {
       "path": "packages/chord/test/delta-pending.test.ts",
@@ -2401,10 +2401,14 @@
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/tutorial.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:80138fbe8d042d39d7aec298c286f32a580e97d98bd7524e50e35e003f13b0d1",
-      "evidence": [],
-      "rationale": "Designed out by D604 (draft, owner sign-off pending; rows/chord-t11.md): Pi's tutorial is a TypeScript program on Pi's TS app kit (main.ts calls the TS startServer, worker.ts is a Node entry) plus a book whose blocks the test quotes, so the Go kit has no TS server to run it under."
+      "evidence": [
+        "examples/chord-todo/tutorial_test.go",
+        "examples/chord-todo/screens_test.go",
+        "examples/chord-todo/lists_test.go"
+      ],
+      "rationale": "Owner order (2026-11-08): the tutorial is ported as a PiG tutorial with Pi's three checks per chapter (quoted blocks match the files, the files are what runs, the shown output is what they print). docs/chord/tutorial.md is the PiG book (chapters I to XII of Pi's, the p2 chapter noted as having nothing to port: PiG has no p2) and examples/chord-todo its example (Go app, TypeScript plugins). The four upstream cases are: \"quotes every TypeScript, JSON and CSS block from a file\" = TestTheTutorialQuotesEveryGoTypeScriptJSONAndCSSBlockFromAFile (Go blocks too); \"matches the example's files\" = TestTheTutorialsBlocksMatchTheExamplesFiles; \"prints what the book shows\" = TestTheTutorialsStepsPrintWhatTheBookShows (the terminal's output only with a Node for its sandbox, as Pi's); \"takes the screenshots\" = TestTheTutorialTakesTheScreenshots (headless Chromium through internal/browsertest, skipped without one; the printed lines checked as Pi's, and each figure is a PNG of the size it was taken at). Pi's lists/worker.test.ts is the example's lists_test.go (plugins.TestPlugin). Killed mutants (host run): a printed label changed, a terminal label changed, a quoted TypeScript and a quoted Go line changed, an unquoted Go block added to the book, a screenshot's printed line changed, a viewport size changed."
     },
     {
       "path": "packages/chord/test/host/activity.test.ts",
@@ -2444,16 +2448,13 @@
     },
     {
       "path": "packages/chord/test/host/ctx.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:dc961893e2eff074cf517a3ff3c8d9448bb7fed96a2b14626dd2bcb4d776c514",
       "evidence": [
         "chord/next/host/host_ctx_test.go",
         "chord/next/host/host_spans_test.go"
       ],
-      "rationale": "14 of 15 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). Cases removed from missingCases, with the Go test checked: \"ctx.trace (C11, slice 9) › marks its span failed (`trace_failed`) and rethrows\" -> next/host/host_spans_test.go:TestCtxTraceMarksItsSpanFailedTraceFailedAndReturnsTheError.",
-      "missingCases": [
-        "ctx.trace (C11, slice 9) › rejects, never throws, when fn throws synchronously, recorded or not (review L5)"
-      ]
+      "rationale": "All 15 upstream cases run in the evidence files. The case \"ctx.trace (C11, slice 9) › rejects, never throws, when fn throws synchronously, recorded or not (review L5)\" is next/host/host_spans_test.go:TestCtxTraceReturnsAnErrorNeverPanicsWhenFnPanicsRecordedOrNot (a Go fn returns an error or panics; Trace returns the error and recovers the panic, recorded or not); \"... marks its span failed (`trace_failed`) and rethrows\" is TestCtxTraceMarksItsSpanFailedTraceFailedAndReturnsTheError."
     },
     {
       "path": "packages/chord/test/host/deadline.test.ts",
@@ -2832,15 +2833,12 @@
     },
     {
       "path": "packages/chord/test/link/values.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:c0407ce66ad2489ad3b19ac9be78c23bd6761476e43b19784b9b81439c4cb614",
       "evidence": [
         "chord/next/link/values_test.go"
       ],
-      "rationale": "7 of 8 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/).",
-      "missingCases": [
-        "payloads › carry any Uint8Array subclass as bytes: a Node Buffer, whose toJSON the replacer never sees (slice 11)"
-      ]
+      "rationale": "All 8 upstream cases run in values_test.go. \"payloads › carry any Uint8Array subclass as bytes: a Node Buffer, whose toJSON the replacer never sees (slice 11)\" has a Go form in the subtest after 'marked as carrying bytes write each byte leaf as a segment': a []byte leaf as a member, as an element and as the whole value is its own segment, referenced by {$bytes: i} (Go has no Uint8Array subclass or toJSON; a []byte is the one bytes type)."
     },
     {
       "path": "packages/chord/test/link/websocket.test.ts",
@@ -2859,14 +2857,10 @@
       "evidence": [
         "chord/nextnode/app/app_test.go",
         "chord/nextnode/app/app_workers_test.go",
-        "chord/nextnode/app/app_export_test.go"
+        "chord/nextnode/app/app_export_test.go",
+        "chord/nextnode/app/app_executable_test.go"
       ],
-      "rationale": "All 23 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). 3 case(s) designed out by D603 (draft, owner sign-off pending; rows/chord-appcases.md): the Go server is one executable with no import graph to scan.",
-      "designedOutCases": [
-        "base code › compares the server's own code from its entry, the start script and what it imports, with no `base` given",
-        "base code › starts with an entry whose inactive optional import is missing: the import is left out, the rest compared",
-        "base code › starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared"
-      ]
+      "rationale": "All 23 upstream cases run in the evidence files or in PiG form. \"base code › compares the server's own code from its entry, the start script and what it imports, with no `base` given\" is app_executable_test.go:TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCleared (D603: the Go server's own code is its executable) and \"... starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared\" is TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared (the scan is the read of the executable). \"... starts with an entry whose inactive optional import is missing: the import is left out, the rest compared\" protects that a missing file an import graph names never stops the server from starting. The server's own code has no import graph (a Go executable), so D603 keeps the case off the executable; the Node-hosted code of the app is its plugins, and their graph is what a build read (BuildFacet's inputs, compared by the plugins' watcher, never scanned). The intention is tested there: TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFailsAndTheRestRuns (a plugin of the user's root whose facet imports a file that is not there has a failed build naming file, line and import, and the app starts with its own plugins running; only a required root stops a start). Killed mutant (host run): the user's plugins root made required in StartServer."
     },
     {
       "path": "packages/chord/test/node/app/archive.test.ts",
@@ -3107,15 +3101,12 @@
     },
     {
       "path": "packages/chord/test/node/http/node.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:dc777460fa4dcbd12a27093ab60ec984442d275223c2848b441f56b99379c59a",
       "evidence": [
         "chord/nextnode/http/node_test.go"
       ],
-      "rationale": "6 of 7 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). Cases removed from missingCases, with the Go test checked: \"targets › answers a malformed or double-slash path without crashing or rerouting it (Opus's audit H5)\" -> nextnode/http/node_test.go:TestTargetsAnswerAMalformedOrDoubleSlashPathWithoutCrashingOrReroutingIt; \"mounting on an app's own Node server › converts with the listener's checks, never throwing: bad targets, userinfo, TRACE refused; duplicate Hosts kept\" -> nextnode/http/node_test.go:TestMountingConvertsWithTheListenersChecksNeverPanickingBadTargetsUserinfoTRACERefused; \"targets › refuses a Host with userinfo (403) and a method a Web Request cannot carry (501)\" -> chord/nextnode/http/node_test.go:TestTargetsRefuseAHostWithUserinfo403AndAMethodAWebRequestCannotCarry501 (Go answers 400 where Pi's Node parser lets the component answer 403: the net/http divergence in DIVERGENCES.md, the 501 is the same).",
-      "missingCases": [
-        "Web requests › makes a Web Request only when something reads the headers or the body (here: no authenticator does)"
-      ]
+      "rationale": "All 7 upstream cases run in node_test.go. \"targets › refuses a Host with userinfo (403) and a method a Web Request cannot carry (501)\" is TestTargetsRefuseAHostWithUserinfo403AndAMethodAWebRequestCannotCarry501 (TRACE 501; net/http itself answers 400 to a userinfo Host where Node's parser lets the component answer 403: forced difference noted in the test, the component's 403 is TestNodeRequestRefusesWhatTheListenerRefuses). \"Web requests › makes a Web Request only when something reads the headers or the body\" counts `new Request` calls, which Go has no form of (net/http's Request exists when the server hands it over): TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBodyOrNeither ports what the case observes: three public routes with an authenticator naming no principal, answering \"/plain\", \"t\" and \"a\"."
     },
     {
       "path": "packages/chord/test/node/http/request.test.ts",
@@ -3146,15 +3137,12 @@
     },
     {
       "path": "packages/chord/test/node/http/upgrades.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:08d3e1f9559e62b4e55e674185333fb4d6086d5d12409998762d3fd87d57cc2b",
       "evidence": [
         "chord/nextnode/http/upgrades_test.go"
       ],
-      "rationale": "18 of 19 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). Cases removed from missingCases, with the Go test checked: \"the links endpoint › refuses a socket without a principal (401), from another Origin or Host, foreign, or whose links.options throws (403)\" -> nextnode/http/upgrades_test.go:TestTheLinksEndpointRefusesASocketWithoutAPrincipalFromAnotherOriginOrHostForeignOrWhoseLinksOptionsFails403; \"the links endpoint › calls links.opened for each accepted link and what it returned when that link closes (slice 11)\" -> nextnode/http/upgrades_test.go:TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSocketCloses; \"the links endpoint › takes frames of at most 1 MiB unless links.options says otherwise (Opus's audit H2)\" -> nextnode/http/upgrades_test.go:TestTheLinksEndpointTakesFramesOfAtMost1MiBUnlessLinksOptionsSaysOtherwise.",
-      "missingCases": [
-        "plugin sockets › accepts a public socket without a principal, its scope anonymous (deny by default, slice 13 §2)"
-      ]
+      "rationale": "All 19 upstream cases run in upgrades_test.go; \"plugin sockets › accepts a public socket without a principal, its scope anonymous (deny by default, slice 13 §2)\" is TestAPublicSocketIsAcceptedWithoutAPrincipalAndRunsAnonymousAnotherIsRefused401."
     },
     {
       "path": "packages/chord/test/node/plugins/base-inputs.test.ts",
@@ -3438,15 +3426,12 @@
     },
     {
       "path": "packages/chord/test/node/web/page.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:bf7d5a585b21af094470ffd57cb986b866607feea95329446bc3729d60e0b6a7",
       "evidence": [
         "chord/nextnode/app/app_web_browser_test.go"
       ],
-      "rationale": "2 of 3 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/).",
-      "missingCases": [
-        "a page › records a click as the root of one trace through the server into the worker, stored by the server"
-      ]
+      "rationale": "All 3 upstream cases run in app_web_browser_test.go over Chromium. The third runs as TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer (vendored fixture web/telemetry.ts, SQLite store: the trace page.write -> chord.call -> chord.relay (server) -> chord.relay (the worker's Go host, forced difference D460) -> two chord.method spans, the click's id browser:<uuid>:<n>, one trace id, and the click span's chord.principal {\"kind\":\"owner\"}, which the ingest facet records through the server host's exported Host.PrincipalAttributes, as Pi's `host.principalAttributes`). Intention check: the case guards that one click is one trace from the page to the worker and that the server stamps the principal on a page's span, never the page; both are asserted over a real page."
     },
     {
       "path": "packages/chord/test/node/web/styles.test.ts",
@@ -3459,17 +3444,24 @@
     },
     {
       "path": "packages/chord/test/node/workers/base.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b",
-      "evidence": [],
-      "rationale": "Designed out by D600 (draft, owner sign-off pending; rows/chord-reload-workers.md): a Go worker is the program's own executable, so there is no esbuild worker base to test."
+      "evidence": [
+        "chord/nextnode/plugins/plugins_build_test.go",
+        "chord/nextnode/plugins/plugins_workerbase_test.go",
+        "chord/nextnode/surfaces/surfaces_bundle_test.go",
+        "chord/nextnode/workers/workers_workers_test.go"
+      ],
+      "rationale": "Intention checks in PiG form (owner rule 2026-11-08: D600 is not approved as a design-out of this file; a Go worker is the program's own executable, so no Go test can run Pi's esbuild worker bundle). What each case protects is tested where PiG has the same code: the plugin scripts a worker runs are built by BuildFacet (the port of Pi's plugin build) and run by the Node host, and the surfaces' bases are the bundles read with the server's --conditions. \"bundles the entry and its imports once\": TestEsbuildBuildBundlesAFacetAndItsImportsOnceAnEditAfterTheBuildChangesNothingInputsNameBothFiles. \"runs every imported module, as Node does\" (sideEffects: false): TestWorkerBaseASideEffectsFalsePackageIsDroppedByAPluginBuildAsPisBuildFacetDoesTheOwnPackageNothing, byte-for-byte against the scripts Pi's own buildFacet made (digest and length): Pi's worker base sets ignoreAnnotations, Pi's plugin build does not, and BuildFacet is that build, so the check pins BuildFacet to Pi (an installed package saying sideEffects: false is dropped, the plugin's own package nothing). \"splits at a dynamic import\": TestWorkerBaseALazyImportOfAPluginScriptReadsNothingUntilTheCodeAsksAndALiteralOneIsRefused (a computed import is a call of the facet's require, answered by the Node host from the host packages and reading none while the facet is evaluated; a literal one is refused, so no lazily loaded plugin file can differ from its build). \"resolves with the child's --conditions (both spellings)\": TestConditionsResolvePackageExportsWithEachSpellingOfTheFlagTheDefaultWithNone in chord/nextnode/surfaces (--conditions=x, --conditions x, -C x, -C=x, in the flags and in NODE_OPTIONS, build the source; none builds the default). \"import.meta and __dirname name each source file, a local __dirname stays the module's own\": TestWorkerBaseModuleLocationsAreRefusedInEachFileNamingItAndALocalDirnameStaysTheModulesOwn (a plugin script has no module location: each file's use is refused naming that file, a local const __dirname builds and evaluates to its own value). \"maps stack traces to the source files and lines\": TestWorkerBaseAStackThroughTheEntryAndTwoFilesNamesEachSourceFileAndLine (the Node host's mapStack through the script's inline source map names the three files and lines). nodeBaseInputs \"records the entry and what it imports ... nothing written\": TestWorkerBaseAFacetsInputsAreItsFileAndThePluginFilesItImportsNoPackageNothingWritten (a facet's inputs with the bytes' hashes, no package, the directory unchanged; the conditions half is TestConditionsResolvesWithTheGivenConditions... in surfaces). nodeBaseInputs \"scans the static graph best effort\": TestWorkerBaseABuildReadsNoTsconfigPathsAndAnImportThatDoesNotResolveIsAFailedResultNamingIt (no tsconfig paths, as Node; an import that does not resolve is a failed build result naming file, line and column, because a facet's build is the script a plugin runs and not a scan, so it is not left out). \"a broken entry rejects with esbuild's failure\": TestEsbuildBuildReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow. \"keeps installed packages and builtins external\": TestEsbuildBuildInlinesADependencyKeepsExternalPackagesAndNodeBuiltinsExternalOnNode. \"the bundle's file\" (private directory, rewritten when a cleaner removed it): the worker base's snapshot file of chord/nextnode/workers/workers_workers_test.go (D600: a private copy of the entry executable). Killed mutants (host run): IgnoreAnnotations of BuildFacet set, dynamic-import supported, Define dropped, SourceMapNone, TsconfigRaw empty, Hash of BuildInput altered, -C dropped from conditionsOf."
     },
     {
       "path": "packages/chord/test/node/workers/child.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41",
-      "evidence": [],
-      "rationale": "Designed out by D600 (draft, owner sign-off pending; rows/chord-reload-workers.md): a Go worker is the program's own executable, so there is no esbuild worker base to test."
+      "evidence": [
+        "chord/nextnode/workers/workers_child_test.go"
+      ],
+      "rationale": "The one upstream case (\"the child entry's imports › loads no esbuild\": a forked worker does not pay for the server's build tool) is in PiG form (owner rule 2026-11-08: D600 does not design this file out): a deps test, TestTheWorkersPackageLinksNoEsbuild, that `go list -deps` of chord/nextnode/workers, of chord/nextnode/plugins (the worker's runtime and the Node host) and of chord/nextnode/plugins/model links no github.com/evanw/esbuild package. It holds because the plugins component was split in three layers: plugins/model (the data and discovery), plugins/build (esbuild: BuildFacet, the CSS module scoping, Recorder) and plugins (the runtime and the component), which takes the builder as PluginsOptions.Build. Measured before the split: 26 esbuild packages linked by workers. An app's worker executable is the server's own program (`app.StartWorker`), so it still links `app` and the 25 esbuild packages behind it; the test protects the worker side (`workers`, the plugin runtime and the plugin data) only. TestTheDependencyCheckSeesTheEsbuildTheBuilderLinks pins that the check sees esbuild where it is linked. Mutation: a blank import of plugins/build in the workers package fails the first test (25 esbuild packages)."
     },
     {
       "path": "packages/chord/test/node/workers/control.test.ts",
@@ -3510,17 +3502,14 @@
     },
     {
       "path": "packages/chord/test/node/workers/workers.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:3c37d4d8b6ba7e8aacc072959d4c8eea747276567858a847056ec81a511686b6",
       "evidence": [
         "chord/nextnode/workers/workers_workers_test.go",
         "chord/nextnode/workers/workers_rollout_test.go",
         "chord/nextnode/workers/workers_rollout_blocked_unix_test.go"
       ],
-      "rationale": "33 of 34 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). Cases removed from missingCases, with the Go test checked: \"failures stay until retry or a rollout (R2) › a start that throws fails the address: holders fail waiting with it, a new hold forks nothing; retry starts it\" -> nextnode/workers/workers_workers_test.go:TestFailuresStayAStartThatFailsFailsTheAddressHoldersFailWaitingWithItANewHoldForksNothingRetryStartsIt; \"failures stay until retry or a rollout (R2) › a running worker's lost link (a blocked event loop past the heartbeat): killed after the grace, its holders get a new worker past the lock file the kill left; a second within a minute fails the address\" -> nextnode/workers/workers_blocked_unix_test.go:TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress; \"failures stay until retry or a rollout (R2) › the start timer covers only the start: a slow load after connecting is not killed (Q4)\" -> nextnode/workers/workers_workers_test.go:TestFailuresStayTheStartTimerCoversOnlyTheStartASlowLoadAfterConnectingIsNotKilled; \"keep-alive (D9, R3, Q5) › 1,000 sequential local calls in a worker nobody holds send no message (Sol)\" -> nextnode/workers/workers_workers_test.go:TestKeepAlive1000SequentialLocalCallsInAWorkerNobodyHoldsSendNoMessage; \"GC › 100 addresses started and stopped leave no state, no record, no suspension (Astra, Sol)\" -> nextnode/workers/workers_workers_test.go:TestGC100AddressesStartedAndStoppedLeaveNoStateNoRecordNoSuspension; \"fix round 1 › close during a forked start that never connects returns at once, no failure (Opus F1)\" -> nextnode/workers/workers_workers_test.go:TestFixRound1CloseDuringAForkedStartThatNeverConnectsReturnsAtOnceNoFailure; \"fix round 1 › close during an app's start that ignores its signal returns at once; nothing forks after it (Sol)\" -> nextnode/workers/workers_workers_test.go:TestFixRound1CloseDuringAnAppsStartThatIgnoresItsSignalReturnsAtOnceNothingForksAfterIt; \"fix round 1 › a stop during the worker's startup is a stop: its closers run, nothing fails (Astra)\" -> nextnode/workers/workers_workers_test.go:TestFixRound1AStopDuringTheWorkersStartupIsAStopItsClosersRunNothingFails; \"fix round 1 › a reload queued behind one the child never answers settles when the child exits (Astra)\" -> nextnode/workers/workers_rollout_blocked_unix_test.go:TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits; \"fix round 1 › a plugin whose evaluation failed is shipped again by the next rollout and stays dirty (Astra)\" -> nextnode/workers/workers_rollout_test.go:TestFixRound1APluginWhoseEvaluationFailedIsShippedAgainByTheNextRolloutAndStaysDirty; \"fix round 1 › reaps a worker that closed its own IPC channel and lives on: killed after the grace, a lost link its holder gets a new worker for (Sol)\" -> nextnode/workers/workers_blocked_unix_test.go:TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor; \"fix round 1 › keeps a worker's stderr out of the public state: only worker_failed carries its tail (Astra)\" -> nextnode/workers/workers_workers_test.go:TestFixRound1KeepsAWorkersStderrOutOfThePublicStateOnlyWorkerFailedCarriesItsTail; \"the rollout step (§4) › lists a worker stopped cleanly during it as stopped and one that crashed with its error (it stays dirty)\" -> chord/nextnode/workers/workers_rollout_blocked_unix_test.go:TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError.",
-      "missingCases": [
-        "the worker base (decision \"Workers start from the base code the server booted with\") › a worker started after an edit of the entry's imported source runs the code the component was created with"
-      ]
+      "rationale": "All 34 upstream cases run in the evidence files. \"the worker base › a worker started after an edit of the entry's imported source runs the code the component was created with\" is workers_workers_test.go:TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith (a Go worker's base is a private copy of the entry executable made at build; a later edit of the executable changes nothing the worker runs, and the copy is removed by close). \"the rollout step (§4) › lists a worker stopped cleanly during it as stopped and one that crashed with its error\" is workers_rollout_blocked_unix_test.go:TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError. The esbuild worker base files themselves (base.test.ts, child.test.ts) are D600-designed out as whole files, listed in the owner question."
     },
     {
       "path": "packages/chord/test/output-skip.test.ts",
@@ -3996,11 +3985,7 @@
         "chord/next/store/store_test.go",
         "chord/next/store/group_commit_test.go"
       ],
-      "rationale": "42 of the 44 upstream cases run in store_test.go and the group commit cases in group_commit_test.go, among them 'rejects a grouped commit whose admission throws with that error' (Admit is recovered per commit; only that commit rejects, with the panic value, an error itself or a ThrownError) and 'rejects a group's commits with what its turn throws after COMMIT' (the host listener's panic rejects the commits not settled, with that error itself). The other two are drafted as designed out, DRAFT FOR OWNER REVIEW (no owner approval recorded yet; they stay open until the owner decides), because each asserts what a TypeScript metrics adapter throws and Go's callbacks do not throw: Both 'stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats' and '... after a lone commit's COMMIT too': telemetry.TelemetryCounter.Add returns nothing, so an adapter's failure is a panic; the store stops, memory takes the whole group or the lone commit (it is durable), no seq repeats, and later commits and reads reject storage_failed, as in Pi. The differences are the caller of the commit whose turn it was: Pi rejects its promise with storage_failed, Go re-panics in the caller of the group's first commit (or the lone commit), and the others of the group reject storage_failed. The panicking-adapter cases 'stops the store when a metrics adapter panics after a group's COMMIT' and '... after a lone commit's COMMIT too' in group_commit_test.go assert the Go form. Pi's int() key typing (d7704516e) is TypeScript typing and has no case.",
-      "designedOutCases": [
-        "group commit › stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
-        "group commit › stops the store when a metrics adapter throws after a lone commit's COMMIT too"
-      ]
+      "rationale": "All 44 upstream cases run in store_test.go and group_commit_test.go. The two \"group commit › stops the store when a metrics adapter throws after a group's COMMIT / a lone commit's COMMIT too\" cases run with Go's form of an adapter that throws, a counter whose Add panics (panickingMetrics): the store recovers it as it does a failing adoption (countCommit), stops, takes the whole group into memory, and every commit of the group (the lone one too) rejects storage_failed with no seq repeated, as Pi's. Among the others: 'rejects a grouped commit whose admission throws with that error' (Admit is recovered per commit; only that commit rejects, with the panic value, an error itself or a ThrownError) and 'rejects a group's commits with what its turn throws after COMMIT' (the host listener's panic rejects the commits not settled, with that error itself)."
     },
     {
       "path": "packages/chord/test/store/table-changes.test.ts",
@@ -4128,12 +4113,11 @@
       "upstreamTestHash": "sha256:30d6d83b3c2fef27e9512e79ebad8edfff7d23067426cde4917bd4da581c915c",
       "evidence": [
         "chord/next/surfaces/surfaces_active_language_test.go",
-        "chord/next/surfaces/surfaces_language_test.go"
+        "chord/next/surfaces/surfaces_language_test.go",
+        "chord/next/surfaces/surfaces_messages_test.go",
+        "chord/nextnode/plugins/plugins_vendored_pi_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). 1 case(s) designed out by D450 (rows/chord-appcases.md, owner sign-off pending): Go has no goroutine-local render scope; a message function receives its language.",
-      "designedOutCases": [
-        "the render scope › is current only while a render runs, and a nested render restores the outer"
-      ]
+      "rationale": "All 5 upstream cases run. 4 run in surfaces_active_language_test.go and surfaces_language_test.go. The fifth, \"the render scope › is current only while a render runs, and a nested render restores the outer\", runs in two halves. Intention check: a render in one language that renders another in a second one leaves the first in its own, whether the nested render returns or throws, and nothing outlives them. A TypeScript plugin's render uses Pi's module-wide scope through the vendored language.ts (node/pi, verbatim), so Pi's case runs there as TestNodeHostRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter. In Go the scope is the explicit lang argument (D450, surfaces/doc.go), so the same guard is TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNestedOneFailsOrPanics: the nested renders (returning, returning an error, panicking) never change what the outer message function's own lang formats."
     },
     {
       "path": "packages/chord/test/surfaces/locale-choice.test.ts",

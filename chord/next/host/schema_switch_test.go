@@ -21,7 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/schema/{declarations,owner,proofs,write-stored}.ts and schema-switch.test.ts: the tests of
+// Ports packages/chord/test/schema/{declarations,owner,proofs,write-stored}.ts and schema-switch.test.ts: the tests of
 // the schema switch from TypeBox to pi-schema (decision "A schema package beneath pi-ai and Chord"). The same
 // declarations give byte-identical fingerprints and normal forms, and data stored by the code before the switch loads
 // after it. `testdata/schema-switch/recorded.json` and `stored/` are Pi's files, byte for byte: they were made with the

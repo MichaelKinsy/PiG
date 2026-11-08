@@ -1475,6 +1475,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cf8566b](#bf-cf8566b) | fix(chord): spans of the SQLite store carry the store's own capabilities | PiG's own defect | All platforms | Unreleased |
 | [BF-cfe05f8](#bf-cfe05f8) | A `message_end` handler that returns a system message with missing or null content now keeps that content, as… | PiG's own defect | All platforms | Unreleased |
 | [BF-d03cd05](#bf-d03cd05) | fix(chord/next/host,chord/nextnode/plugins): route resolve is lent the section that triggers it as Pi's… | PiG's own defect | All platforms | Unreleased |
+| [BF-d06b3d2](#bf-d06b3d2) | The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request… | PiG's own defect | All platforms | Unreleased |
 | [BF-d0c2727](#bf-d0c2727) | fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization… | PiG's own defect | All platforms | Unreleased |
 | [BF-d11ca55](#bf-d11ca55) | `pig piglet build --format binary` from a Pig checkout with a `go.work` builds a Piglet whose fused Go… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d133e3d](#bf-d133e3d) | Codemode scripts that patch built-ins, for example `Array.prototype.toJSON = ...`, no longer break the tool… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
@@ -19599,7 +19600,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `afb14da124` (2026-10-31)
-- **Tests:** `chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText`, `chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeOlderThanTheMinimumNamesTheRequirementAndTheVersionFound`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeThatFailsItsVersionNamesWhatItSaid`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeWhoseVersionIsNoVersionIsRefused`, `chord/nextnode/plugins/plugins_node_test.go::TestNodeAFatalReadAfterTheProcessWasWaitedForIsInTheExit` and 6 more in docs/bug-ledger.json
+- **Tests:** `chord/nextnode/plugins/build/build_nodeerror_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText`, `chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeOlderThanTheMinimumNamesTheRequirementAndTheVersionFound`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeThatFailsItsVersionNamesWhatItSaid`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeWhoseVersionIsNoVersionIsRefused`, `chord/nextnode/plugins/plugins_node_test.go::TestNodeAFatalReadAfterTheProcessWasWaitedForIsInTheExit` and 6 more in docs/bug-ledger.json
 
 ### BF-aff6631
 
@@ -22063,6 +22064,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d03cd05f3e` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-d06b3d2
+
+**The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request is recorded as a `chord.http` trace of the server.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d06b3d225b` (2026-11-08)
+- **Tests:** `examples/chord-todo/lists_test.go::TestTheListsPluginAddsATodoAsThePrincipalThatCalled`, `examples/chord-todo/lists_test.go::TestTheListsPluginLetsTheOwnerClearTheDoneTodos`, `examples/chord-todo/lists_test.go::TestTheListsPluginRefusesATodoWithoutTextWithInvalidArgs`, `examples/chord-todo/screens_test.go::TestTheTutorialTakesTheScreenshots`, `examples/chord-todo/tutorial_test.go::TestTheTutorialsBlocksMatchTheExamplesFiles`, `examples/chord-todo/tutorial_test.go::TestTheTutorialsStepsPrintWhatTheBookShows`
+- **Release note:** The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request is recorded as a `chord.http` trace of the server.
 
 ### BF-d0c2727
 

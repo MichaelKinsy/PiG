@@ -15,6 +15,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/test/node/plugins/testing.test.ts: testing a plugin alone (slice 12 §6), the plugin built as production
@@ -49,7 +51,7 @@ func tpAppModules(t *testing.T, cache, registry, name string) HostPackages {
 	return HostPackages{"@acme/app/v3": filepath.Join(dir, "v3.ts"), "@acme/app/v3/worker": filepath.Join(dir, "v3", "worker.ts")}
 }
 
-var tpAPI = &AppApi{Name: "@acme/app", Versions: []string{"v3"}}
+var tpAPI = &model.AppApi{Name: "@acme/app", Versions: []string{"v3"}}
 
 // tpNotes is the notes contract the stats plugin uses, as the notes plugin declares it.
 var tpNotes = mustContract(contracts.Local("acme.notes", contracts.LocalDeclaration{
@@ -69,7 +71,7 @@ func tpEmpty() *delta.JsonObject { return delta.NewJsonObject(0) }
 // tpOpts are the options every case shares: the worker kind, the app's API and modules, a Node host cached under cache.
 func tpOpts(t *testing.T, cache string) TestPluginOptions {
 	t.Helper()
-	return TestPluginOptions{Kind: "worker", Api: tpAPI, Modules: tpModules(t, cache), Node: NodeOptions{CacheDir: cache}}
+	return TestPluginOptions{Build: build.BuildFacet, Kind: "worker", Api: tpAPI, Modules: tpModules(t, cache), Node: NodeOptions{CacheDir: cache}}
 }
 
 // tpNotesStub is a stub of the notes plugin: every project has 42 words.
@@ -98,6 +100,9 @@ func tpJSON(t *testing.T, v any) string {
 // tpPlugin tests the plugin in dir with options, closed when the test ends.
 func tpPlugin(t *testing.T, dir string, options TestPluginOptions) *TestedPlugin {
 	t.Helper()
+	if options.Build == nil {
+		options.Build = build.BuildFacet
+	}
 	tested, err := TestPlugin(dir, options, background)
 	if err != nil {
 		t.Fatal(err)

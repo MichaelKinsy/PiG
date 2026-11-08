@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Ports the type-level cases of packages/chord/test/next/data: args.test.ts "types a call replacement's arguments as
+// Ports the type-level cases of packages/chord/test/data: args.test.ts "types a call replacement's arguments as
 // values", errors.test.ts "is a tagged union: a wrong pairing is a type error". Pi deleted validator.test.ts "leave nothing in
 // TypeBox's build accumulators" with the switch to pi-schema.
 

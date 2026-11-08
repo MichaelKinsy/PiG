@@ -323,7 +323,7 @@ func TestJobStartLetsFinishStartTheSameJobAgainWithTheSameKeyANewRunNotTheFinish
 
 // job.test.ts › start › tx.start commits with the transaction's other writes, both or neither
 //
-// Pi: packages/chord/test/next/jobs/job.test.ts:261 (tx.start commits with the transaction's other writes, both or neither)
+// Pi: packages/chord/test/jobs/job.test.ts:261 (tx.start commits with the transaction's other writes, both or neither)
 func TestJobStartTxStartCommitsWithTheTransactionsOtherWritesBothOrNeither(t *testing.T) {
 	fixture := echoJob(t, JobImplementation{Run: echoRun()}, jobHostOptions{})
 	job, log := fixture.Job, fixture.Log

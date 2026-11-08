@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/16-presence-and-activity.ts
+// pi: packages/chord/test/examples/16-presence-and-activity.ts
 
 import (
 	"context"

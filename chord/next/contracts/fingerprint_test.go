@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Ports packages/chord/test/next/contracts/fingerprint.test.ts.
+// Ports packages/chord/test/contracts/fingerprint.test.ts.
 
 // pi: packages/chord/src/next/contracts/fingerprint.ts
 

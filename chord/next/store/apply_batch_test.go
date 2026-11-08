@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/test/next/store/apply-batch.test.ts
+// Ports packages/chord/test/store/apply-batch.test.ts
 //
 // Tests of batch apply (slice 6b §1.6, S5, S17): a store's outbox replayed into an empty store gives the same
 // archive, manifest included; every write kind (an adapter's create-plus-retire and change-plus-retire too); the

@@ -16,9 +16,11 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/test/next-node/plugins/runtime.test.ts. Tests of the plugin runtime (slice 10 §3, D11): loading and
+// Ports packages/chord/test/node/plugins/runtime.test.ts. Tests of the plugin runtime (slice 10 §3, D11): loading and
 // reloading hosts with complete sets of shipped scripts (unchanged digests kept as the same facet, removed = loaded minus
 // shipped, failed builds and evaluations kept old), a required root's failed plugin rejecting `load`, and that importing it
 // loads no esbuild. The runtime runs, as Pi's own
@@ -67,20 +69,20 @@ func pcPluginSource(t *testing.T, root, dir, source string) {
 // `shipped`).
 func pcShipped(t *testing.T, root string) []PluginScript {
 	t.Helper()
-	return pcShippedRoots(t, []PluginRoot{{Path: root}})
+	return pcShippedRoots(t, []model.PluginRoot{{Path: root}})
 }
 
 // pcShippedRoots is pcShipped over roots (some of them required).
-func pcShippedRoots(t *testing.T, roots []PluginRoot) []PluginScript {
+func pcShippedRoots(t *testing.T, roots []model.PluginRoot) []PluginScript {
 	t.Helper()
-	discovery, err := DiscoverPlugins(roots, DiscoveryOptions{Kinds: []string{"worker"}}, background)
+	discovery, err := model.DiscoverPlugins(roots, model.DiscoveryOptions{Kinds: []string{"worker"}}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := BuildOptions{HostPackages: pcHostPackages, Platform: PlatformNode, Plugins: discovery.Plugins}
+	options := model.BuildOptions{HostPackages: pcHostPackages, Platform: model.PlatformNode, Plugins: discovery.Plugins}
 	scripts := make([]PluginScript, len(discovery.Plugins))
 	for i, plugin := range discovery.Plugins {
-		built, err := BuildFacet(plugin, "worker", options, background)
+		built, err := build.BuildFacet(plugin, "worker", options, background)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -223,7 +225,7 @@ func TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginT
 	pcItemPlugin(t, app, "core", "core")
 	pcPluginSource(t, app, "broken", "export const = ;")
 	pcPluginSource(t, user, "flaky", `throw new Error("at import");`)
-	scripts := pcShippedRoots(t, []PluginRoot{{Path: app, Required: true}, {Path: user}})
+	scripts := pcShippedRoots(t, []model.PluginRoot{{Path: app, Required: true}, {Path: user}})
 	h, err := pcRuntimeLoadErr(t, scripts, "")
 	failure, ok := errors.AsType[*PluginError](err)
 	if !ok {

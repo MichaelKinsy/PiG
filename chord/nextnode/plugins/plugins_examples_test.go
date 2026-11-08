@@ -25,10 +25,12 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/test/next/examples/35-plugins, 36-plugin-failures, 37-plugin-imports, 38-watch-and-rollout,
+// Ports packages/chord/test/examples/35-plugins, 36-plugin-failures, 37-plugin-imports, 38-watch-and-rollout,
 // 39-browser-build, 49-plugin-api, 50-plugin-imports and 51-single-file-plugin. Pi's examples are scripts that print what they observe; each Go test runs the same scenario, with the
 // same edits, on the REAL esbuild build and REAL Node hosts (the example's own plugin directories, byte for byte, under
 // testdata/examples/<example>), and asserts what the script prints as structured values. What the script reads with
@@ -142,7 +144,7 @@ func (e *exErrors) none(t *testing.T) {
 func exComponent(t *testing.T, roots []string, cache string, kinds []KindEntry, edit func(*PluginsOptions)) (*Plugins, *exErrors) {
 	t.Helper()
 	collected := &exErrors{}
-	options := PluginsOptions{Roots: exRoots(roots), Kinds: kinds, OnError: collected.add, Node: NodeOptions{CacheDir: cache}}
+	options := PluginsOptions{Build: build.BuildFacet, Roots: exRoots(roots), Kinds: kinds, OnError: collected.add, Node: NodeOptions{CacheDir: cache}}
 	if edit != nil {
 		edit(&options)
 	}
@@ -152,16 +154,16 @@ func exComponent(t *testing.T, roots []string, cache string, kinds []KindEntry, 
 }
 
 // exRoots are the roots as Pi's examples give them as plain paths: not required.
-func exRoots(paths []string) []PluginRoot {
-	roots := make([]PluginRoot, len(paths))
+func exRoots(paths []string) []model.PluginRoot {
+	roots := make([]model.PluginRoot, len(paths))
 	for i, path := range paths {
-		roots[i] = PluginRoot{Path: path}
+		roots[i] = model.PluginRoot{Path: path}
 	}
 	return roots
 }
 
 func exNodeKind(name string, packages ...string) KindEntry {
-	return KindEntry{Name: name, Definition: KindDefinition{Platform: PlatformNode, HostPackages: append([]string{exChord}, packages...)}}
+	return KindEntry{Name: name, Definition: KindDefinition{Platform: model.PlatformNode, HostPackages: append([]string{exChord}, packages...)}}
 }
 
 // exNode is a Node host loaded with a kind's plugins, attached to its Go host, with the probe when the host has one.
@@ -848,7 +850,7 @@ func TestExample37PluginImports(t *testing.T) {
 		t.Fatalf("2. installed: %v, want %v", installed, want)
 	}
 	built := exBuild(t, plugins, []string{"@example/report"})
-	if len(built.Facets) != 1 || built.Facets[0].Kind != BuiltFacetScript {
+	if len(built.Facets) != 1 || built.Facets[0].Kind != model.BuiltFacetScript {
 		t.Fatalf("built %+v", built.Facets)
 	}
 	facet := built.Facets[0]
@@ -1055,7 +1057,7 @@ func exBrowser(t *testing.T) (*Plugins, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugins, collected := exComponent(t, []string{root}, t.TempDir(), []KindEntry{{Name: "web", Definition: KindDefinition{Platform: PlatformBrowser, HostPackages: []string{exChord}}}}, func(options *PluginsOptions) {
+	plugins, collected := exComponent(t, []string{root}, t.TempDir(), []KindEntry{{Name: "web", Definition: KindDefinition{Platform: model.PlatformBrowser, HostPackages: []string{exChord}}}}, func(options *PluginsOptions) {
 		options.PublicPath = new("/plugin-assets/")
 	})
 	t.Cleanup(func() { collected.none(t) })
@@ -1068,7 +1070,7 @@ func exBrowser(t *testing.T) (*Plugins, string) {
 func TestExample39BrowserBuild(t *testing.T) {
 	plugins, root := exBrowser(t)
 	built := exBuild(t, plugins, nil)
-	var gallery, bad *BuiltFacet
+	var gallery, bad *model.BuiltFacet
 	for i := range built.Facets {
 		switch built.Facets[i].Plugin {
 		case "@example/gallery":
@@ -1077,7 +1079,7 @@ func TestExample39BrowserBuild(t *testing.T) {
 			bad = &built.Facets[i]
 		}
 	}
-	if gallery == nil || bad == nil || gallery.Kind != BuiltFacetScript || bad.Kind != BuiltFacetFailed {
+	if gallery == nil || bad == nil || gallery.Kind != model.BuiltFacetScript || bad.Kind != model.BuiltFacetFailed {
 		t.Fatalf("unexpected build results: %+v", built.Facets)
 	}
 	// Pi's example prints `script of 1392 bytes, digest 0e9e13b5e4c3`: the Go build is the same esbuild (Pi's pin), so the script
@@ -1121,7 +1123,7 @@ func TestExample39BrowserBuild(t *testing.T) {
 	if err := json.Unmarshal(text, &shipped); err != nil {
 		t.Fatal(err)
 	}
-	var copied *BuiltFacet
+	var copied *model.BuiltFacet
 	for i := range shipped.Facets {
 		if shipped.Facets[i].Plugin == "@example/gallery" {
 			copied = &shipped.Facets[i]
@@ -1132,7 +1134,7 @@ func TestExample39BrowserBuild(t *testing.T) {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	if copied == nil || copied.Kind != BuiltFacetScript || copied.Digest != gallery.Digest || !reflect.DeepEqual(*copied, *gallery) {
+	if copied == nil || copied.Kind != model.BuiltFacetScript || copied.Digest != gallery.Digest || !reflect.DeepEqual(*copied, *gallery) {
 		t.Fatalf("3. cloned: %+v", copied)
 	}
 	if !slices.Equal(keys, []string{"@example/bad-web", "@example/gallery"}) {
@@ -1203,8 +1205,8 @@ func exAcmeKinds(versions ...string) []KindEntry {
 		}
 	}
 	return []KindEntry{
-		{Name: "server", Definition: KindDefinition{Platform: PlatformNode, HostPackages: server}},
-		{Name: "web", Definition: KindDefinition{Platform: PlatformBrowser, HostPackages: web}},
+		{Name: "server", Definition: KindDefinition{Platform: model.PlatformNode, HostPackages: server}},
+		{Name: "web", Definition: KindDefinition{Platform: model.PlatformBrowser, HostPackages: web}},
 	}
 }
 
@@ -1239,11 +1241,11 @@ func exAcmeModules(app, kind string, v2 bool) HostPackages {
 }
 
 // exAcmeComponent is the example's `createPlugins` with the app's API.
-func exAcmeComponent(t *testing.T, roots []PluginRoot, cache string, versions []string, edit func(*PluginsOptions)) (*Plugins, *exErrors) {
+func exAcmeComponent(t *testing.T, roots []model.PluginRoot, cache string, versions []string, edit func(*PluginsOptions)) (*Plugins, *exErrors) {
 	t.Helper()
 	collected := &exErrors{}
 	options := PluginsOptions{
-		Roots: roots, Api: &AppApi{Name: exAcmeApi, Versions: versions}, Kinds: exAcmeKinds(versions...),
+		Build: build.BuildFacet, Roots: roots, Api: &model.AppApi{Name: exAcmeApi, Versions: versions}, Kinds: exAcmeKinds(versions...),
 		OnError: collected.add, Node: NodeOptions{CacheDir: cache},
 	}
 	if edit != nil {
@@ -1313,7 +1315,7 @@ func TestExample49PluginAPI(t *testing.T) {
 	}
 	root = realOf(t, root)
 	// 1. The component with the app's API.
-	plugins, collected := exAcmeComponent(t, []PluginRoot{{Path: root}}, cache, []string{"v3", "v2"}, nil)
+	plugins, collected := exAcmeComponent(t, []model.PluginRoot{{Path: root}}, cache, []string{"v3", "v2"}, nil)
 
 	// 2. The server's modules and its own start-data facet, base code: it serves the `Greetings` registry, composing the lines
 	// in plugin-name order.
@@ -1371,7 +1373,7 @@ panels: async (a, { ctx }) => {
 	}
 	printed = append(printed, "3. the panel plugin: "+strings.Join(facets, ", "))
 	for _, facet := range built.Facets {
-		if facet.Facet != "web" || facet.Kind != BuiltFacetScript {
+		if facet.Facet != "web" || facet.Kind != model.BuiltFacetScript {
 			continue
 		}
 		args := map[string]any{
@@ -1467,7 +1469,7 @@ func TestExample50PluginImports(t *testing.T) {
 	printed := []string{"1. @bob/stats depends on " + strings.Replace(manifest.Dependencies["@bob/words"], dir, "…", 1)}
 
 	// 2. The component: the app's root required, the user's not; the app's API (example 49's) for both kinds.
-	plugins, collected := exAcmeComponent(t, []PluginRoot{{Path: filepath.Join(dir, "plugins"), Required: true}, {Path: filepath.Join(dir, "user")}}, cache, []string{"v3"}, nil)
+	plugins, collected := exAcmeComponent(t, []model.PluginRoot{{Path: filepath.Join(dir, "plugins"), Required: true}, {Path: filepath.Join(dir, "user")}}, cache, []string{"v3"}, nil)
 
 	// 3. Bob's dependencies, installed by npm into his plugin's node_modules (a git dependency at a ref is npm's own).
 	if err := plugins.InstallDependencies("@bob/stats", background); err != nil {
@@ -1497,7 +1499,7 @@ func TestExample50PluginImports(t *testing.T) {
 	// the web file).
 	built := exBuild(t, plugins, []string{"@acme/search"})
 	for _, facet := range built.Facets {
-		if facet.Kind != BuiltFacetScript {
+		if facet.Kind != model.BuiltFacetScript {
 			continue
 		}
 		var copied []string
@@ -1534,7 +1536,7 @@ func TestExample51SingleFilePlugin(t *testing.T) {
 	root := filepath.Join(exCopy(t, "51-single-file-plugin", "plugins"), "plugins")
 
 	// 1. The component, the server loaded: discovery found three single-file plugins; `bad` fails its build.
-	plugins, collected := exAcmeComponent(t, []PluginRoot{{Path: root}}, cache, []string{"v3"}, nil)
+	plugins, collected := exAcmeComponent(t, []model.PluginRoot{{Path: root}}, cache, []string{"v3"}, nil)
 	server, err := exAcmeStart(t, plugins, cache, "server", exAcmeModules(app, "server", false), nil, "", "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -1605,7 +1607,7 @@ func TestExample51SingleFilePlugin(t *testing.T) {
 		t.Fatal(err)
 	}
 	printed = append(printed, "4. reload: "+exMarksPlugins(report)+" | hello: "+server.probe.must("held", nil).(string))
-	var layout PluginLayout
+	var layout model.PluginLayout
 	for _, plugin := range plugins.Discovery().Plugins {
 		if plugin.Name == "hello" {
 			layout = plugin.Layout

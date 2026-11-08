@@ -22,7 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next/host/revocation.test.ts for the part that needs no host: `revocation keys`. Upstream runs
+// Ports packages/chord/test/host/revocation.test.ts for the part that needs no host: `revocation keys`. Upstream runs
 // its two cases through createHost (host.revoke, a RawPeer of hold messages), which belongs to the host core; these are own
 // tests of revocationKeys with the behavior each of them asserts: the keys are computed once per principal object and
 // compared as canonical JSON ("are computed once per principal object, compared as canonical JSON"), and the cache keeps
