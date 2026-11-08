@@ -8,7 +8,7 @@ import (
 )
 
 func TestCompactionSummaryCollapsed(t *testing.T) {
-	c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "## Goal\nDo things.", TokensBefore: 87432}, nil, 1)
+	c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "## Goal\nDo things.", TokensBefore: 87432}, nil, 1, nil, "", "")
 	lines := c.Render(60)
 
 	// Must have top pad + label + spacer + body + bottom pad = 5 rows.
@@ -43,7 +43,7 @@ func TestCompactionSummaryCollapsed(t *testing.T) {
 
 // Pi: packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts:22 (CompactionSummaryMessageComponent.setExpanded).
 func TestCompactionSummaryExpanded(t *testing.T) {
-	c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "## Goal\nDo things.", TokensBefore: 87432}, nil, 1)
+	c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "## Goal\nDo things.", TokensBefore: 87432}, nil, 1, nil, "", "")
 	c.SetExpanded(true)
 	lines := c.Render(60)
 
@@ -92,12 +92,12 @@ func TestCompactionSummaryMessageComponentUsesTheInjectedMarkdownTheme(t *testin
 	theme := GetMarkdownTheme()
 	theme.Heading = func(text string) string { return "<h>" + text + "</h>" }
 	message := CompactionSummaryMessage{Summary: "## Goal\nDo things.", TokensBefore: 87432}
-	injected := NewCompactionSummaryMessageComponent(message, &theme, 1)
+	injected := NewCompactionSummaryMessageComponent(message, &theme, 1, nil, "", "")
 	injected.SetExpanded(true)
 	if plain := stripANSI(strings.Join(injected.Render(60), "\n")); !strings.Contains(plain, "<h>Goal</h>") {
 		t.Fatalf("the expanded summary must render with the injected markdown theme:\n%s", plain)
 	}
-	active := NewCompactionSummaryMessageComponent(message, nil, 1)
+	active := NewCompactionSummaryMessageComponent(message, nil, 1, nil, "", "")
 	active.SetExpanded(true)
 	if plain := stripANSI(strings.Join(active.Render(60), "\n")); strings.Contains(plain, "<h>") || !strings.Contains(plain, "Goal") {
 		t.Fatalf("a nil markdown theme is the active theme's:\n%s", plain)
@@ -116,11 +116,11 @@ func TestCompactionSummaryOutputPadIsTheHorizontalPadding(t *testing.T) {
 		t.Fatal("no [compaction] line")
 		return 0
 	}
-	if got := indent(NewCompactionSummaryMessageComponent(message, nil)); got != 1 {
+	if got := indent(NewCompactionSummaryMessageComponent(message, nil, 1, nil, "", "")); got != 1 {
 		t.Errorf("default outputPad indents the label by %d columns, want 1", got)
 	}
 	for _, pad := range []int{0, 3} {
-		if got := indent(NewCompactionSummaryMessageComponent(message, nil, pad)); got != pad {
+		if got := indent(NewCompactionSummaryMessageComponent(message, nil, pad, nil, "", "")); got != pad {
 			t.Errorf("outputPad %d indents the label by %d columns", pad, got)
 		}
 	}

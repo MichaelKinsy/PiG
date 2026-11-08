@@ -23,6 +23,6 @@ func init() {
 func buildCompactionSummary(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error) {
 	out.Text, out.Tokens = n.Summary, intOr(n.TokensBefore, 0)
 	return b.expandableMessage(n, out, widgetCtorKey(n, func(c *ViewNode) { c.Expanded, c.OutputPad = false, nil }), func(pad int) expandableComponent {
-		return tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: n.Summary, TokensBefore: intOr(n.TokensBefore, 0)}, nil, pad)
+		return tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: n.Summary, TokensBefore: intOr(n.TokensBefore, 0)}, nil, pad, nil, "", "")
 	}), nil
 }

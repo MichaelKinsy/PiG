@@ -45,7 +45,7 @@ func TestMarkdownCodeBlockIndentSettingReachesChatComponents(t *testing.T) {
 		for name, component := range map[string]tui.Component{
 			"user":       m.newUserMessageBlock(body, messageMeta{}),
 			"assistant":  assistant,
-			"compaction": tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: body}, m.markdownThemeWithSettings(), 1),
+			"compaction": tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: body}, m.markdownThemeWithSettings(), 1, nil, "", ""),
 		} {
 			if c, ok := component.(interface{ SetExpanded(bool) }); ok {
 				c.SetExpanded(true)

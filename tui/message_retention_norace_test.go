@@ -33,22 +33,22 @@ func TestWholeMessageRetention(t *testing.T) {
 	}{
 		{"user message", 10 << 10, func(src string) Component { return NewUserMessageComponent(src, nil, 1, nil, "id", "ts") }},
 		{"branch summary", boxedBound, func(src string) Component {
-			c := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: src}, nil, 1)
+			c := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: src}, nil, 1, nil, "", "")
 			c.SetExpanded(true)
 			return c
 		}},
 		{"compaction summary", boxedBound, func(src string) Component {
-			c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: src, TokensBefore: 1234}, nil, 1)
+			c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: src, TokensBefore: 1234}, nil, 1, nil, "", "")
 			c.SetExpanded(true)
 			return c
 		}},
 		{"custom message", boxedBound, func(src string) Component {
-			c := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: src}, nil, nil, 1)
+			c := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: src}, nil, nil, 1, nil, "", "")
 			c.SetExpanded(true)
 			return c
 		}},
 		{"skill invocation", boxedBound, func(src string) Component {
-			c := NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "s", Content: src}, nil, 1)
+			c := NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "s", Content: src}, nil, 1, nil, "", "")
 			c.SetExpanded(true)
 			return c
 		}},

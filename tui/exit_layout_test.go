@@ -41,10 +41,10 @@ func TestCustomMessageBackgroundTracksTheme(t *testing.T) {
 	previous := ActiveTheme().Name
 	t.Cleanup(func() { SetTheme(previous) })
 	components := []Component{
-		NewCustomMessageComponent(&CustomMessage{CustomType: "notice", Content: "finished"}, nil, nil, 1),
-		NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 100}, nil, 1),
-		NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "summary"}, nil, 1),
-		NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "probe", Content: "body"}, nil, 1),
+		NewCustomMessageComponent(&CustomMessage{CustomType: "notice", Content: "finished"}, nil, nil, 1, nil, "", ""),
+		NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 100}, nil, 1, nil, "", ""),
+		NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "summary"}, nil, 1, nil, "", ""),
+		NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "probe", Content: "body"}, nil, 1, nil, "", ""),
 	}
 	for _, theme := range []string{"dark", "light", "dark"} {
 		SetTheme(theme)
@@ -65,7 +65,7 @@ func TestCustomMessageBackgroundTracksTheme(t *testing.T) {
 func TestCustomMessageRetainsBoxVerticalPadding(t *testing.T) {
 	for _, content := range []string{"", "finished", "first\nsecond"} {
 		t.Run(fmt.Sprintf("%q", content), func(t *testing.T) {
-			component := NewCustomMessageComponent(&CustomMessage{CustomType: "notice", Content: content}, nil, nil, 1)
+			component := NewCustomMessageComponent(&CustomMessage{CustomType: "notice", Content: content}, nil, nil, 1, nil, "", "")
 			lines := component.Render(40)
 			wantText := []string{"", strings.Repeat(" ", 40), " [notice]" + strings.Repeat(" ", 31), strings.Repeat(" ", 40)}
 			if content != "" {

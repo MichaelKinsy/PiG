@@ -78,7 +78,7 @@ func TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent(t *testin
 
 // Without a transform the expanded body is as before: the header and the content in one Markdown.
 func TestExpandedMessageComponentsWithoutATransformKeepTheirHeader(t *testing.T) {
-	component := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "details"}, nil, 1)
+	component := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "details"}, nil, 1, nil, "", "")
 	component.SetExpanded(true)
 	rendered := stripANSI(strings.Join(component.Render(80), "\n"))
 	if !strings.Contains(rendered, "Branch Summary") || !strings.Contains(rendered, "details") {

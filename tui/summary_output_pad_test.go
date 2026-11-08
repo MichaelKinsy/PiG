@@ -29,18 +29,18 @@ func TestMessageBoxesFollowOutputPad(t *testing.T) {
 	}{
 		{"compaction summary", "[compaction]", func(pad int) Component {
 			message := CompactionSummaryMessage{Summary: "s", TokensBefore: 1}
-			c := NewCompactionSummaryMessageComponent(message, nil, 1)
+			c := NewCompactionSummaryMessageComponent(message, nil, 1, nil, "", "")
 			c.SetOutputPad(pad)
 			return c
 		}},
 		{"branch summary", "[branch]", func(pad int) Component {
-			c := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "s"}, nil, 1)
+			c := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "s"}, nil, 1, nil, "", "")
 			c.SetOutputPad(pad)
 			return c
 		}},
 		{"skill invocation", "[skill]", func(pad int) Component {
 			block := ParsedSkillBlock{Name: "n", Content: "c"}
-			c := NewSkillInvocationMessageComponent(block, nil, 1)
+			c := NewSkillInvocationMessageComponent(block, nil, 1, nil, "", "")
 			c.SetOutputPad(pad)
 			return c
 		}},

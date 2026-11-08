@@ -63,8 +63,8 @@ func wholeFileOps(data []byte) *ReadOperations {
 // streamingFallbackOps streams the file in chunks of size and also answers ReadFile, which a range that cannot stream calls.
 func streamingFallbackOps(data []byte, size int) *ReadOperations {
 	ops := wholeFileOps(data)
-	ops.CreateReadStream = func(context.Context, string) (io.ReadCloser, error) {
-		return io.NopCloser(&chunkReader{data: data, size: size}), nil
+	ops.CreateReadStream = func(context.Context, string) (*ReadStream, error) {
+		return NewReadStream(io.NopCloser(&chunkReader{data: data, size: size})), nil
 	}
 	return ops
 }

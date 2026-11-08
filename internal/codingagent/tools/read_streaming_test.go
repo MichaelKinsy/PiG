@@ -115,8 +115,8 @@ func streamingOps(data []byte, chunkSize int) *ReadOperations {
 			return nil, errors.New("readFile must not be used when createReadStream is present")
 		},
 		Access: func(string) error { return nil },
-		CreateReadStream: func(context.Context, string) (io.ReadCloser, error) {
-			return io.NopCloser(&chunkReader{data: data, size: chunkSize}), nil
+		CreateReadStream: func(context.Context, string) (*ReadStream, error) {
+			return NewReadStream(io.NopCloser(&chunkReader{data: data, size: chunkSize})), nil
 		},
 	}
 }
@@ -293,8 +293,8 @@ func TestReadStreamingKeepsMemoryBoundedForA200MBLine(t *testing.T) {
 	ops := &ReadOperations{
 		ReadFile: func(string) ([]byte, error) { return nil, nil },
 		Access:   func(string) error { return nil },
-		CreateReadStream: func(context.Context, string) (io.ReadCloser, error) {
-			return io.NopCloser(readerFunc(func(p []byte) (int, error) {
+		CreateReadStream: func(context.Context, string) (*ReadStream, error) {
+			return NewReadStream(io.NopCloser(readerFunc(func(p []byte) (int, error) {
 				if sent == chunks {
 					return 0, io.EOF
 				}
@@ -305,7 +305,7 @@ func TestReadStreamingKeepsMemoryBoundedForA200MBLine(t *testing.T) {
 				}
 				sent++
 				return copy(p, chunk), nil
-			})), nil
+			}))), nil
 		},
 	}
 	tool := &ReadTool{CWD: "/virtual", Operations: ops}
@@ -331,17 +331,17 @@ func TestReadStreamingStopsConsumingTheStreamWhenAborted(t *testing.T) {
 	ops := &ReadOperations{
 		ReadFile: func(string) ([]byte, error) { return nil, nil },
 		Access:   func(string) error { return nil },
-		CreateReadStream: func(streamCtx context.Context, _ string) (io.ReadCloser, error) {
+		CreateReadStream: func(streamCtx context.Context, _ string) (*ReadStream, error) {
 			if streamCtx != ctx {
 				t.Error("the stream did not get the tool's context")
 			}
-			return &closeTracker{Reader: readerFunc(func(p []byte) (int, error) {
+			return NewReadStream(&closeTracker{Reader: readerFunc(func(p []byte) (int, error) {
 				chunksRead++
 				if chunksRead == 3 {
 					cancel()
 				}
 				return copy(p, "line\n"), nil
-			}), onClose: func() { closed = true }}, nil
+			}), onClose: func() { closed = true }}), nil
 		},
 	}
 	tool := &ReadTool{CWD: "/virtual", Operations: ops}
@@ -360,3 +360,24 @@ type closeTracker struct {
 }
 
 func (c *closeTracker) Close() error { c.onClose(); return nil }
+
+// Pi's createReadStream is an AsyncIterable<Uint8Array>: the chunks come in order, and a read that fails ends the iteration with that error.
+func TestReadStreamAllYieldsTheChunksInOrderAndErrReportsTheReadFailure(t *testing.T) {
+	stream := NewReadStream(io.NopCloser(&chunkReader{data: []byte("abcdef"), size: 4}))
+	var got []byte
+	for chunk := range stream.All() {
+		got = append(got, chunk...)
+	}
+	if string(got) != "abcdef" || stream.Err() != nil {
+		t.Fatalf("chunks = %q, err = %v", got, stream.Err())
+	}
+	boom := errors.New("boom")
+	failing := NewReadStream(io.NopCloser(io.MultiReader(strings.NewReader("ab"), readerFunc(func([]byte) (int, error) { return 0, boom }))))
+	got = nil
+	for chunk := range failing.All() {
+		got = append(got, chunk...)
+	}
+	if string(got) != "ab" || !errors.Is(failing.Err(), boom) {
+		t.Fatalf("chunks = %q, err = %v", got, failing.Err())
+	}
+}

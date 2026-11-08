@@ -23,6 +23,27 @@ func DefaultMarkdownMessageTypes() []MarkdownMessageType {
 	return markdowntransform.DefaultMarkdownMessageTypes()
 }
 
+// MarkdownTransformerRegistration is a registered Markdown transformer and the surfaces it runs on (types.ts MarkdownTransformerRegistration).
+// MessageTypes is Pi's ReadonlySet: a Go set of the listed types.
+type MarkdownTransformerRegistration struct {
+	Transformer  MarkdownTransformer
+	MessageTypes map[MarkdownMessageType]struct{}
+}
+
+// NewMarkdownTransformerRegistration is the registration registerMarkdownTransformer(transformer, options) stores (loader.ts:365):
+// the set of messageTypes, or of [DefaultMarkdownMessageTypes] when messageTypes is nil (options?.messageTypes ?? DEFAULT_MARKDOWN_MESSAGE_TYPES).
+// A non-nil empty list runs the transformer nowhere.
+func NewMarkdownTransformerRegistration(transformer MarkdownTransformer, messageTypes []MarkdownMessageType) *MarkdownTransformerRegistration {
+	if messageTypes == nil {
+		messageTypes = DefaultMarkdownMessageTypes()
+	}
+	types := make(map[MarkdownMessageType]struct{}, len(messageTypes))
+	for _, messageType := range messageTypes {
+		types[messageType] = struct{}{}
+	}
+	return &MarkdownTransformerRegistration{Transformer: transformer, MessageTypes: types}
+}
+
 // MarkdownTransformContext mirrors upstream MarkdownTransformContext. It is [markdowntransform.MarkdownTransformContext].
 type MarkdownTransformContext = markdowntransform.MarkdownTransformContext
 

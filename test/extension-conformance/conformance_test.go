@@ -1224,10 +1224,9 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				return &conformanceLinesComponent{lines: []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=72", entry.Data, options.Expanded)}}
 			},
 		},
-		MarkdownTransformer: func(markdown string, context extension.MarkdownTransformContext) string {
+		MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(markdown string, context extension.MarkdownTransformContext) string {
 			return fmt.Sprintf("md:%s:%s:streaming=%t:width=%d", markdown, context.MessageType, context.IsStreaming, context.AvailableWidth)
-		},
-		MarkdownMessageTypes: []extension.MarkdownMessageType{extension.MarkdownMessageUser, extension.MarkdownMessageAssistant, extension.MarkdownMessageAssistantThinking, extension.MarkdownMessageCustom, extension.MarkdownMessageSummary, extension.MarkdownMessageChangelog},
+		}, []extension.MarkdownMessageType{extension.MarkdownMessageUser, extension.MarkdownMessageAssistant, extension.MarkdownMessageAssistantThinking, extension.MarkdownMessageCustom, extension.MarkdownMessageSummary, extension.MarkdownMessageChangelog}),
 		ToolRenderers: []extension.ToolRendererResolver{func(tool string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
 			line := func(prefix string) extension.ToolRenderCallFunc {
 				return func(args json.RawMessage, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
