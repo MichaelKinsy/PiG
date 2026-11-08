@@ -8,11 +8,14 @@ package tui
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"math"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // themeJSONMaxErrors is TypeBox's default maxErrors setting.
@@ -356,24 +359,22 @@ func themeObjectKeys(data []byte, field string) []string {
 
 // rawObjectKeys is themeObjectKeys for one JSON object value.
 func rawObjectKeys(raw []byte) []string {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(raw), jsonopts.Parse)
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return nil
 	}
 	var keys []string
 	seen := map[string]bool{}
-	for decoder.More() {
-		token, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 		if err != nil {
 			return keys
 		}
-		key, _ := token.(string)
 		if !seen[key] {
 			seen[key] = true
 			keys = append(keys, key)
 		}
-		var skip json.RawMessage
-		if decoder.Decode(&skip) != nil {
+		if decoder.SkipValue() != nil {
 			return keys
 		}
 	}

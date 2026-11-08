@@ -1213,7 +1213,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 
 		// Decode the envelope. Unmarshal copies every string and json.RawMessage it keeps, so the frame is free once it returns.
 		var env Envelope
-		err = json.Unmarshal(frame.data, &env)
+		err = decodeEnvelope(frame.data, &env)
 		frame.release()
 		if err != nil {
 			c.fail(&TransportError{Extension: c.name, Operation: "decode frame", Err: err})

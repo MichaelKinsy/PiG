@@ -213,7 +213,7 @@ npm-installed binary; update through npm.
 
 ## Install with Go
 
-Install the command without a source checkout with Go 1.26 or newer:
+Install the command without a source checkout with Go 1.27 or newer (an older Go, 1.21 or newer, downloads the toolchain `go.mod` names unless `GOTOOLCHAIN=local`):
 
 ```bash
 go install github.com/MichaelKinsy/PiG/cmd/pig@latest

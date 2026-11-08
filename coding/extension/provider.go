@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
+	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // ProviderConfig is the registration payload for [API.RegisterProvider].
@@ -201,19 +204,18 @@ func omitJSONFields(data []byte, fields []string) ([]byte, error) {
 }
 
 func decodeProviderHeaderEntries(data []byte) ([]providerHeaderEntry, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
-	if err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
+	if err != nil || token.Kind() != '{' {
 		return nil, err
 	}
-	for decoder.More() {
-		key, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		key, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
-		if key != "headers" {
-			var discard json.RawMessage
-			if err := decoder.Decode(&discard); err != nil {
+		if key.String() != "headers" {
+			if err := decoder.SkipValue(); err != nil {
 				return nil, err
 			}
 			continue
@@ -223,24 +225,33 @@ func decodeProviderHeaderEntries(data []byte) ([]providerHeaderEntry, error) {
 	return nil, nil
 }
 
-func decodeProviderHeaderObject(decoder *json.Decoder) ([]providerHeaderEntry, error) {
-	token, err := decoder.Token()
-	if err != nil || token != json.Delim('{') {
+func decodeProviderHeaderObject(decoder *jsontext.Decoder) ([]providerHeaderEntry, error) {
+	token, err := decoder.ReadToken()
+	if err != nil || token.Kind() != '{' {
 		return nil, err
 	}
 	var entries []providerHeaderEntry
-	for decoder.More() {
-		name, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		nameToken, err := decoder.ReadToken()
+		if err != nil {
+			return nil, err
+		}
+		name := nameToken.String() // a Token is void after the next call on the decoder
+		valueToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
 		var value string
-		if err := decoder.Decode(&value); err != nil {
-			return nil, err
+		switch valueToken.Kind() {
+		case '"':
+			value = valueToken.String()
+		case 'n': // a null header value is the empty string, as before
+		default:
+			return nil, fmt.Errorf("header %q must be a string or null", name)
 		}
-		entries = append(entries, providerHeaderEntry{Name: name.(string), Value: value})
+		entries = append(entries, providerHeaderEntry{Name: name, Value: value})
 	}
-	_, err = decoder.Token()
+	_, err = decoder.ReadToken()
 	return entries, err
 }
 

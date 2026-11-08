@@ -1,6 +1,6 @@
 module github.com/MichaelKinsy/PiG
 
-go 1.26.0
+go 1.27.0
 
 // v0.5.0 cannot be installed with go install: its module source is larger than the Go module size limit. Use v0.5.1 or later.
 retract v0.5.0

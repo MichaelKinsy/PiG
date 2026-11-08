@@ -96,6 +96,20 @@ func appendCompact(dst, src []byte, escape bool) ([]byte, error) {
 // outside one a negative number equal to zero becomes 0. Other escapes stay as written. String content is skipped eight bytes at a time.
 // pig additive (lw-json): one pass where jsstring used to compact and then rewrite the whole output again.
 func appendCompactJS(dst, src []byte) ([]byte, error) {
+	return appendCompactJSForms(dst, src, false)
+}
+
+// AppendJSNormalized appends to dst the compact JSON text src with the two forms a Go encoder writes and JSON.stringify never does rewritten as
+// JSON.stringify writes them: a negative number equal to zero becomes 0, and the escape \ufffd (any hex case), which an encoder writes for each
+// ill-formed UTF-8 subpart, becomes the character itself. Every other byte stays as it is: an HTML escape or an escaped U+2028 in src is still one in
+// the result, where [MarshalStringify] writes the character. It is how a type that marshals with [Marshal] and [MarshalStringify] gives the first the
+// bytes of the second without changing its escaping. dst may be src[:0]: the result is never longer than src. pig additive (lw-json).
+func AppendJSNormalized(dst, src []byte) ([]byte, error) {
+	return appendCompactJSForms(dst, src, true)
+}
+
+// appendCompactJSForms is appendCompactJS, which rewrites every form of its doc comment, or with replacementOnly only the zero and U+FFFD forms.
+func appendCompactJSForms(dst, src []byte, replacementOnly bool) ([]byte, error) {
 	origLen := len(dst)
 	scan := newScanner()
 	defer freeScanner(scan)
@@ -126,7 +140,7 @@ scan:
 				inString = false
 			case '\\':
 				if i+6 <= len(src) {
-					if replacement := jsUnescape(src[i : i+6]); replacement != "" {
+					if replacement := jsUnescape(src[i : i+6]); replacement != "" && (!replacementOnly || replacement == "\ufffd") {
 						if !step(i, i+6) {
 							break scan
 						}
@@ -204,7 +218,7 @@ func jsUnescape(escape []byte) string {
 		return "\u2029"
 	}
 	// pig (LW-JSON-1): U+FFFD, in any hex case, is written raw as JSON.stringify writes it; a nested encoder writes it for ill-formed UTF-8.
-	if bytes.EqualFold(escape[2:], []byte("fffd")) {
+	if escape[1] == 'u' && bytes.EqualFold(escape[2:], []byte("fffd")) {
 		return "\ufffd"
 	}
 	return ""

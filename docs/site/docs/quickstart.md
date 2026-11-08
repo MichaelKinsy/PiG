@@ -69,7 +69,7 @@ with `npm uninstall -g @pi-in-go/pig`.
 
 ## Install with Go
 
-Go 1.26 or newer installs the command without cloning the repository. Go downloads PiG's source and its dependencies and compiles them on your computer, which can take several minutes the first time:
+Go 1.27 or newer installs the command without cloning the repository (an older Go, 1.21 or newer, downloads the toolchain `go.mod` names unless `GOTOOLCHAIN=local`). Go downloads PiG's source and its dependencies and compiles them on your computer, which can take several minutes the first time:
 
 ```bash
 go install github.com/MichaelKinsy/PiG/cmd/pig@latest
