@@ -16,6 +16,8 @@ var (
 	iconFolder   = icon(`<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`)
 	iconChevronL = icon(`<path d="m15 6-6 6 6 6"/>`)
 	iconChevronR = icon(`<path d="m9 6 6 6-6 6"/>`)
+	iconChevronD = icon(`<path d="m6 9 6 6 6-6"/>`)
+	iconBranch   = icon(`<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 5-6 4-12 7"/>`)
 	iconChevronU = icon(`<path d="m6 15 6-6 6 6"/>`)
 	iconMoon     = icon(`<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>`)
 	iconSun      = icon(`<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>`)

@@ -1,6 +1,7 @@
 package native
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/screens"
@@ -39,18 +40,25 @@ func (a *App) sidebar(c *ui.Context, h *surfacehost.Host, sessions *screens.Sess
 		ui.TextInput(c.Key("search"), &a.query).Placeholder(placeholder).Label(placeholder).Grow(1).BorderWidth(0).Background(ui.Color{})
 	})
 	ui.Divider(c).Margin(0, 16)
-	items := sessions.Items(a.query, a.archived)
+	items := screens.ExpandBranches(sessions.Items(a.query, a.archived), a.expanded)
 	a.list.Key = func(i int) any {
 		if i >= len(items) {
 			return i
 		}
-		if items[i].Group != nil {
+		switch {
+		case items[i].Group != nil:
 			return "group:" + items[i].Group.Label
+		case items[i].Branch != nil:
+			return fmt.Sprintf("branch:%s:%d", items[i].Branch.Row.ID, items[i].Branch.Branch.Conversation)
 		}
 		return items[i].Row.ID
 	}
 	a.list.Label = func(i int) string {
-		if i < len(items) && items[i].Row != nil {
+		switch {
+		case i >= len(items):
+		case items[i].Branch != nil:
+			return items[i].Branch.Label
+		case items[i].Row != nil:
 			return items[i].Row.Title
 		}
 		return ""
@@ -64,9 +72,12 @@ func (a *App) sidebar(c *ui.Context, h *surfacehost.Host, sessions *screens.Sess
 	now := time.Now()
 	clicked := -1
 	ui.List(c, &a.list, len(items), func(i int) {
-		if items[i].Group != nil {
+		switch {
+		case items[i].Group != nil:
 			a.groupHeader(c, items[i].Group, h, sessions)
-		} else {
+		case items[i].Branch != nil:
+			a.branchRow(c, items[i].Branch, items[i].Branch.Row.ID == a.sel(), pal)
+		default:
 			if a.sessionRow(c.Key(items[i].Row.ID), items[i].Row, now, i == chosen, pal) {
 				clicked = i
 			}
@@ -188,11 +199,15 @@ func (a *App) groupHeader(c *ui.Context, g *screens.Group, h *surfacehost.Host, 
 // filled when it is the open one.
 func (a *App) sessionRow(c *ui.Context, r *screens.Row, now time.Time, selected bool, pal surfacehost.Palette) bool {
 	t := c.Theme()
+	toggled := false
 	row := ui.Row(c).Padding(11, 16).Gap(8).AlignItems(ui.Center).Focusable().Label(r.Title).Children(func() {
 		if r.Pinned {
 			ui.Icon(c, iconPin).Size(12, 12).TextColor(t.TextMuted)
 		}
 		ui.Text(c, r.Title).FontSize(15).SingleLine().Grow(1)
+		if screens.Branches(r) != nil {
+			toggled = a.branchToggle(c, r)
+		}
 		switch {
 		case r.Busy:
 			ui.Spinner(c).Size(12, 12)
@@ -215,7 +230,7 @@ func (a *App) sessionRow(c *ui.Context, r *screens.Row, now time.Time, selected 
 	case row.Hovered():
 		row.Background(t.SurfaceHover.Alpha(0.5))
 	}
-	return row.Clicked()
+	return row.Clicked() && !toggled
 }
 
 func rowBackground(selected bool) string {

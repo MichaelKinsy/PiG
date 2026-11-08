@@ -46,6 +46,10 @@ type App struct {
 	selected string
 	list     ui.ListState
 	renaming string
+	// The `/tree` branches: the sessions whose branches the drawer lists, the branch being renamed, and the actions.
+	expanded map[string]bool
+	branch   branchEdit
+	tree     *screens.Tree
 	// pickSprite is the sprite picker's dialog; modeChoice the theme toggle (system, light, dark); collapsed the sidebar.
 	pickSprite bool
 	// The providers sheet: shown, its search, the answer being typed, and the screen's references.
@@ -71,11 +75,13 @@ type App struct {
 
 	// The chat screen: the open conversation and its scope, its list, the prompt's text, the activity sheet, the markdown
 	// options, and the first message of a session started from the empty state (sent once its chat opens).
-	chat         *screens.Chat
-	chatScope    *tui.TuiScope
-	chatErr      error
-	chatList     ui.ListState
-	draftText    string
+	chat      *screens.Chat
+	chatScope *tui.TuiScope
+	chatErr   error
+	chatList  ui.ListState
+	draftText string
+	// pendingDraft is a user message branched from, to go back into the prompt at the next frame (guarded by mu).
+	pendingDraft string
 	sheetKey     string // the activity row whose sheet is open, and the call opened in it
 	sheetStep    string
 	actItems     []activity.Item
@@ -251,6 +257,7 @@ func (a *App) Build(c *ui.Context) {
 	})
 	a.spritePicker(c)
 	a.providersSheet(c)
+	a.branchSheet(c)
 	a.activitySheet(c)
 	a.showToasts(c)
 	if err := sessions.LastError(); err != nil {

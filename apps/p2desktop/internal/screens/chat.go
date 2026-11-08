@@ -27,6 +27,8 @@ type Chat struct {
 	ref     *host.Reference
 	ctx     context.Context
 	session string
+	// conversation is the one this screen holds.
+	conversation int
 
 	viewRaw  func() (delta.JsonValue, bool)
 	modelRaw func() (delta.JsonValue, bool)
@@ -55,7 +57,7 @@ func OpenChat(h *surfacehost.Host, scope *tui.TuiScope, session string, conversa
 	if err != nil {
 		return nil, err
 	}
-	c := &Chat{scope: scope, ref: ref, ctx: h.Context(), session: session, changed: changed}
+	c := &Chat{scope: scope, ref: ref, ctx: h.Context(), session: session, conversation: conversation, changed: changed}
 	c.viewRaw = tui.WatchMember(scope, ref.Member("view"))
 	c.modelRaw = tui.WatchMember(scope, ref.Member("model"))
 	c.statsRaw = tui.WatchMember(scope, ref.Member("stats"))
@@ -72,6 +74,9 @@ func OpenChat(h *surfacehost.Host, scope *tui.TuiScope, session string, conversa
 	c.joined = joined
 	return c, nil
 }
+
+// Conversation is the conversation shown: the session's main one.
+func (c *Chat) Conversation() int { return c.conversation }
 
 // Session is the session's ID.
 func (c *Chat) Session() string { return c.session }

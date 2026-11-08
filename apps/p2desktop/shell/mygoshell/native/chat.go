@@ -21,10 +21,10 @@ import (
 const chatMaxWidth = 800
 
 // chatOf makes sure the chat screen holds session id's conversation (and lets go of the one it held), and returns it.
-func (a *App) chatOf(h *surfacehost.Host, id string) *screens.Chat {
+func (a *App) chatOf(h *surfacehost.Host, id string, conversation int) *screens.Chat {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.chat != nil && a.chat.Session() == id {
+	if a.chat != nil && a.chat.Session() == id && a.chat.Conversation() == conversation {
 		return a.chat
 	}
 	if a.chatScope != nil {
@@ -32,7 +32,7 @@ func (a *App) chatOf(h *surfacehost.Host, id string) *screens.Chat {
 		a.chat, a.chatScope = nil, nil
 	}
 	scope := h.Scope(a.Invalidate)
-	chat, err := screens.OpenChat(h, scope, id, 1, a.Invalidate)
+	chat, err := screens.OpenChat(h, scope, id, conversation, a.Invalidate)
 	if err != nil {
 		scope.Dispose()
 		a.chatErr = err
@@ -46,7 +46,7 @@ func (a *App) chatOf(h *surfacehost.Host, id string) *screens.Chat {
 
 // chatPane is the open session: the transcript, then the prompt bar.
 func (a *App) chatPane(c *ui.Context, h *surfacehost.Host, row *screens.Row) {
-	chat := a.chatOf(h, row.ID)
+	chat := a.chatOf(h, row.ID, max(row.Main, 1))
 	if chat == nil {
 		ui.Text(c, "Could not open the conversation: "+a.chatErr.Error()).TextColor(c.Theme().Danger).Padding(24)
 		return
@@ -163,18 +163,21 @@ func (a *App) item(c *ui.Context, item activity.Item, chat *screens.Chat) {
 				if copy.Clicked() {
 					mygo.Clipboard.WriteText(it.Text)
 				}
+				if it.Entry != nil {
+					a.branchButton(c, it.Key, chat.Session(), *it.Entry)
+				}
 			}
 			if it.Message != nil && it.Message.ErrorMessage != "" {
 				ui.Text(c, it.Message.ErrorMessage).TextColor(t.Danger).Selectable()
 			}
 		})
 	case activity.Passed:
-		a.passed(c, it.Item)
+		a.passed(c, it.Item, chat.Session())
 	}
 }
 
 // passed is a transcript item the chat shows as it is.
-func (a *App) passed(c *ui.Context, item transcript.Item) {
+func (a *App) passed(c *ui.Context, item transcript.Item, session string) {
 	t := c.Theme()
 	switch it := item.(type) {
 	case transcript.UserItem:
@@ -196,6 +199,9 @@ func (a *App) passed(c *ui.Context, item transcript.Item) {
 				ui.Text(c, it.Text).FontSize(16).LineHeight(1.5).Selectable()
 				for _, f := range it.Files {
 					ui.Text(c, f).FontSize(12).Font("monospace").TextColor(t.TextMuted)
+				}
+				if it.EntryID != nil {
+					a.branchButton(c, it.Key, session, *it.EntryID)
 				}
 			})
 		})
@@ -227,6 +233,11 @@ func clip(s string, n int) string {
 // (Enter sends, Shift+Enter breaks the line), the + and the send or stop button, then the model, the viewers, cache hit rate and
 // cost, and the context bar.
 func (a *App) composer(c *ui.Context, chat *screens.Chat, row *screens.Row, tr *transcript.Transcript) {
+	a.mu.Lock()
+	if a.pendingDraft != "" {
+		a.draftText, a.pendingDraft = a.pendingDraft, ""
+	}
+	a.mu.Unlock()
 	var modelName string
 	var window float64
 	if m := chat.Model(); m != nil {
