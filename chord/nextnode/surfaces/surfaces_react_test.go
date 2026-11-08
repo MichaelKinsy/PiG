@@ -24,7 +24,7 @@ func TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchabl
 		t.Fatal(err)
 	}
 	// A harness that ran no test also exits 0: Pi's file has three cases.
-	if !strings.Contains(string(output), "# pass 3") || !strings.Contains(string(output), "# fail 0") {
+	if !strings.Contains(string(output), "ℹ pass 3") || !strings.Contains(string(output), "ℹ fail 0") {
 		t.Fatalf("node:test did not report 3 passing cases and none failing")
 	}
 }
