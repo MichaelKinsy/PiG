@@ -14985,6 +14985,45 @@
       ]
     },
     {
+      "id": "BF-58704cf",
+      "title": "p2: PowerShell reads the system of an environment's machine through any environment that reports it…",
+      "symptom": "p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`. \u003c!-- fix: p2-workspace --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "58704cfa78",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "a0309d10ad",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/e2e/prompt_test.go::TestPromptResourcesOnTheWorkerParticipantsOnlyLiveTemplatesExpandWithSkills",
+        "apps/p2/e2e/prompt_test.go::TestPromptResourcesReachTheModelAndApplyLive",
+        "apps/p2/e2e/relocate_worker_test.go::TestAWorkspaceFollowsAMoveMadeWhileItActivatesAndRetriesAFailedReopen",
+        "apps/p2/e2e/relocate_worker_test.go::TestConversationsOnDifferentMachinesRunConcurrentlyOneConnectionPerMachine",
+        "apps/p2/e2e/relocate_worker_test.go::TestDevToolsAndPowerShellDetectAgainAfterARealMove",
+        "apps/p2/e2e/relocate_worker_test.go::TestPowerShellIsOfferedToEachAgentWorkingOnWindowsIndependently",
+        "apps/p2/e2e/relocate_worker_test.go::TestThePrivateDataDirectoryIsDeniedByTheEnvironmentNotTheLocation",
+        "apps/p2/e2e/relocate_worker_test.go::TestTheSessionMovesToAnotherMachineASubagentWithItsOwnLocationStaysOnItsOwn",
+        "apps/p2/plugins/prompt/contract/contract_test.go::TestPromptResourcesFingerprintsAsPi",
+        "apps/p2/plugins/prompt/prompt_test.go::TestARemoteFileAtTheLocalGlobalAgentsPathIsItsOwnFile",
+        "apps/p2/plugins/prompt/prompt_test.go::TestLoaderGlobalThenProjectTemplatesInvalidOnesSkippedEverySkillInvocable",
+        "apps/p2/plugins/prompt/prompt_test.go::TestPisArgumentParsingAndSubstitution",
+        "apps/p2/plugins/prompt/prompt_test.go::TestSkillsFollowPisDiscovery",
+        "apps/p2/plugins/prompt/prompt_test.go::TestTemplatesPisFileFormatExpansionOfTemplatesAndSkillBlocks"
+      ]
+    },
+    {
       "id": "BF-58f6697",
       "title": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`…",
       "symptom": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a partially typed slash command, which Pi accepts and submits).",
@@ -26296,6 +26335,31 @@
       "tests": [
         "coding/extension/builtin/codemode/schema_order_test.go::TestInputSchemaKeepsTypeBoxKeyOrder",
         "coding/extension/builtin/toolsearch/schema_order_test.go::TestInputSchemaKeepsTypeBoxKeyOrder"
+      ]
+    },
+    {
+      "id": "BF-8710da1",
+      "title": "The desktop app's composer row shows Pi's skeleton block while the context window is unknown, \"Choose model\"…",
+      "symptom": "The desktop app's composer row shows Pi's skeleton block while the context window is unknown, \"Choose model\" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs.",
+      "rootCause": "The desktop composer row also gets Pi's skeleton block, a dotted underline on Choose model and Pi's theme glyphs.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The desktop app's composer row shows Pi's skeleton block while the context window is unknown, \"Choose model\" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs. \u003c!-- fix: p2-welcome --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8710da1381",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/hosts/sprite_test.go::TestSelectedSpriteIsServedAsSVG",
+        "apps/p2/hosts/sprite_test.go::TestSpriteEventsPushChanges",
+        "apps/p2/hosts/sprite_test.go::TestWithoutASpriteSourceTheHookIsInert",
+        "apps/p2desktop/internal/sprite/sprite_test.go::TestGridIsTheWebsHead"
       ]
     },
     {
@@ -43587,6 +43651,36 @@
         "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
         "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
         "coding/piglet/active_source_test.go::TestActiveSourceValue"
+      ]
+    },
+    {
+      "id": "BF-d9ab2d7",
+      "title": "p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits…",
+      "symptom": "p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state (\"Watch is stopped\").",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state (\"Watch is stopped\"). \u003c!-- fix: p2-workspace --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9d0c1c116a",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "c4b351ceab",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "d9ab2d79c0",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/e2e/relocate_test.go::TestSessionRelocationFakeProvider"
       ]
     },
     {

@@ -530,6 +530,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-58704cf](#bf-58704cf) | p2: PowerShell reads the system of an environment's machine through any environment that reports it… | PiG's own defect | Windows | Unreleased |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59693cd](#bf-59693cd) | Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a… | PiG's own defect | All platforms | Unreleased |
@@ -948,6 +949,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
+| [BF-8710da1](#bf-8710da1) | The desktop app's composer row shows Pi's skeleton block while the context window is unknown, "Choose model"… | PiG's own defect | All platforms | Unreleased |
 | [BF-8780292](#bf-8780292) | The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start | PiG's own defect | All platforms | 0.7.0 |
 | [BF-87a6ac5](#bf-87a6ac5) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-87faba8](#bf-87faba8) | Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together… | PiG's own defect | All platforms | Unreleased |
@@ -1539,6 +1541,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d9886fe](#bf-d9886fe) | fix(hljs): no magic-literal hits for the resume and dispatch bounds | PiG's own defect | All platforms | Unreleased |
 | [BF-d991498](#bf-d991498) | Display math (`$$...$$`, `\[...\]`) wider than the Markdown content width renders as its raw LaTeX source… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d9a9c51](#bf-d9a9c51) | `pig status --json` now gives a skill without a `description` and a theme that fails the theme schema… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-d9ab2d7](#bf-d9ab2d7) | p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits… | PiG's own defect | All platforms | Unreleased |
 | [BF-da12a5a](#bf-da12a5a) | A saved "Do not trust" decision is no longer ignored for a project without trust-requiring resources, for… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-da5d32b](#bf-da5d32b) | fix(extension): theme palette reports the theme's own sourcePath; conformance rows for the rest of… | PiG's own defect | All platforms | Unreleased |
 | [BF-da65d9a](#bf-da65d9a) | Extension commands now run one after the other where Pi awaits each prompt: among the positional startup… | PiG's own defect | All platforms | Unreleased |
@@ -8909,6 +8912,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryRefreshesConnectedNode`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10ModelRuntimeCreation`, `coding/cli/shipped_piglet_inventory_test.go::TestShippedPigletInventory`, `coding/cli/strip_leak_gate_test.go::TestStripLeakGate`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream` and 1 more in docs/bug-ledger.json
 - **Release note:** A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as Pi's object: the definition's members in the order the extension wrote them, then `api`, `provider` and `baseUrl`, and its `input` as written. PiG sent the members in its own order and filled in `input: ["text"]` when the definition left it out.
 
+### BF-58704cf
+
+**p2: PowerShell reads the system of an environment's machine through any environment that reports it…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `58704cfa78` (2026-11-08), `a0309d10ad` (2026-11-08)
+- **Tests:** `apps/p2/e2e/prompt_test.go::TestPromptResourcesOnTheWorkerParticipantsOnlyLiveTemplatesExpandWithSkills`, `apps/p2/e2e/prompt_test.go::TestPromptResourcesReachTheModelAndApplyLive`, `apps/p2/e2e/relocate_worker_test.go::TestAWorkspaceFollowsAMoveMadeWhileItActivatesAndRetriesAFailedReopen`, `apps/p2/e2e/relocate_worker_test.go::TestConversationsOnDifferentMachinesRunConcurrentlyOneConnectionPerMachine`, `apps/p2/e2e/relocate_worker_test.go::TestDevToolsAndPowerShellDetectAgainAfterARealMove`, `apps/p2/e2e/relocate_worker_test.go::TestPowerShellIsOfferedToEachAgentWorkingOnWindowsIndependently`, `apps/p2/e2e/relocate_worker_test.go::TestThePrivateDataDirectoryIsDeniedByTheEnvironmentNotTheLocation`, `apps/p2/e2e/relocate_worker_test.go::TestTheSessionMovesToAnotherMachineASubagentWithItsOwnLocationStaysOnItsOwn` and 6 more in docs/bug-ledger.json
+- **Release note:** p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`. <!-- fix: p2-workspace -->
+
 ### BF-58f6697
 
 **Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`…**
@@ -14711,6 +14728,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `86c411a481` (2026-10-10)
 - **Tests:** `coding/extension/builtin/codemode/schema_order_test.go::TestInputSchemaKeepsTypeBoxKeyOrder`, `coding/extension/builtin/toolsearch/schema_order_test.go::TestInputSchemaKeepsTypeBoxKeyOrder`
+
+### BF-8710da1
+
+**The desktop app's composer row shows Pi's skeleton block while the context window is unknown, "Choose model"…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The desktop app's composer row shows Pi's skeleton block while the context window is unknown, "Choose model" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs.
+- **Root cause:** The desktop composer row also gets Pi's skeleton block, a dotted underline on Choose model and Pi's theme glyphs.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8710da1381` (2026-11-08)
+- **Tests:** `apps/p2/hosts/sprite_test.go::TestSelectedSpriteIsServedAsSVG`, `apps/p2/hosts/sprite_test.go::TestSpriteEventsPushChanges`, `apps/p2/hosts/sprite_test.go::TestWithoutASpriteSourceTheHookIsInert`, `apps/p2desktop/internal/sprite/sprite_test.go::TestGridIsTheWebsHead`
+- **Release note:** The desktop app's composer row shows Pi's skeleton block while the context window is unknown, "Choose model" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs. <!-- fix: p2-welcome -->
 
 ### BF-8780292
 
@@ -22953,6 +22984,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d9a9c51ff7` (2026-10-28)
 - **Tests:** `coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded`, `coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid`, `coding/piglet/active_source_test.go::TestActiveSourceValue`
 - **Release note:** `pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource. They were `enabled: true` before. They count as disabled in `resources`.
+
+### BF-d9ab2d7
+
+**p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state ("Watch is stopped").
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9d0c1c116a` (2026-11-08), `c4b351ceab` (2026-11-08), `d9ab2d79c0` (2026-11-08)
+- **Tests:** `apps/p2/e2e/relocate_test.go::TestSessionRelocationFakeProvider`
+- **Release note:** p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state ("Watch is stopped"). <!-- fix: p2-workspace -->
 
 ### BF-da12a5a
 
