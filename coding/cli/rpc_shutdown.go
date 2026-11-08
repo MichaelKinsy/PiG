@@ -240,7 +240,7 @@ type rpcExit struct {
 	waitStdout func()
 	// cleanup stops the extension processes and the profiles.
 	cleanup func()
-	// record writes the exit.log line of the exit that owns the end (D102).
+	// pig additive (D102): record writes the exit.log line of the exit that owns the end.
 	record func(code int, forced bool)
 	// end flushes the exit.log line and ends the process; it does not return in the process.
 	end func(code int)
@@ -317,7 +317,7 @@ type rpcTermination struct {
 	done <-chan struct{}
 	// received is the signal number main recorded.
 	received func() syscall.Signal
-	// recordEnding writes an exit.log line for the ending that ends the process (D102).
+	// pig additive (D102): recordEnding writes an exit.log line for the ending that ends the process.
 	recordEnding func(reason string)
 
 	decided, claimed atomic.Bool
