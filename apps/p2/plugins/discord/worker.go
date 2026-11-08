@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
 	subagentscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -138,6 +139,9 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			if err != nil {
 				return nil, err
 			}
+			// Pi's handler reads the Harness, then awaits: the handler leaves the section of the call here (Durable's
+			// publications need the host's loop, which a handler that waits for its commit would hold).
+			chordctx.Suspend(ctx)
 			if err := sessions.MirrorLock(ctx, durableSession, in.Value("lock")); err != nil {
 				return nil, err
 			}
@@ -229,6 +233,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			if err != nil {
 				return nil, err
 			}
+			chordctx.Suspend(ctx)
 			_, err = durableSession.Commit(ctx, func(tx durable.Tx) (any, error) {
 				doc, err := durable.TxDoc[LinkState](tx, DiscordLinkDoc)
 				if err != nil {
@@ -246,6 +251,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			if err != nil {
 				return nil, err
 			}
+			chordctx.Suspend(ctx)
 			return turn(ctx, durableSession, files, int64(floatOf(argsOf(args), "submissionId")))
 		},
 		"read": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -265,6 +271,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			if err != nil {
 				return nil, err
 			}
+			chordctx.Suspend(ctx)
 			target := 0
 			if found, ok := in.Value("conversation").(float64); ok {
 				target = int(found)
@@ -291,6 +298,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			if err != nil {
 				return nil, err
 			}
+			chordctx.Suspend(ctx)
 			child, err := forkThread(ctx, durableSession, str(in, "name"), floatOf(in, "before"))
 			if err != nil {
 				return nil, err
