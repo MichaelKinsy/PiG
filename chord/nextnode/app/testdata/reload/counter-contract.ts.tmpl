@@ -1,0 +1,26 @@
+// The counter's contract.
+import { evolve, hostKind, int, method, obj, remote, str } from "@test/app/v1";
+[[if eq .Placement "worker"]]const Project = hostKind("project", { id: str() });
+const at = ({ id }: { id: string }) => Project({ id });[[else]]const Server = hostKind("server");
+const at = () => Server();[[end]]
+export const CounterV1 = remote("reload.counter", {
+	version: 1,
+	params: { id: str() },
+	hostAddress: at,
+	variants: {
+		main: {
+			state: { label: str(), count: int() },
+			methods: {
+				add: method(int(), str()),
+				slow: method(str(), str()),
+				slowAdd: method(str(), str()),
+				code: method(undefined, str()),
+				visits: method(undefined, int()),
+			},
+		},
+	},
+});
+[[if eq .Version "v2"]]export const CounterV2 = evolve(CounterV1, (e) =>
+	e.state("main", "label", obj({ text: str(), code: str() })).method("add", obj({ n: int() }), obj({ text: str() })),
+);
+export const Counter = CounterV2;[[else]]export const Counter = CounterV1;[[end]]

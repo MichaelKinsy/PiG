@@ -218,6 +218,7 @@ async function load(request, context) {
 		...(request.heartbeat === undefined ? {} : { heartbeat: request.heartbeat }),
 		...(request.closeTimeout === undefined ? {} : { closeTimeout: request.closeTimeout }),
 		...(request.readyTimeout === undefined ? {} : { readyTimeout: request.readyTimeout }),
+		...(request.reloadDrainTimeout === undefined ? {} : { reloadDrainTimeout: request.reloadDrainTimeout }),
 		...(request.compression === true ? { compression: nodeCompression } : {}),
 		...(telemetry === undefined ? {} : { telemetry }),
 		...(request.principalKey === true
