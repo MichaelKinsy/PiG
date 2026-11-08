@@ -97698,6 +97698,17 @@
       "shapeHash": "sha256:d8bc8e62423b7ced3103639e17df430dd815da9f7c9d6b3f152cfc198b87fd3a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcAdmission.startPrompt",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcAdmission.startPrompt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id rpcRequestID, text string, input rpcInputResult, fail func(error))"
+      },
+      "shapeHash": "sha256:cf23536d4754c816ebbc8b8e98e1d7fe3f4021796dd8a121f75f0f6bbc6127e5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcAdmission.taskGroup",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "rpcAdmission.taskGroup",
@@ -110060,6 +110071,17 @@
         "type": "OrderedStrings"
       },
       "shapeHash": "sha256:03815ce37c719e8f0fdd99c112e06ea57d301bcc2adbaffad3240909c2b0be69"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#OrderedStrings.All",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "OrderedStrings.All",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() iter.Seq2[string, string]"
+      },
+      "shapeHash": "sha256:53e187b9d72df37c1310d36cbc5705a816860f411d777307c07ce821d217c669"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#OrderedStrings.Get",
@@ -241611,6 +241633,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ChangelogEntry.newerThan",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ChangelogEntry.newerThan",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(last [3]float64) bool"
+      },
+      "shapeHash": "sha256:8fc194b3063434a84625783a64a26198ebd825e55b3226a7f7cfeac59bc4c117"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ChatViewport",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ChatViewport",
@@ -274501,6 +274534,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#bundledChangelogReader",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "bundledChangelogReader",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() io.Reader"
+      },
+      "shapeHash": "sha256:07f990fbaedbdf087cc319050056dc20341a39749e14f9fb50788cd8c218ea05"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#bundledChangelogText",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "bundledChangelogText",
@@ -294730,6 +294774,17 @@
       "shapeHash": "sha256:569e8322c67805b5bfea57bd8fa7594a9e6bb0f77fe64805ac21b60cc0a07f04"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#parseChangelogNewerThan",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "parseChangelogNewerThan",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(r io.Reader, last [3]float64) (newer []ChangelogEntry, err error)"
+      },
+      "shapeHash": "sha256:32b49dc6a986c9f51adf8210a94dd5ff9f95dcf133660d8c3323d87f2c30e0d6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#parseHTTPIdleTimeoutLabel",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "parseHTTPIdleTimeoutLabel",
@@ -294750,6 +294805,17 @@
         "type": "func(value any) (int, bool)"
       },
       "shapeHash": "sha256:892ef1e1daa58d2c0ce1de8512fb2de64db3633769189265b37de2ec3fafd6d7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#parseLastSeenVersion",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "parseLastSeenVersion",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sinceVersion string) ([3]float64, bool)"
+      },
+      "shapeHash": "sha256:fb433490953797fcf3d2df31a10fbc230b316b2dddd162b05a9042455b792b60"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#parseLogoScreen",
