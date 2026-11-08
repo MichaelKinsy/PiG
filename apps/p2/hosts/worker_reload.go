@@ -10,7 +10,7 @@ import (
 )
 
 // workerReloader is a session worker's side of Reload (reload.go): the worker's host, the facets it loaded and the digest
-// of each plugin's set it applied last (a worker starts on every plugin's reload 0).
+// of each plugin's set it applied last (a worker starts on every plugin's initial build, the empty revision).
 type workerReloader struct {
 	mu        sync.Mutex
 	host      host.Host
@@ -54,7 +54,7 @@ func (r *workerReloader) apply(scripts []plugins.PluginScript, ctx context.Conte
 		digests[name] = script.Built.Digest
 		previous, ok := r.applied[name]
 		if !ok {
-			previous = digestOf(name, 0)
+			previous = digestOf(name, "")
 		}
 		if previous != script.Built.Digest {
 			changed[name] = true
