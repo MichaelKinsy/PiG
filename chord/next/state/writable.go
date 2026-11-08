@@ -90,7 +90,7 @@ func (w *WritableSource[T]) set(value T) error {
 	if Identical(value, w.value) {
 		return nil
 	}
-	batch := w.batch
+	batch := w.Batch()
 	if err := batch.AssertNotComputing("writable.set"); err != nil {
 		return err
 	}
