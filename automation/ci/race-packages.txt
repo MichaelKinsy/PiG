@@ -29,6 +29,7 @@ coding  ./internal/codingagent/tools
 cli   ./coding/cli
 libs  ./chord
 libs  ./chord/output
+libs  ./chord/sync
 libs  ./chord/telemetrysqlite
 libs  ./chord/internal/parking
 exempt ./internal/chord/winpipe Windows-only tests; the nightly race matrix has no Windows job
@@ -72,6 +73,7 @@ libs  ./durable/durabletest
 libs  ./durable/images/node
 libs  ./internal/entered
 libs  ./internal/requestvalidity
+libs  ./internal/terminalquestion
 libs  ./internal/testenv
 libs  ./mcp/mcptest
 libs  ./piglets/aot

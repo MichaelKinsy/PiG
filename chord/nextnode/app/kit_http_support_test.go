@@ -138,7 +138,7 @@ func noGoroutinesOf(t testing.TB, markers ...string) {
 		buf := make([]byte, 1<<20)
 		buf = buf[:runtime.Stack(buf, true)]
 		var leaked []string
-		for _, stack := range strings.Split(string(buf), "\n\n") {
+		for stack := range strings.SplitSeq(string(buf), "\n\n") {
 			if slices.ContainsFunc(markers, func(marker string) bool { return strings.Contains(stack, marker) }) &&
 				!strings.Contains(stack, "testing.tRunner") && !strings.Contains(stack, "runtime.Stack") {
 				leaked = append(leaked, stack)

@@ -117,8 +117,8 @@ func (s *pendingSearch) finishSearch(query string, results []HuggingFaceModel) {
 }
 
 func (s *pendingSearch) selectedID() string {
-	rows := strings.Split(widthx.StripAnsi(strings.Join(s.view.Render(120), "\n")), "\n")
-	for _, row := range rows {
+	rows := strings.SplitSeq(widthx.StripAnsi(strings.Join(s.view.Render(120), "\n")), "\n")
+	for row := range rows {
 		if _, after, ok := strings.Cut(row, "→ "); ok {
 			return strings.Fields(after)[0]
 		}

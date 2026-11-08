@@ -24,7 +24,7 @@ const run = async ({ chunks, status, statusText, drop, attempts: scripted, maxRe
 		const body = new ReadableStream({
 			pull(controller) {
 				if (next < chunks.length) controller.enqueue(new Uint8Array(Buffer.from(chunks[next++], "base64")));
-				else if (drop) controller.error(new TypeError("terminated"));
+				else if (drop) controller.error(new TypeError("terminated", { cause: Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" }) }));
 				else controller.close();
 			},
 		});

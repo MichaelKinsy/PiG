@@ -7,6 +7,8 @@ type reach struct {
 	lines     int
 	unbounded bool
 	spaceRun  bool
+	// guards are the checks that bound the patterns of a language that read without bound and are listed in guardedSources; a language has them in place of unbounded, and a callback that reads past the match in a language with guardAngle.
+	guards guardSet
 }
 
 // patternReach is the reach of a JavaScript pattern. It is conservative: an atom it cannot classify counts as unbounded when repeated.

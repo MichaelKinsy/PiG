@@ -98,7 +98,7 @@ func TestOpenAICodexErrorResponsesMatchPi(t *testing.T) {
 	})
 }
 
-// A response whose connection breaks after some of the body: the stream ends with the failure and keeps what was received. Pi's "terminated" is Pig's "terminated (cause: ...)" (D144); the events, the partial content and every other error text must match.
+// A response whose connection breaks after some of the body: the stream ends with the failure and keeps what was received. the events, the partial content and every other error text must match.
 func TestProviderDroppedConnectionMatchesPi(t *testing.T) {
 	for _, test := range []struct {
 		name   string

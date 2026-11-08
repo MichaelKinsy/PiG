@@ -30,7 +30,7 @@ type markdownResumeSnapshot struct {
 // markdownResumeOf returns the snapshot of m's resume state, or false when the component keeps none. It fails the test when a kept point holds a view of the output.
 func markdownResumeOf(t *testing.T, m *Markdown) (markdownResumeSnapshot, bool) {
 	t.Helper()
-	r := m.resume
+	r := memosOf(m).resume
 	if r == nil {
 		return markdownResumeSnapshot{}, false
 	}
@@ -109,52 +109,52 @@ func requireMarkdownStateOfAFreshComponent(t *testing.T, label string, m *Markdo
 		// A blank text renders no blocks and leaves the memos of the render before it for the next one.
 		return
 	}
-	if len(m.nextInlines) != 0 || len(m.nextHighlights) != 0 || len(m.nextWraps) != 0 {
-		t.Fatalf("%s: %q keeps scratch entries after a render (%d inline renderings, %d highlighted blocks, %d wraps)", label, m.Content, len(m.nextInlines), len(m.nextHighlights), len(m.nextWraps))
+	if len(memosOf(m).nextInlines) != 0 || len(memosOf(m).nextHighlights) != 0 || len(memosOf(m).nextWraps) != 0 {
+		t.Fatalf("%s: %q keeps scratch entries after a render (%d inline renderings, %d highlighted blocks, %d wraps)", label, m.Content, len(memosOf(m).nextInlines), len(memosOf(m).nextHighlights), len(memosOf(m).nextWraps))
 	}
 	if m.inlinesOn || m.highlightsOn {
 		t.Fatalf("%s: %q still fills its memos after a render", label, m.Content)
 	}
-	if m.inlinesContext != fresh.inlinesContext || m.highlightsEpoch != fresh.highlightsEpoch {
+	if memosOf(m).inlinesContext != memosOf(fresh).inlinesContext || memosOf(m).highlightsEpoch != memosOf(fresh).highlightsEpoch {
 		t.Fatalf("%s: %q keeps the context of another render", label, m.Content)
 	}
-	for key, rendering := range m.inlines {
+	for key, rendering := range memosOf(m).inlines {
 		// A key a new component does not hold is one of a lexer state the new component's render never enters: a document whose link definition
 		// arrives after a reference is rendered twice, the second time from another state.
-		if freshRendering, ok := fresh.inlines[key]; ok && freshRendering != rendering || !ok && !subset {
+		if freshRendering, ok := memosOf(fresh).inlines[key]; ok && freshRendering != rendering || !ok && !subset {
 			t.Fatalf("%s: inline rendering of %q in %q is %v, a new component holds %v (%v)", label, key.src, m.Content, rendering, freshRendering, ok)
 		}
 	}
-	for key, lines := range m.highlights {
-		if freshLines, ok := fresh.highlights[key]; !ok || !slices.Equal(freshLines, lines) {
+	for key, lines := range memosOf(m).highlights {
+		if freshLines, ok := memosOf(fresh).highlights[key]; !ok || !slices.Equal(freshLines, lines) {
 			t.Fatalf("%s: highlighted code %q in %q is %q, a new component holds %q (%v)", label, key.code, m.Content, lines, freshLines, ok)
 		}
 	}
-	for line, wrapped := range m.wraps {
-		if freshWrapped, ok := fresh.wraps[line]; !ok || !slices.Equal(freshWrapped, wrapped) {
+	for line, wrapped := range memosOf(m).wraps {
+		if freshWrapped, ok := memosOf(fresh).wraps[line]; !ok || !slices.Equal(freshWrapped, wrapped) {
 			t.Fatalf("%s: wrap of %q in %q is %q, a new component holds %q (%v)", label, line, m.Content, wrapped, freshWrapped, ok)
 		}
 	}
 	if !subset {
-		if !maps.EqualFunc(m.inlines, fresh.inlines, func(a, b inlineRendering) bool { return a == b }) {
+		if !maps.EqualFunc(memosOf(m).inlines, memosOf(fresh).inlines, func(a, b inlineRendering) bool { return a == b }) {
 			var missing, extra []inlineKey
-			for key := range fresh.inlines {
-				if _, ok := m.inlines[key]; !ok {
+			for key := range memosOf(fresh).inlines {
+				if _, ok := memosOf(m).inlines[key]; !ok {
 					missing = append(missing, key)
 				}
 			}
-			for key := range m.inlines {
-				if _, ok := fresh.inlines[key]; !ok {
+			for key := range memosOf(m).inlines {
+				if _, ok := memosOf(fresh).inlines[key]; !ok {
 					extra = append(extra, key)
 				}
 			}
-			t.Fatalf("%s: inline renderings of %q hold %d entries, a new component holds %d; missing %+v, extra %+v", label, m.Content, len(m.inlines), len(fresh.inlines), missing, extra)
+			t.Fatalf("%s: inline renderings of %q hold %d entries, a new component holds %d; missing %+v, extra %+v", label, m.Content, len(memosOf(m).inlines), len(memosOf(fresh).inlines), missing, extra)
 		}
-		if !maps.EqualFunc(m.highlights, fresh.highlights, slices.Equal[[]string]) {
-			t.Fatalf("%s: highlighted code of %q holds %d blocks, a new component holds %d", label, m.Content, len(m.highlights), len(fresh.highlights))
+		if !maps.EqualFunc(memosOf(m).highlights, memosOf(fresh).highlights, slices.Equal[[]string]) {
+			t.Fatalf("%s: highlighted code of %q holds %d blocks, a new component holds %d", label, m.Content, len(memosOf(m).highlights), len(memosOf(fresh).highlights))
 		}
-		if !maps.EqualFunc(m.wraps, fresh.wraps, slices.Equal[[]string]) {
-			t.Fatalf("%s: wraps of %q hold %d lines, a new component holds %d", label, m.Content, len(m.wraps), len(fresh.wraps))
+		if !maps.EqualFunc(memosOf(m).wraps, memosOf(fresh).wraps, slices.Equal[[]string]) {
+			t.Fatalf("%s: wraps of %q hold %d lines, a new component holds %d", label, m.Content, len(memosOf(m).wraps), len(memosOf(fresh).wraps))
 		}
 	}
 }
@@ -162,6 +162,7 @@ func requireMarkdownStateOfAFreshComponent(t *testing.T, label string, m *Markdo
 // TestMarkdownStreamedStateEqualsAFreshComponents streams random documents in chunks of a few bytes, replacing the text, changing the width, invalidating and
 // blanking it now and then, and requires the state after every render to equal a new component's (see requireMarkdownStateOfAFreshComponent).
 func TestMarkdownStreamedStateEqualsAFreshComponents(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	rng := rand.New(rand.NewPCG(31, 41))
 	documents := 120
@@ -193,7 +194,7 @@ func TestMarkdownStreamedStateEqualsAFreshComponents(t *testing.T) {
 			}
 			// A render resumes when the kept state is for this render's arguments and keeps the lines of the new text.
 			key, keyed := streamed.resumeKey(width, max(1, width-2*paddingX))
-			resumes := streamed.resume != nil && keyed && streamed.resume.key == key && streamed.resume.pick(text) != nil
+			resumes := memosOf(streamed).resume != nil && keyed && memosOf(streamed).resume.key == key && memosOf(streamed).resume.pick(text) != nil
 			streamed.SetText(text)
 			// A new component is the reference for every state but the memos of a resumed render, which keep fewer entries.
 			requireMarkdownStateOfAFreshComponent(t, label, streamed, width, resumes, paddingX, paddingY)
@@ -203,6 +204,7 @@ func TestMarkdownStreamedStateEqualsAFreshComponents(t *testing.T) {
 
 // TestMarkdownFinishedStateKeepsNoMemos requires a component that finished streaming to hold no memo after any render, whatever the text and the operations before it.
 func TestMarkdownFinishedStateKeepsNoMemos(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	rng := rand.New(rand.NewPCG(5, 6))
 	for index := range 40 {
@@ -222,8 +224,8 @@ func TestMarkdownFinishedStateKeepsNoMemos(t *testing.T) {
 		}
 		m.SetText(document + "\n\nmore")
 		m.Render(50)
-		if m.resume != nil || len(m.inlines) != 0 || len(m.nextInlines) != 0 || len(m.highlights) != 0 || len(m.nextHighlights) != 0 || len(m.wraps) != 0 || len(m.nextWraps) != 0 {
-			t.Fatalf("a finished component keeps memos of %q: resume %v, %d inline renderings, %d highlighted blocks, %d wraps", document, m.resume != nil, len(m.inlines), len(m.highlights), len(m.wraps))
+		if memosOf(m).resume != nil || len(memosOf(m).inlines) != 0 || len(memosOf(m).nextInlines) != 0 || len(memosOf(m).highlights) != 0 || len(memosOf(m).nextHighlights) != 0 || len(memosOf(m).wraps) != 0 || len(memosOf(m).nextWraps) != 0 {
+			t.Fatalf("a finished component keeps memos of %q: resume %v, %d inline renderings, %d highlighted blocks, %d wraps", document, memosOf(m).resume != nil, len(memosOf(m).inlines), len(memosOf(m).highlights), len(memosOf(m).wraps))
 		}
 	}
 }

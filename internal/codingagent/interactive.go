@@ -522,7 +522,7 @@ type InteractiveMode struct {
 
 	// anthropicSubWarningShown gates the one-time Anthropic subscription
 	// auth warning. Mirrors upstream anthropicSubscriptionWarningShown.
-	anthropicSubWarningShown     bool
+	anthropicSubWarningShown bool
 	// cacheWarmingNotice is the last cache-warming notice, extended in place
 	// while it is the last chat line. Mirrors upstream cacheWarmingNotice.
 	cacheWarmingNotice           *cacheWarmingNotice

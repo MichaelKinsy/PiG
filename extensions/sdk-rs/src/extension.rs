@@ -16,7 +16,6 @@ use crate::transport::UnixStream;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use std::io;
-use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -303,13 +302,15 @@ impl EventSubscriber {
         match result {
             Ok(reply) => {
                 if let Some(err) = reply.error {
-                    eprintln!(
-                        "extension: {method} {event:?}: {}",
+                    crate::diagnostic::diagnose(&format!(
+                        "extension: {method} {event:?}: {}\n",
                         crate::context::host_error_message(err)
-                    );
+                    ));
                 }
             }
-            Err(err) => eprintln!("extension: {method} {event:?}: {err}"),
+            Err(err) => {
+                crate::diagnostic::diagnose(&format!("extension: {method} {event:?}: {err}\n"))
+            }
         }
     }
 
@@ -685,7 +686,7 @@ impl WidthDeliveries {
             };
             for handler in handlers {
                 // One handler's panic must not stop the others, as a thrown handler error rejects one call upstream.
-                let _ = catch_unwind(AssertUnwindSafe(|| handler(width)));
+                let _ = crate::diagnostic::recover(|| handler(width));
             }
         }
     }
@@ -1906,17 +1907,15 @@ impl Extension {
                 .name("pig-on-loaded".to_string())
                 .spawn(move || {
                     for handler in &loaded_ext.loaded_fns {
-                        if let Err(payload) =
-                            catch_unwind(AssertUnwindSafe(|| handler(&loaded_ctx)))
-                        {
+                        if let Err(payload) = crate::diagnostic::recover(|| handler(&loaded_ctx)) {
                             let detail = payload
                                 .downcast_ref::<String>()
                                 .cloned()
                                 .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()));
-                            eprintln!(
-                                "pig: on_loaded handler panicked: {}",
+                            crate::diagnostic::diagnose(&format!(
+                                "pig: on_loaded handler panicked: {}\n",
                                 detail.unwrap_or_default()
-                            );
+                            ));
                         }
                     }
                     opening_gate.open();
@@ -2022,7 +2021,7 @@ impl Extension {
                                 if req.method != "events.dispatch" {
                                     loaded_gate.wait();
                                 }
-                                let handled = catch_unwind(AssertUnwindSafe(|| {
+                                let handled = crate::diagnostic::recover(|| {
                                     ext.handle_request(
                                         &base,
                                         &conn,
@@ -2034,7 +2033,7 @@ impl Extension {
                                             request: request_start.as_deref(),
                                         },
                                     )
-                                }));
+                                });
                                 if let Err(payload) = handled {
                                     // The panic value reaches the caller, as a thrown Error's message does in Pi (the stale-context message is raised this way).
                                     let detail =
@@ -2111,10 +2110,10 @@ impl Extension {
                     if let Some(notify) = env.notify {
                         if notify.args_error.is_some() {
                             // A notification nested past what the reader takes cannot be decoded: it is dropped, with a diagnostic, and the connection goes on.
-                            eprintln!(
-                                "pig_sdk: dropped the {} notification: it nests deeper than the reader takes",
+                            crate::diagnostic::diagnose(&format!(
+                                "pig_sdk: dropped the {} notification: it nests deeper than the reader takes\n",
                                 notify.method
-                            );
+                            ));
                             continue;
                         }
                         match notify.method.as_str() {
@@ -2718,7 +2717,7 @@ impl Extension {
                 // The host waits for the output chunks, in order, before this answer; the request's cancellation is the exec's signal.
                 let updates = conn.clone();
                 let request_id = id.to_string();
-                let result = catch_unwind(AssertUnwindSafe(|| {
+                let result = crate::diagnostic::recover(|| {
                     crate::user_bash::run_user_bash_exec(
                         &conn.bash_operations,
                         req,
@@ -2732,7 +2731,7 @@ impl Extension {
                             );
                         },
                     )
-                }))
+                })
                 .unwrap_or_else(|_| Err("bash operations panicked".to_string()));
                 match result {
                     Ok(value) => {
@@ -2772,13 +2771,13 @@ impl Extension {
                         signal: cancel.signal.clone(),
                         values: args["options"].clone(),
                     };
-                    catch_unwind(AssertUnwindSafe(|| {
+                    crate::diagnostic::recover(|| {
                         callback(
                             Arc::new(args["model"].clone()),
                             args["context"].clone(),
                             options,
                         )
-                    }))
+                    })
                     .map_err(|_| format!("provider {provider} {label} implementation panicked"))?
                 })();
                 match result {
@@ -2848,9 +2847,8 @@ impl Extension {
                             format!("unknown virtual model {}/{}", args.provider, args.id)
                         })?;
                     let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
-                    let route =
-                        catch_unwind(AssertUnwindSafe(|| (model.route)(&ctx, args.request)))
-                            .map_err(|_| "virtual model router panicked".to_string())??;
+                    let route = crate::diagnostic::recover(|| (model.route)(&ctx, args.request))
+                        .map_err(|_| "virtual model router panicked".to_string())??;
                     serde_json::to_value(route).map_err(|err| err.to_string())
                 })();
                 match outcome {
@@ -2891,7 +2889,7 @@ impl Extension {
                     .unwrap_or(Value::Object(Default::default()));
                 let outcome = match hook {
                     None => Err(format!("tool {name} has no prepareArguments")),
-                    Some(hook) => catch_unwind(AssertUnwindSafe(|| hook(args)))
+                    Some(hook) => crate::diagnostic::recover(|| hook(args))
                         .map_err(|_| format!("prepareArguments of {name} panicked"))
                         .and_then(|prepared| prepared),
                 };
@@ -2925,7 +2923,7 @@ impl Extension {
                     .unwrap_or(Value::Object(Default::default()));
                 let outcome = match hook {
                     None => Err(format!("tool {name} has no reachesTools")),
-                    Some(hook) => catch_unwind(AssertUnwindSafe(|| hook(&input)))
+                    Some(hook) => crate::diagnostic::recover(|| hook(&input))
                         .map_err(|_| format!("reachesTools of {name} panicked"))
                         .map(|reach| match reach {
                             crate::ToolReach::All => Value::from("all"),
@@ -2965,7 +2963,7 @@ impl Extension {
                         .map_err(|err| format!("decode tool_prepare_loadout: {err}"))
                         .and_then(|payload| {
                             let loadout = crate::ToolLoadout::from(payload);
-                            catch_unwind(AssertUnwindSafe(|| hook(&loadout)))
+                            crate::diagnostic::recover(|| hook(&loadout))
                                 .map_err(|_| format!("prepareLoadout of {name} panicked"))
                         })
                         .and_then(|changes| {
@@ -3080,10 +3078,8 @@ impl Extension {
                 let mut current = original.clone();
                 let mut consume = false;
                 for handler in handlers {
-                    let verdict = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        handler(&current)
-                    }))
-                    .unwrap_or_default();
+                    let verdict =
+                        crate::diagnostic::recover(|| handler(&current)).unwrap_or_default();
                     if verdict.consume {
                         consume = true;
                         break;
@@ -3296,7 +3292,7 @@ impl Extension {
                     if let Some(request_start) = request_start {
                         request_start.begin();
                     }
-                    match catch_unwind(AssertUnwindSafe(|| handler(&ctx, &mut data))) {
+                    match crate::diagnostic::recover(|| handler(&ctx, &mut data)) {
                         Ok(result) => result,
                         Err(payload) => Err(payload
                             .downcast_ref::<String>()
@@ -3495,9 +3491,9 @@ impl Extension {
             }
             "resolve_tool_renderers" => {
                 // A resolver that panics answers an error, as a resolver that throws upstream.
-                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                match crate::diagnostic::recover(|| {
                     self.tool_renderers.resolve(conn, req.args.as_ref())
-                })) {
+                }) {
                     Ok(answer) => {
                         let _ = conn.respond(id, Some(answer), None);
                     }
@@ -3551,11 +3547,9 @@ impl Extension {
                     .and_then(|v| serde_json::from_value(v).ok())
                     .unwrap_or_default();
                 let transformed = self.markdown_transformer.as_ref().and_then(|transformer| {
-                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        transformer(&markdown, &context)
-                    }))
-                    .ok()
-                    .flatten()
+                    crate::diagnostic::recover(|| transformer(&markdown, &context))
+                        .ok()
+                        .flatten()
                 });
                 let _ = conn.respond(id, transformed.map(Value::String), None);
             }

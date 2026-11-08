@@ -88,6 +88,7 @@ type OAuthCallbackServer struct {
 	renderPage  func(OAuthCallbackPage) string
 
 	mu      sync.Mutex
+	closed  bool
 	pending map[string]*pendingCallback
 	done    chan struct{}
 	// fresh holds accepted connections that have not sent a request yet (a browser's preconnect).
@@ -153,6 +154,10 @@ func (s *OAuthCallbackServer) WaitForCallback(ctx context.Context, state string,
 		only = path[0]
 	}
 	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return OAuthCallback{}, errors.New("OAuth callback server closed")
+	}
 	if _, ok := s.pending[state]; ok {
 		s.mu.Unlock()
 		return OAuthCallback{}, errors.New("OAuth state is already pending")
@@ -178,13 +183,22 @@ func (s *OAuthCallbackServer) WaitForCallback(ctx context.Context, state string,
 	case r := <-entry.result:
 		return r.callback, r.err
 	case <-ctx.Done():
+		// Go mechanic: Pi's wait has no signal. A wait that ends with its context frees its state, so the same state can wait again.
+		s.mu.Lock()
+		if s.pending[state] == entry {
+			delete(s.pending, state)
+		}
+		s.mu.Unlock()
+		entry.timer.Stop()
 		return OAuthCallback{}, context.Cause(ctx)
 	}
 }
 
 // Close rejects every pending wait and stops the server.
+// Pi 63ea042ce closes every connection; Go closes the ones that never sent a request and leaves the others to Shutdown. A wait begun after Close fails at once (Pi's waits forever), and a wait that ends with its context frees its state.
 func (s *OAuthCallbackServer) Close() error {
 	s.mu.Lock()
+	s.closed = true
 	pending := s.pending
 	s.pending = map[string]*pendingCallback{}
 	s.mu.Unlock()

@@ -245,6 +245,7 @@ func GetLoopbackSettings(settings McpOAuthSettings) (LoopbackSettings, error) {
 	var port *int
 	fixed := ""
 	if u.Port != "" {
+		//portlint:allow numbers u.Port is the serialized port of a parsed URL: at most five decimal digits, or empty (client-settings.ts)
 		p, _ := strconv.Atoi(u.Port)
 		port = &p
 		// A configured URI with a port is sent exactly as written, since servers compare it as a string.

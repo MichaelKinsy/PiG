@@ -569,7 +569,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 // focus exposes its state the same way. The Go SDK's statePublishingCalls lists the Session writes (extensions/sdk/context.go).
 func publishesStateBeforeResult(method string) bool {
 	switch method {
-	case "setModel", "appendEntry", "setLabel", "setSessionName", "sendMessage":
+	case "setModel", "appendEntry", "setLabel", "setSessionName", "sendMessage", "registerProvider", "unregisterProvider", CallRegisterVirtualModel, CallUnregisterVirtualModel, "refreshModelRegistry":
 		return true
 	}
 	return takesInteractiveFocus(method)
@@ -581,6 +581,9 @@ func (h *Host) replyToCall(me *managedExt, conn *Conn, callID string, call *Call
 		// Pi's model changes and dialogs expose current state before their Promise settles, including cancellation and dialog errors returned in the payload.
 		// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns, so the caller's subscribed session mirror receives it before the call result.
 		err = h.pushStateTo(callCtx, me, conn)
+	} else if me != nil && h.behindHostState(me) {
+		// A host-side change this extension has not been pushed yet (hostStateChanged only queues the push), or one in flight: a reply must not carry newer host state than the replica it precedes, or a reader that learned a change from a call reads an older replica afterwards. A watchSessionLog call holds the cursor lock from its read of the log to here, so its flush runs under it: the log it returns is never newer than the state that names its Session.
+		_ = h.pushState(callCtx, me, conn, call.Method == "watchSessionLog")
 	}
 	if call.Method == "abort" && err == nil {
 		// upstream: agent.ts:340-342 aborts the active run's controller before abort() returns, so a handler that holds ctx.signal sees it aborted once its abort call returns. The run's cancellation also starts the watcher that forwards the abort (runSignals.frame), and that frame can reach the connection after this reply; the frame sent here precedes it on the connection's one ordered stream, and the watcher's frame then finds the state sent.

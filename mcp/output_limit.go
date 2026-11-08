@@ -51,6 +51,7 @@ func LimitMcpContent(content []LLMContent, saveOutput McpOutputSaver) LimitedMcp
 			where = "\n\n[Could not save the full output: " + err.Error() + "]"
 		}
 	}
+	//portlint:allow numbers Math.ceil(totalBytes / 4) of a non-negative byte count is (totalBytes + 3) / 4 (output-limit.ts limitMcpContent)
 	tokens := (truncation.totalBytes + 3) / 4
 	text := fmt.Sprintf("Warning: truncated output (original token count: %d)\nTotal output lines: %d\n\n%s%s", tokens, truncation.totalLines, truncation.content, where)
 	limited := []LLMContent{{Type: LLMContentTypeText, Text: text}}
@@ -73,19 +74,24 @@ type middleTruncation struct {
 // truncateMiddle keeps the start and the end of text, half of maxBytes each, and replaces the middle with a `…N chars truncated…` marker. It cuts
 // only at character boundaries. The second result is false when text fits.
 func truncateMiddle(text string, maxBytes int) (middleTruncation, bool) {
+	//portlint:allow utf16units upstream compares the Buffer byte length (output-limit.ts truncateMiddle)
 	if len(text) <= maxBytes {
 		return middleTruncation{}, false
 	}
 	// Continuation bytes (10xxxxxx) are not character starts.
 	isBoundary := func(index int) bool { return index >= len(text) || text[index]&0xc0 != 0x80 }
+	//portlint:allow numbers Math.floor(maxBytes / 2) of a non-negative byte count (output-limit.ts truncateMiddle)
 	headEnd := maxBytes / 2
 	for headEnd > 0 && !isBoundary(headEnd) {
 		headEnd--
 	}
-	tailStart := len(text) - (maxBytes - maxBytes/2)
+	//portlint:allow utf16units upstream walks the Buffer UTF-8 bytes (output-limit.ts truncateMiddle)
+	tailStart := len(text) - (maxBytes - maxBytes/2) //portlint:allow numbers Math.floor(maxBytes / 2) of a non-negative byte count (output-limit.ts truncateMiddle)
+	//portlint:allow utf16units upstream walks the Buffer UTF-8 bytes (output-limit.ts truncateMiddle)
 	for tailStart < len(text) && !isBoundary(tailStart) {
 		tailStart++
 	}
+	//portlint:allow utf16units upstream cuts the Buffer of the text UTF-8 bytes at character starts, which is what these byte offsets do (output-limit.ts truncateMiddle)
 	removedChars := utf8.RuneCountInString(text[headEnd:tailStart])
 	// A final newline ends the last line instead of starting another.
 	lines := strings.Count(text, "\n") + 1
@@ -93,6 +99,7 @@ func truncateMiddle(text string, maxBytes int) (middleTruncation, bool) {
 		lines--
 	}
 	return middleTruncation{
+		//portlint:allow utf16units upstream cuts the Buffer of the text UTF-8 bytes at character starts, which is what these byte offsets do (output-limit.ts truncateMiddle)
 		content:    fmt.Sprintf("%s…%d chars truncated…%s", text[:headEnd], removedChars, text[tailStart:]),
 		totalBytes: len(text),
 		totalLines: lines,
