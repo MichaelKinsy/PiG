@@ -3936,7 +3936,7 @@ Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main
 
 ## D370 The OAuth callback server drops connections that have not sent a request when it closes
 
-What: PiG ports Pi main 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311), which is not in Pi 1.5.0. Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`.
+What: PiG ports Pi main 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311), which is not in Pi 1.5.0. Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`. Two Go mechanics ride with it: `WaitForCallback` fails at once when it is called after `Close` (Pi's wait would run to its timeout), and a wait that ends with its context frees its state so the same state can wait again (Pi's wait has no signal).
 
 Why: Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.
 
@@ -3948,7 +3948,9 @@ SCRUTINIZED:pending
 
 Remove when: the pinned Pi release contains 63ea042ce and PiG's close matches it.
 
-Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen` (`mcp/oauth/oauth_test.go`).
+Call-site markers: `mcp/oauth/callback.go` (`Close`).
+
+Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`, `TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` (`mcp/oauth/oauth_test.go`), `TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose` (`mcp/oauth/goroutines_test.go`).
 
 ## D371 Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`
 
@@ -3964,4 +3966,42 @@ SCRUTINIZED:pending
 
 Remove when: the pinned Pi release contains 6d3e342b2.
 
+Call-site markers: `codemode/declarations.go` (`refSegments`).
+
 Evidence: `TestMalformedRefPercentEncodingRendersAsUnknown`, `TestResolveSchemaRef*` (`codemode/declarations_test.go`), `TestSchemaRefs*` (`coding/extension/builtin/toolsearch/schema_refs_pi_test.go`), `TestFindsAToolByAParameterDescriptionBehindALocalReference...` (`durable/toolsearch/toolsearch_test.go`), `TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`.
+
+## D372 `mcp add` reports an invalid url before an invalid exposure
+
+What: PiG ports Pi main 76c040a2a (the MCP server config validation moved into the mcp package), which is not in Pi 1.5.0. The validator checks the shared fields first, then the transport fields (url, headers, OAuth), and the exposure last. Pi 1.5.0 checked the exposure first, so a command with both an invalid url and an invalid exposure names the exposure there and the url in PiG.
+
+Why: one validator now serves the CLI, the config loader and the extension.
+
+Pi bug: none; an ordering change in Pi main.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:pending
+
+Remove when: the pinned Pi release contains 76c040a2a.
+
+Call-site markers: `internal/mcpshared/config.go` (`validateHTTPFields`).
+
+Evidence: `TestMcpCommandMatchesPi` (`coding/mcpext/cli_oracle_test.go`) skips probes that give both an invalid exposure and a non-http(s) url.
+
+## D373 The stored PKCE verifier is dropped once its code exchange succeeded
+
+What: after `AuthorizeMcp` exchanged an authorization code and saved the tokens, PiG removes the `codeVerifier` of that sign-in from the stored OAuth state. Pi keeps it in `mcp-auth.json` until the next sign-in overwrites it or the credentials are invalidated.
+
+Why: a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.
+
+Pi bug: none observable in behavior; additive hardening.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-08).
+
+SCRUTINIZED:pending
+
+Remove when: Pi drops the verifier after the exchange, or the owner declines the hardening.
+
+Call-site markers: `mcp/oauth/flow.go` (the exchange branch of `runFlow`).
+
+Evidence: `TestAuthorizeMcpDropsTheVerifierAfterTheExchange` (`mcp/oauth/oauth_test.go`).
