@@ -4048,25 +4048,25 @@ Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` stat
 
 Parity allowance: none needed; no Pi test depends on an inode reused with no birth time.
 
-## D600 Worker base: no esbuild bundle of a Node entry, a Go worker forks a private copy of its executable
+## D600 A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no `cache/node`, no `NODE_COMPILE_CACHE`, and the copy is made at the build
 
-What: Pi bundles the worker's Node entry with the base code it imports once, when `createWorkers` runs (`workers/base.ts`, esbuild; decision "Workers start from the base code the server booted with"; `child.ts` is the bundle's entry in the worker), so an edit of that code after the server booted runs in no worker, and `workers.inputs` records the files for the watcher's `base` mark. A Go worker is the program's own compiled executable (`Entry`, `ExecArgv`): there is nothing to bundle, resolve or externalize. `CreateWorkers` copies `Entry` to a private file at creation, forks that copy and `Close` removes it: that is the Go form of the snapshot, and the first `workers.test.ts` case (a worker started after an edit runs the code the component was created with) is ported on it. The cases of `test/node/workers/base.test.ts` about the bundle itself (what stays external, module locations and stack traces of the bundle, `nodeBaseInputs`, the bundle's private file) and `child.test.ts` (the child entry loads no esbuild) have no Go counterpart. The kind's `Entry` is not a script the plugins component builds (`chord/nextnode/app/app_changes_test.go`).
+What: Pi builds a worker kind's base by bundling the entry module with the base code it imports (`workers/base.ts`, esbuild) in memory, writes it at the first fork into a private directory its component owns (the kit's `cache/workers/<kind>/`, emptied first, removed at `close` after every worker exited, never touched by a component that closed), records every file the build read (`WorkersBuilt.inputs`) and forks its workers with `NODE_COMPILE_CACHE` set to the kit's `cache/node/`. PiG's worker is the program the app names (`Entry`, usually its own executable), which holds its code already. `Workers.Build` (run by the kit right after the server listens) checks that `Entry` can be started, copies it into `WorkersOptions.BaseDir` (the kit's `cache/workers/<kind>/`, emptied first; a new temporary directory without one) and records the entry with the hash of the bytes copied; every worker forks that copy; `Close` removes the directory once every worker exited (also when its context ends the wait first), and a component that closed before its build copies nothing and leaves a named directory as it is. A copy that is gone (a cleaner of temporary files) is made again from the entry when the entry still has the recorded bytes. An edit of the entry marks `base` (the kit watches the recorded file), and runs in no worker. The layout has `cache/` and `cache/workers/` (mode 0700), not `cache/node/`.
 
-Why: process boundary and language residue (a compiled executable against a bundled Node module): the bundle's contents, esbuild's resolution and the bundle's stack traces do not exist for an executable.
+Why: a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins ("a worker started after an edit of the entry's imported source runs the code the base was built with"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.
 
-Pi bug: none.
+Pi bug: Not a Pi bug.
 
-Scope: `chord/nextnode/workers` (`CreateWorkers`, the package doc), the 12 Pi test cases above; the rest of `workers.test.ts` is ported.
+Scope: `chord/nextnode/workers` (`Workers.Build`, `WorkersBuilt`, `WorkersOptions.BaseDir`), `chord/nextnode/app` (`AppLayout.Cache`, `AppLayout.WorkerBases`, the worker kinds' base records).
 
-Owner decision: owner sign-off pending (draft; Pi main c23b9ec1).
+Owner decision: owner sign-off pending (drafted by the ChordKit284 lane on 2026-11-08).
 
-Remove when: never; it is the process boundary of a compiled worker.
+Remove when: PiG's worker is a Node entry again.
 
-Call-site markers: `chord/nextnode/app/app_changes_test.go`.
+Call-site markers: `chord/nextnode/workers/workers_workers.go` (`Build`), `chord/nextnode/workers/doc.go`.
 
-Evidence: `TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain` (`chord/nextnode/workers/workers_workers_test.go`: the error names the entry and why it cannot be started; the kind can be routed again). The private copy and its case are fix/chord-gap-a's (`CreateWorkers`, e3b5d44443).
+Evidence: `TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith`, `TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs`, `TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose`, `TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks` (`chord/nextnode/workers`), `TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes`, `TestAppReportsABaseThatFailsAfterTheListenAndRunsOn…` (`chord/nextnode/app`).
 
-Parity allowance: none.
+Parity allowance: Pi's `base.test.ts` and the worker-base tests of `workers.test.ts` that bundle a Node module, the `NODE_COMPILE_CACHE` and `cache/node` assertions of `layout.test.ts` and `app.test.ts`, and the `app.test.ts` tests that hold a worker kind's base build on a pipe have no counterpart.
 
 ## D605 The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other
 

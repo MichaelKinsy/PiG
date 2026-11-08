@@ -317,15 +317,6 @@ func stringList(value any) []string {
 	return list
 }
 
-// jsonText is value as compact JSON, the form the page shows and the tests compare (`undefined` is "none").
-func jsonText(value delta.JsonValue) string {
-	text, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Sprintf("!%v", err)
-	}
-	return string(text)
-}
-
 // callResult is a call's answer as the tests read it (Pi's CallResult): pending, ok with the value as JSON, or an error.
 type callResult struct {
 	Status string // "pending", "ok" or "error"

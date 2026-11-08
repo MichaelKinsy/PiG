@@ -108,7 +108,7 @@ func (d *destination) placedHere(typ *contracts.Contract, params *delta.JsonObje
 	if err != nil {
 		return false, err
 	}
-	return d.isHere(address) && !(d.delegating && !served(typ.Name)), nil
+	return d.isHere(address) && (!d.delegating || served(typ.Name)), nil
 }
 
 // hold is where a hold arriving on from acting as principal goes, by the address it names (a request's `address`, and
