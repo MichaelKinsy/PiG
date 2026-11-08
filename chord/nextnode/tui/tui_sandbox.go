@@ -165,7 +165,8 @@ func StartSandbox(node, source string, start BridgeStart, onMessage func(Sandbox
 	if err := CheckSandboxNode(node); err != nil {
 		return nil, err
 	}
-	if exceedsUnits(source, maxBundle) {
+	//portlint:allow utf16units Pi compares Buffer.byteLength(source) (bytes)
+	if len(source) > maxBundle {
 		return nil, errors.New("terminal: the base bundle exceeds 8 MiB")
 	}
 	text, err := bootstrap()
