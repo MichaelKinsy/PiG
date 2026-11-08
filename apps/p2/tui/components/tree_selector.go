@@ -254,7 +254,7 @@ func (l *treeList) Render(width int) []string {
 		if selected {
 			cursor = theme.Fg("accent", "› ")
 		}
-		line := widthx.TruncateToWidth(cursor+full, width, "…", false)
+		line := widthx.TruncateToWidth(cursor+full, width, "...", false)
 		if selected {
 			line = theme.Bg("selectedBg", line)
 		}
@@ -344,11 +344,11 @@ func (l *labelInput) Invalidate() {}
 func (l *labelInput) Render(width int) []string {
 	theme := l.ctx.Theme().Current()
 	const indent = "  "
-	lines := []string{widthx.TruncateToWidth(indent+theme.Fg("muted", l.prompt), width, "…", false)}
+	lines := []string{widthx.TruncateToWidth(indent+theme.Fg("muted", l.prompt), width, "...", false)}
 	for _, line := range l.input.Render(width - len(indent)) {
-		lines = append(lines, widthx.TruncateToWidth(indent+line, width, "…", false))
+		lines = append(lines, widthx.TruncateToWidth(indent+line, width, "...", false))
 	}
-	return append(lines, widthx.TruncateToWidth(indent+render.KeyHint(l.ctx, "tui.select.confirm", "save")+"  "+render.KeyHint(l.ctx, "tui.select.cancel", "cancel"), width, "…", false))
+	return append(lines, widthx.TruncateToWidth(indent+render.KeyHint(l.ctx, "tui.select.confirm", "save")+"  "+render.KeyHint(l.ctx, "tui.select.cancel", "cancel"), width, "...", false))
 }
 
 func (l *labelInput) HandleInput(data string) {

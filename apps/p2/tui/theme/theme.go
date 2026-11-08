@@ -461,8 +461,9 @@ func Language(hint string) string {
 	if alias, ok := languageAliases[key]; ok {
 		key = alias
 	}
-	if key != "" && tui.SupportsLanguage(key) {
-		return key
+	canonical, bundled := lowlightLanguages[key]
+	if bundled && (canonical == plaintextLanguage || tui.SupportsLanguage(canonical)) {
+		return canonical
 	}
 	return ""
 }
@@ -501,6 +502,9 @@ func (t *Theme) highlightTheme() tui.HighlightTheme {
 // utf16Length is a JS string's length.
 func utf16Length(text string) int { return len(utf16.Encode([]rune(text))) }
 
+// plaintextLanguage is the language lowlight registers for text with no highlighting (aliases `text`, `txt`).
+const plaintextLanguage = "plaintext"
+
 // Highlight is Theme.highlight: syntax-highlighted lines; unknown languages (and huge inputs) use `mdCodeBlock` like coding-agent.
 func (t *Theme) Highlight(code, lang string) []string {
 	plain := func() []string {
@@ -513,6 +517,10 @@ func (t *Theme) Highlight(code, lang string) []string {
 	language := Language(lang)
 	if language == "" || utf16Length(code) > 200_000 {
 		return plain()
+	}
+	if language == plaintextLanguage {
+		// lowlight's plaintext grammar emits one text node: the code as it is.
+		return strings.Split(code, "\n")
 	}
 	highlighted, err := tui.Highlight(code, tui.HighlightOptions{Language: language, Theme: t.highlightTheme()})
 	if err != nil {

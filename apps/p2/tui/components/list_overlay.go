@@ -190,7 +190,7 @@ func (o *ListOverlay) Render(width int) []string {
 	index := o.current(rows)
 	start := max(0, min(index-o.height/2, len(rows)-o.height))
 	o.input.SetFocused(o.focused)
-	lines := []string{border, widthx.TruncateToWidth(theme.Bold(o.opts.Title()), width, "…", false)}
+	lines := []string{border, widthx.TruncateToWidth(theme.Bold(o.opts.Title()), width, "...", false)}
 	lines = append(lines, o.input.Render(width)...)
 	lines = append(lines, "")
 	for offset, row := range rows[start:min(len(rows), start+o.height)] {
@@ -211,7 +211,7 @@ func (o *ListOverlay) Render(width int) []string {
 			styled = theme.Fg("accent", label)
 		}
 		left := cursor + styled
-		lines = append(lines, widthx.TruncateToWidth(left+strings.Repeat(" ", max(1, width-widthx.VisibleWidth(left)-widthx.VisibleWidth(detail)))+detail, width, "…", false))
+		lines = append(lines, widthx.TruncateToWidth(left+strings.Repeat(" ", max(1, width-widthx.VisibleWidth(left)-widthx.VisibleWidth(detail)))+detail, width, "...", false))
 	}
 	if len(rows) == 0 {
 		lines = append(lines, theme.Fg("muted", "  Nothing here"))
@@ -290,7 +290,7 @@ func (o *ConfirmOverlay) Render(width int) []string {
 		out = append(out, widthx.TruncateToWidth(line, width, "…", false))
 	}
 	hint := fmt.Sprintf("  %s/y confirm · %s/n cancel", o.ctx.KeyText("tui.select.confirm"), o.ctx.KeyText("tui.select.cancel"))
-	return append(out, widthx.TruncateToWidth(theme.Fg("dim", hint), width, "…", false), border)
+	return append(out, widthx.TruncateToWidth(theme.Fg("dim", hint), width, "...", false), border)
 }
 
 // Invalidate has nothing to drop.
@@ -387,7 +387,7 @@ func (v *TextViewer) Render(width int) []string {
 		out = append(out, widthx.TruncateToWidth(line, width, "…", false))
 	}
 	hint := fmt.Sprintf("  %d-%d of %d · ↑↓ PgUp/PgDn · %s closes", v.offset+1, v.offset+len(visible), len(all), v.ctx.KeyText("tui.select.cancel"))
-	return append(out, widthx.TruncateToWidth(theme.Fg("dim", hint), width, "…", false), border)
+	return append(out, widthx.TruncateToWidth(theme.Fg("dim", hint), width, "...", false), border)
 }
 
 // Invalidate has nothing to drop.
