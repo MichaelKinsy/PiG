@@ -25,7 +25,7 @@ import (
 type refreshHarness struct {
 	server  *oauthMcpServer
 	lockDir string
-	process func() (mcpext.McpOAuthServerStore, mcpext.McpAuthProvider)
+	process func() (oauth.McpOAuthServerStore, oauth.McpAuthProvider)
 }
 
 // followPrompt is the sign-in prompt of the upstream test: the browser follows
@@ -55,14 +55,14 @@ func signedIn(t *testing.T) *refreshHarness {
 	t.Cleanup(func() { _ = os.RemoveAll(lockDir) })
 	// Stores sharing the credential file and lock directory stand in for separate pi processes.
 	backend := &mcpext.InMemoryAuthStorageBackend{}
-	process := func() (mcpext.McpOAuthServerStore, mcpext.McpAuthProvider) {
+	process := func() (oauth.McpOAuthServerStore, oauth.McpAuthProvider) {
 		store, err := mcpext.NewMcpOAuthCredentialStoreWithBackend(backend, lockDir).ForServer("test", server.URL)
 		if err != nil {
 			t.Fatal(err)
 		}
 		provider := mcpext.NewMcpAuthProvider(mcpext.McpAuthProviderOptions{
 			ServerURL: server.URL, Store: store,
-			Settings:    func() (mcpext.McpOAuthSettings, error) { return mcpext.McpOAuthSettings{}, nil },
+			Settings:    func() (oauth.McpOAuthSettings, error) { return oauth.McpOAuthSettings{}, nil },
 			OnChallenge: func(oauth.OAuthChallenge) {},
 		})
 		return store, provider
@@ -82,7 +82,7 @@ func unauthorized(serverURL, token string, fetch mcp.McpFetch) mcp.UnauthorizedC
 func TestMCPOAuthRefreshRefreshesOnceWhenSeveralProcessesFindTheSameTokenRejected(t *testing.T) {
 	h := signedIn(t)
 	h.server.expireAccessTokens()
-	providers := make([]mcpext.McpAuthProvider, 3)
+	providers := make([]oauth.McpAuthProvider, 3)
 	for i := range providers {
 		_, providers[i] = h.process()
 	}
@@ -162,14 +162,14 @@ func TestMCPOAuthRefreshWaitsForARunningRefreshToSaveTheNewTokens(t *testing.T) 
 
 // MCP OAuth sign-in
 
-func signInWithSettings(t *testing.T, options oauthMcpServerOptions, settings func(serverURL string) mcpext.McpOAuthSettings) error {
+func signInWithSettings(t *testing.T, options oauthMcpServerOptions, settings func(serverURL string) oauth.McpOAuthSettings) error {
 	t.Helper()
 	server := startOAuthMcpServer(t, options)
 	store, err := mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, "").ForServer("test", server.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := mcpext.McpOAuthSettings{}
+	s := oauth.McpOAuthSettings{}
 	if settings != nil {
 		s = settings(server.URL)
 	}
@@ -208,7 +208,7 @@ func TestMCPOAuthSignInKeepsTheGrantedScopeWhenTheServerAsksForMore(t *testing.T
 	prompt := &recordingPrompt{}
 	signInWith := func(challenge oauth.OAuthChallenge) error {
 		return mcpext.SignInMcpServer(ctx, mcpext.SignInOptions{
-			ServerURL: server.URL, Store: store, Settings: mcpext.McpOAuthSettings{}, Challenge: &challenge, Prompt: prompt,
+			ServerURL: server.URL, Store: store, Settings: oauth.McpOAuthSettings{}, Challenge: &challenge, Prompt: prompt,
 		})
 	}
 	grantedScope := func() string {
@@ -250,7 +250,7 @@ func TestMCPOAuthSignInKeepsTheGrantedScopeWhenTheServerAsksForMore(t *testing.T
 
 // #10172
 func TestMCPOAuthSignInUsesTheConfiguredAuthorizationServerMetadataURL(t *testing.T) {
-	err := signInWithSettings(t, oauthMcpServerOptions{}, func(serverURL string) mcpext.McpOAuthSettings {
+	err := signInWithSettings(t, oauthMcpServerOptions{}, func(serverURL string) oauth.McpOAuthSettings {
 		base, err := url.Parse(serverURL)
 		if err != nil {
 			t.Fatal(err)
@@ -259,14 +259,14 @@ func TestMCPOAuthSignInUsesTheConfiguredAuthorizationServerMetadataURL(t *testin
 		if err != nil {
 			t.Fatal(err)
 		}
-		return mcpext.McpOAuthSettings{AuthServerMetadataURL: &missing}
+		return oauth.McpOAuthSettings{AuthServerMetadataURL: &missing}
 	})
 	if err == nil || !strings.Contains(err.Error(), "HTTP 404 loading authorization server metadata") {
 		t.Fatalf("err = %v", err)
 	}
 }
 
-// #10565 (oauth.ts signInMcpServer): ending the context stops the sign-in at any step with McpSignInCancelledError, also while the authorization server hangs, and a context that already ended never starts it.
+// #10565 (oauth.ts signInMcpServer): ending the context stops the sign-in at any step with oauth.McpSignInCancelledError, also while the authorization server hangs, and a context that already ended never starts it.
 func TestMCPOAuthSignInEndsWithACancellationWhenItsContextEnds(t *testing.T) {
 	server := startOAuthMcpServer(t)
 	server.stallPath("/.well-known/oauth-authorization-server")
@@ -300,7 +300,7 @@ func TestMCPOAuthSignInEndsWithACancellationWhenItsContextEnds(t *testing.T) {
 	select {
 	case err := <-done:
 		if !isSignInCancelled(err) {
-			t.Fatalf("sign-in error = %v, want McpSignInCancelledError", err)
+			t.Fatalf("sign-in error = %v, want oauth.McpSignInCancelledError", err)
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the sign-in ignored its cancelled context")

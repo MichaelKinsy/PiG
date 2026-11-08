@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -15,47 +16,27 @@ import (
 func execNothing(context.Context, json.RawMessage) (json.RawMessage, error) { return nil, nil }
 
 func typeOf(schema string) string {
-	typ, err := codemode.SchemaToType(js(schema), codemode.SchemaToTypeOptions{})
-	if err != nil {
-		panic(err)
-	}
-	return typ
+	return codemode.SchemaToType(js(schema), codemode.SchemaToTypeOptions{})
 }
 
 func mustSchemaToType(t *testing.T, schema json.RawMessage, options codemode.SchemaToTypeOptions) string {
 	t.Helper()
-	typ, err := codemode.SchemaToType(schema, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return typ
+	return codemode.SchemaToType(schema, options)
 }
 
 func mustSignature(t *testing.T, tool codemode.Tool, options codemode.ToolRenderOptions) string {
 	t.Helper()
-	signature, err := codemode.RenderToolSignature(tool, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return signature
+	return codemode.RenderToolSignature(tool, options)
 }
 
 func mustSample(t *testing.T, tool codemode.Tool, options codemode.ToolRenderOptions) string {
 	t.Helper()
-	sample, err := codemode.RenderToolSample(tool, options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return sample
+	return codemode.RenderToolSample(tool, options)
 }
 
 func mustDeclarations(t *testing.T, options codemode.RenderDeclarationsOptions) string {
 	t.Helper()
-	declarations, err := codemode.RenderDeclarations(options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return declarations
+	return codemode.RenderDeclarations(options)
 }
 
 func check(t *testing.T, got, want string) {
@@ -279,35 +260,70 @@ func TestDeclarationOptionsDistinguishAbsentFromZero(t *testing.T) {
 	check(t, mustSample(t, tool, codemode.ToolRenderOptions{InputMaxChars: new(0)}), "\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { t(args: unknown): Promise<unknown>; };\n```")
 }
 
-// Pi's resolveRef decodes each $ref segment with decodeURIComponent, which throws a URIError for a malformed escape or for
-// escapes that do not form UTF-8. The error leaves every render function that expands a schema, rather than the reference
-// rendering as `unknown`. A well-formed reference still resolves.
-func TestMalformedRefPercentEncodingIsAnError(t *testing.T) {
+// Pi's resolveSchemaRef decodes each $ref segment with decodeURIComponent and, since 6d3e342b2 (#11803), a malformed escape (or escapes that do not
+// form UTF-8) names nothing instead of throwing a URIError: every render function renders the reference as `unknown`. A well-formed reference still
+// resolves.
+func TestMalformedRefPercentEncodingRendersAsUnknown(t *testing.T) {
 	bad := []string{`#/$defs/%E0%A4%A`, `#/$defs/%`, `#/$defs/%FF`}
 	for _, ref := range bad {
 		schema := js(`{"type":"object","properties":{"a":{"$ref":"` + ref + `"}},"$defs":{}}`)
 		tool := codemode.Tool{Name: "t", InputSchema: schema, OutputSchema: schema}
-		if _, err := codemode.SchemaToType(schema, codemode.SchemaToTypeOptions{}); err == nil {
-			t.Errorf("SchemaToType(%s): want an error", ref)
+		const want = "{ a?: unknown; }"
+		if got := codemode.SchemaToType(schema, codemode.SchemaToTypeOptions{}); got != want {
+			t.Errorf("SchemaToType(%s) = %q, want %q", ref, got, want)
 		}
-		if _, err := codemode.RenderToolSignature(tool, codemode.ToolRenderOptions{}); err == nil {
-			t.Errorf("RenderToolSignature(%s): want an error", ref)
+		if got := codemode.RenderToolSignature(tool, codemode.ToolRenderOptions{}); got != "t(args: "+want+"): Promise<"+want+">;" {
+			t.Errorf("RenderToolSignature(%s) = %q", ref, got)
 		}
-		if _, err := codemode.RenderToolSample(tool, codemode.ToolRenderOptions{}); err == nil {
-			t.Errorf("RenderToolSample(%s): want an error", ref)
+		if got := codemode.RenderToolSample(tool, codemode.ToolRenderOptions{}); !strings.Contains(got, "t(args: "+want+")") {
+			t.Errorf("RenderToolSample(%s) = %q", ref, got)
 		}
-		if _, err := codemode.RenderToolOutputType(schema); err == nil {
-			t.Errorf("RenderToolOutputType(%s): want an error", ref)
+		if got := codemode.RenderToolOutputType(schema); got != want {
+			t.Errorf("RenderToolOutputType(%s) = %q", ref, got)
 		}
-		if _, err := codemode.RenderDeclarations(codemode.RenderDeclarationsOptions{Tools: []codemode.Tool{tool}}); err == nil {
-			t.Errorf("RenderDeclarations tools(%s): want an error", ref)
+		if got := codemode.RenderDeclarations(codemode.RenderDeclarationsOptions{Tools: []codemode.Tool{tool}}); !strings.Contains(got, "t(args: "+want+")") {
+			t.Errorf("RenderDeclarations tools(%s) = %q", ref, got)
 		}
-		if _, err := codemode.RenderDeclarations(codemode.RenderDeclarationsOptions{Globals: []codemode.Tool{tool}}); err == nil {
-			t.Errorf("RenderDeclarations globals(%s): want an error", ref)
+		if got := codemode.RenderDeclarations(codemode.RenderDeclarationsOptions{Globals: []codemode.Tool{tool}}); !strings.Contains(got, "(args: "+want+")") {
+			t.Errorf("RenderDeclarations globals(%s) = %q", ref, got)
 		}
 	}
 	good := js(`{"type":"object","properties":{"a":{"$ref":"#/$defs/a%20b"}},"$defs":{"a b":{"type":"string"}}}`)
 	if got := mustSchemaToType(t, good, codemode.SchemaToTypeOptions{}); got != "{ a?: string; }" {
 		t.Errorf("well-formed escaped reference = %q", got)
+	}
+}
+
+// Ports packages/codemode/test/declarations.test.ts "resolveSchemaRef" (Pi 6d3e342b2).
+func TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments(t *testing.T) {
+	var root any
+	if err := json.Unmarshal([]byte(`{"$defs":{"item":{"type":"string"},"a/b":{"type":"string"},"c~d":{"type":"string"},"e f":{"type":"string"}}}`), &root); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := codemode.ResolveSchemaRef("#", root); !ok || !reflect.DeepEqual(got, root) {
+		t.Errorf("# = %v, %v", got, ok)
+	}
+	for _, ref := range []string{"#/$defs/item", "#/$defs/a~1b", "#/$defs/c~0d", "#/$defs/e%20f"} {
+		if got, ok := codemode.ResolveSchemaRef(ref, root); !ok || !reflect.DeepEqual(got, map[string]any{"type": "string"}) {
+			t.Errorf("%s = %v, %v", ref, got, ok)
+		}
+	}
+}
+
+func TestResolveSchemaRefReturnsNothingForRemoteMissingAndMalformedReferences(t *testing.T) {
+	var root any
+	if err := json.Unmarshal([]byte(`{"$defs":{"item":{"type":"string"}}}`), &root); err != nil {
+		t.Fatal(err)
+	}
+	for _, ref := range []string{"other.json#/$defs/item", "#/$defs/missing", "#/$defs/%E0%A4%A"} {
+		if got, ok := codemode.ResolveSchemaRef(ref, root); ok {
+			t.Errorf("%s = %v, want nothing", ref, got)
+		}
+		if got, ok := codemode.ResolveSchemaRefJSON(ref, json.RawMessage(`{"$defs":{"item":{"type":"string"}}}`)); ok {
+			t.Errorf("JSON %s = %s, want nothing", ref, got)
+		}
+	}
+	if got, ok := codemode.ResolveSchemaRefJSON("#/$defs/item", json.RawMessage(`{"$defs":{"item":{"b":1,"a":2}}}`)); !ok || string(got) != `{"b":1,"a":2}` {
+		t.Errorf("JSON #/$defs/item = %s, %v", got, ok)
 	}
 }

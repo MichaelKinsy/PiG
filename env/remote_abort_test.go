@@ -1,6 +1,6 @@
 package env
 
-// Ports packages/env/test/remote-abort.test.ts (Pi main c96e368e2, D304): aborts and timeouts against a remote host that does not answer; the call settles on
+// Ports packages/env/test/remote-abort.test.ts (Pi main c96e368e2): aborts and timeouts against a remote host that does not answer; the call settles on
 // time, whatever the host does. The two "daemons" of the test are this test binary in the modes TestMain gives it.
 
 import (
