@@ -882,6 +882,13 @@ dest = "*any"
 count = 1
 
 [[hit]]
+file = "mcp/deepjson.go"
+func = "unmarshalDeep"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
 file = "mcp/oauth/jsonextra.go"
 func = "unmarshalWithExtra"
 call = "json.Unmarshal"

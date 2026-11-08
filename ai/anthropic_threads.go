@@ -200,32 +200,66 @@ func (full *anthThreadPayload) hashPrefix(providerID, baseURL string, messages [
 // last request has none in this one. Extensions may add markers anywhere too. To attach that marker, the newest user message's string
 // content is sent as one text block; the next request sends the same message as a string.
 func normalizeThreadMessage(message json.RawMessage) ([]byte, error) {
-	decoder := json.NewDecoder(bytes.NewReader(message))
-	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
+	var value json.RawMessage
+	if err := json.NewDecoder(bytes.NewReader(message)).Decode(&value); err != nil {
 		return nil, err
 	}
-	return json.Marshal(normalizeThreadValue(value))
+	return normalizeThreadValue(value)
 }
 
-func normalizeThreadValue(value any) any {
-	switch v := value.(type) {
-	case map[string]any:
-		delete(v, "cache_control")
-		for key, member := range v {
-			if text, ok := member.(string); ok && key == "content" {
-				v[key] = []any{map[string]any{"type": "text", "text": text}}
+// normalizeThreadValue re-encodes value with sorted keys, strings decoded and encoded again and every other scalar as it is written.
+func normalizeThreadValue(value json.RawMessage) (json.RawMessage, error) {
+	value = bytes.TrimSpace(value)
+	switch value[0] {
+	case '{':
+		var members map[string]json.RawMessage
+		if err := json.Unmarshal(value, &members); err != nil {
+			return nil, err
+		}
+		delete(members, "cache_control")
+		for key, member := range members {
+			if key == "content" && member[0] == '"' {
+				var text string
+				if err := json.Unmarshal(member, &text); err != nil {
+					return nil, err
+				}
+				block, err := json.Marshal([]map[string]string{{"type": "text", "text": text}})
+				if err != nil {
+					return nil, err
+				}
+				members[key] = block
 				continue
 			}
-			v[key] = normalizeThreadValue(member)
+			normalized, err := normalizeThreadValue(member)
+			if err != nil {
+				return nil, err
+			}
+			members[key] = normalized
 		}
-	case []any:
-		for i, member := range v {
-			v[i] = normalizeThreadValue(member)
+		//portlint:allow mapkeyorder the result only feeds the thread hash, which wants one order for equal messages: sorted keys, as the map[string]any it replaced encoded
+		return json.Marshal(members)
+	case '[':
+		var members []json.RawMessage
+		if err := json.Unmarshal(value, &members); err != nil {
+			return nil, err
 		}
+		for i, member := range members {
+			normalized, err := normalizeThreadValue(member)
+			if err != nil {
+				return nil, err
+			}
+			members[i] = normalized
+		}
+		//portlint:allow nilslicenull members came from a JSON array, so it is non-nil and encodes as [] when empty
+		return json.Marshal(members)
+	case '"':
+		var text string
+		if err := json.Unmarshal(value, &text); err != nil {
+			return nil, err
+		}
+		return json.Marshal(text)
 	}
-	return value
+	return value, nil
 }
 
 // anthThreadRequest is a request sent with a thread member.
@@ -317,14 +351,17 @@ func anthThreadErrorCode(body []byte) string {
 	var envelope struct {
 		Error struct {
 			Details struct {
-				ErrorCode any `json:"error_code"`
+				ErrorCode json.RawMessage `json:"error_code"`
 			} `json:"details"`
 		} `json:"error"`
 	}
 	if json.Unmarshal(body, &envelope) != nil {
 		return ""
 	}
-	code, _ := envelope.Error.Details.ErrorCode.(string)
+	var code string
+	if json.Unmarshal(envelope.Error.Details.ErrorCode, &code) != nil {
+		return ""
+	}
 	return code
 }
 

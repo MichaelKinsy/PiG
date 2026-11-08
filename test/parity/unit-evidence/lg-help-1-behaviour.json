@@ -2606,6 +2606,15 @@
     "upstream_reference": "edit-diff.ts getReplacementLineRange (:84-107); truncate.ts truncateMiddle (:292-314); edit.ts prepareEditArguments/isSingleEditInput (:39-70)"
   },
   {
+    "mutation": "mcp/output_limit.go truncateMiddle head walk (the code moved from internal/codingagent/tools/truncate.go L291, where the 76-mutant matrix killed it with the test that moved here as TestTruncateMiddle/stops_at_the_ends_of_content_without_character_starts; not re-run after the move). L291 is Go-only robustness: Pi strings never begin with a continuation byte.",
+    "package": "./mcp",
+    "tests": [
+      "TestTruncateMiddle"
+    ],
+    "upstream": "packages/mcp/src/output-limit.ts",
+    "upstream_reference": "output-limit.ts truncateMiddle (Pi 76c040a2a; before it coding-agent core/tools/truncate.ts truncateMiddle :292-314)"
+  },
+  {
     "mutation": "ToolHooks.AfterTool dispatch in durable/core/driver/hook.go: 4 mutants (nil-result/error check, nil hook, result argument, call argument). The nil-result check survived until TestAfterToolHookKeepsTheResultOrFailsAsThrown (nil result keeps the original, error with and without a result is thrown); the nil-hook and call mutants are killed by the existing tests; the result-argument mutant does not compile (the result variable is left unused) and the existing TestHooksReturnTheResultObjectOfEachHook asserts the result the hook sees. The Go member omits Pi's trailing context argument because ctx is the hook context (signature-mismatch finding flip:9db75b20: a language mapping, not a defect).",
     "package": "./durable/core/driver",
     "tests": [
