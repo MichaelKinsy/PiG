@@ -35,6 +35,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/terminals"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/voice"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/web-shell"
 )
 
