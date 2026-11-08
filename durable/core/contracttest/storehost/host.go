@@ -54,8 +54,8 @@ func bind(params []abi.Value) []any {
 }
 
 // apply runs the commits of the current step: each in its own transaction, except that a run of joined commits (the batches of one
-// Storage call, ABI section 4.4) is one transaction. A trace line follows each commit once the store holds it, so a process killed
-// after commit k leaves the commit in the store and in the trace.
+// Storage call, ABI section 4.4) is one transaction. One trace line follows each transaction once the store holds it, so a process
+// killed after commit k leaves the commit in the store and in the trace.
 // RecordType is the record_ids type that owns id, or "" when no committed record does.
 func (h *Host) RecordType(id int64) (string, error) {
 	var kind string
@@ -114,10 +114,14 @@ func (h *Host) applyRun(run []abi.Commit) error {
 		return err
 	}
 	if h.trace != nil {
-		for k, c := range run {
-			if err := h.trace.Commit("s0", c.Seq, recs[k]); err != nil {
-				return err
-			}
+		// One transaction is one trace line, as Pi's capsql records it: a call's batches are the statements of one commit, labelled by the
+		// first batch's seq (SqliteStorage.commit writes the call's metadata once).
+		stmts := recs[0]
+		for _, rec := range recs[1:] {
+			stmts = append(stmts, rec...)
+		}
+		if err := h.trace.Commit("s0", run[0].Seq, stmts); err != nil {
+			return err
 		}
 	}
 	return nil
