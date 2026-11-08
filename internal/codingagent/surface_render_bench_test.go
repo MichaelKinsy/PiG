@@ -22,9 +22,9 @@ func BenchmarkLongTranscriptSurfaceRender(b *testing.B) {
 		bytes += len(line) + 1
 	}
 	b.ReportAllocs()
-	b.ReportMetric(float64(bytes), "frame-bytes")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		m.chatContainer.Render(100)
 	}
+	b.ReportMetric(float64(bytes), "frame-bytes")
 }
