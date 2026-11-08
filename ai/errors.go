@@ -261,13 +261,17 @@ func nodeBodyFailure(cause error) (message, code string) {
 
 // nodeConnectionFailure is the message and code of the cause undici attaches to "fetch failed" for a failed connection: Node's
 // `connect ECONNREFUSED 127.0.0.1:8080` for a refused or unreachable dial and `getaddrinfo ENOTFOUND host` for a name that does not
-// resolve. It is empty for a failure with no such Node counterpart.
+// resolve, and `connect ECONNRESET 127.0.0.1:8080` for a peer that resets the connection this request opened. It is empty for a failure with no
+// such Node counterpart.
 func nodeConnectionFailure(cause error) (message, code string) {
 	if errors.Is(cause, errFetchBadPort) {
 		return "bad port", ""
 	}
 	if dns, ok := errors.AsType[*net.DNSError](cause); ok && dns.IsNotFound {
 		return "getaddrinfo ENOTFOUND " + dns.Name, "ENOTFOUND"
+	}
+	if reset, ok := errors.AsType[*freshConnectionReset](cause); ok {
+		return "connect ECONNRESET " + reset.remote.String(), "ECONNRESET"
 	}
 	if op, ok := errors.AsType[*net.OpError](cause); ok && op.Op == "dial" && op.Addr != nil {
 		if code = nodeerrno.ErrorCode(op.Err); code != "" {
