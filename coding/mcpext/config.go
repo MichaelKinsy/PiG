@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/text"
+	"github.com/MichaelKinsy/PiG/mcp"
 )
 
 // Ports packages/coding-agent/src/extensions/mcp/config.ts.
@@ -97,12 +98,6 @@ func isJSONObject(raw json.RawMessage) bool { return len(raw) > 0 && raw[0] == '
 // upstream: packages/coding-agent/src/extensions/mcp/config.ts:OVERRIDE_KEYS
 var overrideKeys = []string{"enabled", "exposure", "toolExposure"}
 
-// isOverride reports whether an entry overrides a server defined elsewhere
-// instead of defining one: it has no `command`, `url`, or `type` member.
-func isOverride(value *orderedjson.Object) bool {
-	return !value.Has("command") && !value.Has("url") && !value.Has("type")
-}
-
 func (s *configState) readFile(path, scope string) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -150,7 +145,7 @@ func (s *configState) readFile(path, scope string) {
 	for _, name := range servers.Keys() {
 		raw, _ := servers.Get(name)
 		if scope == "project" && isJSONObject(raw) {
-			if value, err := orderedjson.Parse(raw); err == nil && isOverride(value) {
+			if value, err := orderedjson.Parse(raw); err == nil && mcp.IsMcpServerOverride(value) {
 				s.readOverride(path, name, value)
 				continue
 			}
@@ -162,7 +157,7 @@ func (s *configState) readFile(path, scope string) {
 		}
 		// Names that differ only in `-` and `_` would share a namespace.
 		if clash := slices.IndexFunc(s.names, func(other string) bool {
-			return other != name && extension.McpNamespace(other) == extension.McpNamespace(name)
+			return other != name && mcp.McpNamespace(other) == mcp.McpNamespace(name)
 		}); clash >= 0 {
 			s.errors = append(s.errors, fmt.Sprintf(`%s: server "%s" conflicts with "%s"`, path, name, s.names[clash]))
 			continue
@@ -292,7 +287,7 @@ func UpdateMcpServerConfig(path, name string, patch McpServerConfigPatch, option
 		if server == nil {
 			return false, fmt.Errorf(`%s does not define MCP server "%s"`, path, name)
 		}
-		keepDefaults := isOverride(server)
+		keepDefaults := mcp.IsMcpServerOverride(server)
 		if patch.Enabled != nil {
 			if *patch.Enabled && !keepDefaults {
 				server.Delete("enabled")

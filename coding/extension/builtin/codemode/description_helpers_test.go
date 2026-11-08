@@ -1,35 +1,25 @@
 package codemode_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	codemode "github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode"
 )
 
-// mustDescription is CreateDescription for tests whose schemas hold only decodable references.
+// mustDescription is CreateDescription for tests.
 func mustDescription(t *testing.T, tools []extension.AgentTool, options codemode.DescriptionOptions) string {
 	t.Helper()
-	description, err := codemode.CreateDescription(tools, options)
-	if err != nil {
-		t.Fatalf("CreateDescription: %v", err)
-	}
-	return description
+	return codemode.CreateDescription(tools, options)
 }
 
-// Pi's renderToolSample throws a URIError for a $ref segment with malformed percent-encoding; the description carries it out
-// as an error, and the tool's prepareLoadout hook throws it (a panic the session reports as a prepare_loadout error).
-func TestMalformedRefInAToolSchemaSurfacesFromTheDescription(t *testing.T) {
+// Pi 6d3e342b2 (#11803): a $ref with a malformed percent escape in one tool's schema renders as `unknown` in that tool's declaration. Before, the
+// description threw a URIError, and prepareLoadout with it, which failed every codemode run.
+func TestMalformedRefInAToolSchemaRendersAsUnknownInTheDescription(t *testing.T) {
 	bad := agentTool("bad", "Has a malformed reference.")
 	bad.Parameters = []byte(`{"type":"object","properties":{"a":{"$ref":"#/$defs/%FF"}},"$defs":{}}`)
-	if _, err := codemode.CreateDescription([]extension.AgentTool{bad}, codemode.DescriptionOptions{}); err == nil {
-		t.Fatal("CreateDescription: want the URIError equivalent")
+	if got := codemode.CreateDescription([]extension.AgentTool{bad}, codemode.DescriptionOptions{}); !strings.Contains(got, "bad(args: { a?: unknown; })") {
+		t.Fatalf("description = %q", got)
 	}
-	defer func() {
-		if recover() == nil {
-			t.Fatal("prepareLoadout: want a thrown error")
-		}
-	}()
-	tool := codemode.Definition(codemode.Options{})
-	tool.PrepareLoadout(extension.ToolLoadout{Callable: []extension.AgentTool{bad}, Declared: []extension.AgentTool{bad}})
 }
