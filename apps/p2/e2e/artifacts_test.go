@@ -76,7 +76,8 @@ func versionsOf(artifacts delta.JsonValue) []float64 {
 
 func TestArtifactsFakeProvider(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"share.test"}})
+	var rebuilds p2test.Rebuilds
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"share.test"}, BuildRevision: rebuilds.Revision})
 	owner := fixture.Browser()
 	sessions, err := p2test.HoldIn(owner, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
 	if err != nil {
@@ -194,6 +195,7 @@ func TestArtifactsFakeProvider(t *testing.T) {
 	})
 
 	t.Run("retains both versions and the independent index across worker restart and compatible reload", func(t *testing.T) {
+		rebuilds.Rebuild("artifacts")
 		if _, err := fixture.Server.Reload([]string{"artifacts"}, context.Background()); err != nil {
 			t.Fatal(err)
 		}
