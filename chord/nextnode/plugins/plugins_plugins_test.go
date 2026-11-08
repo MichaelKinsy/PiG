@@ -513,7 +513,7 @@ func TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostS
 	pcWrite(t, root, "a", "worker.ts", "// a\n")
 	c.waitMarks(t, "dirty a", pcDirty("@test/a"))
 	var none []string
-	stopped := []RolloutHost{{Kind: RolloutStopped, Host: "session|S1", Stopped: true}}
+	stopped := []RolloutHost{{Kind: RolloutStopped, Host: "session|S1"}}
 	c.rollout(t, []RolloutStep{pcStep("workers", &none, pcOutcome{hosts: stopped})}, c.build(t, "@test/a"))
 	if marks := c.Marks(); len(marks.Dirty) != 0 {
 		t.Fatalf("dirty = %v, want none", marks.Dirty)

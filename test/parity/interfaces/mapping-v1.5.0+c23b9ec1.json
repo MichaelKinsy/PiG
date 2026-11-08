@@ -116913,8 +116913,9 @@
     },
     {
       "id": "pkg:chord/app#AppWorkerKind",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:93b5a196cb49234598b5e9c8756a63f7a4ce93f138c67872a8c01f29986055e9"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:93b5a196cb49234598b5e9c8756a63f7a4ce93f138c67872a8c01f29986055e9",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/app/app.ts AppWorkerKind<P extends Principal> = {kind: KindShape, entry, execArgv?, env?, facet?, start, authorize, idleMs?}. Only `kind: KindShape` is type-level: KindShape = { kind: string; \"~params\"?: Params } (contracts/host-kind.ts) is a structural TypeScript type that a host kind satisfies, with a type-only `~params` (host-kind.ts: 'Type only: absent at runtime'); owner 2026-10-29/30 designed it out (type-level mechanics, see pkg:chord/next#KindShape), and the Go type that carries the shape where it is used is contracts.HostKind (host_kind.go), which AppWorkerKind.Kind is. Every other member is a Go field of the same meaning, exercised as Pi's: Entry, ExecArgv, Env, Facet, Start, Authorize, IdleMs; P is the Principal alias (data.Principal) as in the ported AppOptions. Intention check. protects: app.test.ts 'workers' (a worker per address with the kit's start data and its own directory, two kinds side by side; a worker kind needs principal.worker) and 'applies changes' (the kind's entry rebuilt and rolled out). pigTest: TestAppStartsAWorkerPerAddressWithTheKitsStartDataAndItsOwnDirectoryTwoKindsSideBySide, TestAppStartsWithoutWorkerKindsAndWithoutAWorkerPrincipalWorkerKindsNeedIt, TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything, TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes (chord/nextnode/app). whyNot: Go has no structural type over a struct with an unexported params field and a type-only member; the detector's T12 compares `~params`'s Params record with HostKind's ParamsData, which is the same type-level difference the owner designed out at KindShape."
     },
     {
       "id": "pkg:chord/app#ARCHIVE_FORMAT",
@@ -122162,28 +122163,84 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9b9e12fcf22d73cf2b0715ae1e24b86bf2be3642494576e3621e564651f45de1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9b9e12fcf22d73cf2b0715ae1e24b86bf2be3642494576e3621e564651f45de1",
+      "rationale": "Derived by the interface gap detector: PluginRuntime is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:load",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678",
+      "rationale": "Derived by the interface gap detector: PluginRuntime::property:load is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer",
+        "test:chord/nextnode/plugins/plugins_node_callbacks_test.go#TestGoPackageAnAppModuleImportsItBySpecifier"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:load::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts: load takes a live Host (and core PluginFacets and live module values) that the runtime evaluates in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost, plugins_node*.go) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); Load returns the host and reloads address it by the Go handle. Intention check. protects: runtime.test.ts ('loading and reloading with complete sets': a failed build or evaluation is left out and reported with the host's report, same digests unchanged, a changed one applied, a loaded one not shipped removed, the loaded facet of a failing new build kept; 'required roots at load': a failed required plugin rejects Load with a PluginError after the host's load settled, a failed plugin of a non-required root is only reported; 'the runtime's imports': a worker that only evaluates never imports esbuild) and plugins.test.ts ('per plugin at startup' and 'at reload', the app's API and required roots, moved and removed plugins, 'fix round 1': reloads of one host serialized, a reload committed before an aborted wait is adopted, a kind its rebuilt facets no longer have leaves the plugin out, a structured clone reloads as the build, a changed package.json is read again, GC of old facets). pigTest: the same titles run through RuntimeLoad and the Node host, observing the host's load and reload reports and the facets the host holds: plugins_runtime_test.go TestRuntimeLoadsASetAndLeavesOutAPluginWhoseBuildOrEvaluationFailedReportedWithTheHostsReport, TestRuntimeReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved, TestRuntimeKeepsTheLoadedFacetOfAPluginWhoseNewBuildOrEvaluationFailedAnAddedFailingOneIsLeftOut, TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled, TestRuntimeRequiredRootsAtLoadOnlyReportsAFailedPluginOfARootThatIsNotRequired, TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt; plugins_plugins_test.go TestPluginsPerPluginAtStartup..., TestPluginsPerPluginAtReload..., TestPluginsTheAppsAPIRequiredRootsAndInstalls..., TestPluginsFixRound1..., TestPluginsGCCollectsOldFacetsOver200Reloads...; plugins_endtoend_test.go TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth. whyNot: the host-handoff form (Load(host, options)) needs a Go-held handle to a JavaScript host that this process does not run; it waits for the queued post-0.8.0 refactor, and the cases above stay the acceptance for it. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:reload",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433",
+      "rationale": "Derived by the interface gap detector: PluginRuntime::property:reload is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestSyncACallbackCannotCallItsNodeHost",
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:reload::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts: reload takes a live Host (and core PluginFacets and live module values) that the runtime evaluates in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost, plugins_node*.go) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); Load returns the host and reloads address it by the Go handle. Intention check. protects: runtime.test.ts ('loading and reloading with complete sets': a failed build or evaluation is left out and reported with the host's report, same digests unchanged, a changed one applied, a loaded one not shipped removed, the loaded facet of a failing new build kept; 'required roots at load': a failed required plugin rejects Load with a PluginError after the host's load settled, a failed plugin of a non-required root is only reported; 'the runtime's imports': a worker that only evaluates never imports esbuild) and plugins.test.ts ('per plugin at startup' and 'at reload', the app's API and required roots, moved and removed plugins, 'fix round 1': reloads of one host serialized, a reload committed before an aborted wait is adopted, a kind its rebuilt facets no longer have leaves the plugin out, a structured clone reloads as the build, a changed package.json is read again, GC of old facets). pigTest: the same titles run through RuntimeLoad and the Node host, observing the host's load and reload reports and the facets the host holds: plugins_runtime_test.go TestRuntimeLoadsASetAndLeavesOutAPluginWhoseBuildOrEvaluationFailedReportedWithTheHostsReport, TestRuntimeReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved, TestRuntimeKeepsTheLoadedFacetOfAPluginWhoseNewBuildOrEvaluationFailedAnAddedFailingOneIsLeftOut, TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled, TestRuntimeRequiredRootsAtLoadOnlyReportsAFailedPluginOfARootThatIsNotRequired, TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt; plugins_plugins_test.go TestPluginsPerPluginAtStartup..., TestPluginsPerPluginAtReload..., TestPluginsTheAppsAPIRequiredRootsAndInstalls..., TestPluginsFixRound1..., TestPluginsGCCollectsOldFacetsOver200Reloads...; plugins_endtoend_test.go TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth. whyNot: the host-handoff form (Load(host, options)) needs a Go-held handle to a JavaScript host that this process does not run; it waits for the queued post-0.8.0 refactor, and the cases above stay the acceptance for it. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginScript",
@@ -122209,8 +122266,9 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#RuntimeLoad",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:eeb432ddebc2adb516c4c80d9abf3edc5ca4ab2ecbbb43290fa1623f614ea047"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:eeb432ddebc2adb516c4c80d9abf3edc5ca4ab2ecbbb43290fa1623f614ea047",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts `RuntimeLoad` ({kind, core: PluginFacet[], scripts, modules: HostPackages}) is the options of a load into a live Host, with live core facets and module values. RuntimeLoad is PiG's options of the subprocess start (Kind, Core as module files, Scripts, Modules as module paths, plus the host's Address, Principal, Peer, Heartbeat and timeouts) because the plugin host is started by Load itself, and a JavaScript facet or module instance cannot cross the process boundary (D607, D502). Intention check. protects: what runtime.test.ts and plugins.test.ts check of a load's inputs: core facets load before the plugins, the modules are the packages the scripts' imports are answered with and are kept for the host's reloads, the kind names the set. pigTest: every Load of plugins_runtime_test.go (pcRuntimeLoad builds a RuntimeLoad) and plugins_plugins_test.go runs through the Node host: TestRuntimeLoadsASetAndLeavesOutAPluginWhoseBuildOrEvaluationFailedReportedWithTheHostsReport, TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled, TestRuntimeTheHostsBackgroundErrorsCarryEveryFieldOfTheirKind, TestRuntimeTheHostsReadyTimeoutIsTheAppsAndAParkedAttemptIsReportedWithWhatItWaitsFor. whyNot: the host field of Pi's signature, and with it the live-value fields, waits for the queued post-0.8.0 refactor so Load takes a host as Pi does. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins#AppApi",
@@ -123032,33 +123090,107 @@
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e4ea6ba85df1ba74d00cb4876a78289f23725e48355ff3ec911a9a52cc3d3056"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e4ea6ba85df1ba74d00cb4876a78289f23725e48355ff3ec911a9a52cc3d3056",
+      "rationale": "Derived by the interface gap detector: PluginRuntime is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:load",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678",
+      "rationale": "Derived by the interface gap detector: PluginRuntime::property:load is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer",
+        "test:chord/nextnode/plugins/plugins_node_callbacks_test.go#TestGoPackageAnAppModuleImportsItBySpecifier"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:load::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts: load takes a live Host (and core PluginFacets and live module values) that the runtime evaluates in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost, plugins_node*.go) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); Load returns the host and reloads address it by the Go handle. Intention check. protects: runtime.test.ts ('loading and reloading with complete sets': a failed build or evaluation is left out and reported with the host's report, same digests unchanged, a changed one applied, a loaded one not shipped removed, the loaded facet of a failing new build kept; 'required roots at load': a failed required plugin rejects Load with a PluginError after the host's load settled, a failed plugin of a non-required root is only reported; 'the runtime's imports': a worker that only evaluates never imports esbuild) and plugins.test.ts ('per plugin at startup' and 'at reload', the app's API and required roots, moved and removed plugins, 'fix round 1': reloads of one host serialized, a reload committed before an aborted wait is adopted, a kind its rebuilt facets no longer have leaves the plugin out, a structured clone reloads as the build, a changed package.json is read again, GC of old facets). pigTest: the same titles run through RuntimeLoad and the Node host, observing the host's load and reload reports and the facets the host holds: plugins_runtime_test.go TestRuntimeLoadsASetAndLeavesOutAPluginWhoseBuildOrEvaluationFailedReportedWithTheHostsReport, TestRuntimeReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved, TestRuntimeKeepsTheLoadedFacetOfAPluginWhoseNewBuildOrEvaluationFailedAnAddedFailingOneIsLeftOut, TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled, TestRuntimeRequiredRootsAtLoadOnlyReportsAFailedPluginOfARootThatIsNotRequired, TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt; plugins_plugins_test.go TestPluginsPerPluginAtStartup..., TestPluginsPerPluginAtReload..., TestPluginsTheAppsAPIRequiredRootsAndInstalls..., TestPluginsFixRound1..., TestPluginsGCCollectsOldFacetsOver200Reloads...; plugins_endtoend_test.go TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth. whyNot: the host-handoff form (Load(host, options)) needs a Go-held handle to a JavaScript host that this process does not run; it waits for the queued post-0.8.0 refactor, and the cases above stay the acceptance for it. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:reload",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433",
+      "rationale": "Derived by the interface gap detector: PluginRuntime::property:reload is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestSyncACallbackCannotCallItsNodeHost",
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:reload::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts: reload takes a live Host (and core PluginFacets and live module values) that the runtime evaluates in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost, plugins_node*.go) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); Load returns the host and reloads address it by the Go handle. Intention check. protects: runtime.test.ts ('loading and reloading with complete sets': a failed build or evaluation is left out and reported with the host's report, same digests unchanged, a changed one applied, a loaded one not shipped removed, the loaded facet of a failing new build kept; 'required roots at load': a failed required plugin rejects Load with a PluginError after the host's load settled, a failed plugin of a non-required root is only reported; 'the runtime's imports': a worker that only evaluates never imports esbuild) and plugins.test.ts ('per plugin at startup' and 'at reload', the app's API and required roots, moved and removed plugins, 'fix round 1': reloads of one host serialized, a reload committed before an aborted wait is adopted, a kind its rebuilt facets no longer have leaves the plugin out, a structured clone reloads as the build, a changed package.json is read again, GC of old facets). pigTest: the same titles run through RuntimeLoad and the Node host, observing the host's load and reload reports and the facets the host holds: plugins_runtime_test.go TestRuntimeLoadsASetAndLeavesOutAPluginWhoseBuildOrEvaluationFailedReportedWithTheHostsReport, TestRuntimeReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved, TestRuntimeKeepsTheLoadedFacetOfAPluginWhoseNewBuildOrEvaluationFailedAnAddedFailingOneIsLeftOut, TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled, TestRuntimeRequiredRootsAtLoadOnlyReportsAFailedPluginOfARootThatIsNotRequired, TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt; plugins_plugins_test.go TestPluginsPerPluginAtStartup..., TestPluginsPerPluginAtReload..., TestPluginsTheAppsAPIRequiredRootsAndInstalls..., TestPluginsFixRound1..., TestPluginsGCCollectsOldFacetsOver200Reloads...; plugins_endtoend_test.go TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth. whyNot: the host-handoff form (Load(host, options)) needs a Go-held handle to a JavaScript host that this process does not run; it waits for the queued post-0.8.0 refactor, and the cases above stay the acceptance for it. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins#Plugins",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:af87ba047cef36889685ba09806479f6072825418935da65a47a32a659dcee04"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:af87ba047cef36889685ba09806479f6072825418935da65a47a32a659dcee04",
+      "rationale": "Derived by the interface gap detector: Plugins is Go chord/nextnode/plugins/plugins_plugins.go#Plugins (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:build",
@@ -123302,23 +123434,61 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:load",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d752c855918c6c0f3ed6612c9f38a6a8ddc5d510f21511f6c8bf20807e2c237b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d752c855918c6c0f3ed6612c9f38a6a8ddc5d510f21511f6c8bf20807e2c237b",
+      "rationale": "Derived by the interface gap detector: Plugins::property:load is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.Load (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAGoCoreFacetNeedingAPluginsTypeKeepsItsOldCodeWhenThePluginFailsToBuild"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:load::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2921880d44f68eca3694c43d3cbef31ac7334a0ea256b41d0c03e6ead0bcefd5"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:2921880d44f68eca3694c43d3cbef31ac7334a0ea256b41d0c03e6ead0bcefd5",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts: load takes a live Host (and core PluginFacets and live module values) that the runtime evaluates in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost, plugins_node*.go) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); Load returns the host and reloads address it by the Go handle. Intention check. protects: runtime.test.ts ('loading and reloading with complete sets': a failed build or evaluation is left out and reported with the host's report, same digests unchanged, a changed one applied, a loaded one not shipped removed, the loaded facet of a failing new build kept; 'required roots at load': a failed required plugin rejects Load with a PluginError after the host's load settled, a failed plugin of a non-required root is only reported; 'the runtime's imports': a worker that only evaluates never imports esbuild) and plugins.test.ts ('per plugin at startup' and 'at reload', the app's API and required roots, moved and removed plugins, 'fix round 1': reloads of one host serialized, a reload committed before an aborted wait is adopted, a kind its rebuilt facets no longer have leaves the plugin out, a structured clone reloads as the build, a changed package.json is read again, GC of old facets). pigTest: the same titles run through RuntimeLoad and the Node host, observing the host's load and reload reports and the facets the host holds: plugins_runtime_test.go TestRuntimeLoadsASetAndLeavesOutAPluginWhoseBuildOrEvaluationFailedReportedWithTheHostsReport, TestRuntimeReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved, TestRuntimeKeepsTheLoadedFacetOfAPluginWhoseNewBuildOrEvaluationFailedAnAddedFailingOneIsLeftOut, TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled, TestRuntimeRequiredRootsAtLoadOnlyReportsAFailedPluginOfARootThatIsNotRequired, TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt; plugins_plugins_test.go TestPluginsPerPluginAtStartup..., TestPluginsPerPluginAtReload..., TestPluginsTheAppsAPIRequiredRootsAndInstalls..., TestPluginsFixRound1..., TestPluginsGCCollectsOldFacetsOver200Reloads...; plugins_endtoend_test.go TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth. whyNot: the host-handoff form (Load(host, options)) needs a Go-held handle to a JavaScript host that this process does not run; it waits for the queued post-0.8.0 refactor, and the cases above stay the acceptance for it. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:reload",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6a2865d5adc2cef1a4a4b9383a0265e099aae003a9a9562a1aa9f34691729813"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6a2865d5adc2cef1a4a4b9383a0265e099aae003a9a9562a1aa9f34691729813",
+      "rationale": "Derived by the interface gap detector: Plugins::property:reload is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample36PluginFailures",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample37PluginImports",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample51SingleFilePlugin"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:reload::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c910862c11d67d2ac83e2dd1794d748ef1d39748e9eadb6a3cd61892321995f8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:c910862c11d67d2ac83e2dd1794d748ef1d39748e9eadb6a3cd61892321995f8",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts: reload takes a live Host (and core PluginFacets and live module values) that the runtime evaluates in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost, plugins_node*.go) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); Load returns the host and reloads address it by the Go handle. Intention check. protects: runtime.test.ts ('loading and reloading with complete sets': a failed build or evaluation is left out and reported with the host's report, same digests unchanged, a changed one applied, a loaded one not shipped removed, the loaded facet of a failing new build kept; 'required roots at load': a failed required plugin rejects Load with a PluginError after the host's load settled, a failed plugin of a non-required root is only reported; 'the runtime's imports': a worker that only evaluates never imports esbuild) and plugins.test.ts ('per plugin at startup' and 'at reload', the app's API and required roots, moved and removed plugins, 'fix round 1': reloads of one host serialized, a reload committed before an aborted wait is adopted, a kind its rebuilt facets no longer have leaves the plugin out, a structured clone reloads as the build, a changed package.json is read again, GC of old facets). pigTest: the same titles run through RuntimeLoad and the Node host, observing the host's load and reload reports and the facets the host holds: plugins_runtime_test.go TestRuntimeLoadsASetAndLeavesOutAPluginWhoseBuildOrEvaluationFailedReportedWithTheHostsReport, TestRuntimeReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved, TestRuntimeKeepsTheLoadedFacetOfAPluginWhoseNewBuildOrEvaluationFailedAnAddedFailingOneIsLeftOut, TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled, TestRuntimeRequiredRootsAtLoadOnlyReportsAFailedPluginOfARootThatIsNotRequired, TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt; plugins_plugins_test.go TestPluginsPerPluginAtStartup..., TestPluginsPerPluginAtReload..., TestPluginsTheAppsAPIRequiredRootsAndInstalls..., TestPluginsFixRound1..., TestPluginsGCCollectsOldFacetsOver200Reloads...; plugins_endtoend_test.go TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth. whyNot: the host-handoff form (Load(host, options)) needs a Go-held handle to a JavaScript host that this process does not run; it waits for the queued post-0.8.0 refactor, and the cases above stay the acceptance for it. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:rollout",
@@ -123436,13 +123606,31 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:step",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:441f2e9794d6493e8e710bca6bc4d66937d0be892c44decf10472aa435596048"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:441f2e9794d6493e8e710bca6bc4d66937d0be892c44decf10472aa435596048",
+      "rationale": "Derived by the interface gap detector: Plugins::property:step is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.Step (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins.Step"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Step"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout"
+      ]
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:step::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b4a3fb09bfd459c2204a36fbd65bc0f12eca393546e572f2c6bbbdfd02daa6ec"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b4a3fb09bfd459c2204a36fbd65bc0f12eca393546e572f2c6bbbdfd02daa6ec",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/plugins.ts `step(name, host)` is an in-process rollout step: `reload(host, built)`, one host named `name`, over a live Host. PiG's Plugins.Step(name, *NodeHost) is the same step over the Node subprocess host Plugins.Load returned (D607); its Reload applies built through Plugins.Reload and reports one RolloutReported host. Intention check. protects: plugins.test.ts 'rollout' (steps run in order, the marks of plugins applied on every step are cleared, a plugin failed on any is kept, a host's error counts as the step's plugins failing there, a host stopped cleanly dirties nothing, a built kind no step shipped stays dirty, a step that rejects stops the rollout with no mark cleared) and 'end to end: a server and a worker' (an edit rolls out server then worker, a broken edit stays old on both). pigTest: plugins_plugins_test.go TestPluginsRolloutRunsTheStepsInOrderClearsTheMarksOfPluginsAppliedOnEveryStepKeepsAPluginFailedOnAny, TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothing, TestPluginsRolloutKeepsDirtyAPluginWhoseBuiltKindNoStepShipped, TestPluginsRolloutStopsAtAStepThatRejectsClearingNoMarkAChangeDuringTheBuildKeepsItsMark (steps over the same RolloutStep type), and Plugins.Step itself through two NodeHosts in plugins_endtoend_test.go TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth, plugins_examples_test.go TestExample35PluginsLoadEditMarkBuildRollOut and TestExample38WatchAndRollout. whyNot: a step over a live Host needs the handoff form of Load (the host is the caller's JavaScript object); it waits for the queued post-0.8.0 refactor. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:watchBase",
@@ -123640,13 +123828,15 @@
     },
     {
       "id": "pkg:chord/plugins#RolloutStep",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:686f8c81c2d841221cdcbe5d9f014784f5196e2397e735756239e43347beff93"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:686f8c81c2d841221cdcbe5d9f014784f5196e2397e735756239e43347beff93",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/plugins.ts RolloutStep = {name, kinds, reload(built, context)}. PiG's RolloutStep carries the same name and kinds; its Reload has one more parameter, `applied`: Pi's step reads `plugins.current(kind)` in the synchronous part after its ship (no await between them), and a Go step cannot read that atomically with the ship, so the rollout hands the kinds' sets over (documented on the type). Steps built with Plugins.Step run over a NodeHost (D607). Intention check. protects: plugins.test.ts 'rollout' and 'current sets' (a rollout applies a build to the current set of each step's kind right before that step, so the set a step reloads with is the one this rollout left, not another rollout's). pigTest: plugins_plugins_test.go TestPluginsRolloutRunsTheStepsInOrderClearsTheMarksOfPluginsAppliedOnEveryStepKeepsAPluginFailedOnAny, TestPluginsRolloutStopsAtAStepThatRejectsClearingNoMarkAChangeDuringTheBuildKeepsItsMark and TestPluginsCurrentSetsScriptsKindBuiltOnFirstUseABuildChangesNoSetARolloutAppliesItRightBeforeAStepOfItsKind drive RolloutStep values directly and assert the applied sets. whyNot: the `applied` argument is the language mechanic (no atomic read of the current set across the ship); the host-built step form waits for the queued post-0.8.0 refactor. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins#RuntimeLoad",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6a1b5be0ff3ca465bc981b2c092fbe9e5e489e9fb3c3d6692f137448de0d2aef"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6a1b5be0ff3ca465bc981b2c092fbe9e5e489e9fb3c3d6692f137448de0d2aef",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts `RuntimeLoad` ({kind, core: PluginFacet[], scripts, modules: HostPackages}) is the options of a load into a live Host, with live core facets and module values. RuntimeLoad is PiG's options of the subprocess start (Kind, Core as module files, Scripts, Modules as module paths, plus the host's Address, Principal, Peer, Heartbeat and timeouts) because the plugin host is started by Load itself, and a JavaScript facet or module instance cannot cross the process boundary (D607, D502). Intention check. protects: what runtime.test.ts and plugins.test.ts check of a load's inputs: core facets load before the plugins, the modules are the packages the scripts' imports are answered with and are kept for the host's reloads, the kind names the set. pigTest: every Load of plugins_runtime_test.go (pcRuntimeLoad builds a RuntimeLoad) and plugins_plugins_test.go runs through the Node host: TestRuntimeLoadsASetAndLeavesOutAPluginWhoseBuildOrEvaluationFailedReportedWithTheHostsReport, TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled, TestRuntimeTheHostsBackgroundErrorsCarryEveryFieldOfTheirKind, TestRuntimeTheHostsReadyTimeoutIsTheAppsAndAParkedAttemptIsReportedWithWhatItWaitsFor. whyNot: the host field of Pi's signature, and with it the live-value fields, waits for the queued post-0.8.0 refactor so Load takes a host as Pi does. Owner-approved D607 for 0.8.0 (2026-11-08 17:29Z, docs/parity/divergences/D607.md); the refactor so Load takes a host as Pi does is queued right after 0.8.0 (the reason this row is designed out today, not a permanent difference)."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin",

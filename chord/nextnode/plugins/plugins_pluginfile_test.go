@@ -30,3 +30,12 @@ func TestNewPluginErrorNamesRequiredPluginsThenProblems(t *testing.T) {
 		t.Fatalf("problems default = %v, want none", empty.Problems)
 	}
 }
+
+// plugins.ts RolloutHost: `stopped: true` is the host that stopped cleanly during the step, and only it.
+func TestRolloutHostStoppedIsTheHostThatStoppedCleanly(t *testing.T) {
+	for kind, want := range map[RolloutHostKind]bool{RolloutStopped: true, RolloutReported: false, RolloutErrored: false} {
+		if got := (RolloutHost{Kind: kind, Host: "h"}).Stopped(); got != want {
+			t.Errorf("%s: Stopped() = %v, want %v", kind, got, want)
+		}
+	}
+}

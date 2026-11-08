@@ -121,16 +121,19 @@ type RolloutHost struct {
 	Kind   RolloutHostKind
 	Host   string
 	Report host.ReloadReport
-	// Stopped is true for a RolloutStopped host (Pi's `stopped: true`).
-	Stopped bool
-	Error   error
+	Error  error
 }
+
+// Stopped is Pi's `stopped: true`: the host stopped cleanly during the step. It is read from Kind, so it cannot disagree with it.
+func (h RolloutHost) Stopped() bool { return h.Kind == RolloutStopped }
 
 // StepResult is what a rollout step's reload returns: one result per host (D12).
 type StepResult struct {
 	Hosts []RolloutHost
 }
 
+// pig divergence (D607): Reload also takes the sets the rollout applied (Pi's step reads `plugins.current` atomically after its ship); steps from Plugins.Step run over a NodeHost.
+//
 // RolloutStep is what a rollout step does: reloads its hosts with the facets of its kinds. An error stops the rollout.
 type RolloutStep struct {
 	Name  string
@@ -409,6 +412,8 @@ func (c *Plugins) Current(kind string) ([]PluginScript, bool) {
 	return scripts, ok
 }
 
+// pig divergence (D607): Pi's `load(host, options, context)` is handed a Host; this starts the Node subprocess host (and Reload and Step take it).
+//
 // Load starts a Node subprocess that hosts options.Kind's current set, evaluated with options.Modules, and options.Core
 // (the app's own facets): a plugin whose build or evaluation fails is left out and reported with the host's report. The app
 // attaches the returned host's Link to a Go host (PluginRuntime.Load). A required root's plugin failing, and a problem
@@ -490,6 +495,8 @@ func (c *Plugins) Reload(h *NodeHost, built *Built, ctx context.Context) (host.R
 	return h.reloaded(call, ctx)
 }
 
+// pig divergence (D607): Pi's `step(name, host)` takes a live Host; this takes the NodeHost Load returned.
+//
 // Step is a rollout step named name: Reload(h, built), one host named name.
 func (c *Plugins) Step(name string, h *NodeHost) (RolloutStep, error) {
 	kind, err := c.kindOf(h, "step")

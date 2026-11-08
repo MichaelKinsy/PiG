@@ -43,6 +43,8 @@ type CoreFacet struct {
 	Module string
 }
 
+// pig divergence (D607): Pi's load takes a Host, core PluginFacets and module values; this takes the options of the subprocess host's start.
+//
 // RuntimeLoad is what PluginRuntime.Load takes.
 type RuntimeLoad struct {
 	Kind string
