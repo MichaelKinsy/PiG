@@ -261,6 +261,11 @@ func TestARolloutAcrossHostsEndsWithTheClientsWebStepForAPageAWorkerNotRunningSt
 func TestARolloutAcrossHostsBringsAPageWhoseLinkWasDownDuringTheRolloutOntoTheNewScriptsAndTheNewCode(t *testing.T) {
 	tab := startReloadTab(t)
 	s := webCounterApp(t, map[string]map[string]string{"alpha": reloadWebPlugin(t, webCode{Name: "alpha", Code: "1", Counter: reloadWebCounterV1})})
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Logf("the app reported %v", reported(s.errors))
+		}
+	})
 	tab.signIn(s, "alpha")
 	tab.waitText("alpha", ".state", "live")
 	expectEqual(t, "add 2", tab.result(tab.call("alpha", "add", 2)), okResult("v1:2"))
