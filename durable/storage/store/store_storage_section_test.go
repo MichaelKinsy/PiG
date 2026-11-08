@@ -28,7 +28,7 @@ func TestStoreStoragePublishesInASectionOfTheHost(t *testing.T) {
 		inSection.Add(1)
 		defer inSection.Add(-1)
 		work()
-	})
+	}, nil)
 	must(t, store.Attach(chordstore.Attachment{Batch: batch}))
 	t.Cleanup(store.Detach)
 
