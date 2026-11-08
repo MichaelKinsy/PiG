@@ -27304,6 +27304,29 @@
       ]
     },
     {
+      "id": "BF-9943986",
+      "title": "`exec` with a timeout reports `killed` when the timeout expired while the host was stalled past both the…",
+      "symptom": "`exec` with a timeout reports `killed` when the timeout expired while the host was stalled past both the timeout and the command's exit, as Pi does; it resolved either way at random before.",
+      "rootCause": "ExecCommand watches the timeout in a goroutine that selects between the context and stopWatch, and closes stopWatch once the child and its pipes are done. When the caller is off the CPU past both the timeout and the child's exit, both are ready on resume and the select picked either at random: the call resolved killed or not killed, while Pi, whose event loop runs expired timers before it handles the exit, always resolves killed. TestExecOracleTimerScenariosHoldWhileTheCallerStalls failed in 2 of 72 runs under 24 parallel copies (scenario `trap \"\" TERM; sleep 4; echo trapped` with a 1000 ms timeout and a 5 s stall: Pig killed false, Pi killed true).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`exec` with a timeout reports `killed` when the timeout expired while the host was stalled past both the timeout and the command's exit, as Pi does; it resolved either way at random before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "99439864e6",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_expired_after_exit_test.go::TestExecCommandReportsAnExpiredContextAfterTheChildExitedAsKilled",
+        "coding/extension/exec_oracle_stall_unix_test.go::TestExecOracleTimerScenariosHoldWhileTheCallerStalls"
+      ]
+    },
+    {
       "id": "BF-99a06cf",
       "title": "Interactive startup paints the editor and footer first and adds the startup header once the terminal reports…",
       "symptom": "Interactive startup paints the editor and footer first and adds the startup header once the terminal reports its colors or 100 ms pass, as Pi does.",

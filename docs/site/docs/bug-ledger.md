@@ -989,6 +989,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9883d4b](#bf-9883d4b) | Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9943986](#bf-9943986) | `exec` with a timeout reports `killed` when the timeout expired while the host was stalled past both the… | PiG's own defect | All platforms | Unreleased |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99d6e28](#bf-99d6e28) | Resizing an image no longer differs from Photon's by one in a channel of a rare pixel | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9a9dc99](#bf-9a9dc99) | `WaitForTask` on a task whose terminal commit was adopted no longer fails with "Harness is closed" when a… | PiG's own defect | All platforms | 0.7.0 |
@@ -15025,6 +15026,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0ae4683246` (2026-10-08), `e8cc072521` (2026-10-08), `433d232815` (2026-10-09), `992f3cbc69` (2026-10-10), `d37c76932f` (2026-10-10)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi` and 8 more in docs/bug-ledger.json
 - **Release note:** A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value, stream: true }` (`null`, a number or a boolean send `{"stream":true}`, an array or string its index members), `"betas": null` sends no `anthropic-beta` header, array-index keys lead a replacement body as in JavaScript, and a Codex WebSocket body's own `type` keeps the first position; a Codex payload hook that returns `null` no longer crashes PiG.
+
+### BF-9943986
+
+**`exec` with a timeout reports `killed` when the timeout expired while the host was stalled past both the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `exec` with a timeout reports `killed` when the timeout expired while the host was stalled past both the timeout and the command's exit, as Pi does; it resolved either way at random before.
+- **Root cause:** ExecCommand watches the timeout in a goroutine that selects between the context and stopWatch, and closes stopWatch once the child and its pipes are done. When the caller is off the CPU past both the timeout and the child's exit, both are ready on resume and the select picked either at random: the call resolved killed or not killed, while Pi, whose event loop runs expired timers before it handles the exit, always resolves killed. TestExecOracleTimerScenariosHoldWhileTheCallerStalls failed in 2 of 72 runs under 24 parallel copies (scenario `trap "" TERM; sleep 4; echo trapped` with a 1000 ms timeout and a 5 s stall: Pig killed false, Pi killed true).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `99439864e6` (2026-11-08)
+- **Tests:** `coding/extension/exec_expired_after_exit_test.go::TestExecCommandReportsAnExpiredContextAfterTheChildExitedAsKilled`, `coding/extension/exec_oracle_stall_unix_test.go::TestExecOracleTimerScenariosHoldWhileTheCallerStalls`
+- **Release note:** `exec` with a timeout reports `killed` when the timeout expired while the host was stalled past both the timeout and the command's exit, as Pi does; it resolved either way at random before.
 
 ### BF-99a06cf
 
