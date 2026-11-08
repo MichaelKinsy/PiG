@@ -23,6 +23,9 @@ func TestStartupChangelogParsesOnlyForAnUpdate(t *testing.T) {
 
 // Parsing on demand changes no outcome: the entries shown and the version recorded match the eager parse for a first start, the recorded version, an update and a downgrade.
 func TestStartupChangelogMatchesTheEagerParse(t *testing.T) {
+	if bundledChangelog() == "" {
+		t.Skip("this build strips the changelog")
+	}
 	t.Setenv("PI_OFFLINE", "1")
 	for _, tc := range []struct{ lastSeen, appVersion string }{
 		{"", "0.2.0"}, {"0.2.0", "0.2.0"}, {"0.0.1", "999.0.0"}, {"999.0.0", "0.0.1"},

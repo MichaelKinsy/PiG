@@ -7,6 +7,7 @@ package zstdblob
 
 import (
 	"bytes"
+	"io"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -23,6 +24,11 @@ func Decode(frame []byte) ([]byte, error) {
 		dst = make([]byte, 0, size)
 	}
 	return decoder.DecodeAll(frame, dst)
+}
+
+// NewReader streams the bytes frame holds, decoding no further than the caller reads. The decoder is synchronous (one block at a time, low memory) and starts no goroutine, so a caller that stops early leaves nothing running; its buffers are collected with the reader.
+func NewReader(frame []byte) (io.Reader, error) {
+	return zstd.NewReader(bytes.NewReader(frame), zstd.WithDecoderConcurrency(1), zstd.WithDecoderLowmem(true))
 }
 
 // frameSize is the content size the frame header records. Encode records it for any input of a few bytes or more, so Decode sizes the result exactly.
