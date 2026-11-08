@@ -88,3 +88,31 @@ var ProviderLogin = func() *contracts.Contract {
 	}
 	return contract
 }()
+
+// LoginService is the provider logins of the server (`p2.login-service`; host-internal): the flows over the shared credentials. A login
+// belongs to the owner that started it: only it sees its prompts and notices, answers, cancels or dismisses it, and only its leaving
+// ends it. 3: no `abandon` (the service follows who holds `ProviderLogin`).
+var LoginService = func() *contracts.Contract {
+	withOwner := func(properties ...schema.Property) schema.Schema {
+		return obj(append(schema.Properties{prop("owner", str(schema.MinLength(1)))}, properties...))
+	}
+	contract, err := contracts.Local("p2.login-service", contracts.LocalDeclaration{
+		Version: 3,
+		Params:  contracts.Params{},
+		Members: []contracts.LocalEntry{
+			contracts.Mem("login", c(union(LoginStateSchema, nul()))),
+			// The owner of `login`.
+			contracts.Mem("owner", c(union(str(), nul()))),
+			contracts.Mem("start", method(withOwner(prop("providerId", str()), prop("authType", AuthTypeSchema), prop("remote", schema.Bool())), attemptSchema)),
+			contracts.Mem("answer", method(withOwner(prop("attemptId", str()), prop("promptId", str()), prop("value", str())))),
+			contracts.Mem("cancel", method(withOwner(prop("attemptId", str())))),
+			contracts.Mem("dismiss", method(withOwner(prop("attemptId", str())))),
+			contracts.Mem("logout", method(providerIDSchema)),
+			contracts.Mem("refresh", method(providerIDSchema, obj(schema.Properties{prop("models", num())}))),
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	return contract
+}()
