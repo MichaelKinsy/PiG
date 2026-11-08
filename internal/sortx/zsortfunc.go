@@ -346,7 +346,7 @@ func order2_func(data lessSwap, a, b int, swaps *int) (int, int) {
 func median_func(data lessSwap, a, b, c int, swaps *int) int {
 	a, b = order2_func(data, a, b, swaps)
 	b, c = order2_func(data, b, c, swaps)
-	a, b = order2_func(data, a, b, swaps)
+	_, b = order2_func(data, a, b, swaps)
 	return b
 }
 
