@@ -26,8 +26,6 @@ import (
 // TUISubcommand is the name of the terminal client program: `p2 tui [url] [options]`.
 const TUISubcommand = "tui"
 
-func init() { RegisterSubcommand(TUISubcommand, RunTUI) }
-
 // RunTUI runs the terminal client with args (without the program and subcommand names) and returns the exit code.
 func RunTUI(args []string) int {
 	stdin := bufio.NewReader(os.Stdin)
