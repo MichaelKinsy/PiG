@@ -668,18 +668,6 @@ pkg:coding-agent/.#ReadOperations	coding-agent	child-gap	internal/codingagent/to
 pkg:coding-agent/.#ReadOperations::property:createReadStream	coding-agent	signature-mismatch	internal/codingagent/tools/read.go#ReadOperations.CreateReadStream
 pkg:coding-agent/.#SkillInvocationMessageComponent	coding-agent	child-gap	tui/skill_invocation.go#SkillInvocationMessageComponent
 pkg:coding-agent/.#SkillInvocationMessageComponent::construct:0	coding-agent	signature-mismatch	tui/skill_invocation.go#NewSkillInvocationMessageComponent
-pkg:durable/.#Agent	durable	type-mismatch	durable/harness_types.go#Agent
-pkg:durable/.#AgentChange	durable	type-mismatch	durable/harness/agent.go#AgentChange
-pkg:durable/.#AgentState	durable	type-mismatch	durable/harness/agent.go#AgentState
-pkg:durable/.#ConversationStreamOptions	durable	type-mismatch	durable/harness_types.go#ConversationStreamOptions
-pkg:durable/.#Tx	durable	child-gap	durable/types.go#Tx
-pkg:durable/.#Tx::property:submission	durable	member-missing	durable/types.go#Tx
-pkg:durable/.#Tx::property:submission::call:0	durable	member-missing	durable/types.go#Tx
-pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
-pkg:durable/storage/sqlite/node#NodeSqliteDatabase	durable	child-gap	durable/storage/sqlite/node/node.go#NodeSqliteDatabase
-pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0	durable	signature-mismatch	durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase
 pkg:schema/.#BigintBounds	schema	no-go-symbol	
 pkg:schema/.#BigintBounds::property:exclusiveMaximum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:exclusiveMinimum	schema	child-gap	
