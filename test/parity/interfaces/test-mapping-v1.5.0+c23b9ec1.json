@@ -3522,8 +3522,8 @@
       ],
       "rationale": "42 of the 44 upstream cases run in store_test.go and the group commit cases in group_commit_test.go, among them 'rejects a grouped commit whose admission throws with that error' (Admit is recovered per commit; only that commit rejects, with the panic value, an error itself or a ThrownError) and 'rejects a group's commits with what its turn throws after COMMIT' (the host listener's panic rejects the commits not settled, with that error itself). The other two are drafted as designed out, DRAFT FOR OWNER REVIEW (no owner approval recorded yet; they stay open until the owner decides), because each asserts what a TypeScript metrics adapter throws and Go's callbacks do not throw: Both 'stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats' and '... after a lone commit's COMMIT too': telemetry.TelemetryCounter.Add returns nothing, so an adapter's failure is a panic; the store stops, memory takes the whole group or the lone commit (it is durable), no seq repeats, and later commits and reads reject storage_failed, as in Pi. The differences are the caller of the commit whose turn it was: Pi rejects its promise with storage_failed, Go re-panics in the caller of the group's first commit (or the lone commit), and the others of the group reject storage_failed. The panicking-adapter cases 'stops the store when a metrics adapter panics after a group's COMMIT' and '... after a lone commit's COMMIT too' in group_commit_test.go assert the Go form. Pi's int() key typing (d7704516e) is TypeScript typing and has no case.",
       "designedOutCases": [
-        "group commit \u203a stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
-        "group commit \u203a stops the store when a metrics adapter throws after a lone commit's COMMIT too"
+        "group commit › stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
+        "group commit › stops the store when a metrics adapter throws after a lone commit's COMMIT too"
       ]
     },
     {
@@ -3937,8 +3937,12 @@
     },
     {
       "path": "packages/coding-agent/test/agent-session-queued-images.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9b32a6ef0b1442d8cc525fe67ba65a542b0cd335891b0695f177ee7f1bc96f1d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9b32a6ef0b1442d8cc525fe67ba65a542b0cd335891b0695f177ee7f1bc96f1d",
+      "evidence": [
+        "coding/session_queue_images_test.go#TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages"
+      ],
+      "rationale": "Pi #11738 case ported with steering, follow-up and streaming-prompt (followUp) messages: each carries one resized image and the 267x2000 hint, no request carries the original, pending is 0."
     },
     {
       "path": "packages/coding-agent/test/agent-session-retry.test.ts",
@@ -4043,8 +4047,12 @@
     },
     {
       "path": "packages/coding-agent/test/auth-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0042056147ba08c05368926f1fb368d3dbb92a2fa470f38dd603e389c9c2a8ee"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0042056147ba08c05368926f1fb368d3dbb92a2fa470f38dd603e389c9c2a8ee",
+      "evidence": [
+        "internal/pilock/symlink_alias_test.go#TestAuthLocksShareOneLockAcrossSymlinkedPaths"
+      ],
+      "rationale": "The added Pi case (symlinked auth.json path waits for the lock held on the real file, #11655) is ported with a lock held on the real file and the alias loops blocked."
     },
     {
       "path": "packages/coding-agent/test/auth-terminal.test.ts",
@@ -4160,13 +4168,22 @@
     },
     {
       "path": "packages/coding-agent/test/cache-warmer.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b1d427d2df93c9a3d893d95a79e9ea127accf4970fe319a2f46c225ad8d11d0f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b1d427d2df93c9a3d893d95a79e9ea127accf4970fe319a2f46c225ad8d11d0f",
+      "evidence": [
+        "internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions",
+        "internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
+      ],
+      "rationale": "Both Pi changes are asserted: warm options carry disableContinuation, and FormatCacheWarmingUsage(cost, note) yields 'Cache warmed (extension override): $0.029497'."
     },
     {
       "path": "packages/coding-agent/test/changelog.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:81c4c210ca10c0204d64a3deb6b3c8953a69a224da9aa517cefb7bf8d74ee255"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:81c4c210ca10c0204d64a3deb6b3c8953a69a224da9aa517cefb7bf8d74ee255",
+      "evidence": [
+        "internal/codingagent/changelog_test.go#TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes"
+      ],
+      "rationale": "The three added Pi getNewEntries cases (#11703) are one Go table test with the same inputs: prerelease/build suffixes ignored, numeric comparison (0.10.0 vs 0.9.0), and unreadable last-seen versions ('latest', '0.1', '') reported unreadable."
     },
     {
       "path": "packages/coding-agent/test/chat-viewport.test.ts",
@@ -4697,8 +4714,13 @@
     },
     {
       "path": "packages/coding-agent/test/extension-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6fdbcb4ada3d8e6fc2bd888aca6f6b1c20366ab89bd973802eccc854c652ec09"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6fdbcb4ada3d8e6fc2bd888aca6f6b1c20366ab89bd973802eccc854c652ec09",
+      "evidence": [
+        "tui/extension_selector_test.go#TestExtensionSelectorWindowsLongOptionListsAroundTheSelection",
+        "tui/extension_selector_test.go#TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator"
+      ],
+      "rationale": "Both Pi cases are ported with the same 15 options, seven Down presses twice, and the short and empty lists."
     },
     {
       "path": "packages/coding-agent/test/extensions-discovery.test.ts",
@@ -4991,8 +5013,13 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-dialogs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4a0e1dffee172470301e1fdc923efb8dbf05b2b19a186abb678662d874ba4ba5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4a0e1dffee172470301e1fdc923efb8dbf05b2b19a186abb678662d874ba4ba5",
+      "evidence": [
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionCustomOverlayReportsBlockedStatusUntilDoneAlsoWhileHidden",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestResetRemovesEveryExtensionOverlayButKeepsPisOwn"
+      ],
+      "rationale": "Both added Pi cases (#11816) are ported: each opted-in overlay reports blocked status until done, also while hidden, with the same two questions and a loader, and resetting the extension UI clears the overlay's blocked status and removes the overlay."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-import-command.test.ts",
@@ -5018,8 +5045,14 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-paste.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:66253101f082c38c7337ab04a9640c1585afd975ae0ee9114befc16cefe9a5e2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:66253101f082c38c7337ab04a9640c1585afd975ae0ee9114befc16cefe9a5e2",
+      "evidence": [
+        "internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomKeepsCollapsedPasteContent",
+        "internal/codingagent/ext_ui_custom_test.go#TestRestoreQueuedMessagesKeepsCollapsedPasteContent",
+        "internal/codingagent/ext_ui_custom_test.go#TestSetRemoteEditorKeepsCollapsedPasteContent"
+      ],
+      "rationale": "The new Pi file (#9809) is ported with 12-line pastes: a collapsed draft keeps its content between the default and a replacement editor, around non-overlay custom UI after it closes or fails to open, and when queued messages are restored above it."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-startup-input.test.ts",
@@ -5036,8 +5069,15 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-status.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:60fac8c66aa5c65245b9c54a967fa0daf53ab5f00ada1edf480f1e9fd2712d61"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:60fac8c66aa5c65245b9c54a967fa0daf53ab5f00ada1edf480f1e9fd2712d61",
+      "evidence": [
+        "internal/codingagent/interactive_pending_bash_test.go#TestCtrlOExpandsUserBashOutputInThePendingArea",
+        "internal/codingagent/interactive_pending_bash_test.go#TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea",
+        "internal/codingagent/interactive_pending_bash_test.go#TestSettlingTheRunMovesUserBashOutputToTheChat",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestResetRemovesEveryExtensionOverlayButKeepsPisOwn"
+      ],
+      "rationale": "The added Pi cases are ported: pending user bash output expands with ctrl+o, stays pending across queued-message updates and moves to the chat when the run settles (#11875), and resetting the extension UI removes every extension overlay (also hidden ones, disposing each) while keeping Pi's own overlay and its focus."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-suspend.test.ts",
@@ -5100,8 +5140,12 @@
     },
     {
       "path": "packages/coding-agent/test/keybindings.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f8c19bd8878e7e27c3ff24017ec826d54df05e311beeba3d4ab7f6633c702f28"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f8c19bd8878e7e27c3ff24017ec826d54df05e311beeba3d4ab7f6633c702f28",
+      "evidence": [
+        "internal/codingagent/keybindings_platform_test.go#TestKeybindingDefinitionsApplyPlatformDefaults"
+      ],
+      "rationale": "Both added Pi cases (WSL keeps ctrl+v as paste key; pasteImage defaults [alt+v, ctrl+v] on Windows) are asserted per platform, including linux-wsl."
     },
     {
       "path": "packages/coding-agent/test/llama-extension.test.ts",
@@ -5191,8 +5235,12 @@
     },
     {
       "path": "packages/coding-agent/test/model-catalog-protocol.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e7c6f6dc37af94159631fb5c1f5e1d80a3ccdaa2af19c42e8c79e6fd1877d1c0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e7c6f6dc37af94159631fb5c1f5e1d80a3ccdaa2af19c42e8c79e6fd1877d1c0",
+      "evidence": [
+        "coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient"
+      ],
+      "rationale": "The Pi change drops the redirect and expects exactly [catalogUrl]; the Go test asserts exactly one catalog request and no pi-version URL."
     },
     {
       "path": "packages/coding-agent/test/model-catalog-refresh.test.ts",
@@ -5205,13 +5253,22 @@
     },
     {
       "path": "packages/coding-agent/test/model-registry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:65fa26005873512ade1c825da6a19a9936b53ad8407cf81afa949a30679fc0a8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:65fa26005873512ade1c825da6a19a9936b53ad8407cf81afa949a30679fc0a8",
+      "evidence": [
+        "coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyModeIndependentlyOfLongRetention",
+        "coding/model_registry_custom_upstream_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeySupportUnlessOverridden"
+      ],
+      "rationale": "The two added Pi cases (#9442) are ported with the same models.json: custom models inherit and override promptCacheKeyMode independently of supportsLongCacheRetention, and built-in models inherit it unless overridden."
     },
     {
       "path": "packages/coding-agent/test/model-resolver.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:78438893a684b898d42a35b0f50124baccd0dac5666c8aab240b66f71ff4d685"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:78438893a684b898d42a35b0f50124baccd0dac5666c8aab240b66f71ff4d685",
+      "evidence": [
+        "coding/cli/model_resolver_defaults_upstream_test.go"
+      ],
+      "rationale": "The changed Pi default-model expectations are asserted with the same provider ids and model ids."
     },
     {
       "path": "packages/coding-agent/test/model-runtime-auth-options.test.ts",
@@ -5305,8 +5362,13 @@
     },
     {
       "path": "packages/coding-agent/test/model-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:112df6e3e0dd7f5190cddde0bf002d430aca928de8c475a37cf9a484893a9872"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:112df6e3e0dd7f5190cddde0bf002d430aca928de8c475a37cf9a484893a9872",
+      "evidence": [
+        "tui/model_select_refresh_test.go#TestModelSelectorUpdateModels",
+        "tui/model_select_refresh_test.go#TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive"
+      ],
+      "rationale": "The four Pi 'when the catalog refresh lands' cases are ported with the same alpha-1..3/beta-1 rows and key presses (keeps the browsed model, keeps it under a query, follows it when rows shift, falls back when it disappears)."
     },
     {
       "path": "packages/coding-agent/test/models-store.test.ts",
@@ -5365,8 +5427,12 @@
     },
     {
       "path": "packages/coding-agent/test/package-command-paths.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4879fd70eec1582601845b0ce072001f2e695715d109ba7fb2ed7c16de4b7bba"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4879fd70eec1582601845b0ce072001f2e695715d109ba7fb2ed7c16de4b7bba",
+      "evidence": [
+        "coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths"
+      ],
+      "rationale": "The two added Pi cases (#11707) are ported as subtests with the same fake npm: an older version left installed prints the stale-registry warning and 'No packages were updated, see the warnings above' instead of 'up to date', and offline mode prints 'Skipped package updates (offline mode)'."
     },
     {
       "path": "packages/coding-agent/test/package-distribution.test.ts",
@@ -5392,8 +5458,14 @@
     },
     {
       "path": "packages/coding-agent/test/package-manager.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:004bb0febd7357adc3ccae45cf112e0b9984dd8258b348169c8eee4632f73b3b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:004bb0febd7357adc3ccae45cf112e0b9984dd8258b348169c8eee4632f73b3b",
+      "evidence": [
+        "coding/cli/package_reconcile_upstream_test.go#TestNpmUpdateVersionReconciliationUpstream",
+        "internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent",
+        "internal/packagemanager/package_update_result_test.go#TestUpdatedPackageMessage"
+      ],
+      "rationale": "The added Pi package-manager cases (#11707) are ported: the npm range update emits start, complete and a separate result event 'npm:example@^1.0.0 (project) 1.0.0 -> 1.2.0' and the skipped updates emit no result (npm reconciliation test), and git updates report the changed commit (git result test)."
     },
     {
       "path": "packages/coding-agent/test/path-utils.test.ts",
@@ -5469,8 +5541,12 @@
     },
     {
       "path": "packages/coding-agent/test/print-mode.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4fd1b3f3e6ec4aab6134ca1fcc5dd21c3b29b447d47b1bff26427c446d4daa8d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4fd1b3f3e6ec4aab6134ca1fcc5dd21c3b29b447d47b1bff26427c446d4daa8d",
+      "evidence": [
+        "coding/cli/print_final_disposal_signal_test.go#TestPrintModeSignalDuringFinalDisposalWaitsForIt"
+      ],
+      "rationale": "The added Pi case (a SIGTERM during the final disposal waits for it and a repeated SIGTERM exits 143, handlers restored after) is ported with the same two signals and a blocked disposal."
     },
     {
       "path": "packages/coding-agent/test/program-status-reporter.test.ts",
@@ -5513,8 +5589,12 @@
     },
     {
       "path": "packages/coding-agent/test/provider-matching.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7049fe7a5d06daa9238c1d06933b43f5397a8cd11e0e4b695d63d44541448cda"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7049fe7a5d06daa9238c1d06933b43f5397a8cd11e0e4b695d63d44541448cda",
+      "evidence": [
+        "internal/codingagent/provider_matching_test.go#TestProviderReferenceMatching"
+      ],
+      "rationale": "The four Pi provider-matching cases are ported with the same providers and references."
     },
     {
       "path": "packages/coding-agent/test/radius.test.ts",
@@ -5736,8 +5816,12 @@
     },
     {
       "path": "packages/coding-agent/test/runtime-credentials.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:74d6ef3be6d8dfed1c6cbff32308968e350629337bbe9be8b0ed88b8e63f23d3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:74d6ef3be6d8dfed1c6cbff32308968e350629337bbe9be8b0ed88b8e63f23d3",
+      "evidence": [
+        "ai/runtime_credentials_settled_test.go"
+      ],
+      "rationale": "Both Pi #11692 cases are ported: settled waits for a pending modification to be written, and resolves after one fails."
     },
     {
       "path": "packages/coding-agent/test/scoped-models-selector.test.ts",
@@ -6278,8 +6362,12 @@
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-model-extension.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:54f1e89e34b18971f0ec0626f7cade639d0ff44c1764df3507493c61c48bd127"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:54f1e89e34b18971f0ec0626f7cade639d0ff44c1764df3507493c61c48bd127",
+      "evidence": [
+        "coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream"
+      ],
+      "rationale": "The added Pi case (#11806: cycles to the only scoped model and to the first scoped model from outside the scope) is a subtest with the same three models, scopes and cycles."
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-prompt.test.ts",
@@ -6297,8 +6385,12 @@
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-queue.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ef71da20862eb5a57c8211a07e49640eeced160e72833eda79cde6e369b5aa6a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ef71da20862eb5a57c8211a07e49640eeced160e72833eda79cde6e369b5aa6a",
+      "evidence": [
+        "coding/session_queue_images_test.go#TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery"
+      ],
+      "rationale": "The added Pi case (an image-only steering message is removed after delivery) is ported with the same tiny PNG and queue checks."
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-retry-events.test.ts",
@@ -7210,8 +7302,12 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9124-runtime-dispose-tool-settlement.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a8cdfe9a091760bca6b6ea933a451056739937176180886c68c50592421a9352"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a8cdfe9a091760bca6b6ea933a451056739937176180886c68c50592421a9352",
+      "evidence": [
+        "coding/runtime_dispose_settlement_test.go#TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
+      ],
+      "rationale": "The one Pi case (#9126) is ported with a tool that fails 10 ms after abort: closing the runtime during the tool settles the turn (user, assistant, toolResult, assistant) before the session is disconnected, and session_shutdown sees that settled history."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9154-prompt-during-tree-navigation.test.ts",
@@ -7234,8 +7330,14 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9221-reload-during-tool.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5d0e505bb397a30d4b269d9a6842ab2b8348d8034634c7ff3a12bff3c990532f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5d0e505bb397a30d4b269d9a6842ab2b8348d8034634c7ff3a12bff3c990532f",
+      "evidence": [
+        "coding/cli/headless_reload_test.go#TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive",
+        "coding/session_reload_busy_test.go#TestSessionReloadRejectedWhileRunningOrCompacting",
+        "coding/session_reload_busy_tree_test.go#TestSessionReloadRejectedDuringTreeNavigation"
+      ],
+      "rationale": "The Pi cases are covered: reload during a running tool is refused and the tool keeps its context and the host stays live (headless reload test, per mode), reload while compacting and while a tree navigation is pending is refused with the compaction message before session_shutdown, and an idle reload shuts the old runner down and replaces it."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9340-9777-auto-compaction-cancellation.test.ts",
@@ -7343,8 +7445,12 @@
     },
     {
       "path": "packages/coding-agent/test/syntax-highlight.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:52c3b6ce095cc1a6888af94734e6cd5048b9f5b40ba7fc90536e9d8c6ffcb158"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:52c3b6ce095cc1a6888af94734e6cd5048b9f5b40ba7fc90536e9d8c6ffcb158",
+      "evidence": [
+        "tui/highlight_test.go#TestLanguageFromPath"
+      ],
+      "rationale": "The added Pi case (extensions of eagerly loaded languages) is ported with the same five paths."
     },
     {
       "path": "packages/coding-agent/test/system-prompt-updates.test.ts",
@@ -7557,8 +7663,12 @@
     },
     {
       "path": "packages/coding-agent/test/tree-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:29f7908ddd4cdf46c602b003aefd99ecacbdeeefef4cbca89b5814132a9413da"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:29f7908ddd4cdf46c602b003aefd99ecacbdeeefef4cbca89b5814132a9413da",
+      "evidence": [
+        "tui/tree_select_empty_state_test.go#TestTreeSelectSearchCursor"
+      ],
+      "rationale": "The three Pi search-cursor cases are ported as subtests with the same inputs (focus on/off, 'L' then Escape, narrow width 10)."
     },
     {
       "path": "packages/coding-agent/test/trigger-compact-extension.test.ts",
