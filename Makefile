@@ -228,6 +228,10 @@ highlight-grammars: parity-deps ## Snapshot Pi's highlight.js grammars into tui/
 zone-names: ## Regenerate the long time-zone names Node's ICU prints for date mapping keys (needs Node; output depends on Node's ICU, so it is not part of `make generate`)
 	@node automation/gen/generate-zone-names.mjs > internal/yaml12/zonenames_gen.go
 
+intl-tables: ## Regenerate the number and time tables FormatNumber/FormatTime read from the pinned Node's Intl (needs the pinned Node; output depends on its ICU, so it is not part of `make generate`; `go test ./chord/next/surfaces` is the drift check)
+	@node automation/gen/generate-intl-tables.mjs > chord/next/surfaces/intl_gen.go.tmp && mv chord/next/surfaces/intl_gen.go.tmp chord/next/surfaces/intl_gen.go || { rm -f chord/next/surfaces/intl_gen.go.tmp; exit 1; }
+	@gofmt -w chord/next/surfaces/intl_gen.go
+
 windows-zones: ## Regenerate CLDR's Windows-to-IANA zone mapping that Node's ICU uses to name the host zone on Windows (downloads windowsZones.xml for Node's CLDR release)
 	@node automation/gen/generate-windows-zones.mjs > internal/yaml12/windowszones_gen.go
 
@@ -263,7 +267,7 @@ sdk-bundles: ## Regenerate the compressed SDK copies and embed lists of extensio
 sdk-bundles-drift: ## Fail when a compressed SDK copy differs from its source (regenerate with make sdk-bundles)
 	@./automation/ci/sdk-bundles-drift.sh
 
-.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names intl-tables windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 
@@ -804,7 +808,7 @@ pin-bump: ## Move the pin to PI_UPSTREAM_REF=<tag|commit>, regenerate what deriv
 	@old=$$(env -u PI_UPSTREAM_REF $(PIN_TOOL) get ref); env -u PI_UPSTREAM_REF $(PIN_TOOL) bump "$(PI_UPSTREAM_REF)"; \
 		$(MAKE) --no-print-directory PI_UPSTREAM_REF= upstream-mirror interface-proposals test-inventory-generate && \
 		$(MAKE) --no-print-directory PI_UPSTREAM_REF= PIN_FROM="$$old" pin-ledgers && \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-dist vendor-chord-plugins-node model-catalogs && \
+		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-dist vendor-chord-plugins-node model-catalogs intl-tables && \
 		./automation/gen/regenerate-observation-oracles.sh && \
 		./automation/gen/refresh-pi-test-sources.sh
 
