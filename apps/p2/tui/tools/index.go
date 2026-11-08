@@ -32,6 +32,7 @@ func ResolveToolRenderers(name string, resolvers []NamedResolver, registered map
 		var drawn *ToolRenderers
 		failed := func() (failed bool) {
 			defer func() {
+				// upstream: apps/p2/src/tui/tools/index.ts:resolveToolRenderers
 				if recover() != nil {
 					failed = true
 				}
