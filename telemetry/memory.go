@@ -247,7 +247,7 @@ func (recorder *InMemoryTelemetryContext) start(parent *inMemoryParent, options 
 			trace = inherited
 		}
 	}
-	span := &memorySpan{owner: recorder, startedMs: jsclock.DateNow(), clock: jsclock.PerformanceNow(), record: RecordedTelemetrySpan{
+	span := &memorySpan{owner: recorder, startedMs: TelemetryNow(), clock: jsclock.PerformanceNow(), record: RecordedTelemetrySpan{
 		ID: id, Name: options.Name, Attributes: copyAttributes(options.Attributes),
 		Context: TelemetryCarrier{carrierScopeKey: scope, carrierSpanKey: strconv.Itoa(id), carrierTraceKey: trace},
 		Links:   links, Events: []RecordedTelemetryEvent{}, Status: SpanStatus{Status: SpanStatusCodeOK},
@@ -310,7 +310,7 @@ func (span *memorySpan) settle(failed bool, failure any) {
 		span.record.Status = automaticErrorStatus(failure)
 	}
 	span.record.Settled = true
-	span.endedMs = span.startedMs + jsclock.PerformanceNow() - span.clock
+	span.endedMs = Microseconds(span.startedMs + jsclock.PerformanceNow() - span.clock)
 	span.owner.nextEndSequence++
 	span.record.EndSequence = new(span.owner.nextEndSequence)
 }
@@ -337,8 +337,7 @@ func (span *memorySpan) AddEvent(name string, attributes SpanAttributes) {
 		return
 	}
 	span.record.Events = append(span.record.Events, RecordedTelemetryEvent{Name: name, Attributes: copyAttributes(attributes)})
-	span.eventTimes = append(span.eventTimes, jsclock.PerformanceNow()-span.clock)
-	span.eventTimes = append(span.eventTimes, jsclock.PerformanceNow()-span.clock)
+	span.eventTimes = append(span.eventTimes, Microseconds(jsclock.PerformanceNow()-span.clock))
 }
 
 func (span *memorySpan) SetAttributes(attributes SpanAttributes) {

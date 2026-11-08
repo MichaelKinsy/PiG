@@ -760,7 +760,7 @@ func TestExample36PluginFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Pi prints the report: `plugins: {"added":[],"changed":["@example/greeter"],"removed":[]}`, `objects: example.greeting
-	// swapped` and `failed @example/weather: Error: plugin "@example/weather": weather: no API key configured`.
+	// restarted` and `failed @example/weather: Error: plugin "@example/weather": weather: no API key configured`.
 	if got, want := exLineOf(last), (exLine{[]string{}, []string{"@example/greeter"}, []string{}, []string{"@example/weather"}}); !reflect.DeepEqual(got, want) {
 		t.Fatalf("4. plugins: %+v, want %+v", got, want)
 	}
@@ -1597,7 +1597,7 @@ func TestExample51SingleFilePlugin(t *testing.T) {
 	exMarks(t, plugins, PluginsState{Dirty: []string{"hello"}, Set: true})
 	printed = append(printed, "3. marks: "+exMarksJSON(marks))
 
-	// 3. A build discovers again; the reload changes `hello` in place (the same plugin, its object swapped), a holder sees the
+	// 3. A build discovers again; the reload changes `hello` (the same plugin, its object restarted), a holder sees the
 	// new text.
 	built := exBuild(t, plugins, marks.Dirty)
 	report, err := plugins.Reload(server.node, built, background)

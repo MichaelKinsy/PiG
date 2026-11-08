@@ -41,7 +41,7 @@ import (
 
 // httpWhoami is a route answering who it runs as.
 var httpWhoami = contributing(HttpContribution{Routes: []HttpRouteEntry{
-	RouteFunc("GET /whoami", httpWhoamiRoute),
+	publicRoute("GET /whoami", httpWhoamiRoute),
 }})
 
 func httpWhoamiRoute(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
@@ -292,13 +292,13 @@ func TestHostAndPrincipalsRunsARequestWithoutAPrincipalAnonymousAsksTheAuthentic
 func TestHostAndPrincipalsNeverAuthenticatesAForeignRequestRefusesAForeignOriginAndAnUnsafeBrowserRequestWithoutOne(t *testing.T) {
 	var deleted atomic.Int32
 	server := serving(t, []plugin{{"@app/notes", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("POST /delete", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		publicRoute("POST /delete", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			if httpKindOf(ctx.Principal()) == "owner" {
 				deleted.Add(1)
 			}
 			return jsonOf(float64(deleted.Load())), nil
 		}),
-		RouteFunc("GET /whoami", httpWhoamiRoute),
+		publicRoute("GET /whoami", httpWhoamiRoute),
 	}})}}, servedOptions{})
 	owner := map[string]string{"x-principal": "owner"}
 	own := "http://127.0.0.1:" + strconv.Itoa(server.port)
@@ -326,7 +326,7 @@ func TestHostAndPrincipalsNeverAuthenticatesAForeignRequestRefusesAForeignOrigin
 func TestHostAndPrincipalsAuthenticatesATopLevelNavigationToAPageFromAnotherSiteACrossSiteRouteRunsAnonymous(t *testing.T) {
 	seen := &collector[string]{}
 	server := serving(t, []plugin{{"@app/pages", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		{Key: "GET /app", Route: HttpRouteOptions{Page: true, Handler: func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		{Key: "GET /app", Route: HttpRouteOptions{Public: true, Page: true, Handler: func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			seen.add(httpKindOf(ctx.Principal()))
 			return htmlOf("app"), nil
 		}}},
@@ -352,6 +352,44 @@ func TestHostAndPrincipalsAuthenticatesATopLevelNavigationToAPageFromAnotherSite
 	server.close()
 }
 
+func TestHostAndPrincipalsAnswers401ToARequestNobodyAuthenticatesBeforeARouteNotMarkedPublicRunsServesAPublicOne(t *testing.T) {
+	ran := &collector[string]{}
+	server := serving(t, []plugin{{"@app/notes", contributing(HttpContribution{Routes: []HttpRouteEntry{
+		RouteFunc("GET /private", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			ran.add("private")
+			return jsonOf("private"), nil
+		}),
+		{Key: "GET /public", Route: HttpRouteOptions{Public: true, Handler: func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			return jsonOf("public"), nil
+		}}},
+		{Key: "POST /hook", Route: HttpRouteOptions{CrossSite: true, Handler: func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			return jsonOf("hook"), nil
+		}}},
+	}})}}, servedOptions{})
+	nobody := mustSend(t, server.port, "GET", "/private", sendOptions{})
+	if nobody.status != 401 || nobody.headers.Get("cache-control") != "no-store" {
+		t.Fatalf("nobody = %d %q", nobody.status, nobody.headers.Get("cache-control"))
+	}
+	if got := ran.all(); len(got) != 0 {
+		t.Fatalf("private ran for nobody: %v", got)
+	}
+	owner := map[string]string{"x-principal": "owner"}
+	if got := mustSend(t, server.port, "GET", "/private", sendOptions{headers: owner}).status; got != 200 {
+		t.Fatalf("owner = %d", got)
+	}
+	if got := mustSend(t, server.port, "GET", "/public", sendOptions{}).text(); got != `"public"` {
+		t.Fatalf("public = %q", got)
+	}
+	// A cross-site route always runs anonymous: public by being one.
+	hook := mustSend(t, server.port, "POST", "/hook", sendOptions{headers: map[string]string{
+		"sec-fetch-site": "cross-site", "origin": "https://ci.example.com",
+	}})
+	if hook.text() != `"hook"` {
+		t.Fatalf("hook = %d %q", hook.status, hook.text())
+	}
+	server.close()
+}
+
 func TestDefaultHeadersSendsTheBaselineOnEveryAnswerACSPWithTheResponsesOwnNonceAndTheContributedFramersAndSources(t *testing.T) {
 	nonces := &collector[string]{}
 	lastNonce := func() string {
@@ -359,7 +397,7 @@ func TestDefaultHeadersSendsTheBaselineOnEveryAnswerACSPWithTheResponsesOwnNonce
 		return all[len(all)-1]
 	}
 	server := serving(t, []plugin{{"@app/page", contributing(HttpContribution{
-		Routes: []HttpRouteEntry{RouteFunc("GET /page", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+		Routes: []HttpRouteEntry{publicRoute("GET /page", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
 			nonces.add(request.Nonce())
 			return htmlOf(`<script nonce="` + request.Nonce() + `"></script>`), nil
 		})},
@@ -435,13 +473,13 @@ func TestDefaultHeadersLetsARelaysVerifiedRequestThroughWithItsFramer(t *testing
 func TestRoutesAndWrapsFailingAnswersAThrowingRoute500WithoutItsMessageAThrowingWrap500NamingItsPluginAnHttpFailureItsStatus(t *testing.T) {
 	server := serving(t, []plugin{
 		{"@app/a", contributing(HttpContribution{Routes: []HttpRouteEntry{
-			RouteFunc("GET /throws", func(HttpRequest, host.Ctx) (HttpResponse, error) { return HttpResponse{}, errors.New("secret") }),
-			RouteFunc("GET /failure", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			publicRoute("GET /throws", func(HttpRequest, host.Ctx) (HttpResponse, error) { return HttpResponse{}, errors.New("secret") }),
+			publicRoute("GET /failure", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 				return HttpResponse{}, NewHttpFailure(422, "no")
 			}),
 		}})},
 		{"@app/b", contributing(HttpContribution{
-			Routes: []HttpRouteEntry{RouteFunc("GET /wrapped", func(HttpRequest, host.Ctx) (HttpResponse, error) { return jsonOf(float64(1)), nil })},
+			Routes: []HttpRouteEntry{publicRoute("GET /wrapped", func(HttpRequest, host.Ctx) (HttpResponse, error) { return jsonOf(float64(1)), nil })},
 			Wraps: []HttpWrap{{
 				Name:  "broken",
 				Phase: PhaseHeaders,
@@ -477,7 +515,7 @@ func TestRoutesAndWrapsFailingAnswersAThrowingRoute500WithoutItsMessageAThrowing
 func TestRoutesAndWrapsFailingRunsWrapsOutermostFirstAroundTheRouteInItsRequestsScope(t *testing.T) {
 	order := &collector[string]{}
 	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{
-		Routes: []HttpRouteEntry{RouteFunc("GET /r", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		Routes: []HttpRouteEntry{publicRoute("GET /r", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			order.add("route as " + httpKindOf(ctx.Principal()))
 			return jsonOf(float64(1)), nil
 		})},
@@ -520,12 +558,12 @@ func TestReloadsAndCloseRefusesNewRequests503WaitsForRunningOnesUpToCloseTimeout
 	t.Cleanup(stuckGate.resolve)
 	quickEntered, stuckEntered := newGate(), newGate()
 	server := serving(t, []plugin{{"@app/slow", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /quick", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /quick", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			quickEntered.resolve()
 			time.Sleep(30 * time.Millisecond)
 			return htmlOf("done"), nil
 		}),
-		RouteFunc("GET /stuck", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /stuck", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			sealed.add(ctx)
 			stuckEntered.resolve()
 			<-stuckGate.done()
@@ -582,7 +620,7 @@ func TestReloadsAndCloseNeverRunsARouteForARequestStillAuthenticatingWhenCloseSe
 	release := newGate()
 	var calls atomic.Int32
 	server := serving(t, []plugin{{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			calls.Add(1)
 			return jsonOf(float64(1)), nil
 		}),
@@ -623,7 +661,7 @@ func TestCancellationStartsNoFurtherAuthenticatorOnceCloseSealedTheRequest(t *te
 	var later atomic.Int32
 	server := serving(t, []plugin{
 		{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
-			RouteFunc("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("ok"), nil }),
+			publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("ok"), nil }),
 		}})},
 		{"@app/z-later", authenticating(func(HttpRequest, context.Context) (data.Principal, error) {
 			later.Add(1)
@@ -657,7 +695,7 @@ func TestCancellationStartsNoFurtherAuthenticatorOnceCloseSealedTheRequest(t *te
 func TestCancellationAsksNoAuthenticatorForARequestAbortedBeforeItArrived(t *testing.T) {
 	var calls atomic.Int32
 	server := serving(t, []plugin{{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("ok"), nil }),
+		publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("ok"), nil }),
 	}})}}, servedOptions{
 		noListen: true,
 		authenticate: func(HttpRequest, context.Context) (data.Principal, error) {
@@ -682,7 +720,7 @@ func TestCancellationEndsARequestWhoseBytesResponseWasBornSealed(t *testing.T) {
 			var reads atomic.Int32
 			var bornSealed atomic.Bool
 			server := serving(t, []plugin{{"@app/b", contributing(HttpContribution{Routes: []HttpRouteEntry{
-				RouteFunc("GET /", func(_ HttpRequest, scope host.Ctx) (HttpResponse, error) {
+				publicRoute("GET /", func(_ HttpRequest, scope host.Ctx) (HttpResponse, error) {
 					if when == "inside the route" {
 						entered.resolve()
 						abort(errors.New("client gone"))
@@ -723,7 +761,7 @@ func TestCancellationEndsARequestWhoseBytesResponseWasBornSealed(t *testing.T) {
 // Sol's second recheck B: an aborted `Response` nobody touched again kept its request: close waited its bound.
 func TestCancellationEndsARequestWhoseBytesResponseWasAbortedAndDroppedWithoutAnotherRead(t *testing.T) {
 	server := serving(t, []plugin{{"@app/b", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			return HttpResponse{Kind: KindBytes, Mime: "application/octet-stream", Read: func(int64, int, host.Ctx) ([]byte, error) {
 				return []byte{1}, nil
 			}}, nil
@@ -772,7 +810,7 @@ func TestCancellationACloseWhoseContextIsAbortedAlreadyDoesNotWait(t *testing.T)
 	entered := newGate()
 	release := newGate()
 	server := serving(t, []plugin{{"@app/wait", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /wait", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /wait", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			entered.resolve()
 			_ = release.wait(ctx)
 			return htmlOf("done"), nil
@@ -795,7 +833,7 @@ func TestCancellationCloseSettlesARequestWhoseAuthenticatorIgnoresItsSignal503(t
 	entered := newGate()
 	release := newGate()
 	server := serving(t, []plugin{{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("ok"), nil }),
+		publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("ok"), nil }),
 	}})}}, servedOptions{
 		noListen:     true,
 		closeTimeout: 10 * time.Millisecond,
@@ -829,7 +867,7 @@ func TestCancellationReadsNoBytesAfter(t *testing.T) {
 			var readAfterSeal atomic.Bool
 			ctx, abort := httpAbortable()
 			server := serving(t, []plugin{{"@app/bytes", contributing(HttpContribution{Routes: []HttpRouteEntry{
-				RouteFunc("GET /stream", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+				publicRoute("GET /stream", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 					return HttpResponse{Kind: KindBytes, Mime: "application/octet-stream", Read: func(_ int64, _ int, scope host.Ctx) ([]byte, error) {
 						n := reads.Add(1)
 						if scope.Err() != nil {
@@ -866,7 +904,7 @@ func TestCancellationReadsNoBytesAfter(t *testing.T) {
 func TestCancellationABodyThatErrorsAfterValidJSONFailsTheRequest400TheRoutesSideEffectNeverRuns(t *testing.T) {
 	var writes atomic.Int32
 	server := serving(t, []plugin{{"@app/body", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("POST /body", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+		publicRoute("POST /body", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
 			value, err := request.JSON()
 			if err != nil {
 				return HttpResponse{}, err
@@ -892,7 +930,7 @@ func TestAnswersAnswersWithoutABody(t *testing.T) {
 	for _, status := range []int{204, 205, 304} {
 		t.Run(strconv.Itoa(status), func(t *testing.T) {
 			server := serving(t, []plugin{{"@app/s", contributing(HttpContribution{Routes: []HttpRouteEntry{
-				RouteFunc("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+				publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 					return HttpResponse{Kind: KindJSON, Value: nil, Status: status}, nil
 				}),
 			}})}}, servedOptions{noListen: true})
@@ -909,7 +947,7 @@ func TestAnswersAnswersWithoutABody(t *testing.T) {
 // Fable's recheck N3: the kernel's `forbidden` reached the client as a reported 500.
 func TestAnswersAForbiddenEscapingARoute403Unreported(t *testing.T) {
 	server := serving(t, []plugin{{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			return HttpResponse{}, data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Message: "no"}, nil)
 		}),
 	}})}}, servedOptions{noListen: true})
@@ -925,7 +963,7 @@ func TestAnswersAForbiddenEscapingARoute403Unreported(t *testing.T) {
 // Opus's recheck R2: one value per header name allowed one cookie per response.
 func TestAnswersSendsSeveralSetCookieHeaders(t *testing.T) {
 	server := serving(t, []plugin{{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			return HttpResponse{Kind: KindJSON, Value: float64(1), Headers: []ResponseHeader{HeaderOf("Set-Cookie", "a=1", "b=2")}}, nil
 		}),
 	}})}}, servedOptions{})
@@ -950,7 +988,7 @@ func TestAnswersSendsSeveralSetCookieHeaders(t *testing.T) {
 func TestGCCollectsTheScopesOfAbortedBytesResponsesDroppedWithoutAnotherRead(t *testing.T) {
 	refs := &collector[weak.Pointer[byte]]{}
 	server := serving(t, []plugin{{"@app/b", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			refs.add(httpWeak(ctx))
 			return HttpResponse{Kind: KindBytes, Mime: "application/octet-stream", Read: func(int64, int, host.Ctx) ([]byte, error) {
 				return []byte{1}, nil
@@ -975,7 +1013,7 @@ func TestGCCollectsTheScopesOfBytesResponsesBornSealedAbortedWhileTheRouteReturn
 	var mu sync.Mutex
 	var aborts []context.CancelCauseFunc
 	server := serving(t, []plugin{{"@app/b", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			refs.add(httpWeak(ctx))
 			mu.Lock()
 			if len(aborts) > 0 {
@@ -1008,7 +1046,7 @@ func TestGCCollectsTheScopesOfBytesResponsesBornSealedAbortedWhileTheRouteReturn
 func TestGCCollectsRequestsScopesAndRequestsOnceAnswered(t *testing.T) {
 	refs := &collector[weak.Pointer[byte]]{}
 	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /r", func(request HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /r", func(request HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			refs.add(httpWeak(ctx))
 			refs.add(httpWeak(request))
 			return jsonOf(float64(1)), nil
@@ -1026,7 +1064,7 @@ func TestReloadsAndCloseAReloadSwappingARouteLeavesARunningRequestOnTheOldRouter
 	t.Cleanup(gate.resolve)
 	entered := newGate()
 	old := contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /v", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /v", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			entered.resolve()
 			<-gate.done()
 			return htmlOf("old"), nil
@@ -1044,7 +1082,7 @@ func TestReloadsAndCloseAReloadSwappingARouteLeavesARunningRequestOnTheOldRouter
 	// The running request is on the old route, which it read from the router before it could run.
 	receive(t, entered.done(), "the old route")
 	next := contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /v", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("new"), nil }),
+		publicRoute("GET /v", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("new"), nil }),
 	}})
 	server.reload(t, plugin{"@app/v", next})
 	if got := mustSend(t, server.port, "GET", "/v", sendOptions{}).text(); got != "new" {
