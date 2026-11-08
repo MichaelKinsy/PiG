@@ -3965,3 +3965,47 @@ SCRUTINIZED:pending
 Remove when: the pinned Pi release contains 6d3e342b2.
 
 Evidence: `TestMalformedRefPercentEncodingRendersAsUnknown`, `TestResolveSchemaRef*` (`codemode/declarations_test.go`), `TestSchemaRefs*` (`coding/extension/builtin/toolsearch/schema_refs_pi_test.go`), `TestFindsAToolByAParameterDescriptionBehindALocalReference...` (`durable/toolsearch/toolsearch_test.go`), `TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`.
+
+## D430 Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking remainder from outside the host package (AwaitingCtx)
+
+What: Pi's `ref.method(args)` starts the call at once and returns a Promise. A caller may start several calls before awaiting any (Files v2's pipelined `append`s, which the call window allows) and the host accepts them in the order they were started. A blocking Go `Reference.Call` cannot express that, so `Reference.Start(method, args, ctx)` is the synchronous half (the call is admitted and its handler's synchronous part has run when it returns) and `PendingCall.Wait(ctx)` the awaiting half. `host.AwaitingCtx(ctx, work)` is `Awaiting` for a caller outside the package, which cannot name the host's loop: the blocking remainder of an `onLive` or `on` handler (the awaits of Pi's async function).
+
+Why: AGENTS.md "TypeScript async/Promise parity": an awaited Promise is a blocking call, but a Promise started and awaited later is two Go operations. Without Start the pipelined-append behaviour could not be tested or used through a reference; without AwaitingCtx a package outside `chord/next/host` (the app kit) could not declare an `onLive` routine.
+
+Pi bug: none.
+
+Scope: additive Go API of `chord/next/host`; no Pi behaviour changes.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: never; it is the Go form of an un-awaited Promise and of a handler's async remainder.
+
+Call-site markers: `chord/next/host/host_pending.go`, `chord/nextnode/app/files.go` (`FilesFacet`), `chord/nextnode/app/files_support_test.go`.
+
+Evidence: `TestChunkedUploadsWriteAppendsSentWithoutWaitingAtTheirOwnOffsetsByteForByte` and `TestChunkedUploadsFinishAnUploadOnlyOnceTheAppendsSentBeforeItLanded` (`chord/nextnode/app/files_test.go`), `TestChunkedUploadsDropTheUploadsAPreviousRunLeft` (the `onLive` routine).
+
+Parity allowance: none.
+
+## D431 PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)
+
+What: PiG ports Pi main `2439933cf` (`self.query(table, q, limit)`), which is not in Pi 1.5.0: a watchable of up to `limit` rows over a table of the object itself, run at activation and in the commit step of every commit that writes the table, publishing the diff in that commit's batch; `query_failed` reports a failing run once per failure episode.
+
+Why: owner decision of 2026-11-07 23:33Z, port all of Pi main.
+
+Pi bug: none.
+
+Scope: `chord/next/store` (`live_query.go`), `chord/next/documents` (`Transaction` stages the refresh), `chord/next/host` (`StoreSelf.Query`, `HostError.Table`). A reload reports the object `swapped` until Pi a5d209afd (restart model) is ported, where Pi main says `restarted`.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 2439933cf. Then this record goes.
+
+Call-site markers: `chord/next/store/live_query.go`, `chord/next/host/host_attempt.go` (`Query`).
+
+Evidence: `TestLiveQuery*` (`chord/next/host/host_live_query_test.go`), `TestQueryRefreshAdoptsItsLastApplicationsRunsOnly...` (`chord/next/store/live_query_test.go`).
+
+Parity allowance: Go limits are int64: Pi's fractional and absent limits cannot be written.
