@@ -679,9 +679,9 @@ func (w *pluginWatcher) recordOwn(base []string) {
 		w.locate(filepath.Dir(file))
 	}
 	record := BaseInputs{}
-	for _, file := range files {
-		if hash, ok := hashFile(file); ok {
-			record[file] = hash
+	for i, hash := range hashFiles(files) {
+		if hash != "" {
+			record[files[i]] = hash
 		}
 	}
 	w.records = append(w.records, record)
@@ -1005,14 +1005,26 @@ func sourceFiles(path string) []string {
 		}
 		return nil
 	}
-	entries, err := os.ReadDir(path)
+	return appendSourceFiles(nil, path)
+}
+
+// appendSourceFiles adds the source files under directory dir to files. A directory is known by the type its entry carries
+// (`ReadDir` has it from the read: a link is none, as a scan with `Lstat` finds), so no entry is looked up again.
+func appendSourceFiles(files []string, dir string) []string {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		return files
 	}
-	var files []string
 	for _, entry := range entries {
-		if !isIgnored(entry.Name()) {
-			files = append(files, sourceFiles(filepath.Join(path, entry.Name()))...)
+		name := entry.Name()
+		switch {
+		case isIgnored(name):
+		case entry.IsDir():
+			files = appendSourceFiles(files, filepath.Join(dir, name))
+		default:
+			if _, ok := sourceExtensions[extname(name)]; ok {
+				files = append(files, filepath.Join(dir, name))
+			}
 		}
 	}
 	return files
