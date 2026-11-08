@@ -23,19 +23,16 @@ type SurfaceName string
 const (
 	Web SurfaceName = "web"
 	Tui SurfaceName = "tui"
-	// Desktop is the native desktop host, a third surface (not in Pi).
-	Desktop SurfaceName = "desktop"
 )
 
 // current is the local object holding a surface's published set, by surface.
 var current = map[SurfaceName]*contracts.Contract{
-	Web:     currentContract("chord.web.current"),
-	Tui:     currentContract("chord.tui.current"),
-	Desktop: currentContract("chord.desktop.current"),
+	Web: currentContract("chord.web.current"),
+	Tui: currentContract("chord.tui.current"),
 }
 
 // scripts is the scripts object each surface serves.
-var scripts = map[SurfaceName]*contracts.Contract{Web: next.WebScripts, Tui: next.TuiScripts, Desktop: next.DesktopScripts}
+var scripts = map[SurfaceName]*contracts.Contract{Web: next.WebScripts, Tui: next.TuiScripts}
 
 // currentContract is the contract of a surface's published set: its `set` and `publish`.
 func currentContract(name string) *contracts.Contract {
