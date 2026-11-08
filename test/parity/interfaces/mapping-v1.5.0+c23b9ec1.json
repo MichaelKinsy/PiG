@@ -116342,8 +116342,26 @@
     },
     {
       "id": "pkg:chord/app#App",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9e23824544f92c66147739179a02ccbb9b0b3b46c6b6f6a9c0533bcf39070d80"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9e23824544f92c66147739179a02ccbb9b0b3b46c6b6f6a9c0533bcf39070d80",
+      "rationale": "Derived by the interface gap detector: App is Go chord/nextnode/app/app.go#App (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#App"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/app.go#StartServer"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/app#App::property:applyChanges",
@@ -116657,8 +116675,25 @@
     },
     {
       "id": "pkg:chord/app#App::property:plugins",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:248ad49db00a5e01606f50a31951651bdc914a4b7b394009dd2800bcd6a96809"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:248ad49db00a5e01606f50a31951651bdc914a4b7b394009dd2800bcd6a96809",
+      "rationale": "Derived by the interface gap detector: App::property:plugins is Go chord/nextnode/app/app.go#App.Plugins (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#App.Plugins"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/app.go#App.ApplyChanges"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
+      ]
     },
     {
       "id": "pkg:chord/app#App::property:tui",
@@ -116836,8 +116871,25 @@
     },
     {
       "id": "pkg:chord/app#AppPlugins",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:57e24b3afe840e70cbfed32e612f16c4569766ac6e38df10be2e4de7df72f6d8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:57e24b3afe840e70cbfed32e612f16c4569766ac6e38df10be2e4de7df72f6d8",
+      "rationale": "Derived by the interface gap detector: AppPlugins is Go chord/nextnode/app/app.go#AppPlugins (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#AppPlugins"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/app.go#App.ApplyChanges"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
+      ]
     },
     {
       "id": "pkg:chord/app#AppTimeouts",
@@ -116994,13 +117046,30 @@
     },
     {
       "id": "pkg:chord/app#ephemeralLoginFacet",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:405532dc82822fc3d03f237fa43ec178cdad734a08601145c10e50bdae31de8d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:405532dc82822fc3d03f237fa43ec178cdad734a08601145c10e50bdae31de8d",
+      "rationale": "Derived by the interface gap detector: ephemeralLoginFacet is Go chord/nextnode/app/ephemeral.go#EphemeralLoginFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/ephemeral.go#EphemeralLoginFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/ephemeral.go#EphemeralLoginFacet"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginSignsInUnderAPickedNameAsAFreshUserEachLoginItsOwn"
+      ]
     },
     {
       "id": "pkg:chord/app#ephemeralLoginFacet::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:03df8c3d899eb11265f2af82f7bde7170b11dcc2a9bb3c09b7808cafd204beca"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:03df8c3d899eb11265f2af82f7bde7170b11dcc2a9bb3c09b7808cafd204beca",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/app/ephemeral.ts:20 ephemeralLoginFacet\u003cP\u003e(..._fits: EphemeralUser extends P ? [] : [\"the app's principal type must hold { kind: 'user', id, name }\"]) has one rest parameter that exists only at the type level: it is the empty tuple when the app's principal type holds EphemeralUser, and a type error otherwise, so a call passes nothing at run time. Go's principal is a JSON object (the generic parameter is designed out, D457), so there is nothing to check and no argument; app.EphemeralLoginFacet() takes none. Designed out as a TypeScript type-level mechanic. Intention check: the type-level parameter guards that the app's principal type can hold the principal the login issues; PiG ports the intention as the runtime shape it guarantees, TestEphemeralUserIsAUserPrincipal (chord/nextnode/app/files_index_summary_test.go): the issued principal is { kind: \"user\", id, name }."
     },
     {
       "id": "pkg:chord/app#EphemeralUser",
@@ -117365,13 +117434,15 @@
     },
     {
       "id": "pkg:chord/app#Server",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e9d80a3813bf12808a8a38dda4a39026acc1b2013ffd53ac3940b0258012e1e5"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e9d80a3813bf12808a8a38dda4a39026acc1b2013ffd53ac3940b0258012e1e5",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/app/app.ts:67 `Server = hostKind(\"server\")` is a host kind, and a host kind is a callable function whose call makes an address (contracts/host-kind.ts hostKind). PiG's documented forced difference for every host kind (chord/next/contracts/host_kind.go): HostKind is a struct and Address(values) is the call, so `Server` is the *contracts.HostKind value (app.go) and `Server.Address(nil)` is `Server()`; the host's Delegate, routes and the server's own address use that one value (app.go start). The behavior is the same call; only Go's lack of callable values with properties differs. Designed out as a language mechanic, as HostKind.Address stands for HostKind::call:0 (renames.json). Intention check: Pi's `Server()` guards that the kit's server host has one fixed, well-known address (kind `server`, key `server`) that remote types place themselves on (`hostAddress: () =\u003e Server()`); PiG ports that intention as TestServerAddressIsTheKitsWellKnownServerAddress (chord/nextnode/app/app_server_test.go), which compares kind and key of Server.Address(nil)."
     },
     {
       "id": "pkg:chord/app#Server::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a8362d2996d07749611a72e93471c3e4aacde4e62c5491c732e24445c57e8858"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a8362d2996d07749611a72e93471c3e4aacde4e62c5491c732e24445c57e8858",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/app/app.ts:67 `Server = hostKind(\"server\")` is a host kind, and a host kind is a callable function whose call makes an address (contracts/host-kind.ts hostKind). PiG's documented forced difference for every host kind (chord/next/contracts/host_kind.go): HostKind is a struct and Address(values) is the call, so `Server` is the *contracts.HostKind value (app.go) and `Server.Address(nil)` is `Server()`; the host's Delegate, routes and the server's own address use that one value (app.go start). The behavior is the same call; only Go's lack of callable values with properties differs. Designed out as a language mechanic, as HostKind.Address stands for HostKind::call:0 (renames.json). Intention check: Pi's `Server()` guards that the kit's server host has one fixed, well-known address (kind `server`, key `server`) that remote types place themselves on (`hostAddress: () =\u003e Server()`); PiG ports that intention as TestServerAddressIsTheKitsWellKnownServerAddress (chord/nextnode/app/app_server_test.go), which compares kind and key of Server.Address(nil)."
     },
     {
       "id": "pkg:chord/app#SESSION_COOKIE",
@@ -122091,49 +122162,13 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:9b9e12fcf22d73cf2b0715ae1e24b86bf2be3642494576e3621e564651f45de1",
-      "rationale": "Derived by the interface gap detector: PluginRuntime is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
-      ],
-      "evidence": [
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:9b9e12fcf22d73cf2b0715ae1e24b86bf2be3642494576e3621e564651f45de1"
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:load",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678",
-      "rationale": "Derived by the interface gap detector: PluginRuntime::property:load is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
-      ],
-      "evidence": [
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer",
-        "test:chord/nextnode/plugins/plugins_node_callbacks_test.go#TestGoPackageAnAppModuleImportsItBySpecifier"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678"
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:load::call:0",
@@ -122142,26 +122177,8 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:reload",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433",
-      "rationale": "Derived by the interface gap detector: PluginRuntime::property:reload is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
-      ],
-      "evidence": [
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
-        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestSyncACallbackCannotCallItsNodeHost",
-        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433"
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:reload::call:0",
@@ -122377,7 +122394,7 @@
       "id": "pkg:chord/plugins#BuiltScript",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d4afb7d8a2108bc991dced88e8f683446feba9a4b43bd1eade9ca4fff7cec215",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process cannot run a JavaScript plugin, so evaluation (evaluateFacet, its options and the built script it takes) has no Go form: the Go side ships a BuiltFacet as data (PluginScript) and the subprocess evaluates it. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of evaluate.test.ts (plugins_evaluate_test.go) run through the subprocess."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process holds no JavaScript values (a facet object, module namespaces, a vm.Script). Intention check: evaluate.test.ts guards that a built script's default export is a facet, that its require answers only host packages, builtins and chord.external packages, that its errors name the plugin's own file and line, and that old facets are collected. PiG-shaped tests: the same cases run against Pi's own evaluateFacet in the Node host through the probe (plugins_evaluate_test.go, TestEvaluate*), observing the facet's values, thrown errors, stack and collection; the Go rows that remain are the live-JS types and functions only.. Owner-approved D607 for 0.8.0 (2026-11-08, docs/parity/divergences/D607.md); follow-up after 0.8.0: Load takes a host as Pi's does."
     },
     {
       "id": "pkg:chord/plugins#createPluginRuntime",
@@ -122583,25 +122600,25 @@
       "id": "pkg:chord/plugins#evaluateFacet",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6cc4f28a48453a13dbb988ebd63c9e93c9670870a4c59f448279d06f038fbf75",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process cannot run a JavaScript plugin, so evaluation (evaluateFacet, its options and the built script it takes) has no Go form: the Go side ships a BuiltFacet as data (PluginScript) and the subprocess evaluates it. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of evaluate.test.ts (plugins_evaluate_test.go) run through the subprocess."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process holds no JavaScript values (a facet object, module namespaces, a vm.Script). Intention check: evaluate.test.ts guards that a built script's default export is a facet, that its require answers only host packages, builtins and chord.external packages, that its errors name the plugin's own file and line, and that old facets are collected. PiG-shaped tests: the same cases run against Pi's own evaluateFacet in the Node host through the probe (plugins_evaluate_test.go, TestEvaluate*), observing the facet's values, thrown errors, stack and collection; the Go rows that remain are the live-JS types and functions only.. Owner-approved D607 for 0.8.0 (2026-11-08, docs/parity/divergences/D607.md); follow-up after 0.8.0: Load takes a host as Pi's does."
     },
     {
       "id": "pkg:chord/plugins#evaluateFacet::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ed7edcaafb4f764f6d3fd12e9bc1a9f1b12a98c19007d8c19517cf594fed4d82",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process cannot run a JavaScript plugin, so evaluation (evaluateFacet, its options and the built script it takes) has no Go form: the Go side ships a BuiltFacet as data (PluginScript) and the subprocess evaluates it. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of evaluate.test.ts (plugins_evaluate_test.go) run through the subprocess."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process holds no JavaScript values (a facet object, module namespaces, a vm.Script). Intention check: evaluate.test.ts guards that a built script's default export is a facet, that its require answers only host packages, builtins and chord.external packages, that its errors name the plugin's own file and line, and that old facets are collected. PiG-shaped tests: the same cases run against Pi's own evaluateFacet in the Node host through the probe (plugins_evaluate_test.go, TestEvaluate*), observing the facet's values, thrown errors, stack and collection; the Go rows that remain are the live-JS types and functions only.. Owner-approved D607 for 0.8.0 (2026-11-08, docs/parity/divergences/D607.md); follow-up after 0.8.0: Load takes a host as Pi's does."
     },
     {
       "id": "pkg:chord/plugins#EvaluateOptions",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:29aee64c3199ec3faa347cecf18dd2b4435fa0b3d63cab970f35b952e42e96c7",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process cannot run a JavaScript plugin, so evaluation (evaluateFacet, its options and the built script it takes) has no Go form: the Go side ships a BuiltFacet as data (PluginScript) and the subprocess evaluates it. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of evaluate.test.ts (plugins_evaluate_test.go) run through the subprocess."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process holds no JavaScript values (a facet object, module namespaces, a vm.Script). Intention check: evaluate.test.ts guards that a built script's default export is a facet, that its require answers only host packages, builtins and chord.external packages, that its errors name the plugin's own file and line, and that old facets are collected. PiG-shaped tests: the same cases run against Pi's own evaluateFacet in the Node host through the probe (plugins_evaluate_test.go, TestEvaluate*), observing the facet's values, thrown errors, stack and collection; the Go rows that remain are the live-JS types and functions only.. Owner-approved D607 for 0.8.0 (2026-11-08, docs/parity/divergences/D607.md); follow-up after 0.8.0: Load takes a host as Pi's does."
     },
     {
       "id": "pkg:chord/plugins#HostPackages",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c8e3e728125766158fcd810ba9d88285bc7d93a26a8aa4ae5f82129b3329799a",
-      "rationale": "Pi 1.5.0+c23b9ec1 evaluate.ts HostPackages is Readonly\u003cRecord\u003cstring, unknown\u003e\u003e: the live module values (a CommonJS package's exports, an ESM namespace) a script's require answers. A Go process holds no JavaScript values: PiG's HostPackages maps each specifier to the file of the module the Node subprocess imports once (plugins_runtime.go HostPackages). Designed out under D607 (docs/parity/divergences/D607.md); RuntimeLoad.Modules carries it."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process holds no JavaScript values (a facet object, module namespaces, a vm.Script). Intention check: evaluate.test.ts guards that a built script's default export is a facet, that its require answers only host packages, builtins and chord.external packages, that its errors name the plugin's own file and line, and that old facets are collected. PiG-shaped tests: the same cases run against Pi's own evaluateFacet in the Node host through the probe (plugins_evaluate_test.go, TestEvaluate*), observing the facet's values, thrown errors, stack and collection; the Go rows that remain are the live-JS types and functions only.. Owner-approved D607 for 0.8.0 (2026-11-08, docs/parity/divergences/D607.md); follow-up after 0.8.0: Load takes a host as Pi's does."
     },
     {
       "id": "pkg:chord/plugins#installDependencies",
@@ -122756,22 +122773,22 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
       ],
       "evidence": [
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample36PluginFailures",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample37PluginImports"
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
       ]
     },
     {
       "id": "pkg:chord/plugins#mapStack",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:4faf4fe1b4816ad6e017290f4b3043570ac999025cff01ef55b91e9601034eab",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/stack.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts); a Go process cannot run a JavaScript plugin, so mapStack rewrites a stack through a registry of source maps that lives with the evaluated scripts in that process, so the mapping happens there. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of stack.test.ts (plugins_stack_test.go) run through the subprocess."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/stack.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts); a Go process holds no JavaScript values (an in-process source-map registry keyed by filename). Intention check: stack.test.ts guards that a plugin script's stack maps to the plugin's file and line, and that its registry entries go with the last evaluation of the script. PiG-shaped tests: plugins_stack_test.go runs Pi's mapStack in the Node host and compares the stack text the Go side reads (*NodeError.Stack) and the registry's lifetime.. Owner-approved D607 for 0.8.0 (2026-11-08, docs/parity/divergences/D607.md); follow-up after 0.8.0: Load takes a host as Pi's does."
     },
     {
       "id": "pkg:chord/plugins#mapStack::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:4edda1a5cd8b7715314585af8dabcb19f39ba07d3a25fc10cf40cb0bd813bbf7",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/stack.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts); a Go process cannot run a JavaScript plugin, so mapStack rewrites a stack through a registry of source maps that lives with the evaluated scripts in that process, so the mapping happens there. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of stack.test.ts (plugins_stack_test.go) run through the subprocess."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/stack.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts); a Go process holds no JavaScript values (an in-process source-map registry keyed by filename). Intention check: stack.test.ts guards that a plugin script's stack maps to the plugin's file and line, and that its registry entries go with the last evaluation of the script. PiG-shaped tests: plugins_stack_test.go runs Pi's mapStack in the Node host and compares the stack text the Go side reads (*NodeError.Stack) and the registry's lifetime.. Owner-approved D607 for 0.8.0 (2026-11-08, docs/parity/divergences/D607.md); follow-up after 0.8.0: Load takes a host as Pi's does."
     },
     {
       "id": "pkg:chord/plugins#Plugin",
@@ -123015,49 +123032,13 @@
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:e4ea6ba85df1ba74d00cb4876a78289f23725e48355ff3ec911a9a52cc3d3056",
-      "rationale": "Derived by the interface gap detector: PluginRuntime is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
-      ],
-      "evidence": [
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:e4ea6ba85df1ba74d00cb4876a78289f23725e48355ff3ec911a9a52cc3d3056"
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:load",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678",
-      "rationale": "Derived by the interface gap detector: PluginRuntime::property:load is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
-      ],
-      "evidence": [
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer",
-        "test:chord/nextnode/plugins/plugins_node_callbacks_test.go#TestGoPackageAnAppModuleImportsItBySpecifier"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678"
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:load::call:0",
@@ -123066,26 +123047,8 @@
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:reload",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433",
-      "rationale": "Derived by the interface gap detector: PluginRuntime::property:reload is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
-      ],
-      "evidence": [
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
-        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestSyncACallbackCannotCallItsNodeHost",
-        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433"
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:reload::call:0",
@@ -123094,26 +123057,8 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:af87ba047cef36889685ba09806479f6072825418935da65a47a32a659dcee04",
-      "rationale": "Derived by the interface gap detector: Plugins is Go chord/nextnode/plugins/plugins_plugins.go#Plugins (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_plugins.go#Plugins"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
-      ],
-      "evidence": [
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:af87ba047cef36889685ba09806479f6072825418935da65a47a32a659dcee04"
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:build",
@@ -123357,26 +123302,8 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:load",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:d752c855918c6c0f3ed6612c9f38a6a8ddc5d510f21511f6c8bf20807e2c237b",
-      "rationale": "Derived by the interface gap detector: Plugins::property:load is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.Load (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
-      ],
-      "evidence": [
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAGoCoreFacetNeedingAPluginsTypeKeepsItsOldCodeWhenThePluginFailsToBuild"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:d752c855918c6c0f3ed6612c9f38a6a8ddc5d510f21511f6c8bf20807e2c237b"
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:load::call:0",
@@ -123385,26 +123312,8 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:reload",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:6a2865d5adc2cef1a4a4b9383a0265e099aae003a9a9562a1aa9f34691729813",
-      "rationale": "Derived by the interface gap detector: Plugins::property:reload is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload"
-      ],
-      "evidence": [
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample36PluginFailures",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample37PluginImports",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample51SingleFilePlugin"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:6a2865d5adc2cef1a4a4b9383a0265e099aae003a9a9562a1aa9f34691729813"
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:reload::call:0",
@@ -123527,25 +123436,8 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:step",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:441f2e9794d6493e8e710bca6bc4d66937d0be892c44decf10472aa435596048",
-      "rationale": "Derived by the interface gap detector: Plugins::property:step is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.Step (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_plugins.go#Plugins.Step"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Step"
-      ],
-      "evidence": [
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:441f2e9794d6493e8e710bca6bc4d66937d0be892c44decf10472aa435596048"
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:step::call:0",
@@ -123638,8 +123530,25 @@
     },
     {
       "id": "pkg:chord/plugins#PluginsOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0c265ecceba86e281f63d6964ccc69de627238e96c479cc196a37531846a2028"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0c265ecceba86e281f63d6964ccc69de627238e96c479cc196a37531846a2028",
+      "rationale": "Derived by the interface gap detector: PluginsOptions is Go chord/nextnode/plugins/plugins_plugins.go#PluginsOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#PluginsOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample37PluginImports",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout"
+      ]
     },
     {
       "id": "pkg:chord/plugins#PluginSource",
@@ -123834,19 +123743,19 @@
       "id": "pkg:chord/plugins#TestedPlugin::property:contributions::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:43696c8684fe819d085076fda5606bad985a40bbe78bbcd1ace6300194df77e9",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go). Intention check: testPlugin's cases guard that a plugin can be loaded alone with stubs and that its contributions, unserved contracts, errors and root calls are observable; PiG ports each case through the Node host and the Go stubs host (plugins_testing_test.go, TestTestPlugin*), observing the same outputs."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:errors",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:20f9d5a86ed8a29948e6860a28d6f21e72def85372e0e6da068e1aea5c838c27",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go). Intention check: testPlugin's cases guard that a plugin can be loaded alone with stubs and that its contributions, unserved contracts, errors and root calls are observable; PiG ports each case through the Node host and the Go stubs host (plugins_testing_test.go, TestTestPlugin*), observing the same outputs."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:host",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0d8f1350fe23d25f2049a6758b9a1c8e23308007f0f288afd96df721df93262d",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go). Intention check: testPlugin's cases guard that a plugin can be loaded alone with stubs and that its contributions, unserved contracts, errors and root calls are observable; PiG ports each case through the Node host and the Go stubs host (plugins_testing_test.go, TestTestPlugin*), observing the same outputs."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:plugin",
@@ -123872,13 +123781,13 @@
       "id": "pkg:chord/plugins#TestedPlugin::property:root",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f4c7b9ab5522aea66e78fa60b9873ed8b8d07292eb11bd70a4ed221f6e02d5f0",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go). Intention check: testPlugin's cases guard that a plugin can be loaded alone with stubs and that its contributions, unserved contracts, errors and root calls are observable; PiG ports each case through the Node host and the Go stubs host (plugins_testing_test.go, TestTestPlugin*), observing the same outputs."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:root::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d83affa392f522312a59b2ab122c33097b87e1e32739dcb0aa3d171675498657",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go). Intention check: testPlugin's cases guard that a plugin can be loaded alone with stubs and that its contributions, unserved contracts, errors and root calls are observable; PiG ports each case through the Node host and the Go stubs host (plugins_testing_test.go, TestTestPlugin*), observing the same outputs."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:unserved",
@@ -125830,19 +125739,19 @@
       "id": "pkg:chord/surfaces#tuiSurface",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:9c9adb02c354c9dc66fe8782e5e2867d4e1332c11d1866f092ec912f7b3f372c",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build before it resolves and returns `base` and `inputs`; PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit), because the first set is published to the loaded host's scripts object. Intention check: web.test.ts/tui.test.ts guard that the surface's routes and files are served only once the base bundle is built, that a failed build is reported (503) and that the published set is the kind's current set; PiG ports them as surfaces_build_test.go and app_web_browser_test.go against NewWebSurface/NewTuiSurface + Build, observing the same responses, base hash and inputs (SurfaceBuilt). Owner-approved D608 for 0.8.0 (2026-11-08, docs/parity/divergences/D608.md); follow-up after 0.8.0: eager-build surfaces, design back to the owner first."
     },
     {
       "id": "pkg:chord/surfaces#TuiSurface",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:35e9642ec330fdcfe34f164dd337e37bb49b35e73d8854a7fa845951eae8c3ea",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build before it resolves and returns `base` and `inputs`; PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit), because the first set is published to the loaded host's scripts object. Intention check: web.test.ts/tui.test.ts guard that the surface's routes and files are served only once the base bundle is built, that a failed build is reported (503) and that the published set is the kind's current set; PiG ports them as surfaces_build_test.go and app_web_browser_test.go against NewWebSurface/NewTuiSurface + Build, observing the same responses, base hash and inputs (SurfaceBuilt). Owner-approved D608 for 0.8.0 (2026-11-08, docs/parity/divergences/D608.md); follow-up after 0.8.0: eager-build surfaces, design back to the owner first."
     },
     {
       "id": "pkg:chord/surfaces#tuiSurface::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:2520959d155e445346ec3118b0cd5c2d09cd4f15feb35be1d3a46cdc441fcd03",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build before it resolves and returns `base` and `inputs`; PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit), because the first set is published to the loaded host's scripts object. Intention check: web.test.ts/tui.test.ts guard that the surface's routes and files are served only once the base bundle is built, that a failed build is reported (503) and that the published set is the kind's current set; PiG ports them as surfaces_build_test.go and app_web_browser_test.go against NewWebSurface/NewTuiSurface + Build, observing the same responses, base hash and inputs (SurfaceBuilt). Owner-approved D608 for 0.8.0 (2026-11-08, docs/parity/divergences/D608.md); follow-up after 0.8.0: eager-build surfaces, design back to the owner first."
     },
     {
       "id": "pkg:chord/surfaces#TuiSurfaceOptions",
@@ -125890,19 +125799,19 @@
       "id": "pkg:chord/surfaces#webSurface",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e5bc49ee5d20c294dd8d7bdbd560e42c296218011405b68822cf0fbfdb86e112",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build before it resolves and returns `base` and `inputs`; PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit), because the first set is published to the loaded host's scripts object. Intention check: web.test.ts/tui.test.ts guard that the surface's routes and files are served only once the base bundle is built, that a failed build is reported (503) and that the published set is the kind's current set; PiG ports them as surfaces_build_test.go and app_web_browser_test.go against NewWebSurface/NewTuiSurface + Build, observing the same responses, base hash and inputs (SurfaceBuilt). Owner-approved D608 for 0.8.0 (2026-11-08, docs/parity/divergences/D608.md); follow-up after 0.8.0: eager-build surfaces, design back to the owner first."
     },
     {
       "id": "pkg:chord/surfaces#WebSurface",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b60e98cfb3c03d2da4e1c8da6c6fa0f5f154bea680717f59ae267d07c8d7ba82",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build before it resolves and returns `base` and `inputs`; PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit), because the first set is published to the loaded host's scripts object. Intention check: web.test.ts/tui.test.ts guard that the surface's routes and files are served only once the base bundle is built, that a failed build is reported (503) and that the published set is the kind's current set; PiG ports them as surfaces_build_test.go and app_web_browser_test.go against NewWebSurface/NewTuiSurface + Build, observing the same responses, base hash and inputs (SurfaceBuilt). Owner-approved D608 for 0.8.0 (2026-11-08, docs/parity/divergences/D608.md); follow-up after 0.8.0: eager-build surfaces, design back to the owner first."
     },
     {
       "id": "pkg:chord/surfaces#webSurface::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:df9b923ab5acd8a17e706e441ea2e39f924d062015fe973132f7b3bfe7afe008",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build before it resolves and returns `base` and `inputs`; PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit), because the first set is published to the loaded host's scripts object. Intention check: web.test.ts/tui.test.ts guard that the surface's routes and files are served only once the base bundle is built, that a failed build is reported (503) and that the published set is the kind's current set; PiG ports them as surfaces_build_test.go and app_web_browser_test.go against NewWebSurface/NewTuiSurface + Build, observing the same responses, base hash and inputs (SurfaceBuilt). Owner-approved D608 for 0.8.0 (2026-11-08, docs/parity/divergences/D608.md); follow-up after 0.8.0: eager-build surfaces, design back to the owner first."
     },
     {
       "id": "pkg:chord/surfaces#WebSurfaceOptions",

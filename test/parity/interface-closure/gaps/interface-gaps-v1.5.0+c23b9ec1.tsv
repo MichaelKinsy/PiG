@@ -390,15 +390,8 @@ pkg:chord/.#sub	chord	child-gap	chord/next/store/expression.go#Sub
 pkg:chord/.#sub::call:0	chord	undecidable	chord/next/store/expression.go#Sub
 pkg:chord/.#when	chord	child-gap	chord/next/store/expression.go#When
 pkg:chord/.#when::call:0	chord	undecidable	chord/next/store/expression.go#When
-pkg:chord/app#App	chord	child-gap	chord/nextnode/app/app.go#App
-pkg:chord/app#App::property:plugins	chord	type-mismatch	chord/nextnode/app/app.go#App.Plugins
-pkg:chord/app#AppPlugins	chord	no-go-symbol	
 pkg:chord/app#AppWorkerKind	chord	type-mismatch	chord/nextnode/app/app.go#AppWorkerKind
-pkg:chord/app#Server	chord	type-mismatch	chord/nextnode/app/app.go#Server
-pkg:chord/app#Server::call:0	chord	child-gap	chord/nextnode/app/app.go#Server
-pkg:chord/app#WorkerOptions	chord	type-mismatch	chord/nextnode/app/worker.go#WorkerOptions
-pkg:chord/app#ephemeralLoginFacet	chord	child-gap	chord/nextnode/app/ephemeral.go#EphemeralLoginFacet
-pkg:chord/app#ephemeralLoginFacet::call:0	chord	signature-mismatch	chord/nextnode/app/ephemeral.go#EphemeralLoginFacet
+pkg:chord/app#WorkerOptions	chord	undecidable	chord/nextnode/app/worker.go#WorkerOptions
 pkg:chord/http#Authenticator	chord	child-gap	chord/nextnode/http/authenticate.go#Authenticator
 pkg:chord/http#Authenticator::call:0	chord	signature-mismatch	chord/nextnode/http/authenticate.go#Authenticator
 pkg:chord/http#CookieOptions	chord	type-mismatch	chord/nextnode/http/cookies.go#CookieOptions
@@ -424,7 +417,26 @@ pkg:chord/json#CopyJsonOptions	chord	no-go-symbol
 pkg:chord/json#JsonRepresentation	chord	no-go-symbol	
 pkg:chord/json#copyJson	chord	child-gap	durable/json.go#CopyJson
 pkg:chord/json#copyJson::call:0	chord	signature-mismatch	durable/json.go#CopyJson
-pkg:chord/plugins#PluginsOptions	chord	type-mismatch	chord/nextnode/plugins/plugins_plugins.go#PluginsOptions
+pkg:chord/plugins#PluginRuntime	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime
+pkg:chord/plugins#PluginRuntime::property:load	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
+pkg:chord/plugins#PluginRuntime::property:load::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
+pkg:chord/plugins#PluginRuntime::property:reload	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
+pkg:chord/plugins#PluginRuntime::property:reload::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
+pkg:chord/plugins#Plugins	chord	child-gap	chord/nextnode/plugins/plugins_plugins.go#Plugins
+pkg:chord/plugins#Plugins::property:load	chord	child-gap	chord/nextnode/plugins/plugins_plugins.go#Plugins.Load
+pkg:chord/plugins#Plugins::property:load::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_plugins.go#Plugins.Load
+pkg:chord/plugins#Plugins::property:reload	chord	child-gap	chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload
+pkg:chord/plugins#Plugins::property:reload::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload
+pkg:chord/plugins#Plugins::property:step	chord	child-gap	chord/nextnode/plugins/plugins_plugins.go#Plugins.Step
+pkg:chord/plugins#Plugins::property:step::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_plugins.go#Plugins.Step
+pkg:chord/plugins#RolloutStep	chord	type-mismatch	chord/nextnode/plugins/plugins_plugins.go#RolloutStep
+pkg:chord/plugins#RuntimeLoad	chord	type-mismatch	chord/nextnode/plugins/plugins_runtime.go#RuntimeLoad
+pkg:chord/plugins/runtime#PluginRuntime	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime
+pkg:chord/plugins/runtime#PluginRuntime::property:load	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
+pkg:chord/plugins/runtime#PluginRuntime::property:load::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load
+pkg:chord/plugins/runtime#PluginRuntime::property:reload	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
+pkg:chord/plugins/runtime#PluginRuntime::property:reload::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload
+pkg:chord/plugins/runtime#RuntimeLoad	chord	type-mismatch	chord/nextnode/plugins/plugins_runtime.go#RuntimeLoad
 pkg:chord/react#ExternalStore	chord	no-go-symbol	
 pkg:chord/react#HostProvider	chord	no-go-symbol	
 pkg:chord/react#HostProvider::call:0	chord	child-gap	
