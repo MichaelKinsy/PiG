@@ -133,3 +133,13 @@ func PageStateOf[T any](h host.Host, key string, initial T) PageState[T] {
 	}
 	return PageState[T]{state}
 }
+
+// SameValue is JavaScript's `===` on two values: the identity pageState and Optimistic compare by (see sameValue).
+func SameValue(a, b any) bool { return sameValue(a, b) }
+
+// languageKey is the page state key of a host's language.
+const languageKey = "chord.language"
+
+// HostLanguage is h's active language, kept as its page state: nil until a follower sets it (then `t` renders the first
+// catalog). Ports packages/chord/src/surfaces/active-language.ts `hostLanguage`.
+func HostLanguage(h host.Host) PageState[*Language] { return PageStateOf[*Language](h, languageKey, nil) }
