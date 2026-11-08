@@ -59,6 +59,8 @@ type fixtureOptions struct {
 	Uploads int
 	// Extra loads more facets on the same host.
 	Extra []host.HostFacet
+	// Store is the store file's name in Dir: `store.sqlite` unless it names another (a worker's kit store is `kit.sqlite`).
+	Store string
 }
 
 func openStoreAt(t testing.TB, path string) *store.ChordStore {
@@ -87,7 +89,11 @@ func filesOf(t *testing.T, options ...fixtureOptions) *fixture {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	chordStore := openStoreAt(t, filepath.Join(dir, "store.sqlite"))
+	storeFile := opts.Store
+	if storeFile == "" {
+		storeFile = "store.sqlite"
+	}
+	chordStore := openStoreAt(t, filepath.Join(dir, storeFile))
 	errs := &errorLog{}
 	h, err := host.CreateHost(host.HostOptions{Store: chordStore, OnError: errs.push})
 	if err != nil {

@@ -12075,6 +12075,27 @@
       ]
     },
     {
+      "id": "BF-4c70e73",
+      "title": "fix(chord): the app builds for Windows (no uid check there, as Pi), a required root's failed load stops the…",
+      "symptom": "fix(chord): the app builds for Windows (no uid check there, as Pi), a required root's failed load stops the loaded Node host, the app's roots and API modules follow the root move",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4c70e73afa",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_changes_test.go::TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
+      ]
+    },
+    {
       "id": "BF-4c7ccf2",
       "title": "A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count…",
       "symptom": "A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count and its cost, as Pi does, instead of capping it.",
@@ -16013,6 +16034,27 @@
       ],
       "tests": [
         "internal/codingagent/assistant_message_upstream_test.go::TestAssistantMessageUpstream"
+      ]
+    },
+    {
+      "id": "BF-62222ca",
+      "title": "fix(chord/plugins): a base record arriving after the close watches nothing (Pi recordBase)",
+      "symptom": "fix(chord/plugins): a base record arriving after the close watches nothing (Pi recordBase)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "62222ca3da",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_watcher_base_test.go::TestARecordedBaseAfterTheCloseWatchesNothing"
       ]
     },
     {
@@ -21220,6 +21262,25 @@
       ]
     },
     {
+      "id": "BF-6e6304d",
+      "title": "fix(chord/tui): the reader's swallowed redraw panic cites Pi's TuiScope.watch try/catch",
+      "symptom": "fix(chord/tui): the reader's swallowed redraw panic cites Pi's TuiScope.watch try/catch",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6e6304d56e",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-6e6a0dd",
       "title": "A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it",
       "symptom": "PiG dropped the message from the session context, the projection and RPC `get_messages`.",
@@ -21450,6 +21511,38 @@
         "internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain",
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
+      ]
+    },
+    {
+      "id": "BF-6fdf59f",
+      "title": "On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot…",
+      "symptom": "On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot be put on one entry (a protected or vanished one in a watched directory) no longer stops every watch.",
+      "rootCause": "Go's syscall.Stat_t has Birthtimespec on NetBSD and X__st_birthtim on OpenBSD. The macOS packages unit now runs the plugins watcher's base and identity tests, which exercise the lstat birthtimespec identity and the kqueue watches that end with a renamed directory.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot be put on one entry (a protected or vanished one in a watched directory) no longer stops every watch.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "018a05add9",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "0c44f84f21",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "6fdf59fc08",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry",
+        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsTheSameOne",
+        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName"
       ]
     },
     {
@@ -32638,6 +32731,25 @@
         "ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes",
         "coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage"
       ]
+    },
+    {
+      "id": "BF-a3e1a0c",
+      "title": "fix(chord/surfaces): comparableEqual's swallowed panic cites Pi",
+      "symptom": "fix(chord/surfaces): comparableEqual's swallowed panic cites Pi",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a3e1a0c77c",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-a40a16d",
