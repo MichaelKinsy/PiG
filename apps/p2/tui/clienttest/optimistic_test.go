@@ -2,6 +2,7 @@ package clienttest
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
@@ -100,6 +101,7 @@ func TestSessionSelectorARenameAndAPinShowBeforeTheirCallsAnswerARefusedRenameRo
 
 func TestSessionSelectorLifecycleOperationsMarkTheirRowsAFailureIsAnnouncedAndDismissFailedClearsIt(t *testing.T) {
 	var dismissed []string
+	var mu sync.Mutex
 	running := delta.JsonObjectOf("phase", "running", "id", "op1", "kind", "relocate", "session", "s", "target", nil, "copying", false)
 	stub := p2test.Stub{Contract: contract.Sessions, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
 		operations := self.Cell([]any{running})
@@ -110,7 +112,9 @@ func TestSessionSelectorLifecycleOperationsMarkTheirRowsAFailureIsAnnouncedAndDi
 			Methods: map[string]p2test.StubMethod{
 				"dismissOperation": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					id := args.(*delta.JsonObject).Value("operation").(string)
+					mu.Lock()
 					dismissed = append(dismissed, id)
+					mu.Unlock()
 					_ = operations.Change(func(current any) any {
 						var kept []any
 						for _, each := range current.([]any) {
@@ -143,6 +147,6 @@ func TestSessionSelectorLifecycleOperationsMarkTheirRowsAFailureIsAnnouncedAndDi
 	if !ran {
 		t.Fatal("/dismiss-failed did not run")
 	}
-	tuitest.Poll(t, func() bool { return len(dismissed) == 1 })
+	tuitest.Poll(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(dismissed) == 1 })
 	pollScreen(t, f.Fixture, func(screen string) bool { return !containsText(screen, "Move failed ") })
 }
