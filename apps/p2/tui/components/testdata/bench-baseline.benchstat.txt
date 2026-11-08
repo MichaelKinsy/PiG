@@ -1,1 +1,39 @@
-bash: line 1: /tmp/bin/benchstat: No such file or directory
+# base d8897cd94c vs tip (05839400d2 merged with follow/pi-main 55d8ccb4df), apps/p2/tui/components benchmarks
+# xd6702 tern-ci:v7, 8 CPUs, nice, -benchtime 300ms, 10 rounds interleaved base/tip test binaries (same merged PiG tree, base apps/p2 + old editor.go); benchstat golang.org/x/perf@latest
+# RSS is max RSS (KiB) of the test binary running every benchmark, 3 runs each.
+                             │     base     │                 tip                 │
+                             │    sec/op    │    sec/op     vs base               │
+BuildTranscript/pairs=10-8     9.616µ ±  9%   9.680µ ±  7%       ~ (p=0.912 n=10)
+BuildTranscript/pairs=100-8    92.95µ ±  9%   96.01µ ±  8%       ~ (p=0.579 n=10)
+TranscriptViewRender-8         58.47µ ± 10%   58.14µ ± 17%       ~ (p=0.739 n=10)
+TranscriptViewRenderCached-8   53.23µ ± 17%   57.37µ ±  9%       ~ (p=0.353 n=10)
+AssistantMessageRender-8       471.8n ±  6%   491.5n ±  8%       ~ (p=0.353 n=10)
+ToolCardRender-8               26.55µ ±  3%   26.61µ ±  9%       ~ (p=0.796 n=10)
+BashExecutionRender-8          30.92µ ± 10%   31.67µ ±  6%       ~ (p=0.529 n=10)
+geomean                        19.51µ         20.01µ        +2.54%
+
+                             │     base     │                  tip                  │
+                             │     B/op     │     B/op      vs base                 │
+BuildTranscript/pairs=10-8     9.945Ki ± 0%   9.945Ki ± 0%       ~ (p=1.000 n=10) ¹
+BuildTranscript/pairs=100-8    101.6Ki ± 0%   101.6Ki ± 0%       ~ (p=1.000 n=10) ¹
+TranscriptViewRender-8         79.80Ki ± 0%   79.80Ki ± 0%       ~ (p=1.000 n=10)
+TranscriptViewRenderCached-8   79.10Ki ± 0%   79.10Ki ± 0%       ~ (p=1.000 n=10) ¹
+AssistantMessageRender-8         640.0 ± 0%     640.0 ± 0%       ~ (p=1.000 n=10) ¹
+ToolCardRender-8               14.02Ki ± 0%   14.02Ki ± 0%  -0.01% (p=0.000 n=10)
+BashExecutionRender-8          24.07Ki ± 0%   24.07Ki ± 0%       ~ (p=1.000 n=10) ¹
+geomean                        20.14Ki        20.14Ki       -0.00%
+¹ all samples are equal
+
+                             │    base     │                 tip                  │
+                             │  allocs/op  │  allocs/op   vs base                 │
+BuildTranscript/pairs=10-8      99.00 ± 0%    99.00 ± 0%       ~ (p=1.000 n=10) ¹
+BuildTranscript/pairs=100-8    1.070k ± 0%   1.070k ± 0%       ~ (p=1.000 n=10) ¹
+TranscriptViewRender-8          325.0 ± 0%    324.5 ± 0%       ~ (p=0.714 n=10)
+TranscriptViewRenderCached-8    318.0 ± 0%    318.0 ± 0%       ~ (p=1.000 n=10) ¹
+AssistantMessageRender-8        3.000 ± 0%    3.000 ± 0%       ~ (p=1.000 n=10) ¹
+ToolCardRender-8                119.0 ± 0%    119.0 ± 0%       ~ (p=1.000 n=10) ¹
+BashExecutionRender-8           144.0 ± 0%    144.0 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                         128.0         128.0       -0.02%
+¹ all samples are equal
+RSS KiB base: 32168 27620 32016 (median 32016)
+RSS KiB tip:  28984 30428 38244 (median 30428)
