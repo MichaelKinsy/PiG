@@ -69,31 +69,102 @@ func opacity(c color.RGBA) string {
 	return fmt.Sprintf(` fill-opacity="%.3f"`, float64(c.A)/255)
 }
 
-// Plates the banner sits on: the page's dark surface and white. A sprite's wordmark colors are made for a dark header, so the
-// banner carries its own plate and the palette stays legible whatever the page's theme.
+// Theme is the page theme a banner is drawn for.
+type Theme string
+
+// The page themes. A sprite's wordmark colors are made for a terminal's dark background; the banner has no background of its
+// own (outside the painted cells the page shows through, as the terminal does). On the dark page the banner is the terminal's
+// pixels exactly; on the light page a wordmark color that does not reach 3:1 against the page is darkened (legible).
 const (
-	darkPlate  = "#101c1a"
-	lightPlate = "#ffffff"
+	Light Theme = "light"
+	Dark  Theme = "dark"
 )
 
-// plateFor is the plate under the wordmark's colors: the one with the better mean contrast (WCAG ratio) over them. The mean, not
-// the worst: the classic gradient runs from near-white to deep blue on purpose, and either plate loses its extreme rows.
-func plateFor(letters []color.RGBA) string {
-	if meanContrast(letters, parseHex(lightPlate)) > meanContrast(letters, parseHex(darkPlate)) {
-		return lightPlate
+// LightBackground and DarkBackground are the page backgrounds the banner is drawn for (web/brand/tokens.json `bg`; a test ties
+// them).
+const (
+	LightBackground = "#ffffff"
+	DarkBackground  = "#101c1a"
+)
+
+// Page is the background color of a theme's page.
+func Page(theme Theme) color.RGBA {
+	if theme == Light {
+		return parseHex(LightBackground)
 	}
-	return darkPlate
+	return parseHex(DarkBackground)
 }
 
-func meanContrast(letters []color.RGBA, plate color.RGBA) float64 {
-	if len(letters) == 0 {
-		return 0
+// MinWordmarkContrast is the contrast (WCAG ratio, large display text) a wordmark color keeps against the page where it can.
+const MinWordmarkContrast = 3.0
+
+// legible is c, or c with its OKLCH lightness lowered (hue and chroma kept, clipped to sRGB) just far enough to reach
+// MinWordmarkContrast against the page: the hue and the order of a gradient survive, a color that reads already is not touched.
+// Lowering lightness only helps against a light page; against a dark one (no darker color reaches the ratio) c stays as the
+// terminal draws it.
+func legible(c, page color.RGBA) color.RGBA {
+	if contrast(c, page) >= MinWordmarkContrast {
+		return c
 	}
-	total := 0.0
-	for _, letter := range letters {
-		total += contrast(letter, plate)
+	l, chroma, hue := toOKLCH(c)
+	best := fromOKLCH(0, chroma, hue)
+	if contrast(best, page) < MinWordmarkContrast {
+		return c
 	}
-	return total / float64(len(letters))
+	low, high := 0.0, l // contrast grows as lightness falls: the largest lightness that reaches it
+	for range 24 {
+		mid := (low + high) / 2
+		candidate := fromOKLCH(mid, chroma, hue)
+		if contrast(candidate, page) >= MinWordmarkContrast {
+			best, low = candidate, mid
+		} else {
+			high = mid
+		}
+	}
+	return best
+}
+
+func srgbToLinear(value uint8) float64 {
+	v := float64(value) / 255
+	if v <= 0.04045 {
+		return v / 12.92
+	}
+	return math.Pow((v+0.055)/1.055, 2.4)
+}
+
+func linearToSRGB(v float64) uint8 {
+	v = math.Max(0, math.Min(1, v))
+	if v <= 0.0031308 {
+		v *= 12.92
+	} else {
+		v = 1.055*math.Pow(v, 1/2.4) - 0.055
+	}
+	return uint8(math.Round(v * 255))
+}
+
+// toOKLCH converts an sRGB color to OKLab's polar form (Björn Ottosson's matrices).
+func toOKLCH(c color.RGBA) (l, chroma, hue float64) {
+	r, g, b := srgbToLinear(c.R), srgbToLinear(c.G), srgbToLinear(c.B)
+	lc := math.Cbrt(0.4122214708*r + 0.5363325363*g + 0.0514459929*b)
+	mc := math.Cbrt(0.2119034982*r + 0.6806995451*g + 0.1073969566*b)
+	sc := math.Cbrt(0.0883024619*r + 0.2817188376*g + 0.6299787005*b)
+	l = 0.2104542553*lc + 0.7936177850*mc - 0.0040720468*sc
+	a := 1.9779984951*lc - 2.4285922050*mc + 0.4505937099*sc
+	bb := 0.0259040371*lc + 0.7827717662*mc - 0.8086757660*sc
+	return l, math.Hypot(a, bb), math.Atan2(bb, a)
+}
+
+func fromOKLCH(l, chroma, hue float64) color.RGBA {
+	a, b := chroma*math.Cos(hue), chroma*math.Sin(hue)
+	lc := math.Pow(l+0.3963377774*a+0.2158037573*b, 3)
+	mc := math.Pow(l-0.1055613458*a-0.0638541728*b, 3)
+	sc := math.Pow(l-0.0894841775*a-1.2914855480*b, 3)
+	return color.RGBA{
+		R: linearToSRGB(4.0767416621*lc - 3.3077115913*mc + 0.2309699292*sc),
+		G: linearToSRGB(-1.2684380046*lc + 2.6097574011*mc - 0.3413193965*sc),
+		B: linearToSRGB(-0.0041960863*lc - 0.7034186147*mc + 1.7076147010*sc),
+		A: 255,
+	}
 }
 
 func parseHex(text string) color.RGBA {
@@ -122,7 +193,7 @@ func contrast(a, b color.RGBA) float64 {
 	return (hi + 0.05) / (lo + 0.05)
 }
 
-// Banner grid: the sprite, a gap, the wordmark, each inside a margin, on the plate.
+// Banner grid: the sprite, a gap, the wordmark, each inside a margin.
 const (
 	bannerMargin = 2
 	bannerGap    = 2
@@ -131,41 +202,68 @@ const (
 	BannerHeight = bannerMargin + extension.LoginMascotHeight + bannerMargin
 )
 
-// RenderBanner is the empty state's banner: the sprite's pig beside its "PiG." wordmark (the sprite's login definition, the same
-// grids and palette the terminal header draws) on a plate, in cells at whole pixels.
-func RenderBanner(variant piglogin.Variant) []byte {
+// Cell is one painted cell of the banner's BannerWidth x BannerHeight grid.
+type Cell struct {
+	X, Y  int
+	Color color.RGBA
+}
+
+// BannerCells are the painted cells of the empty state's banner for a page background, row-major: the sprite's pig beside its
+// "PiG." wordmark (the sprite's login definition, the same grids and palette the terminal header draws), each inside the
+// banner's margin. Nothing else is painted: the page shows through, as a terminal's background does. The pig is the sprite's own
+// palette; a wordmark letter that would not reach 3:1 against the page is darkened in its hue (legible); the drop shadow is
+// never changed. Native clients draw these same cells.
+func BannerCells(variant piglogin.Variant, page color.RGBA) []Cell {
 	definition := piglogin.LoginDefinitionFor(variant)
-	var wordmark []color.RGBA
 	heroText := strings.Join(definition.Hero, "")
-	for symbol, value := range definition.Palette {
-		if symbol != "#" && strings.Contains(heroText, symbol) { // the drop shadow is not a letter, a mascot symbol is not the wordmark
-			wordmark = append(wordmark, parseHex(value))
+	cells := make([]Cell, 0, 400)
+	rowCells := func(y int, mascot, hero string) {
+		add := func(grid string, offsetX int, wordmark bool) {
+			for x := range len(grid) {
+				symbol := grid[x]
+				value, ok := definition.Palette[string(symbol)]
+				if symbol == '.' || !ok {
+					continue
+				}
+				fill := parseHex(value)
+				if wordmark && symbol != '#' && strings.IndexByte(heroText, symbol) >= 0 {
+					fill = legible(fill, page)
+				}
+				cells = append(cells, Cell{X: offsetX + x, Y: bannerMargin + y, Color: fill})
+			}
 		}
+		add(mascot, bannerMargin, false)
+		add(hero, bannerMargin+extension.LoginMascotWidth+bannerGap, true)
 	}
+	for y := range max(len(definition.Mascot), len(definition.Hero)) {
+		var mascot, hero string
+		if y < len(definition.Mascot) {
+			mascot = definition.Mascot[y]
+		}
+		if y < len(definition.Hero) {
+			hero = definition.Hero[y]
+		}
+		rowCells(y, mascot, hero)
+	}
+	return cells
+}
+
+// RenderBanner is BannerCells for a page theme as an SVG on the banner's grid (viewBox BannerWidth x BannerHeight), a rect per
+// horizontal run of one color, crisp edges, no background.
+func RenderBanner(variant piglogin.Variant, theme Theme) []byte {
 	var out bytes.Buffer
 	fmt.Fprintf(&out, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" shape-rendering="crispEdges" role="img" aria-label="%s"><title>%s</title>`,
 		BannerWidth, BannerHeight, attribute(variant.Name), attribute(variant.Name))
-	fmt.Fprintf(&out, `<rect width="%d" height="%d" fill="%s"/>`, BannerWidth, BannerHeight, plateFor(wordmark))
-	draw := func(grid []string, offsetX int) {
-		for y, row := range grid {
-			for x := 0; x < len(row); {
-				symbol := row[x]
-				value, ok := definition.Palette[string(symbol)]
-				if symbol == '.' || !ok {
-					x++
-					continue
-				}
-				end := x + 1
-				for end < len(row) && row[end] == symbol {
-					end++
-				}
-				fmt.Fprintf(&out, `<rect x="%d" y="%d" width="%d" height="1" fill="%s"/>`, offsetX+x, bannerMargin+y, end-x, strings.ToLower(value))
-				x = end
-			}
+	cells := BannerCells(variant, Page(theme))
+	for index := 0; index < len(cells); {
+		start := cells[index]
+		end := index + 1
+		for end < len(cells) && cells[end].Y == start.Y && cells[end].X == cells[end-1].X+1 && cells[end].Color == start.Color {
+			end++
 		}
+		fmt.Fprintf(&out, `<rect x="%d" y="%d" width="%d" height="1" fill="%s"/>`, start.X, start.Y, end-index, hex6(start.Color))
+		index = end
 	}
-	draw(definition.Mascot, bannerMargin)
-	draw(definition.Hero, bannerMargin+extension.LoginMascotWidth+bannerGap)
 	out.WriteString("</svg>\n")
 	return out.Bytes()
 }
@@ -177,9 +275,12 @@ func Asset(id string) (hosts.SpriteAsset, bool) {
 	if !ok {
 		return hosts.SpriteAsset{}, false
 	}
-	svg, banner := Render(variant), RenderBanner(variant)
-	digest := sha256.Sum256(append(append([]byte{}, svg...), banner...))
-	return hosts.SpriteAsset{Key: variant.ID + "-" + hex.EncodeToString(digest[:4]), Name: variant.Name, Tagline: variant.Tagline, SVG: svg, Login: banner}, true
+	svg, light, dark := Render(variant), RenderBanner(variant, Light), RenderBanner(variant, Dark)
+	digest := sha256.New()
+	digest.Write(svg)
+	digest.Write(light)
+	digest.Write(dark)
+	return hosts.SpriteAsset{Key: variant.ID + "-" + hex.EncodeToString(digest.Sum(nil)[:4]), Name: variant.Name, Tagline: variant.Tagline, SVG: svg, LoginLight: light, LoginDark: dark}, true
 }
 
 // Source watches the saved selection under a config root and serves it as a hosts.SpriteSource.
