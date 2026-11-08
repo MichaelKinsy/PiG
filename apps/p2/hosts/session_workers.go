@@ -633,7 +633,17 @@ func (w *SessionWorkers) started(session string, began bool) error {
 	if !began && w.statusOf(session) != "starting" {
 		return nil
 	}
-	err := w.until(chordctx.Background(), func(states *delta.JsonObject) bool {
+	// Close ends the wait: a start that never shows (the component closed under it) has nothing to await.
+	ctx, cancel := chordctx.WithCancel(chordctx.Background())
+	defer cancel(nil)
+	go func() {
+		select {
+		case <-w.done:
+			cancel(errors.New("the session workers are closed"))
+		case <-ctx.Done():
+		}
+	}()
+	err := w.until(ctx, func(states *delta.JsonObject) bool {
 		status := statusIn(states, session)
 		if began {
 			return status == "running" || status == "failed"
