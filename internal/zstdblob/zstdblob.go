@@ -7,8 +7,8 @@ package zstdblob
 
 import (
 	"bytes"
-	"io"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
