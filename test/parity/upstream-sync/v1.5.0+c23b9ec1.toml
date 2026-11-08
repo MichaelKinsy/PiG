@@ -3743,7 +3743,7 @@ rationale = "Pi (#11803) makes describeFields and describeUnionFields follow loc
 path = "packages/coding-agent/src/extensions/llama/client.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:internal/codingagent/llama/client_test.go#TestClientRequestErrorsMirrorFetch"]
+evidence = ["test:internal/codingagent/llama/client_test.go#TestClientRequestErrorsMirrorFetch", "test:internal/codingagent/llama/client_test.go#TestWatchNamesTheServerAndTheCauseWhenTheSSEConnectionFails"]
 rationale = "Pi ea0f49a36 (#11745) routes the client's fetches, the models/sse stream included, through fetchServer, which names the server and the network-level cause: `Could not reach llama.cpp server at <url>: <cause>`. The Go client returns that message with its cause (D256); the test checks the text for a closed port (Go's dial error stands in for Node's ECONNREFUSED detail) and the original error."
 
 [[files]]
@@ -3778,7 +3778,7 @@ rationale = "Pi 9e870f6f0 (D252): the MCP description truncation uses sliceHead;
 path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInCancelsWhileAnotherProcessHoldsTheRefreshLock", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed", "test:coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDAcceptsTheAuthorizationResponseOnlyOnTheServerSpecificRedirectURI"]
+evidence = ["test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInCancelsWhileAnotherProcessHoldsTheRefreshLock", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed", "test:coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDAcceptsTheAuthorizationResponseOnlyOnTheServerSpecificRedirectURI", "test:mcp/oauth/sign_in_pi_test.go#TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong"]
 rationale = "Pi bb266bf3 moves MCP OAuth sign-in into pi-mcp in two halves and 797e122c refreshes with the app's redirect URI and ends the wait for the refresh lock when the sign-in is cancelled; only a McpRefreshLockBusyError falls back to the browser step. coding/mcpext/oauth.go keeps the credential store, the lock (a held lock reports McpRefreshLockBusyError) and the browser prompt; the tests cover the lock-wait cancellation (ported from mcp-oauth-refresh.test.ts with this change), the redirect-URI refresh and the route-specific redirect."
 
 [[files]]
