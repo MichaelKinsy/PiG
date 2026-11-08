@@ -26,20 +26,20 @@ import (
 // (a)), a live object's failure (slice 6a §1.4), the waits and cycle checks of activations (Q5, its instance id and the
 // activation chain it was created for), lingering after its last reference (§3, D8), the job runs that keep it alive (§15),
 // its contributions to registries while live and its wake signals (`retryOn`, slice 8), its ending, revocation included (§4,
-// R11), and what a reload does to it (slice 7b §4): a pure swap in place, a native restart after the drain, a retry on the
+// R11), and what a reload does to it (decision "Reload restarts every affected object"): a restart whose old attempt serves old work, a retry on the
 // new code, or its end by its type's removal, after which its references wait with their last values and follow the next
 // object of the identity.
 //
 // Async contract. Every method but tearDown and stop's teardown runs inside a section of the host's loop; a Promise Pi
-// keeps (`firstOutcome`, the endings `host.ending` holds, a swap's `done`, a retirement) is a keyedPromise settled in a
+// keeps (`firstOutcome`, the endings `host.ending` holds, a restart's `ended`) is a keyedPromise settled in a
 // section, its reactions microtasks of the loop (`Promise.all` is promiseAll2 / promiseAllVoid: the reaction of the last
 // one settles it, so a reaction on it runs one microtask later). Pi's background promises (`void this.#run(attempt)`,
-// `closing`, `#reported`, `#retire`) are continuations on those promises; the steps of them that block (`attempt.close`,
+// `closing`, `#reported`, `#endOld`) are continuations on those promises; the steps of them that block (`attempt.close`,
 // `documents.settled`) are owned tasks of the loop (`awaitTask`) that settle in a section. `tearDown` and the function
 // `stop` returns block: they are called outside a section (the host's close runs them on a task, `end` on an owned one). A
-// call waiting at a swap's gate (`call`) is a parkedCallResult settled by the continuation of the gate.
+// call waiting at the gate (`call`) is a parkedCallResult settled by the continuation of the gate.
 //
-// Forced Go differences. A `Map`/`Set` Pi iterates (holders, retiring attempts, job records) keeps its insertion order in a
+// Forced Go differences. A `Map`/`Set` Pi iterates (holders, job records) keeps its insertion order in a
 // slice with an index. `host.backoff.until` is `(at, ok)`. Pi's `endingOf` promise is a *keyedPromise (nil is undefined). A
 // thrown `ChordError` is a returned error. `Ending`'s optional `end` default (`this.ended()`) is each caller's. A reference
 // member's `Followed.instance` is `any` (a pointer or nil, compared by identity).
@@ -81,6 +81,8 @@ type holder interface {
 	// contract is the consumer's contract version and fingerprint (its request's): the provider binds it or it waits
 	// unbound.
 	contract() contractRef
+	// listed is whether presence lists show it (§19): not a restart's readiness binding, which is no consumer of its own.
+	listed() bool
 	// retarget runs inside a batch, before moved: what it follows of the object changed (`chordObject.followed`): a
 	// reference moves its members' subscriptions to the new instance, or keeps their last values; a hold over a link has
 	// nothing to do here.
@@ -106,23 +108,13 @@ type removal struct {
 	ctx    context.Context
 }
 
-// reloadFate is what a reload does to a live, activating, parked or failed object whose type is still served (slice 7b §4).
+// reloadFate is what a reload does to an object whose type is still served: a live one restarts, any other is retried.
 type reloadFate string
 
 const (
-	reloadSwap    reloadFate = "swap"
 	reloadRestart reloadFate = "restart"
 	reloadRetry   reloadFate = "retry"
 )
-
-// swap is a pure swap in progress (slice 7b §5): the attempt it replaces (its calls run on, then it is sealed), whether the
-// new attempt parked (holders then see what it shows, and the old one's contributions left the tables), and the end of the
-// swap (its new attempt live, parked or failed, or the object ended), which the old attempt's retirement waits for.
-type swap struct {
-	old    *attempt
-	parked bool
-	done   *keyedPromise[struct{}]
-}
 
 // stateMember is a state member of a live object as Chord follows it, in the order the contract lists them.
 type stateMember struct {
@@ -152,13 +144,11 @@ const (
 )
 
 // objectState is where an object stands: Pi's discriminated union. attempt is of activating and live; shown of activating,
-// failed (a failed state) and ended (an ended one); swap of activating while a reload's pure swap replaces the live attempt
-// (nil otherwise).
+// failed (a failed state) and ended (an ended one).
 type objectState struct {
 	kind    objectStateKind
 	attempt *attempt
 	shown   *RefState
-	swap    *swap
 }
 
 // teardownKind is what an ended object still has to do once its previous teardowns finished: drain and close its attempt
@@ -205,12 +195,6 @@ type heldFlush struct {
 	timer    Timer
 }
 
-// retiringAttempt is a swapped-out attempt while it retires, with the promise of its retirement.
-type retiringAttempt struct {
-	old  *attempt
-	done *keyedPromise[struct{}]
-}
-
 // chordObject is one object. Each attempt is a fresh `attempt`; the documents, the line, the job runs and the holders
 // outlive it. An attempt parked on its dependencies waits for them without a timer; a transient failure (its own) is retried
 // after its backoff window, or at once when a reference asks (`retry`); a broken one stays failed until a reference asks. The
@@ -218,7 +202,7 @@ type retiringAttempt struct {
 // host closes.
 type chordObject struct {
 	host *chordHost
-	// served is its served type: replaced by a reload that swaps, restarts or retries it.
+	// served is its served type: replaced by a reload that restarts or retries it.
 	served *served
 	params *delta.JsonObject
 	// key is its params' identity key (empty for empty params).
@@ -260,20 +244,32 @@ type chordObject struct {
 	changed *keyedPromise[struct{}]
 	// runs are its running and finishing job runs: they keep it alive like references (D4), without being references.
 	runs int
-	// exposed is the instance its references follow (`followed`): the live one, the old one while a swap brings its
-	// successor in place, or the last one that went live while it still changes after a failure or a restart (references
-	// take their last values from it when it stops); nil before the first went live and once it stopped changing.
+	// exposed is the instance its references follow (`followed`): the live one, or the last one that went live while it still
+	// changes after a failure or during a restart (references take their last values from it when it stops); nil before the
+	// first went live and once it stopped changing.
 	exposed *attempt
-	// following is whether references still follow exposed, which may still change: while it is live, drains (a restart),
-	// retires (a swap's old instance until its successor is live or it retired), or failed live until the commits admitted
-	// before it published (every member, its own and re-exposed ones: audit A10); not once it stopped changing.
+	// following is whether references still follow exposed, which may still change: while it is live, while a restart keeps
+	// it open for old work, or failed live until the commits admitted before it published (every member, its own and
+	// re-exposed ones: audit A10); not once it stopped changing.
 	following bool
 	// flush is the one timer storing its jobs' held state changes by their earliest deadline (D8), while one is held.
 	flush *heldFlush
 	// wakes are its wake signals (`retryOn`), the last attempt's declaration; made by the first.
 	wakes *retryWakes
-	// retiring are its swapped-out attempts while they retire (bounded by `closeTimeout`), in the order they were swapped.
-	retiring []retiringAttempt
+	// old is a restart's old attempt while it is open (until it stopped changing): old work runs on it, and consumers whose
+	// version it binds see it live (decision "Reload restarts every affected object", rules 2 and 5).
+	old *attempt
+	// kept is a restart's old attempt without natives whose contributions stay in the tables until its successor is live
+	// (F-c), replaced there in one batch; they leave if the successor fails, parks on a failure or the object ends.
+	kept *attempt
+	// readiness is a restart's readiness, until its successor's first dependency check.
+	readiness *readiness
+	// showsReadiness is a restart's successor that shows its readiness's failures, until the old attempt ended.
+	showsReadiness *attempt
+	// startSuccessorFn starts a restart's readiness and successor, once every fate of its reload started (`startSuccessor`).
+	startSuccessorFn func()
+	// gateWaits are the objects whose gate its activation's opener waits at now: its wait edges for reload cycles.
+	gateWaits map[*chordObject]struct{}
 }
 
 var (
@@ -376,8 +372,37 @@ func (o *chordObject) Activating() bool {
 	return st.kind == objectWaiting || (st.kind == objectActivating && st.shown.Kind == RefStateLoading)
 }
 
-// hydrated is whether its state members have values: once live (a local object stays live until it ends).
-func (o *chordObject) hydrated() bool { return o.phase.kind == objectLive }
+// kind is where it is: an object on this host (a reference's target that is not held over a link).
+func (o *chordObject) kind() string { return "local" }
+
+// hydrated is whether its state members have values: once live (a local object stays live until it ends), and while a
+// restart's old attempt is open (its consumers check their version through `stateFor`).
+func (o *chordObject) hydrated() bool { return o.phase.kind == objectLive || o.openOldAttempt() != nil }
+
+// stateFor is the state a same-host consumer of version and fingerprint sees (rule 5): `live` while a restart's open old
+// attempt binds that version and its successor is not parked on a failure; otherwise `state`.
+func (o *chordObject) stateFor(version int, fingerprint string) *RefState {
+	st := o.phase
+	if st.kind == objectActivating && st.shown.Kind != RefStateFailed && o.oldServes(version, fingerprint) {
+		return refLive
+	}
+	return o.state()
+}
+
+// oldServes is whether a restart's open old attempt binds version and fingerprint: its consumers of that version may use it.
+func (o *chordObject) oldServes(version int, fingerprint string) bool {
+	old := o.openOldAttempt()
+	return old != nil && data.Binds(old.served.provider, version, fingerprint)
+}
+
+// openOldAttempt is a restart's old attempt while it is open (draining, not sealed yet): old work runs on it, and consumers
+// whose version it binds see it as the live instance; nil otherwise.
+func (o *chordObject) openOldAttempt() *attempt {
+	if old := o.old; old != nil && old.draining() {
+		return old
+	}
+	return nil
+}
 
 // firstOutcome resolves at its first outcome (the start barrier waits for it); it never rejects.
 func (o *chordObject) firstOutcome() *keyedPromise[struct{}] {
@@ -422,12 +447,16 @@ func (o *chordObject) activationChain() []string {
 // holders are its holders, for a presence list made after they took it.
 func (o *chordObject) holders() []holder { return o.holderList }
 
-// variant is the variant a live remote object's factory chose; not bound for a local object and before it is live.
+// variant is the variant a live remote object's factory chose (a restart's open old attempt's meanwhile); not bound for a
+// local object and before it is live.
 func (o *chordObject) variant() (string, bool) {
-	if o.phase.kind != objectLive {
-		return "", false
+	if o.phase.kind == objectLive {
+		return o.phase.attempt.variantName()
 	}
-	return o.phase.attempt.variantName()
+	if old := o.openOldAttempt(); old != nil {
+		return old.variantName()
+	}
+	return "", false
 }
 
 // stateMembers are the live object's state members, as Chord follows them.
@@ -494,10 +523,15 @@ func (o *chordObject) retryOn(sources []retrySourceType) {
 }
 
 // call calls a method of the live object for from, bound at version (an older one maps its arguments and result, Q10). While
-// an attempt activates (a reload's swap or restart), the call waits for its outcome (the gate); a refusal (not live, ended,
-// failed) rejects the result.
+// an attempt activates (a reload's restart, a retry), new work waits for its outcome (the gate); old work runs on a restart's
+// open old attempt. A refusal (not live, ended, failed) rejects the result.
 func (o *chordObject) call(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
 	if o.phase.kind == objectActivating {
+		// Old work runs on the open old attempt (rule 2): work begun before the reload finishes on old code, and a restart's
+		// drain never waits on itself. The old attempt checks the call's version against its own contract.
+		if old := o.openOldAttempt(); old != nil && o.host.oldWork.of(ctx) {
+			return old.call(method, args, ctx, from, version)
+		}
 		return o.gated(method, args, ctx, from, version)
 	}
 	live, err := o.live()
@@ -512,33 +546,72 @@ func (o *chordObject) call(method string, args any, ctx context.Context, from ca
 // gated is a call that waits while an attempt activates until the object is live, failed or ended (`live` then calls or
 // returns the error); it is rejected with the cause once the attempt parks on a failed dependency (`failed { waiting }`), and
 // with `unavailable/park_timeout` after `readyTimeout`, as a call parked on a reference. A hold over a link stays bound while
-// the old instance still changes (a swap, a restart's drain), so its consumer sees `live` and sends calls that arrive here:
-// they wait for the new attempt, never `not_ready` (decision "Swaps: dependents first"). Pi's `#gate` loop is a continuation.
+// a restart's old attempt is open, so its consumer sees `live` and sends calls that arrive here: new work waits for the new
+// attempt, never `not_ready`. Old work that found no open old attempt (else it was routed in `call`) waits as old work: cut at
+// once when it cycles through its own drain.
 func (o *chordObject) gated(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
 	result := newParkedCallResult()
 	loop := o.host.loop()
+	o.host.waitAsOldWork(o.openerGate(ctx), o, o.served.contract, ctx).then(func(_ struct{}, err error) {
+		if err != nil {
+			result.settle(nil, err)
+			return
+		}
+		live, liveErr := o.live()
+		if liveErr != nil {
+			result.settle(nil, liveErr)
+			return
+		}
+		live.call(method, args, ctx, from, version).then(loop, result.settle)
+	})
+	return result
+}
+
+// openerGate is the gate with an activation's opener waiting here recorded as an edge of its object (a wait of old work on
+// that object then sees it), the waits of old work checked again when one starts. It resolves once the object is no longer
+// activating (live, failed, ended) or rejects as `gated` does.
+func (o *chordObject) openerGate(ctx context.Context) *keyedPromise[struct{}] {
+	loop := o.host.loop()
+	result := newKeyedPromise[struct{}](loop)
+	opener, _ := chordctx.Value(ctx, openingKey)
+	if opener != nil {
+		if opener.gateWaits == nil {
+			opener.gateWaits = map[*chordObject]struct{}{}
+		}
+		opener.gateWaits[o] = struct{}{}
+		o.host.reloadCycles.recheck()
+	}
+	o.gateWait(ctx).then(func(_ struct{}, err error) {
+		if opener != nil {
+			delete(opener.gateWaits, o)
+		}
+		result.settle(struct{}{}, err)
+	})
+	return result
+}
+
+// gateWait is `#gate`: it resolves once the object is no longer activating, rejects with the cause once its attempt parks on a
+// failed dependency, with `unavailable/park_timeout` after `readyTimeout`, with ctx's abort.
+func (o *chordObject) gateWait(ctx context.Context) *keyedPromise[struct{}] {
+	loop := o.host.loop()
+	result := newKeyedPromise[struct{}](loop)
 	ready := o.host.timeouts.ready
 	due := loop.Now() + ready.Milliseconds()
 	var step func()
 	step = func() {
 		st := o.phase
 		if st.kind != objectActivating {
-			live, err := o.live()
-			if err != nil {
-				result.settle(nil, err)
-				return
-			}
-			live.call(method, args, ctx, from, version).then(loop, result.settle)
+			result.resolve(struct{}{})
 			return
 		}
 		if st.shown.Kind == RefStateFailed {
-			result.settle(nil, st.shown.Cause.Error)
+			result.reject(st.shown.Cause.Error)
 			return
 		}
 		left := due - loop.Now()
 		if left <= 0 {
 			message := fmt.Sprintf("%s: a call waited %d ms for its object to go live", o.text, ready.Milliseconds())
-			result.settle(nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Reason: data.ReasonParkTimeout, Message: message}, nil))
+			result.reject(data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Reason: data.ReasonParkTimeout, Message: message}, nil))
 			return
 		}
 		if o.changed == nil {
@@ -550,7 +623,7 @@ func (o *chordObject) gated(method string, args any, ctx context.Context, from c
 		woken.thenWithContext(ctx, func(_ struct{}, err error) {
 			timer.Stop()
 			if err != nil {
-				result.settle(nil, err)
+				result.reject(err)
 				return
 			}
 			step()
@@ -558,6 +631,24 @@ func (o *chordObject) gated(method string, args any, ctx context.Context, from c
 	}
 	step()
 	return result
+}
+
+// waitEdges is what its activation waits for now (reload cycles, rule 6): the objects its parked attempt's dependencies are
+// bound to, and those whose gate its opener waits at.
+func (o *chordObject) waitEdges() []*chordObject {
+	edges := make([]*chordObject, 0, len(o.gateWaits)+len(o.waitingFor))
+	for edge := range o.gateWaits {
+		edges = append(edges, edge)
+	}
+	for _, dependency := range o.waitingFor {
+		if dependency.kind != dependencyReference {
+			continue
+		}
+		if goal, ok := dependency.binding.target().(*chordObject); ok {
+			edges = append(edges, goal)
+		}
+	}
+	return edges
 }
 
 // wakeGate is that calls waiting at the gate check the state again.
@@ -569,21 +660,14 @@ func (o *chordObject) wakeGate() {
 	}
 }
 
-// swapsInPlace is whether a reload's pure swap runs in place: the new attempt neither parked nor failed yet. Holds stay bound
-// meanwhile (their calls wait at the gate) and get a fresh `bound` once it is live.
-func (o *chordObject) swapsInPlace() bool {
-	st := o.phase
-	return st.kind == objectActivating && st.swap != nil && !st.swap.parked
-}
-
 // checkedParams are its params as checked, with their identity key.
 func (o *chordObject) checkedParams() checkedParams {
 	return checkedParams{params: o.params, key: o.key}
 }
 
 // followed is what a reference of version follows for state member `member` now (decision "References are the only
-// indirection"): the shown instance's member (its mapping at an older version) while that instance is live, while a swap
-// brings its successor in place, and after a live failure until its admitted commits published; else nothing: `failed` with
+// indirection"): the shown instance's member (its mapping at an older version) while that instance is live, while a restart
+// keeps it open, and after a live failure until its admitted commits published; else nothing: `failed` with
 // the cause's error, or `loading`, with that member to take a last value from.
 func (o *chordObject) followed(member string, version int) followed {
 	exposed := o.exposed
@@ -596,7 +680,7 @@ func (o *chordObject) followed(member string, version int) followed {
 		if err == nil {
 			shown = source
 		} else if failure := data.AsChordError(err, o.text); failure.Code != data.CodeContractMismatch {
-			// The shown instance does not serve this version (a swap's old one, while a reload brings it): nothing yet.
+			// The shown instance does not serve this version (a restart's old one, while a reload brings it): nothing yet.
 			lacking = failure
 		}
 	}
@@ -632,10 +716,14 @@ func (o *chordObject) attachable() attachable {
 	return nil
 }
 
-// instance is the live instance, which references pin their keys on (a new one: they pin again); nil when not live.
+// instance is the live instance, which references pin their keys on (a new one: they pin again), or a restart's open old
+// attempt; nil otherwise.
 func (o *chordObject) instance() any {
 	if o.phase.kind == objectLive {
 		return o.phase.attempt
+	}
+	if old := o.openOldAttempt(); old != nil {
+		return old
 	}
 	return nil
 }
@@ -942,22 +1030,20 @@ func (o *chordObject) parked(a *attempt, shown *RefState, firstPass bool) {
 	if st.kind != objectActivating || st.attempt != a {
 		return
 	}
-	sw := st.swap
-	// A swap's new attempt parks (decision 4): no overlap of old and new code, holders see what it shows.
-	parks := sw != nil && !sw.parked
-	if parks {
-		o.swapParked(sw)
-	}
-	if parks || !sameState(st.shown, shown) {
-		o.phase = objectState{kind: objectActivating, attempt: a, shown: shown, swap: sw}
+	if !sameState(st.shown, shown) {
+		o.phase = objectState{kind: objectActivating, attempt: a, shown: shown}
 		if shown.Kind == RefStateFailed {
 			o.failure = shown.Cause.Error
+			// A restart's successor parked on a failure: the old attempt's kept contributions leave (F-c).
+			o.dropKept()
 		}
 		o.notify()
 	}
 	if firstPass {
 		o.settleFirstOutcome()
 	}
+	// A park may close a cycle with a wait of old work (rule 6).
+	o.host.reloadCycles.recheck()
 }
 
 // unparked: its attempt a left parking for its own steps: it shows `loading` until its outcome.
@@ -971,11 +1057,14 @@ func (o *chordObject) unparked(a *attempt) {
 	}
 }
 
-// swapParked: a swap's new attempt parked: the old attempt's contributions leave the tables (it is not live any more).
-func (o *chordObject) swapParked(sw *swap) {
-	sw.parked = true
-	o.withdraw(sw.old)
-	sw.done.resolve(struct{}{})
+// dropKept: the contributions a restart kept for its successor leave the tables (F-c): it will not take them over now.
+func (o *chordObject) dropKept() {
+	kept := o.kept
+	if kept == nil {
+		return
+	}
+	o.kept = nil
+	o.withdraw(kept)
 }
 
 // end ends the object (once): sealed now, its holders and running calls told err (`released`: ended()), torn down in the
@@ -1008,157 +1097,164 @@ func (o *chordObject) remove(cause data.FailureCause) {
 	o.host.ending(o.identity, o.reported(torn))
 }
 
-// reloadFate is what a reload with recorded (the new factory's declarations) does to this object, whose type is still
-// served: a live object swaps in place when neither its live attempt nor the new factory opens natives and no table of the
-// new factory is newer than the store's, else it restarts; any other is retried.
-func (o *chordObject) reloadFate(recorded Recorded) reloadFate {
-	st := o.phase
-	if st.kind != objectLive {
-		return reloadRetry
-	}
-	if st.attempt.opensNatives() || recorded.natives > 0 || migratesTables(o, recorded) {
+// reloadFate is what a reload does to this object, whose type is still served: a live object restarts, any other is retried.
+func (o *chordObject) reloadFate() reloadFate {
+	if o.phase.kind == objectLive {
 		return reloadRestart
 	}
-	return reloadSwap
+	return reloadRetry
 }
 
-// reload takes fate with its new served type (after the reload's commit); it returns the new attempt, whose first dependency
-// check the reload's report waits for.
-func (o *chordObject) reload(entry *served, fate reloadFate) *attempt {
+// reload takes fate with its new served type (after the reload's commit) and, for a restart, its new factory's requests as
+// staging recorded them; it returns the new attempt, whose first dependency check the reload's report waits for (a retry's).
+func (o *chordObject) reload(entry *served, fate reloadFate, requests []request) *attempt {
 	// Its members per version stay: the previous version's are mapped once the new attempt goes live.
 	o.served = entry
 	var next *attempt
-	switch fate {
-	case reloadSwap:
-		next = o.swap()
-	case reloadRestart:
-		next = o.restart()
-	default:
+	if fate == reloadRestart {
+		next = o.restart(requests)
+	} else {
 		next = o.retryReloaded()
 	}
 	next.startedByReload()
 	return next
 }
 
-// swap is a pure swap (slice 7b §5): a new attempt of the same object (its documents, line and job records, its instance
-// id), its activation at once; the live attempt keeps its running calls, its routines aborted, its jobs handed over, and is
-// sealed once its calls settled and the new attempt's requests bound (`retire`). Calls arriving meanwhile wait at the gate.
-func (o *chordObject) swap() *attempt {
-	// A swap starts from a live object (`reloadFate`).
+// restart is a restart (decision "Reload restarts every affected object; old work finishes on old code"): its routines stop,
+// new calls wait at the gate, old work runs on the old attempt, and consumers whose version it binds see it live; its
+// contributions stay (until its seal with natives, F-b; until its successor is live without, F-c). It is sealed once its
+// successor's recorded requests are ready and its calls, routed old work included, drained, bounded by the reload drain bound;
+// then its natives close with reason `reload` and the successor, a new instance (D4), runs its factory. Readiness and
+// successor start once every fate of the reload started (`startSuccessor`).
+func (o *chordObject) restart(requests []request) *attempt {
+	host := o.host
+	// A restart starts from a live object (`reloadFate`).
 	old := o.phase.attempt
-	ending := o.host.endingOf(o.identity)
-	next := newAttempt(o, o.ctx)
-	sw := &swap{old: old, done: newKeyedPromise[struct{}](o.host.loop())}
-	o.phase = objectState{kind: objectActivating, attempt: next, shown: refLoading, swap: sw}
-	old.handOver()
-	o.retiringAdd(old, o.retire(sw))
-	o.notify()
-	o.run(next, ending)
+	o.old = old
+	old.beginDrain()
+	old.stopRoutines()
+	if !old.opensNatives() {
+		o.kept = old
+	}
+	o.instanceID = uuidv7()
+	next := o.replace()
+	ready := newReadiness(host, o.callerOf(), requests, func(cause *data.FailureCause) { o.readinessShown(next, cause) }, o.ctx)
+	o.readiness = ready
+	due := host.loop().Now() + host.timeouts.reload.Milliseconds()
+	ended := o.endOld(old, ready, due)
+	host.ending(o.identity, o.reported(ended))
+	ending := host.endingOf(o.identity)
+	o.startSuccessorFn = func() { o.startRestarted(next, old, ready, ended, ending) }
 	return next
 }
 
-// retiringAdd keeps retire (a swapped-out attempt's) until it settled: a restart, an end and the host's close wait for it; a
-// later swap does not (it holds no natives, its documents are the object's: Fable, Opus F1), so a second reload is never held
-// up by the first one's old calls.
-func (o *chordObject) retiringAdd(old *attempt, retire *keyedPromise[struct{}]) {
-	o.retiring = append(o.retiring, retiringAttempt{old: old, done: retire})
-	retire.then(func(struct{}, error) {
-		for at, each := range o.retiring {
-			if each.old == old {
-				o.retiring = slices.Delete(o.retiring, at, at+1)
-				return
+// endOld ends a restart's old attempt: once its successor's requests are ready and its calls drained (routed old work joins
+// while the drain runs), by due; sealed (in-memory job runs end `aborted { reload }`), its references take their last values
+// once its admitted commits published (a store write is not a running call's promise), its natives close with reason
+// `reload`. The promise is of the closes that threw.
+func (o *chordObject) endOld(old *attempt, ready *readiness, due int64) *keyedPromise[[]*closeFailed] {
+	host := o.host
+	ended := newKeyedPromise[[]*closeFailed](host.loop())
+	ready.ready(due).then(func(struct{}, error) {
+		old.drainCalls(due).then(func(struct{}, error) {
+			// With natives its contributions leave at the seal (F-b); without, they stay for its successor (F-c), unless a
+			// failure dropped them already.
+			if old.opensNatives() {
+				o.withdraw(old)
 			}
+			old.seal(o.reloaded(), cutReload)
+			// Sealed, it is no longer the instance its holders bind (`instance`, `stateFor`): a hold waiting for a window
+			// slot unbinds now, before an `ack` could bind it to nothing; bound holds and references follow it on until it
+			// stopped changing.
+			o.notify()
+			awaitTask(host, func() (struct{}, error) {
+				o.documents.Settled()
+				return struct{}{}, nil
+			}).then(func(struct{}, error) {
+				o.stopFollowing(old)
+				awaitTask(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
+					func(failures []*closeFailed, _ error) {
+						old.detach()
+						ended.resolve(failures)
+					})
+			})
+		})
+	})
+	return ended
+}
+
+// startSuccessor starts a restart's readiness and its successor, once every fate of the reload started (its served types are
+// new).
+func (o *chordObject) startSuccessor() {
+	start := o.startSuccessorFn
+	o.startSuccessorFn = nil
+	if start != nil {
+		start()
+	}
+}
+
+// startRestarted binds the readiness, whose failures the successor shows until the old attempt ended (`readinessShown`). The
+// successor runs after ending; once the old attempt ended (ended) and the successor's own requests bound, the old attempt's
+// references and the readiness bindings are released (F-a: a dependency held only by them never ends; a successor a later
+// reload replaces never releases them early).
+func (o *chordObject) startRestarted(next, old *attempt, ready *readiness, ended *keyedPromise[[]*closeFailed], ending *keyedPromise[struct{}]) {
+	loop := o.host.loop()
+	o.showsReadiness = next
+	// Before the successor's own steps (`ending` settles after `ended`): its own checks show what it waits for then.
+	ended.then(func([]*closeFailed, error) {
+		if o.showsReadiness == next {
+			o.showsReadiness = nil
+		}
+	})
+	ready.start()
+	o.run(next, ending)
+	promiseAll2(loop, ended, next.checked()).then(func([]*closeFailed, error) {
+		old.releaseReferences()
+		ready.release()
+		if o.readiness == ready {
+			o.readiness = nil
 		}
 	})
 }
 
-// retiringNow is its swapped-out attempts still retiring, as one wait; nil when none is.
-func (o *chordObject) retiringNow() *keyedPromise[struct{}] {
-	if len(o.retiring) == 0 {
+// readinessCause is what a restart's readiness finds now: a failed request the successor waits for, if any (the report's).
+func (o *chordObject) readinessCause() *data.FailureCause {
+	if o.readiness == nil {
 		return nil
 	}
-	waits := make([]*keyedPromise[struct{}], 0, len(o.retiring))
-	for _, each := range o.retiring {
-		waits = append(waits, each.done)
-	}
-	loop := o.host.loop()
-	result := newKeyedPromise[struct{}](loop)
-	promiseAllVoid(loop, waits).then(func(struct{}, error) { result.resolve(struct{}{}) })
-	return result
+	return o.readiness.cause()
 }
 
-// retire seals a swapped attempt once its running calls (and routine calls) settled, bounded by `closeTimeout`, and the swap
-// ended (the new attempt live, parked, failed: its requests bound, so no request it shares with the old one ends in between,
-// M§3.9, and its holders compared the old members with the new); a parked swap's references take their last values from it
-// once the commits it admitted before the seal published; then its references are released. Its job invocations run on, on
-// their old code.
-func (o *chordObject) retire(sw *swap) *keyedPromise[struct{}] {
-	host := o.host
-	loop := host.loop()
-	old := sw.old
-	retired := newKeyedPromise[struct{}](loop)
-	promiseAll2(loop, old.drainCalls(), sw.done).then(func(struct{}, error) {
-		old.seal(o.reloaded(), cutRestart)
-		// A parked swap's old instance stops changing once its admitted commits published (its successor, live, took over its
-		// references before).
-		awaitTask(host, func() (struct{}, error) {
-			o.documents.Settled()
-			return struct{}{}, nil
-		}).then(func(struct{}, error) {
-			o.stopFollowing(old)
-			awaitTask(host, func() ([]*closeFailed, error) { return old.close(closeEnd), nil }).then(
-				func(failures []*closeFailed, _ error) {
-					old.detach()
-					old.releaseReferences()
-					for _, failure := range failures {
-						host.report(*failure)
-					}
-					retired.resolve(struct{}{})
-				})
-		})
-	})
-	return retired
+// readinessShown: a restart's readiness found cause (a failed request), or none any more: while the old attempt has not
+// ended, the successor next shows it (new calls get the cause, consumers see the failure; old work still runs on the old
+// attempt), and shows `loading` again once the request recovered. Its kept contributions stay: only the successor's own
+// failure or park drops them (F-c).
+func (o *chordObject) readinessShown(next *attempt, cause *data.FailureCause) {
+	st := o.phase
+	if o.showsReadiness != next || st.kind != objectActivating || st.attempt != next {
+		return
+	}
+	shown := refLoading
+	if cause != nil {
+		shown = &RefState{Kind: RefStateFailed, Cause: *cause}
+	}
+	if sameState(st.shown, shown) {
+		return
+	}
+	o.phase = objectState{kind: objectActivating, attempt: next, shown: shown}
+	if cause != nil {
+		o.failure = cause.Error
+	}
+	o.notify()
+	o.host.reloadCycles.recheck()
 }
 
-// restart is a native restart (decision "A native restart drains first"): new calls park (it shows `loading`), its
-// contributions leave, the live attempt's running calls drain (bounded by `closeTimeout`), then it is sealed (its in-memory
-// job runs end `aborted { reload }`), its references take their last values once its admitted commits published, its natives
-// close with reason `reload`; the new attempt, a new instance (D4), activates after that teardown.
-func (o *chordObject) restart() *attempt {
-	host := o.host
-	loop := host.loop()
-	old := o.phase.attempt
-	o.withdraw(old)
-	old.stopRoutines()
-	o.instanceID = uuidv7()
-	teardown := newKeyedPromise[[]*closeFailed](loop)
-	drain := old.drainCalls()
-	retiring := o.retiringNow()
-	if retiring == nil {
-		retiring = newKeyedPromise[struct{}](loop)
-		retiring.resolve(struct{}{})
+// callerOf is whom its own requests act as: the host for a local object, its principal for a remote one.
+func (o *chordObject) callerOf() caller {
+	if o.served.kind == servedRemote {
+		return caller{principal: o.principal, incarnation: o.host.incarnation}
 	}
-	promiseAll2(loop, drain, retiring).then(func(struct{}, error) {
-		old.seal(o.reloaded(), cutReload)
-		// Drained and sealed: its references take their last values once the commits it admitted before published (a store
-		// write is not a running call's promise; Sol).
-		awaitTask(host, func() (struct{}, error) {
-			o.documents.Settled()
-			return struct{}{}, nil
-		}).then(func(struct{}, error) {
-			o.stopFollowing(old)
-			awaitTask(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
-				func(failures []*closeFailed, _ error) {
-					old.detach()
-					old.releaseReferences()
-					teardown.resolve(failures)
-				})
-		})
-	})
-	host.ending(o.identity, o.reported(teardown))
-	next := o.replace()
-	o.run(next, host.endingOf(o.identity))
-	return next
+	return caller{principal: o.host.principal, incarnation: o.host.incarnation}
 }
 
 // retryReloaded: a reload retries an object that is not live (slice 7b §9, decision 1): a parked attempt is replaced in one
@@ -1174,13 +1270,7 @@ func (o *chordObject) retryReloaded() *attempt {
 	}
 	host := o.host
 	loop := host.loop()
-	old, sw := st.attempt, st.swap
-	if sw != nil && !sw.parked {
-		o.swapParked(sw)
-	}
-	if sw != nil {
-		sw.done.resolve(struct{}{})
-	}
+	old := st.attempt
 	parked := old.isParked()
 	// A parked attempt's successor waits for no teardown of it (its references are released after it bound).
 	ending := host.endingOf(o.identity)
@@ -1250,7 +1340,6 @@ func (o *chordObject) wentLive(a *attempt) {
 	if o.wakes != nil {
 		o.wakes.during = nil
 	}
-	sw := o.swapOf(a)
 	// Before the new instance is shown: holders of a version its provider does not bind leave with their last values, which
 	// their references take from the instance shown so far.
 	unbound := o.unbindUnfit(a)
@@ -1258,10 +1347,11 @@ func (o *chordObject) wentLive(a *attempt) {
 	o.exposed = a
 	o.following = true
 	contributions := a.contributionList()
-	// The old attempt's contributions leave in the batch the new ones enter (slice 7b §5), so no reader sees a gap.
+	// A restart's kept contributions leave in the batch the new ones enter (F-c), so no reader sees a gap.
 	var leaving []*registries.RegistryContribution
-	if sw != nil && !sw.parked {
-		leaving = sw.old.contributionList()
+	if o.kept != nil {
+		leaving = o.kept.contributionList()
+		o.kept = nil
 	}
 	// In the registries' tables before anyone sees it live (a getter released now reads them recomposed).
 	if len(contributions) > 0 || len(leaving) > 0 {
@@ -1279,13 +1369,7 @@ func (o *chordObject) wentLive(a *attempt) {
 	// Its references move to the new instance (one frame each); holds get a fresh `bound`.
 	o.notify()
 	o.settleFirstOutcome()
-	var previous *attempt
-	if sw != nil {
-		sw.done.resolve(struct{}{})
-		previous = sw.old
-	}
-	// A swap's routines start once the old attempt's routine calls finished (the handover, §14).
-	a.live(previous)
+	a.live()
 	o.takeJobs(a)
 	// Its last holders may have left for their version: it ends as at their release.
 	if unbound {
@@ -1374,26 +1458,11 @@ func (o *chordObject) unbound(h holder, err *data.ChordError) {
 	h.removed(removal{cause: cause, host: o.host, params: o.checkedParams(), ctx: o.ctx})
 }
 
-// swapOf is the swap a (still the current one) ends: nil when it is no swap's new attempt.
-func (o *chordObject) swapOf(a *attempt) *swap {
-	st := o.phase
-	if st.kind == objectActivating && st.attempt == a {
-		return st.swap
-	}
-	return nil
-}
-
 // failedAttempt records a failed attempt: reported, torn down in the background (reason `end`), its references released once
 // its natives closed, its holders told. Transient: a backoff window, whose end is the failure's `retryAt`; broken: no
 // automatic retry.
 func (o *chordObject) failedAttempt(a *attempt, cause data.FailureCause) {
-	sw := o.swapOf(a)
-	if sw != nil && !sw.parked {
-		o.swapParked(sw)
-	}
-	if sw != nil {
-		sw.done.resolve(struct{}{})
-	}
+	o.dropKept()
 	wokenBy := o.wakes != nil && o.wakes.during == a
 	if o.wakes != nil {
 		o.wakes.during = nil
@@ -1477,10 +1546,13 @@ func (o *chordObject) within(work func()) {
 	}, o.ctx)
 }
 
-// stopFollowing: a, the instance shown, stopped changing (a live failure's admitted commits published, a restart's drain, a
-// swapped or parked old instance retiring): its references take their last values from it, holds leave it, and the object
+// stopFollowing: a, the instance shown, stopped changing (a live failure's admitted commits published, a restart's old
+// attempt sealed): its references take their last values from it, holds leave it, and the object
 // lets it go (a reference made later never attached to it: it takes nothing from it).
 func (o *chordObject) stopFollowing(a *attempt) {
+	if o.old == a {
+		o.old = nil
+	}
 	if o.exposed != a || !o.following {
 		return
 	}
@@ -1527,23 +1599,19 @@ func (o *chordObject) seal(by ending) teardown {
 	if st.kind == objectEnded {
 		return teardown{kind: teardownNone}
 	}
-	endings := o.host.endingOf(o.identity)
-	// Its ending rejects the callers of its swapped-out attempts' calls too, at once.
-	for _, each := range o.retiring {
-		each.old.seal(err, cutRestart)
+	// A restart's teardown (its old attempt's end) finishes before this one (they share its documents).
+	previous := o.host.endingOf(o.identity)
+	// Its ending rejects the callers of a restart's old attempt too, at once; that attempt's end closes it.
+	if o.old != nil {
+		o.old.seal(err, cutRestart)
 	}
-	// Its swapped-out attempts end before its teardown completes (they share its documents).
-	previous := endings
-	if retiring := o.retiringNow(); retiring != nil {
-		loop := o.host.loop()
-		if endings == nil {
-			endings = newKeyedPromise[struct{}](loop)
-			endings.resolve(struct{}{})
-		}
-		previous = newKeyedPromise[struct{}](loop)
-		both := promiseAll2(loop, endings, retiring)
-		both.then(func(struct{}, error) { previous.resolve(struct{}{}) })
+	o.dropKept()
+	if o.readiness != nil {
+		o.readiness.release()
 	}
+	o.readiness = nil
+	o.showsReadiness = nil
+	o.startSuccessorFn = nil
 	o.phase = objectState{kind: objectEnded, shown: &RefState{Kind: RefStateEnded, Error: err}}
 	o.wakeGate()
 	for _, records := range o.jobRecordsInOrder() {
@@ -1580,13 +1648,6 @@ func (o *chordObject) seal(by ending) teardown {
 		}
 	}
 	o.exposed = nil
-	if st.kind == objectActivating && st.swap != nil {
-		if !st.swap.parked {
-			o.withdraw(st.swap.old)
-		}
-		st.swap.old.seal(err, cutRestart)
-		st.swap.done.resolve(struct{}{})
-	}
 	// A failed attempt is closed (or closing) since it failed.
 	if st.kind == objectWaiting || st.kind == objectFailed {
 		return teardown{kind: teardownEnd, previous: previous}
@@ -1688,13 +1749,17 @@ func (o *chordObject) reported(closing *keyedPromise[[]*closeFailed]) *keyedProm
 	return reported
 }
 
-// live is the live attempt; `not_ready` before the object went live and while it activates again, the cause while failed,
-// `released` once it ended.
+// live is the live attempt, or a restart's open old attempt (its consumers saw it live); `not_ready` before the object went
+// live and while it activates again, the cause while failed, `released` once it ended.
 func (o *chordObject) live() (*attempt, error) {
 	st := o.phase
 	switch st.kind {
 	case objectLive:
 		return st.attempt, nil
+	case objectActivating:
+		if old := o.openOldAttempt(); old != nil {
+			return old, nil
+		}
 	case objectEnded:
 		return nil, st.shown.Error
 	case objectFailed:

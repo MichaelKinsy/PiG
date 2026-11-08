@@ -71,7 +71,8 @@ type PluginsOptions struct {
 	// Kinds are the app's facet kinds (one file per kind in a plugin), each with where its builds run and the host packages
 	// they keep external, in the app's order.
 	Kinds []KindDefinition
-	// Base is the app's base code: a change sets `base` (the app restarts its hosts; Chord restarts nothing).
+	// Base is the server's own base code, files and directories, hashed when the component is created: `base` is set while one
+	// differs from it or a source file is new in one of the directories (the app restarts its hosts; Chord restarts nothing).
 	Base []string
 	// PublicPath is where the app serves browser builds' assets: the URL prefix their imports evaluate to (nil: `/`).
 	PublicPath *string
@@ -188,6 +189,7 @@ func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
 		kindNames: make([]string, len(options.Kinds)),
 		kinds:     make(map[string]KindDefinition, len(options.Kinds)),
 		runtime:   NewPluginRuntime(options.Node),
+		mappings:  newMappingEvaluator(options.Node),
 		loop:      host.NewLoop(),
 		built:     map[string]BuiltFacet{},
 		current:   map[string]*scriptSet{},
@@ -257,6 +259,8 @@ type Plugins struct {
 	kindNames []string
 	kinds     map[string]KindDefinition
 	runtime   *PluginRuntime
+	// mappings reads the mapping of every CSS module its builds scope: one Node subprocess, ended by Close.
+	mappings *mappingEvaluator
 	// loop is where the state below and the watcher are touched: one section at a time.
 	loop    *host.Loop
 	watcher *pluginWatcher
@@ -589,6 +593,13 @@ func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 	return nil
 }
 
+// WatchBase adds a running base artifact's record (a base bundle's inputs, beside Base; see Recorder): `base` is set while one
+// of its files differs from the bytes it read or is gone; each is compared once now. Files under `node_modules` are never
+// watched.
+func (c *Plugins) WatchBase(inputs BaseInputs) {
+	c.section(func() { c.watcher.recordBase(inputs) })
+}
+
 // InstallPlugin installs new plugins from git or npm into root, one of the roots (InstallPlugin), and marks `set`: the next
 // build discovers and builds them. It returns their names.
 func (c *Plugins) InstallPlugin(source PluginSource, root string, ctx context.Context) ([]string, error) {
@@ -614,6 +625,7 @@ func (c *Plugins) Close() {
 	c.section(c.watcher.close)
 	c.watcher.join()
 	c.loop.Wait()
+	c.mappings.close()
 	//portlint:allow ctxbackground Pi's plugins.close() takes no signal and returns nothing; the spare's close is bounded by the process's own stop grace
 	_ = c.runtime.Close(context.Background())
 }
@@ -732,7 +744,7 @@ func (c *Plugins) buildOne(plugin Plugin, kind string, plugins []Plugin, ctx con
 	definition := c.kinds[kind]
 	options := BuildOptions{
 		HostPackages: definition.HostPackages, Platform: definition.Platform, Kinds: c.kindNames, Plugins: plugins,
-		Api: c.options.Api, PublicPath: c.options.PublicPath,
+		Api: c.options.Api, PublicPath: c.options.PublicPath, Node: c.options.Node, mappings: c.mappings,
 	}
 	built, err := BuildFacet(plugin, kind, options, ctx)
 	if err != nil {

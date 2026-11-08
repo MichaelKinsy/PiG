@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -20,7 +21,7 @@ import (
 )
 
 // Ports the final-state cases of packages/chord/test/next/remote/hold.test.ts that slice 7b added: holds across a reload
-// (§6), across more than one swap, after a live failure, and across a swap whose mapping fails.
+// (§6), across more than one reload, after a live failure, and across a reload whose mapping fails.
 //
 // Go forms: `await transported()` is transported over the links of the hosts, `await delivered()` is deliveredOn, a
 // `WeakRef` is a weak pointer collected with expectCollected, `peer.received.length = 0` is rhForget.
@@ -162,35 +163,6 @@ func rhLinks(t testing.TB, l *linkedHosts) {
 }
 
 func TestHoldsAcrossAReload(t *testing.T) {
-	// hold.test.ts: holds across a reload (slice 7b §6) › a swapped object keeps its holds: a fresh bound once the new instance is live, never loading (audit A9)
-	t.Run("a swapped object keeps its holds: a fresh bound once the new instance is live, never loading (audit A9)", func(t *testing.T) {
-		s := linked(t, func(h FacetHost) error { return rhServeShown(h, "v1", false) }, linkedOptions{})
-		shown := refGet(t, s.Client, rhShown, jsonObject())
-		if _, err := shown.Call("bump", nil, background); err != nil {
-			t.Fatal(err)
-		}
-		watch, err := refStateWatch(shown, background)
-		must(t, err)
-		states := statesOf(t, watch)
-		label := nexttest.ChangesOf(rhWatch(t, shown.Member("label")))
-		n := nexttest.ChangesOf(rhWatch(t, shown.Member("n")))
-		rhReload(t, s.Server, func(h FacetHost) error { return rhServeShown(h, "v2", false) })
-		rhLinks(t, s)
-		calls := label.Items()
-		if len(calls) != 1 || calls[0].Kind != chord.WatchCallValue || calls[0].Value != "v2" || calls[0].Retired {
-			t.Fatalf("label calls = %+v, want one value frame v2", calls)
-		}
-		rhEqual(t, "label ops", calls[0].Ops, []delta.Op{{"r", "v2"}})
-		// The fresh bound carries every member: an unchanged one may show one frame (nothing lost or stale).
-		rhEqual(t, "n", nexttest.ValuesOf(n.Items()), []any{1})
-		if got := states.All(); len(got) != 0 {
-			t.Fatalf("states = %v, want none", got)
-		}
-		value, err := shown.Call("bump", nil, background)
-		must(t, err)
-		rhEqual(t, "bump", value, 2)
-	})
-
 	// hold.test.ts: holds across a reload (slice 7b §6) › a restarted object's holds see loading, then a fresh bound
 	t.Run("a restarted object's holds see loading, then a fresh bound", func(t *testing.T) {
 		s := linked(t, func(h FacetHost) error { return rhServeShown(h, "v1", true) }, linkedOptions{})
@@ -267,12 +239,18 @@ func TestHoldsAcrossAReload(t *testing.T) {
 	// hold.test.ts: holds across a reload (slice 7b §6) › a hold unbound while the window is full drops its pending ops; acks of messages sent stay counted
 	t.Run("a hold unbound while the window is full drops its pending ops; acks of messages sent stay counted", func(t *testing.T) {
 		server, peer := rhRawServer(t, func(h FacetHost) error { return rhServeShown(h, "v1", false) }, rawPeerOptions{NoAck: true})
-		shown := wireNames(t, rhShown, "v")
 		rhHold(peer, 0, rhShown)
 		peer.Next("bound")
-		for call := range 3 {
-			rhBumpCall(peer, call, shown.Methods["bump"])
-			peer.Next("result")
+		// Commits from the server itself as the hold's principal: an answer over the link would send the waiting state.
+		for range 3 {
+			_, err := server.Root(func(ctx Ctx) (any, error) {
+				object, err := ctx.Get(rhShown, jsonObject(), GetOptions{})
+				if err != nil {
+					return nil, err
+				}
+				return object.Call("bump", nil, ctx)
+			}, background, RootOptions{Principal: ownerPrincipal()})
+			must(t, err)
 		}
 		// One state in flight with the bound: the third commit's ops wait in their pending queue.
 		peer.Next("state")
@@ -288,8 +266,8 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		rhKindsAre(t, peer)
 	})
 
-	// hold.test.ts: holds across a reload (slice 7b §6) › a swap sends each bound hold one fresh bound with the new instance's values, no state (audit A9)
-	t.Run("a swap sends each bound hold one fresh bound with the new instance's values, no state (audit A9)", func(t *testing.T) {
+	// hold.test.ts: holds across a reload (slice 7b §6) › a restart sends each bound hold loading, then one fresh bound with the new instance's values
+	t.Run("a restart sends each bound hold loading, then one fresh bound with the new instance's values", func(t *testing.T) {
 		server, peer := rhRawServer(t, func(h FacetHost) error { return rhServeShown(h, "v1", false) }, rawPeerOptions{})
 		shown := wireNames(t, rhShown, "v")
 		rhHold(peer, 0, rhShown)
@@ -298,14 +276,18 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		rhSync(t, peer)
 		rhForget(peer)
 		rhReload(t, server, func(h FacetHost) error { return rhServeShown(h, "v2", false) })
+		// The new attempt goes live in a task of the server's loop once the old one ended.
+		rhWaitFor(t, func() bool { return slices.Contains(peer.Kinds(), "bound") })
 		rhSync(t, peer)
 		var entries []link.BoundEntry
 		for _, message := range peer.Received() {
-			bound, ok := message.(*link.BoundMessage)
-			if !ok {
-				t.Fatalf("received %s, want only bound messages", message.Kind())
+			switch message.Kind() {
+			case "loading":
+			case "bound":
+				entries = append(entries, message.(*link.BoundMessage).Holds...)
+			default:
+				t.Fatalf("received %s, want only loading and bound messages", message.Kind())
 			}
-			entries = append(entries, bound.Holds...)
 		}
 		var holds []int
 		for _, entry := range entries {
@@ -315,8 +297,8 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		rhEqual(t, "holds", rhSorted(holds), []int{0, 1})
 	})
 
-	// hold.test.ts: holds across a reload (slice 7b §6) › a swap during a full window: calls are answered by the old names until the fresh bound goes (audit A9)
-	t.Run("a swap during a full window: calls are answered by the old names until the fresh bound goes (audit A9)", func(t *testing.T) {
+	// hold.test.ts: holds across a reload (slice 7b §6) › reloads during a full window: calls are answered by the old names until the fresh bound goes (audit A9)
+	t.Run("reloads during a full window: calls are answered by the old names until the fresh bound goes (audit A9)", func(t *testing.T) {
 		two := mustContract(contracts.Remote("app.two-variants", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
 			Variants: []contracts.VariantEntry{
@@ -379,7 +361,7 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		}
 		rhReload(t, server, changed)
 		peer.Next("bound")
-		// Swaps in place while the window is full: the fresh bound waits for a slot, the hold answers by its old names.
+		// Restarts while the window is full: the fresh bound waits for a slot, the hold answers by its old names.
 		rhReload(t, server, serveTwo("a", "v2"))
 		rhSync(t, peer)
 		rhBumpCall(peer, 0, a.Methods["bump"])
@@ -402,8 +384,8 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		rhEqual(t, "members", b.NamedBound(t, fresh.Holds[0].Members), map[string]any{"label": "v3"})
 	})
 
-	// hold.test.ts: holds across a reload (slice 7b §6) › collects the swapped-out instance while the hold's fresh bound waits for a slot (Astra, audit A9 GC)
-	t.Run("collects the swapped-out instance while the hold's fresh bound waits for a slot (Astra, audit A9 GC)", func(t *testing.T) {
+	// hold.test.ts: holds across a reload (slice 7b §6) › collects the old instance while the hold's fresh bound waits for a slot (Astra, audit A9 GC)
+	t.Run("collects the old instance while the hold's fresh bound waits for a slot (Astra, audit A9 GC)", func(t *testing.T) {
 		typ := mustContract(contracts.Remote("astra.audit-gc", contracts.RemoteDeclaration{
 			Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
 			Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
@@ -411,10 +393,13 @@ func TestHoldsAcrossAReload(t *testing.T) {
 			})},
 		}))
 		var declared Self
+		var declaredMu sync.Mutex
 		facet := func(n float64) func(FacetHost) error {
 			return func(h FacetHost) error {
 				return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+					declaredMu.Lock()
 					declared = self
+					declaredMu.Unlock()
 					return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"n": rhConst(n)},
 					}}, nil
@@ -428,8 +413,10 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		_, err := server.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return facet(2)(h) })}}, background, ReloadOptions{})
 		must(t, err)
 		peer.Next("bound")
+		declaredMu.Lock()
 		retired := weak.Make(declared.(*attempt))
 		declared = nil
+		declaredMu.Unlock()
 		_, err = server.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return facet(3)(h) })}}, background, ReloadOptions{})
 		must(t, err)
 		rhSync(t, peer)
@@ -438,7 +425,9 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		if got := countKind(peer, "bound"); got != 0 {
 			t.Fatalf("bound messages before the ack = %d, want 0", got)
 		}
+		declaredMu.Lock()
 		declared = nil
+		declaredMu.Unlock()
 		expectCollected(t, retired)
 		peer.Ack(link.Optional[int]{})
 		peer.Next("bound")
@@ -478,7 +467,7 @@ func TestHoldsAcrossAReload(t *testing.T) {
 	})
 }
 
-// hold.test.ts: holds across more than one swap (fix round 1) › keeps a real subscriber when a changed constant later becomes dynamic
+// hold.test.ts: holds across more than one reload (fix round 1) › keeps a real subscriber when a changed constant later becomes dynamic
 func TestHoldsAcrossMoreThanOneSwapKeepsARealSubscriberWhenAChangedConstantLaterBecomesDynamic(t *testing.T) {
 	kind := mustKind(contracts.NewHostKind("sol-server"))
 	typ := mustContract(contracts.Remote("sol.wire", contracts.RemoteDeclaration{
@@ -529,19 +518,23 @@ func TestHoldsAcrossMoreThanOneSwapKeepsARealSubscriberWhenAChangedConstantLater
 	must(t, server.Accept(up, LinkOptions{Principal: ownerPrincipal()}, background))
 	must(t, tab.Connect(down, LinkOptions{Principal: serverPrincipal()}, background))
 	held := refGet(t, tab, typ, jsonObject())
+	// Each reload restarts the object: the tab sees the new attempt's values once it is live.
+	settled := func(want any) {
+		t.Helper()
+		scopeEventually(t, "the tab shows the new code's value", func() bool {
+			transported(up, down)
+			deliveredOn(server, tab)
+			value, err := held.Member("x").Value()
+			return err == nil && value == want
+		})
+	}
 	reload(server, &two)
-	transported(up, down)
-	deliveredOn(server, tab)
-	rhEqual(t, "x", memberValue(t, held, "x"), 2)
+	settled(2.0)
 	reload(server, nil)
-	transported(up, down)
-	deliveredOn(server, tab)
-	rhEqual(t, "x", memberValue(t, held, "x"), 0)
+	settled(0.0)
 	_, err = held.Call("set", 7.0, background)
 	must(t, err)
-	transported(up, down)
-	deliveredOn(server, tab)
-	rhEqual(t, "x", memberValue(t, held, "x"), 7)
+	settled(7.0)
 }
 
 // hold.test.ts: a hold after its object's live failure (final review) › follows a member re-exposing another object's source until the admitted commits published (audit A10)
@@ -602,7 +595,7 @@ func TestAHoldAfterItsObjectsLiveFailureFollowsAMemberReExposingAnotherObjectsSo
 	rhEqual(t, "first", items[0].Value, map[string]any{"n": 1})
 }
 
-// hold.test.ts: a hold across a swap whose mapping fails (final review) › gets the member's failure in its fresh bound and heals with the new source (Sol, audit A9)
+// hold.test.ts: a hold across a reload whose mapping fails (final review) › gets the member's failure in its fresh bound and heals with the new source (Sol, audit A9)
 func TestAHoldAcrossASwapWhoseMappingFailsGetsTheMembersFailureInItsFreshBoundAndHealsWithTheNewSource(t *testing.T) {
 	w1 := mustContract(contracts.Remote("app.swap-failed", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
@@ -667,4 +660,128 @@ func TestAHoldAcrossASwapWhoseMappingFailsGetsTheMembersFailureInItsFreshBoundAn
 		t.Fatalf("calls = %v, want a failure then a value", nexttest.ValuesOf(items))
 	}
 	rhEqual(t, "healed", items[1].Value, 3)
+}
+
+// hold.test.ts: holds across a reload (slice 7b §6) › a hold waiting for a window slot whose slot frees between the old attempt's seal and its end binds safely
+func TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsEndBindsSafely(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		window := mustContract(contracts.Remote("app.window", contracts.RemoteDeclaration{
+			Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
+			Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
+				State: []contracts.Property{rhProp("n", contracts.Int())},
+				Methods: []contracts.MethodEntry{
+					contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
+					contracts.Meth("slow", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+					contracts.Meth("start", contracts.NewMethod()),
+				},
+			})},
+		}))
+		wait, err := DefineJob("app.window-wait", JobOptions{Version: 1, Args: contracts.Obj(), Result: contracts.Str()})
+		must(t, err)
+		gate, slowEntered := newSignal(), newSignal()
+		// atSeal is called once the old attempt's seal cut the job's run: the test frees the window's slots then.
+		var atSeal atomic.Pointer[func()]
+		serveWindow := func(code string) func(FacetHost) error {
+			return func(h FacetHost) error {
+				return h.Serve(window, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+					self.Open(func(context.Context) (any, error) { return code, nil },
+						func(any, NativeCloseReason, context.Context) error { return nil })
+					doc := stateOf(self, rhCounter)
+					job := self.Job(wait, JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
+						<-ctx.Done()
+						if fn := atSeal.Load(); fn != nil {
+							(*fn)()
+						}
+						return "cut", nil
+					}})
+					return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+						State: map[string]chord.Watchable[delta.JsonValue]{
+							"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
+								return values[0].(*delta.JsonObject).Value("n"), nil
+							}),
+						},
+						Methods: map[string]contracts.MethodFunction{
+							"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+								if err := doc.Change(func(draft *delta.Object) { _ = draft.Set("n", draft.Get("n").(float64)+1) }, ctx); err != nil {
+									return nil, err
+								}
+								return doc.Value().Value("n"), nil
+							},
+							"start": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+								_, err := job.Start(jsonObject(), ctx, StartOptions{})
+								return nil, err
+							},
+							"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+								if code == "v1" {
+									slowEntered.fire()
+								}
+								gate.await(t, ctx)
+								return code + " slow", nil
+							},
+						},
+					}}, nil
+				}, ServeOptions{})
+			}
+		}
+		errs := &hostErrors{}
+		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: errs.push})
+		mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveWindow("v1")(h) })}}, background))
+		a, b := link.MemoryLinkPair()
+		must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+		peer := newRawPeer(t, b, rawPeerOptions{NoAck: true})
+		names := wireNames(t, window, "main")
+		peer.Next("hello")
+		rhHold(peer, 0, window)
+		peer.Next("bound")
+		peer.Ack(link.Optional[int]{})
+		rhBumpCall(peer, 0, names.Methods["start"])
+		peer.Next("result")
+		// Two messages unacknowledged: the window (two) is full.
+		rhBumpCall(peer, 1, names.Methods["bump"])
+		peer.Next("state")
+		rhBumpCall(peer, 2, names.Methods["bump"])
+		peer.Next("result")
+		peer.Next("result")
+		settle(peer)
+		// A running call keeps the old attempt open; the acks come right at its seal (the job's run is cut there).
+		rhBumpCall(peer, 3, names.Methods["slow"])
+		slowEntered.wait(t)
+		release := func() {
+			peer.Ack(link.Optional[int]{})
+			peer.Ack(link.Optional[int]{})
+		}
+		atSeal.Store(&release)
+		rhReload(t, server, serveWindow("v2"))
+		// A second hold during the drain: it binds the old attempt shown live, but waits for a slot.
+		rhHold(peer, 1, window)
+		settle(peer)
+		gate.fire()
+		if got := rhResultNumber(t, peer.Next("result")); got != "v1 slow" {
+			t.Fatalf("slow = %q, want \"v1 slow\"", got)
+		}
+		settle(peer)
+		settle(peer)
+		for _, err := range errs.All() {
+			if err.Kind == ErrProtocolError {
+				t.Fatalf("a protocol error was reported: %v", err)
+			}
+		}
+		if peer.Closed() {
+			t.Fatalf("the link closed")
+		}
+		// Both holds end on the new code (an ack that crosses nothing is ignored, so acking again is safe).
+		bound := map[int]bool{}
+		scopeEventually(t, "both holds bound on the new code", func() bool {
+			peer.Ack(link.Optional[int]{})
+			settle(peer)
+			for _, message := range peer.Received() {
+				if m, ok := message.(*link.BoundMessage); ok {
+					for _, entry := range m.Holds {
+						bound[entry.Hold] = true
+					}
+				}
+			}
+			return bound[0] && bound[1]
+		})
+	})
 }

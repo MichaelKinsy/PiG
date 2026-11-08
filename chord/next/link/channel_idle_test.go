@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Not upstream's (chord/host's DeliveryAwaiter): Idle is the channel's half of the wait a host that takes a link offers for
+// Not upstream's (Chord v1's DeliveryAwaiter): Idle is the channel's half of the wait a host that takes a link offers for
 // it, since Pi's hosts share one event loop and a link to another process has none.
 
 func idleWithin(t *testing.T, channel *link.Channel, wait time.Duration) error {

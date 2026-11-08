@@ -759,6 +759,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-713bba5](#bf-713bba5) | Extension SDKs: `highlightCode` in the Go, Python and Lisp SDKs now returns a lone UTF-16 surrogate that… | PiG's own defect | All platforms | Unreleased |
 | [BF-713bba5-2](#bf-713bba5-2) | Rust SDK: `highlight_code` no longer loses every syntax color when the host's reply holds a lone surrogate… | PiG's own defect | All platforms | Unreleased |
 | [BF-713bba5-3](#bf-713bba5-3) | Rust SDK: `Context::tool_input` writes a lone surrogate of the arguments as the `\ud83d` escape… | PiG's own defect | All platforms | Unreleased |
+| [BF-7160ad4](#bf-7160ad4) | Chord: a table read made while its object ended no longer races with the end | PiG's own defect | All platforms | Unreleased |
 | [BF-7163ab3](#bf-7163ab3) | A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7177d5f](#bf-7177d5f) | fix(tui): card of an unregistered tool is Pi's formatToolExecution | PiG's own defect | All platforms | Unreleased |
 | [BF-725e104](#bf-725e104) | The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks… | PiG's own defect | Windows | 0.5.2 |
@@ -1122,6 +1123,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D350](#bf-d350) | OpenCode Zen and Go Claude models send per-message effort | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D351](#bf-d351) | Anthropic non-strict tool schemas keep root $defs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D352](#bf-d352) | Anthropic message threads | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -11998,6 +12001,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `test/extension-conformance/host_surface_test.go::TestToolCallInputWithALoneSurrogateAcrossSDKs`, `test/extension-conformance/tui_theme_test.go::TestHighlightCodeKeepsALoneSurrogateAcrossSDKs`
 - **Release note:** Rust SDK: `Context::tool_input` writes a lone surrogate of the arguments as the `\ud83d` escape `JSON.stringify` gives, as Pi does, and `Context::tool_params` returns the arguments (each unit as U+FFFD) where it returned `None`.
 
+### BF-7160ad4
+
+**Chord: a table read made while its object ended no longer races with the end**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a table read made while its object ended no longer races with the end.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7160ad4291` (2026-11-07)
+- **Tests:** `chord/nextnode/app/files_test.go::TestCapsRefuseAFileOverThePerFileCapAndWritesOverTheTotalACopyAddsNoBytes`
+- **Release note:** Chord: a table read made while its object ended no longer races with the end.
+
 ### BF-7163ab3
 
 **A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the…**
@@ -17076,6 +17093,36 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.
 - **Fix commits:** `c21b1370e5` (2026-11-07)
 - **Tests:** `ai/anthropic_message_threads_test.go::TestAnthropicMessageThreadsCreateThenContinue`
+
+### BF-D430
+
+**Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D430)
+- **Symptom:** none.
+- **Root cause:** AGENTS.md "TypeScript async/Promise parity": an awaited Promise is a blocking call, but a Promise started and awaited later is two Go operations. Without Start the pipelined-append behaviour could not be tested or used through a reference; without AwaitingCtx a package outside `chord/next/host` (the app kit) could not declare an `onLive` routine.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** never; it is the Go form of an un-awaited Promise and of a handler's async remainder.
+- **Fix commits:** `0d59519cff` (2026-11-07), `930ef101d0` (2026-11-07)
+- **Tests:** `chord/nextnode/app/files_test.go::TestChunkedUploadsDropTheUploadsAPreviousRunLeft`, `chord/nextnode/app/files_test.go::TestChunkedUploadsFinishAnUploadOnlyOnceTheAppendsSentBeforeItLanded`, `chord/nextnode/app/files_test.go::TestChunkedUploadsWriteAppendsSentWithoutWaitingAtTheirOwnOffsetsByteForByte`
+
+### BF-D431
+
+**PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D431)
+- **Symptom:** none.
+- **Root cause:** owner decision of 2026-11-07 23:33Z, port all of Pi main.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pin reaches a Pi release containing 2439933cf. Then this record goes.
+- **Fix commits:** `0d59519cff` (2026-11-07), `930ef101d0` (2026-11-07)
+- **Tests:** None recorded.
 
 ### BF-a076a50
 
@@ -25747,7 +25794,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D159 | A single grapheme wider than the editor's wrap width stays one chunk instead of exhausting the stack | deliberate difference |
 | D167 | A history longer than the model's context window is summarized in chunks | [BF-85908ae](#bf-85908ae) |
 | D177 | The calls of a parallel durable tool round start in unspecified order | deliberate difference |
-| D178 | Facet modules load in an isolated Node child, not in the host process | deliberate difference |
 | D180 | A provider transport failure records its Go cause as a provider_transport_failure diagnostic | deliberate difference |
 | D181 | The commits of an unawaited durable job are ordered by goroutine scheduling, not by Pi's microtask hops | deliberate difference |
 | D182 | A proxy start event with an unusable content index ends the stream with an error | deliberate difference |
@@ -25822,6 +25868,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D350 | OpenCode Zen and Go Claude models send per-message effort | [BF-D350](#bf-d350) |
 | D351 | Anthropic non-strict tool schemas keep root $defs | [BF-D351](#bf-d351) |
 | D352 | Anthropic message threads | [BF-D352](#bf-d352) |
+| D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
+| D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
 
 ## Fix-titled commits that are not bugs in a release
 

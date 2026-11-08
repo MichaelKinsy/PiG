@@ -316,6 +316,25 @@ func TestTheHeartbeat(t *testing.T) {
 				t.Fatalf("kinds = %v", kinds)
 			}
 		})
+
+		t.Run("answers each ping with a pong at once; two sides pinging at once both answer", func(t *testing.T) {
+			setup := openChannel(t, codec, false, true)
+			setup.channel.Tick(16_500, 0, 15_000, 30_000)
+			setup.clock.set(16_500)
+			// The peer pinged at the same moment: the channel answers it while its own ping is out.
+			setup.peer.send(&link.PingMessage{})
+			transported(setup.ends, setup.peerEnd)
+			if kinds := setup.peer.kinds(); !slices.Equal(kinds, []string{"hello", "ping", "pong"}) {
+				t.Fatalf("kinds = %v", kinds)
+			}
+			setup.peer.send(&link.PongMessage{})
+			transported(setup.ends, setup.peerEnd)
+			setup.channel.Tick(40_000, 0, 15_000, 30_000)
+			transported(setup.ends, setup.peerEnd)
+			if setup.peer.isClosed() {
+				t.Fatal("closed although both pings were answered")
+			}
+		})
 	})
 }
 
