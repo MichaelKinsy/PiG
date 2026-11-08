@@ -177,6 +177,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2280bf8](#bf-2280bf8) | The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-22866b5](#bf-22866b5) | Session files with large tool outputs opened slowly when `/tree` navigated or the transcript repainted: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-228dbea](#bf-228dbea) | fix(durable/core): follow the microtask schedule of Pi | PiG's own defect | All platforms | Unreleased |
+| [BF-2293426](#bf-2293426) | fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait | PiG's own defect | All platforms | Unreleased |
 | [BF-2307f4e](#bf-2307f4e) | An extension's message_end replacement of a custom message that has no `content` now writes `content` after… | PiG's own defect | All platforms | Unreleased |
 | [BF-2309604](#bf-2309604) | Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2316fe3](#bf-2316fe3) | The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet… | PiG's own defect | Windows | 0.5.3 |
@@ -535,6 +536,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5f4a0b2](#bf-5f4a0b2) | fix(durable/core): a Session's reports reach its report(error, info) | PiG's own defect | All platforms | Unreleased |
 | [BF-6018935](#bf-6018935) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-60473d7](#bf-60473d7) | The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-604e180](#bf-604e180) | `tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local… | PiG's own defect | All platforms | Unreleased |
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-60c4c6f](#bf-60c4c6f) | A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-612955a](#bf-612955a) | The Rust and Go SDKs keep an unpaired surrogate through `prepareBranchEntries`… | PiG's own defect | All platforms | 0.5.0 |
@@ -554,6 +556,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-62a1c87](#bf-62a1c87) | The `ExtensionSelector` and `ExtensionInput` oracles also run with the Kitty keyboard protocol active (CSI-u… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62ae30d](#bf-62ae30d) | Durable: reading the history of a conversation whose parent conversation is not stored now fails with Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62b009c](#bf-62b009c) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
+| [BF-62b28a2](#bf-62b28a2) | `/mcp login` and `pig mcp login` no longer stay on "Connecting..." after a successful browser sign-in while… | PiG's own defect | All platforms | Unreleased |
 | [BF-62c3691](#bf-62c3691) | `grep` with a large `context` no longer holds every context line in memory: its memory is bounded by the 50KB… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6323c8e](#bf-6323c8e) | fix(ai): a Bedrock model outside the catalog is a bedrock-converse-stream model of amazon-bedrock, so its own… | PiG's own defect | All platforms | Unreleased |
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | 0.7.0 |
@@ -924,6 +927,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8cfd25f](#bf-8cfd25f) | A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8d008eb](#bf-8d008eb) | fix(interactive): paint the requested first frame before the color wait returns | PiG's own defect | All platforms | Unreleased |
 | [BF-8d23cfc](#bf-8d23cfc) | Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8d46bf8](#bf-8d46bf8) | A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state… | PiG's own defect | All platforms | Unreleased |
+| [BF-8d46bf8-2](#bf-8d46bf8-2) | `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential… | PiG's own defect | All platforms | Unreleased |
+| [BF-8d46bf8-3](#bf-8d46bf8-3) | Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per… | PiG's own defect | All platforms | Unreleased |
 | [BF-8d6fb83](#bf-8d6fb83) | A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-8e3613d](#bf-8e3613d) | Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-8e70eff](#bf-8e70eff) | fix(chord/nextnode/workers): the channel refuses a record over the limit | PiG's own defect | All platforms | Unreleased |
@@ -1122,6 +1128,10 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D350](#bf-d350) | OpenCode Zen and Go Claude models send per-message effort | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D351](#bf-d351) | Anthropic non-strict tool schemas keep root $defs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D352](#bf-d352) | Anthropic message threads | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D370](#bf-d370) | The OAuth callback server drops connections that have not sent a request when it closes | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D371](#bf-d371) | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D372](#bf-d372) | `mcp add` reports an invalid url before an invalid exposure | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D373](#bf-d373) | The stored PKCE verifier is dropped once its code exchange succeeded | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -3928,6 +3938,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `228dbea36a` (2026-10-27)
 - **Tests:** `durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes`, `durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit`
 
+### BF-2293426
+
+**fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait
+- **Root cause:** Ports Pi main, on top of the sign-in package. Token refresh tries the redirect URI the application signs in with (RedirectURL on McpAuthProviderOptions and McpSignInOptions) before the loopback and stored ones, so tokens from a Client ID Metadata Document with only an https callback route can be refreshed. Ending the sign-in's context also stops the wait for the refresh lock; a lock that arrives later runs nothing and is released. McpRefreshLockBusyError makes StartMcpSignIn skip the refresh; any other lock failure fails it. The credential store reports a lock held by another process (ELOCKED) as the busy error.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `22934263b9` (2026-11-07)
+- **Tests:** `mcp/oauth/auth_provider_pi_test.go::TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed`, `mcp/oauth/sign_in_pi_test.go::TestCancellationCancelsAtOnceWhileAnotherProcessHoldsTheRefreshLockAndRefreshesNothing`, `mcp/oauth/sign_in_pi_test.go::TestSignInFailsWhenTheRefreshLockFailsForAnotherReason`, `mcp/oauth/sign_in_pi_test.go::TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong`
+
 ### BF-2307f4e
 
 **An extension's message_end replacement of a custom message that has no `content` now writes `content` after…**
@@ -5394,7 +5417,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `97051b184f` (2026-10-05), `34bcd58204` (2026-10-07), `77bfe68d1f` (2026-10-07), `d5d010a275` (2026-10-07), `db7007dad8` (2026-10-07)
-- **Tests:** `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingConversionUpstream`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesToolCallID_UnattributedItemIsHashed`, `ai/openai_responses_shared_oracle_test.go::TestConvertResponsesMessagesMatchesPi`, `ai/openai_responses_stream_options_test.go::TestProcessResponsesStreamCallsTheInjectedOptions`, `ai/openai_responses_stream_options_test.go::TestResolveCodexServiceTier`, `ai/openai_responses_stream_options_test.go::TestResponsesPricesAResponseWithoutServiceTierAtTheRequestedTier`, `ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets` and 11 more in docs/bug-ledger.json
+- **Tests:** `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingConversionUpstream`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesToolCallID_UnattributedItemIsHashed`, `ai/openai_responses_shared_oracle_test.go::TestConvertResponsesMessagesMatchesPi`, `ai/openai_responses_stream_options_test.go::TestProcessResponsesStreamCallsTheInjectedOptions`, `ai/openai_responses_stream_options_test.go::TestResolveCodexServiceTier`, `ai/openai_responses_stream_options_test.go::TestResponsesPricesAResponseWithoutServiceTierAtTheRequestedTier`, `ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets` and 10 more in docs/bug-ledger.json
 - **Release note:** OpenAI Responses prices a response that reports no `service_tier` at the requested tier, as Pi's `processResponsesStream` does (`response.service_tier ?? options.serviceTier`); only Codex did before, so a flex or priority request to OpenAI Responses was billed at the default rate.
 
 ### BF-34c4d8e
@@ -6984,7 +7007,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `47c300724d` (2026-10-07)
-- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/extension_test.go::TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToTheStartupWait`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled` and 15 more in docs/bug-ledger.json
+- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/extension_test.go::TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToTheStartupWait`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled` and 14 more in docs/bug-ledger.json
 - **Release note:** `/mcp` now opens at once while servers are still connecting, and connection actions (reconnect, enable, disable) run in the background so the manager stays usable. Reconnects and replacements are serialized, direct MCP tool calls wait for their own server's connection, and a call prepared earlier uses the server's current connection when it runs.
 
 ### BF-47c3007-2
@@ -6998,7 +7021,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `47c300724d` (2026-10-07)
-- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 14 more in docs/bug-ledger.json
+- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 13 more in docs/bug-ledger.json
 - **Release note:** MCP OAuth sign-ins can now be cancelled with Esc at every step, session shutdown stops a running sign-in, and each request to the authorization server times out after 15 seconds. An aborted token refresh no longer falls back to a new authorization.
 
 ### BF-47c3007-3
@@ -7012,7 +7035,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `47c300724d` (2026-10-07)
-- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 14 more in docs/bug-ledger.json
+- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 13 more in docs/bug-ledger.json
 - **Release note:** Shutdown no longer waits up to 15 seconds to refresh an MCP OAuth token that was about to expire, only to close the server's session. Closing a streamable HTTP session reuses the token of the last request.
 
 ### BF-47ec6e8
@@ -8141,7 +8164,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `47c300724d` (2026-10-07), `570f85770f` (2026-10-07), `b3543f848c` (2026-10-07)
-- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 23 more in docs/bug-ledger.json
+- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 22 more in docs/bug-ledger.json
 - **Release note:** Fixed interactive sessions leaving extension prompt sections, such as the MCP `mcp_servers` list, out of the transcript's system message. Print mode and Pi record them; interactive mode now publishes its prompt run to the session, which appends the sections before the first request.
 
 ### BF-5732479
@@ -8876,6 +8899,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/clamp_max_tokens_test.go::TestClampMaxTokensToContextOpenRouterOvercountMargin`
 - **Release note:** The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full window requests at most 32,768 output tokens, as in Pi, so OpenRouter's higher token count for the same input no longer makes it reject the request with a 400 that PiG then treated as a context overflow and compacted.
 
+### BF-604e180
+
+**`tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local `$ref`, as in MCP input schemas that put their models in `$defs`; the codemode `resolves to` summary shows field names behind a `$ref`; and a `$ref` with a malformed percent escape renders as `unknown` instead of failing every codemode run.
+- **Root cause:** Ports Pi main (#11850, fixing #11803). codemode.ResolveSchemaRef (and ResolveSchemaRefJSON for schema text) is the single resolver: a malformed percent escape names nothing instead of failing, so SchemaToType, RenderToolSignature, RenderToolSample, RenderDeclarations and RenderToolOutputType no longer return an error and CreateDescription no longer fails (URIError is removed; callers migrated). tool_search's schemaText (coding and durable) follows local refs once each, and the codemode 'resolves to' summary resolves $ref chains against the output schema root.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `604e18084d` (2026-11-07)
+- **Tests:** `codemode/declarations_parity_print_test.go::TestCodemodeDeclarationsParity`, `codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown`, `codemode/declarations_test.go::TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments`, `codemode/declarations_test.go::TestResolveSchemaRefReturnsNothingForRemoteMissingAndMalformedReferences`, `codemode/upstream_oracle_test.go::TestSchemaToTypeMatchesPi`, `codemode/upstream_oracle_test.go::TestToolOutputTypeMatchesPi`, `coding/extension/builtin/codemode/description_helpers_test.go::TestMalformedRefInAToolSchemaRendersAsUnknownInTheDescription`, `coding/extension/builtin/codemode/schema_uri_error_test.go::TestExecuteRunsWithAToolSchemaWithMalformedRefEncoding` and 6 more in docs/bug-ledger.json
+- **Release note:** `tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local `$ref`, as in MCP input schemas that put their models in `$defs`; the codemode `resolves to` summary shows field names behind a `$ref`; and a `$ref` with a malformed percent escape renders as `unknown` instead of failing every codemode run. `codemode.SchemaToType`, `RenderToolSignature`, `RenderToolSample`, `RenderDeclarations`, `RenderToolOutputType` and `CreateDescription` no longer return an error.
+
 ### BF-609d2bd
 
 **fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does**
@@ -8997,7 +9034,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `44e0ab8129` (2026-10-05), `49cb28c369` (2026-10-05), `61fc01d975` (2026-10-05)
-- **Tests:** `coding/mcpext/connection_test.go::TestMCPConnectionsAppendsTheLastUTF16UnitsOfAFailedStdioServersStderr`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes`, `coding/mcpext/fixtures_test.go::TestMain`, `coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty`, `coding/mcpext/jstrim_internal_test.go::TestResponseFromRedirectURLTrimsLikeJavaScript`, `coding/mcpext/jstrim_internal_test.go::TestWaitForAuthorizationResponseCancelsOnAJavaScriptBlankAnswer` and 5 more in docs/bug-ledger.json
+- **Tests:** `coding/mcpext/connection_test.go::TestMCPConnectionsAppendsTheLastUTF16UnitsOfAFailedStdioServersStderr`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes`, `coding/mcpext/fixtures_test.go::TestMain`, `coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty`, `coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit`, `coding/mcpext/manager_test.go::TestMcpManagerViewRedirectURLTrimsLikeJavaScript` and 3 more in docs/bug-ledger.json
 - **Release note:** `list_mcp_resources`, `list_mcp_resource_templates` and `read_mcp_resource` return every member a server sent for a resource, template or content entry, in Pi's order and in the form `JSON.stringify` writes: integer-like keys first, numbers such as `2.0` as `2`, and `<`, `&` and `>` unescaped. Before, members PiG did not know were dropped and the known ones were reordered.
 
 ### BF-61fc01d-2
@@ -9011,7 +9048,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `471c46e063` (2026-10-05), `49cb28c369` (2026-10-05), `61fc01d975` (2026-10-05)
-- **Tests:** `coding/mcpext/extension_test.go::TestAgentSessionMCPHidesToolsInTheOrderTheServerListedThem`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes`, `coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty`, `coding/mcpext/jstrim_internal_test.go::TestResponseFromRedirectURLTrimsLikeJavaScript`, `coding/mcpext/jstrim_internal_test.go::TestWaitForAuthorizationResponseCancelsOnAJavaScriptBlankAnswer`, `coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit` and 4 more in docs/bug-ledger.json
+- **Tests:** `coding/mcpext/extension_test.go::TestAgentSessionMCPHidesToolsInTheOrderTheServerListedThem`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes`, `coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty`, `coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit`, `coding/mcpext/manager_test.go::TestMcpManagerViewRedirectURLTrimsLikeJavaScript`, `coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle` and 2 more in docs/bug-ledger.json
 - **Release note:** MCP tool descriptions, resource MIME types, a pasted sign-in redirect URL and the resource tools' `server` and `uri` arguments are trimmed as JavaScript trims them: a byte order mark (U+FEFF) is removed and U+0085 is kept.
 
 ### BF-620abb0
@@ -9137,6 +9174,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `144341e42a` (2026-10-27), `62b009c7e6` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-62b28a2
+
+**`/mcp login` and `pig mcp login` no longer stay on "Connecting..." after a successful browser sign-in while…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/mcp login` and `pig mcp login` no longer stay on "Connecting..." after a successful browser sign-in while the browser keeps an unused connection to the OAuth callback port: the callback server drops connections that have not sent a request when it closes.
+- **Root cause:** Ports Pi main (#11855, fixing #11311). Close() waited for a browser's unused preconnect or spare keep-alive socket: Go's Shutdown treats a connection that never sent a request as active for up to 5 s, and the 2 s bound made /mcp login stall on Connecting. Close() now drops the connections that have not sent a request before it shuts down; in-flight and idle connections keep Shutdown's handling, so a callback response being written is not cut off.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `62b28a24c6` (2026-11-07)
+- **Tests:** `mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`
+- **Release note:** `/mcp login` and `pig mcp login` no longer stay on "Connecting..." after a successful browser sign-in while the browser keeps an unused connection to the OAuth callback port: the callback server drops connections that have not sent a request when it closes.
 
 ### BF-62c3691
 
@@ -14281,6 +14332,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder`, `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace`
 - **Release note:** Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched object, as Pi does. A replaced setting stays where it was and a new setting is added at the end; the file used to be rewritten with its top-level keys sorted.
 
+### BF-8d46bf8
+
+**A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.
+- **Root cause:** Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Release note:** A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.
+
+### BF-8d46bf8-2
+
+**`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.
+- **Root cause:** Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Release note:** `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.
+
+### BF-8d46bf8-3
+
+**Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.
+- **Root cause:** Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Release note:** Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.
+
 ### BF-8d6fb83
 
 **A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…**
@@ -17076,6 +17169,66 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.
 - **Fix commits:** `c21b1370e5` (2026-11-07)
 - **Tests:** `ai/anthropic_message_threads_test.go::TestAnthropicMessageThreadsCreateThenContinue`
+
+### BF-D370
+
+**The OAuth callback server drops connections that have not sent a request when it closes**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D370)
+- **Symptom:** 1.5.0 waits for the browser to drop the socket, for minutes.
+- **Root cause:** Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pinned Pi release contains 63ea042ce and PiG's close matches it.
+- **Fix commits:** `8d46bf82b6` (2026-11-07), `d852965a33` (2026-11-07)
+- **Tests:** `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext`
+
+### BF-D371
+
+**Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D371)
+- **Symptom:** 1.5.0 throws `URI malformed` out of every codemode run.
+- **Root cause:** One MCP tool with such a ref failed every codemode run.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pinned Pi release contains 6d3e342b2.
+- **Fix commits:** `d852965a33` (2026-11-07)
+- **Tests:** `codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown`, `coding/extension/builtin/codemode/tool_refs_pi_test.go::TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`
+
+### BF-D372
+
+**`mcp add` reports an invalid url before an invalid exposure**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D372)
+- **Symptom:** none; an ordering change in Pi main.
+- **Root cause:** one validator now serves the CLI, the config loader and the extension.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pinned Pi release contains 76c040a2a.
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `coding/mcpext/cli_oracle_test.go::TestMcpCommandMatchesPi`
+
+### BF-D373
+
+**The stored PKCE verifier is dropped once its code exchange succeeded**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D373)
+- **Symptom:** none observable in behavior; additive hardening.
+- **Root cause:** a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi drops the verifier after the exchange, or the owner declines the hardening.
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`
 
 ### BF-a076a50
 
@@ -21702,7 +21855,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `339445102a` (2026-10-06), `77bfe68d1f` (2026-10-07), `d5d010a275` (2026-10-07), `db7007dad8` (2026-10-07)
-- **Tests:** `agent/thinking_level_test.go::TestAgentLoop_RequestsReasoningOnlyForLevelsOtherThanOff`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingConversionUpstream`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesToolCallID_UnattributedItemIsHashed`, `ai/openai_responses_shared_oracle_test.go::TestConvertResponsesMessagesMatchesPi`, `ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets`, `ai/openai_responses_tool_result_output_test.go::TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder`, `ai/radius_sampling_by_level_test.go::TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel` and 6 more in docs/bug-ledger.json
+- **Tests:** `agent/thinking_level_test.go::TestAgentLoop_RequestsReasoningOnlyForLevelsOtherThanOff`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingConversionUpstream`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesToolCallID_UnattributedItemIsHashed`, `ai/openai_responses_shared_oracle_test.go::TestConvertResponsesMessagesMatchesPi`, `ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets`, `ai/openai_responses_tool_result_output_test.go::TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder`, `ai/radius_sampling_by_level_test.go::TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel` and 5 more in docs/bug-ledger.json
 - **Release note:** A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed catalog entry (Pi's `getRadiusModelsFromConfig` spreads each gateway model); it was dropped before.
 
 ### BF-db9a315
@@ -25822,6 +25975,10 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D350 | OpenCode Zen and Go Claude models send per-message effort | [BF-D350](#bf-d350) |
 | D351 | Anthropic non-strict tool schemas keep root $defs | [BF-D351](#bf-d351) |
 | D352 | Anthropic message threads | [BF-D352](#bf-d352) |
+| D370 | The OAuth callback server drops connections that have not sent a request when it closes | [BF-D370](#bf-d370) |
+| D371 | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | [BF-D371](#bf-d371) |
+| D372 | `mcp add` reports an invalid url before an invalid exposure | [BF-D372](#bf-d372) |
+| D373 | The stored PKCE verifier is dropped once its code exchange succeeded | [BF-D373](#bf-d373) |
 
 ## Fix-titled commits that are not bugs in a release
 

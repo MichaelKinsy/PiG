@@ -4723,6 +4723,30 @@
       ]
     },
     {
+      "id": "BF-2293426",
+      "title": "fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait",
+      "symptom": "fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait",
+      "rootCause": "Ports Pi main, on top of the sign-in package. Token refresh tries the redirect URI the application signs in with (RedirectURL on McpAuthProviderOptions and McpSignInOptions) before the loopback and stored ones, so tokens from a Client ID Metadata Document with only an https callback route can be refreshed. Ending the sign-in's context also stops the wait for the refresh lock; a lock that arrives later runs nothing and is released. McpRefreshLockBusyError makes StartMcpSignIn skip the refresh; any other lock failure fails it. The credential store reports a lock held by another process (ELOCKED) as the busy error.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "22934263b9",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "mcp/oauth/auth_provider_pi_test.go::TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed",
+        "mcp/oauth/sign_in_pi_test.go::TestCancellationCancelsAtOnceWhileAnotherProcessHoldsTheRefreshLockAndRefreshesNothing",
+        "mcp/oauth/sign_in_pi_test.go::TestSignInFailsWhenTheRefreshLockFailsForAnotherReason",
+        "mcp/oauth/sign_in_pi_test.go::TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong"
+      ]
+    },
+    {
       "id": "BF-2307f4e",
       "title": "An extension's message_end replacement of a custom message that has no `content` now writes `content` after…",
       "symptom": "An extension's message_end replacement of a custom message that has no `content` now writes `content` after the replacement's other members, in the session's message, in the message_end event and in what RPC and JSON consumers read, as Pi does; the replacement's own member order is kept whatever the original's was.",
@@ -7767,7 +7791,6 @@
         "ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets",
         "ai/openai_responses_tool_result_output_test.go::TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder",
         "ai/radius_sampling_by_level_test.go::TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel",
-        "codemode/declarations_test.go::TestMalformedRefPercentEncodingIsAnError",
         "coding/extension/extensiontest/fake_test.go::TestFake_RecordsProjectTrustHandlersWithTheirTrustContext",
         "coding/extension/host/inproc/boundary_test.go::TestTypedOnTurnEndHandlerResultChainsThroughEmitBoundary",
         "coding/extension/host/inproc/cache_warming_test.go::TestTypedOnCacheWarmingDecisionHandlerOverridesAction",
@@ -11003,7 +11026,6 @@
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWhileWaitingForTheBrowser",
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded",
         "coding/mcpext/oauth_request_timeout_internal_test.go::TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout",
-        "coding/mcpext/oauth_request_timeout_internal_test.go::TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout",
         "coding/mcpext/responsive_test.go::TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish",
         "coding/mcpext/responsive_test.go::TestMcpCommandWithoutTheManagerStillWaitsForTheStartupConnections",
         "coding/mcpext/responsive_test.go::TestMcpDirectToolCallWaitsForItsServersReconnect",
@@ -11046,7 +11068,6 @@
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWhileWaitingForTheBrowser",
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded",
         "coding/mcpext/oauth_request_timeout_internal_test.go::TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout",
-        "coding/mcpext/oauth_request_timeout_internal_test.go::TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout",
         "coding/mcpext/responsive_test.go::TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish",
         "coding/mcpext/responsive_test.go::TestMcpCommandWithoutTheManagerStillWaitsForTheStartupConnections",
         "coding/mcpext/responsive_test.go::TestMcpDirectToolCallWaitsForItsServersReconnect",
@@ -11089,7 +11110,6 @@
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWhileWaitingForTheBrowser",
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded",
         "coding/mcpext/oauth_request_timeout_internal_test.go::TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout",
-        "coding/mcpext/oauth_request_timeout_internal_test.go::TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout",
         "coding/mcpext/responsive_test.go::TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish",
         "coding/mcpext/responsive_test.go::TestMcpCommandWithoutTheManagerStillWaitsForTheStartupConnections",
         "coding/mcpext/responsive_test.go::TestMcpDirectToolCallWaitsForItsServersReconnect",
@@ -13630,7 +13650,6 @@
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWhileWaitingForTheBrowser",
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded",
         "coding/mcpext/oauth_request_timeout_internal_test.go::TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout",
-        "coding/mcpext/oauth_request_timeout_internal_test.go::TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout",
         "coding/mcpext/responsive_test.go::TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish",
         "coding/mcpext/responsive_test.go::TestMcpCommandWithoutTheManagerStillWaitsForTheStartupConnections",
         "coding/mcpext/responsive_test.go::TestMcpDirectToolCallWaitsForItsServersReconnect",
@@ -15160,6 +15179,41 @@
       ]
     },
     {
+      "id": "BF-604e180",
+      "title": "`tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local…",
+      "symptom": "`tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local `$ref`, as in MCP input schemas that put their models in `$defs`; the codemode `resolves to` summary shows field names behind a `$ref`; and a `$ref` with a malformed percent escape renders as `unknown` instead of failing every codemode run.",
+      "rootCause": "Ports Pi main (#11850, fixing #11803). codemode.ResolveSchemaRef (and ResolveSchemaRefJSON for schema text) is the single resolver: a malformed percent escape names nothing instead of failing, so SchemaToType, RenderToolSignature, RenderToolSample, RenderDeclarations and RenderToolOutputType no longer return an error and CreateDescription no longer fails (URIError is removed; callers migrated). tool_search's schemaText (coding and durable) follows local refs once each, and the codemode 'resolves to' summary resolves $ref chains against the output schema root.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local `$ref`, as in MCP input schemas that put their models in `$defs`; the codemode `resolves to` summary shows field names behind a `$ref`; and a `$ref` with a malformed percent escape renders as `unknown` instead of failing every codemode run. `codemode.SchemaToType`, `RenderToolSignature`, `RenderToolSample`, `RenderDeclarations`, `RenderToolOutputType` and `CreateDescription` no longer return an error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "604e18084d",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/declarations_parity_print_test.go::TestCodemodeDeclarationsParity",
+        "codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown",
+        "codemode/declarations_test.go::TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments",
+        "codemode/declarations_test.go::TestResolveSchemaRefReturnsNothingForRemoteMissingAndMalformedReferences",
+        "codemode/upstream_oracle_test.go::TestSchemaToTypeMatchesPi",
+        "codemode/upstream_oracle_test.go::TestToolOutputTypeMatchesPi",
+        "coding/extension/builtin/codemode/description_helpers_test.go::TestMalformedRefInAToolSchemaRendersAsUnknownInTheDescription",
+        "coding/extension/builtin/codemode/schema_uri_error_test.go::TestExecuteRunsWithAToolSchemaWithMalformedRefEncoding",
+        "coding/extension/builtin/codemode/tool_refs_pi_test.go::TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go::TestSchemaRefsFollowsEscapedPointerSegments",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go::TestSchemaRefsLeavesOutUnreferencedDefinitionsAndRemoteOrMissingReferences",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go::TestSchemaRefsReadsNamesAndDescriptionsBehindLocalReferences",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go::TestSchemaRefsReadsRecursiveAndSharedDefinitionsOnce",
+        "durable/toolsearch/toolsearch_test.go::TestFindsAToolByAParameterDescriptionBehindALocalReferenceAndNotByUnreferencedDefinitions"
+      ]
+    },
+    {
       "id": "BF-609d2bd",
       "title": "fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does",
       "symptom": "fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does",
@@ -15456,8 +15510,6 @@
         "coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes",
         "coding/mcpext/fixtures_test.go::TestMain",
         "coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty",
-        "coding/mcpext/jstrim_internal_test.go::TestResponseFromRedirectURLTrimsLikeJavaScript",
-        "coding/mcpext/jstrim_internal_test.go::TestWaitForAuthorizationResponseCancelsOnAJavaScriptBlankAnswer",
         "coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit",
         "coding/mcpext/manager_test.go::TestMcpManagerViewRedirectURLTrimsLikeJavaScript",
         "coding/mcpext/tools_test.go::TestMCPToolsShowsBlobsOfTextTypesWithBOMPaddedMimeTypesAsText",
@@ -15497,8 +15549,6 @@
         "coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript",
         "coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes",
         "coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty",
-        "coding/mcpext/jstrim_internal_test.go::TestResponseFromRedirectURLTrimsLikeJavaScript",
-        "coding/mcpext/jstrim_internal_test.go::TestWaitForAuthorizationResponseCancelsOnAJavaScriptBlankAnswer",
         "coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit",
         "coding/mcpext/manager_test.go::TestMcpManagerViewRedirectURLTrimsLikeJavaScript",
         "coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle",
@@ -15802,6 +15852,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-62b28a2",
+      "title": "`/mcp login` and `pig mcp login` no longer stay on \"Connecting...\" after a successful browser sign-in while…",
+      "symptom": "`/mcp login` and `pig mcp login` no longer stay on \"Connecting...\" after a successful browser sign-in while the browser keeps an unused connection to the OAuth callback port: the callback server drops connections that have not sent a request when it closes.",
+      "rootCause": "Ports Pi main (#11855, fixing #11311). Close() waited for a browser's unused preconnect or spare keep-alive socket: Go's Shutdown treats a connection that never sent a request as active for up to 5 s, and the 2 s bound made /mcp login stall on Connecting. Close() now drops the connections that have not sent a request before it shuts down; in-flight and idle connections keep Shutdown's handling, so a callback response being written is not cut off.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/mcp login` and `pig mcp login` no longer stay on \"Connecting...\" after a successful browser sign-in while the browser keeps an unused connection to the OAuth callback port: the callback server drops connections that have not sent a request when it closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "62b28a24c6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen"
+      ]
     },
     {
       "id": "BF-62c3691",
@@ -25938,6 +26010,105 @@
       ]
     },
     {
+      "id": "BF-8d46bf8",
+      "title": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state…",
+      "symptom": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
+      "id": "BF-8d46bf8-2",
+      "title": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential…",
+      "symptom": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
+      "id": "BF-8d46bf8-3",
+      "title": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per…",
+      "symptom": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
       "id": "BF-8d6fb83",
       "title": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…",
       "symptom": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text.",
@@ -31239,6 +31410,105 @@
       ],
       "tests": [
         "ai/anthropic_message_threads_test.go::TestAnthropicMessageThreadsCreateThenContinue"
+      ]
+    },
+    {
+      "id": "BF-D370",
+      "title": "The OAuth callback server drops connections that have not sent a request when it closes",
+      "symptom": "1.5.0 waits for the browser to drop the socket, for minutes.",
+      "rootCause": "Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D370",
+      "removeWhen": "the pinned Pi release contains 63ea042ce and PiG's close matches it.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "d852965a33",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext"
+      ]
+    },
+    {
+      "id": "BF-D371",
+      "title": "Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`",
+      "symptom": "1.5.0 throws `URI malformed` out of every codemode run.",
+      "rootCause": "One MCP tool with such a ref failed every codemode run.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D371",
+      "removeWhen": "the pinned Pi release contains 6d3e342b2.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "d852965a33",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown",
+        "coding/extension/builtin/codemode/tool_refs_pi_test.go::TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences"
+      ]
+    },
+    {
+      "id": "BF-D372",
+      "title": "`mcp add` reports an invalid url before an invalid exposure",
+      "symptom": "none; an ordering change in Pi main.",
+      "rootCause": "one validator now serves the CLI, the config loader and the extension.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D372",
+      "removeWhen": "the pinned Pi release contains 76c040a2a.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/cli_oracle_test.go::TestMcpCommandMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-D373",
+      "title": "The stored PKCE verifier is dropped once its code exchange succeeded",
+      "symptom": "none observable in behavior; additive hardening.",
+      "rootCause": "a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D373",
+      "removeWhen": "Pi drops the verifier after the exchange, or the owner declines the hardening.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ]
     },
     {
@@ -41389,7 +41659,6 @@
         "ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets",
         "ai/openai_responses_tool_result_output_test.go::TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder",
         "ai/radius_sampling_by_level_test.go::TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel",
-        "codemode/declarations_test.go::TestMalformedRefPercentEncodingIsAnError",
         "coding/extension/extensiontest/fake_test.go::TestFake_RecordsProjectTrustHandlersWithTheirTrustContext",
         "coding/extension/host/inproc/boundary_test.go::TestTypedOnTurnEndHandlerResultChainsThroughEmitBoundary",
         "coding/extension/host/inproc/cache_warming_test.go::TestTypedOnCacheWarmingDecisionHandlerOverridesAction",
@@ -51247,6 +51516,26 @@
       "id": "D352",
       "title": "Anthropic message threads",
       "entry": "BF-D352"
+    },
+    {
+      "id": "D370",
+      "title": "The OAuth callback server drops connections that have not sent a request when it closes",
+      "entry": "BF-D370"
+    },
+    {
+      "id": "D371",
+      "title": "Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`",
+      "entry": "BF-D371"
+    },
+    {
+      "id": "D372",
+      "title": "`mcp add` reports an invalid url before an invalid exposure",
+      "entry": "BF-D372"
+    },
+    {
+      "id": "D373",
+      "title": "The stored PKCE verifier is dropped once its code exchange succeeded",
+      "entry": "BF-D373"
     }
   ],
   "exemptCommits": {
