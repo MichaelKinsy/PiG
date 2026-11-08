@@ -798,9 +798,13 @@ func TestAToolCallInTheManagerDoesNotHoldTheHostsLoopAndLeaseChangesRacingTheHos
 					defer calls.Done()
 					for generation := 1; generation <= 4; generation++ {
 						_, _ = h.manager.Call("setLocations", delta.JsonObjectOf("session", session, "generation", float64(generation), "incarnation", "i", "locations", []any{one}), p2test.Background)
-						_, _ = h.manager.Call("releaseLeases", delta.JsonObjectOf("session", session, "generation", float64(generation)), p2test.Background)
 					}
+					_, _ = h.manager.Call("releaseLeases", delta.JsonObjectOf("session", session, "generation", float64(4)), p2test.Background)
 				}()
+			}
+			// The host ends as the first lease commits: the callers that committed read the placement for their reconcile at once.
+			if _, err := p2test.Until(h.manager.Member("leases"), func(value delta.JsonValue) bool { return len(value.([]any)) > 0 }, 0); err != nil {
+				t.Fatal(err)
 			}
 			h.shutdown()
 			calls.Wait()
