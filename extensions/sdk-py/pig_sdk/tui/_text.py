@@ -889,7 +889,8 @@ def slice_with_width(line: str, start_col: int, length: int, strict: bool = Fals
             if start_col <= current < end_col:
                 result.append(pending + code)
                 pending = ""
-            elif current < start_col:
+            elif current < start_col and not code.startswith("\x1b_"):
+                # An APC sequence (a cursor marker) is a one-shot command, not style state: it does not carry over (Pi 25490ea49).
                 pending += code
             i += code_len
             continue
