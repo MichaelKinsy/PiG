@@ -114362,17 +114362,6 @@
       "shapeHash": "sha256:50a923943b8f95d804f71b1203b7d3a5aef488fb4f1918e2cc513faf3c6546da"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#isStringRecord",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension",
-      "name": "isStringRecord",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(raw encoding/json.RawMessage) bool"
-      },
-      "shapeHash": "sha256:50a923943b8f95d804f71b1203b7d3a5aef488fb4f1918e2cc513faf3c6546da"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#listKeeps",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "listKeeps",

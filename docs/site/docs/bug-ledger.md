@@ -57,6 +57,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-081e8c3](#bf-081e8c3) | Bug report files against live Pi: new `TestBugReportFilesMatchPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-082355f](#bf-082355f) | The session picker checks its keys in Pi's order when bindings overlap (delete before rename, list actions… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-082f350](#bf-082f350) | `markdown.codeBlockIndent`: Pi's getter is `markdown?.codeBlockIndent ?? " "`, so an authored `""` means no… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-083db0c](#bf-083db0c) | A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-084fa64](#bf-084fa64) | fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment | PiG's own defect | All platforms | Unreleased |
 | [BF-086395a](#bf-086395a) | `coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-08ab103](#bf-08ab103) | fix(childwait): the zero-byte read's OVERLAPPED is heap allocated and pinned; the child's pipe end can be… | PiG's own defect | All platforms | Unreleased |
@@ -101,6 +102,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0e8761b](#bf-0e8761b) | A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0f8bc0f](#bf-0f8bc0f) | `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the… | PiG's own defect | All platforms | Unreleased |
 | [BF-0ffb06a](#bf-0ffb06a) | fix(tui): diff rows with a CR are wrapped like Pi's Text | PiG's own defect | All platforms | Unreleased |
+| [BF-1003d2e](#bf-1003d2e) | fix(cli): the login secret prompt enters and leaves raw mode through tui.MakeRaw and tui.RestoreCooked (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-10189c4](#bf-10189c4) | The `/tree` Summarize option sends the session's thinking level with the branch summary request when the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-108cb7d](#bf-108cb7d) | An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its… | PiG's own defect | Windows | 0.7.0 |
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
@@ -360,6 +362,11 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3fe717a](#bf-3fe717a) | A bash or PowerShell command that timed out after its shell had already exited, because a background process… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-4027b34](#bf-4027b34) | A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer… | PiG's own defect | Linux | 0.5.0 |
 | [BF-4058f34](#bf-4058f34) | The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap | PiG's own defect | All platforms | 0.5.0 |
+| [BF-40b1210](#bf-40b1210) | `pig auth login` reports "Login cancelled." for any login that fails with that message, as Pi does, including… | PiG's own defect | All platforms | Unreleased |
+| [BF-40b1210-2](#bf-40b1210-2) | A custom message or a compaction summary drawn live (`pi.sendMessage`, an extension's boundary compaction)… | PiG's own defect | All platforms | Unreleased |
+| [BF-40b1210-3](#bf-40b1210-3) | Custom messages, skill blocks, summaries and the changelog run extension Markdown transformers off the render… | PiG's own defect | All platforms | Unreleased |
+| [BF-40b1210-4](#bf-40b1210-4) | A finished MCP sign-in whose single-use verifier could not be removed afterwards is still reported as… | PiG's own defect | All platforms | Unreleased |
+| [BF-40b1210-5](#bf-40b1210-5) | MCP credential files that are symlinks are written through the link, and the directory is synced after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-40b5a89](#bf-40b5a89) | Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-40bc651](#bf-40bc651) | The Anthropic event reader decides message_start and message_stop from the parsed event type as Pi does (not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-410d733](#bf-410d733) | `settings.json`, `trust.json` and `auth.json` are written as Pi's `JSON.stringify` writes them: `<`, `>` and… | PiG's own defect | All platforms | 0.5.0 |
@@ -487,6 +494,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-54283ce](#bf-54283ce) | fix(extension): Shutdown closes live child sessions and releases the objects they hold | PiG's own defect | All platforms | Unreleased |
 | [BF-542b536](#bf-542b536) | fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version | PiG's own defect | All platforms | Unreleased |
 | [BF-5443b6c](#bf-5443b6c) | `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-54660cf](#bf-54660cf) | fix(tui): installing a Markdown transform on a custom message does not call its renderer again | PiG's own defect | All platforms | Unreleased |
 | [BF-54a5bf6](#bf-54a5bf6) | The host answers a parsed frontmatter with `<`, `>`, `&` and U+2028 as they are (as `JSON.stringify` writes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-54c4ee3](#bf-54c4ee3) | fix(chord): the platform locale is the first set variable of LC_ALL, LC_MESSAGES, LANG (C and POSIX are… | PiG's own defect | All platforms | Unreleased |
 | [BF-54dc372](#bf-54dc372) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
@@ -957,6 +965,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8cfd25f](#bf-8cfd25f) | A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8d008eb](#bf-8d008eb) | fix(interactive): paint the requested first frame before the color wait returns | PiG's own defect | All platforms | Unreleased |
 | [BF-8d23cfc](#bf-8d23cfc) | Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8d46bf8](#bf-8d46bf8) | A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state… | PiG's own defect | All platforms | Unreleased |
+| [BF-8d46bf8-2](#bf-8d46bf8-2) | `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential… | PiG's own defect | All platforms | Unreleased |
+| [BF-8d46bf8-3](#bf-8d46bf8-3) | Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per… | PiG's own defect | All platforms | Unreleased |
 | [BF-8d6fb83](#bf-8d6fb83) | A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-8e3613d](#bf-8e3613d) | Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-8e70eff](#bf-8e70eff) | fix(chord/nextnode/workers): the channel refuses a record over the limit | PiG's own defect | All platforms | Unreleased |
@@ -1154,9 +1165,10 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D351](#bf-d351) | Anthropic non-strict tool schemas keep root $defs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D352](#bf-d352) | Anthropic message threads | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D370](#bf-d370) | The OAuth callback server drops connections that have not sent a request when it closes | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D371](#bf-d371) | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D373](#bf-d373) | The stored PKCE verifier is dropped once its code exchange succeeded | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D603](#bf-d603) | PipeTransport.Close bounds its wait for the killed program | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -2326,6 +2338,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage` and 9 more in docs/bug-ledger.json
 - **Release note:** `markdown.codeBlockIndent`: Pi's getter is `markdown?.codeBlockIndent ?? " "`, so an authored `""` means no indent and an authored `null` (which survives the project merge and overrides the global value) reads the default. `MarkdownSettings.CodeBlockIndent` was a plain string, so `""` read as the two-space default (lg-review-i1 note on r3). Now `*string` with an authored-null flag (custom Unmarshal/Marshal), merged, cloned and encoded; the r3 oracle `TestSettingsManagerGettersMatchPi` now compares `""` and `null` (red before: 4+ mismatches per 1,500 cases), regression `TestSettingsKeepAnAuthoredEmptyOrNullCodeBlockIndent` (load, project merge, merged and global encode); 8 mutations red; one equivalent (none remaining).
 
+### BF-083db0c
+
+**A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a custom message renderer is called once, not twice, when a message is drawn.
+- **Root cause:** The mcp helpers coding/extension uses (naming, server config validation) move to internal/mcpshared, which package mcp re-exports; the local $ref resolver tool search uses moves to internal/schemaref, which codemode wraps. A pig_strip_mcp build no longer links mcp and a pig_strip_codemode build no longer links codemode or wazero (,).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `083db0c482` (2026-11-07)
+- **Tests:** None recorded.
+- **Release note:** A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a custom message renderer is called once, not twice, when a message is drawn.
+
 ### BF-084fa64
 
 **fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment**
@@ -2937,6 +2963,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `0ffb06a7bf` (2026-10-10)
 - **Tests:** `internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi`, `internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsRandomMatchPi`
+
+### BF-1003d2e
+
+**fix(cli): the login secret prompt enters and leaves raw mode through tui.MakeRaw and tui.RestoreCooked (Pi)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(cli): the login secret prompt enters and leaves raw mode through tui.MakeRaw and tui.RestoreCooked (Pi)
+- **Root cause:** The EINTR audit allows term.MakeRaw and term.Restore only behind the retrying helpers; the helpers are exported and auth_terminal.go drops its own loop.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1003d2ea75` (2026-11-07)
+- **Tests:** None recorded.
 
 ### BF-10189c4
 
@@ -6517,6 +6556,76 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/extension_dialog_remapping_test.go::TestExtensionDialogRemappingThroughOwnerLoop`, `internal/codingagent/remote_overlay_production_review_test.go::TestRemoteOverlayProductionRejectsCachedTerminalWidth`, `internal/codingagent/session_selector_oracle_test.go::TestSessionSelectorInputMatchesPi`, `internal/codingagent/tree_row_format_test.go::TestFormatTreeRow_AllEntryTypes`, `internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi`, `internal/codingagent/trust_selector_oracle_test.go::TestTrustSelectorInputMatchesPi`, `internal/codingagent/w3_pi_test.go::TestW3SessionPiComparison`, `tui/editor_bindings_oracle_test.go::TestEditorRebindingsMatchPi` and 7 more in docs/bug-ledger.json
 - **Release note:** The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap.
 
+### BF-40b1210
+
+**`pig auth login` reports "Login cancelled." for any login that fails with that message, as Pi does, including…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig auth login` reports "Login cancelled." for any login that fails with that message, as Pi does, including the providers that create their own cancelled error.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Commit that wrote the release note (the fix commit is not identified):** `40b12101e0` (2026-11-08)
+- **Tests:** `coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive`, `coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension`, `coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes`, `extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame`, `internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity` and 4 more in docs/bug-ledger.json
+- **Release note:** `pig auth login` reports "Login cancelled." for any login that fails with that message, as Pi does, including the providers that create their own cancelled error.
+
+### BF-40b1210-2
+
+**A custom message or a compaction summary drawn live (`pi.sendMessage`, an extension's boundary compaction)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A custom message or a compaction summary drawn live (`pi.sendMessage`, an extension's boundary compaction) hands Markdown transformers no `messageId` or `timestamp`, as Pi does; only a restored transcript carries the entry's.
+- **Root cause:** D313 is gone: the pin () contains, so the port is parity. The conformance fixtures of every SDK list the custom, summary and changelog surfaces, and TestMarkdownContextsAcrossSDKs fails when an SDK ignores the option.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4013d4afc7` (2026-11-07), `6117dfa5fc` (2026-11-07), `40b12101e0` (2026-11-08)
+- **Tests:** `coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive`, `coding/extension/host/inproc/upstream_markdown_collection_test.go::TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes`, `coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension`, `coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes`, `extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame`, `internal/codingagent/interactive_extension_changelog_test.go::TestStartupChangelogRunsTheChangelogMarkdownTransformers`, `internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea`, `internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity` and 13 more in docs/bug-ledger.json
+- **Release note:** A custom message or a compaction summary drawn live (`pi.sendMessage`, an extension's boundary compaction) hands Markdown transformers no `messageId` or `timestamp`, as Pi does; only a restored transcript carries the entry's.
+
+### BF-40b1210-3
+
+**Custom messages, skill blocks, summaries and the changelog run extension Markdown transformers off the render…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Custom messages, skill blocks, summaries and the changelog run extension Markdown transformers off the render loop, so a slow extension no longer stalls a frame, and they are only redrawn each frame while an extension registered a transformer.
+- **Root cause:** A text with a lone surrogate is lexed with each unit standing in as a private-use code point of plane 16 and the units are put back into the tokens before they render.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3e7798d0ac` (2026-11-06), `4013d4afc7` (2026-11-07), `6117dfa5fc` (2026-11-07), `40b12101e0` (2026-11-08)
+- **Tests:** `coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive`, `coding/extension/host/inproc/upstream_markdown_collection_test.go::TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes`, `coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension`, `coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes`, `extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame`, `internal/codingagent/interactive_extension_changelog_test.go::TestStartupChangelogRunsTheChangelogMarkdownTransformers`, `internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea`, `internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity` and 15 more in docs/bug-ledger.json
+- **Release note:** Custom messages, skill blocks, summaries and the changelog run extension Markdown transformers off the render loop, so a slow extension no longer stalls a frame, and they are only redrawn each frame while an extension registered a transformer.
+
+### BF-40b1210-4
+
+**A finished MCP sign-in whose single-use verifier could not be removed afterwards is still reported as…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A finished MCP sign-in whose single-use verifier could not be removed afterwards is still reported as authorized.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Commit that wrote the release note (the fix commit is not identified):** `40b12101e0` (2026-11-08)
+- **Tests:** `coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive`, `coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension`, `coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes`, `extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame`, `internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity` and 4 more in docs/bug-ledger.json
+- **Release note:** A finished MCP sign-in whose single-use verifier could not be removed afterwards is still reported as authorized.
+
+### BF-40b1210-5
+
+**MCP credential files that are symlinks are written through the link, and the directory is synced after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** MCP credential files that are symlinks are written through the link, and the directory is synced after the replace.
+- **Root cause:** Not recorded.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Commit that wrote the release note (the fix commit is not identified):** `40b12101e0` (2026-11-08)
+- **Tests:** `coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive`, `coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension`, `coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes`, `extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame`, `internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity` and 4 more in docs/bug-ledger.json
+- **Release note:** MCP credential files that are symlinks are written through the link, and the directory is synced after the replace.
+
 ### BF-40b5a89
 
 **Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's…**
@@ -8261,6 +8370,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `433d232815` (2026-10-09), `86fe3dc28b` (2026-10-09), `f1d3eec6de` (2026-10-09), `014c014e74` (2026-10-10), `2de6fe21b8` (2026-10-10), `30ca7fcf7f` (2026-10-10), `5443b6c4d5` (2026-10-10), `691e3e1536` (2026-10-10), `76d1a85e45` (2026-10-10), `90b48897e1` (2026-10-10), `98c1299067` (2026-10-10), `af1289d2d7` (2026-10-10), `b7199a2ba1` (2026-10-10), `c87dea7287` (2026-10-10)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules` and 69 more in docs/bug-ledger.json
 - **Release note:** `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and `images/cloudflare`) is a `tools.ImageProcessor` that turns an image upright by its EXIF orientation, scales it to the limits with a Lanczos3 filter, converts BMP to PNG, and re-encodes PNG or JPEG at falling qualities until it fits. `tools.CreateReadTool(&tools.ReadToolOptions{Images: p})` and `tools.CreateCodingTools(...)` pass it to `read`; `tools.CreateReadTool` now takes its options (nil for none), as `CreateBashTool` does.
+
+### BF-54660cf
+
+**fix(tui): installing a Markdown transform on a custom message does not call its renderer again**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(tui): installing a Markdown transform on a custom message does not call its renderer again
+- **Root cause:** SetMarkdownTransform rebuilt the whole component, so a custom renderer ran twice at construction; Pi's constructor renders once. Only the default body reads the transform.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `54660cf133` (2026-11-07)
+- **Tests:** None recorded.
 
 ### BF-54a5bf6
 
@@ -14786,6 +14908,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder`, `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace`
 - **Release note:** Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched object, as Pi does. A replaced setting stays where it was and a new setting is added at the end; the file used to be rewritten with its top-level keys sorted.
 
+### BF-8d46bf8
+
+**A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.
+- **Root cause:** Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Release note:** A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.
+
+### BF-8d46bf8-2
+
+**`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.
+- **Root cause:** Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Release note:** `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.
+
+### BF-8d46bf8-3
+
+**Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.
+- **Root cause:** Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Release note:** Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.
+
 ### BF-8d6fb83
 
 **A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…**
@@ -17565,20 +17729,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d852965a33` (2026-11-07)
 - **Tests:** `mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`
 
-### BF-D371
+### BF-D373
 
-**Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`**
+**The stored PKCE verifier is dropped once its code exchange succeeded**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D371)
-- **Symptom:** 1.5.0 throws `URI malformed` out of every codemode run.
-- **Root cause:** One MCP tool with such a ref failed every codemode run.
+- **Source:** A Pi defect that PiG fixed first (divergence D373)
+- **Symptom:** none observable in behavior; additive hardening.
+- **Root cause:** a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 6d3e342b2.
-- **Fix commits:** `d852965a33` (2026-11-07)
-- **Tests:** `codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown`, `coding/extension/builtin/codemode/tool_refs_pi_test.go::TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`
+- **Removed when Pi fixes it:** Pi drops the verifier after the exchange, or the owner declines the hardening.
+- **Fix commits:** `8d46bf82b6` (2026-11-07), `40b12101e0` (2026-11-08)
+- **Tests:** `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`
 
 ### BF-D430
 
@@ -17608,6 +17772,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** the pin reaches a Pi release containing 2439933cf. Then this record goes.
 - **Fix commits:** `0d59519cff` (2026-11-07), `930ef101d0` (2026-11-07)
+- **Tests:** None recorded.
+
+### BF-D603
+
+**PipeTransport.Close bounds its wait for the killed program**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D603)
+- **Symptom:** none; a program that survives a kill is outside Pi's model.
+- **Root cause:** a pipe whose exit is never reported would hold a Go caller (shutdown, a server restart) forever; an error lets it go on. The exit-watcher goroutine of such a pipe still waits for the exit.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi bounds the wait, or the owner declines the bound.
+- **Fix commits:** `40b12101e0` (2026-11-08)
 - **Tests:** None recorded.
 
 ### BF-a076a50
@@ -26595,9 +26774,10 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D351 | Anthropic non-strict tool schemas keep root $defs | [BF-D351](#bf-d351) |
 | D352 | Anthropic message threads | [BF-D352](#bf-d352) |
 | D370 | The OAuth callback server drops connections that have not sent a request when it closes | [BF-D370](#bf-d370) |
-| D371 | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | [BF-D371](#bf-d371) |
+| D373 | The stored PKCE verifier is dropped once its code exchange succeeded | [BF-D373](#bf-d373) |
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
+| D603 | PipeTransport.Close bounds its wait for the killed program | [BF-D603](#bf-d603) |
 
 ## Fix-titled commits that are not bugs in a release
 
