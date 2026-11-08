@@ -78,3 +78,20 @@ func TestIsJsonValueChecksStrictJSONWithoutNormalizing(t *testing.T) {
 		}
 	}
 }
+
+// upstream: json.test.ts "preserves null prototypes and own __proto__ data properties". Go objects have no prototypes; the
+// part with a Go meaning is that a "__proto__" key is an ordinary own key of both object forms and survives a copy.
+func TestCopyJSONPreservesOwnProtoKeys(t *testing.T) {
+	for name, input := range map[string]any{
+		"object": delta.JsonObjectOf("__proto__", delta.JsonObjectOf("safe", true)),
+		"map":    map[string]any{"__proto__": map[string]any{"safe": true}},
+	} {
+		copied, err := CopyJSON(input)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if text, _ := json.Marshal(copied); string(text) != `{"__proto__":{"safe":true}}` {
+			t.Errorf("%s: copy = %s, want the __proto__ key kept", name, text)
+		}
+	}
+}

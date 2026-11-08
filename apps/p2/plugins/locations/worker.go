@@ -182,10 +182,9 @@ func registerMover(self host.StoreSelf) error {
 						return nil
 					}
 					fmt.Fprintln(os.Stderr, "p2 locations: the deferred move failed, retrying:", err)
-					select {
-					case <-time.After(RetryAfter):
-					case <-ctx.Done():
-					}
+					wait, stop := context.WithTimeout(ctx, RetryAfter)
+					<-wait.Done()
+					stop()
 				}
 			}
 			return nil

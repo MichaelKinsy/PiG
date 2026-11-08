@@ -1,6 +1,5 @@
 package runtime
 
-
 // JSTrim is `text.trim()`: JavaScript's white space and line terminators removed from both ends.
 func JSTrim(text string) string { return jsTrim(text) }
 
@@ -15,4 +14,3 @@ func JSLength(text string) int {
 	}
 	return count
 }
-

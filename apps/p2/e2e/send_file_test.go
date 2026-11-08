@@ -80,7 +80,6 @@ func TestSendFileFakeProvider(t *testing.T) {
 		if err := os.Remove(path); err != nil {
 			t.Fatal(err)
 		}
-		rebuilds.Rebuild("send-file")
 		if _, err := fixture.Server.Reload([]string{"send-file"}, context.Background()); err != nil {
 			t.Fatal(err)
 		}

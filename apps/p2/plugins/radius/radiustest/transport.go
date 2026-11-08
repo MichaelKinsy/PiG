@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/gorilla/websocket"
 )
 
@@ -112,7 +114,7 @@ func (t *Transport) Request(ctx context.Context, method, path string, body io.Re
 		}
 		return nil, err
 	}
-	request, _ := json.Marshal(map[string]any{"type": "http", "method": method, "path": path, "headers": map[string]string{}})
+	request, _ := chordjson.Marshal(delta.JsonObjectOf("type", "http", "method", method, "path", path, "headers", delta.NewJsonObject(0)))
 	if err := conn.WriteMessage(websocket.TextMessage, request); err != nil {
 		_ = conn.Close()
 		return nil, err
@@ -147,6 +149,7 @@ func (t *Transport) Request(ctx context.Context, method, path string, body io.Re
 		return nil, err
 	}
 	reader, writer := io.Pipe()
+	//portlint:allow golifetime ends when the connection closes (its read fails), which closes it
 	go func() {
 		defer conn.Close()
 		for {
@@ -191,7 +194,7 @@ func (t *Transport) Socket(ctx context.Context, path string) (conn *websocket.Co
 		}
 		return nil, 0, err
 	}
-	request, _ := json.Marshal(map[string]any{"type": "websocket", "path": path, "headers": map[string]string{}})
+	request, _ := chordjson.Marshal(delta.JsonObjectOf("type", "websocket", "path", path, "headers", delta.NewJsonObject(0)))
 	if err := conn.WriteMessage(websocket.TextMessage, request); err != nil {
 		_ = conn.Close()
 		return nil, 0, err

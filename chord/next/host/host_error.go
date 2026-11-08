@@ -76,6 +76,13 @@ const (
 	// `registry <name>`) and its State ("loading" or "failed"); a diagnostic of a ring across hosts started at the same
 	// moment or a long wait (nothing fails) (Object, WaitingFor, State, Since).
 	ErrParkedLong HostErrorKind = "parked_long"
+	// ErrUnboundLong: a request waited unbound for 5 s after the host's publication (a type or registry not served here, not
+	// at its version, a registry whose first `compose` threw), once: WaitingFor is the type's name or `registry <name>`,
+	// Error why, Since when it started (Date.now() time). It keeps waiting.
+	ErrUnboundLong HostErrorKind = "unbound_long"
+	// ErrTransactionCancelled: the context a document change or transaction was started with ended before it
+	// committed (a root whose fn returned, a caller that cancelled, its object's end), besides the rejection (Object, Error).
+	ErrTransactionCancelled HostErrorKind = "transaction_cancelled"
 )
 
 // HostError is what `onError` gets, by Kind (Pi's tagged union, one struct as registries.RegistryError is). Object is the

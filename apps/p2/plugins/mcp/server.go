@@ -14,6 +14,7 @@ import (
 	subagentscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -39,6 +40,11 @@ type EnvConnector func(self host.Self) ConnectEnv
 // viewLinger is how long a worker's view outlives its last reference: a worker object restarting does not end its leases.
 const viewLinger = 30 * time.Second
 
+// connectionManager is the part of the envs plugin's SSH manager that connects (`EnvManager.Connection`).
+type connectionManager interface {
+	Connection(name string, config *chordjson.Object) *env.Connection
+}
+
 // sshEnvironments is the environments of envs.json through the envs plugin's SSH manager (its keys and known hosts; read at
 // each connect, as it reopens with a reload).
 func sshEnvironments(self host.Self) ConnectEnv {
@@ -46,7 +52,10 @@ func sshEnvironments(self host.Self) ConnectEnv {
 	return func(name string, config *chordjson.Object) *env.Connection {
 		parts, err := managers()
 		if err == nil {
-			return parts.Manager.Connection(name, config)
+			if manager, ok := parts.Manager.(connectionManager); ok {
+				return manager.Connection(name, config)
+			}
+			err = errors.New("the SSH manager does not connect to environments")
 		}
 		failure := err
 		return env.NewConnection(env.ConnectionOptions{CommandFunc: func(context.Context) ([]string, error) { return nil, failure }})
@@ -191,7 +200,7 @@ func (p *placer) place(config, leases, envs, work, locks delta.JsonValue) (Place
 	return placement, nil
 }
 
-// serversOf is the signed Go servers of a config state (the memento keeps them as JSON).
+// memoOwner is the owner configuration of the memento, which keeps the servers as JSON.
 func memoOwner(value delta.JsonValue) (OwnerConfig, error) {
 	object := objectOf(value)
 	state, err := ownerStateOf(delta.JsonObjectOf("servers", object.Value("servers"), "errors", object.Value("errors"), "failure", nil))
@@ -395,7 +404,25 @@ func managerFactory(connector EnvConnector) func(*delta.JsonObject, host.Self) (
 			}
 			return value.(*Instances), nil
 		}
-		methods := managerMethods(leased, running, placement)
+		// A method that suspended reads and reconciles in a section of the loop again, as Pi's handler resumes in it.
+		reconcileIn := func(ctx context.Context) error {
+			var err error
+			if sectionErr := host.InSection(ctx, func() {
+				var value *Instances
+				if value, err = running(); err != nil {
+					return
+				}
+				var current Placement
+				if current, err = placement(); err != nil {
+					return
+				}
+				value.Reconcile(current)
+			}); sectionErr != nil {
+				return sectionErr
+			}
+			return err
+		}
+		methods := managerMethods(leased, running, placement, reconcileIn)
 		for name, method := range signInMethods(configured, func() (*SignIns, error) {
 			value, err := signIns.Value()
 			if err != nil {
@@ -557,19 +584,7 @@ func sameLease(a, b Lease) bool {
 
 // managerMethods are the manager's methods: the lease rules applied on the leases' line, calls through the leased instance,
 // restarts.
-func managerMethods(leased *documents.Singleton, instances func() (*Instances, error), placement func() (Placement, error)) map[string]contracts.MethodFunction {
-	reconcile := func() error {
-		running, err := instances()
-		if err != nil {
-			return err
-		}
-		current, err := placement()
-		if err != nil {
-			return err
-		}
-		running.Reconcile(current)
-		return nil
-	}
+func managerMethods(leased *documents.Singleton, instances func() (*Instances, error), placement func() (Placement, error), reconcile func(ctx context.Context) error) map[string]contracts.MethodFunction {
 	return map[string]contracts.MethodFunction{
 		"setLocations": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			in := objectArgs(args)
@@ -604,7 +619,7 @@ func managerMethods(leased *documents.Singleton, instances func() (*Instances, e
 			if refused != "" {
 				return nil, p2runtime.Forbidden(refused)
 			}
-			return nil, reconcile()
+			return nil, reconcile(ctx)
 		},
 		"releaseLeases": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			in := objectArgs(args)
@@ -618,7 +633,7 @@ func managerMethods(leased *documents.Singleton, instances func() (*Instances, e
 			}); err != nil {
 				return nil, err
 			}
-			return nil, reconcile()
+			return nil, reconcile(ctx)
 		},
 		"call": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			in := objectArgs(args)
@@ -662,17 +677,19 @@ func managerMethods(leased *documents.Singleton, instances func() (*Instances, e
 			if err != nil {
 				return nil, err
 			}
+			chordctx.Suspend(ctx) // a tool runs as long as its server takes: the loop goes on meanwhile
 			result, err := running.Call(ctx, id, stringOf(in.Value("tool")), in.Value("args"))
 			if err != nil {
 				return nil, err
 			}
 			return resultJSON(result)
 		},
-		"restart": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+		"restart": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			running, err := instances()
 			if err != nil {
 				return nil, err
 			}
+			chordctx.Suspend(ctx) // stopping waits for the process
 			return nil, running.Restart(stringOf(objectArgs(args).Value("instance")))
 		},
 	}
@@ -697,7 +714,7 @@ func signInMethods(configured chord.Watchable[delta.JsonValue], signIns func() (
 	}
 	return map[string]contracts.MethodFunction{
 		// The flow is listed before the answer: a caller following `signIns` for its end sees it under way first.
-		"beginSignIn": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+		"beginSignIn": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			in := objectArgs(args)
 			server, err := oauthServer(stringOf(in.Value("server")))
 			if err != nil {
@@ -708,6 +725,7 @@ func signInMethods(configured chord.Watchable[delta.JsonValue], signIns func() (
 			if err != nil {
 				return nil, err
 			}
+			chordctx.Suspend(ctx) // a loopback listener, discovery over HTTP and the callback's registration
 			start, err := signing.Begin(server, SignInRedirect{Route: redirect.Value("kind") == "route", URL: stringOf(redirect.Value("url"))})
 			if err != nil {
 				return nil, asPluginError(err)
@@ -717,7 +735,7 @@ func signInMethods(configured chord.Watchable[delta.JsonValue], signIns func() (
 			}
 			return delta.JsonObjectOf("kind", "redirect", "url", start.URL), nil
 		},
-		"completeSignIn": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+		"completeSignIn": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			in := objectArgs(args)
 			signing, err := signIns()
 			if err != nil {
@@ -734,18 +752,20 @@ func signInMethods(configured chord.Watchable[delta.JsonValue], signIns func() (
 			default:
 				response.Code, response.Iss = code, stringOf(in.Value("iss"))
 			}
+			chordctx.Suspend(ctx) // the token exchange
 			server, err := signing.Complete(response)
 			if err != nil {
 				return nil, err
 			}
 			return delta.JsonObjectOf("server", server), nil
 		},
-		"pasteSignIn": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+		"pasteSignIn": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			in := objectArgs(args)
 			signing, err := signIns()
 			if err != nil {
 				return nil, err
 			}
+			chordctx.Suspend(ctx) // the token exchange
 			return nil, signing.Paste(stringOf(in.Value("id")), stringOf(in.Value("redirectUrl")))
 		},
 		"cancelSignIn": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
@@ -765,6 +785,7 @@ func signInMethods(configured chord.Watchable[delta.JsonValue], signIns func() (
 			if err != nil {
 				return nil, err
 			}
+			chordctx.Suspend(ctx) // the credentials file's lock and I/O
 			return nil, asPluginError(signing.SignOut(ctx, server))
 		},
 		"probe": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {

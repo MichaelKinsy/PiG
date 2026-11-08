@@ -47,10 +47,14 @@ func follow[T any](current func() T, watch func(ctx context.Context) (value T, s
 		if !state.Identical(value, last) {
 			fn(value)
 		}
-		start(func(change T) {
-			if ctx.Err() == nil {
-				fn(change)
-			}
+		// The watch ends with its source (a holder released the reference it follows, or stop cancelled ctx) between its
+		// making and this start: there is nothing left to follow.
+		chord.StartUnlessEnded(func() {
+			start(func(change T) {
+				if ctx.Err() == nil {
+					fn(change)
+				}
+			})
 		})
 	}()
 	return func() {

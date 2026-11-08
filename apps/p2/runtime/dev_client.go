@@ -26,6 +26,7 @@ func SendDevCommand(ctx context.Context, dataDir string, command DevCommand) (De
 	if command.Plugins != nil {
 		body["plugins"] = command.Plugins
 	}
+	//portlint:allow mapkeyorder `action` sorts before `plugins`: the keys' sorted order is Pi's insertion order
 	encoded, err := json.Marshal(body)
 	if err != nil {
 		return DevResult{}, err
@@ -33,6 +34,7 @@ func SendDevCommand(ctx context.Context, dataDir string, command DevCommand) (De
 	ctx, cancel := context.WithTimeoutCause(ctx, devCommandTimeout, errors.New("Dev command timed out"))
 	defer cancel()
 	socket := filepath.Join(dataDir, "dev.sock")
+	//portlint:allow transportperrequest one command per run of a CLI, over a socket whose connection closes with it (no keep-alives): nothing to reuse
 	client := &http.Client{Transport: &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", socket)

@@ -195,7 +195,6 @@ func TestArtifactsFakeProvider(t *testing.T) {
 	})
 
 	t.Run("retains both versions and the independent index across worker restart and compatible reload", func(t *testing.T) {
-		rebuilds.Rebuild("artifacts")
 		if _, err := fixture.Server.Reload([]string{"artifacts"}, context.Background()); err != nil {
 			t.Fatal(err)
 		}

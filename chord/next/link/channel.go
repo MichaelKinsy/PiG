@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/link/channel.ts. A host's end of a link (§3, §22, 2b): the handshake, the link's codec,
@@ -110,7 +112,15 @@ type ChannelOptions struct {
 	Report func(err error)
 	// Now is the clock of the heartbeat in milliseconds (`Date.now()`); nil reads the wall clock. Tests set it.
 	Now func() int64
+	// Metrics are the host's instruments (`chord.link.bytes`); nil counts nothing.
+	Metrics *chordtelemetry.Instruments
 }
+
+// sentBytes and receivedBytes are the attributes of `chord.link.bytes`.
+var (
+	sentBytes     = telemetry.SpanAttributes{telemetry.Attr("direction", "sent")}
+	receivedBytes = telemetry.SpanAttributes{telemetry.Attr("direction", "received")}
+)
 
 type channelKind int
 
@@ -137,6 +147,8 @@ type Channel struct {
 	ctx     context.Context
 	now     func() int64
 	hello   []byte
+	// bytes counts the bytes of the encoded messages (`chord.link.bytes`).
+	bytes telemetry.TelemetryCounter
 
 	mu           sync.Mutex
 	state        channelKind
@@ -170,15 +182,20 @@ func NewChannel(link Link, handler ChannelHandler, options ChannelOptions, ctx c
 	if err != nil {
 		return nil, err
 	}
-	return &Channel{
+	channel := &Channel{
 		link: link, codec: options.Codec, handler: handler, report: options.Report, trusted: options.Trusted, ctx: ctx, now: now,
-		hello: hello, lastReceived: now(),
-	}, nil
+		hello: hello, lastReceived: now(), bytes: chordtelemetry.Metrics(nil).Counter("chord.link.bytes"),
+	}
+	if options.Metrics != nil {
+		channel.bytes = options.Metrics.Counter("chord.link.bytes")
+	}
+	return channel, nil
 }
 
 // Start sends `hello` and starts listening: messages that arrived already are handled now, and a link closed already
 // calls `Closed` now; so the handler is complete before it starts.
 func (c *Channel) Start() {
+	c.bytes.Add(float64(len(c.hello)), sentBytes)
 	c.link.Send(c.hello)
 	c.link.OnMessage(c.receive)
 	c.link.OnClose(c.linkClosed)
@@ -231,6 +248,7 @@ func (c *Channel) Send(message Message) error {
 	if err != nil {
 		return err
 	}
+	c.bytes.Add(float64(len(bytes)), sentBytes)
 	c.mu.Lock()
 	if c.state == channelGreeting {
 		c.queued = append(c.queued, bytes)
@@ -279,6 +297,7 @@ func (c *Channel) receive(bytes []byte) {
 		c.mu.Unlock()
 		return
 	}
+	c.bytes.Add(float64(len(bytes)), receivedBytes)
 	c.lastReceived = c.now()
 	c.pinged = false
 	if c.held != nil {
