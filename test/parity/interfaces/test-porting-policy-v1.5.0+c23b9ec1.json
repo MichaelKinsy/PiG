@@ -2482,7 +2482,7 @@
       "upstreamTestHash": "sha256:80138fbe8d042d39d7aec298c286f32a580e97d98bd7524e50e35e003f13b0d1",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. The whole file is designed out in the mapping (see its rationale and the owner question in TERN-CLAUDE-CHANNEL.md): it needs no Go test. Owner hold (2026-11-08): the mapping row is pending, not designed out (D604 not approved). Intention: the book and the example cannot drift (quoted blocks match the example's files, the files are what run, the shown output is what they print); to port as a PiG tutorial with the same three checks."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package. Owner hold (2026-11-08): the mapping row is partial, not designed out (D604 not approved). Intention: the book and the example cannot drift (quoted blocks match the example's files, the files are what run, the shown output is what they print); ported as a PiG tutorial (docs/chord/tutorial.md, examples/chord-todo) with the same three checks, the first chapter written, the rest recorded in the mapping row."
     },
     {
       "path": "packages/chord/test/host/activity.test.ts",
