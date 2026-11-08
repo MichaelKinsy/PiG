@@ -471,11 +471,7 @@ func (l *Launcher) startSandbox(ctx context.Context) error {
 	})
 	sandbox, err := StartSandbox(l.options.Node, source, bridge,
 		func(message SandboxMessage) { l.post(func() { l.message(generation, message) }) },
-		func(string) {
-			// Off the caller: a post the loop makes to the sandbox may end it, and the loop's queue may be full (it would wait for itself).
-			//portlint:allow golifetime the post ends when the loop takes it or the loop ends (loopDone)
-			go l.post(func() { l.sandboxEnded(generation) })
-		},
+		func(string) { l.sandboxEndPost(generation) },
 	)
 	if err != nil {
 		return err
@@ -497,6 +493,14 @@ func (l *Launcher) sandboxIs(sandbox *Sandbox) bool {
 	var same bool
 	l.sync(func() { same = l.sandbox == sandbox })
 	return same
+}
+
+// sandboxEndPost is the sandbox's end, reported to the loop from a goroutine of its own: the sandbox's callback must not block, and
+// a post the loop itself makes to the sandbox may end it while the loop's queue is full (a post from the loop would wait for the
+// loop).
+func (l *Launcher) sandboxEndPost(generation int) {
+	//portlint:allow golifetime the post ends when the loop takes it or the loop ends (loopDone)
+	go l.post(func() { l.sandboxEnded(generation) })
 }
 
 // sandboxEnded is the sandbox's end (an exit, a crash, a malformed frame): the client ends with code 1.
