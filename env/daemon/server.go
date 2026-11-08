@@ -76,6 +76,8 @@ type server struct {
 	runs       map[*node.NodeExecutionEnv]struct{}
 	// terminals are the running `pty` requests by id.
 	terminals map[uint32]*terminal
+	// processes are the running `process` requests by id.
+	processes map[uint32]*runningProcess
 	// requests joins the requests that run on their own goroutines, which an ended connection cancels.
 	requests sync.WaitGroup
 }
@@ -113,7 +115,7 @@ func (s *server) untrackRun(environment *node.NodeExecutionEnv) {
 	s.mu.Unlock()
 }
 
-// killAll kills every command and terminal this connection started.
+// killAll kills every command, terminal and program this connection started.
 func (s *server) killAll() {
 	s.mu.Lock()
 	running := make([]*node.NodeExecutionEnv, 0, len(s.runs))
@@ -124,12 +126,19 @@ func (s *server) killAll() {
 	for _, found := range s.terminals {
 		terminals = append(terminals, found)
 	}
+	processes := make([]*programGroup, 0, len(s.processes))
+	for _, found := range s.processes {
+		processes = append(processes, found.group)
+	}
 	s.mu.Unlock()
 	for _, environment := range running {
 		_ = environment.Cleanup(context.Background())
 	}
 	for _, found := range terminals {
 		found.proc.killGroup()
+	}
+	for _, group := range processes {
+		group.kill()
 	}
 }
 
@@ -354,6 +363,12 @@ func (s *server) dispatch(id uint32, request any, payload []byte, ctl *control) 
 			return nil, nil, failure
 		}
 		return plain(s.runPty(id, request, ctl))
+	case "process":
+		request, failure := parseProcessRequest(object)
+		if failure != nil {
+			return nil, nil, failure
+		}
+		return plain(s.runProcess(id, request, ctl))
 	}
 	return nil, nil, newFailure("EINVAL", fmt.Sprintf("unknown operation %s", op))
 }
@@ -372,7 +387,7 @@ func (s *server) hello() Object {
 		"cwd":       cwd,
 		"driveCwds": driveCwds(),
 		"pid":       os.Getpid(),
-		"features":  []any{"listFiles"},
+		"features":  []any{"listFiles", "process"},
 	}
 }
 
@@ -585,7 +600,7 @@ func scanLines(handle *fileHandle, request Object, ctl *control) (Object, *Failu
 func (s *server) respond(id uint32, request *Frame, ctl *control) {
 	isExec := false
 	if object, ok := request.JSON.(Object); ok {
-		isExec = object["op"] == "exec" || object["op"] == "pty"
+		isExec = object["op"] == "exec" || object["op"] == "pty" || object["op"] == "process"
 		if hook := respondHook.Load(); hook != nil {
 			op, _ := object["op"].(string)
 			(*hook)(op)
@@ -729,7 +744,7 @@ func (s *server) serveFrames(input io.Reader) error {
 			s.mu.Unlock()
 			object, _ := request.JSON.(Object)
 			switch object["op"] {
-			case "exec", "watch", "pty":
+			case "exec", "watch", "pty", "process":
 				// Commands and watchers last; they get their own goroutines.
 				s.requests.Go(func() {
 					defer recoverThreadPanic()
@@ -758,7 +773,7 @@ func (s *server) serveFrames(input io.Reader) error {
 	}
 }
 
-// answerInOrder answers the operations on a running terminal: in arrival order, by the goroutine that reads frames,
+// answerInOrder answers the operations on a running terminal or program: in arrival order, by the goroutine that reads frames,
 // since through the worker pool two writes could swap. It returns nil for any other request.
 func (s *server) answerInOrder(request *Frame) *Frame {
 	object, _ := request.JSON.(Object)
@@ -773,6 +788,10 @@ func (s *server) answerInOrder(request *Frame) *Frame {
 		value, failure = s.ptyResize(object)
 	case "ptyForeground":
 		value, failure = s.ptyForeground(object)
+	case "processWrite":
+		value, failure = s.processWrite(object, request.Payload)
+	case "processCloseStdin":
+		value, failure = s.processCloseStdin(object)
 	default:
 		return nil
 	}
@@ -835,6 +854,7 @@ func Serve(input io.Reader, output io.Writer, token string, options Options) err
 		controls:   map[uint32]*control{},
 		runs:       map[*node.NodeExecutionEnv]struct{}{},
 		terminals:  map[uint32]*terminal{},
+		processes:  map[uint32]*runningProcess{},
 	}
 	var lastSeen atomic.Int64
 	lastSeen.Store(time.Now().UnixMilli())
