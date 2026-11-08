@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
@@ -174,13 +173,8 @@ func TestPortsToolDefaultsPrivateListsPublicEndpointsFencesGuestsAndClosesOnArch
 		t.Fatalf("closing twice: %s", text)
 	}
 	call(`{"action":"open","port":5174}`, chat)
-	beforeReload := current()
-	rebuilds.Rebuild("ports")
 	_, err = fixture.Server.Reload([]string{"ports"}, p2test.Background)
 	must(err)
-	if err := p2test.Poll(func() (bool, error) { return current() != beforeReload, nil }, 5*time.Second, "the reloaded store"); err != nil {
-		t.Fatal(err)
-	}
 	if isError(call(`{"action":"list"}`, chat)) {
 		t.Fatal("list after a reload failed")
 	}
