@@ -89,9 +89,9 @@ function walk(dir) {
 		entry.isDirectory() ? walk(join(dir, entry.name)) : [join(dir, entry.name)],
 	);
 }
-for (const file of [...schemaClosure].sort()) copy(file, join(pi, "schema/src", relative(schemaSrc, file)));
-copy(join(schemaDir, "package.json"), join(pi, "schema/package.json"));
-for (const file of walk(join(schemaDir, "THIRD_PARTY_NOTICES")).sort()) copy(file, join(pi, "schema/THIRD_PARTY_NOTICES", relative(join(schemaDir, "THIRD_PARTY_NOTICES"), file)));
+for (const file of [...schemaClosure].sort()) copy(file, join(pi, "node_modules/@earendil-works/pi-schema/src", relative(schemaSrc, file)));
+copy(join(schemaDir, "package.json"), join(pi, "node_modules/@earendil-works/pi-schema/package.json"));
+for (const file of walk(join(schemaDir, "THIRD_PARTY_NOTICES")).sort()) copy(file, join(pi, "node_modules/@earendil-works/pi-schema/THIRD_PARTY_NOTICES", relative(join(schemaDir, "THIRD_PARTY_NOTICES"), file)));
 copy(join(telemetryDir, "package.json"), join(pi, "node_modules/@earendil-works/pi-telemetry/package.json"));
 for (const file of walk(join(telemetryDir, "dist")).sort()) {
 	const name = relative(telemetryDir, file).split(sep).join("/");

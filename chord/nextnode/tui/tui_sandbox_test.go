@@ -96,19 +96,26 @@ func sandboxRun(t *testing.T, node, script string) [][2]string {
 	var mu sync.Mutex
 	var lines [][2]string
 	ended := make(chan string, 1)
-	var sandbox *Sandbox
-	started := make(chan struct{})
-	var err error
-	sandbox, err = StartSandbox(node, script,
+	sandbox, err := StartSandbox(node, script,
 		BridgeStart{Base: "test", Columns: 80, Rows: 24, Colors: "truecolor", Mode: "dark", Locales: []string{"en"}},
 		func(message SandboxMessage) {
 			mu.Lock()
 			lines = append(lines, [2]string{message.Kind, message.Data})
 			mu.Unlock()
+			if message.Kind == "exit" {
+				select {
+				case ended <- "exit":
+				default:
+				}
+			}
 		},
-		func(reason string) { ended <- reason },
+		func(reason string) {
+			select {
+			case ended <- reason:
+			default:
+			}
+		},
 	)
-	close(started)
 	if err != nil {
 		t.Fatal(err)
 	}
