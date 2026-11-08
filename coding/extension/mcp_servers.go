@@ -3,6 +3,7 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
+	"iter"
 	"regexp"
 	"slices"
 	"strings"
@@ -190,6 +191,18 @@ func (s *OrderedStrings) Get(key string) (string, bool) {
 	var v string
 	_ = json.Unmarshal(raw, &v)
 	return v, true
+}
+
+// All yields the entries in key order, as `Object.entries` of the JavaScript object lists them.
+func (s *OrderedStrings) All() iter.Seq2[string, string] {
+	return func(yield func(string, string) bool) {
+		for _, key := range s.Keys() {
+			value, _ := s.Get(key)
+			if !yield(key, value) {
+				return
+			}
+		}
+	}
 }
 
 // MarshalJSON writes the keys in order.
@@ -430,8 +443,8 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 		value, _ = resolveExposureAliases(value, mustObjectMap(value))
 	}
 	result := mcpshared.ValidateMcpServerConfig(name, value, mcpshared.McpServerConfigOptions{
-		CheckMetadataDocumentCallback: func(callbackURL string, _ bool) string {
-			if IsClientMetadataDocumentCallback(callbackURL) {
+		CheckMetadataDocumentCallback: func(callbackURL *string) string {
+			if callbackURL == nil || IsClientMetadataDocumentCallback(*callbackURL) {
 				return ""
 			}
 			return `oauth.clientRegistration "cimd" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback`
