@@ -3296,12 +3296,16 @@ func TestPerConversationCompactionSettings(t *testing.T) {
 		}
 		// Pi's twin gives 1.5, which the *int API cannot express; -1 is the other non-integer-0-or-more input (a deviation
 		// noted in the test mapping).
-		for _, bad := range []durable.CompactionSettings{
-			{ReserveTokens: new(-1)},
-			{ModelOverrides: durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{BackgroundTokens: new(-1)}})},
+		for _, bad := range []struct {
+			settings durable.CompactionSettings
+			field    string
+		}{
+			{durable.CompactionSettings{ReserveTokens: new(-1)}, "compaction.reserveTokens"},
+			{durable.CompactionSettings{ModelOverrides: durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{BackgroundTokens: new(-1)}})}, "compaction.backgroundTokens"},
 		} {
-			if err := chat.root.Configure(testContext, AgentChange{Compaction: SetTo(bad)}); err == nil {
-				t.Fatalf("configure accepted %+v", bad)
+			// Pi names the field as compaction.<field> for a model override's too (agent.ts compactionFields).
+			if err := chat.root.Configure(testContext, AgentChange{Compaction: SetTo(bad.settings)}); err == nil || !strings.Contains(err.Error(), bad.field+" must be") {
+				t.Fatalf("configure of %+v: error %v, want one naming %s", bad.settings, err, bad.field)
 			}
 		}
 		// The intention of Pi's 1.5 (a token count that is not an integer is refused, not rounded) is kept for the one way a
