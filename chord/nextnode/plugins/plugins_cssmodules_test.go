@@ -105,3 +105,27 @@ func TestEsbuildBuildGivesAPlainStylesheetsURLAnAsset(t *testing.T) {
 		t.Errorf("css lacks %s: %q", want, built.CSS.Text)
 	}
 }
+
+// Ports css-modules.ts's reading of a module as text: build.ts hands `scopeCssModule` `new TextDecoder().decode(contents)`, so
+// a byte that is not UTF-8 is U+FFFD before the class names are scoped (the review of this slice: `.a<0xFF>b{}` is the class
+// `a\ufffdb`, esbuild writes it `a\fffd b` with the space that ends the escape, and the mapping names it).
+func TestEsbuildBuildReadsACSSModuleAsUTF8LikeTextDecoderInvalidBytesAreU_FFFDBeforeScoping(t *testing.T) {
+	root := tempRoot(t)
+	writePlugin(t, root, "web", "@test/web", map[string]string{
+		"web.ts":           "import styles from \"./notes.module.css\";\nexport default { setup: () => styles };",
+		"notes.module.css": ".a\xffb{color:red}\n.c{content:\"\xff\"}\n/* \xc3 */",
+	}, nil)
+	_, plugin := esbuildDiscovered(t, "@test/web", root)
+	built := esbuildScript(t, esbuildBuild(t, plugin, "web", esbuildBrowser))
+	if built.CSS == nil {
+		t.Fatal("no stylesheet")
+	}
+	for _, want := range []string{`_a\fffd b{color:red}`, `_c{content:"\fffd"}`} {
+		if !strings.Contains(built.CSS.Text, want) {
+			t.Errorf("css = %q, want %q in it", built.CSS.Text, want)
+		}
+	}
+	if strings.Contains(built.CSS.Text, `\fffdb`) {
+		t.Errorf("css = %q: the escape of U+FFFD runs into the `b` after it", built.CSS.Text)
+	}
+}
