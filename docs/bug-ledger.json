@@ -1100,6 +1100,26 @@
       ]
     },
     {
+      "id": "BF-083db0c",
+      "title": "A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a…",
+      "symptom": "A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a custom message renderer is called once, not twice, when a message is drawn.",
+      "rootCause": "The mcp helpers coding/extension uses (naming, server config validation) move to internal/mcpshared, which package mcp re-exports; the local $ref resolver tool search uses moves to internal/schemaref, which codemode wraps. A pig_strip_mcp build no longer links mcp and a pig_strip_codemode build no longer links codemode or wazero (,).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a custom message renderer is called once, not twice, when a message is drawn.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "083db0c482",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-084fa64",
       "title": "fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment",
       "symptom": "fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment",
@@ -2330,6 +2350,25 @@
         "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
         "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsRandomMatchPi"
       ]
+    },
+    {
+      "id": "BF-1003d2e",
+      "title": "fix(cli): the login secret prompt enters and leaves raw mode through tui.MakeRaw and tui.RestoreCooked (Pi)",
+      "symptom": "fix(cli): the login secret prompt enters and leaves raw mode through tui.MakeRaw and tui.RestoreCooked (Pi)",
+      "rootCause": "The EINTR audit allows term.MakeRaw and term.Restore only behind the retrying helpers; the helpers are exported and auth_terminal.go drops its own loop.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "1003d2ea75",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-10189c4",
@@ -10006,6 +10045,214 @@
       ]
     },
     {
+      "id": "BF-40b1210",
+      "title": "`pig auth login` reports \"Login cancelled.\" for any login that fails with that message, as Pi does, including…",
+      "symptom": "`pig auth login` reports \"Login cancelled.\" for any login that fails with that message, as Pi does, including the providers that create their own cancelled error.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig auth login` reports \"Login cancelled.\" for any login that fails with that message, as Pi does, including the providers that create their own cancelled error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "40b12101e0",
+          "date": "2026-11-08"
+        }
+      ],
+      "commitsFrom": "release note",
+      "tests": [
+        "coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive",
+        "coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension",
+        "coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes",
+        "extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame",
+        "internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformIsStaticWithoutAnExtensionTransformer",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsAreCancelledAtShutdown",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpSucceedsWhenDroppingTheVerifierFails"
+      ]
+    },
+    {
+      "id": "BF-40b1210-2",
+      "title": "A custom message or a compaction summary drawn live (`pi.sendMessage`, an extension's boundary compaction)…",
+      "symptom": "A custom message or a compaction summary drawn live (`pi.sendMessage`, an extension's boundary compaction) hands Markdown transformers no `messageId` or `timestamp`, as Pi does; only a restored transcript carries the entry's.",
+      "rootCause": "D313 is gone: the pin () contains, so the port is parity. The conformance fixtures of every SDK list the custom, summary and changelog surfaces, and TestMarkdownContextsAcrossSDKs fails when an SDK ignores the option.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom message or a compaction summary drawn live (`pi.sendMessage`, an extension's boundary compaction) hands Markdown transformers no `messageId` or `timestamp`, as Pi does; only a restored transcript carries the entry's.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4013d4afc7",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "6117dfa5fc",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "40b12101e0",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive",
+        "coding/extension/host/inproc/upstream_markdown_collection_test.go::TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension",
+        "coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes",
+        "extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame",
+        "internal/codingagent/interactive_extension_changelog_test.go::TestStartupChangelogRunsTheChangelogMarkdownTransformers",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea",
+        "internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformIsStaticWithoutAnExtensionTransformer",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsAreCancelledAtShutdown",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop",
+        "internal/codingagent/mermaid_upstream_test.go::TestMermaidRenderingUpstream",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpSucceedsWhenDroppingTheVerifierFails",
+        "test/extension-conformance/api_reference_loader_test.go::TestConformanceAPIRegisterFlagMessageRendererAndMarkdownTransformer",
+        "test/extension-conformance/markdown_contexts_test.go::TestMarkdownContextsAcrossSDKs",
+        "tui/markdown_surface_test.go::TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent",
+        "tui/markdown_surface_test.go::TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader",
+        "tui/markdown_surface_test.go::TestExpandedMessageComponentsWithoutATransformKeepTheirHeader"
+      ]
+    },
+    {
+      "id": "BF-40b1210-3",
+      "title": "Custom messages, skill blocks, summaries and the changelog run extension Markdown transformers off the render…",
+      "symptom": "Custom messages, skill blocks, summaries and the changelog run extension Markdown transformers off the render loop, so a slow extension no longer stalls a frame, and they are only redrawn each frame while an extension registered a transformer.",
+      "rootCause": "A text with a lone surrogate is lexed with each unit standing in as a private-use code point of plane 16 and the units are put back into the tokens before they render.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Custom messages, skill blocks, summaries and the changelog run extension Markdown transformers off the render loop, so a slow extension no longer stalls a frame, and they are only redrawn each frame while an extension registered a transformer.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3e7798d0ac",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "4013d4afc7",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "6117dfa5fc",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "40b12101e0",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive",
+        "coding/extension/host/inproc/upstream_markdown_collection_test.go::TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension",
+        "coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes",
+        "extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame",
+        "internal/codingagent/interactive_extension_changelog_test.go::TestStartupChangelogRunsTheChangelogMarkdownTransformers",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea",
+        "internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformIsStaticWithoutAnExtensionTransformer",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsAreCancelledAtShutdown",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop",
+        "internal/codingagent/mermaid_upstream_test.go::TestMermaidRenderingUpstream",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpSucceedsWhenDroppingTheVerifierFails",
+        "test/extension-conformance/api_reference_loader_test.go::TestConformanceAPIRegisterFlagMessageRendererAndMarkdownTransformer",
+        "test/extension-conformance/markdown_contexts_test.go::TestMarkdownContextsAcrossSDKs",
+        "tui/markdown_highlight_surrogate_oracle_test.go::TestMarkdownHighlightedCodeWithLoneSurrogatesMatchesPi",
+        "tui/markdown_lone_surrogates_test.go::TestMarkdownNestedCodeWithLoneSurrogatesMatchesPi",
+        "tui/markdown_surface_test.go::TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent",
+        "tui/markdown_surface_test.go::TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader",
+        "tui/markdown_surface_test.go::TestExpandedMessageComponentsWithoutATransformKeepTheirHeader"
+      ]
+    },
+    {
+      "id": "BF-40b1210-4",
+      "title": "A finished MCP sign-in whose single-use verifier could not be removed afterwards is still reported as…",
+      "symptom": "A finished MCP sign-in whose single-use verifier could not be removed afterwards is still reported as authorized.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A finished MCP sign-in whose single-use verifier could not be removed afterwards is still reported as authorized.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "40b12101e0",
+          "date": "2026-11-08"
+        }
+      ],
+      "commitsFrom": "release note",
+      "tests": [
+        "coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive",
+        "coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension",
+        "coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes",
+        "extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame",
+        "internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformIsStaticWithoutAnExtensionTransformer",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsAreCancelledAtShutdown",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpSucceedsWhenDroppingTheVerifierFails"
+      ]
+    },
+    {
+      "id": "BF-40b1210-5",
+      "title": "MCP credential files that are symlinks are written through the link, and the directory is synced after the…",
+      "symptom": "MCP credential files that are symlinks are written through the link, and the directory is synced after the replace.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP credential files that are symlinks are written through the link, and the directory is synced after the replace.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "40b12101e0",
+          "date": "2026-11-08"
+        }
+      ],
+      "commitsFrom": "release note",
+      "tests": [
+        "coding/cli/auth_login_test.go::TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive",
+        "coding/extension/host/subprocess/markdown_message_types_test.go::TestRegisteredMarkdownMessageTypesReachTheBuiltExtension",
+        "coding/extension/host/subprocess/node_runtime_markdown_types_test.go::TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes",
+        "extensions/sdk/markdown_message_types_test.go::TestMarkdownTransformerMessageTypesOnTheRegisterFrame",
+        "internal/codingagent/live_message_meta_test.go::TestAppendCustomMessageNowHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformIsStaticWithoutAnExtensionTransformer",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsAreCancelledAtShutdown",
+        "internal/codingagent/markdown_surface_async_test.go::TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpSucceedsWhenDroppingTheVerifierFails"
+      ]
+    },
+    {
       "id": "BF-40b5a89",
       "title": "Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's…",
       "symptom": "Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's `endTurn` before `rawStopReason`, and `rawStopReason` before `errorMessage`, the order in which Pi's providers create them.",
@@ -13758,6 +14005,25 @@
         "tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput",
         "tui/tui_surface_test.go::TestTuiSurfaceResolvesTheFakeCursorOfDockLines"
       ]
+    },
+    {
+      "id": "BF-54660cf",
+      "title": "fix(tui): installing a Markdown transform on a custom message does not call its renderer again",
+      "symptom": "fix(tui): installing a Markdown transform on a custom message does not call its renderer again",
+      "rootCause": "SetMarkdownTransform rebuilt the whole component, so a custom renderer ran twice at construction; Pi's constructor renders once. Only the default body reads the transform.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "54660cf133",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-54a5bf6",
@@ -26848,6 +27114,105 @@
       ]
     },
     {
+      "id": "BF-8d46bf8",
+      "title": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state…",
+      "symptom": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
+      "id": "BF-8d46bf8-2",
+      "title": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential…",
+      "symptom": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
+      "id": "BF-8d46bf8-3",
+      "title": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per…",
+      "symptom": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
       "id": "BF-8d6fb83",
       "title": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…",
       "symptom": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text.",
@@ -32111,27 +32476,30 @@
       ]
     },
     {
-      "id": "BF-D371",
-      "title": "Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`",
-      "symptom": "1.5.0 throws `URI malformed` out of every codemode run.",
-      "rootCause": "One MCP tool with such a ref failed every codemode run.",
+      "id": "BF-D373",
+      "title": "The stored PKCE verifier is dropped once its code exchange succeeded",
+      "symptom": "none observable in behavior; additive hardening.",
+      "rootCause": "a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.",
       "rootCauseSource": "divergence record",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "ahead-of-pi",
-      "divergence": "D371",
-      "removeWhen": "the pinned Pi release contains 6d3e342b2.",
+      "divergence": "D373",
+      "removeWhen": "Pi drops the verifier after the exchange, or the owner declines the hardening.",
       "fixedIn": "Unreleased",
       "origin": "divergence",
       "commits": [
         {
-          "hash": "d852965a33",
+          "hash": "8d46bf82b6",
           "date": "2026-11-07"
+        },
+        {
+          "hash": "40b12101e0",
+          "date": "2026-11-08"
         }
       ],
       "tests": [
-        "codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown",
-        "coding/extension/builtin/codemode/tool_refs_pi_test.go::TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences"
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ]
     },
     {
@@ -32184,6 +32552,27 @@
         {
           "hash": "930ef101d0",
           "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D603",
+      "title": "PipeTransport.Close bounds its wait for the killed program",
+      "symptom": "none; a program that survives a kill is outside Pi's model.",
+      "rootCause": "a pipe whose exit is never reported would hold a Go caller (shutdown, a server restart) forever; an error lets it go on. The exit-watcher goroutine of such a pipe still waits for the exit.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D603",
+      "removeWhen": "Pi bounds the wait, or the owner declines the bound.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "40b12101e0",
+          "date": "2026-11-08"
         }
       ],
       "tests": []
@@ -52601,9 +52990,9 @@
       "entry": "BF-D370"
     },
     {
-      "id": "D371",
-      "title": "Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`",
-      "entry": "BF-D371"
+      "id": "D373",
+      "title": "The stored PKCE verifier is dropped once its code exchange succeeded",
+      "entry": "BF-D373"
     },
     {
       "id": "D430",
@@ -52614,6 +53003,11 @@
       "id": "D431",
       "title": "PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)",
       "entry": "BF-D431"
+    },
+    {
+      "id": "D603",
+      "title": "PipeTransport.Close bounds its wait for the killed program",
+      "entry": "BF-D603"
     }
   ],
   "exemptCommits": {
