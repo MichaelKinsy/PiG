@@ -42518,6 +42518,34 @@
       ]
     },
     {
+      "id": "BF-d54d6ab",
+      "title": "A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the…",
+      "symptom": "A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`). \u003c!-- fix: p2-agent-tools --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d54d6ab58e",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "d92788bdbd",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/e2e/artifacts_test.go::TestArtifactsFakeProvider",
+        "apps/p2/plugins/terminals/attach_ready_test.go::TestAnAttachmentIsReadyOnceTheHandlerSawTheHello",
+        "apps/p2/runtime/refs_test.go::TestFollowOfAWatchThatEndedBeforeItsStartHasNothingToFollow"
+      ]
+    },
+    {
       "id": "BF-d60d422",
       "title": "`pi.exec` gives the command PiG's environment unchanged, as Pi does, so a command started in a symlinked…",
       "symptom": "`pi.exec` gives the command PiG's environment unchanged, as Pi does, so a command started in a symlinked directory no longer gets that directory as its `PWD`; `pwd` there now prints the physical directory, as in Pi.",
