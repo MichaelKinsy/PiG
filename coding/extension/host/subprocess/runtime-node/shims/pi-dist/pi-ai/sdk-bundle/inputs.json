@@ -143,7 +143,7 @@
     },
     {
       "path": "pi-dist/pi-ai/env-api-keys.js",
-      "sha256": "8166f316e3c8adaa8c089561c644169a89fdc9ef2d67a752bbba738a5415a616"
+      "sha256": "c215e1a8f43c8504820c396410e087dee1680cf7b94909e67bd0f9020a16ce67"
     },
     {
       "path": "pi-dist/pi-ai/image-models.js",
@@ -175,15 +175,15 @@
     },
     {
       "path": "pi-dist/pi-ai/models.generated.js",
-      "sha256": "1b545cecb8f2d983238a8dec9e2ef31e9a7f60ace91ab9c1fea4369cfb9f9563"
+      "sha256": "523505cb45698abc4f8073d6e64feefbde471fa7d7586962f95e2af7262d1777"
     },
     {
       "path": "pi-dist/pi-ai/models.js",
-      "sha256": "b2730ffa727d4a19a212172d031344fd6e0992082df233952233a15116824ac4"
+      "sha256": "3d374af219b771ccd21dbb0cf59651278dc84c66533577533016110e03c64e74"
     },
     {
       "path": "pi-dist/pi-ai/providers/all.js",
-      "sha256": "b152eb706e7968debded248f538fda008869e93fea2042ba089fe64793c40340"
+      "sha256": "659c1eac079ce2bd0f695afa092c3aae16322bd25edb316cb0c2be225fc2badf"
     },
     {
       "path": "pi-dist/pi-ai/providers/amazon-bedrock.js",
@@ -259,7 +259,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "50e0e74cb54dada0a6972c2619e56e99830ee01857810719b6b913cd29e04e87"
+      "sha256": "73109aea5a6f6baefb61b96cb7f34aa2caf89cea8d6a50646b6b5c292a60c4e2"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -271,15 +271,15 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/anthropic.json",
-      "sha256": "e462beb2e6d227b4dd1a8df22152cdebc9f3768d5dcf0939e1bf35e359129753"
+      "sha256": "b075e002cad7fb74cbe9cc199357ca156991c429963b827de3d1fb88d594f3fc"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/azure.json",
-      "sha256": "f95a8325f93825ab21d1d83fd2aff580f4d5cfa1a537c3108cd5ddb36f26e7fc"
+      "sha256": "9171f3122524c248862d24961e2716812b1d18827cad4c0edfb99b8f75e96fbe"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/baseten.json",
-      "sha256": "db68a67a9aff8ad2cc05be9fc935dfe0c64cf72c46cca04bb2f2631f42f7fe80"
+      "sha256": "a233b3a38939358b3268ebde5bafa16da0e5d5393209e36ce2dc539e38dde546"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cerebras.json",
@@ -287,7 +287,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-ai-gateway.json",
-      "sha256": "3931cdac8da96113a5667ee7fe166b72bb80b77696c06378a0947bcdd9276b9a"
+      "sha256": "fabc979d62c7c8503d5b186e5fb7267e3d008d7b5a3091d62c3decd6baa8972b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-workers-ai.json",
@@ -299,11 +299,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/fireworks.json",
-      "sha256": "4c8b4942ce08b55df711ac8b1eea65bbf28135b2bf2f475c95f11b2e7aa1012d"
+      "sha256": "5fddd877cf29df4aceec6e42e8329ccc97051c81130e55491a0dd434cbf42d09"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
-      "sha256": "85330f133dac9017c97ad72dd2b356f3f03992c7ca3d5b0543060cbe13dcd34d"
+      "sha256": "075f19a4019990cd22b3439730638b7944db696d528f59e3dbee280a0de50401"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google-vertex.json",
@@ -351,7 +351,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/nvidia.json",
-      "sha256": "e030898fb1d1778b85c5b86fdde95b28e4dd75f36302f50bcff8bf2941f919b1"
+      "sha256": "2a6a5fa3c0e256ce19878daf4f0ba1166dbd4ab418d9e2d1076d23ab8996a3b7"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai-codex.json",
@@ -363,23 +363,27 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",
-      "sha256": "daed1626c48d9cec6da77f53a163aec917d5d5fc8d6e4d53c23f448f99463328"
+      "sha256": "50dcbc02accf7155c3a5cca14d79767ceb4632a4233d8d2201fead905254f47b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "89049678c12b553fd44d3b760514ead39ebc6fa68d84b135db69c133ab443bc9"
+      "sha256": "17c0615f82816a068b10ecc9f2b4579471563d9c22bb7dcefdf9955b593bc0eb"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "ea1220ec52009a91d78b8e5ffae261ece94bafa4a03e8d75f1fd98e2b9351322"
+      "sha256": "b2ad59d9dcc58e3fd5081c3248aaad7b8ae0592e72cfb269d14f038381461144"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
       "sha256": "80824536f0c3cd83ab27424df2d664738cbe3f971b4e568a625432288fa53229"
     },
     {
+      "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-individual-cn.json",
+      "sha256": "fb74899c770572efbb27eb8d3398a07edaa4d62229655f9a0702ae01af22ac95"
+    },
+    {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-individual.json",
-      "sha256": "7d416a2af46d5ad5d7872f8edfa7727af4392827a5b77618ce89a3786628492a"
+      "sha256": "f83c5ae4dce709924ad03a10c5f9c09a42b3670cb6ee2ed32590b9e0fcbaf8a9"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan.json",
@@ -387,11 +391,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/radius.json",
-      "sha256": "a9bcc74b4a1ad2e01b6360d5f9197d802c18559a58be0ccd588662a01598368a"
+      "sha256": "1fc91013e9f45ecffc6f0ad8a7e339263561c7be671c27a12f78c0daf56111d1"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/together.json",
-      "sha256": "ce03a702cf835ae1d3b4fd14ea4a1eae71a81224bc4a0826182f3f87b824aeee"
+      "sha256": "e421d8042975509d5b73eb3bb8f1612b9ee6b7c3764a3a6aa4866bc1ba661bd0"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/typesafe.json",
@@ -399,7 +403,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/vercel-ai-gateway.json",
-      "sha256": "78631c8ff8614805c4b799bcc2063861110f34bb8ecb9575ba50154cd3e6daf1"
+      "sha256": "7e9560343eedab64435792f5cc4c3d4a301e964d3adb8dad67e2c7960db16e08"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",
@@ -451,7 +455,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/github-copilot.js",
-      "sha256": "a58cc41225577213020f9508b76fbcc1bdccc672ffe66c79a1963e755c855ec5"
+      "sha256": "11dfe23fb74f3eae6f010fc341e81d28da555de5637071dfab356d29207de96e"
     },
     {
       "path": "pi-dist/pi-ai/providers/github-copilot.models.js",
@@ -559,7 +563,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/openai-codex.js",
-      "sha256": "44087142be22adfd09cf1a87edbbdb74ce155b5fd34e70fa4666f3a9f8a9a680"
+      "sha256": "769490a94a5bcb062c22e768cf0621c91fb1c5d6be3565e6a6fa765eeeabe674"
     },
     {
       "path": "pi-dist/pi-ai/providers/openai-codex.models.js",
@@ -612,6 +616,14 @@
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan-cn.models.js",
       "sha256": "d119dcda8d495bd00018514dfecd4d920180115056a738e1defc69eb2a9c1a42"
+    },
+    {
+      "path": "pi-dist/pi-ai/providers/qwen-token-plan-individual-cn.js",
+      "sha256": "3373e9fcb0b6c3c1c58af8ff368fc14629aa5d0ae1f8f06434d3792f5e4bae45"
+    },
+    {
+      "path": "pi-dist/pi-ai/providers/qwen-token-plan-individual-cn.models.js",
+      "sha256": "240b4f7a71bad40b0cde26b0894ab0ccdb86bda253de0fa785cf3e4901ec4770"
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan-individual.js",
@@ -739,7 +751,7 @@
     },
     {
       "path": "pi-dist/pi-ai/utils/error-body.js",
-      "sha256": "83fbbb0d910bbc8b39aa200159382a99e2822952b4baf1972674159d96885936"
+      "sha256": "801ecb214fdd46b059454c515f09624c3c968eb669722dcec846b79017bd04f2"
     },
     {
       "path": "pi-dist/pi-ai/utils/headers.js",
@@ -771,7 +783,7 @@
     },
     {
       "path": "pi-dist/pi-ai/utils/retry.js",
-      "sha256": "6ab3ea07994c28824374681d4b0c8055d42b5f9eaccb1702573f3a95b371bfd7"
+      "sha256": "facb92a9f5f7688467f9ce25feab125055ea606c72a37eda36dfe27d1596c466"
     },
     {
       "path": "pi-dist/pi-ai/utils/streaming-json.js",

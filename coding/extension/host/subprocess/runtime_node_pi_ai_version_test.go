@@ -19,7 +19,7 @@ func TestVendoredPiAiExportsThePinnedPackageVersion(t *testing.T) {
 	root := filepath.Join("runtime-node", "shims", "pi-dist", "pi-ai")
 	for _, copyOfConstant := range []struct{ file, pattern string }{
 		{filepath.Join("utils", "version.js"), `(?m)^export const PI_AI_VERSION = "([^"]+)";$`},
-		{filepath.Join("sdk-bundle", "chunk-YGHTO7GP.js"), `(?m)^var PI_AI_VERSION = "([^"]+)";$`},
+		{filepath.Join("sdk-bundle", "chunk-DQ3IPTWT.js"), `(?m)^var PI_AI_VERSION = "([^"]+)";$`},
 	} {
 		body, err := os.ReadFile(filepath.Join(root, copyOfConstant.file))
 		if err != nil {

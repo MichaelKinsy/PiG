@@ -1,0 +1,3 @@
+### Fixed
+
+- A Go, Rust, Python or Lisp extension's `stdout` and `stderr` now reach the terminal as Pi's `console.log` and `console.error` do, in print, JSON, RPC and interactive mode: stderr always on stderr, stdout on stderr in the headless modes (in one pipe, so the two keep the order the extension wrote them) and on stdout in interactive mode. Only Node extensions did before: the others' stderr went to a log file removed unless a load failure named it, so a notice such as Posthorse's automatic-rollover failure report never reached the user. A packed runner's failure cause is still read from the log: the host flushes the output pipe before it reads. <!-- fix: bb1c920e97 -->

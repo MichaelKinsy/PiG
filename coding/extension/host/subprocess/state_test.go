@@ -24,11 +24,6 @@ func TestUIBridge_Snapshot_ReadsCallbacks(t *testing.T) {
 		IsIdle:             func() bool { return false },
 		HasPendingMessages: func() bool { return true },
 		GetSystemPrompt:    func() string { return "sp" },
-		GetContextUsage: func() *extension.ContextUsage {
-			tokens := 10
-			pct := 10.0
-			return &extension.ContextUsage{Tokens: &tokens, ContextWindow: 100, Percent: &pct}
-		},
 		GetFlag: func(_, name string) any {
 			if name == "feature" {
 				return true
@@ -50,9 +45,6 @@ func TestUIBridge_Snapshot_ReadsCallbacks(t *testing.T) {
 	}
 	if state.SystemPrompt != "sp" {
 		t.Errorf("SystemPrompt = %q", state.SystemPrompt)
-	}
-	if state.ContextUsage == nil || state.ContextUsage.Tokens == nil || *state.ContextUsage.Tokens != 10 {
-		t.Errorf("ContextUsage = %+v", state.ContextUsage)
 	}
 	if raw, ok := state.Flags["feature"]; !ok || string(raw) != "true" {
 		t.Errorf("Flags[feature] = %s ok=%v", string(raw), ok)
@@ -79,11 +71,9 @@ func TestUIBridge_Snapshot_NilActions(t *testing.T) {
 }
 
 func TestStatePayload_RoundTrip(t *testing.T) {
-	tokens, percent := 1, 0.5
 	state := &StatePayload{
 		ThinkingLevel: "medium",
 		IsIdle:        true,
-		ContextUsage:  &extensionContextUsageDTO{Tokens: &tokens, ContextWindow: 2, Percent: &percent},
 		Flags:         map[string]json.RawMessage{"x": json.RawMessage(`"y"`)},
 		HasUI:         true,
 	}
@@ -95,7 +85,7 @@ func TestStatePayload_RoundTrip(t *testing.T) {
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.ThinkingLevel != "medium" || got.ContextUsage == nil || got.ContextUsage.Tokens == nil || *got.ContextUsage.Tokens != 1 {
+	if got.ThinkingLevel != "medium" {
 		t.Errorf("roundtrip mismatch: %+v", got)
 	}
 }

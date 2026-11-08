@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -104,8 +102,12 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			{"kind": "prepare", "tool": "write", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "content": "c"}},
 			{"kind": "prepare", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt"}},
 			{"kind": "prepare", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "true"}},
-			// find asks a custom glob for one result past its limit (Pi main 676af1d77, pig divergence (D253)); the pinned Pi asks for the limit itself
+			// find asks a custom glob for one result past its limit (Pi main 676af1d77, in the pin), whatever the SDK
 			{"kind": "delegate", "tool": "find", "factoryCwd": factoryCwd, "params": tcase{"pattern": "*.txt", "limit": 2}, "ops": "globlimit"},
+			// createReadStream (Pi's ReadOperations.createReadStream): the read tool reads a text file through the stream an extension opens, and never calls its readFile
+			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "anything.txt"}, "ops": "stream"},
+			// grep never reads a matched file through an extension (Pi main 8da141c2a): isDirectory answers true and the Node reference's extension also passes a readFile, which stays uncalled
+			{"kind": "delegate", "tool": "grep", "factoryCwd": factoryCwd, "params": tcase{"pattern": "needle-1", "path": "grepdir"}, "ops": "grepdir"},
 			// A truncated read's details, whose members Pi writes in an order a sorted map would lose
 			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "big.txt"}},
 			// createCodingTools and createReadOnlyTools
@@ -120,11 +122,12 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			fmt.Fprintf(&multi, "l%d\n", i)
 		}
 		for path, content := range map[string]string{
-			filepath.Join(hostCwd, "marker.txt"):    "from-H\nline2\n",
-			filepath.Join(hostCwd, "multi.txt"):     multi.String(),
-			filepath.Join(hostCwd, "big.txt"):       strings.Repeat("a line of the big file\n", 2500),
-			filepath.Join(factoryCwd, "marker.txt"): "from-X\n",
-			filepath.Join(factoryCwd, "multi.txt"):  "x1\nx2\n",
+			filepath.Join(hostCwd, "marker.txt"):       "from-H\nline2\n",
+			filepath.Join(hostCwd, "multi.txt"):        multi.String(),
+			filepath.Join(hostCwd, "grepdir", "g.txt"): "needle-1\nhay\n",
+			filepath.Join(hostCwd, "big.txt"):          strings.Repeat("a line of the big file\n", 2500),
+			filepath.Join(factoryCwd, "marker.txt"):    "from-X\n",
+			filepath.Join(factoryCwd, "multi.txt"):     "x1\nx2\n",
 		} {
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				t.Fatal(err)
@@ -238,6 +241,15 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		}
 		return strings.Join(parts, "\n")
 	}
+	// calls lists what the tool called of the options' operations. Pi's grep calls isDirectory only: the reference's extension also passes a readFile (Pi main
+	// 8da141c2a removed it from GrepOperations), and no SDK has the member, so an equal list across SDKs shows the host never asks an extension for it.
+	calls := func(report map[string]any) string {
+		var encoded strings.Builder
+		encoder := json.NewEncoder(&encoded)
+		encoder.SetEscapeHTML(false)
+		_ = encoder.Encode(report["calls"])
+		return strings.TrimSuffix(encoded.String(), "\n")
+	}
 	errorOf := func(report map[string]any) string { s, _ := report["error"].(string); return s }
 	definitionField := func(field string) func(map[string]any) string {
 		return func(report map[string]any) string {
@@ -258,6 +270,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		{5, errorOf, "Offset 99 is beyond end of file (31 lines total)"},
 		{6, errorOf, "Operation aborted"},
 		{7, text, "OPS:<host>/anything.txt"},
+		{11, calls, `["isDirectory:<host>/gone"]`}, // grep never calls a readFile an extension passes
 		{16, text, "sentinel-42\n<host>\n"},
 		{17, text, "sentinel-42\n<factory>\n"},
 		{20, errorOf, "Command aborted"},
@@ -271,7 +284,11 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		{43, text, "OPS:<factory>/anything.txt"}, // the functions of the options, for a tool without a context
 		{44, text, "custom:echo hi"},
 		{46, text, "hook-env|"},
-		{58, text, "a.txt\nb.txt\n\n[2 results limit reached]"}, // find with a glob that honors the limit it is given
+		{58, text, "a.txt\nb.txt\n\n[2 results limit reached]"},                              // find with a glob that honors the limit it is given
+		{59, text, "STREAM:<host>/anything.txt\n"},                                           // the text came through the stream of the extension's createReadStream
+		{59, calls, `["access:<host>/anything.txt","createReadStream:<host>/anything.txt"]`}, // and readFile was never asked for it
+		{60, text, "g.txt:1: needle-1"},
+		{60, calls, `["isDirectory:<host>/grepdir"]`}, // the match was printed from ripgrep's output, and the readFile the reference's extension passes was not called
 		{28, definitionField("description"), `"Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first).`},
 		{28, definitionField("promptSnippet"), `"Read file contents"`},
 		{30, definitionField("renderShell"), `"self"`},
@@ -340,9 +357,6 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			got := observe(t, h)
 			for i, report := range got {
 				want := reference[i]
-				if !strings.HasPrefix(tc.name, "subprocess-node") {
-					want = expectedBuiltinReport(referenceCases[i], reference[i])
-				}
 				if !reflect.DeepEqual(report, want) {
 					a, _ := json.Marshal(report)
 					b, _ := json.Marshal(want)
@@ -509,27 +523,4 @@ func TestConformance_BuiltinEditOverrideNormalisesLegacyArgumentsAcrossSDKs(t *t
 			}
 		})
 	}
-}
-
-// expectedBuiltinReport is what a PiG SDK reports for a case, given what the pinned Pi (the Node reference) reported. pig divergence (D253): Pi main 676af1d77's find
-// tool asks a custom glob for limit+1 results, so the glob of an "globlimit" case sees one more than the pinned Pi's limit; the tool's output is the same.
-func expectedBuiltinReport(c, reference map[string]any) map[string]any {
-	if c["ops"] != "globlimit" {
-		return reference
-	}
-	calls, _ := reference["calls"].([]any)
-	adjusted := make([]any, len(calls))
-	for i, call := range calls {
-		adjusted[i] = call
-		if text, ok := call.(string); ok {
-			if head, limit, found := strings.Cut(text, ":limit="); found && strings.HasPrefix(head, "glob:") {
-				n, _ := strconv.Atoi(limit)
-				adjusted[i] = head + ":limit=" + strconv.Itoa(n+1)
-			}
-		}
-	}
-	want := map[string]any{}
-	maps.Copy(want, reference)
-	want["calls"] = adjusted
-	return want
 }

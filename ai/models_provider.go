@@ -187,7 +187,7 @@ func CreateProvider(input CreateProviderOptions) *ModelsProvider {
 		streams := apiFor(model)
 		if streams == nil {
 			stream := NewAssistantMessageEventStream()
-			pushModelsSetupError(stream, model, NewModelsError(ModelsErrorStream, fmt.Sprintf("Provider %s has no API implementation for %q", input.ID, model.ProviderMeta.API), nil))
+			pushModelsSetupError(ctx, stream, model, NewModelsError(ModelsErrorStream, fmt.Sprintf("Provider %s has no API implementation for %q", input.ID, model.ProviderMeta.API), nil))
 			return stream, nil
 		}
 		implementation := streams.Stream
@@ -219,7 +219,7 @@ func CreateProvider(input CreateProviderOptions) *ModelsProvider {
 			streams := apiFor(model)
 			if streams == nil || streams.FetchDeferred == nil {
 				stream := NewAssistantMessageEventStream()
-				pushModelsSetupError(stream, model, NewModelsError(ModelsErrorProvider, fmt.Sprintf("Provider %s does not support deferred responses for %q", input.ID, model.ProviderMeta.API), nil))
+				pushModelsSetupError(ctx, stream, model, NewModelsError(ModelsErrorProvider, fmt.Sprintf("Provider %s does not support deferred responses for %q", input.ID, model.ProviderMeta.API), nil))
 				return stream, nil
 			}
 			return streams.FetchDeferred(ctx, model, handle, options)
