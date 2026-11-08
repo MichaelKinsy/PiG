@@ -88,23 +88,26 @@ func newFixture(t *testing.T) *fixture {
 			}}
 		}}},
 	})
-	held := make(chan *host.Reference, 1)
-	go func() {
-		ref, err := p2test.HoldIn(f.test.Client(p2runtime.OwnerPrincipal{Access: p2runtime.AccessLocal}), contract.SessionTree, delta.JsonObjectOf("session", "s1"), "owner")
-		if err != nil {
-			t.Error(err)
-		}
-		held <- ref
-	}()
-	var ref *host.Reference
+	client := f.test.Client(p2runtime.OwnerPrincipal{Access: p2runtime.AccessLocal})
+	hold, err := client.Hold(p2test.Background, contract.SessionTree, delta.JsonObjectOf("session", "s1"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting := make(chan error, 1)
+	go func() { waiting <- p2runtime.WhenLive(p2test.Background, hold) }()
 	select {
-	case ref = <-held:
+	case err := <-waiting:
+		if err != nil {
+			t.Fatal(err)
+		}
 	case <-time.After(30 * time.Second):
-		t.Fatalf("the tree never went live; host errors: %+v", f.test.Errors())
+		state := hold.State().Value()
+		t.Fatalf("the tree never went live: %+v cause %+v; host errors: %+v", state.Kind, state.Cause, f.test.Errors())
 	}
-	if ref == nil {
-		t.FailNow()
+	if variant, _, err := hold.Variant(); err != nil || variant != "owner" {
+		t.Fatalf("variant %q: %v", variant, err)
 	}
+	ref := hold
 	t.Cleanup(ref.Release)
 	f.tree = ref
 	return f
