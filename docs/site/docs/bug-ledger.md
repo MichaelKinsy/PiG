@@ -159,6 +159,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1d5b272](#bf-1d5b272) | A text file passed as an `@file` argument that holds invalid UTF-8 now reaches the prompt as Pi sends it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1dcaef7](#bf-1dcaef7) | Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1de9126](#bf-1de9126) | fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in | PiG's own defect | All platforms | Unreleased |
+| [BF-1e64d3f](#bf-1e64d3f) | A Durable core's warm turn waits exactly the microtask passes Pi's does | PiG's own defect | All platforms | Unreleased |
 | [BF-1ed43b3](#bf-1ed43b3) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ee7dea](#bf-1ee7dea) | The Mistral request URL for a base URL with a non-special scheme or a host or port the WHATWG parser rejects… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1f2f940](#bf-1f2f940) | The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the… | PiG's own defect | All platforms | 0.7.0 |
@@ -3737,6 +3738,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1de91268b6` (2026-10-31)
 - **Tests:** `schema/formats/conformance_test.go::TestConformance`, `schema/formats/formats_test.go::TestSplitSurrogatePairs`, `schema/formats/oracle_test.go::TestOracleCorpus`
+
+### BF-1e64d3f
+
+**A Durable core's warm turn waits exactly the microtask passes Pi's does**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable core's warm turn waits exactly the microtask passes Pi's does.
+- **Root cause:** The host's section effect resolved the agent again for the section's input (a Session read of pi.agent through the core) where generation.ts passes the agent it already resolved into PromptInput. Each of the nine model calls of a turn spent four passes more than Pi's `await section.render()`: a warm turn of eight lookups waited 6975 / 6956 passes against Pi's 6939 / 6920 (node profile), +36 per wait, and the F-ticks rows, which pin a cold submit and a short wait, did not show it. The host now keeps the agent its resolveAgent hook last answered for each conversation and a section renders with that.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1e64d3f44e` (2026-11-08)
+- **Tests:** `durable/core/host/cf/test/warm-ticks.test.ts`
+- **Release note:** A Durable core's warm turn waits exactly the microtask passes Pi's does. The Cloudflare host's section effect resolved the agent a second time for the section's input, four passes more than Pi's `await section.render()` on each model call (+36 per turn of eight lookups); it now renders with the agent the `resolveAgent` hook last answered, as generation.ts passes the agent it resolved. The contract rows `F-ticks-warm-node` and `F-ticks-warm-gate` and the host test `warm-ticks.test.ts` pin Pi's counts.
 
 ### BF-1ed43b3
 
