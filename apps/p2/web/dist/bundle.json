@@ -1,0 +1,84 @@
+{
+	"version": "7859122b2241349287679bb74a7af1cdfec9decdd86b5242548da8a787b25a1b",
+	"script": "app-T7P2LT7M.js",
+	"style": "app-MMH4KMJY.css",
+	"plugins": [
+		"chat",
+		"envs",
+		"login",
+		"sessions",
+		"subagents",
+		"web-shell"
+	],
+	"files": [
+		{
+			"name": "CommitMono-300-Regular-6YPFJLCF.woff2",
+			"type": "font/woff2",
+			"size": 48212,
+			"sha256": "4eee6c95ed068a8008c336edc336418d2ce57b61cee34bc0701895077b7796e5"
+		},
+		{
+			"name": "CommitMono-400-Regular-5X3MEPYG.woff2",
+			"type": "font/woff2",
+			"size": 48140,
+			"sha256": "4f012280532c05af962280693a38e10183c75921b0351d7311b31c023c4d1170"
+		},
+		{
+			"name": "CommitMono-700-Regular-ZBGGEPPP.woff2",
+			"type": "font/woff2",
+			"size": 47432,
+			"sha256": "009470d902a1c5bb8daf827691ea65890e8b31d6d3572428b5335922d1a15212"
+		},
+		{
+			"name": "MallosSerif-Italic-Variable-65GP6KZL.woff2",
+			"type": "font/woff2",
+			"size": 58716,
+			"sha256": "02e2f8ac929f708c21950b1ac6edd14a7806cf13b06cfd452fa296965f3582ec"
+		},
+		{
+			"name": "MallosSerif-Variable-L4VRIFHQ.woff2",
+			"type": "font/woff2",
+			"size": 68504,
+			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
+		},
+		{
+			"name": "app-MMH4KMJY.css",
+			"type": "text/css; charset=utf-8",
+			"size": 342859,
+			"sha256": "477be00a2e2ef8650a678e4a4def3e10170101fb73cc946dfbb14b4a1dc233d2"
+		},
+		{
+			"name": "app-MMH4KMJY.css.map",
+			"type": "application/json",
+			"size": 616181,
+			"sha256": "29a4c269e50bda0d11aaf86f831f24693ec25dfed9ff79d3fae0e64be58aaa10"
+		},
+		{
+			"name": "app-T7P2LT7M.js",
+			"type": "text/javascript; charset=utf-8",
+			"size": 1106666,
+			"sha256": "1e1ffbb9652144b7fcc4c81d47fdf6616c2a962447c35e1e7df4174f46d1c65f"
+		},
+		{
+			"name": "app-T7P2LT7M.js.map",
+			"type": "application/json",
+			"size": 5354550,
+			"sha256": "b471f916178f78c7bec29e9f30682662337f591e26c33958111b14be85bd5237"
+		}
+	],
+	"brand": {
+		"name": "PiG",
+		"themeColor": {
+			"light": "#ffffff",
+			"dark": "#101c1a"
+		},
+		"upstreamVersion": "1f9cbf9cf01cdf17bf204cd9fdba20f20cb880832b6851fba69165e5d338af68",
+		"public": [
+			"icons/apple-touch-icon.png",
+			"icons/favicon.svg",
+			"icons/icon-192.png",
+			"icons/icon-512.png",
+			"manifest.webmanifest"
+		]
+	}
+}
