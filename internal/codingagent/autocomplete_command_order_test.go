@@ -47,6 +47,10 @@ func BenchmarkAutocompleteCommandOrder(b *testing.B) {
 	for _, count := range []int{0, 8, 512} {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
 			dir := b.TempDir()
+			// buildAutocompleteProvider looks fd up (LookupToolPath): a stat of each name in every directory of PATH, an allocation or more each, so
+			// allocs/op followed the length of the PATH of whoever ran the benchmark (174 in the 11-directory PATH of the CI container, 245 in the nightly's).
+			// PATH is one directory that holds no fd.
+			b.Setenv("PATH", dir)
 			mode := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: dir}}
 			ext := extension.Extension{Commands: make(map[string]extension.RegisteredCommand)}
 			for i := range count {
