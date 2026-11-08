@@ -205,7 +205,7 @@
   },
   "pkg:chord/.#AcceptsTable": {
     "go": "chord/next/contracts/accepts.go#AcceptsTable",
-    "reason": "Pi chord/src/contracts/accepts.ts:29 AcceptsTable<C> = AcceptsOf<ShapeOf<C>> is a mapped type over the contract's older versions, computed at compile time. Go's contracts.AcceptsTable is the same table as data: the ordered entries keyed by the version number as text, each a VersionMappings of the mappings its later edits require (accepts.go header); the key set a contract's history allows is checked where the table is bound (BindProvider), as Pi's bindProvider does (chord/src/data/args.ts:48). Locked by TestAcceptsTable* in chord/next/contracts."
+    "reason": "Pi chord/src/contracts/accepts.ts:29 AcceptsTable<C> = AcceptsOf<ShapeOf<C>> is a mapped type over the contract's older versions, computed at compile time. Go's contracts.AcceptsTable is the same table as data: the ordered entries keyed by the version number as text, each a VersionMappings of the mappings its later edits require (accepts.go header); the key set a contract's history allows is checked where the table is bound (BindProvider), as Pi's bindProvider does (chord/src/data/args.ts:48). Locked by TestAcceptsStateMappings, TestAcceptsMethodMappings, TestAcceptsVersions and TestAcceptsKeyedMappings (chord/next/contracts/accepts_test.go)."
   },
   "pkg:chord/.#Address": {
     "go": "chord/next/contracts/host_kind.go#Address",
@@ -213,11 +213,11 @@
   },
   "pkg:chord/.#ArchiveManifest": {
     "go": "chord/next/store/archive.go#ManifestPart",
-    "reason": "Pi chord/src/store/archive.ts:30 ArchiveManifest is the object type { kind: \"manifest\", format, schema, lastSeq, nextId } (the `.` entry publishes this one; node/app/archive.ts declares another ArchiveManifest, which is the pkg:chord/app row). Go's store.ManifestPart carries the same fields (Format, Schema, LastSeq, NextID) and its StoreWriteKind() is \"manifest\" (archive.go). Locked by the export cases of TestStore and TestJsonl."
+    "reason": "Pi chord/src/store/archive.ts:30 ArchiveManifest is the object type { kind: \"manifest\", format, schema, lastSeq, nextId } (the `.` entry publishes this one; node/app/archive.ts declares another ArchiveManifest, which is the pkg:chord/app row). Go's store.ManifestPart carries the same fields (Format, Schema, LastSeq, NextID) and its StoreWriteKind() is \"manifest\" (archive.go). Locked by the export cases of TestStore and TestJsonl (chord/next/store)."
   },
   "pkg:chord/.#CHORD_TELEMETRY_SCHEMA": {
     "go": "chord/next/telemetry/schema.go#Schema",
-    "reason": "Pi chord/src/telemetry.ts:118 CHORD_TELEMETRY_SCHEMA = defineTelemetrySchema({...}) lets TypeScript infer the schema's exact literal type (it feeds ChordSpan and ChordMetrics inference, which Go designs out); upstream performs no runtime validation. PiG carries the same data as the serializable *telemetry.TelemetrySchemaDefinition built by DefineTelemetrySchema (spans, events, attributes and metrics by name), as for the reviewed pkg:ai/.#AI_TELEMETRY_SCHEMA. Locked by chord/next/telemetry schema tests."
+    "reason": "Pi chord/src/telemetry.ts:118 CHORD_TELEMETRY_SCHEMA = defineTelemetrySchema({...}) lets TypeScript infer the schema's exact literal type (it feeds ChordSpan and ChordMetrics inference, which Go designs out); upstream performs no runtime validation. PiG carries the same data as the serializable *telemetry.TelemetrySchemaDefinition built by DefineTelemetrySchema (spans, events, attributes and metrics by name), as for the reviewed pkg:ai/.#AI_TELEMETRY_SCHEMA. Locked by TestSchemaDeclaresEverySpanChordStartsAndKeepsIdsOffMetrics (chord/next/telemetry/telemetry_upstream_test.go)."
   },
   "pkg:chord/.#ChordError": {
     "go": "chord/next/data/errors.go#ChordError",
@@ -225,11 +225,11 @@
   },
   "pkg:chord/.#ChordErrorCode": {
     "go": "chord/next/data/errors.go#ChordErrorCode",
-    "reason": "Pi chord/src/data/errors.ts:27 ChordErrorCode = keyof typeof CHORD_ERROR_REASONS is the set of the table's keys. Go's data.ChordErrorCode is a string type with a constant per key (CodeInvalid, CodeForbidden, ...) and ChordErrorCodes() lists them in the table's order; TestErrorTable (chord/next/data/errors_test.go) pins the table."
+    "reason": "Pi chord/src/data/errors.ts:27 ChordErrorCode = keyof typeof CHORD_ERROR_REASONS is the set of the table's keys. Go's data.ChordErrorCode is a string type with a constant per key (CodeInvalid, CodeForbidden, ...) and ChordErrorCodes() lists them in the table's order; TestProtocolTable (chord/next/data/errors_test.go) pins the table."
   },
   "pkg:chord/.#ChordErrorReason": {
     "go": "chord/next/data/errors.go#ChordErrorReason",
-    "reason": "Pi chord/src/data/errors.ts:29 ChordErrorReason<C> = (typeof CHORD_ERROR_REASONS)[C][number] is the reasons the table allows a code. Go's data.ChordErrorReason is a string type with a constant per reason (ReasonArgs, ...; the empty reason is upstream's undefined) and ChordErrorReasons(code) lists those a code allows; ChordErrorFromJson refuses a reason the code does not allow, as Pi's chordErrorFromJson does. Locked by TestErrorTable and TestChordErrorFromJson* (chord/next/data/errors_test.go)."
+    "reason": "Pi chord/src/data/errors.ts:29 ChordErrorReason<C> = (typeof CHORD_ERROR_REASONS)[C][number] is the reasons the table allows a code. Go's data.ChordErrorReason is a string type with a constant per reason (ReasonArgs, ...; the empty reason is upstream's undefined) and ChordErrorReasons(code) lists those a code allows; ChordErrorFromJson refuses a reason the code does not allow, as Pi's chordErrorFromJson does. Locked by TestProtocolTable and TestChordError (chord/next/data/errors_test.go)."
   },
   "pkg:chord/.#ChordStore::property:export::call:0": {
     "go": "chord/next/store/store.go#ChordStore.Export",
@@ -237,7 +237,7 @@
   },
   "pkg:chord/.#ClientOptions": {
     "go": "chord/next/surfaces/surfaces_client.go#ClientOptions",
-    "reason": "Pi chord/src/surfaces/client.ts:39 ClientOptions<P>.scripts is a ScriptsContract, a type alias of the kind's scripts object contract. Go's ClientOptions.Scripts is the *contracts.Contract that object is; every other member agrees (Promise callbacks take the client's context and block: the forced differences recorded in surfaces_client.go). Locked by surfaces_client_test.go."
+    "reason": "Pi chord/src/surfaces/client.ts:39 ClientOptions<P>.scripts is a ScriptsContract, a type alias of the kind's scripts object contract. Go's ClientOptions.Scripts is the *contracts.Contract that object is; every other member agrees (Promise callbacks take the client's context and block: the forced differences recorded in surfaces_client.go). Locked by surfaces_client_test.go (TestLoadsTheInitialScriptsWithTheCoreFacets)."
   },
   "pkg:chord/.#ColumnRefs": {
     "go": "chord/next/store/expression.go#ColumnRefs",
@@ -253,7 +253,7 @@
   },
   "pkg:chord/.#Ctx::property:get::call:0": {
     "go": "chord/next/host/host_ctx.go#Ctx.Get",
-    "reason": "Pi chord/src/host/ctx.ts:24 Ctx.get<C>(Type, params: ParamsOf<C>, options?) types params from the contract's params shape. Go's Ctx.Get(Type, params any, options GetOptions) takes the params untyped and the host checks them against the contract (Normalize, as Pi's get does at run time); the Promise is the blocking return (*Reference, error). Locked by the get cases of host_ctx_test.go."
+    "reason": "Pi chord/src/host/ctx.ts:24 Ctx.get<C>(Type, params: ParamsOf<C>, options?) types params from the contract's params shape. Go's Ctx.Get(Type, params any, options GetOptions) takes the params untyped and the host checks them against the contract (Normalize, as Pi's get does at run time); the Promise is the blocking return (*Reference, error). Locked by host_ctx_test.go and the examples that get through a ctx."
   },
   "pkg:chord/.#FacetHost::property:references::call:0": {
     "go": "chord/next/host/host_facet.go#FacetHost.References",
@@ -261,7 +261,7 @@
   },
   "pkg:chord/.#FacetHost::property:serve::call:0": {
     "go": "chord/next/host/host_facet.go#FacetHost.Serve",
-    "reason": "Pi chord/src/host/facet.ts:19 serve<C>(Type, factory: Factory<C, P>, options?) types the factory by a conditional type on the contract's params. Go's Serve takes the implementation as any and the host's type switch accepts a LocalFactory or RemoteFactory (host_facet.go; the Factory rows record the two forms). Locked by the serve cases of host_facet_test.go."
+    "reason": "Pi chord/src/host/facet.ts:19 serve<C>(Type, factory: Factory<C, P>, options?) types the factory by a conditional type on the contract's params. Go's Serve takes the implementation as any and the host's type switch accepts a LocalFactory or RemoteFactory (host_facet.go; the Factory rows record the two forms). Locked by TestSetUpReturnsServedEntriesAndContributionsInOrderByKind (chord/next/host/host_facet_test.go)."
   },
   "pkg:chord/.#FacetSelf::property:contribute::call:0": {
     "go": "chord/next/host/host_facet.go#FacetSelf.Contribute",
@@ -269,7 +269,7 @@
   },
   "pkg:chord/.#Held": {
     "go": "chord/next/host/host_reference.go#Held",
-    "reason": "Pi chord/src/host/reference.ts:42 Held<C> is a Reference whose variant is also undefined until its first binding (a conditional type on the contract kind; documents/persistence.ts declares an unrelated Held for held ops, which the detector cannot tell apart by name). Go's host.Held is an alias of Reference, whose Variant is unbound until its first binding (host_reference.go). Locked by TestHoldGC and TestHostHold* (chord/next/host)."
+    "reason": "Pi chord/src/host/reference.ts:42 Held<C> is a Reference whose variant is also undefined until its first binding (a conditional type on the contract kind; documents/persistence.ts declares an unrelated Held for held ops, which the detector cannot tell apart by name). Go's host.Held is an alias of Reference, whose Variant is unbound until its first binding (host_reference.go). Locked by TestHoldGC (chord/next/host/remote_hold_test.go)."
   },
   "pkg:chord/.#Host::property:activity": {
     "go": "chord/next/host/host_host.go#Host.Activity",
@@ -317,11 +317,11 @@
   },
   "pkg:chord/.#findDocument::call:0": {
     "go": "chord/next/store/engine.go#FindDocument",
-    "reason": "Pi chord/src/store/engine.ts:300 findDocument(executor: Pick<SqliteExecutor, \"get\">, address, at) needs only the executor's `get`. Go's store.FindDocument takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore and the document engine tests (chord/next/store)."
+    "reason": "Pi chord/src/store/engine.ts:300 findDocument(executor: Pick<SqliteExecutor, \"get\">, address, at) needs only the executor's `get`. Go's store.FindDocument takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore (chord/next/store/store_test.go); FindDocumentEntry's own read is covered by TestEngineEntries (chord/next/store/engine_test.go, fix/chord-gaps-root-b)."
   },
   "pkg:chord/.#findDocumentEntry::call:0": {
     "go": "chord/next/store/engine.go#FindDocumentEntry",
-    "reason": "Pi chord/src/store/engine.ts:345 findDocumentEntry(executor: Pick<SqliteExecutor, \"get\">, address, at) needs only the executor's `get`. Go's store.FindDocumentEntry takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore and the document engine tests (chord/next/store)."
+    "reason": "Pi chord/src/store/engine.ts:345 findDocumentEntry(executor: Pick<SqliteExecutor, \"get\">, address, at) needs only the executor's `get`. Go's store.FindDocumentEntry takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore (chord/next/store/store_test.go); FindDocumentEntry's own read is covered by TestEngineEntries (chord/next/store/engine_test.go, fix/chord-gaps-root-b)."
   },
   "pkg:chord/.#forbidden::call:0": {
     "go": "chord/next/data/errors.go#Forbidden",

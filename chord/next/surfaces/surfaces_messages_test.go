@@ -4,14 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
 // pi: packages/chord/test/surfaces/messages.test.ts
-// The cases of "defineMessages types every catalog by the first" are compile-time (`@ts-expect-error`) and have no Go
-// form (doc.go, D450).
+// The cases of "defineMessages types every catalog by the first" are compile-time (`@ts-expect-error`); their intention is ported
+// as run-time declaration and call checks (TestDefineMessagesRefusesACatalogThatDoesNotMatchTheFirst, TestMessageRefuses...).
 
 func count(plural, one string) MessageFunc {
 	return func(lang *Language, args ...any) (string, error) {
@@ -268,5 +270,52 @@ func TestAMessageWithNoArgumentsHasEmptyParamsAndRenders(t *testing.T) {
 	}
 	if got := notes.Render(message); got != "No notes" {
 		t.Fatalf("render = %q, want %q", got, "No notes")
+	}
+}
+
+// Intention of packages/chord/test/surfaces/messages.test.ts:51-61 ("types every catalog by the first", @ts-expect-error): a catalog
+// that lacks a key of the first, has a key the first lacks, or has a text where the first has a function is a declaration
+// mistake. Pi stops it at compile time (CatalogShape); PiG stops it where the catalogs are declared.
+func TestDefineMessagesRefusesACatalogThatDoesNotMatchTheFirst(t *testing.T) {
+	fn := MessageFunc(func(_ *Language, args ...any) (string, error) { return fmt.Sprint(args...), nil })
+	for name, c := range map[string]struct {
+		other Catalog
+		want  string
+	}{
+		"missing key": {Catalog{"a": "A", "b": fn}, `lacks the key "c"`},
+		"extra key":   {Catalog{"a": "A", "b": fn, "c": "C", "d": "D"}, `has the key "d" the first lacks`},
+		"kind":        {Catalog{"a": "A", "b": "B", "c": "C"}, `key "b"`},
+	} {
+		_, err := DefineMessages("typed", LocaleCatalog{"en", Catalog{"a": "A", "b": fn, "c": "C"}}, LocaleCatalog{"de", c.other})
+		if err == nil || !strings.Contains(err.Error(), c.want) || !strings.Contains(err.Error(), "de") {
+			t.Errorf("%s: error = %v, want one naming %q", name, err, c.want)
+		}
+	}
+	if _, err := DefineMessages("typed", LocaleCatalog{"en", Catalog{"a": "A", "b": fn}}, LocaleCatalog{"de", Catalog{"a": "A", "b": fn}}); err != nil {
+		t.Errorf("matching catalogs: %v", err)
+	}
+}
+
+// Intention of messages.test.ts:178-189 (DataKeys, @ts-expect-error): `message` builds data only for a key of the catalog and
+// arguments that are plain data, since a message crosses a link; a time.Time would not. Pi stops it at compile time; PiG panics
+// at the call, as a constructor does where TypeScript rejects the call.
+func TestMessageRefusesAnUnknownKeyAndArgumentsThatAreNoData(t *testing.T) {
+	notes := notesMessages(t)
+	for name, call := range map[string]func(){
+		"unknown key": func() { notes.Message("svaed") },
+		"a time":      func() { notes.Message("when", time.Now()) },
+		"a struct":    func() { notes.Message("count", struct{ N int }{2}) },
+	} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("%s: Message did not panic", name)
+				}
+			}()
+			call()
+		}()
+	}
+	if got := notes.Message("count", 2, nil, true); len(got.Params) != 3 {
+		t.Errorf("data params = %v", got.Params)
 	}
 }
