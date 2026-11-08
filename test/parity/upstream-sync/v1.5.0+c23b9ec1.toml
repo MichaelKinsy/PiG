@@ -4,9 +4,9 @@ to = "1.5.0+c23b9ec1"
 [[files]]
 path = "packages/agent/src/proxy.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:agent/proxy_test.go#TestProxyRequestPreservesOptionPresence"]
+rationale = "Pi a758f3ae1 (#11545, Anthropic message threads) adds disableContinuation to the serializable proxy stream options and copies it in buildProxyRequestOptions. ProxyStreamOptions.DisableContinuation is sent as `disableContinuation: true` and omitted when false; the new `disable continuation` case of the option-presence test pins the request body."
 
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
@@ -3735,16 +3735,16 @@ rationale = "Pi 9e870f6f0 (D252): output truncation uses sliceHead and sliceTail
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/tool.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/tool_refs_pi_test.go#TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences", "test:coding/extension/builtin/codemode/description_helpers_test.go#TestMalformedRefInAToolSchemaRendersAsUnknownInTheDescription"]
+rationale = "Pi (#11803) makes describeFields and describeUnionFields follow local $refs into the output schema's root via resolveSchemaRef. The Go description renders the fields behind a local $ref (the first test) and keeps a malformed reference as unknown (the second)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/client.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/client_test.go#TestClientRequestErrorsMirrorFetch"]
+rationale = "Pi ea0f49a36 (#11745) routes the client's fetches, the models/sse stream included, through fetchServer, which names the server and the network-level cause: `Could not reach llama.cpp server at <url>: <cause>`. The Go client returns that message with its cause (D256); the test checks the text for a closed port (Go's dial error stands in for Node's ECONNREFUSED detail) and the original error."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
@@ -3763,9 +3763,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/config.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/config_pi_test.go#TestIsMcpServerOverrideIsTrueForEntriesWithoutCommandURLOrType"]
+rationale = "Pi 76c040a2 moves the override check (an entry without command, url or type) into pi-mcp as isMcpServerOverride and mcpNamespace; coding/mcpext/config.go calls mcp.IsMcpServerOverride for the project-override check and updateMcpServerConfig's keepDefaults."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/index.ts"
@@ -3777,30 +3777,30 @@ rationale = "Pi 9e870f6f0 (D252): the MCP description truncation uses sliceHead;
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInCancelsWhileAnotherProcessHoldsTheRefreshLock", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed", "test:coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDAcceptsTheAuthorizationResponseOnlyOnTheServerSpecificRedirectURI"]
+rationale = "Pi bb266bf3 moves MCP OAuth sign-in into pi-mcp in two halves and 797e122c refreshes with the app's redirect URI and ends the wait for the refresh lock when the sign-in is cancelled; only a McpRefreshLockBusyError falls back to the browser step. coding/mcpext/oauth.go keeps the credential store, the lock (a held lock reports McpRefreshLockBusyError) and the browser prompt; the tests cover the lock-wait cancellation (ported from mcp-oauth-refresh.test.ts with this change), the redirect-URI refresh and the route-specific redirect."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/resources.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/output_limit_pi_test.go#TestLimitMcpContentCutsTheMiddleOfLongerTextSavesTheFullTextAndKeepsImages"]
+rationale = "Pi 76c040a2 moves limitMcpContent to pi-mcp and resources.ts passes its saveToTempFile saver; coding/mcpext/resources.go calls limitMcpContent (the model-content wrapper of mcp.LimitMcpContent) with SaveToTempFile, and the mcp test pins the cut, the saved full text and the kept images."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/runtime.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/truncate_slice_test.go#TestStderrTailDropsASplitSurrogatePair", "test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthRefreshWaitsForARunningRefreshToSaveTheNewTokens"]
+rationale = "Pi 9e870f6f0 (D252) takes the stderr tail with sliceTail so no surrogate pair is split (jsstring.SliceTail), and 76c040a2 moves McpAuthProvider and the OAuth types to pi-mcp, which the connection's provider uses."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/tools.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing", "test:mcp/output_limit_pi_test.go#TestLimitMcpContentCutsMultiByteTextOnlyAtCharacterBoundaries", "test:mcp/naming_pi_test.go#TestCreateMcpToolNameShortensNamesOver64CharactersWithAHashOfServerAndTool"]
+rationale = "Pi 76c040a2 moves createMcpToolName, limitMcpContent and the input-schema normalisation to pi-mcp; coding/mcpext/tools.go calls mcp.NormalizeMcpInputSchema and mcp.LimitMcpContent. The mcp tests pin each moved helper, including the multi-byte cut Pi's mcp-extension test dropped when the helper moved."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/tool-search/tool.ts"

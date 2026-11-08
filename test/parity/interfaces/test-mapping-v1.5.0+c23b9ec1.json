@@ -4684,8 +4684,13 @@
     },
     {
       "path": "packages/coding-agent/test/extension-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6fdbcb4ada3d8e6fc2bd888aca6f6b1c20366ab89bd973802eccc854c652ec09"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6fdbcb4ada3d8e6fc2bd888aca6f6b1c20366ab89bd973802eccc854c652ec09",
+      "evidence": [
+        "tui/extension_selector_test.go#TestExtensionSelectorWindowsLongOptionListsAroundTheSelection",
+        "tui/extension_selector_test.go#TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator"
+      ],
+      "rationale": "Pi 3b57ed7e (#11072) limits the selector's window height: a long option list shows a window around the selection with a scroll indicator, a short or empty list shows none. The two Go tests use Pi's cases; the file's other cases were ported earlier."
     },
     {
       "path": "packages/coding-agent/test/extensions-discovery.test.ts",
@@ -4965,8 +4970,13 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-dialogs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4a0e1dffee172470301e1fdc923efb8dbf05b2b19a186abb678662d874ba4ba5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4a0e1dffee172470301e1fdc923efb8dbf05b2b19a186abb678662d874ba4ba5",
+      "evidence": [
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionCustomOverlayReportsBlockedStatusUntilDoneAlsoWhileHidden",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestResetRemovesEveryExtensionOverlayButKeepsPisOwn"
+      ],
+      "rationale": "Pi 7f47a2ed (#11851) and 80d4d3c8 (#11853): an overlay that opts in with `blocked` reports program status until done(), also while hidden, and resetting the extension UI removes every extension overlay and clears that status. The first Go test covers the stacked, hidden and ended overlays; the second covers the reset (its comment cites both Pi cases)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-import-command.test.ts",
@@ -5079,13 +5089,23 @@
     },
     {
       "path": "packages/coding-agent/test/llama-extension.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:147bf8054795d16e4df53c55adb29c7bec0e095b81c7c205d6f41908469f1b1e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:147bf8054795d16e4df53c55adb29c7bec0e095b81c7c205d6f41908469f1b1e",
+      "evidence": [
+        "internal/codingagent/llama/client_test.go#TestClientRequestErrorsMirrorFetch"
+      ],
+      "rationale": "Pi ea0f49a36 (#11745): an unreachable server names the server and the cause instead of `fetch failed`. The Go test closes a listener and expects `Could not reach llama.cpp server at <url>: <cause>` with the original error as the cause; Go's dial error (`connect: connection refused`) is the cause text in place of Node's `connect ECONNREFUSED`."
     },
     {
       "path": "packages/coding-agent/test/llama-ui.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bb1fa7ca95ef5156e61dddaf1c59a19f9a4731ec6ff5fa6bb2b4eb68e73c8c40"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bb1fa7ca95ef5156e61dddaf1c59a19f9a4731ec6ff5fa6bb2b4eb68e73c8c40",
+      "evidence": [
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands",
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse",
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheBrowsedModelIsNotInTheNewResults"
+      ],
+      "rationale": "The three Pi cases added with the selectionTouched change in llama/ui.ts, one Go test each: a browsed row stays selected when the next search lands, the best match is selected when the user did not browse, and when the browsed model is not in the new results."
     },
     {
       "path": "packages/coding-agent/test/login-dialog-device-code.test.ts",
@@ -5123,13 +5143,23 @@
     },
     {
       "path": "packages/coding-agent/test/mcp-command.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d6ff9aaedeeeea8a457810bc45a3b85e76c60ed376213d4e818097942aeae50d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d6ff9aaedeeeea8a457810bc45a3b85e76c60ed376213d4e818097942aeae50d",
+      "evidence": [
+        "coding/mcpext/cli_test.go#TestMcpCommandSendsTheTokenOfTheProviderNamedByAuthProvider"
+      ],
+      "rationale": "Pi 4d72d05b: `pi mcp list` sends the token of the provider named by `auth.provider` and, without its credentials, hints `/login <provider>` instead of `mcp login`. The Go test checks both the token the server receives and the hint text."
     },
     {
       "path": "packages/coding-agent/test/mcp-extension.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1c19068515f76a7b089accf09c554eb3b117955e0d383b733c36188ea9352463"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1c19068515f76a7b089accf09c554eb3b117955e0d383b733c36188ea9352463",
+      "evidence": [
+        "mcp/naming_pi_test.go#TestCreateMcpToolNameJoinsServerAndToolAndReplacesCharactersOutsideTheAllowedSet",
+        "mcp/naming_pi_test.go#TestCreateMcpToolNameShortensNamesOver64CharactersWithAHashOfServerAndTool",
+        "mcp/output_limit_pi_test.go#TestLimitMcpContentCutsMultiByteTextOnlyAtCharacterBoundaries"
+      ],
+      "rationale": "Pi 76c040a2 moves createMcpToolName into pi-mcp (the test imports it from there) and the multi-byte truncation case out of this file, since truncateMiddle is no longer coding-agent's. Both live in the Go mcp package tests with the same inputs; the rest of the file is unchanged."
     },
     {
       "path": "packages/coding-agent/test/mcp-manager-view.test.ts",
@@ -5144,8 +5174,12 @@
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-refresh.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4da6b73debf1bc4d48d4ebc38521123f6553263854987fc7a80f5a0a6626e7b3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4da6b73debf1bc4d48d4ebc38521123f6553263854987fc7a80f5a0a6626e7b3",
+      "evidence": [
+        "coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInCancelsWhileAnotherProcessHoldsTheRefreshLock"
+      ],
+      "rationale": "Pi 797e122c adds `cancels a sign-in that waits for another process's refresh`: the sign-in ends with a cancellation while another process holds the refresh lock, and the lock it later takes runs no refresh and is released. Ported with Pi's setup (a signed-in server, a held lock, a cancel after 200 ms); the rest of the file's cases are ported in the same file."
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-store.test.ts",
@@ -6141,8 +6175,9 @@
     },
     {
       "path": "packages/coding-agent/test/subagent-extension.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9cf1826b09fd6a57b74e51696aa4199a01f2c5c277e46fe2fbca743e36247266"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:9cf1826b09fd6a57b74e51696aa4199a01f2c5c277e46fe2fbca743e36247266",
+      "rationale": "New in Pi aba42ae6b (#8250) and 5c808e17b: it drives packages/coding-agent/examples/extensions/subagent/index.ts under vitest, with a fixture child (test/fixtures/subagent-child.mjs) standing in for the pi CLI the example spawns. PiG has no example source of its own: it ships Pi's file unmodified as part of the vendored runtime (runtime-node/shims/pi-dist/pi-coding-agent/examples/extensions/subagent, vendor-manifest.json), and that copy is the @earendil-works/pi-coding-agent 1.5.0 file (sha256 1d11858d..., identical to Pi v1.5.0), not the c23b9ec1 revision the test exercises (the pin changes index.ts by 565 lines). The behaviour under test is that JavaScript example's own spawn, progress and abort logic, which a Go test cannot reach without re-vendoring it; `make vendor-pi-dist` regenerates the copy when the vendored runtime moves to a Pi build that contains it. The vendored example's trust behaviour stays covered by subagent_trust_upstream_test.go."
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts",
@@ -6239,8 +6274,12 @@
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-model-extension.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:54f1e89e34b18971f0ec0626f7cade639d0ff44c1764df3507493c61c48bd127"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:54f1e89e34b18971f0ec0626f7cade639d0ff44c1764df3507493c61c48bd127",
+      "evidence": [
+        "coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream"
+      ],
+      "rationale": "Pi 5732bac0 (#11832, issue 11806): cycleModel goes to the only scoped model, and to the first (forward) or last (backward) scoped model when the active model is outside the scope. The subtest `cycles to the only scoped model and to the first scoped model from outside the scope` uses Pi's three models and calls."
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-prompt.test.ts",
@@ -7446,8 +7485,15 @@
     },
     {
       "path": "packages/coding-agent/test/tool-search.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5f5b50d1f656fbb3e30027ca23afa9ca73ba16deb29d81663490b3523d245379"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5f5b50d1f656fbb3e30027ca23afa9ca73ba16deb29d81663490b3523d245379",
+      "evidence": [
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go#TestSchemaRefsReadsNamesAndDescriptionsBehindLocalReferences",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go#TestSchemaRefsFollowsEscapedPointerSegments",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go#TestSchemaRefsReadsRecursiveAndSharedDefinitionsOnce",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go#TestSchemaRefsLeavesOutUnreferencedDefinitionsAndRemoteOrMissingReferences"
+      ],
+      "rationale": "Pi 6d3e342b2 (#11803): the search text follows local $refs. One Go test per Pi case (names and descriptions behind references, escaped pointer segments, recursive and shared definitions once, unreferenced definitions and remote or missing references left out)."
     },
     {
       "path": "packages/coding-agent/test/tool-system-prompt-contributions.test.ts",
@@ -8228,8 +8274,9 @@
     },
     {
       "path": "packages/durable/test/indexeddb-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f5ae29607626d01d79dcde877b6d0fb65272a17bcb796abf3d176c6a4e3202e8"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:f5ae29607626d01d79dcde877b6d0fb65272a17bcb796abf3d176c6a4e3202e8",
+      "rationale": "Browser-only: the test opens with /// <reference lib=\"dom\" /> and runs the Storage conformance suite against IndexedDbStorage (packages/durable/src/storage/indexeddb.ts) on fake-indexeddb's IDBFactory, an IndexedDB API that exists only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can reach the backend (PORT_MAP records the source row as designed-out); the Storage contract it implements is exercised by the Go memory, jsonl and sqlite drivers' conformance tests. Pi 16f5f0af4d changes 3 lines of the test."
     },
     {
       "path": "packages/durable/test/jsonl-storage.test.ts",
