@@ -3574,30 +3574,30 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/extensions/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:test/extension-conformance/markdown_contexts_test.go#TestMarkdownContextsAcrossSDKs"]
+rationale = "Pi eebd5d90 exports MarkdownMessageType, MarkdownTransformerOptions and MarkdownTransformerRegistration; Go has no barrel exports, the names are coding/extension (MarkdownMessageType, DefaultMarkdownMessageTypes, Extension.MarkdownMessageTypes)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/loader.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:extensions/sdk/markdown_message_types_test.go#TestMarkdownTransformerMessageTypesOnTheRegisterFrame", "test:coding/extension/host/subprocess/markdown_message_types_test.go#TestRegisteredMarkdownMessageTypesReachTheBuiltExtension", "test:coding/extension/host/subprocess/node_runtime_markdown_types_test.go#TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes"]
+rationale = "Pi eebd5d90 registerMarkdownTransformer(transformer, options): the SDKs and the host carry messageTypes on the register frame (markdown_message_types)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/runner.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder", "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"]
+rationale = "Pi eebd5d90 getMarkdownTransformers filters each transformer to its message types (coding/extension/host/inproc/runner.go restrictMarkdownTransformer)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/types.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:test/extension-conformance/markdown_contexts_test.go#TestMarkdownContextsAcrossSDKs"]
+rationale = "Pi eebd5d90 MarkdownMessageType gains custom, summary and changelog; MarkdownTransformerOptions.messageTypes (extensions/sdk, sdk-rs, sdk-py, sdk-lisp, runtime-node, sdk-ts typecheck)."
 
 [[files]]
 path = "packages/coding-agent/src/core/keybindings.ts"
