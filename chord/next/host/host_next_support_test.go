@@ -202,7 +202,9 @@ type loadedOptions struct {
 	Context      context.Context
 	CloseTimeout *time.Duration
 	ReadyTimeout *time.Duration
-	Store        store.Store
+	// ReloadDrainTimeout is `reloadDrainTimeout`.
+	ReloadDrainTimeout *time.Duration
+	Store              store.Store
 	// Serve is `restartable`'s `serve`: serves other types on the same host.
 	Serve func(host FacetHost)
 	// Loop drives the host (Pi's fake timers); nil is the real loop.
@@ -316,12 +318,13 @@ func loaded(t testing.TB, setup func(host FacetHost, self FacetSelf) error, opti
 	t.Helper()
 	errs := &hostErrors{}
 	host := newHost(t, HostOptions{
-		Telemetry:    telemetryOf(options.Telemetry),
-		CloseTimeout: options.CloseTimeout,
-		ReadyTimeout: options.ReadyTimeout,
-		Store:        options.Store,
-		OnError:      errs.push,
-		loop:         options.Loop,
+		Telemetry:          telemetryOf(options.Telemetry),
+		CloseTimeout:       options.CloseTimeout,
+		ReadyTimeout:       options.ReadyTimeout,
+		ReloadDrainTimeout: options.ReloadDrainTimeout,
+		Store:              options.Store,
+		OnError:            errs.push,
+		loop:               options.Loop,
 	})
 	ctx := options.Context
 	if ctx == nil {
@@ -572,13 +575,17 @@ func faultyStore(t testing.TB, outbox ...bool) (st *store.ChordStore, fail func(
 type testOwner struct {
 	failures []*data.ChordError
 	scope    *struct{}
+	queries  *store.LiveQueries
 }
 
-func (owner *testOwner) Label() string             { return "app.store" }
-func (owner *testOwner) Scope() any                { return owner.scope }
-func (owner *testOwner) AssertLive() error         { return nil }
-func (owner *testOwner) Fail(err *data.ChordError) { owner.failures = append(owner.failures, err) }
-func tableOwner() *testOwner                       { return &testOwner{scope: new(struct{})} }
+func (owner *testOwner) Label() string               { return "app.store" }
+func (owner *testOwner) Scope() any                  { return owner.scope }
+func (owner *testOwner) Queries() *store.LiveQueries { return owner.queries }
+func (owner *testOwner) AssertLive() error           { return nil }
+func (owner *testOwner) Fail(err *data.ChordError)   { owner.failures = append(owner.failures, err) }
+func tableOwner() *testOwner {
+	return &testOwner{scope: new(struct{}), queries: store.NewLiveQueries()}
+}
 func openFence() store.CommitFence {
 	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
 }
@@ -998,7 +1005,9 @@ type rawLinkedOptions struct {
 	Compression  link.Compression
 	// Parent is `role: "parent"`: the raw peer is the host's parent (`connect`), not its child (`accept`, the default).
 	Parent bool
-	Loop   sectionLoop
+	// Trusted is `trusted: true` on the link: its calls' old-work mark is honoured.
+	Trusted bool
+	Loop    sectionLoop
 }
 
 // rawLinkedHost is what `rawLinked` returns: Pi's `{ server, peer, errors }`.
@@ -1028,7 +1037,7 @@ func rawLinked(t testing.TB, setup func(host FacetHost) error, options rawLinked
 	if child == nil {
 		child = ownerPrincipal()
 	}
-	linkOptions := LinkOptions{Principal: child, Codec: testCodec(), Limits: options.Limits}
+	linkOptions := LinkOptions{Principal: child, Codec: testCodec(), Limits: options.Limits, Trusted: options.Trusted}
 	if options.Parent {
 		must(t, server.Connect(a, linkOptions, background))
 	} else {

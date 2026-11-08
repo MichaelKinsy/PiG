@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"reflect"
 	"sync"
@@ -21,20 +22,21 @@ import (
 // step (the seal fence's admission check, `BEGIN`, the writes in their order, the outbox commit, `lastSeq` and the
 // allocator's value, `COMMIT`, then the owner's adoption), the id allocator, the claims of its tables and documents,
 // reads guarded as Durable's `GuardedStorage` guards them, Durable's Storage semantics for a refused step (D4), the
-// stop after an unknown outcome, and the commit series (several commits stored in one backend transaction).
+// stop after an unknown outcome, group commit (S18) and the commit series (several commits stored in one backend
+// transaction).
 //
 // Async contract (Go form of Pi's promises). Pi is single-threaded and its commit queue is the `#tail` promise chain:
 // every `commit`, `replay` and `take` call takes its place in the queue synchronously, at the call, and runs once the
 // call before it settled; a settled queue entry never blocks the next one, whatever it rejected with. A commit
-// series is one entry. Pi's grouping of commits is explicit, the array a caller hands `commitSeries`; the store
-// batches nothing of its own at the end of a turn (Durable's Session writer groups the commits that arrive while a
-// storage call is in flight, above the store), so there is no flush mechanism to translate here. Go keeps that
+// series is one entry, and so is a group (the commits queued behind a running step, written in one backend
+// transaction: S18; Durable's Session writer groups above the store too). Go keeps that
 // contract with a ticket: a call takes its place under `mu` (so the queue order is the order of the calls that reach
 // it) and waits for the ticket before it (a channel the previous entry closes when it settled). `Commit`, `Replay`
 // and `Read` block until they settle, as the Pi promises resolve, and so does `Take`'s channel: an export selects on it
 // with its context, as Pi's does while its caller awaits the promise. A caller that needs two entries queued in order
 // takes the second place after the first one's call has returned, as Pi's `const a = store.commit(...); const b =
-// store.commit(...)` does (tests start the first on a goroutine and wait for the queue to show its place). Nothing is
+// store.commit(...)` does (`enlist` takes a commit's place at once and `Wait` settles it: tests enlist on their own
+// goroutine, then wait on others). Nothing is
 // cancelled once queued (Pi's `context` counts the step; it does not abort it). A read or a maintenance write runs on
 // the caller's goroutine, outside the queue, as Pi's does outside it. `mu` guards the store's own state (the
 // position, the catalog, the stopped state, the counters, the queue's tail); no database call and no callback runs
@@ -139,6 +141,53 @@ type Attachment struct {
 	Batch  *state.Batch
 }
 
+// queuedCommit is a commit waiting in the commit queue for its group's turn: what Commit was given, and its outcome
+// (settled once, by the goroutine running its group's turn).
+type queuedCommit struct {
+	writes []StagedWrite
+	fence  CommitFence
+	ctx    context.Context
+	// ready is closed once the commit settled. It is nil for a commit that leads its group (its caller runs the turn, so
+	// the outcome stands when the turn returns) and for one settled at enlist.
+	ready   chan struct{}
+	seq     int64
+	err     error
+	settled bool
+}
+
+// settle gives the commit its outcome, once.
+func (queued *queuedCommit) settle(seq int64, err error) {
+	if queued.settled {
+		return
+	}
+	queued.settled = true
+	queued.seq, queued.err = seq, err
+	if queued.ready != nil {
+		//portlint:allow doubleclose settled makes this the one close of ready
+		close(queued.ready)
+	}
+}
+
+// commitGroup is the commits queued behind a running step that share the next step's backend transaction (group commit,
+// decision S18). Its first commit's caller runs its turn once previous settled and closes done after it.
+type commitGroup struct {
+	commits  []*queuedCommit
+	previous <-chan struct{}
+	done     chan struct{}
+}
+
+// pendingCommit is a commit that has its place in the commit queue (enlist): Wait runs it when its turn is its caller's
+// and returns its outcome. It holds the commit and, as the group's first, the group (and its commit list), so a lone
+// commit takes one allocation for them all.
+type pendingCommit struct {
+	store *ChordStore
+	// group is the group this commit leads; nil for a commit that joined one.
+	group  *commitGroup
+	queued queuedCommit
+	lead   commitGroup
+	first  [1]*queuedCommit
+}
+
 // SeriesCommit is one commit of a series (CommitSeries): its own check, which writes nothing, and its writes. The check
 // reads through the commit's step, which sees what the series' earlier commits wrote.
 type SeriesCommit struct {
@@ -154,35 +203,36 @@ type SeriesResult struct {
 	Refused error
 }
 
-// seriesStored is one stored commit of a series: its seq and its created documents.
-type seriesStored struct {
+// storedCommit is one stored commit of a series or a group: its seq and its created documents.
+type storedCommit struct {
 	seq     int64
 	created []int64
 }
 
-// seriesLast is a series as its last commit that wrote leaves it: its seq, the allocator's value after it and the
-// table records the series changed.
-type seriesLast struct {
+// writtenLast is a transaction as its last commit that wrote leaves it: its seq, the allocator's value after it and the
+// table records its commits changed.
+type writtenLast struct {
 	seq    int64
 	nextID int64
 	tables map[string]*TableRecord
 }
 
-// series is a series as its transaction leaves it: each stored commit's seq and created documents; once a commit wrote,
-// its last (last is nil before); the commits that wrote and the statements run.
-type series struct {
-	stored     []seriesStored
-	last       *seriesLast
+// written is the commits of one backend transaction (a series or a group) as it leaves them: each stored commit's seq and
+// created documents; once a commit wrote, its last (last is nil before); the commits that wrote and the statements run.
+type written struct {
+	stored     []storedCommit
+	last       *writtenLast
 	written    int64
 	statements int
 }
 
-// seriesProgress is a series while its transaction runs: its first seq's predecessor, each stored commit, its last
-// step that wrote, the allocator's value after it, the table records it changed (tables) and the catalog the next
-// step reads (a copy of the store's, made once a record changed) and the statements run.
-type seriesProgress struct {
+// writeProgress is the commits of one backend transaction (a series or a group) while it runs: its first seq's
+// predecessor, each stored commit, the last step that wrote, the allocator's value after it, the table records they
+// changed (tables) and the catalog the next step reads (a copy of the store's, made once a record changed) and the
+// statements run.
+type writeProgress struct {
 	lastSeq    int64
-	stored     []seriesStored
+	stored     []storedCommit
 	last       *Step
 	nextID     int64
 	tables     map[string]*TableRecord
@@ -190,8 +240,8 @@ type seriesProgress struct {
 	statements int
 }
 
-// nextSeq is the seq the series' next commit takes.
-func (progress *seriesProgress) nextSeq() int64 {
+// nextSeq is the seq the transaction's next commit takes.
+func (progress *writeProgress) nextSeq() int64 {
 	if progress.last != nil {
 		return progress.last.Seq + 1
 	}
@@ -243,11 +293,15 @@ type ChordStore struct {
 	// committedNextID is the allocator's value as the last commit persisted it (an export's manifest).
 	committedNextID int64
 	state           storeStateKind
-	failure         error
+	// failure is the backend error that stopped the store, latched also when it happened while the store was closing (the
+	// state stays closed then): a commit admitted before it is refused.
+	failure error
 	// diverged is set once a batch's recorded count did not reproduce (S17): no batch applies any more.
 	diverged bool
 	// tail is the commit queue's tail: each entry starts after the one before it settled (its channel is closed).
 	tail <-chan struct{}
+	// open is the group the next commit joins: queued last, its turn not yet come; nil once anything queued after it.
+	open *commitGroup
 	// underway counts reads and maintenance writes underway, which Close waits for.
 	underway int
 	// drained is closed, once, when no read is underway: Close's wait.
@@ -402,6 +456,7 @@ func (store *ChordStore) Take(end func()) <-chan func() {
 	store.held[entry] = struct{}{}
 	previous := store.tail
 	store.tail = held
+	store.open = nil
 	store.mu.Unlock()
 	taken := make(chan func(), 1)
 	//portlint:allow asyncorder this is Pi's `this.#tail.then(...)` continuation (store.ts:245): the queue place (store.tail) is taken under mu above, before the goroutine starts, and its result is joined by the returned channel, as take's promise
@@ -444,24 +499,87 @@ func (store *ChordStore) ticket() (previous <-chan struct{}, done chan struct{})
 	store.mu.Lock()
 	previous = store.tail
 	store.tail = done
+	store.open = nil
 	store.mu.Unlock()
 	return previous, done
 }
 
-// Commit commits writes as one seq when the commit queue reaches it: `fence.Admit()` at the step's entry, the writes
-// in their order (retirements, creations, the rest), the outbox commit, `lastSeq` and the allocator's value,
-// `COMMIT`, then `fence.Adopt` before the next step starts. It returns the seq. A refused admission fails
-// `released`. A step the backend rolled back after the step's own code failed (a refusal, D4) fails with that error
-// unchanged and the store goes on; any other failure (`BEGIN`, `COMMIT`, `ROLLBACK`, a failing Adopt) is an unknown
-// outcome that stops the store (`storage_failed`). ctx counts the step (no abort once queued).
+// Commit commits writes as one seq when the commit queue reaches it: `fence.Admit()` at the entry of its step (its
+// group's), the writes in their order (retirements, creations, the rest), the outbox commit, `lastSeq` and the
+// allocator's value, `COMMIT`, then `fence.Adopt` before the next step starts. It returns the seq. A refused admission
+// fails `released`. A step the backend rolled back after the step's own code failed (a refusal, D4) fails with that
+// error unchanged and the store goes on; any other failure (`BEGIN`, `COMMIT`, `ROLLBACK`, a failing Adopt) is an
+// unknown outcome that stops the store (`storage_failed`). ctx counts the step (no abort once queued).
+//
+// Group commit (decision S18): the commits queued while a step runs form one group, which the next turn admits and writes
+// in one backend transaction (each commit its own seq, outbox commit and adoption, in queue order; the metadata once), so
+// a busy store costs a transaction per group, not per commit. If one of them is refused, the group rolls back and its
+// commits run again one by one as above: the refusal stays its own commit's.
+//
+// Async contract: the call takes its place in the queue under `mu` and blocks until its commit settled; the caller of a
+// group's first commit runs the group's turn, the others wait for it.
 func (store *ChordStore) Commit(writes []StagedWrite, fence CommitFence, ctx context.Context) (int64, error) {
-	if err := store.AssertUsable(); err != nil {
-		return 0, err
+	pending := store.enlist(writes, fence, ctx)
+	seq, err := pending.Wait()
+	pending.release()
+	return seq, err
+}
+
+// pendingCommits recycles the pendingCommit of a commit that led its group alone, the common case of a store with one
+// committer at a time: nothing but its caller holds one once it has settled.
+var pendingCommits = sync.Pool{New: func() any { return new(pendingCommit) }}
+
+// release hands pending back for reuse when its caller is its only holder: it led its group and no commit joined it
+// (a group takes no more commits once its turn started). A commit that joined a group stays, since the group's turn may
+// still read it; so does one that was settled at enlist, which is rare.
+func (pending *pendingCommit) release() {
+	if pending.group == nil || len(pending.group.commits) != 1 {
+		return
 	}
-	previous, done := store.ticket()
-	<-previous
-	defer close(done)
-	return store.step(writes, fence, ctx)
+	*pending = pendingCommit{}
+	pendingCommits.Put(pending)
+}
+
+// enlist takes the commit's place in the commit queue, as Pi's `commit` call does at the call: behind the group still
+// open (a commit with writes), or as the first of a new one. An empty commit takes no transaction: it neither joins nor
+// opens a group. A store that is not usable settles it at once.
+func (store *ChordStore) enlist(writes []StagedWrite, fence CommitFence, ctx context.Context) *pendingCommit {
+	pending := pendingCommits.Get().(*pendingCommit)
+	pending.store = store
+	pending.queued = queuedCommit{writes: writes, fence: fence, ctx: ctx}
+	queued := &pending.queued
+	if err := store.AssertUsable(); err != nil {
+		queued.settle(0, err)
+		return pending
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if len(writes) > 0 && store.open != nil {
+		queued.ready = make(chan struct{})
+		store.open.commits = append(store.open.commits, queued)
+		return pending
+	}
+	pending.first[0] = queued
+	pending.lead = commitGroup{commits: pending.first[:], previous: store.tail, done: make(chan struct{})}
+	pending.group = &pending.lead
+	store.tail = pending.lead.done
+	store.open = nil
+	if len(writes) > 0 {
+		store.open = pending.group
+	}
+	return pending
+}
+
+// Wait is the commit's outcome: the seq it stored, or why it was not. The caller of a group's first commit runs the
+// group's turn once the entry before it settled.
+func (pending *pendingCommit) Wait() (int64, error) {
+	if pending.group != nil {
+		<-pending.group.previous
+		pending.store.runGroup(pending.group)
+	} else if pending.queued.ready != nil {
+		<-pending.queued.ready
+	}
+	return pending.queued.seq, pending.queued.err
 }
 
 // CommitSeries commits commits in one backend transaction when the commit queue reaches it, one seq each, in order: each
@@ -519,6 +637,10 @@ func guarded[T any](store *ChordStore, run func() (T, error), ctx context.Contex
 	defer store.settle()
 	result, err := run()
 	if err != nil {
+		// Latched before the closed check: a backend failure while closing still refuses later admitted commits.
+		if ctx.Err() == nil {
+			store.latch(err)
+		}
 		if usable := store.AssertUsable(); usable != nil {
 			return zero, usable
 		}
@@ -560,6 +682,8 @@ func (store *ChordStore) Maintain(write func(executor sqlite.SqliteExecutor) err
 	store.begin()
 	defer store.settle()
 	if err := store.db.Transaction(write); err != nil {
+		// Latched before the closed check, as for a read.
+		store.latch(err)
 		if usable := store.AssertUsable(); usable != nil {
 			return usable
 		}
@@ -626,26 +750,239 @@ type stepDone struct {
 	nextID int64
 }
 
-// step is a commit's turn in the queue.
-func (store *ChordStore) step(writes []StagedWrite, fence CommitFence, ctx context.Context) (int64, error) {
-	if err := store.AssertUsable(); err != nil {
-		return 0, err
+// runGroup is a group's turn, run by its first commit's caller (the group takes no more commits from here): its commits
+// admitted together at its entry, one as its own step, several written in one backend transaction (grouped). It settles
+// every commit of the group and then lets the queue go on, whatever happened. A panic out of an Admit rejects that one
+// commit with the panic's value (admit). A panic out of another callback of the turn (Adopt, the metrics adapter) is an
+// unknown outcome: the store stops, the commits not settled yet fail `storage_failed`, and the panic goes on in the caller
+// that ran the turn. A panic out of the host's failed listener rejects the commits not settled with its value (Pi's `catch`
+// of the turn).
+func (store *ChordStore) runGroup(group *commitGroup) {
+	defer close(group.done)
+	store.mu.Lock()
+	if store.open == group {
+		store.open = nil
 	}
-	if !fence.Admit() {
-		return 0, data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonDiscarded, Message: "store: the commit's attempt ended"}, nil)
+	store.mu.Unlock()
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			// What the host's listener throws rejects the commits that are not settled, with that value, as in Pi; the store
+			// is stopped already.
+			if thrown, ok := recovered.(*listenerPanic); ok {
+				err := thrownError(thrown.value)
+				for _, queued := range group.commits {
+					queued.settle(0, err)
+				}
+				return
+			}
+			cause := fmt.Errorf("store: a commit step panicked: %v", recovered)
+			failed := storageFailed(cause)
+			for _, queued := range group.commits {
+				queued.settle(0, failed)
+			}
+			_ = store.fail(cause)
+			panic(recovered)
+		}
+	}()
+	if err := store.AssertUsable(); err != nil {
+		for _, queued := range group.commits {
+			queued.settle(0, err)
+		}
+		return
+	}
+	// A group of one is its commit's own step.
+	if len(group.commits) == 1 {
+		if queued := group.commits[0]; admit(queued) {
+			store.alone(queued)
+		}
+		return
+	}
+	// Admitted together at the group's entry, as one step admits its commit: each runs to its end from here.
+	admitted := make([]*queuedCommit, 0, len(group.commits))
+	for _, queued := range group.commits {
+		if admit(queued) {
+			admitted = append(admitted, queued)
+		}
+	}
+	switch len(admitted) {
+	case 0:
+	case 1:
+		store.alone(admitted[0])
+	default:
+		store.grouped(admitted)
+	}
+}
+
+// admit is the commit's admission at its step's entry: false once it settled `released` (its fence refused) or with what
+// its fence's Admit panicked with, as Pi rejects a commit whose admission throws and goes on with the others.
+func admit(queued *queuedCommit) (admitted bool) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			queued.settle(0, thrownError(recovered))
+			admitted = false
+		}
+	}()
+	if queued.fence.Admit() {
+		return true
+	}
+	queued.settle(0, discarded())
+	return false
+}
+
+// discarded is the `released` error of a commit its fence refused at the step's entry: its attempt ended.
+func discarded() *data.ChordError {
+	return data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonDiscarded, Message: "store: the commit's attempt ended"}, nil)
+}
+
+// alone runs an admitted commit as its own step and settles it.
+func (store *ChordStore) alone(queued *queuedCommit) {
+	seq, err := store.admittedStep(queued.writes, queued.fence, queued.ctx)
+	queued.settle(seq, err)
+}
+
+// eachAlone runs admitted commits one by one, each its own step, in order.
+func (store *ChordStore) eachAlone(admitted []*queuedCommit) {
+	for _, queued := range admitted {
+		store.alone(queued)
+	}
+}
+
+// groupWritten is a group as its transaction leaves it: each commit's step and the allocator's value after it, in order;
+// the whole.
+type groupWritten struct {
+	steps   []groupStep
+	written written
+}
+
+// groupStep is one commit's step of a group and the allocator's value after it.
+type groupStep struct {
+	step   *Step
+	nextID int64
+}
+
+// grouped writes admitted commits in one backend transaction, each on its own step and seq, the metadata once; after
+// `COMMIT`, memory, the counts and each commit's adoption in order. When a commit's own writes fail (a refusal, D4), the
+// transaction rolls back whole and every commit runs again alone, admitted already: only the ones whose own writes fail
+// are refused, as without grouping. Any other failure is an unknown outcome that stops the store.
+func (store *ChordStore) grouped(admitted []*queuedCommit) {
+	lastSeq := store.LastSeq()
+	// Near the end of the seq range, alone: the commits that still fit are stored, the first past it stops the store.
+	if lastSeq+int64(len(admitted)) > MaxSafeInteger {
+		store.eachAlone(admitted)
+		return
+	}
+	var thrown error
+	var done groupWritten
+	err := store.db.Transaction(func(executor sqlite.SqliteExecutor) error {
+		var err error
+		done, err = store.writeGroup(admitted, executor, lastSeq)
+		if err != nil {
+			thrown = err
+		}
+		return err
+	})
+	if err != nil {
+		if thrown != nil && sameError(err, thrown) {
+			store.eachAlone(admitted)
+			return
+		}
+		failed := store.failTurn(err)
+		for _, queued := range admitted {
+			queued.settle(0, failed)
+		}
+		return
+	}
+	store.adoptGroup(admitted, done)
+}
+
+// writeGroup is the admitted commits' writes in their backend transaction, each on its own step, then the metadata once.
+func (store *ChordStore) writeGroup(admitted []*queuedCommit, executor sqlite.SqliteExecutor, lastSeq int64) (groupWritten, error) {
+	progress := &writeProgress{lastSeq: lastSeq, nextID: store.ids.Value(), catalog: store.Tables()}
+	steps := make([]groupStep, 0, len(admitted))
+	for _, queued := range admitted {
+		// A grouped commit has writes: enlist never groups an empty one.
+		step, err := store.writeCommit(queued.writes, executor, progress)
+		if err != nil {
+			return groupWritten{}, err
+		}
+		steps = append(steps, groupStep{step: step, nextID: progress.nextID})
+	}
+	written, err := store.closeWrites(progress)
+	return groupWritten{steps: steps, written: written}, err
+}
+
+// adoptGroup is, after a group's `COMMIT`, commit by commit as after a lone step: memory follows it, it counts through its
+// own context (the metadata statement ran on the last one's step), it is adopted. Anything that fails here (an adoption)
+// is an unknown outcome: memory takes the whole group (it is durable), the store stops, and that commit and the ones
+// after it fail `storage_failed`, unadopted; a panic does the same, and goes on.
+func (store *ChordStore) adoptGroup(admitted []*queuedCommit, done groupWritten) {
+	index := 0
+	defer func() {
+		if index < len(admitted) {
+			store.takeWhole(done.written)
+		}
+	}()
+	for ; index < len(admitted); index++ {
+		queued, grouped := admitted[index], done.steps[index]
+		step := grouped.step
+		store.mu.Lock()
+		store.lastSeq = step.Seq
+		store.committedNextID = grouped.nextID
+		if len(step.Tables) > 0 {
+			store.catalog = withTables(store.catalog, step.Tables)
+		}
+		store.mu.Unlock()
+		if metrics := chordctx.Telemetry(queued.ctx).Metrics(); metrics != nil {
+			metrics.Counter("chord.store.commits", telemetry.InstrumentOptions{}).Add(1, nil)
+			metrics.Counter("chord.store.statements", telemetry.InstrumentOptions{}).Add(float64(step.Statements), nil)
+		}
+		if err := queued.fence.Adopt(step.Seq, step.Created); err != nil {
+			store.takeWhole(done.written)
+			failed := store.failTurn(err)
+			for _, rest := range admitted[index:] {
+				rest.settle(0, failed)
+			}
+			index = len(admitted)
+			return
+		}
+		queued.settle(step.Seq, nil)
+	}
+}
+
+// takeWhole is memory standing at the last commit of a transaction that is durable.
+func (store *ChordStore) takeWhole(done written) {
+	last := done.last
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	store.lastSeq = last.seq
+	store.committedNextID = last.nextID
+	if len(last.tables) > 0 {
+		store.catalog = withTables(store.catalog, last.tables)
+	}
+}
+
+// admittedStep is an admitted commit's step (Commit's semantics after admission; the fence only adopts): it runs to its
+// end, also when the store closes meanwhile (Close waits for it); only a backend failure before it, closing or not,
+// refuses it.
+func (store *ChordStore) admittedStep(writes []StagedWrite, fence CommitFence, ctx context.Context) (int64, error) {
+	store.mu.Lock()
+	failure := store.failure
+	store.mu.Unlock()
+	if failure != nil {
+		return 0, storageFailed(failure)
 	}
 	lastSeq := store.LastSeq()
 	if len(writes) == 0 {
 		// An empty commit takes no seq; a failing Adopt stops the store as for any commit.
 		if err := fence.Adopt(lastSeq, []int64{}); err != nil {
-			return 0, store.fail(err)
+			return 0, store.failTurn(err)
 		}
 		return lastSeq, nil
 	}
 	seq := lastSeq + 1
 	// Past the safe range seqs stop counting exactly (a later one would repeat): the store cannot number further.
 	if seq > MaxSafeInteger {
-		return 0, store.fail(errors.New("store: no seq past Number.MAX_SAFE_INTEGER"))
+		return 0, store.failTurn(errors.New("store: no seq past Number.MAX_SAFE_INTEGER"))
 	}
 	var thrown error
 	var done stepDone
@@ -667,7 +1004,7 @@ func (store *ChordStore) step(writes []StagedWrite, fence CommitFence, ctx conte
 		if thrown != nil && sameError(err, thrown) {
 			return 0, err
 		}
-		return 0, store.fail(err)
+		return 0, store.failTurn(err)
 	}
 	// COMMIT returned: the commit is durable, and memory follows.
 	store.mu.Lock()
@@ -682,7 +1019,7 @@ func (store *ChordStore) step(writes []StagedWrite, fence CommitFence, ctx conte
 		metrics.Counter("chord.store.statements", telemetry.InstrumentOptions{}).Add(float64(done.step.Statements), nil)
 	}
 	if err := fence.Adopt(seq, done.step.Created); err != nil {
-		return 0, store.fail(err)
+		return 0, store.failTurn(err)
 	}
 	return seq, nil
 }
@@ -727,7 +1064,7 @@ func (store *ChordStore) series(commits []SeriesCommit, receive func(index int, 
 		return SeriesResult{}, store.fail(errors.New("store: no seq past Number.MAX_SAFE_INTEGER"))
 	}
 	var thrown, refused error
-	var done series
+	var done written
 	err := store.db.Transaction(func(executor sqlite.SqliteExecutor) error {
 		var err error
 		done, refused, err = store.writeSeries(executor, commits, lastSeq)
@@ -767,31 +1104,31 @@ func (store *ChordStore) series(commits []SeriesCommit, receive func(index int, 
 
 // writeSeries is the commits of a series in its backend transaction, until one is refused (refused is its error): each
 // commit's check, then its writes; the metadata once, at the end. lastSeq is the store's.
-func (store *ChordStore) writeSeries(executor sqlite.SqliteExecutor, commits []SeriesCommit, lastSeq int64) (done series, refused error, err error) {
+func (store *ChordStore) writeSeries(executor sqlite.SqliteExecutor, commits []SeriesCommit, lastSeq int64) (done written, refused error, err error) {
 	calls := &watchedCalls{}
 	watched := &watchedExecutor{SqliteExecutor: executor, calls: calls}
-	progress := &seriesProgress{lastSeq: lastSeq, nextID: store.ids.Value(), catalog: store.Tables()}
+	progress := &writeProgress{lastSeq: lastSeq, nextID: store.ids.Value(), catalog: store.Tables()}
 	for _, commit := range commits {
 		refusal, err := store.checkCommit(commit, watched, calls, progress)
 		if err != nil {
-			return series{}, nil, err
+			return written{}, nil, err
 		}
 		if refusal != nil {
 			refused = refusal
 			break
 		}
-		if err := store.writeCommit(commit, executor, progress); err != nil {
-			return series{}, nil, err
+		if _, err := store.writeCommit(commit.Writes, executor, progress); err != nil {
+			return written{}, nil, err
 		}
 	}
-	done, err = store.closeSeries(progress)
+	done, err = store.closeWrites(progress)
 	return done, refused, err
 }
 
 // checkCommit runs commit's check on a step at the series' next seq whose backend calls are watched; it returns its
 // refusal, if it refused. A check one of whose backend calls failed returns that as err instead: a failure, not a
 // refusal.
-func (store *ChordStore) checkCommit(commit SeriesCommit, watched sqlite.SqliteExecutor, calls *watchedCalls, progress *seriesProgress) (refusal error, err error) {
+func (store *ChordStore) checkCommit(commit SeriesCommit, watched sqlite.SqliteExecutor, calls *watchedCalls, progress *writeProgress) (refusal error, err error) {
 	step := NewStep(watched, progress.nextSeq(), store.ids, progress.catalog)
 	calls.failed = false
 	checked := commit.Check(step)
@@ -805,18 +1142,19 @@ func (store *ChordStore) checkCommit(commit SeriesCommit, watched sqlite.SqliteE
 	return checked, nil
 }
 
-// writeCommit writes commit on its own step at the series' next seq (write), unwatched, and keeps the table records it
-// changed in a copy of the catalog, made only once one changed; a commit without writes takes no seq.
-func (store *ChordStore) writeCommit(commit SeriesCommit, executor sqlite.SqliteExecutor, progress *seriesProgress) error {
+// writeCommit writes a commit's writes on its own step at the transaction's next seq (write), unwatched, and keeps the
+// table records it changed in a copy of the catalog, made only once one changed; it returns the step. A commit without
+// writes takes no seq and no step (nil).
+func (store *ChordStore) writeCommit(writes []StagedWrite, executor sqlite.SqliteExecutor, progress *writeProgress) (*Step, error) {
 	seq := progress.nextSeq()
-	if len(commit.Writes) == 0 {
-		progress.stored = append(progress.stored, seriesStored{seq: seq - 1, created: []int64{}})
-		return nil
+	if len(writes) == 0 {
+		progress.stored = append(progress.stored, storedCommit{seq: seq - 1, created: []int64{}})
+		return nil, nil
 	}
 	step := NewStep(executor, seq, store.ids, progress.catalog)
-	nextID, err := store.write(step, commit.Writes)
+	nextID, err := store.write(step, writes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	progress.nextID = nextID
 	progress.statements += step.Statements
@@ -831,22 +1169,22 @@ func (store *ChordStore) writeCommit(commit SeriesCommit, executor sqlite.Sqlite
 		}
 	}
 	progress.last = step
-	progress.stored = append(progress.stored, seriesStored{seq: seq, created: step.Created})
-	return nil
+	progress.stored = append(progress.stored, storedCommit{seq: seq, created: step.Created})
+	return step, nil
 }
 
-// closeSeries ends the series' writes with the metadata, once, after its last commit that wrote; it returns what memory
-// takes.
-func (store *ChordStore) closeSeries(progress *seriesProgress) (series, error) {
+// closeWrites ends a transaction's writes with the metadata, once, after its last commit that wrote; it returns what
+// memory takes.
+func (store *ChordStore) closeWrites(progress *writeProgress) (written, error) {
 	if progress.last == nil {
-		return series{stored: progress.stored, statements: progress.statements}, nil
+		return written{stored: progress.stored, statements: progress.statements}, nil
 	}
 	if err := writeMeta(progress.last, progress.nextID); err != nil {
-		return series{}, err
+		return written{}, err
 	}
-	return series{
+	return written{
 		stored:     progress.stored,
-		last:       &seriesLast{seq: progress.last.Seq, nextID: progress.nextID, tables: progress.tables},
+		last:       &writtenLast{seq: progress.last.Seq, nextID: progress.nextID, tables: progress.tables},
 		written:    progress.last.Seq - progress.lastSeq,
 		statements: progress.statements + 1,
 	}, nil
@@ -1032,22 +1370,74 @@ func (store *ChordStore) AssertUsable() error {
 	return nil
 }
 
+// latch records err as the backend failure that stopped the store, once, whatever state the store is in: also while it
+// closes (its state stays closed), a commit admitted before it is refused.
+func (store *ChordStore) latch(err error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.failure == nil {
+		store.failure = err
+	}
+}
+
 // fail stops the store after err (once; its host is told once); it returns the error the caller fails with.
 func (store *ChordStore) fail(err error) *data.ChordError {
-	store.mu.Lock()
-	var failed func(error)
-	if store.state == storeOpen {
-		store.state = storeFailed
-		store.failure = err
-		if store.attachment != nil {
-			failed = store.attachment.Failed
-		}
-	}
-	store.mu.Unlock()
-	if failed != nil {
+	if failed := store.stop(err); failed != nil {
 		failed(err)
 	}
 	return storageFailed(err)
+}
+
+// failTurn is fail for a commit turn: a panic out of the host's listener is what the turn throws past its own handling,
+// so runGroup rejects its commits with it as Pi's `catch` of the turn does (see listenerPanic).
+func (store *ChordStore) failTurn(err error) *data.ChordError {
+	if failed := store.stop(err); failed != nil {
+		func() {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					panic(&listenerPanic{value: recovered})
+				}
+			}()
+			failed(err)
+		}()
+	}
+	return storageFailed(err)
+}
+
+// listenerPanic is what a panic out of the host's `failed` listener is while a commit turn runs.
+type listenerPanic struct{ value any }
+
+// stop records the store's failure and returns the listener to tell when this is the first.
+func (store *ChordStore) stop(err error) func(error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.failure == nil {
+		store.failure = err
+	}
+	if store.state != storeOpen {
+		return nil
+	}
+	store.state = storeFailed
+	if store.attachment == nil {
+		return nil
+	}
+	return store.attachment.Failed
+}
+
+// ThrownError is a value a callback panicked with, as the error a commit it rejected carries: the error itself when it
+// was one (errors.Is and errors.As reach it, and so does ==), else this.
+type ThrownError struct{ Value any }
+
+func (err *ThrownError) Error() string {
+	return fmt.Sprintf("store: a callback panicked: %v", err.Value)
+}
+
+// thrownError is the error a panicking callback's value stands for.
+func thrownError(recovered any) error {
+	if err, ok := recovered.(error); ok {
+		return err
+	}
+	return &ThrownError{Value: recovered}
 }
 
 // storageFailed is the `unavailable/storage_failed` error of a stopped store, its backend error as the cause.

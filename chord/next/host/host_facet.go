@@ -46,6 +46,9 @@ type ServeOptions struct {
 	// Linger is how long a live object with params stays live after its last reference is released (0 by default, nil):
 	// a reference within that time reuses it, with its documents and dependencies.
 	Linger *time.Duration
+	// Untraced makes the calls of the served type record no span (`serve`'s `untraced`): a span per call of the telemetry
+	// ingest would be telemetry about telemetry, written back with the next batch. Its metrics are still counted.
+	Untraced bool
 }
 
 // FacetSelf is what a facet's setup declares with besides the host: its contributions to registries (R21).

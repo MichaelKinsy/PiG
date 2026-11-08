@@ -40,4 +40,7 @@ func lockInUse(err error) bool {
 		errors.Is(err, windows.ERROR_PIPE_BUSY)
 }
 
-func lockRefused(err error) bool { return errors.Is(err, windows.WSAECONNREFUSED) }
+// lockRefused: nobody accepts on the path (a socket file nobody listens on, or a regular file there).
+func lockRefused(err error) bool {
+	return errors.Is(err, windows.WSAECONNREFUSED) || errors.Is(err, windows.WSAENOTSOCK)
+}

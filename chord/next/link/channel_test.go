@@ -222,12 +222,12 @@ func TestTheHeartbeat(t *testing.T) {
 	eachCodec(t, func(t *testing.T, codec link.Codec) {
 		t.Run("closes a link whose peer never sends hello after 30 s (race 30)", func(t *testing.T) {
 			setup := openChannel(t, codec, false, false)
-			setup.channel.Tick(29_000, 15_000, 30_000)
+			setup.channel.Tick(29_000, 0, 15_000, 30_000)
 			transported(setup.ends, setup.peerEnd)
 			if setup.peer.isClosed() {
 				t.Fatal("closed at 29 s")
 			}
-			setup.channel.Tick(30_000, 15_000, 30_000)
+			setup.channel.Tick(30_000, 0, 15_000, 30_000)
 			transported(setup.ends, setup.peerEnd)
 			if !setup.peer.isClosed() || !setup.handler.isClosed() {
 				t.Fatal("not closed at 30 s")
@@ -236,13 +236,13 @@ func TestTheHeartbeat(t *testing.T) {
 
 		t.Run("pings a silent open link after 15 s once, and closes it after 30 s without an answer", func(t *testing.T) {
 			setup := openChannel(t, codec, false, true)
-			setup.channel.Tick(13_500, 15_000, 30_000)
+			setup.channel.Tick(13_500, 0, 15_000, 30_000)
 			transported(setup.ends, setup.peerEnd)
 			if slices.Contains(setup.peer.kinds(), "ping") {
 				t.Fatal("pinged at 13.5 s")
 			}
-			setup.channel.Tick(16_500, 15_000, 30_000)
-			setup.channel.Tick(18_000, 15_000, 30_000)
+			setup.channel.Tick(16_500, 0, 15_000, 30_000)
+			setup.channel.Tick(18_000, 0, 15_000, 30_000)
 			transported(setup.ends, setup.peerEnd)
 			pings := 0
 			for _, kind := range setup.peer.kinds() {
@@ -253,10 +253,45 @@ func TestTheHeartbeat(t *testing.T) {
 			if pings != 1 {
 				t.Fatalf("pings = %d", pings)
 			}
-			setup.channel.Tick(31_500, 15_000, 30_000)
+			setup.channel.Tick(31_500, 0, 15_000, 30_000)
 			transported(setup.ends, setup.peerEnd)
 			if !setup.peer.isClosed() {
 				t.Fatal("not closed after 30 s of silence")
+			}
+		})
+
+		t.Run("counts no pause of this process as silence (a sleeping laptop): pings at once, closes 15 s later unanswered", func(t *testing.T) {
+			setup := openChannel(t, codec, false, true)
+			setup.channel.Tick(3_000, 0, 15_000, 30_000)
+			// The process sleeps 10 minutes: no timer runs meanwhile, the clock jumps.
+			setup.channel.Tick(604_500, 600_000, 15_000, 30_000)
+			transported(setup.ends, setup.peerEnd)
+			if setup.peer.isClosed() || !slices.Equal(setup.peer.kinds(), []string{"hello", "ping"}) {
+				t.Fatalf("after the pause: kinds = %v, closed = %v", setup.peer.kinds(), setup.peer.isClosed())
+			}
+			setup.channel.Tick(618_000, 0, 15_000, 30_000)
+			transported(setup.ends, setup.peerEnd)
+			if setup.peer.isClosed() {
+				t.Fatal("closed 13.5 s after the pause")
+			}
+			setup.channel.Tick(619_500, 0, 15_000, 30_000)
+			transported(setup.ends, setup.peerEnd)
+			if !setup.peer.isClosed() {
+				t.Fatal("not closed 15 s after the pause")
+			}
+		})
+
+		t.Run("keeps a link through a pause when its peer answers the ping", func(t *testing.T) {
+			setup := openChannel(t, codec, false, true)
+			setup.channel.Tick(20_000, 0, 15_000, 30_000)
+			setup.channel.Tick(621_500, 600_000, 15_000, 30_000)
+			setup.clock.set(621_500)
+			setup.peer.send(&link.PongMessage{})
+			transported(setup.ends, setup.peerEnd)
+			setup.channel.Tick(646_500, 0, 15_000, 30_000)
+			transported(setup.ends, setup.peerEnd)
+			if setup.peer.isClosed() {
+				t.Fatal("closed although the peer answered")
 			}
 		})
 
@@ -266,7 +301,7 @@ func TestTheHeartbeat(t *testing.T) {
 				setup.clock.set(second * 1000)
 				setup.peer.send(&link.ReleaseMessage{Hold: 99})
 				transported(setup.ends, setup.peerEnd)
-				setup.channel.Tick(second*1000+4_999, 15_000, 30_000)
+				setup.channel.Tick(second*1000+4_999, 0, 15_000, 30_000)
 			}
 			if kinds := setup.peer.kinds(); !slices.Equal(kinds, []string{"hello"}) || setup.peer.isClosed() {
 				t.Fatalf("kinds = %v, closed = %v", kinds, setup.peer.isClosed())
@@ -279,6 +314,25 @@ func TestTheHeartbeat(t *testing.T) {
 			transported(setup.ends, setup.peerEnd)
 			if kinds := setup.peer.kinds(); !slices.Equal(kinds, []string{"hello", "pong"}) {
 				t.Fatalf("kinds = %v", kinds)
+			}
+		})
+
+		t.Run("answers each ping with a pong at once; two sides pinging at once both answer", func(t *testing.T) {
+			setup := openChannel(t, codec, false, true)
+			setup.channel.Tick(16_500, 0, 15_000, 30_000)
+			setup.clock.set(16_500)
+			// The peer pinged at the same moment: the channel answers it while its own ping is out.
+			setup.peer.send(&link.PingMessage{})
+			transported(setup.ends, setup.peerEnd)
+			if kinds := setup.peer.kinds(); !slices.Equal(kinds, []string{"hello", "ping", "pong"}) {
+				t.Fatalf("kinds = %v", kinds)
+			}
+			setup.peer.send(&link.PongMessage{})
+			transported(setup.ends, setup.peerEnd)
+			setup.channel.Tick(40_000, 0, 15_000, 30_000)
+			transported(setup.ends, setup.peerEnd)
+			if setup.peer.isClosed() {
+				t.Fatal("closed although both pings were answered")
 			}
 		})
 	})

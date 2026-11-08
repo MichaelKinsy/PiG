@@ -121,13 +121,13 @@ func TestExample34Versions(t *testing.T) {
 	scopeEventually(t, "the old tab's mapped diff", func() bool {
 		return reflect.DeepEqual(exText(exValue(t, old, "notes")), `["milk","eggs"]`)
 	})
-	// "tab frame:" of the example: the tab's watch gets the rebound snapshot, then the mapped diff, "diffs, never the
-	// whole list" (Pi prints exactly these two ops lists).
-	scopeEventually(t, "the tab's two frames", func() bool { return len(tabFrames.Items()) >= 2 })
+	// "tab frame:" of the example: the restart's fresh bound carries the same mapped list, so the tab's watch gets only the
+	// mapped diff, "diffs, never the whole list" (Pi prints exactly this one ops list).
+	scopeEventually(t, "the tab's frame", func() bool { return len(tabFrames.Items()) >= 1 })
 	turn(tab)
 	tabCalls := tabFrames.Items()
-	if len(tabCalls) != 2 {
-		t.Fatalf("tab calls = %+v, want two value calls", tabCalls)
+	if len(tabCalls) != 1 {
+		t.Fatalf("tab calls = %+v, want one value call", tabCalls)
 	}
 	tabOps := make([]nexttest.Frame[delta.JsonValue], len(tabCalls))
 	for i, call := range tabCalls {
@@ -137,7 +137,6 @@ func TestExample34Versions(t *testing.T) {
 		tabOps[i] = nexttest.Frame[delta.JsonValue]{Value: call.Value, Ops: call.Ops}
 	}
 	wantOps := []any{
-		[]any{[]any{"r", []any{"milk"}}},
 		[]any{[]any{"p", []any{}, 1.0, 0.0, []any{"eggs"}}},
 	}
 	if !nexttest.JSONEqual(opsOf(tabOps), wantOps) {
@@ -181,6 +180,10 @@ func TestExample34Versions(t *testing.T) {
 						return jsonObject("file", path+".out"), nil
 					},
 					Finish: func(outcome Outcome, _ documents.Tx) error {
+						if outcome.Kind == OutcomeFailed {
+							finishes.add(fmt.Sprintf("finish on %s: %s args %s error %s/%s", code, outcome.Kind, exText(outcome.Args), outcome.Error.Kind, outcome.Error.Reason))
+							return nil
+						}
 						finishes.add(fmt.Sprintf("finish on %s: %s args %s result %s", code, outcome.Kind, exText(outcome.Args), exText(outcome.Result)))
 						return nil
 					},
@@ -207,27 +210,18 @@ func TestExample34Versions(t *testing.T) {
 	exCall(t, exportsRef, "start", jsonObject("path", "notes"))
 	_, err = worker.Reload([]HostFacet{{Name: "@example/exports", Facet: exportsPlugin("v2 code", exportV2)}}, background, ReloadOptions{})
 	must(t, err)
-	scopeEventually(t, "running shows the v1 run mapped", func() bool {
-		running, _ := exValue(t, exportsRef, "running").([]any)
-		if len(running) != 1 {
-			t.Logf("running = %s", exText(running))
-			return false
-		}
-		entry, _ := running[0].(*delta.JsonObject)
-		t.Logf("running entry = %s", exText(entry))
-		return entry != nil && exText(entry.Value("args")) == `{"path":"notes","format":"md"}`
-	})
+	// Pi prints the old attempt's listing of the run here (the v1 run, its args as v1 knew them); whether the restart sealed
+	// it already is a race of the loop, so the example's output is asserted from the finish on.
 	close(release)
 	scopeEventually(t, "running is empty again", func() bool {
 		t.Logf("running = %s, finishes = %v, state = %s", exText(exValue(t, exportsRef, "running")), finishes.all(), exStateNow(t, exportsRef))
 		return exText(exValue(t, exportsRef, "running")) == "[]"
 	})
-	// A handed-over job's invocations finish on the new attempt's code, their outcome's result mapped forwards (Pi
-	// `jobs/job.ts`, "A handed-over job's invocations finish on its code; their outcomes go to the new attempt's job"; the
-	// example prints only the v2 line).
+	// A restart cuts an in-memory run at its seal: its finish runs on the new code, its args mapped forwards once (Pi's
+	// example prints the v2 line: `failed`, `aborted` by `reload`).
 	scopeEventually(t, "the finish on the new code", func() bool { return len(finishes.all()) >= 1 })
 	turn(worker)
-	wantFinish := []string{`finish on v2 code: done args {"path":"notes","format":"md"} result {"file":"notes.md"}`}
+	wantFinish := []string{`finish on v2 code: failed args {"path":"notes","format":"md"} error aborted/reload`}
 	if got := finishes.all(); !reflect.DeepEqual(got, wantFinish) {
 		t.Fatalf("finishes = %q, want %q", got, wantFinish)
 	}
