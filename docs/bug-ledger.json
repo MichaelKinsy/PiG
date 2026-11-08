@@ -166,34 +166,21 @@
       "title": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248)",
       "symptom": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).",
       "rootCause": "",
-      "rootCauseSource": "divergence record",
+      "rootCauseSource": "",
       "userImpact": "Wrong display",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D248",
-      "removeWhen": "the pin reaches a Pi release containing 2cfab7c26.",
+      "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).",
       "origin": "release note",
       "commits": [
         {
-          "hash": "00d787634a",
-          "date": "2026-11-05"
-        },
-        {
           "hash": "01a63b933a",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "5b637b1097",
           "date": "2026-11-05"
         }
       ],
       "tests": [
         "internal/codingagent/selector_focus_test.go::TestEditorSlotTreeSelectorTakesAndReturnsFocus",
-        "internal/codingagent/tree_selector_contract_test.go::TestTreeListHandleInputContractsMatchPi",
-        "internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi",
-        "internal/codingagent/tree_selector_render_contract_test.go::TestTreeLabelInputRenderMatchesPi",
         "tui/tree_select_empty_state_test.go::TestTreeSelectSearchCursor"
       ]
     },
@@ -52645,11 +52632,6 @@
       "id": "D245",
       "title": "The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and…",
       "entry": "BF-3b696c8"
-    },
-    {
-      "id": "D248",
-      "title": "The /tree search line draws a cursor while the selector is focused",
-      "entry": "BF-01a63b9"
     },
     {
       "id": "D249",
