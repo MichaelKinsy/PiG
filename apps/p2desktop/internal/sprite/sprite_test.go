@@ -95,37 +95,28 @@ func waitFor(t *testing.T, ok func() bool) {
 	}
 }
 
-// TestBannerIsTheWebsBanner draws every sprite's banner, on both pages, from the SVG the branded web UI serves
-// (apps/p2/brand/sprite.RenderBanner) and requires the same pixels, transparent where the SVG paints nothing.
-func TestBannerIsTheWebsBanner(t *testing.T) {
+// TestGridIsTheWebsHead draws every sprite's head from the SVG the branded web UI serves (apps/p2/brand/sprite.Render) and
+// requires the same pixels, transparent where the SVG paints nothing.
+func TestGridIsTheWebsHead(t *testing.T) {
 	rect := regexp.MustCompile(`<rect x="(\d+)" y="(\d+)" width="(\d+)" height="1" fill="(#[0-9a-fA-F]{6})"`)
-	for _, dark := range []bool{true, false} {
-		theme := websprite.Light
-		if dark {
-			theme = websprite.Dark
+	for _, v := range Catalogue() {
+		svg := string(websprite.Render(v))
+		want := image.NewNRGBA(image.Rect(0, 0, piglogin.HeadWidth, piglogin.HeadHeight))
+		for _, m := range rect.FindAllStringSubmatch(svg, -1) {
+			x, _ := strconv.Atoi(m[1])
+			y, _ := strconv.Atoi(m[2])
+			w, _ := strconv.Atoi(m[3])
+			for i := range w {
+				want.SetNRGBA(x+i, y, parse(m[4]))
+			}
 		}
-		for _, v := range Catalogue() {
-			svg := string(websprite.RenderBanner(v, theme))
-			want := image.NewNRGBA(image.Rect(0, 0, BannerWidth, BannerHeight))
-			for _, m := range rect.FindAllStringSubmatch(svg, -1) {
-				x, _ := strconv.Atoi(m[1])
-				y, _ := strconv.Atoi(m[2])
-				w, _ := strconv.Atoi(m[3])
-				for i := range w {
-					want.SetNRGBA(x+i, y, parse(m[4]))
-				}
-			}
-			got := Banner(v, dark, 1)
-			if got.Bounds() != want.Bounds() {
-				t.Fatalf("%s: bounds %v want %v", v.ID, got.Bounds(), want.Bounds())
-			}
-			for i := range got.Pix {
-				if got.Pix[i] != want.Pix[i] {
-					t.Fatalf("%s (dark %v): banner differs from the web's at byte %d", v.ID, dark, i)
-				}
-			}
-			if s := Banner(v, dark, 6); s.Bounds().Dx() != 324 || s.Bounds().Dy() != 108 {
-				t.Fatalf("%s: 6x banner is %v, want 324x108", v.ID, s.Bounds())
+		got := Grid(v)
+		if got.Bounds() != want.Bounds() {
+			t.Fatalf("%s: bounds %v want %v", v.ID, got.Bounds(), want.Bounds())
+		}
+		for i := range got.Pix {
+			if got.Pix[i] != want.Pix[i] {
+				t.Fatalf("%s: head differs from the web's at byte %d", v.ID, i)
 			}
 		}
 	}

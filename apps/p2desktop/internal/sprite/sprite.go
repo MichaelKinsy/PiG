@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	websprite "github.com/MichaelKinsy/PiG/apps/p2/brand/sprite"
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 )
@@ -52,29 +50,6 @@ func Grid(v Variant) *image.NRGBA {
 // Scaled is Grid with every cell scale pixels square, so it draws crisp at that size.
 func Scaled(v Variant, scale int) *image.NRGBA {
 	return upscale(Grid(v), scale)
-}
-
-// The banner is the empty state's head, the web's login.svg grid (apps/p2/brand/sprite.BannerCells, which both clients call, so
-// they draw the same pixels): the pig, a gap, the "PiG." wordmark, each inside a margin, on no plate (transparent outside the
-// painted cells, as the terminal's header). The wordmark's colours are darkened to 3:1 on a light page. BannerWidth by
-// BannerHeight cells.
-const (
-	BannerWidth  = 2 + extension.LoginMascotWidth + 2 + extension.LoginHeroWidth + 2
-	BannerHeight = 2 + extension.LoginMascotHeight + 2
-)
-
-// Banner is v's banner for a page (dark or light) with every cell scale pixels square (6 is the empty state's size, 5 under
-// 560 px wide).
-func Banner(v Variant, dark bool, scale int) *image.NRGBA {
-	theme := websprite.Light
-	if dark {
-		theme = websprite.Dark
-	}
-	cells := image.NewNRGBA(image.Rect(0, 0, BannerWidth, BannerHeight))
-	for _, cell := range websprite.BannerCells(v, websprite.Page(theme)) {
-		cells.SetNRGBA(cell.X, cell.Y, color.NRGBA{R: cell.Color.R, G: cell.Color.G, B: cell.Color.B, A: cell.Color.A})
-	}
-	return upscale(cells, scale)
 }
 
 func upscale(grid *image.NRGBA, scale int) *image.NRGBA {

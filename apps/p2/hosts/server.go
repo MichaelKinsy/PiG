@@ -634,7 +634,7 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 		return nil
 	}
 	// The chosen PiG sprite, a public file like the icons (see SpriteAssetPath).
-	if s.sprite != nil && (path == SpriteAssetPath || path == LoginAssetPath) && get && !ForeignBrowserRequest(request) {
+	if s.sprite != nil && path == SpriteAssetPath && get && !ForeignBrowserRequest(request) {
 		s.sprite.serveAsset(response, request)
 		return nil
 	}
