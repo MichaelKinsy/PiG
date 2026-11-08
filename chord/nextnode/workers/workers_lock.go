@@ -93,6 +93,7 @@ func clearStaleLockAt(location lockLocation, ctx context.Context) (bool, error) 
 // nobodyAccepts is whether the path of location exists and nobody accepts on it: the connect's errors that mean a socket
 // file nobody listens on, or no socket there (`NOBODY_ACCEPTS`).
 func nobodyAccepts(location lockLocation) bool {
+	//portlint:allow ctxbackground Pi's `nobodyAccepts` takes no signal (lock.ts): a connect to a local socket file answers at once (accepted or refused), so there is nothing to cancel
 	conn, err := platformDialLock(location, context.Background())
 	if err != nil {
 		return lockRefused(err)
