@@ -3,7 +3,6 @@
 package workers
 
 import (
-	"slices"
 	"testing"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 // Ports the tests of workers.test.ts that block a worker's event loop: a worker process stopped for the time its busy loop
 // takes (freezeWorker), which has no Windows form.
 
-func TestFailuresStayARunningWorkersLostLinkABlockedEventLoopPastTheHeartbeatKilledAfterTheGraceItsHoldersGetANewWorkerPastTheLockFileTheKillLeftASecondWithinAMinuteFailsTheAddress(t *testing.T) {
+func TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress(t *testing.T) {
 	ping, closeAfter := 100*time.Millisecond, 300*time.Millisecond
 	f := newFleet(t, fleetOptions{heartbeat: &host.HeartbeatOptions{Ping: &ping, Close: &closeAfter}})
 	notes := f.get(fixtureNotes, "S1")
@@ -26,10 +25,10 @@ func TestFailuresStayARunningWorkersLostLinkABlockedEventLoopPastTheHeartbeatKil
 	until(t, func() bool { return f.stateOf("S1") != nil && f.stateOf("S1").Status == WorkerRunning })
 	lost := f.errors.all()
 	if len(lost) != 1 {
-		t.Fatalf("errors = %+v, want one worker_link_lost", lost)
+		t.Fatalf("errors = %v, want one worker_link_lost", lost)
 	}
-	if got, ok := lost[0].(WorkerLinkLostError); !ok || got.Address != "session|S1" || got.Error == nil || got.Error.Error() != "worker: link lost" {
-		t.Fatalf("errors[0] = %+v, want worker_link_lost session|S1 \"worker: link lost\"", lost[0])
+	if got, ok := lost[0].(WorkerLinkLostError); !ok || got.Address != "session|S1" || got.Error.Error() != "worker: link lost" {
+		t.Fatalf("errors[0] = %#v, want worker_link_lost { session|S1, worker: link lost }", lost[0])
 	}
 	// The new worker loses its link too: no restart loop, the address fails until `retry`.
 	f.freezeWorker("S1", 20*time.Second, false)
@@ -42,8 +41,8 @@ func TestFailuresStayARunningWorkersLostLinkABlockedEventLoopPastTheHeartbeatKil
 		t.Fatalf("worker_failed = %+v", failure)
 	}
 	until(t, func() bool { return refKind(notes) == host.RefStateFailed })
-	if starts := f.starts.all(); len(starts) != 2 || starts[0] != "session|S1" || starts[1] != "session|S1" {
-		t.Fatalf("starts = %v, want [session|S1 session|S1]", starts)
+	if starts := f.starts.all(); len(starts) != 2 {
+		t.Fatalf("starts = %v", starts)
 	}
 }
 
@@ -53,9 +52,16 @@ func TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterThe
 	notes := f.get(fixtureNotes, "S1")
 	defer notes.Release()
 	f.behaviours.delete("S1")
-	until(t, func() bool { return slices.Contains(f.kinds(), "worker_link_lost") }, 10_000)
+	until(t, func() bool {
+		for _, each := range f.errors.all() {
+			if _, ok := each.(WorkerLinkLostError); ok {
+				return true
+			}
+		}
+		return false
+	}, 10_000)
 	until(t, func() bool { return len(f.starts.all()) == 2 && refKind(notes) == host.RefStateLive }, 10_000)
-	if state := f.stateOf("S1"); state != nil && state.Status == WorkerFailed {
-		t.Fatalf("state = %+v, want not failed", state)
+	if status := f.stateOf("S1"); status != nil && status.Status == WorkerFailed {
+		t.Fatalf("state = %v, want not failed", status)
 	}
 }

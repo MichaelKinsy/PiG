@@ -63,8 +63,6 @@ Every active divergence must have:
 
 - D173: Tool search matches Chinese, Japanese and Korean queries (Pi #10816). Retired by Pi 79006f06 (#11037, fixes #10816), which D217 carries: Pi's `tokenize` (`packages/coding-agent/src/extensions/tool-search/tool.ts`, `packages/durable/src/search.ts`) NFC-normalizes the text, reduces it to letters, marks and numbers and splits it with `Intl.Segmenter` at word granularity, so words in every script match and `搜索记录` is split into words by ICU's dictionary. `internal/searchtext.Tokenize` does the same with `internal/wordsegmenter` (ICU 78.3 word rules and the CJK, Thai, Lao, Khmer and Burmese dictionaries, which the editor already embeds) and `golang.org/x/text/unicode/norm`; PiG no longer makes each character a term. `TestTokenizeMatchesPiOnEveryScriptClass` (`coding/extension/builtin/toolsearch`, `durable/internal/search`) compares 4,854 Pi 79006f06 tokenizations of every script class with no difference, and `TestTokenizeSegmentsUnicodeWords` and `TestBm25RankerMatchesUnicodeQueries` port Pi's tests. A Piglet Binary built with `pig_strip_word_dictionaries` has no dictionary, so it keeps a run of Han, Hiragana, Katakana, Thai, Lao, Khmer or Myanmar text as one term (D92, `TestTokenizeKeepsDictionaryScriptRunsWholeWithoutDictionaries`). The ID remains reserved.
 
-- D179: No Windows host manager (ForkDriver and ProcessChannel Unix-only). Retired before release: the Windows port (`chord/host/manager_fork_windows.go`, `manager_pipe_windows.go`, `manager_ipc_frames.go`) replaces the fallback, so `ForkDriver` and `ProcessChannel` exist on Unix and Windows and `NewNodeLoader` (D178) works on both. Native Windows evidence: all 27 chord/host C2 tests pass x1 and x5 on a Windows x64 runner with Node 24.22.0 (2026-10-14, PiG c0adb3e3cf), including real Node IPC (`TestProcessChannelIsNodesIPCChannel`) and every child-host `HostManager` case. The ID remains reserved.
-
 - D188: Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place. Retired by Pi 1.4.0 (npm `@earendil-works/pi-durable` 1.4.0, tag `v1.4.0` at `4a080252`, 2026-10-21), which writes SQLite schema version 2: Pi commit `f75b3240` (feat(durable): durable sleeping state replaces runtime.sleep, `packages/durable/src/storage/sqlite/migrations.ts:91-116`) adds the `sleeping` task status as migration 2, and the pin `1.4.0+b3a29f11` carries it unchanged. A user going back to a released Pi can open an upgraded store, so the copy PiG wrote to `<path>.schema-1.bak` is no longer needed. `durable/internal/schemabackup` and the two call-site markers are gone; `driver.OpenHarness` and `node.OpenNodeSqliteStorage` upgrade a version 1 store in place, as Pi does (`TestOpenHarnessUpgradesAVersionOneStoreInPlace`, `TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace`; Pi's migration test is twinned by `durable/storage/sqlite/sqlite_migrations_test.go`). Pi releases before 1.4.0 still refuse a version 2 store; a user who needs one keeps their own copy.
 
 - D217: Pi bug fixes after the pin that next carried (Pi e7a0df27..e3da248e). Retired by pin 2c8d1feb, which is at or after every carried Pi commit (`86dc686c` through `e3da248e`); its fixes are Pi behavior, and the markers, oracle hooks and allowances are gone.
@@ -2216,24 +2214,6 @@ Call-site markers: `durable/harness/generation.go` (`createToolTask` in the gene
 Evidence: `TestToolRound` "runs a round in parallel by default and sequentially when configured or required by a tool" (`durable/harness/harness_tools_test.go`) ports `harness-tools.test.ts:263` with Pi's inputs and checks that the first two events are both starts, in either order, and that the next model request carries the tool results `c1` then `c2`; it fails when the round runs sequentially or the results are reordered.
 
 Remove when: never, unless Pi specifies the start order of the calls of a parallel round.
-
-SCRUTINIZED:approved
-
-## D178 Facet modules load in an isolated Node child, not in the host process
-
-What: Pi 1.4.0's `nodeLoader` (`packages/chord/src/loader.ts`) imports facet modules into the host's own Node process. PiG's `NodeLoader` / `NewNodeLoader(...).Load` (`chord/host/loader.go`) runs them in an isolated Node child, one per load, over `ForkDriver` and a `HostManager`; the Go host serves the contracts the child's facets serve and forwards each method call to the child. Three observable limits follow: (1) a facet cannot reach the Go host: the contracts it serves, `ctx`, and the principal a record is made for; (2) a `ChordError` a method throws crosses with its code, reason and message only (details, cause and retryable are not carried; retryable is recomputed from the code); (3) contracts with state or opaque members, several variants, `accepts` adapters or state migrations are refused at load with a `TypeError`.
-
-Why: a Go host has no in-process JavaScript module loader, and PiG already runs Node for extensions. The owner chose an isolated-Node loader over designing the loader out. Process isolation replaces Pi's reload query, root set and `registerHooks` hook: every load is a fresh process, so a reload's copies are fresh and the facets of one load share one module graph. It also ends Pi's leak of replaced module copies (`TODO(loader)`): a child stops at `Close` or once nothing refers to its facets.
-
-Scope: facet modules loaded through `chord/host` `NodeLoader`. Unchanged: facet naming by module URL, module order, Pi's `TypeError` message for a default export that is not a facet, `loader.test.ts` `:8` and `:17`, and the methods of method-only contracts, their results and their errors' codes and messages.
-
-Owner decision: 2026-10-13T19:44Z, chord decision C1(b): "port it as an isolated-Node facet loader over the already-ported ForkDriver" (`handoffs/owner-chord-decisions.md`); number assigned by the tern lead 2026-10-14.
-
-Call-site markers: `chord/host/loader.go` (`NewNodeLoader`, `NodeLoaderImpl.Load`, the factory's forwarding) and `chord/host/loader_child.mjs` (`checkServed`, the refusal points).
-
-Evidence: `TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelativeImports` ports `loader.test.ts:8` with Pi's fixture inputs; `TestNodeLoaderRefusesFacetsThatServeNonMethodMembers` pins limit (3); `TestNodeLoaderCarriesErrorsAndAbortsAcrossTheProcessBoundary` pins the error shape of limit (2) and the abort.
-
-Remove when: a Go host gains an in-process JavaScript module loader, or Pi moves `nodeLoader` out of process.
 
 SCRUTINIZED:approved
 

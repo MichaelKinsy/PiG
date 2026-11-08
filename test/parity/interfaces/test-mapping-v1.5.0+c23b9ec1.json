@@ -1938,7 +1938,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:c62752eb8e2a5410af29cb656ec793cf8f2a93a4b0e84a06aae9c673b4fcfcab",
       "evidence": [
-        "chord/host/boundary_upstream_test.go#TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord"
+        "chord/boundary_upstream_test.go#TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord"
       ],
       "rationale": "The one case, with pi-telemetry (the dependency of Context.telemetry) allowed as upstream 1402973a does: the Go test accepted the telemetry package as the only Pi-package dependency of chord and rejected any other. Pi v1.5.0 adds pi-schema to the allowed Pi packages (a leaf, decision \"A schema package beneath pi-ai and Chord\"): the Go test now accepts the schema package (and its ecmaregex helper) beside telemetry and rejects any other."
     },

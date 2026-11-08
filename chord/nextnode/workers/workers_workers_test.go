@@ -778,7 +778,7 @@ func TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanB
 func TestStaleLockFilesAStartClearsTheLockFileAKilledWorkerOfAnEarlierServerLeftTheWorkerRuns(t *testing.T) {
 	f := newFleet(t, fleetOptions{})
 	// What an earlier server's worker SIGKILLed while holding the lock leaves (nothing on Linux: an abstract socket).
-	location, err := lockLocationOf("chord-test:" + f.root + ":" + session("S1").Key)
+	location, err := lockAddress("chord-test:" + f.root + ":" + session("S1").Key)
 	if err != nil {
 		t.Fatal(err)
 	}
