@@ -107,9 +107,11 @@ func Unmarshal(data []byte, v any) error {
 	// before discovering a JSON syntax error.
 	d := decodeStatePool.Get().(*decodeState)
 	defer releaseDecodeState(d)
-	err := checkValid(data, &d.scan)
-	if err != nil {
-		return err
+	if !validFast(data) {
+		// (Not valid by the fast check: the scanner decides, and words the error.)
+		if err := checkValid(data, &d.scan); err != nil {
+			return err
+		}
 	}
 
 	d.init(data)
@@ -316,6 +318,17 @@ func (d *decodeState) addErrorContext(err error) error {
 func (d *decodeState) skip() {
 	s, data, i := &d.scan, d.data, d.off
 	depth := len(s.parseState)
+	if end := skipContainer(data, i); end >= 0 {
+		// The text is valid (every caller has checked it or trusts it), so the closing byte is found by counting brackets and passing strings
+		// whole. The scanner is left as the per-byte steps would leave it: the closing byte ends a value inside its container.
+		if s.parseState[depth-1] == parseObjectKey {
+			s.parseState[depth-1] = parseObjectValue
+		}
+		s.step = stateEndValue
+		d.opcode = s.step(s, data[end])
+		d.off = end + 1
+		return
+	}
 	for {
 		op := s.step(s, data[i])
 		i++
@@ -325,6 +338,37 @@ func (d *decodeState) skip() {
 			return
 		}
 	}
+}
+
+// skipContainer returns the index of the bracket that closes the object or array whose opening bracket precedes data[i], or -1 when
+// the text ends first. It reads strings as a run to the closing quote, passing escapes, and so is only right for valid JSON.
+func skipContainer(data []byte, i int) int {
+	open := 1
+	for i < len(data) {
+		switch data[i] {
+		case '"':
+			for i++; ; {
+				if i = fvStop(data, i); i >= len(data) {
+					return -1
+				}
+				if c := data[i]; c == '"' {
+					break
+				} else if c == '\\' {
+					i += 2
+				} else {
+					i++
+				}
+			}
+		case '{', '[':
+			open++
+		case '}', ']':
+			if open--; open == 0 {
+				return i
+			}
+		}
+		i++
+	}
+	return -1
 }
 
 // scanNext processes the byte at d.data[d.off].

@@ -19,5 +19,6 @@ Other local changes (lw-json):
 - An eight-byte scan in `appendString`.
 - A plain-slice `encodeState` buffer in place of the embedded `bytes.Buffer`, with pooled buffers capped at 64 KiB.
 - The verify mode (`verify_off.go`/`verify_on.go`, build tag `pigjson_verify`).
+- `Unmarshal` checks validity first with `validFast` (`fastvalid.go`, a table-driven single pass that is a copy of `internal/jsonvalid`) and asks the scanner's `checkValid` only for text the fast pass rejects, which words the error; `decodeState.skip` finds the end of a container by counting brackets and passing strings whole (`skipContainer`) instead of stepping the scanner per byte, and leaves the scanner as the per-byte steps would. Both are held to the scanner by differential tests (`fastvalid_test.go`).
 
 When updating the toolchain, compare these files with that exact Go source tree and retain the string regression suite. Do not replace the codec with placeholder characters or a second wire shape. SDK staging includes this subpackage and its license.

@@ -1,0 +1,3 @@
+### Changed
+
+- Loading a long session is faster, with the same decoded entries: the JSON reader checks validity in one table-driven pass and finds the end of a nested value without stepping a state machine over every byte, and session lines written with spaces between tokens (by a tool that is not Pi or PiG) no longer take the full canonical rewrite when the spacing is all that differs. Decoding the 4,000 entries of Pi-Bolt's `long_transcript` session takes about 0.17 s of CPU instead of 0.62 s, and the benchmark of one record decode (`BenchmarkDecodeSessionEntryHarnessShape`) takes 37% of the time for compact lines and 29% for spaced ones.
