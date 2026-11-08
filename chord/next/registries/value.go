@@ -171,6 +171,9 @@ func (v *RegistryValueSource) Wait(waiter RegistryWaiter) (release func()) {
 		v.waiters = slices.Concat(v.waiters[:at], v.waiters[at+1:])
 		if len(v.waiters) == 0 {
 			v.told = nil
+			if v.record != nil {
+				v.record.clockStop(v)
+			}
 		}
 	}
 }
@@ -189,6 +192,10 @@ func (v *RegistryValueSource) Close() {
 	last, err := v.start()
 	if err != nil {
 		last = state.NativeStart[any]{Kind: state.StartFailed, Error: err}
+	}
+	// After the last start, which a waiter put on the clock again.
+	if v.record != nil {
+		v.record.clockStop(v)
 	}
 	v.record, v.last = nil, last
 	clear(v.readers)
@@ -224,13 +231,13 @@ func (v *RegistryValueSource) start() (state.NativeStart[any], error) {
 		return state.NativeStart[any]{}, err
 	}
 	if len(v.waiters) > 0 {
-		v.tell(start)
+		v.tell(start, record)
 	}
 	return start, nil
 }
 
 // tell wakes the waiters when start says something else than they were told (by usability, then by the error).
-func (v *RegistryValueSource) tell(start state.NativeStart[any]) {
+func (v *RegistryValueSource) tell(start state.NativeStart[any], record *RegistryRecord) {
 	previous := v.told
 	usable := start.Kind == state.StartValue || start.HasLast
 	if usable {
@@ -242,8 +249,16 @@ func (v *RegistryValueSource) tell(start state.NativeStart[any]) {
 	}
 	if usable {
 		v.told = &told{usable: true}
+		record.clockStop(v)
 	} else {
 		v.told = &told{err: start.Error}
+		label := "registry " + v.Name
+		failure := data.AsChordError(start.Error, label)
+		if previous != nil && !previous.usable {
+			record.clockFailed(v, failure)
+		} else {
+			record.clockStart(v, label, failure)
+		}
 	}
 	// The first start of a wait wakes nobody: the waiter reads it itself.
 	if previous == nil {
