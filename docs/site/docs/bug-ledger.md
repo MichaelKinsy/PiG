@@ -763,7 +763,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6b97207](#bf-6b97207) | An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6c26be3](#bf-6c26be3) | A submission's `Wait` no longer fails with "Harness is closed" when a close begins before the wait wakes: a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6c31af7](#bf-6c31af7) | A custom message's `message_start` event keeps the members it started with, in their order, when a… | PiG's own defect | All platforms | Unreleased |
-| [BF-6c74cb8](#bf-6c74cb8) | fix(chord): a late kill of a finished evaluation never lands on the next one | PiG's own defect | All platforms | Unreleased |
 | [BF-6c7b377](#bf-6c7b377) | fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the… | PiG's own defect | All platforms | Unreleased |
 | [BF-6cb29f0](#bf-6cb29f0) | Started from a directory reached through a symlink, `pig install`/`remove`/`list`/`update` resolve local… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6cb29f0-2](#bf-6cb29f0-2) | Started from a directory reached through a symlink, `/export <file>.jsonl` and `/bug` now write and name… | PiG's own defect | All platforms | 0.5.0 |
@@ -1251,7 +1250,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aeaaf97](#bf-aeaaf97) | Model requests reuse their HTTP connection | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aeabf18](#bf-aeabf18) | Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped… | PiG's own defect | Windows | Unreleased |
 | [BF-aec0042](#bf-aec0042) | The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-aec5a31](#bf-aec5a31) | fix(chord): a chmod of a recorded base file is compared like a write | PiG's own defect | All platforms | Unreleased |
 | [BF-af1fe1a](#bf-af1fe1a) | Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af36fe8](#bf-af36fe8) | A streamed tool call whose arguments are valid JSON but not an object (`[]`, `null`, `5`, `"s"`) keeps them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af56fab](#bf-af56fab) | A task list item whose text starts with emphasis, a code span or a link (`- [ ] **bold** text`) no longer… | PiG's own defect | All platforms | Unreleased |
@@ -12110,19 +12108,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/message_custom_order_test.go::TestStartEventMessageOfACustomMessageIsRaceFreeWithAReplacement`, `agent/message_custom_order_test.go::TestStartEventMessageOfACustomMessageKeepsItsMembersAndOrderAcrossAReplacement`
 - **Release note:** A custom message's `message_start` event keeps the members it started with, in their order, when a `message_end` handler replaces the message; the replacement no longer reaches the start event a listener may still be reading.
 
-### BF-6c74cb8
-
-**fix(chord): a late kill of a finished evaluation never lands on the next one**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(chord): a late kill of a finished evaluation never lands on the next one
-- **Root cause:** A kill now counts only while its ask is live (a guard taken by the kill and by the end of the ask); a process killed during the ask is ended before ask returns, so the next evaluation starts another.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `6c74cb8a4c` (2026-11-07)
-- **Tests:** `chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne`
-
 ### BF-6c7b377
 
 **fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the…**
@@ -18916,19 +18901,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `aec0042260` (2026-10-24)
 - **Tests:** `durable/env/node/rename_directory_pi_test.go::TestRenameFileReportsTheErrorOfRename2ForADirectoryDestination`, `env/daemon_wire_exec_oracle_test.go::TestDaemonExecMatchesPisDaemon`, `env/daemon_wire_exec_oracle_test.go::TestDaemonWatchMatchesPisDaemon`
 - **Release note:** The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon does, instead of refusing it; the clients still refuse such a timeout, as Pi's do.
-
-### BF-aec5a31
-
-**fix(chord): a chmod of a recorded base file is compared like a write**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(chord): a chmod of a recorded base file is compared like a write
-- **Root cause:** Pi passes every event of a recorded file to mark, so a file made unreadable differs and one readable again with its bytes clears. baseEvent returned on a Chmod before it looked at the file. A Chmod still renews nothing on the way to base code (the Create, Remove and Rename mask).
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `aec5a318db` (2026-11-07)
-- **Tests:** None recorded.
 
 ### BF-af1fe1a
 
