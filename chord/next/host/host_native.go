@@ -9,6 +9,8 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/host/native.ts. Natives (§13): the handle `self.open` returns, a value opened during
@@ -60,6 +62,11 @@ type nativeOwner struct {
 	context  context.Context
 	report   func(HostError)
 	loop     sectionLoop
+	// typ, hostKey and telemetry are what its spans record: its object's type, its host's `chord.host`, and the host's
+	// adapter (a close is a root span on it).
+	typ       string
+	hostKey   string
+	telemetry telemetry.TelemetryContext
 }
 
 // nativeSlot is what an attempt does with each of its natives, whatever their value's type.
@@ -143,14 +150,33 @@ func (n *nativeHandle[T]) open(ctx context.Context) error {
 	}
 	n.state = nativeState[T]{kind: nativeOpening}
 	n.mu.Unlock()
+	// Its `chord.open` span under its attempt's, when something records; none otherwise.
+	var span *chordtelemetry.OpenSpan
+	if parent := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(parent) {
+		owner := n.owner
+		span = chordtelemetry.NewOpenSpan(parent, "chord.open", telemetry.SpanAttributes{
+			telemetry.Attr("chord.host", owner.hostKey),
+			telemetry.Attr("type", owner.typ),
+			telemetry.Attr("native", float64(owner.position)),
+		})
+		ctx = chordctx.WithTelemetry(ctx, span.Span())
+	}
 	var value T
 	if err := nativeTry(func() (err error) {
 		value, err = n.opener(ctx)
 		return err
 	}); err != nil {
+		if span != nil {
+			// An open its attempt abandoned (a deadline, an end) was cancelled: no error.
+			chordtelemetry.Ended(span.Span(), "open_failed", err, ctx)
+			span.End()
+		}
 		return err
 	}
 	n.opened(value)
+	if span != nil {
+		span.End()
+	}
 	return nil
 }
 
@@ -196,12 +222,27 @@ func (n *nativeHandle[T]) closeValue(value T, reason NativeCloseReason) *closeFa
 	// needs no more abort; one that timed out was aborted with its cause already.
 	closeCtx, abort := chordctx.WithCancel(owner.context)
 	defer abort(nil)
+	// Its `chord.close` root span on the host's adapter, when something records.
+	var span *chordtelemetry.OpenSpan
+	if !chordtelemetry.Untraced(owner.telemetry) {
+		span = chordtelemetry.NewOpenSpan(owner.telemetry, "chord.close", telemetry.SpanAttributes{
+			telemetry.Attr("chord.host", owner.hostKey),
+			telemetry.Attr("type", owner.typ),
+			telemetry.Attr("native", float64(owner.position)),
+			telemetry.Attr("reason", string(reason.Kind)),
+		})
+		defer span.End()
+		closeCtx = chordctx.WithTelemetry(closeCtx, span.Span())
+	}
 	closing := newNativeWork()
 	owner.loop.Go(func() {
 		closing.settle(nativeTry(func() error { return n.closer(value, reason, closeCtx) }))
 	})
 	result, err := within(owner.loop, closing, n.closeTimeout)
 	if err != nil {
+		if span != nil {
+			chordtelemetry.SpanFailed(span.Span(), "close_failed", err)
+		}
 		failure := at
 		failure.Kind, failure.Error = ErrCloseFailed, err
 		return &failure

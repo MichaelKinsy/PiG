@@ -35,6 +35,8 @@ type holdRequest struct {
 	Address     link.WireAddress
 	Chain       []string
 	Limit       link.Optional[int]
+	// Trace is the carrier of the caller's span (absent: none).
+	Trace map[string]string
 }
 
 // holdFollowed is a state member a bound hold follows: its index in the bound version, its source and subscription (which
@@ -146,6 +148,7 @@ var (
 func newHold(id int, provider *providerSide, from caller, limits link.Limits) *hold {
 	h := &hold{id: id, provider: provider, from: from, limits: limits, state: holdState{kind: holdPending}, counted: true}
 	provider.link.host.count("references", 1)
+	provider.link.host.metrics.UpDownCounter("chord.holds.active").Add(1, nil)
 	return h
 }
 
@@ -599,6 +602,7 @@ func (h *hold) drop() {
 	h.state = holdState{kind: holdReleased}
 	if h.counted {
 		host.count("references", -1)
+		host.metrics.UpDownCounter("chord.holds.active").Add(-1, nil)
 	}
 	h.counted = false
 }

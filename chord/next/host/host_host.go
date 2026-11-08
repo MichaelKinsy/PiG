@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -44,6 +46,9 @@ type HostOptions struct {
 	PrincipalKey *data.PrincipalKeyFunction
 	// Telemetry is the telemetry adapter; none is the no-op one.
 	Telemetry telemetry.TelemetryContext
+	// PrincipalAttributes are the span attributes recorded for a principal: synchronous and cheap; caching, if any, is
+	// the hook's own. Without it a span records `chord.principal`, the principal's key. The same function on every host.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// OnError is everything that fails in the background; every app handles it.
 	OnError func(err HostError)
 	// CloseTimeout is how long a native's close, and an ending object's running calls, are waited for; 30 s by default.
@@ -216,6 +221,8 @@ type Host interface {
 	// and every route link is sent `revoke`, which the host there applies with its own `RevokedBy`. Nothing is replayed to
 	// links made later.
 	Revoke(revocation delta.JsonValue, ctx context.Context) error
+	// Address is this host's address (`HostOptions.Address`); nil for a client.
+	Address() *contracts.Address
 	// References is the references to objects of typ on this host (§19), one entry per reference: the object's params, the
 	// principal it acts as (remote types) and its origin, the incarnation of the host it was made for (two tabs are two
 	// origins). Changes in the batch where a reference binds or ends; a link drop is a departure.
@@ -363,6 +370,16 @@ type chordHost struct {
 	backoff      *backoff
 	address      *contracts.Address
 	principal    data.Principal
+	// telemetry is the telemetry adapter (root spans start on it, carriers from links are extracted with it), spanHost
+	// the `chord.host` attribute of this host's spans, principalHook the options' PrincipalAttributes.
+	telemetry telemetry.TelemetryContext
+	// metrics are Chord's instruments on the adapter's metrics: the host's own counts (links, holds, calls, commits).
+	metrics  *chordtelemetry.Instruments
+	spanHost string
+	// counting is the telemetry of this host's work under a context without a span (counted); nil without an adapter that
+	// records.
+	counting      telemetry.TelemetrySpan
+	principalHook func(principal data.Principal) telemetry.SpanAttributes
 	// incarnation is this run of the host, sent in every handshake (R20).
 	incarnation string
 	compression link.Compression
@@ -425,30 +442,38 @@ type chordHost struct {
 var _ Host = (*chordHost)(nil)
 
 func createHost(options HostOptions) (*chordHost, error) {
+	var adapter telemetry.TelemetryContext = telemetry.NoopTelemetryContext
+	// A nil pointer in the interface (an unset adapter field) is none.
+	if value := reflect.ValueOf(options.Telemetry); options.Telemetry != nil && (value.Kind() != reflect.Pointer || !value.IsNil()) {
+		adapter = options.Telemetry
+	}
 	events := options.loop
 	if events == nil {
 		events = NewLoop()
 	}
 	h := &chordHost{
-		events:       events,
-		scheduler:    chord.NewDeliveryScheduler(),
-		address:      options.Address,
-		principal:    options.Principal,
-		principalKey: options.PrincipalKey,
-		onError:      options.OnError,
-		incarnation:  uuidv7(),
-		compression:  options.Compression,
-		refs:         map[string]*references{},
-		types:        newNamedMap[*served](),
-		plugins:      newNamedMap[*loadedPlugin](),
-		objects:      map[string]*chordObject{},
-		endings:      map[string]*keyedPromise[struct{}]{},
-		unbound:      newUnboundIndex(),
-		publication:  make(chan struct{}),
-		relays:       &relayMap{},
-		routes:       map[string]*route{},
-		registries:   map[string]*registries.RegistryRecord{},
-		nextOrigin:   1,
+		events:        events,
+		scheduler:     chord.NewDeliveryScheduler(),
+		address:       options.Address,
+		principal:     options.Principal,
+		principalKey:  options.PrincipalKey,
+		telemetry:     adapter,
+		spanHost:      chordtelemetry.HostAttribute(options.Address),
+		principalHook: options.PrincipalAttributes,
+		onError:       options.OnError,
+		incarnation:   uuidv7(),
+		compression:   options.Compression,
+		refs:          map[string]*references{},
+		types:         newNamedMap[*served](),
+		plugins:       newNamedMap[*loadedPlugin](),
+		objects:       map[string]*chordObject{},
+		endings:       map[string]*keyedPromise[struct{}]{},
+		unbound:       newUnboundIndex(),
+		publication:   make(chan struct{}),
+		relays:        &relayMap{},
+		routes:        map[string]*route{},
+		registries:    map[string]*registries.RegistryRecord{},
+		nextOrigin:    1,
 	}
 	var metrics telemetry.TelemetryMetrics
 	if options.Telemetry != nil {
@@ -456,6 +481,10 @@ func createHost(options HostOptions) (*chordHost, error) {
 	}
 	h.batch = state.NewBatch(func(err state.BatchError) { h.report(BatchHostError(err)) }, metrics).
 		UseScheduler(h.scheduler).UseMicrotasks(events.Queue).UseSection(events.Run)
+	h.metrics = chordtelemetry.Metrics(metrics)
+	if !chordtelemetry.Untraced(adapter) && metrics != nil {
+		h.counting = chordtelemetry.CountingOnly(metrics)
+	}
 	h.activity = newActivity(events, h.batch)
 	h.backoff = newBackoff(events, h.due)
 	// `revokedBy` is called with this host's principals only, the ones its links stamp.
@@ -507,13 +536,29 @@ func (h *chordHost) enter(work func()) {
 	})
 }
 
+// Address implements Host.
+func (h *chordHost) Address() *contracts.Address { return h.address }
+
 // Incarnation is this run of the host (R20).
 func (h *chordHost) Incarnation() string { return h.incarnation }
 
 // Load implements Host.
-func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (LoadReport, error) {
+func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (_ LoadReport, loadErr error) {
 	var failure error
 	var report LoadReport
+	// Its `chord.load` span under the caller's, when something records: the setups, the publication and the start barrier.
+	var span *chordtelemetry.OpenSpan
+	defer func() {
+		if span == nil {
+			return
+		}
+		if loadErr != nil {
+			chordtelemetry.Ended(span.Span(), "load_failed", loadErr, ctx)
+		} else {
+			span.Span().SetAttributes(telemetry.SpanAttributes{telemetry.Attr("failed", float64(len(report.Failed)))})
+		}
+		span.End()
+	}()
 	var outcomes []*keyedPromise[struct{}]
 	h.enter(func() {
 		if failure = h.batch.AssertOutside("load"); failure != nil {
@@ -527,6 +572,13 @@ func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (LoadReport, e
 			return
 		}
 		h.state = hostLoading
+		if parent := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(parent) {
+			span = chordtelemetry.NewOpenSpan(parent, "chord.load", telemetry.SpanAttributes{
+				telemetry.Attr("chord.host", h.spanHost),
+				telemetry.Attr("plugins", float64(len(facets))),
+			})
+			ctx = chordctx.WithTelemetry(ctx, span.Span())
+		}
 		table := emptyStaged()
 		loaded := newNamedMap[Facet]()
 		// A name given twice is refused the second time whether or not the first staged.
@@ -743,6 +795,7 @@ func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx co
 // Revoke implements Host.
 func (h *chordHost) Revoke(revocation delta.JsonValue, ctx context.Context) error {
 	var failure error
+	count := 0
 	h.enter(func() {
 		key := data.CanonicalJson(revocation, ctx)
 		revoked := func(principal data.Principal) bool {
@@ -762,6 +815,7 @@ func (h *chordHost) Revoke(revocation delta.JsonValue, ctx context.Context) erro
 		for _, object := range h.objectList() {
 			if object.principal != nil && revoked(object.principal) {
 				object.end(revokedError(object.label()))
+				count++
 			}
 		}
 		// Requests not bound (waiting for the publication or a provider, refused, waiting for their link) end too: nothing
@@ -792,9 +846,18 @@ func (h *chordHost) Revoke(revocation delta.JsonValue, ctx context.Context) erro
 		for _, each := range slices.Clone(h.links) {
 			if each.role == linkRoleChild && revoked(each.principal) {
 				each.close()
+				count++
 			}
 		}
 	})
+	// Recorded after the work: a revocation is synchronous, its span only says what it ended.
+	if failure == nil {
+		if parent := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(parent) {
+			revoke := chordtelemetry.NewOpenSpan(parent, "chord.revoke", telemetry.SpanAttributes{telemetry.Attr("chord.host", h.spanHost)})
+			revoke.Span().SetAttributes(telemetry.SpanAttributes{telemetry.Attr("count", float64(count))})
+			revoke.End()
+		}
+	}
 	return failure
 }
 
@@ -918,7 +981,33 @@ func (h *chordHost) Root(fn func(ctx Ctx) (any, error), ctx context.Context, opt
 		principal = h.principal
 	}
 	// The scope's ctx acts as principal.
-	return h.roots.run(fn, principal, ctx)
+	trace := options.Trace
+	if trace == nil || chordtelemetry.Untraced(h.telemetry) {
+		return h.roots.run(fn, principal, h.counted(ctx))
+	}
+	// In a new root span of this host's adapter: a trace of its own.
+	attributes := make(telemetry.SpanAttributes, 0, len(trace.Attributes)+1)
+	attributes = append(attributes, telemetry.Attr("chord.host", h.spanHost))
+	attributes = append(attributes, trace.Attributes...)
+	var result any
+	err = h.telemetry.StartSpan(telemetry.SpanOptions{Name: trace.Name, Attributes: attributes}, func(span telemetry.TelemetrySpan) error {
+		value, runErr := h.roots.run(fn, principal, chordctx.WithTelemetry(ctx, span))
+		if runErr != nil {
+			chordtelemetry.Ended(span, "trace_failed", runErr, ctx)
+		}
+		result = value
+		return runErr
+	})
+	return result, err
+}
+
+// counted is ctx for work this host does under it (a link's, a root scope's): one without a span carries this host's
+// adapter's metrics (CountingOnly), so the cost counters of that work reach the adapter (review L6).
+func (h *chordHost) counted(ctx context.Context) context.Context {
+	if h.counting == nil || chordctx.Telemetry(ctx) != telemetry.TelemetrySpan(telemetry.NoopTelemetryContext) {
+		return ctx
+	}
+	return chordctx.WithTelemetry(ctx, h.counting)
 }
 
 // UnservedNames are the names requests here wait for unbound that no plugin here serves (types and registries:
@@ -1143,7 +1232,7 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 		return nil, err
 	}
 	if placed.kind == placedPath {
-		remote := newRemoteObject(h, typ, params, placed.address, from, placed.path, b.dependent())
+		remote := newRemoteObject(h, typ, params, placed.address, from, placed.path, b.dependent(), chordctx.Telemetry(ctx))
 		placed.path.attach(remote)
 		b.bind(remote)
 		return remote, nil
@@ -1178,6 +1267,10 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 	// Checked above: served here at the caller's version.
 	object := h.objectFor(entry, params, from.principal, ctx, noChain, b.dependent())
 	b.bind(object)
+	// A getter waiting for a shared activation links to it (decision "Shared work").
+	if activation := object.activationSpan(); activation != nil && !chordtelemetry.Untraced(chordctx.Telemetry(ctx)) {
+		chordctx.Telemetry(ctx).AddLink(telemetry.SpanLink{Context: activation})
+	}
 	return object, nil
 }
 
@@ -1211,7 +1304,12 @@ func (h *chordHost) serving(request holdRequest, params any, principal data.Prin
 	if misplaced != nil {
 		return Serving{Kind: ServingWaiting, Cause: data.FailureCause{Kind: data.FailureWaiting, Error: misplaced}}, nil
 	}
-	object := h.objectFor(entry, checked, principal, ctx, chain, nil)
+	// The hold's carrier with this host's adapter: the first trigger of an object it creates.
+	created := ctx
+	if trigger := chordtelemetry.ParentOf(request.Trace, h.telemetry); !chordtelemetry.Untraced(trigger) {
+		created = chordctx.WithTelemetry(ctx, chordtelemetry.AsSpan(trigger))
+	}
+	object := h.objectFor(entry, checked, principal, created, chain, nil)
 	if activation := object.activationId(); activation != "" && slices.Contains(chain, activation) {
 		return Serving{}, h.cycle(chain, activation, []string{object.label()})
 	}
@@ -1435,6 +1533,18 @@ func (h *chordHost) newBindingFor(typ *contracts.Contract, dependent *chordObjec
 // own is this host as the maker of its own references: its principal and incarnation.
 func (h *chordHost) own() caller { return caller{principal: h.principal, incarnation: h.incarnation} }
 
+// principalAttributes are the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
+// `chord.principal`, its principal key; none without a principal.
+func (h *chordHost) principalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes {
+	if principal == nil {
+		return nil
+	}
+	if h.principalHook != nil {
+		return h.principalHook(principal)
+	}
+	return telemetry.SpanAttributes{telemetry.Attr("chord.principal", chordtelemetry.Capped(data.PrincipalKey(principal, ctx, h.principalKey)))}
+}
+
 // isOwn is whether principal is this host's own (by principal key): revocation never touches it.
 func (h *chordHost) isOwn(principal data.Principal, ctx context.Context) bool {
 	own := h.principal
@@ -1451,7 +1561,7 @@ func (h *chordHost) linkOf(l link.Link, role linkRole, options LinkOptions, ctx 
 		codec = link.BinaryCodec
 	}
 	limits := link.LinkLimits(options.Trusted, options.Limits)
-	made := newHostLink(h, l, hostLinkOptions{role: role, principal: options.Principal, trusted: options.Trusted, codec: codec, limits: limits}, chordctx.WithoutAbortSignal(ctx))
+	made := newHostLink(h, l, hostLinkOptions{role: role, principal: options.Principal, trusted: options.Trusted, codec: codec, limits: limits}, h.counted(chordctx.WithoutAbortSignal(ctx)))
 	if !made.open() {
 		return made
 	}
@@ -1856,7 +1966,7 @@ func reloadAborted() *data.ChordError {
 }
 
 // Reload implements Host: one reload, after the previous one: staging, the commit, the fates, the report.
-func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options ReloadOptions) (ReloadReport, error) {
+func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options ReloadOptions) (_ ReloadReport, reloadErr error) {
 	var failure error
 	var previous, mine *keyedPromise[struct{}]
 	h.enter(func() {
@@ -1886,6 +1996,39 @@ func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options Relo
 	}
 	var plan *reloadPlan
 	var started []startedFate
+	// Its `chord.reload` span under the caller's, after the previous reload, when something records: each object's fate an
+	// event of it.
+	var span *chordtelemetry.OpenSpan
+	var reported *ReloadReport
+	defer func() {
+		if span == nil {
+			return
+		}
+		if reloadErr != nil {
+			chordtelemetry.Ended(span.Span(), "reload_failed", reloadErr, ctx)
+		} else if reported != nil {
+			for _, object := range reported.Objects {
+				span.Span().AddEvent("chord.reload.fate", telemetry.SpanAttributes{
+					telemetry.Attr("object", chordtelemetry.Capped(object.Object)), telemetry.Attr("fate", string(object.Kind)),
+				})
+			}
+			span.Span().SetAttributes(telemetry.SpanAttributes{
+				telemetry.Attr("added", float64(len(reported.Plugins.Added))),
+				telemetry.Attr("changed", float64(len(reported.Plugins.Changed))),
+				telemetry.Attr("removed", float64(len(reported.Plugins.Removed))),
+				telemetry.Attr("failed", float64(len(reported.Failed))),
+				telemetry.Attr("fates", float64(len(reported.Objects))),
+			})
+		}
+		span.End()
+	}()
+	if parent := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(parent) {
+		span = chordtelemetry.NewOpenSpan(parent, "chord.reload", telemetry.SpanAttributes{
+			telemetry.Attr("chord.host", h.spanHost),
+			telemetry.Attr("plugins", float64(len(facets))),
+		})
+		ctx = chordctx.WithTelemetry(ctx, span.Span())
+	}
 	h.enter(func() {
 		if failure = h.assertOpen(); failure != nil {
 			return
@@ -1914,7 +2057,9 @@ func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options Relo
 	if err != nil {
 		return ReloadReport{}, err
 	}
-	return ReloadReport{Plugins: plugins, Failed: plan.failed, Objects: objects}, nil
+	report := ReloadReport{Plugins: plugins, Failed: plan.failed, Objects: objects}
+	reported = &report
+	return report, nil
 }
 
 // stageReload is staging (slice 7b §2), synchronous (no request or arriving hold meets it half done), per plugin (decision

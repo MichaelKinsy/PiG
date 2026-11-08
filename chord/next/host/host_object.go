@@ -66,6 +66,8 @@ type served struct {
 	linger time.Duration
 	// hostLifetime: a type with empty params: its object lives as long as the host (Q-A). Local types only.
 	hostLifetime bool
+	// traced is whether its calls start method spans (`serve`'s `untraced`: not).
+	traced bool
 	// local is the factory of a local type, remote of a remote one.
 	local  LocalFactory
 	remote RemoteFactory
@@ -202,6 +204,10 @@ type heldFlush struct {
 // host closes.
 type chordObject struct {
 	host *chordHost
+	// trigger is what its next attempt's activation span links to: its first trigger (the span that created it, a hold's
+	// carrier), then the last attempt's span (a retry's trigger). attempts is how many attempts it made.
+	trigger  telemetry.TelemetryContext
+	attempts int
 	// served is its served type: replaced by a reload that restarts or retries it.
 	served *served
 	params *delta.JsonObject
@@ -288,7 +294,7 @@ func newChordObject(
 ) *chordObject {
 	o := &chordObject{
 		host: host, served: entry, params: params, key: key, principal: principal, identity: identity, chain: chain,
-		ctx: ctx, jobs: map[string]*jobRecords{},
+		ctx: ctx, jobs: map[string]*jobRecords{}, trigger: chordctx.Telemetry(ctx),
 	}
 	o.text = entry.contract.Name
 	if key != "" {
@@ -332,6 +338,9 @@ func (d *objectDocuments) Context() context.Context { return d.object.ctx }
 func (d *objectDocuments) TransactionCancelled(cause error) {
 	d.object.host.report(HostError{Kind: ErrTransactionCancelled, Object: d.object.text, Error: cause})
 }
+
+// Telemetry is the host's telemetry adapter.
+func (d *objectDocuments) Telemetry() telemetry.TelemetryContext { return d.object.host.telemetry }
 
 // Store is the host's store and the object's owner name in it, when the host has one.
 func (d *objectDocuments) Store() (*store.ChordStore, string, bool) {
@@ -485,6 +494,8 @@ func (o *chordObject) attempt() *attempt {
 		o.instanceID = uuidv7()
 	}
 	next := newAttempt(o, o.ctx)
+	o.attempts++
+	next.trace = attemptTrace{trigger: o.trigger, attempt: o.attempts}
 	o.phase = objectState{kind: objectActivating, attempt: next, shown: refLoading}
 	if st.kind == objectFailed {
 		o.notify()
@@ -1329,15 +1340,28 @@ func (o *chordObject) ended() *data.ChordError {
 // run runs a's activation once ending (its predecessors' teardowns, if any; nil when none) finished; takes its outcome.
 func (o *chordObject) run(a *attempt, ending *keyedPromise[struct{}]) {
 	a.activate(ending).then(func(outcome activation, _ error) {
+		if span := a.activationSpan(); span != nil {
+			o.trigger = span
+		}
 		// The object may have ended after the activation's last step.
 		if o.phase.kind != objectActivating || o.phase.attempt != a {
+			a.activated(activation{kind: activationEnded}, nil)
 			return
 		}
 		switch outcome.kind {
 		case activationLive:
 			o.wentLive(a)
+			a.activated(outcome, nil)
 		case activationFailed:
 			o.failedAttempt(a, outcome.cause)
+			retryAt, ok := o.host.backoff.until(o.identity)
+			if !ok {
+				a.activated(outcome, nil)
+				return
+			}
+			a.activated(outcome, &retryAt)
+		case activationEnded:
+			a.activated(outcome, nil)
 		}
 	})
 }
@@ -1869,4 +1893,12 @@ func promiseAllVoid(loop sectionLoop, promises []*keyedPromise[struct{}]) *keyed
 		})
 	}
 	return all
+}
+
+// activationSpan is the span of its activation under way; nil when none or not recorded.
+func (o *chordObject) activationSpan() telemetry.TelemetrySpan {
+	if o.phase.kind != objectActivating {
+		return nil
+	}
+	return o.phase.attempt.activationSpan()
 }
