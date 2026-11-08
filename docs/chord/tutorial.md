@@ -100,15 +100,15 @@ func api() app.AppAPI {
 <!-- quote: main.go -->
 ```go
 // kinds are the app's facet kinds: a plugin has one file per kind it runs on (`server.ts`, `worker.ts`).
-func kinds() []app.AppKind {
-	return []app.AppKind{
-		{Name: "server", Platform: plugins.PlatformNode},
-		{Name: "worker", Platform: plugins.PlatformNode},
-		{Name: "tui", Platform: plugins.PlatformNode, Packages: plugins.HostPackages{"@todo/app/v1/tui": filepath.Join(here, "client", "tui.ts")}},
-		{Name: "web", Platform: plugins.PlatformBrowser, Packages: plugins.HostPackages{
+func kinds() []app.AppKindEntry {
+	return []app.AppKindEntry{
+		{Name: "server", Kind: app.AppKind{Platform: model.PlatformNode}},
+		{Name: "worker", Kind: app.AppKind{Platform: model.PlatformNode}},
+		{Name: "tui", Kind: app.AppKind{Platform: model.PlatformNode, Packages: plugins.HostPackages{"@todo/app/v1/tui": filepath.Join(here, "client", "tui.ts")}}},
+		{Name: "web", Kind: app.AppKind{Platform: model.PlatformBrowser, Packages: plugins.HostPackages{
 			"react": "", "react/jsx-runtime": "",
 			"@todo/app/v1/web": filepath.Join(here, "client", "web.ts"),
-		}},
+		}}},
 	}
 }
 ```
@@ -1945,9 +1945,10 @@ The steps above test the whole app. Most rules are checked faster on one plugin.
 ```go
 	address := listKind.Address(delta.JsonObjectOf("id", "groceries"))
 	tested, err := plugins.TestPlugin(filepath.Join(here, "plugins", "lists"), plugins.TestPluginOptions{
+		Build:     build.BuildFacet,
 		Kind:      "worker",
 		Kinds:     []string{"server", "worker", "web", "tui"},
-		Api:       &plugins.AppApi{Name: "@todo/app", Versions: []string{"v1"}},
+		Api:       &model.AppApi{Name: "@todo/app", Versions: []string{"v1"}},
 		Modules:   plugins.HostPackages{"@todo/app/v1": filepath.Join(here, "api", "v1.ts")},
 		Address:   &address,
 		Principal: workerPrincipal(address),

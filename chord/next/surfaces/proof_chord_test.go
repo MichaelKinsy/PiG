@@ -7,6 +7,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
@@ -117,14 +118,23 @@ func TestLoadedFacetsLeavesAFailedPluginOutAndReloadsOnlyWhatChanged(t *testing.
 	}
 }
 
-func TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed(t *testing.T) {
-	world := newFakeWorld()
-	var link LoopLink = world.open(nil)
-	calls := 0
-	link.OnClose(func() { calls++ })
-	link.Close()
-	link.Close()
-	if calls != 1 {
-		t.Fatalf("the close listener ran %d times, want once", calls)
+func TestSharedCloseRunsEveryListenerOnceWhenItsLinkClosesAndAtOnceForALateOne(t *testing.T) {
+	ours, _ := link.MemoryLinkPair()
+	shared := newSharedClose(ours)
+	first, second, late := 0, 0, 0
+	shared.OnClose(func() { first++ })
+	shared.OnClose(func() { second++ })
+	shared.Close()
+	shared.Close()
+	if first != 1 || second != 1 {
+		t.Fatalf("the close listeners ran %d and %d times, want once each", first, second)
+	}
+	shared.OnClose(func() { late++ })
+	if late != 1 {
+		t.Fatalf("a listener added after the close ran %d times, want at once", late)
+	}
+	shared.Close()
+	if first != 1 || second != 1 || late != 1 {
+		t.Fatalf("a close again ran listeners again: %d %d %d", first, second, late)
 	}
 }
