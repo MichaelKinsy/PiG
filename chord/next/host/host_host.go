@@ -216,7 +216,7 @@ type Host interface {
 	// serves the union of its own types and those the delegate serves, as one host. What this host serves stays here: the
 	// decision is taken at placement by the published table, not by an object's liveness, so a restarting or parked type never
 	// moves to the delegate. A hold the delegate's own link asks for and no host serves is not sent back to it
-	// (`unavailable`, not served here). Go addition (D605): Pi's server runs its plugins in its own host; the Go kit's plugins
+	// (`unavailable`, not served here). pig divergence (D605): Pi's server runs its plugins in its own host; the Go kit's plugins
 	// run in a Node subprocess behind this host.
 	Delegate(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error)
 	// Serves is whether this host serves a type under name (its published table, by which Delegate decides: a restarting or
