@@ -39,13 +39,20 @@ type SyncFileReader interface {
 	Close(ctx context.Context) error
 }
 
+// OpenBinaryReaderOptions is the options of OpenBinaryReader.
+type OpenBinaryReaderOptions struct {
+	// NoFollow refuses a symbolic link as the file or as a part of its path.
+	NoFollow bool
+}
+
 // SyncFileSystem is the file operations of the directory-backed sync pieces.
 type SyncFileSystem interface {
 	JoinPath(ctx context.Context, parts []string) (string, error)
 	ReadTextFile(ctx context.Context, path string) (string, error)
 	ReadBinaryFile(ctx context.Context, path string) ([]byte, error)
 	// OpenBinaryReader opens a file for bounded reads, so a body streams back without being read whole.
-	OpenBinaryReader(ctx context.Context, path string) (SyncFileReader, error)
+	// options is nil for the defaults.
+	OpenBinaryReader(ctx context.Context, path string, options *OpenBinaryReaderOptions) (SyncFileReader, error)
 	WriteFile(ctx context.Context, path string, content []byte) error
 	// AppendFile appends to a file, creating it: a body is written chunk by chunk as it streams.
 	AppendFile(ctx context.Context, path string, content []byte) error

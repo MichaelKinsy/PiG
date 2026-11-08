@@ -441,9 +441,20 @@ func (err *UnsyncedCommitsError) Error() string {
 	return fmt.Sprintf("This copy of session %s is at %d, past what it shares with the remote (%d)", err.SessionID, err.LocalHead, err.SyncedHead)
 }
 
-// LocalCopy is the copy a pull applies to: an open store (Store), or an empty backend (Backend) to restore the session
-// into.
+// LocalCopyKind tells which member of a LocalCopy is set.
+type LocalCopyKind string
+
+const (
+	// LocalCopyStore is a copy that is an open store: LocalCopy.Store.
+	LocalCopyStore LocalCopyKind = "store"
+	// LocalCopyEmpty is no copy yet: LocalCopy.Backend, an empty backend to restore the session into.
+	LocalCopyEmpty LocalCopyKind = "empty"
+)
+
+// LocalCopy is the copy a pull applies to: an open store (Kind LocalCopyStore, Store), or an empty backend (Kind
+// LocalCopyEmpty, Backend) to restore the session into. Pi's union is tagged by `kind`; this is the tagged struct of it.
 type LocalCopy struct {
+	Kind    LocalCopyKind
 	Store   store.Store
 	Backend *store.Backend
 }
@@ -486,7 +497,10 @@ func PullSession(ctx context.Context, options PullOptions) (result PullResult, e
 	if err != nil {
 		return PullResult{}, err
 	}
-	target := options.Local.Store
+	var target store.Store
+	if options.Local.Kind == LocalCopyStore {
+		target = options.Local.Store
+	}
 	local := target != nil
 	at := func() Seq {
 		if target == nil {
@@ -626,7 +640,7 @@ func FoldSession(ctx context.Context, options FoldOptions) (to Seq, folded bool,
 		return 0, false, nil
 	}
 	restored, err := PullSession(ctx, PullOptions{
-		SessionID: options.SessionID, Store: options.Store, Local: LocalCopy{Backend: options.Scratch}, State: &scratchState{},
+		SessionID: options.SessionID, Store: options.Store, Local: LocalCopy{Kind: LocalCopyEmpty, Backend: options.Scratch}, State: &scratchState{},
 	})
 	if err != nil {
 		return 0, false, err

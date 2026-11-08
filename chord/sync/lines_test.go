@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"errors"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -198,3 +199,14 @@ func TestSnapshotBodies(t *testing.T) {
 }
 
 var _ context.Context = background
+
+func TestNewLogFormatErrorCarriesItsMessageAndCause(t *testing.T) {
+	cause := errors.New("boom")
+	err := NewLogFormatError("Log line 3 is not JSON", cause)
+	if err.Error() != "Log line 3 is not JSON" || !errors.Is(err, cause) {
+		t.Fatalf("err = %v, unwrap = %v", err, errors.Unwrap(err))
+	}
+	if NewLogFormatError("x", nil).Unwrap() != nil {
+		t.Fatal("an error without a cause must unwrap to nil")
+	}
+}

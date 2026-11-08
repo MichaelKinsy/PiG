@@ -33,13 +33,27 @@ func (err *LogFormatError) Error() string { return err.Message }
 // Unwrap is the error that made the line malformed, if any.
 func (err *LogFormatError) Unwrap() error { return err.Cause }
 
-func logFormatError(cause error, format string, args ...any) *LogFormatError {
-	return &LogFormatError{Message: fmt.Sprintf(format, args...), Cause: cause}
+// NewLogFormatError is Pi's `new LogFormatError(message, { cause })`: cause is nil when the error has none.
+func NewLogFormatError(message string, cause error) *LogFormatError {
+	return &LogFormatError{Message: message, Cause: cause}
 }
 
-// EncodeLogLine is one outbox commit as a JSON line, terminated by a newline.
-func EncodeLogLine(commit store.OutboxCommit) ([]byte, error) {
-	line := make([]byte, 0, 128)
+func logFormatError(cause error, format string, args ...any) *LogFormatError {
+	return NewLogFormatError(fmt.Sprintf(format, args...), cause)
+}
+
+// EncodeLogLine is one outbox commit as a JSON line, terminated by a newline. A body's encoder appends the line to the
+// chunk it fills (appendLogLine), so no copy of it is made there.
+func EncodeLogLine(commit store.OutboxCommit) (string, error) {
+	line, err := appendLogLine(make([]byte, 0, 128), commit)
+	if err != nil {
+		return "", err
+	}
+	return string(line), nil
+}
+
+// appendLogLine appends EncodeLogLine's line to dst.
+func appendLogLine(line []byte, commit store.OutboxCommit) ([]byte, error) {
 	line = append(line, `{"v":`...)
 	line = strconv.AppendInt(line, LogVersion, 10)
 	line = append(line, `,"seq":`...)

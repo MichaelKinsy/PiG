@@ -1038,6 +1038,10 @@ func (c *checker) objectLiteral(up string, t types.Type) verdict {
 			vs = append(vs, unknownV("T12s: AbortSignal member %s outside a call that takes a context.Context", name))
 			continue
 		}
+		if strings.TrimSpace(typ) == "Context" && !c.plainContext && c.aliases.invocationContext(c.pkg) && structField(st, name, 0) == nil &&
+			(c.ctxInScope || c.ctxConsumers != nil && c.ctxConsumers(t)) {
+			continue // T12c: a chord Context member is the context.Context of the call that takes the value (S1c, as the member of an options object)
+		}
 		if field := structField(st, name, 0); field != nil {
 			vs = append(vs, c.agree(typ, field.Type()))
 			continue
@@ -1822,7 +1826,40 @@ func (c *checker) iterableOf(elem string, t types.Type) verdict {
 			}
 		}
 	}
+	if e := pullElem(t); e != nil {
+		return c.agree(elem, e) // T14p: the pull iterator of an AsyncIterable
+	}
 	return unknownV("T14: upstream Iterable<%s> against Go type %s", elem, typeLabel(t))
+}
+
+// pullElem returns T when t has the methods Next(ctx context.Context) (T, bool, error) and Close() error: the Go form of an
+// AsyncIterable<T> in Chord (store.PartIterator, sync.CommitSource), where Next is the awaited next() and Close is return().
+func pullElem(t types.Type) types.Type {
+	ms := types.NewMethodSet(t)
+	if _, isPtr := t.(*types.Pointer); !isPtr && !types.IsInterface(t) {
+		ms = types.NewMethodSet(types.NewPointer(t))
+	}
+	var elem types.Type
+	closes := false
+	for method := range ms.Methods() {
+		sig, ok := method.Obj().Type().(*types.Signature)
+		if !ok || !method.Obj().Exported() {
+			continue
+		}
+		switch method.Obj().Name() {
+		case "Next":
+			r := sig.Results()
+			if sig.Params().Len() == 1 && isContext(sig.Params().At(0).Type()) && r.Len() == 3 && basicInfo(r.At(1).Type())&types.IsBoolean != 0 && isErrorType(r.At(2).Type()) {
+				elem = r.At(0).Type()
+			}
+		case "Close":
+			closes = sig.Params().Len() == 0 && sig.Results().Len() == 1 && isErrorType(sig.Results().At(0).Type())
+		}
+	}
+	if !closes {
+		return nil
+	}
+	return elem
 }
 
 // seqElem returns E when sig is func(yield func(E) bool), the shape of iter.Seq[E].

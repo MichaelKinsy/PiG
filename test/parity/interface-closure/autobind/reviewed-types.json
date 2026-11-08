@@ -486,5 +486,9 @@
   "pkg:tui/.#StdinBuffer::property:removeListener::call:0": {
     "go": "tui/stdin_buffer_events.go#StdinBuffer.RemoveListener",
     "reason": "Pi StdinBuffer extends EventEmitter<StdinBufferEventMap> (stdin-buffer.ts) and its listener methods take (event, listener) where the listener receives the event's string payload. Go tui.StdinBuffer carries the listener surface in tui/stdin_buffer_events.go with the event as a typed StdinBufferEvent string and the listener as a *StdinBufferListener that gives a Go callback the identity a JavaScript function has (Off and ListenerCount find it by that identity). TestStdinBufferEventsMatchPi runs Pi's StdinBuffer and compares the events its listeners receive with PiG's. Lead ruling 2026-10-10: the rows are ported."
+  },
+  "pkg:chord/sync#JsonObject": {
+    "go": "chord/sync/remote.go#JsonObject",
+    "reason": "Pi chord/src/sync/remote.ts:8 `export type JsonObject = { [key: string]: unknown }` is the host's session description (SessionSummary.meta, putMeta, getMeta). A same-named alias in chord/src/documents/definition.ts:14 (`{ [key: string]: JsonValue }`) makes the name ambiguous for the alias table, so no rule reads the body. Go spells the object as the ordered JSON object of Chord's delta package, aliased as sync.JsonObject (remote.go), the type PutMeta takes and GetMeta returns; TestHostPieces (sync_test.go) writes and reads it through SessionSyncStore."
   }
 }
