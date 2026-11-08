@@ -418,7 +418,7 @@ func TestModelRuntimeCancellationDuringSetupDoesNotInvokeProvider(t *testing.T) 
 	<-started
 	cancel()
 	result := stream.Result()
-	if result.StopReason != ai.StopReasonError || provider.calls.Load() != 0 {
+	if result.StopReason != ai.StopReasonAborted || provider.calls.Load() != 0 {
 		t.Fatalf("result=%#v calls=%d", result, provider.calls.Load())
 	}
 }
