@@ -81,6 +81,7 @@ func TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCl
 func TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "no-such-server")
 	s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return missing, nil } })
+	s.errors.expect()
 	<-s.app.BaseWatched()
 	if got := s.errors.kinds(); len(got) != 1 || got[0] != AppErrorServerScan {
 		t.Fatalf("reported %v, want [server_scan]", got)
@@ -146,6 +147,7 @@ func TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened(t *testing.T)
 	for name, path := range cases {
 		t.Run(name, func(t *testing.T) {
 			s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return path, nil } })
+			s.errors.expect()
 			<-s.app.BaseWatched()
 			if got := s.errors.kinds(); len(got) != 1 || got[0] != AppErrorServerScan {
 				t.Fatalf("reported %v, want [server_scan]", got)
