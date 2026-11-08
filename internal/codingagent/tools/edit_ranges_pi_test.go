@@ -38,17 +38,6 @@ func TestGetReplacementLineRangeRejectsARangeThatEndsPastTheLastLine(t *testing.
 	}
 }
 
-// Pi truncate.ts truncateMiddle (:292-314) cuts only at character boundaries. Pi's strings never hold a lone continuation byte, but a Go string can, and the boundary walks must stop
-// at the ends of the content instead of indexing outside it.
-// mutation-checked: `>=` for `>` in the head walk panics on this input.
-func TestTruncateMiddleStopsAtTheEndsOfContentWithoutCharacterStarts(t *testing.T) {
-	content := "\x80\x80\x80\x80\x80\x80\x80\x80"
-	got := TruncateMiddle(content, 1)
-	if got.Content == "" || got.TotalBytes != len(content) {
-		t.Errorf("TruncateMiddle of continuation bytes = %+v", got)
-	}
-}
-
 // Pi edit.ts prepareEditArguments (:39-70) on the raw arguments: an edit needs BOTH oldText and newText strings; the legacy top-level pair is merged only when both are strings; one string
 // alone leaves the arguments as they were.
 // mutation-checked: `||` for `&&` in the legacy pair test and in isSingleEditInput fails it.

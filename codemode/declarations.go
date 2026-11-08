@@ -1,7 +1,6 @@
 package codemode
 
 import (
-	"cmp"
 	"encoding/json"
 	"maps"
 	"math"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 const (
@@ -63,16 +63,12 @@ type RenderDeclarationsOptions struct {
 // `declare const tools`, globals `declare function` statements, and `ns.member` globals members of `declare const ns`.
 //
 // Ports packages/codemode/src/declarations.ts (renderDeclarations).
-func RenderDeclarations(options RenderDeclarationsOptions) (string, error) {
+func RenderDeclarations(options RenderDeclarationsOptions) string {
 	var sections []string
 	if len(options.Tools) > 0 {
 		members := make([]string, len(options.Tools))
 		for i, tool := range options.Tools {
-			signature, err := RenderToolSignature(tool, ToolRenderOptions{})
-			if err != nil {
-				return "", err
-			}
-			members[i] = docComment(tool.Description, indent) + indent + signature
+			members[i] = docComment(tool.Description, indent) + indent + RenderToolSignature(tool, ToolRenderOptions{})
 		}
 		sections = append(sections, "declare const tools: {\n"+strings.Join(members, "\n")+"\n};")
 	}
@@ -81,26 +77,18 @@ func RenderDeclarations(options RenderDeclarationsOptions) (string, error) {
 	for _, global := range options.Globals {
 		namespace, member, found := strings.Cut(global.Name, ".")
 		if !found {
-			rendered, err := renderGlobal("declare function "+global.Name, global, "")
-			if err != nil {
-				return "", err
-			}
-			sections = append(sections, rendered)
+			sections = append(sections, renderGlobal("declare function "+global.Name, global, ""))
 			continue
 		}
 		if _, seen := members[namespace]; !seen {
 			namespaces = append(namespaces, namespace)
 		}
-		rendered, err := renderGlobal(member, global, indent)
-		if err != nil {
-			return "", err
-		}
-		members[namespace] = append(members[namespace], rendered)
+		members[namespace] = append(members[namespace], renderGlobal(member, global, indent))
 	}
 	for _, namespace := range namespaces {
 		sections = append(sections, "declare const "+namespace+": {\n"+strings.Join(members[namespace], "\n")+"\n};")
 	}
-	return strings.Join(sections, "\n\n"), nil
+	return strings.Join(sections, "\n\n")
 }
 
 // schemaOf decodes a schema; an absent or undecodable schema is undefined.
@@ -133,67 +121,51 @@ type SchemaToTypeOptions struct {
 // DefaultInputSchemaMaxChars) render as `unknown`.
 //
 // Ports packages/codemode/src/declarations.ts (renderToolSignature).
-func RenderToolSignature(tool Tool, options ToolRenderOptions) (string, error) {
+func RenderToolSignature(tool Tool, options ToolRenderOptions) string {
 	inputMaxChars := DefaultInputSchemaMaxChars
 	if options.InputMaxChars != nil {
 		inputMaxChars = *options.InputMaxChars
 	}
 	input := "unknown"
 	if schema, ok := schemaOf(tool.InputSchema); ok {
-		var err error
-		if input, err = schemaToType(schema, &inputMaxChars); err != nil {
-			return "", err
-		}
+		input = schemaToType(schema, &inputMaxChars)
 	}
-	output, err := RenderToolOutputType(tool.OutputSchema)
-	if err != nil {
-		return "", err
-	}
-	return ToCodemodeIdentifier(tool.Name) + "(args: " + input + "): Promise<" + output + ">;", nil
+	return ToCodemodeIdentifier(tool.Name) + "(args: " + input + "): Promise<" + RenderToolOutputType(tool.OutputSchema) + ">;"
 }
 
 // RenderToolSample renders the description followed by the tool's declaration, for tool listings and `ALL_TOOLS`
 // entries.
 //
 // Ports packages/codemode/src/declarations.ts (renderToolSample).
-func RenderToolSample(tool Tool, options ToolRenderOptions) (string, error) {
-	signature, err := RenderToolSignature(tool, options)
-	if err != nil {
-		return "", err
-	}
-	declaration := "declare const tools: { " + signature + " };"
-	return jsstring.Trim(tool.Description) + "\n\ncodemode tool declaration:\n```ts\n" + declaration + "\n```", nil
+func RenderToolSample(tool Tool, options ToolRenderOptions) string {
+	declaration := "declare const tools: { " + RenderToolSignature(tool, options) + " };"
+	return jsstring.Trim(tool.Description) + "\n\ncodemode tool declaration:\n```ts\n" + declaration + "\n```"
 }
 
 // RenderToolOutputType returns the type a tool call resolves to: the output schema's type, and `unknown` without a
 // schema.
 //
 // Ports packages/codemode/src/declarations.ts (renderToolOutputType).
-func RenderToolOutputType(raw json.RawMessage) (string, error) {
+func RenderToolOutputType(raw json.RawMessage) string {
 	schema, defined := schemaOf(raw)
 	if !defined {
-		return "unknown", nil
+		return "unknown"
 	}
 	return schemaToType(schema, nil)
 }
 
-func renderGlobal(head string, global Tool, indentation string) (string, error) {
+func renderGlobal(head string, global Tool, indentation string) string {
 	if global.Signature != nil {
-		return docComment(global.Description, indentation) + indentation + head + *global.Signature + ";", nil
+		return docComment(global.Description, indentation) + indentation + head + *global.Signature + ";"
 	}
 	input, output := "unknown", "unknown"
-	var err error
 	if schema, ok := schemaOf(global.InputSchema); ok {
-		if input, err = schemaToType(schema, nil); err != nil {
-			return "", err
-		}
+		input = schemaToType(schema, nil)
 	}
 	if schema, ok := schemaOf(global.OutputSchema); ok {
-		if output, err = schemaToType(schema, nil); err != nil {
-			return "", err
-		}
+		output = schemaToType(schema, nil)
 	}
-	return docComment(global.Description, indentation) + indentation + head + "(args: " + input + "): Promise<" + output + ">;", nil
+	return docComment(global.Description, indentation) + indentation + head + "(args: " + input + "): Promise<" + output + ">;"
 }
 
 // splitLines is text.split(/\r?\n/).
@@ -268,10 +240,10 @@ func union(types []string) string {
 // valid JSON renders as `unknown`.
 //
 // Ports packages/codemode/src/declarations.ts (schemaToType).
-func SchemaToType(schema json.RawMessage, options SchemaToTypeOptions) (string, error) {
+func SchemaToType(schema json.RawMessage, options SchemaToTypeOptions) string {
 	decoded, ok := schemaOf(schema)
 	if !ok {
-		return "unknown", nil
+		return "unknown"
 	}
 	return schemaToType(decoded, options.MaxChars)
 }
@@ -283,76 +255,100 @@ type schemaContext struct {
 	expansions int
 	// tags is whether property comments include constraint tags.
 	tags bool
-	// err is the first failure to decode a reference; the rendering carries on with `unknown` and schemaToType returns it.
-	err error
 }
 
-func schemaToType(schema any, maxChars *int) (string, error) {
-	render := func(tags bool) (string, error) {
-		ctx := &schemaContext{root: schema, resolving: map[string]bool{}, tags: tags}
-		typ := toType(schema, ctx)
-		return typ, ctx.err
+func schemaToType(schema any, maxChars *int) string {
+	render := func(tags bool) string {
+		return toType(schema, &schemaContext{root: schema, resolving: map[string]bool{}, tags: tags})
 	}
-	typ, err := render(true)
-	if err != nil {
-		return "", err
-	}
+	typ := render(true)
 	if maxChars == nil || jsstring.Length(typ) <= *maxChars {
-		return typ, nil
+		return typ
 	}
-	untagged, err := render(false)
-	if err != nil {
-		return "", err
+	if untagged := render(false); jsstring.Length(untagged) <= *maxChars {
+		return untagged
 	}
-	if jsstring.Length(untagged) <= *maxChars {
-		return untagged, nil
-	}
-	return "unknown", nil
+	return "unknown"
 }
 
-// errURIMalformed is the failure to decode a percent-encoded $ref segment. Its message is that of the URIError
-// upstream's decodeURIComponent throws, which callers surface as the error text.
-var errURIMalformed = &URIError{Message: "URI malformed"}
-
-// URIError is the error JavaScript's decodeURIComponent throws for a malformed percent-encoding (a `$ref` segment with one).
-type URIError struct{ Message string }
-
-func (e *URIError) Error() string { return e.Message }
-
-// Name is the JavaScript error's `name`.
-func (*URIError) Name() string { return "URIError" }
-
-// resolveRef follows a local JSON pointer. A pointer segment that is not valid percent-encoding is an error, as
-// upstream's decodeURIComponent throws a URIError.
-func resolveRef(ref string, root any) (any, bool, error) {
-	if ref != "#" && !strings.HasPrefix(ref, "#/") {
-		return nil, false, nil
+// ResolveSchemaRef returns the subschema a local `$ref` (`#`, `#/$defs/Item`) names in root, or false for remote references and references that name
+// nothing. Pointer segments are URI-decoded and JSON Pointer unescaped (`~1` is `/`, `~0` is `~`). A segment with a malformed percent escape names
+// nothing: schemas come from tools and MCP servers, so it must not fail the caller (Pi 6d3e342b2, #11803).
+//
+// Go mechanic: root and the result are decoded JSON: this package's ordered objects, or the `map[string]any` and `bool` of encoding/json. A
+// `$ref` into an array element names nothing here, as `typeof current !== "object" || Array.isArray(current)` stops the walk there.
+//
+// Ports packages/codemode/src/declarations.ts (resolveSchemaRef).
+func ResolveSchemaRef(ref string, root any) (any, bool) {
+	segments, ok := refSegments(ref)
+	if !ok {
+		return nil, false
 	}
 	current := root
-	if ref != "#" {
-		for segment := range strings.SplitSeq(ref[2:], "/") {
-			if segment == "" {
-				continue
-			}
-			decoded, err := url.PathUnescape(segment)
-			if err != nil || !utf8.ValidString(decoded) {
-				return nil, false, errURIMalformed
-			}
-			key := strings.ReplaceAll(strings.ReplaceAll(decoded, "~1", "/"), "~0", "~")
-			obj, ok := current.(*object)
-			if !ok {
-				return nil, false, nil
-			}
-			if current, ok = obj.get(key); !ok {
-				return nil, false, nil
-			}
+	for _, key := range segments {
+		var found bool
+		switch parent := current.(type) {
+		case *object:
+			current, found = parent.get(key)
+		case map[string]any:
+			current, found = parent[key]
+		}
+		if !found {
+			return nil, false
 		}
 	}
 	switch current.(type) {
-	case bool, *object:
-		return current, true, nil
+	case bool, *object, map[string]any:
+		return current, true
 	}
-	return nil, false, nil
+	return nil, false
+}
+
+// ResolveSchemaRefJSON is [ResolveSchemaRef] on schema text: it returns the text of the subschema a local `$ref` names in root, with its members in the
+// order root has them.
+func ResolveSchemaRefJSON(ref string, root json.RawMessage) (json.RawMessage, bool) {
+	segments, ok := refSegments(ref)
+	if !ok {
+		return nil, false
+	}
+	current := root
+	for _, key := range segments {
+		members, err := orderedjson.Parse(current)
+		if err != nil {
+			return nil, false
+		}
+		if current, ok = members.Get(key); !ok {
+			return nil, false
+		}
+	}
+	switch trimmed := strings.TrimLeft(string(current), " \t\r\n"); {
+	case strings.HasPrefix(trimmed, "{"), strings.HasPrefix(trimmed, "true"), strings.HasPrefix(trimmed, "false"):
+		return current, true
+	}
+	return nil, false
+}
+
+// refSegments are the members a local `$ref` (`#`, `#/$defs/Item`) walks through, URI-decoded and JSON Pointer unescaped. It reports false for a
+// remote reference and for a segment with a malformed percent escape.
+func refSegments(ref string) ([]string, bool) {
+	if ref != "#" && !strings.HasPrefix(ref, "#/") {
+		return nil, false
+	}
+	if ref == "#" {
+		return nil, true
+	}
+	var segments []string
+	for segment := range strings.SplitSeq(ref[2:], "/") {
+		if segment == "" {
+			continue
+		}
+		decoded, err := url.PathUnescape(segment)
+		if err != nil || !utf8.ValidString(decoded) {
+			return nil, false
+		}
+		segments = append(segments, strings.ReplaceAll(strings.ReplaceAll(decoded, "~1", "/"), "~0", "~"))
+	}
+	return segments, true
 }
 
 func toType(schema any, ctx *schemaContext) string {
@@ -373,11 +369,7 @@ func objectSchemaType(schema *object, ctx *schemaContext) string {
 		if ctx.resolving[ref] || ctx.expansions >= maxRefExpansions {
 			return "unknown"
 		}
-		target, ok, err := resolveRef(ref, ctx.root)
-		if err != nil {
-			ctx.err = cmp.Or(ctx.err, err)
-			return "unknown"
-		}
+		target, ok := ResolveSchemaRef(ref, ctx.root)
 		if !ok {
 			return "unknown"
 		}
