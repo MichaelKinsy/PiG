@@ -11,6 +11,7 @@ import (
 	brandsprite "github.com/MichaelKinsy/PiG/apps/p2/brand/sprite"
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	"github.com/MichaelKinsy/PiG/apps/p2/tui/transcript"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/activity"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/surfacehost"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -98,6 +99,22 @@ func TestGateShot(t *testing.T) {
 			return worked && !tt.HasText("Working…") && !tt.HasText("Stop")
 		})
 		want = "Explain what the surface host does, with a short list."
+		if os.Getenv("P2_GATE_TREE") == "1" {
+			// `/tree`: branch from the exchange's user message; the drawer lists the two branches, expanded.
+			tr, _ := app.chat.Transcript()
+			entry := 0
+			for _, item := range tr.Items {
+				if user, ok := item.(transcript.UserItem); ok && user.EntryID != nil && entry == 0 {
+					entry = *user.EntryID
+				}
+			}
+			if _, _, err := app.treeOf(app.host).Navigate(opened, entry); err != nil {
+				t.Fatal(err)
+			}
+			app.expanded = map[string]bool{opened: true}
+			until(t, tt, "the branches", func() bool { return tt.HasText("current") && tt.HasText("Say something to start.") })
+			want = "current"
+		}
 		if os.Getenv("P2_GATE_TOOLS") == "1" {
 			// The tool cards: the faux provider's scripted calls (write, edit, bash), one turn each, the last turn's row opened.
 			for _, prompt := range []string{"write", "edit", "bash"} {

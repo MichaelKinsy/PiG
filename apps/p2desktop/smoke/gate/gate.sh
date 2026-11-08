@@ -2,6 +2,7 @@
 # The visual regression gate (macOS): the native window and the BRANDED web UI of the same server (same sprite selected, same
 # window size, same state), light and dark, side by side. usage: gate.sh <p2-desktop binary> <out dir> <label> <sprite id> [setup]
 #   needs: /tmp/cgw (swiftc -O -o /tmp/cgw smoke/windows.swift), a Chrome for Testing in P2_CHROME_BIN, node with playwright-core (P2_UI_NODE_PATH), go.
+#   TREE=1 (with SEED=1 CHAT=1, headless): branch from the first message, the drawer's branches expanded (web: P2_WEB_CLICK='[aria-label="Expand branches"]').
 #   PROVIDERS=1: the real catalog with the Providers sheet open on both sides (P2_WEB_CLICK="text=Sign in to a provider").
 #   WAITTEXT=<text> makes the web capture wait until the page shows that text (the seeded sessions).
 # The native app and the web page are one server: the app's own loopback port, with its sprite hook (the branded bundle). Each
@@ -25,7 +26,7 @@ if [ "${HEADLESS:-}" = 1 ]; then
     HOME_=$(mktemp -d); T=$(mktemp -d); mkdir -p "$HOME_/state/pig-standard"
     [ "$SPRITE" = default ] || printf '{"variant":"%s"}\n' "$SPRITE" >"$HOME_/state/pig-standard/login.json"
     ( cd "$HERE/../../shell/mygoshell/native" && PIG_HOME=$HOME_ P2_GATE_OUT="$OUT/$LABEL-$THEME-native.png" P2_GATE_THEME=$THEME \
-        P2_GATE_SEED=${SEED:+1} P2_GATE_CHAT=${CHAT:+1} P2_GATE_TOOLS=${TOOLS:+1} P2_GATE_PROVIDERS=${PROVIDERS:+1} P2_GATE_PORT_FILE=$T/port P2_GATE_DONE_FILE=$T/done ${NATIVE_TEST:-/tmp/pd2-native.test} -test.run TestGateShot -test.count=1 >/tmp/pd2-gate.log 2>&1 ) &
+        P2_GATE_SEED=${SEED:+1} P2_GATE_CHAT=${CHAT:+1} P2_GATE_TOOLS=${TOOLS:+1} P2_GATE_TREE=${TREE:+1} P2_GATE_PROVIDERS=${PROVIDERS:+1} P2_GATE_PORT_FILE=$T/port P2_GATE_DONE_FILE=$T/done ${NATIVE_TEST:-/tmp/pd2-native.test} -test.run TestGateShot -test.count=1 >/tmp/pd2-gate.log 2>&1 ) &
     for _ in $(seq 1 1200); do [ -f "$T/port" ] && break; sleep 0.1; done
     [ -f "$T/port" ] || { echo "headless native render failed; see /tmp/pd2-gate.log"; exit 1; }
     PORT=$(sed -n 1p "$T/port"); SID=$(sed -n 2p "$T/port")

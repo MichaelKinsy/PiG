@@ -31,7 +31,7 @@ there. Both halves scrolled back through the history (oldest message on screen: 
 | 400 wheel steps, total | 895 ms | 22 304 ms |
 | scroll frame mean / p95 / max | 0.56 / 2.03 / 11.1 ms | 55.8 / 67.6 / 117 ms |
 | stream frame mean / p95 / max | 5.26 / 14.3 / 21.8 ms (27 frames) | 33.7 / 36.9 / 36.9 ms (6 frames) |
-| memory | heap 18 MB, process RSS 94 MB (server + worker + UI) | browser RSS 110 MB (the measured browser process; the server is the native half's process) |
+| memory | heap 18 MB, process RSS 94 MB (server + worker + UI) | browser RSS 110 MB (the sum of the processes whose command line holds the profile directory: renderers started without it are NOT counted, so this undercounts; the server is a separate process) |
 
 Caveats: the native half is a software tester, not a window with a GPU, and times the build + layout + paint of a frame, not the display's presentation;
 the web half is measured from the wheel event to the second `requestAnimationFrame`, so it includes Chrome's own frame pacing (about one 60 Hz frame
