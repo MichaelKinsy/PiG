@@ -422,9 +422,10 @@ func TestRefusedTokensRefreshWithoutABrowserSigningOutForgetsThemAndWaitsForASig
 	expectJSON(t, again, map[string]string{"kind": "authorized"})
 	_, err = owner.Call("signOut", delta.JsonObjectOf("server", "docs"), p2test.Background)
 	noError(t, err)
-	if docsOf(owner.member("instances")).Value("status") == "connected" {
-		t.Fatal("signed out instances reconnect at once")
-	}
+	// Pi reads the status the moment the call resolves; here the instances list of the connection a sign-in's own restart
+	// finished a moment ago can reach this client just after the answer (the runtime's followed changes are applied in the
+	// loop, the answer is sent from the call's goroutine), so the reconnect is waited for within a moment, not read at once.
+	owner.until("instances", func(v delta.JsonValue) bool { return docsOf(v).Value("status") != "connected" })
 	owner.until("instances", docsStatus("sign-in"))
 	stored, err := os.ReadFile(filepath.Join(h.dataDir, "mcp-auth.json"))
 	noError(t, err)
