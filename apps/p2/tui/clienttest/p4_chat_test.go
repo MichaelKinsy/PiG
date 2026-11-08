@@ -173,11 +173,7 @@ func TestModelSelectorConfiguresTheConversationCtrlSSavesTheDefaultModelProvider
 	if got := s.lastCall("setDefault").Value("modelId"); got != "faux-1" {
 		t.Fatalf("the current model is preselected: %v", got)
 	}
-	typed(s.Fixture, "/model faux/faux-1")
-	// The argument's completion is offered; Enter takes it (Pi's editor does not submit on an argument completion), the next Enter switches.
-	pollContains(t, s.Fixture, "→ faux/faux-1")
-	s.Send(enter)
-	s.Send(enter)
+	typedEnter(s.Fixture, "/model faux/faux-1")
 	s.waitCount(t, "configure", 3)
 	if got := fmtJSON(s.lastCall("configure")); got != "map[model:map[modelId:faux-1 provider:faux]]" {
 		t.Fatalf("configure = %s", got)
@@ -198,8 +194,7 @@ func TestShiftTabCyclesTheModelsThinkingLevelsCtrlPCyclesTheScopeWithItsLevelThi
 	if got := fmtJSON(s.lastCall("configure")); got != "map[model:map[modelId:faux-2 provider:faux] thinkingLevel:low]" {
 		t.Fatalf("configure = %s", got)
 	}
-	typed(s.Fixture, "/thinking")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/thinking")
 	pollContains(t, s.Fixture, "Thinking Level")
 	s.Send(down)
 	s.Send(down)
@@ -208,8 +203,7 @@ func TestShiftTabCyclesTheModelsThinkingLevelsCtrlPCyclesTheScopeWithItsLevelThi
 	if got := fmtJSON(s.lastCall("configure")); got != "map[thinkingLevel:high]" {
 		t.Fatalf("configure = %s", got)
 	}
-	typed(s.Fixture, "/scoped-models")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/scoped-models")
 	pollContains(t, s.Fixture, "Scoped models")
 	s.Send(enter) // toggles the first model
 	s.Send(ctrlS)
@@ -243,8 +237,7 @@ func TestGuestsSeeTheModelReadOnlyNoSelectorNoCyclingNeverTheOwnersCatalog(t *te
 		t.Fatal("a guest configured the conversation")
 	}
 	// A known command that is not theirs is refused, not sent as a message.
-	typed(s.Fixture, "/new-context x")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/new-context x")
 	tuitest.Poll(t, noticeContaining(s.Fixture, "/new-context is not available here"))
 	if s.calls.count("send") != 0 || s.calls.count("reset") != 0 {
 		t.Fatal("the refused command was sent")
@@ -256,19 +249,16 @@ func TestGuestsSeeTheModelReadOnlyNoSelectorNoCyclingNeverTheOwnersCatalog(t *te
 func TestNewNameAndSession(t *testing.T) {
 	s := newP4Chat(t, false, nil)
 	pollContains(t, s.Fixture, "(faux) faux-1")
-	typed(s.Fixture, "/name Better title")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/name Better title")
 	s.waitCount(t, "rename", 1)
 	if got := s.calls.get("rename")[0]; got != [2]any{"s", "Better title"} {
 		t.Fatalf("rename = %v", got)
 	}
-	typed(s.Fixture, "/session")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/session")
 	pollContains(t, s.Fixture, "Whole session (children and tools)")
 	pollScreen(t, s.Fixture, matches(`Viewers +2`))
 	s.Send(esc)
-	typed(s.Fixture, "/new")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/new")
 	s.waitCount(t, "create", 1)
 	if got := s.calls.get("create")[0].(location); got.cwd != "/work" || got.env != nil {
 		t.Fatalf("create = %+v", got)
@@ -286,8 +276,7 @@ func TestChatControlsCompactEscapeAbortsCompactionNewContextAltUpRestoresOwnQueu
 	compacting := p4View(t, "pi.live", map[string]any{"compactions": []any{map[string]any{"taskId": 9, "trigger": "manual", "blocking": false, "attempt": 0}}})
 	s := newP4Chat(t, false, compacting)
 	pollContains(t, s.Fixture, "Compacting context... (escape to cancel)")
-	typed(s.Fixture, "/compact keep the API notes")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/compact keep the API notes")
 	s.waitCount(t, "compact", 1)
 	if got := fmtJSON(s.lastCall("compact")); got != "map[instructions:keep the API notes]" {
 		t.Fatalf("compact = %s", got)
@@ -297,8 +286,7 @@ func TestChatControlsCompactEscapeAbortsCompactionNewContextAltUpRestoresOwnQueu
 	if s.calls.count("stop") != 0 {
 		t.Fatal("only the compaction is aborted when no run is busy")
 	}
-	typed(s.Fixture, "/new-context Continue with the parser")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/new-context Continue with the parser")
 	s.waitCount(t, "reset", 1)
 	if got := fmtJSON(s.lastCall("reset")); got != "map[handoff:Continue with the parser]" {
 		t.Fatalf("reset = %s", got)

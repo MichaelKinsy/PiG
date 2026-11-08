@@ -255,13 +255,11 @@ func TestChatModeChipQuotedRepliesAndNotesChatModeOwnerReplyAtPiFirst(t *testing
 	mustMatch(t, `with 2 chat messages`, shown)
 	mustMatch(t, ` Chat {2}messages go to the people here`, shown)
 	// Replies: pick the newest message, the next send carries its entry.
-	typed(s.Fixture, "/reply")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/reply")
 	pollContains(t, s.Fixture, "Reply to")
 	s.Send(enter)
 	pollContains(t, s.Fixture, "↪ Replying to Alice")
-	typed(s.Fixture, "yes, done")
-	s.Send(enter)
+	typedEnter(s.Fixture, "yes, done")
 	s.waitCalls(t, "send", 1)
 	if got := s.calls.get("send")[0].(*delta.JsonObject).Value("replyTo"); got != float64(3) {
 		t.Fatalf("replyTo = %v", got)
@@ -275,8 +273,7 @@ func TestChatModeChipQuotedRepliesAndNotesChatModeOwnerReplyAtPiFirst(t *testing
 	s.Send(ctrlU)
 	// The owner switches chat mode off; replies end with it.
 	s.Do(func() { s.Runtime.Role = tuiruntime.RoleOwner; s.Runtime.Changed() })
-	typed(s.Fixture, "/chat-mode")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/chat-mode")
 	s.waitCalls(t, "setChatMode", 1)
 	if got := s.calls.get("setChatMode")[0]; got != false {
 		t.Fatalf("setChatMode = %v", got)
