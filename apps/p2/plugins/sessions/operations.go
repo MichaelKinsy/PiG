@@ -903,7 +903,7 @@ func serveOperations(facet host.FacetHost) error {
 					_, err := failed.Change(ctx, func(draft *delta.Object) (any, error) {
 						list := draft.Array("list")
 						for i := list.Len() - 1; i >= 0; i-- {
-							if objectArgs(list.Get(i)).Value("id") == operation {
+							if entry := list.Object(i); entry != nil && entry.Get("id") == operation {
 								if _, err := list.Splice(i, 1); err != nil {
 									return nil, err
 								}

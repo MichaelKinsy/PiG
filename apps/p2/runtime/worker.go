@@ -260,7 +260,10 @@ var RelocationChecks = NewKeyedRegistry[RelocationCheck]("p2.relocation-checks")
 type Liveness struct {
 	mu         sync.Mutex
 	relocating bool
-	stopping   bool
+	// fenceHeld is whether the fence's active call is counted: Unfence lifts the admission fence at once, Unfreeze also
+	// releases the count.
+	fenceHeld bool
+	stopping  bool
 	counts     map[string]int
 	watches    map[*livenessWatch]struct{}
 }
@@ -447,21 +450,30 @@ func (l *Liveness) Freeze() bool {
 		return false
 	}
 	l.relocating = true
+	l.fenceHeld = true
 	l.mu.Unlock()
 	l.AddActiveCalls(1)
 	return true
 }
 
-// Unfreeze lifts the fence.
-func (l *Liveness) Unfreeze() {
+// Unfence lifts the admission fence only: calls are admitted again, the worker still counts the fence as an active call
+// (Unfreeze releases it). It is a flag flip, so a relocation may do it inside the commit that makes its move visible.
+func (l *Liveness) Unfence() {
 	l.mu.Lock()
-	if !l.relocating {
-		l.mu.Unlock()
-		return
-	}
 	l.relocating = false
 	l.mu.Unlock()
-	l.AddActiveCalls(-1)
+}
+
+// Unfreeze lifts the fence and releases its active call.
+func (l *Liveness) Unfreeze() {
+	l.mu.Lock()
+	l.relocating = false
+	held := l.fenceHeld
+	l.fenceHeld = false
+	l.mu.Unlock()
+	if held {
+		l.AddActiveCalls(-1)
+	}
 }
 
 // ErrRelocating is what a call made during a move fails with.
@@ -506,8 +518,10 @@ type HarnessParts struct {
 	// Relocate moves the session to location in place (the server's `WorkerBoundary.relocate`, while admissions are fenced
 	// and nothing runs): opens the destination's environment, switches the session's location, commits the root and its
 	// followers to the new cwd, commits the SessionLocation (its listeners reopen what they keep), then retires the
-	// environments nothing uses any more.
-	Relocate func(ctx context.Context, location Location) error
+	// environments nothing uses any more. unfence, when set, lifts the admission fence inside the commit that makes the
+	// move visible (the SessionLocation is committed before it, so what is admitted from then on works at the new
+	// location), as Pi's fence is lifted before a client can observe the commit; nil when no fence is up.
+	Relocate func(ctx context.Context, location Location, unfence func()) error
 }
 
 // HarnessNative is the registry of the session's Harness (the core's contribution once it is open).
@@ -792,7 +806,10 @@ func (m *daemonMachine) Close() { m.connection.Close() }
 // an older version left unplaced. Children copied the session's cwd when created, so a move leaves them behind; this runs at
 // every start (sessions moved before subagents tracked their own cwd still hold the old path) and at every in-place
 // relocation. Nothing resolves against this process's cwd. It returns the own locations of the other conversations.
-func followSession(ctx context.Context, place func(ctx context.Context, h harness.Harness, session Location) ([]durable.ConversationId, []Location, error), h harness.Harness, session Location) ([]Location, error) {
+//
+// moved, when set (a relocation), runs before the commit, and unfence inside it, once its writes are made (with no commit
+// to make, moved then unfence run in a row).
+func followSession(ctx context.Context, place func(ctx context.Context, h harness.Harness, session Location) ([]durable.ConversationId, []Location, error), h harness.Harness, session Location, moved, unfence func()) ([]Location, error) {
 	var followers []durable.ConversationId
 	var own []Location
 	if place != nil {
@@ -822,6 +839,9 @@ func followSession(ctx context.Context, place func(ctx context.Context, h harnes
 			stale = append(stale, id)
 		}
 	}
+	if moved != nil {
+		moved()
+	}
 	if len(stale) > 0 {
 		if _, err := h.Commit(ctx, func(tx durable.Tx) (any, error) {
 			for _, id := range stale {
@@ -829,10 +849,15 @@ func followSession(ctx context.Context, place func(ctx context.Context, h harnes
 					return nil, err
 				}
 			}
+			if unfence != nil {
+				unfence()
+			}
 			return nil, nil
 		}); err != nil {
 			return nil, err
 		}
+	} else if unfence != nil {
+		unfence()
 	}
 	return own, nil
 }
@@ -990,7 +1015,7 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 			}})
 			if err == nil {
 				// Before the Harness is live: nothing can run or resume in a stale cwd first.
-				_, err = followSession(ctx, place, h, location.Value())
+				_, err = followSession(ctx, place, h, location.Value(), nil, nil)
 			}
 			var agent durable.Agent
 			if err == nil {
@@ -1027,7 +1052,7 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 			}
 			return value.(*execution), nil
 		},
-		Relocate: func(ctx context.Context, next Location) error {
+		Relocate: func(ctx context.Context, next Location, unfence func()) error {
 			if SameLocation(next, location.Value()) {
 				return nil
 			}
@@ -1047,11 +1072,12 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 				return err
 			}
 			executions.switchTo(next)
-			own, err := followSession(ctx, place, durableValue.(harness.Harness), next)
+			// The SessionLocation is committed before the agent cwds' commit, which lifts the fence: what is admitted after it
+			// reads the new location. A failure leaves the worker fenced or moved, and the server restarts it from the catalog.
+			own, err := followSession(ctx, place, durableValue.(harness.Harness), next, func() { location.Set(next) }, unfence)
 			if err != nil {
 				return err
 			}
-			location.Set(next)
 			executions.retire(append([]Location{next}, own...))
 			return nil
 		},
@@ -1187,7 +1213,7 @@ func WorkerCore(init WorkerInit, session SessionInit, liveness *Liveness, locati
 					// publication, a section of this host's loop: suspend, or the section holds the loop that publication
 					// waits for (the first await of Pi's async handler).
 					chordctx.Suspend(ctx)
-					if err := parts.Relocate(ctx, next); err != nil {
+					if err := parts.Relocate(ctx, next, liveness.Unfence); err != nil {
 						return nil, err
 					}
 					liveness.Unfreeze()

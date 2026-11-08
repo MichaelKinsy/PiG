@@ -101,7 +101,7 @@ func newModeHost(t *testing.T, dir string) *modeHost {
 		Environments: func() (p2runtime.ExecutionEnvironments, error) {
 			return localEnvironments{dir: dir, env: node.NewNodeExecutionEnv(node.NodeExecutionEnvOptions{Cwd: dir})}, nil
 		},
-		Relocate: func(context.Context, p2runtime.Location) error { return nil },
+		Relocate: func(context.Context, p2runtime.Location, func()) error { return nil },
 	}
 	var created *p2test.TestHost
 	worker := &p2runtime.WorkerParts{Liveness: p2runtime.NewLiveness(), Location: p2runtime.NewSessionLocation(p2runtime.Location{Cwd: dir})}
