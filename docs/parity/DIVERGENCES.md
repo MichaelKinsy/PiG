@@ -16,6 +16,7 @@ Every active divergence must have:
 - `// pig divergence (D<N>): ...` at each call site
 - parity coverage or an explicit parity allowance
 - `SCRUTINIZED:approved`
+- if a test-mapping entry names it, the labeled paragraphs `Protects:`, `PiG-shaped test considered:` and `Why not:` (see AGENTS.md, Upstream test parity)
 
 ## Retired divergences
 
