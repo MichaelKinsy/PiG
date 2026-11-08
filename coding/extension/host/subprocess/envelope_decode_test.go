@@ -96,7 +96,7 @@ func TestDecodeEnvelopeMatchesTheSDKDecoder(t *testing.T) {
 	}
 }
 
-// pig additive: a member name is matched exactly. The sdk decoder, like encoding/json v1, also matched it in another case; a protocol frame always
+// A member name is matched exactly, as JSON.parse reads it (a JavaScript property read is case-sensitive). The sdk decoder, like encoding/json v1, also matched it in another case; a protocol frame always
 // spells its names as the SDKs write them.
 func TestDecodeEnvelopeMatchesNamesExactly(t *testing.T) {
 	var env Envelope

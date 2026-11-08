@@ -340,6 +340,29 @@
       ]
     },
     {
+      "id": "BF-030f512",
+      "title": "A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK…",
+      "symptom": "A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK encoder, no longer lose a quote, newline, backslash or other two-character escape that stands before the letters `fffd` (`\"say \\\"fffd\\\"\"` was written as `\"say �\"`): only the `\\ufffd` escape itself is written as the replacement character.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK encoder, no longer lose a quote, newline, backslash or other two-character escape that stands before the letters `fffd` (`\"say \\\"fffd\\\"\"` was written as `\"say �\"`): only the `\\ufffd` escape itself is written as the replacement character.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "030f512fd6",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/json/append_js_normalized_test.go::TestAppendJSNormalized",
+        "extensions/sdk/json/append_js_normalized_test.go::TestMarshalStringifyKeepsEscapeBeforeFffd"
+      ]
+    },
+    {
       "id": "BF-031b259",
       "title": "fix(chord/nextnode/workers): a start releases the registrations of its context when it returns",
       "symptom": "fix(chord/nextnode/workers): a start releases the registrations of its context when it returns",
@@ -6190,6 +6213,31 @@
       ],
       "tests": [
         "internal/codingagent/slash_cost_order_test.go::TestFormatCostSummaryListsToolsInStableNameOrder"
+      ]
+    },
+    {
+      "id": "BF-2a83c43",
+      "title": "The ordered-object JSON readers keep two object names apart when `JSON.parse` does",
+      "symptom": "The ordered-object JSON readers keep two object names apart when `JSON.parse` does.",
+      "rootCause": "\"\\ud800\", \"\\ud801\" and the raw bytes ED A0 80 are three distinct JSON.parse keys; Token.String() made them all U+FFFD and merged them (last wins). jsonopts.ReadName reads a name as the JavaScript key (a lone surrogate is its WTF-8 bytes, ill-formed bytes one U+FFFD per maximal subpart), and the dedup and map sites key on it: ai ordered_json/ordered_json_object/models_store/openai/types, orderedjson (which writes a lone-surrogate key back as its escape), login duplicate scan, configschema, theme keys, remote catalog, modelgen. The login v1 reference reads numbers as raw tokens (UseNumber) so the fuzz target no longer skips a number outside float64 range. The go-directive floor check uses…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The ordered-object JSON readers keep two object names apart when `JSON.parse` does. `\"\\ud800\"`, `\"\\ud801\"` and the raw bytes `ED A0 80` are three keys in JavaScript; the readers read each as U+FFFD and merged them into one entry (last value wins). A name with a lone surrogate or ill-formed UTF-8 is now keyed on the string JavaScript has (`jsonopts.ReadName`): an escaped lone surrogate is its WTF-8 bytes, and ill-formed raw bytes become one U+FFFD per maximal subpart, as Node decodes them. `internal/orderedjson` writes a lone-surrogate key back as its escape. The readers that hand the key to `encoding/json` still hold it as U+FFFD.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2a83c43014",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "ai/ordered_json_node_test.go::TestOrderedObjectReadersMatchNode",
+        "internal/jsonopts/name_test.go::TestReadNameMatchesNode",
+        "internal/jsonopts/name_test.go::TestValidName",
+        "internal/orderedjson/node_test.go::TestObjectMatchesNode"
       ]
     },
     {
