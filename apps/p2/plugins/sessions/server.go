@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"os"
 	"path/filepath"
 	"unicode/utf16"
@@ -183,13 +184,14 @@ func ownerSessions(self host.Self, catalog *host.Reference) (contracts.Implement
 						return nil, errors.New("The working directory must be an absolute path")
 					}
 					if createDirectory {
-						if err := os.MkdirAll(cwd, 0o777); err != nil {
+						if err := nodeerrno.MkdirAll(cwd, 0o777); err != nil {
 							return nil, err
 						}
 					}
 					info, err := os.Stat(cwd)
 					if err != nil {
-						return nil, err
+						// As Node's fs: `ENOENT: no such file or directory, stat '<path>'`.
+						return nil, nodeerrno.FromPathError(err)
 					}
 					if !info.IsDir() {
 						return nil, errors.New("Working directory is not a directory")
@@ -217,9 +219,7 @@ func ownerSessions(self host.Self, catalog *host.Reference) (contracts.Implement
 					return nil, errors.New("Unknown model")
 				}
 				title := cleanTitle(stringOf(in.Value("title")))
-				if units := utf16Prefix(title, newTitleLimit); units < len(title) {
-					title = title[:units]
-				}
+				title = utf16Slice(title, newTitleLimit)
 				edited := title != ""
 				if title == "" {
 					title = "New session"

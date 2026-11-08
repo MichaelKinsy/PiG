@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
@@ -83,15 +84,23 @@ func serveLockMirror(facet host.FacetHost) error {
 		// Each change is committed after the one before it (a routine's calls never overlap), the newest value last.
 		self.On(view.Member("lock"), func(call chord.WatchCall[delta.JsonValue], ctx host.Ctx) *host.Handled {
 			return host.AwaitingCtx(ctx, func() error {
-				parts, err := session()
-				if err != nil {
-					return err
+				// A failed commit is reported and dropped until the next change (as Pi's `.catch(report)`), never retried
+				// with the routine's backoff.
+				mirror := func() error {
+					parts, err := session()
+					if err != nil {
+						return err
+					}
+					durableSession, err := parts.Durable()
+					if err != nil {
+						return err
+					}
+					return MirrorLock(ctx, durableSession, call.Value)
 				}
-				durableSession, err := parts.Durable()
-				if err != nil {
-					return err
+				if err := mirror(); err != nil {
+					fmt.Fprintln(os.Stderr, "p2 sessions: mirroring the session's lock failed:", err)
 				}
-				return MirrorLock(ctx, durableSession, call.Value)
+				return nil
 			})
 		})
 		return contracts.Implementation{}, nil
