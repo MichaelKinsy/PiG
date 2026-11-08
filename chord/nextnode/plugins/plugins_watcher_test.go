@@ -242,24 +242,6 @@ func (f *watcherFixture) applied(snapshot MarkSnapshot, names ...string) {
 
 func (f *watcherFixture) close() { f.run(f.watcher.close) }
 
-// settle returns once the watcher handled the events of every file operation made before the call (the barrier of settle in
-// plugins_support_test.go: a directory outside the roots and the base, whose marks nothing, made after the edits and watched
-// when its event was handled), so a mark that a case reads or a discovery it makes does not meet an event of an earlier write.
-func (f *watcherFixture) settle() {
-	f.t.Helper()
-	barrier := f.t.TempDir()
-	f.run(func() { f.watcher.watchTree(barrier) })
-	sentinel := filepath.Join(barrier, "sentinel")
-	if err := os.Mkdir(sentinel, 0o755); err != nil {
-		f.t.Fatal(err)
-	}
-	eventually(f.t, 15*time.Second, "the watcher to handle a directory made after the edits", func() bool {
-		var reached bool
-		f.run(func() { _, reached = f.watcher.watched[sentinel] })
-		return reached
-	})
-}
-
 func expectMarks(t *testing.T, got, want PluginsState) {
 	t.Helper()
 	if !reflect.DeepEqual(got, want) {
