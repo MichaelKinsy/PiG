@@ -143539,7 +143539,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/event_bridge.go#emitAgentEnd"
+        "call:coding/session_graph_extension_runner_emit.go#withEmitMessageSequences"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_subscriptions_test.go#TestUpstreamRunnerEventSubscriptions",
@@ -184880,7 +184880,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/event_bridge.go#emitMessageStart"
+        "call:coding/session_graph_extension_runner_emit.go#withEmitMessageSequences"
       ],
       "evidence": [
         "test:coding/session_retry_events_upstream_test.go#TestUpstreamSessionRetryEvents",

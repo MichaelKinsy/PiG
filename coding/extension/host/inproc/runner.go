@@ -2212,7 +2212,12 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, event extension.MessageEndE
 		for _, handler := range snapshot.handlers {
 			currentEvent := event
 			currentEvent.Message = current
-			handlerResult, err := callHandler(handler, currentEvent, dispatchCtx)
+			handlerCtx := dispatchCtx
+			if modified {
+				// A handler after a replacement holds the replacement, which is no object Pi shares with any other payload (runner.ts emitMessageEnd).
+				handlerCtx = extension.WithMessageSequences(dispatchCtx, nil)
+			}
+			handlerResult, err := callHandler(handler, currentEvent, handlerCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "message_end", err)
 				continue

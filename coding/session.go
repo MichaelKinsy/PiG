@@ -206,6 +206,8 @@ type Session struct {
 	// messages persisted since.
 	entryIDsMu        sync.Mutex
 	entryIDsByMessage map[any]string
+	// messageSeqs numbers the messages extension events carry, so an extension process shares one object between the events and the session entry a message persists, as Pi does.
+	messageSeqs messageSequences
 
 	queueMu        sync.Mutex
 	queuedSteering []string
@@ -832,6 +834,9 @@ func (s *Session) persistMessage(msg agent.AgentMessage) error {
 			id, err = in.AppendCustomMessageEntry(customType, msg.Custom["content"], display, msg.Custom["details"])
 		} else {
 			id, err = in.AppendMessage(msg)
+			if err == nil {
+				in.NoteMessageEntry(id, s.messageSeqs.Numbered(msg))
+			}
 		}
 		if err == nil {
 			s.rememberMessageEntry(msg, id)
@@ -1447,6 +1452,8 @@ func (s *Session) ReplaceInner(sess *icodingagent.Session) {
 	defer s.mu.Unlock()
 	defer s.beginReplicatedChange()()
 	s.inner = sess
+	// The messages of the session left are no message of the one installed: the numbering does not hold them.
+	s.messageSeqs.reset()
 	// upstream: runner.ts:889-891. Extensions see the log the Session now owns, and nothing keeps the replaced one alive.
 	if runner := s.currentRunner(); runner != nil {
 		runner.BindSessionManager(sess)
@@ -2736,7 +2743,7 @@ func (s *Session) dispatchAgentEventToExtensions(ev agent.AgentEvent) {
 			s.reportAgentEventPanic(ev, recovered)
 		}
 	}()
-	icodingagent.DispatchAgentLoopEvent(s.currentRunner(), ev, &s.extCurrentMessage)
+	icodingagent.DispatchAgentLoopEvent(s.currentRunner(), ev, &s.extCurrentMessage, &s.messageSeqs)
 }
 
 // notifyAgentEventListeners delivers ev to the session's subscribers; a

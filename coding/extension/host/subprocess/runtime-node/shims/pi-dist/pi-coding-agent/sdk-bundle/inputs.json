@@ -515,7 +515,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/mcp/oauth.js",
-      "sha256": "051c357e25adcddcd15882da55e9c4307ca6af286c8c7880557b9847fb6cde3d"
+      "sha256": "a2c1bda40875ad2dd3f081f69c4d0e2d896a2b5bb38096be738a1f87a3f3d4b6"
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/mcp/resources.js",

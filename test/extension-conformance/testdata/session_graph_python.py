@@ -1474,6 +1474,7 @@ def extension_runner_script(ctx, args):
     started = runner.emit_before_agent_start({"messageType": "user", "prompt": "do it"}, {"cwd": cwd, "customPrompt": "base"})
     forced = started["systemPromptOptions"].get("forceSystemPrompt") or ""
     emits["beforeAgentStart"] = {"messages": started["messages"], "forced": {"startsWithBase": forced.startswith("base"), "endsWithA": forced.endswith("[A]")}, "customPrompt": started["systemPromptOptions"].get("customPrompt")}
+    runner.emit({"type": "message_start", "message": {"role": "user", "content": "hi", "timestamp": 1}})
     put("messageEnd", runner.emit_message_end({"type": "message_end", "message": {"role": "user", "content": "hi", "timestamp": 1}}))
     emits["providerRequest"] = runner.emit_before_provider_request({"model": "m"})
     emits["providerHeaders"] = runner.emit_before_provider_headers({"x-del": "d", "x-keep": "k"})
