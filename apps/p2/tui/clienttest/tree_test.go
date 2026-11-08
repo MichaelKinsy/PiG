@@ -106,8 +106,7 @@ func TestTreeSwitchesBranchesWithTheChosenMessageInTheEditorDoubleEscapeFollowin
 	tuitest.Poll(t, editable)
 	_ = surface
 	// pi's layout: the current branch first, a connector where "Echo: first" branches, the current one selected.
-	typed(s.Fixture, "/tree")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/tree")
 	pollContains(t, s.Fixture, "Session Tree")
 	shown := s.Screen()
 	// Each branch's label on its first own message: the session title for conversation 1.
@@ -120,8 +119,7 @@ func TestTreeSwitchesBranchesWithTheChosenMessageInTheEditorDoubleEscapeFollowin
 	s.Send("L")
 	pollContains(t, s.Fixture, "Branch label (empty: the session title):")
 	typed(s.Fixture, strings.Repeat(backspace, len("Fixture")))
-	typed(s.Fixture, "Main line")
-	s.Send(enter)
+	typedEnter(s.Fixture, "Main line")
 	tuitest.Poll(t, func() bool { return len(renames()) == 1 })
 	if got := fmtJSON(renames()[0]); got != "map[conversation:1 label:Main line]" {
 		t.Fatalf("rename = %s", got)
@@ -130,8 +128,7 @@ func TestTreeSwitchesBranchesWithTheChosenMessageInTheEditorDoubleEscapeFollowin
 	// Emptied: back to the session title.
 	s.Send("L")
 	pollContains(t, s.Fixture, "Branch label (empty: the session title):")
-	typed(s.Fixture, strings.Repeat(backspace, len("Main line")))
-	s.Send(enter)
+	typedEnter(s.Fixture, strings.Repeat(backspace, len("Main line")))
 	tuitest.Poll(t, func() bool { return len(renames()) == 2 })
 	if got := fmtJSON(renames()[1]); got != "map[conversation:1 label:<nil>]" {
 		t.Fatalf("rename = %s", got)
