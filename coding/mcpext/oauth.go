@@ -466,13 +466,13 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) error {
 		Challenge:   options.Challenge,
 	}
 	start, err := oauth.StartMcpSignIn(ctx, signIn)
-	if err != nil || start.Authorized {
+	if err != nil || start.Kind == oauth.McpSignInKindAuthorized {
 		return err
 	}
-	wait := oauth.WaitForLoopbackSignInOptions{Callback: loopback.Callback, Authorization: start.Redirect}
+	wait := oauth.WaitForLoopbackSignInOptions{Callback: loopback.Callback, Authorization: start.McpSignInRedirect}
 	if options.Prompt != nil {
 		wait.OnRegistered = func() {
-			u, err := oauth.ParseURL(start.Redirect.AuthorizationURL)
+			u, err := oauth.ParseURL(start.McpSignInRedirect.AuthorizationURL)
 			if err == nil {
 				options.Prompt.ShowAuthorizationURL(u)
 			}
@@ -483,5 +483,5 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) error {
 	if err != nil {
 		return err
 	}
-	return oauth.CompleteMcpSignIn(ctx, signIn, start.Redirect, response)
+	return oauth.CompleteMcpSignIn(ctx, oauth.McpCompleteSignInOptions{McpSignInOptions: signIn, Authorization: start.McpSignInRedirect, Response: response})
 }

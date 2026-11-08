@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"net/url"
 	"reflect"
@@ -45,10 +46,34 @@ func startRedirect(t *testing.T, options oauth.McpSignInOptions) oauth.McpSignIn
 	if err != nil {
 		t.Fatal(err)
 	}
-	if started.Authorized {
-		t.Fatal("Expected the browser step")
+	if started.Kind != oauth.McpSignInKindRedirect || started.McpSignInRedirect.Kind != oauth.McpSignInKindRedirect {
+		t.Fatalf("Expected the browser step, got kind %q", started.Kind)
 	}
-	return started.Redirect
+	return started.McpSignInRedirect
+}
+
+// The browser step is plain data an application persists: Pi's JSON names, with `kind`.
+func TestMcpSignInStartIsPlainDataWithAKind(t *testing.T) {
+	server := startAuthorizationServer(t, authServerOptions{})
+	started, err := oauth.StartMcpSignIn(t.Context(), signInOptions(server, oauth.McpOAuthSettings{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(started)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["kind"] != "redirect" || got["authorizationUrl"] != started.AuthorizationURL || got["redirectUrl"] != started.RedirectURL || got["state"] != started.State {
+		t.Fatalf("json = %s", data)
+	}
+	authorized, err := json.Marshal(oauth.McpSignInStart{Kind: oauth.McpSignInKindAuthorized})
+	if err != nil || string(authorized) != `{"kind":"authorized"}` {
+		t.Fatalf("authorized json = %s, %v", authorized, err)
+	}
 }
 
 // signIn starts, follows the browser step, and completes.
@@ -56,7 +81,7 @@ func signIn(t *testing.T, options oauth.McpSignInOptions) oauth.McpSignInRedirec
 	t.Helper()
 	authorization := startRedirect(t, options)
 	response := routeResponse(t, authorizeInBrowser(t, authorization.AuthorizationURL))
-	if err := oauth.CompleteMcpSignIn(t.Context(), options, authorization, response); err != nil {
+	if err := oauth.CompleteMcpSignIn(t.Context(), oauth.McpCompleteSignInOptions{McpSignInOptions: options, Authorization: authorization, Response: response}); err != nil {
 		t.Fatal(err)
 	}
 	return authorization
@@ -122,7 +147,7 @@ func TestSignInCompletesInASecondCallWithTheSameStoreAndAPersistedRedirect(t *te
 	}
 
 	response := routeResponse(t, authorizeInBrowser(t, authorization.AuthorizationURL))
-	if err := oauth.CompleteMcpSignIn(t.Context(), options, authorization, response); err != nil {
+	if err := oauth.CompleteMcpSignIn(t.Context(), oauth.McpCompleteSignInOptions{McpSignInOptions: options, Authorization: authorization, Response: response}); err != nil {
 		t.Fatal(err)
 	}
 	tokens := loadState(t, options).Tokens
@@ -141,7 +166,7 @@ func TestSignInRefreshesTheStoredTokensInsteadOfRedirecting(t *testing.T) {
 	signIn(t, options)
 
 	started, err := oauth.StartMcpSignIn(t.Context(), options)
-	if err != nil || !started.Authorized {
+	if err != nil || started.Kind != oauth.McpSignInKindAuthorized {
 		t.Fatalf("start = %+v, %v", started, err)
 	}
 	if len(server.authorized()) != 1 || server.tokens()[1].Get("grant_type") != "refresh_token" {
@@ -160,7 +185,7 @@ func TestSignInRefreshesUnderTheStoresRefreshLock(t *testing.T) {
 	signIn(t, options)
 
 	started, err := oauth.StartMcpSignIn(t.Context(), options)
-	if err != nil || !started.Authorized {
+	if err != nil || started.Kind != oauth.McpSignInKindAuthorized {
 		t.Fatalf("start = %+v, %v", started, err)
 	}
 	if got := store.accessTokenSaves("access-2"); !reflect.DeepEqual(got, []recordedSave{{locked: true, accessToken: "access-2"}}) {
@@ -177,7 +202,7 @@ func TestSignInRefusesToCompleteWithAnotherRedirectURIThanTheAuthorizationReques
 	// Another loopback port than the one passed to start: the server-specific variant differs too.
 	wrong := options
 	wrong.RedirectURL = "http://127.0.0.1:2/callback"
-	err := oauth.CompleteMcpSignIn(t.Context(), wrong, authorization, response)
+	err := oauth.CompleteMcpSignIn(t.Context(), oauth.McpCompleteSignInOptions{McpSignInOptions: wrong, Authorization: authorization, Response: response})
 	expectError(t, err, "but the authorization request used "+authorization.RedirectURL)
 	if len(server.tokens()) != 0 {
 		t.Fatalf("token requests = %v", server.tokens())
@@ -193,7 +218,7 @@ func TestSignInGivesEverySignInAFreshStateAndRefusesToCompleteASupersededOne(t *
 	if second.State == first.State {
 		t.Fatal("the second sign-in reused the state")
 	}
-	expectError(t, oauth.CompleteMcpSignIn(t.Context(), options, first, firstResponse), "Another sign-in to this MCP server started since")
+	expectError(t, oauth.CompleteMcpSignIn(t.Context(), oauth.McpCompleteSignInOptions{McpSignInOptions: options, Authorization: first, Response: firstResponse}), "Another sign-in to this MCP server started since")
 	if len(server.tokens()) != 0 {
 		t.Fatalf("token requests = %v", server.tokens())
 	}
@@ -205,7 +230,7 @@ func TestSignInRefusesAResponseWithAnotherState(t *testing.T) {
 	authorization := startRedirect(t, options)
 	response := routeResponse(t, authorizeInBrowser(t, authorization.AuthorizationURL))
 	response.State = "other"
-	expectError(t, oauth.CompleteMcpSignIn(t.Context(), options, authorization, response), "belongs to a different sign-in")
+	expectError(t, oauth.CompleteMcpSignIn(t.Context(), oauth.McpCompleteSignInOptions{McpSignInOptions: options, Authorization: authorization, Response: response}), "belongs to a different sign-in")
 	if len(server.tokens()) != 0 {
 		t.Fatalf("token requests = %v", server.tokens())
 	}
@@ -218,7 +243,7 @@ func TestStoredClientRefreshesFromAnotherRedirectURI(t *testing.T) {
 	other := options
 	other.RedirectURL = otherRouteURL
 	started, err := oauth.StartMcpSignIn(t.Context(), other)
-	if err != nil || !started.Authorized {
+	if err != nil || started.Kind != oauth.McpSignInKindAuthorized {
 		t.Fatalf("start = %+v, %v", started, err)
 	}
 	if len(server.registered()) != 1 || server.tokens()[1].Get("client_id") != "client-1" || loadState(t, options).ClientInformation.ClientID != "client-1" {
@@ -413,7 +438,7 @@ func TestCancellationCancelsACompletionWhoseTokenRequestDoesNotAnswer(t *testing
 	server.stallPath("/token")
 	ctx, cancel := context.WithTimeout(t.Context(), 100_000_000)
 	defer cancel()
-	expectCancelled(t, oauth.CompleteMcpSignIn(ctx, options, authorization, response))
+	expectCancelled(t, oauth.CompleteMcpSignIn(ctx, oauth.McpCompleteSignInOptions{McpSignInOptions: options, Authorization: authorization, Response: response}))
 }
 
 func TestCancellationFailsAtOnceWithAnEndedContext(t *testing.T) {
@@ -440,7 +465,7 @@ func TestMetadataDocumentsListingOnlyAnHTTPSRouteRefreshTheTokensOfADocument(t *
 				t.Fatal("a document client was stored")
 			}
 			started, err := oauth.StartMcpSignIn(t.Context(), options)
-			if err != nil || !started.Authorized {
+			if err != nil || started.Kind != oauth.McpSignInKindAuthorized {
 				t.Fatalf("start = %+v, %v", started, err)
 			}
 			refresh := server.tokens()[1]
@@ -464,7 +489,7 @@ func TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLo
 	signIn(t, options)
 	store.lockError = oauth.NewMcpRefreshLockBusyError()
 	started, err := oauth.StartMcpSignIn(t.Context(), options)
-	if err != nil || started.Authorized {
+	if err != nil || started.Kind == oauth.McpSignInKindAuthorized {
 		t.Fatalf("start = %+v, %v", started, err)
 	}
 	expectGrants(t, server, "authorization_code")
