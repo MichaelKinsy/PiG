@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -221,6 +221,8 @@ var noValue = &struct{}{}
 // whose stored columns changed and keeps the others the same objects, so its frame, the diff from the rows its watches had,
 // compares unchanged rows by identity (a window shifted by one row: one insert and one removal, not a comparison of every
 // row with every other).
+//
+// pig divergence (D431): Pi main 2439933cf, ahead of the v1.5.0 pin.
 type LiveQuery struct {
 	state.Source
 	handle    *TableHandle
@@ -246,7 +248,7 @@ var _ state.SourceImpl = (*LiveQuery)(nil)
 // NewLiveQuery is the live query of q's rows (at most limit) over handle, owned by owner, in batch.
 func NewLiveQuery(handle *TableHandle, q *Query, limit int64, owner QueryOwner, batch *state.Batch) *LiveQuery {
 	query := &LiveQuery{handle: handle, owner: owner, statement: handle.Sql.Select(q.Condition, q.Order(), nil, limit, nil)}
-	query.Source.Init(batch, query)
+	query.Init(batch, query)
 	return query
 }
 
@@ -367,7 +369,7 @@ func (query *LiveQuery) Adopt(run QueryRun) {
 	if report {
 		query.owner.Report(state.HandedOut(run.Err))
 	}
-	query.Source.Changed()
+	query.Changed()
 }
 
 // Deliver delivers the frame: the diff from the rows its watches had, or one failure call when they had rows.
@@ -451,7 +453,7 @@ func keyOf(key []string, row sqlite.SqliteRow) any {
 	for index, column := range key {
 		values[index] = row[column]
 	}
-	encoded, _ := json.Marshal(values)
+	encoded, _ := jsstring.MarshalJSON(values)
 	return string(encoded)
 }
 

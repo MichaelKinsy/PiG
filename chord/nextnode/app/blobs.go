@@ -57,7 +57,7 @@ func (blobs *Blobs) Read(id string, size, offset, length int64) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	buffer := make([]byte, max(0, min(length, size-offset)))
 	read, err := file.ReadAt(buffer, offset)
 	if err != nil && !errors.Is(err, io.EOF) {
@@ -117,7 +117,7 @@ func copyExclusive(from, to string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 	target, err := os.OpenFile(to, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return err
