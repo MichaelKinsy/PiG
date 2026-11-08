@@ -1033,7 +1033,7 @@ func okErrorResult(env FuncEnv, returns string, values []types.Type, hadError bo
 		return Verdict{}, false
 	}
 	parts := SplitTop(strings.TrimSuffix(args, ">"), ",")
-	if len(parts) != 2 && !(len(parts) == 1 && name != "Result") {
+	if len(parts) != 2 && (len(parts) != 1 || name == "Result") {
 		return Verdict{}, false
 	}
 	if !hadError {
@@ -1094,7 +1094,7 @@ func isIdentifier(name string) bool {
 		return false
 	}
 	for i, r := range name {
-		if !(r == '_' || r == '$' || unicode.IsLetter(r) || i > 0 && unicode.IsDigit(r)) {
+		if r != '_' && r != '$' && !unicode.IsLetter(r) && (i == 0 || !unicode.IsDigit(r)) {
 			return false
 		}
 	}
