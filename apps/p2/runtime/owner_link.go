@@ -87,6 +87,7 @@ func OwnerLink(ctx context.Context, args []string, env func(string) string) (str
 	if err != nil {
 		return "", err
 	}
+	//portlint:allow transportperrequest one request per run of the `owner-link` command: nothing to reuse
 	client := &http.Client{Transport: &http.Transport{Proxy: nil}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	response, err := client.Do(request)
 	if err != nil || response.StatusCode < 200 || response.StatusCode > 299 {

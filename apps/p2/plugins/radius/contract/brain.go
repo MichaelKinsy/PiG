@@ -19,6 +19,7 @@ import (
 	"time"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/gorilla/websocket"
 )
 
@@ -272,6 +273,7 @@ type Brain struct {
 
 // NewBrain makes a brain; Start connects it.
 func NewBrain(options BrainOptions) *Brain {
+	//portlint:allow ctxbackground the brain owns this context for its life: Close cancels it
 	ctx, cancel := context.WithCancel(context.Background())
 	pick := func(value, fallback time.Duration) time.Duration {
 		if value > 0 {
@@ -1108,7 +1110,10 @@ func sameStrings(a, b []string) bool {
 }
 
 func (b *Brain) putShares(config *Config, shares []string) error {
-	body, err := json.Marshal(map[string]any{"emails": shares})
+	// The body is what JSON.stringify({ emails: shares }) writes: `<`, `>` and `&` are not escaped.
+	body, err := chordjson.Marshal(struct {
+		Emails []string `json:"emails"`
+	}{shares})
 	if err != nil {
 		return err
 	}

@@ -176,6 +176,7 @@ func radiusLogin(_ []string) int {
 		return 1
 	}
 	gateway := contract.GatewayFromEnv()
+	//portlint:allow ctxbackground the sign-in command's own context: it ends with the process, or at the interrupt
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	fmt.Printf("Signing in to Radius at %s\n", gateway)

@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Config is the brain's `radius.json` (`RadiusBrainConfig`): the gateway, a stable server ID, and an OAuth credential from
@@ -70,12 +72,13 @@ func ReadConfig(directory string) (*Config, error) {
 
 // WriteConfig writes the configuration (0600) through a temporary file, so a reader never sees half of it.
 func WriteConfig(directory string, config Config) error {
-	credential, err := json.Marshal(config.Credential)
+	credential, err := chordjson.Marshal(config.Credential)
 	if err != nil {
 		return err
 	}
 	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(credential, &fields); err != nil {
+	//perf:ok the credential's own fields, which `type` joins: written once per sign-in (cold)
+	if err := json.Unmarshal(credential, &fields); err != nil { //portlint:allow jsonclone a typed value converted to the object `type` joins, cold
 		return err
 	}
 	fields["type"] = json.RawMessage(`"oauth"`)
@@ -86,10 +89,16 @@ func WriteConfig(directory string, config Config) error {
 		ShellPage    string                     `json:"shellPage,omitempty"`
 		Credential   map[string]json.RawMessage `json:"credential"`
 	}{config.Gateway, config.ServerID, config.PublicOrigin, config.ShellPage, fields}
-	encoded, err := json.MarshalIndent(stored, "", "\t")
+	// JSON.stringify(config, null, "\t"): no HTML escaping, then the tab indentation.
+	compact, err := chordjson.Marshal(stored)
 	if err != nil {
 		return err
 	}
+	var indented bytes.Buffer
+	if err := json.Indent(&indented, compact, "", "\t"); err != nil {
+		return err
+	}
+	encoded := indented.Bytes()
 	path := ConfigPath(directory)
 	if err := os.WriteFile(path+".tmp", append(encoded, '\n'), 0o600); err != nil {
 		return err
