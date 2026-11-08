@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,8 +41,10 @@ import (
 // and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460). `Files` and
 // `FilesFolder` are not bridged: `Files` has a keyed member (`summary`) and the bridge refuses keyed members, so a TS plugin cannot
 // get a host's files; Go code gets them directly (D461). The server's host and the plugins' NodeHost are two hosts with a store each
-// (D462). The server's own code is not scanned at start (Pi compares the static import graph of its start script): a Go server is one
-// executable with no import graph, `AppOptions.Base` lists what marks `base` and there is no `server_scan` report (D603).
+// (D462). The server's own code is its executable, compared at start beside `AppOptions.Base` where Pi compares the static import graph
+// of its start script; one under the Go build cache (`go run`, `go test`) is never compared, as Pi skips an entry under `node_modules`;
+// one that cannot be read is reported as `server_scan` and the start goes on. A start script's lazy optional imports have no Go form
+// (D603).
 // `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
 // worker kinds.
 //
@@ -192,6 +196,9 @@ type AppOptions struct {
 	// Node is how the Node subprocesses that host the plugins are started.
 	Node    plugins.NodeOptions
 	OnError func(AppError)
+
+	// executable is the server's own code: os.Executable unless a test names another.
+	executable func() (string, error)
 }
 
 // KitStart is what StartWorker reads from its start data besides the app's: the kit's part.
@@ -344,6 +351,44 @@ func (a *App) report(kind AppErrorKind, err any) {
 	}
 }
 
+// serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`):
+// not one under the Go build cache (the analog of an entry under `node_modules`: a test runner, `go run`), and one that cannot be
+// read is reported as `server_scan` and left out.
+func (a *App) serverExecutable() (string, bool) {
+	lookup := a.options.executable
+	if lookup == nil {
+		lookup = os.Executable
+	}
+	exe, err := lookup()
+	if err == nil {
+		exe, err = filepath.Abs(exe)
+	}
+	if err == nil {
+		var info os.FileInfo
+		if info, err = os.Stat(exe); err == nil && !info.Mode().IsRegular() {
+			err = fmt.Errorf("%s is not a regular file", exe)
+		}
+	}
+	if err != nil {
+		a.report(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err))
+		return "", false
+	}
+	if inGoBuildCache(exe) {
+		return "", false
+	}
+	return exe, true
+}
+
+// inGoBuildCache is whether path lies under a `go-build` work directory, where `go run` and `go test` put the programs they build.
+func inGoBuildCache(path string) bool {
+	for element := range strings.SplitSeq(filepath.ToSlash(path), "/") {
+		if strings.HasPrefix(element, "go-build") {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *App) start(opened openedServer, ctx context.Context) error {
 	options := a.options
 	limits := options.Limits
@@ -392,9 +437,13 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			return err
 		}
 	}
+	// The server's own code, its executable: compared like every base bundle's. Best effort: one that cannot be read stops nothing.
+	if exe, ok := a.serverExecutable(); ok && !slices.Contains(base, exe) {
+		base = append(base, exe)
+	}
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
-		Api: &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
+		Api:     &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
 	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
