@@ -148,6 +148,11 @@ paths = ["internal/yaml12/testdata/v3diff/piglet-corpus.json"]
 [[input]]
 paths = ["coding/cli/testdata/go.mod", "coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
 
+# rpc-settle-wait.lisp is the Lisp SDK realization of the settle-wait fixture program that rpc-settle-wait.py and the -go and -rs directories
+# realize: a test program, not expected output.
+[[input]]
+paths = ["coding/cli/testdata/rpc-settle-wait.lisp"]
+
 [[golden]]
 paths = ["coding/cli/testdata/d82-w7/rpc-usage-pi.json", "coding/cli/testdata/d82-w7/rpc-usage-extension-pi.json"]
 owner = "pi"

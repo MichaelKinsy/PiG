@@ -83,7 +83,7 @@ type failureObservation struct {
 var stderrLogPath = regexp.MustCompile(` \(stderr: [^)]*\)`)
 
 // rustPanicPath is the directory a Rust panic names its source file by: the test's own temporary directory, which differs by mode.
-var rustPanicPath = regexp.MustCompile(`(panicked at )\S*/src/lib\.rs`)
+var rustPanicPath = regexp.MustCompile(`(panicked at ).*?[/\\]src[/\\]lib\.rs`)
 
 // observeFactoryFailure loads the failing factories of failing beside one healthy factory ("factory-ok"), and returns each failing extension's observation.
 // failingFirst puts the failing ones before the healthy one; with several, the healthy one sits between the first and the last.
