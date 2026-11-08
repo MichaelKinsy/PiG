@@ -153,10 +153,7 @@ func runContractOracle(t *testing.T, c contractCorpusJSON) contractResult {
 		t.Fatal(err)
 	}
 	testenv.RequireDirectoryLink(t, filepath.Join(abs, "get-east-asian-width"), filepath.Join(dir, "node_modules", "get-east-asian-width"))
-	src, err := os.ReadFile(filepath.Join(abs, "utils.ts"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	src := piUtilsSource(t, abs)
 	text := string(src)
 	for _, decl := range []string{"class AnsiCodeTracker {", "function updateTrackerFromText(", "function splitIntoTokensWithAnsi(", "function wrapSingleLine(", "function breakLongWord("} {
 		if strings.Count(text, "\n"+decl) != 1 {

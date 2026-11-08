@@ -242,6 +242,11 @@ func TestDaemonCancelRightBehindItsRequestMatchesPisDaemon(t *testing.T) {
 // TestDaemonHelloMatchesPisDaemon compares the hello reply under each environment that changes it.
 func TestDaemonHelloMatchesPisDaemon(t *testing.T) {
 	version := wireNormalizer{regexp.MustCompile(`"version":"[^"]*"`), `"version":"V"`}
+	normalizers := []wireNormalizer{version}
+	if _, err := os.Stat(pinnedDaemonSource(t, "process.rs")); err != nil {
+		// A pin before Pi 9c9ce8547 does not list the `process` feature PiG's daemon does.
+		normalizers = append(normalizers, wireNormalizer{regexp.MustCompile(`,"process"\]`), `]`})
+	}
 	for _, test := range []struct {
 		name string
 		env  []string
@@ -269,7 +274,7 @@ func TestDaemonHelloMatchesPisDaemon(t *testing.T) {
 					environment = append(environment, strings.ReplaceAll(entry, "{TMP}", tmp))
 				}
 				d := startWireDaemon(t, binary, root, environment)
-				text := render(d.call(object("op", "hello"), nil), root, []wireNormalizer{version, {regexp.MustCompile(regexp.QuoteMeta(base)), "{BASE}"}})
+				text := render(d.call(object("op", "hello"), nil), root, append([]wireNormalizer{{regexp.MustCompile(regexp.QuoteMeta(base)), "{BASE}"}}, normalizers...))
 				outputs[index] = d.sync + text
 			}
 			compareWire(t, test.name, outputs[0], outputs[1])
