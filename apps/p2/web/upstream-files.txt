@@ -511,3 +511,5 @@ src/web/transcript.ts
 src/web/use-chat-scroll.ts
 src/web/virtual-list.ts
 tsconfig.json
+plugins/mcp/contract.ts
+plugins/mcp/web.tsx
