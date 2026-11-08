@@ -226,11 +226,12 @@ func (r *route) changed(routed *routed, event pathEvent) {
 			r.forget(routed.address.Key)
 		}
 	case pathAttached:
-		if routed.suspended {
+		switch {
+		case routed.suspended:
 			event.holder.unreachable(suspendedError(routed))
-		} else if !routed.resolving {
+		case !routed.resolving:
 			r.resolve(routed, event.holder.span())
-		} else if routed.span != nil {
+		case routed.span != nil:
 			if held := event.holder.span(); held != nil {
 				held.AddLink(telemetry.SpanLink{Context: routed.span})
 			}

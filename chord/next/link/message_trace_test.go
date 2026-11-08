@@ -33,7 +33,7 @@ func traceKinds() []link.Message {
 // largestCarrier is a carrier at the bounds: 8 keys, keys and values of 256 characters.
 func largestCarrier() map[string]string {
 	carrier := map[string]string{}
-	for index := 0; index < 8; index++ {
+	for index := range 8 {
 		key := string(rune('0' + index))
 		carrier[key+strings.Repeat("k", 255)] = strings.Repeat("v", 256)
 	}

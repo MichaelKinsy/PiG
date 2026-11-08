@@ -444,7 +444,7 @@ var _ Host = (*chordHost)(nil)
 func createHost(options HostOptions) (*chordHost, error) {
 	var adapter telemetry.TelemetryContext = telemetry.NoopTelemetryContext
 	// A nil pointer in the interface (an unset adapter field) is none.
-	if value := reflect.ValueOf(options.Telemetry); options.Telemetry != nil && !(value.Kind() == reflect.Pointer && value.IsNil()) {
+	if value := reflect.ValueOf(options.Telemetry); options.Telemetry != nil && (value.Kind() != reflect.Pointer || !value.IsNil()) {
 		adapter = options.Telemetry
 	}
 	events := options.loop

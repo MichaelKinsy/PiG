@@ -558,7 +558,7 @@ func hostile(t testing.TB) (*telemetry.InMemoryTelemetryContext, *RawPeer, *rela
 }
 
 func TestWhatAPeerSendsRefusesAMalformedHeaderTheLinkClosesNothingIsRecorded(t *testing.T) {
-	long := func(char string, count int) string { return strings.Repeat(char, count) }
+	long := strings.Repeat
 	nineKeys := map[string]string{}
 	for index := range 9 {
 		nineKeys["k"+string(rune('0'+index))] = "v"
