@@ -221,6 +221,7 @@ func stageEntry(plugin string, entry servedEntry, types *namedMap[*served], regi
 		plugin:       plugin,
 		provider:     provider,
 		linger:       durationOr(entry.options.Linger, 0),
+		traced:       !entry.options.Untraced,
 		contract:     contract,
 		local:        local,
 		remote:       remote,

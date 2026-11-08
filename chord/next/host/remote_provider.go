@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 )
 
 // Ports packages/chord/src/next/remote/provider.ts. The provider side of one origin on a link (§3, §22, W1; decision
@@ -33,8 +35,10 @@ type runningCall struct {
 	hold    providerEntry
 	served  *hold
 	relayed *relayedHold
-	bytes   bool
-	abort   func(cause error)
+	// span is its `chord.relay` span while its reply is awaited, when this host records (relayed calls).
+	span  *chordtelemetry.OpenSpan
+	bytes bool
+	abort func(cause error)
 }
 
 // relayState is a relaying origin: its number on upstream links, and the open upstream links it relayed holds to.
@@ -67,6 +71,8 @@ type providerSide struct {
 	touchedHolds []*hold
 	// waiting are the holds whose ops wait in their pending queues for a slot.
 	waiting orderedTable[*hold, struct{}]
+	// waitingSince is when the first hold started waiting for a slot; zero while none waits.
+	waitingSince time.Time
 	// binding are the holds waiting for a slot to send their first binding.
 	binding orderedTable[*hold, struct{}]
 	// bindingTurn: the waiting bindings take the next slot: the last one went to waiting state while they waited.
@@ -126,6 +132,8 @@ func (p *providerSide) closed() {
 	for _, call := range p.calls.values() {
 		if call.served != nil {
 			call.abort(closed)
+		} else if call.span != nil {
+			relayEnded(call.span, nil)
 		}
 	}
 	p.calls.clear()
@@ -299,6 +307,8 @@ func (p *providerSide) forget(entry providerEntry, err *data.ChordError) {
 		p.calls.delete(callID)
 		if call.served != nil {
 			call.abort(reason)
+		} else if call.span != nil {
+			relayEnded(call.span, nil)
 		}
 	}
 	if served, isServed := entry.(*hold); isServed {
@@ -338,6 +348,7 @@ func (p *providerSide) unbound(h *hold, err *data.ChordError) {
 // there. At most one extra message per answer, acknowledged before the call its answer frees a slot for (one direction keeps
 // its order): running calls and messages past the window stay within this side's N together.
 func (p *providerSide) reply(id int, reply link.OriginMessage) {
+	call, found := p.calls.get(id)
 	if !p.calls.delete(id) {
 		return
 	}
@@ -345,6 +356,9 @@ func (p *providerSide) reply(id int, reply link.OriginMessage) {
 		p.sendWaiting(p.link.context)
 	}
 	p.send(reply)
+	if found && call.span != nil {
+		relayEnded(call.span, reply)
+	}
 	p.settle()
 }
 
@@ -361,6 +375,10 @@ func (p *providerSide) bind(h *hold, ctx context.Context) {
 func (p *providerSide) unbind(h *hold) {
 	p.waiting.delete(h)
 	p.binding.delete(h)
+	// Nothing waits any more: no wait to record.
+	if p.waiting.len() == 0 {
+		p.waitingSince = time.Time{}
+	}
 }
 
 // touched: a hold's members changed in the current batch; its flush sends or queues it.
@@ -425,7 +443,7 @@ func (p *providerSide) hold(message *link.HoldMessage) error {
 	// Whom it acts for is decided here once (callerOf), never passed on: a relay names it only on a route link.
 	request := holdRequest{
 		Type: message.Type, Version: message.Version, Fingerprint: message.Fingerprint, Params: message.Params,
-		Address: message.Address,
+		Address: message.Address, Trace: message.Trace,
 	}
 	if message.Chain != nil && l.trusted {
 		request.Chain = message.Chain
@@ -510,8 +528,9 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 				return nil, nil
 			}
 		}
-		p.calls.set(message.Call, &runningCall{hold: relayed, relayed: relayed})
-		relayed.call(message)
+		running := &runningCall{hold: relayed, relayed: relayed}
+		p.calls.set(message.Call, running)
+		running.span = relayed.call(message)
 		return nil, nil
 	}
 	served := entry.(*hold)
@@ -555,6 +574,10 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 		scope = asRemoteOldWork(scope)
 		p.link.host.oldWork.open()
 	}
+	// The caller's span over the link: its carrier with this host's adapter (absent or unknown: the adapter's root).
+	if parent := chordtelemetry.ParentOf(message.Trace, p.link.host.telemetry); !chordtelemetry.Untraced(parent) {
+		scope = chordctx.WithTelemetry(scope, chordtelemetry.AsSpan(parent))
+	}
 	// A link's context has no abort signal, so this is the call's own signal: no combined signal per call.
 	p.run(message.Call, call, name, args, chordctx.WithAbortSignal(scope, signal), old)
 	return nil, nil
@@ -596,6 +619,9 @@ func (p *providerSide) abort(id int) {
 	p.calls.delete(id)
 	if call.relayed != nil {
 		call.relayed.abort(id)
+		if call.span != nil {
+			relayEnded(call.span, nil)
+		}
 		return
 	}
 	call.abort(data.NewChordError(data.ChordErrorInit{Code: data.CodeAborted, Message: fmt.Sprintf("call %d: aborted by its caller", id)}, nil))
@@ -656,6 +682,9 @@ func (p *providerSide) flush(ctx context.Context) {
 		}
 		h.queue()
 		p.waiting.set(h, struct{}{})
+		if p.waitingSince.IsZero() {
+			p.waitingSince = time.Now()
+		}
 	}
 }
 
@@ -694,12 +723,22 @@ func (p *providerSide) slotFreed() {
 func (p *providerSide) sendWaiting(ctx context.Context) {
 	holds := p.waiting.keys()
 	p.waiting.clear()
+	p.waited()
 	p.bindingTurn = p.binding.len() > 0
 	entries := make([]link.StateEntry, len(holds))
 	for index, h := range holds {
 		entries[index] = h.pendingEntry(ctx)
 	}
 	p.sendOwn(&link.StateMessage{Holds: entries})
+}
+
+// waited: the waiting state went out (or its holds left): how long it waited for its slot is recorded.
+func (p *providerSide) waited() {
+	if p.waitingSince.IsZero() {
+		return
+	}
+	p.link.host.metrics.Histogram("chord.backpressure.wait").Record(float64(time.Since(p.waitingSince))/float64(time.Millisecond), nil, nil)
+	p.waitingSince = time.Time{}
 }
 
 // result is a call's result message, its part deflated above the threshold when this host compresses; with byte segments
@@ -718,6 +757,9 @@ func (p *providerSide) sendOwn(message link.OriginMessage) {
 	p.inFlight++
 	p.ownSent++
 	p.sent = append(p.sent, nil)
+	if _, ok := message.(*link.StateMessage); ok {
+		p.link.host.metrics.Counter("chord.link.state_messages").Add(1, nil)
+	}
 	p.send(message)
 }
 

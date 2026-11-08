@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/remote/path.ts. Paths (§3 recovery): where this host's upstream holds go, the parent
@@ -22,6 +23,8 @@ type upstream interface {
 	// unreachable: its path's address cannot be reached for now (a route's `resolve` failed, a suspension): it fails
 	// `waiting` with err, still on the path, bound by its next link.
 	unreachable(err *data.ChordError)
+	// span is its hold's (or relay's) span until it is bound; nil when nothing records: a route's resolve links to it.
+	span() telemetry.TelemetrySpan
 }
 
 // pathEventKind is the kind of a pathEvent: Pi's `PathEvent["kind"]`.
