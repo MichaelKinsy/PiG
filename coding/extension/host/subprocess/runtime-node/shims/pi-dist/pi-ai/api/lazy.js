@@ -1,5 +1,5 @@
 import { AssistantMessageEventStream } from "../utils/event-stream.js";
-function createSetupErrorMessage(model, error, timestamp) {
+function createSetupErrorMessage(model, error, timestamp, stopReason) {
     return {
         role: "assistant",
         content: [],
@@ -14,7 +14,7 @@ function createSetupErrorMessage(model, error, timestamp) {
             totalTokens: 0,
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
         },
-        stopReason: "error",
+        stopReason,
         errorMessage: error instanceof Error ? error.message : String(error),
         timestamp,
     };
@@ -42,7 +42,7 @@ async function forwardStream(target, source, observer, observeResult) {
  * lazy module loading) behind it. Setup failures terminate the stream with an
  * error event.
  */
-export function lazyStream(model, setup, observer) {
+export function lazyStream(model, setup, observer, signal) {
     const startedAt = Date.now();
     const outer = new AssistantMessageEventStream();
     let observedResult = false;
@@ -55,8 +55,9 @@ export function lazyStream(model, setup, observer) {
     setup()
         .then((inner) => forwardStream(outer, inner, observer, observeResult))
         .catch((error) => {
-        const message = createSetupErrorMessage(model, error, startedAt);
-        const event = { type: "error", reason: "error", error: message };
+        const reason = signal?.aborted ? "aborted" : "error";
+        const message = createSetupErrorMessage(model, error, startedAt, reason);
+        const event = { type: "error", reason, error: message };
         outer.push(event);
         observer?.onEvent?.(event);
         outer.end(message);
@@ -66,8 +67,8 @@ export function lazyStream(model, setup, observer) {
 }
 export function lazyApi(load, capabilities) {
     const api = {
-        stream: (model, context, options) => lazyStream(model, async () => (await load()).stream(model, context, options)),
-        streamSimple: (model, context, options) => lazyStream(model, async () => (await load()).streamSimple(model, context, options)),
+        stream: (model, context, options) => lazyStream(model, async () => (await load()).stream(model, context, options), undefined, options?.signal),
+        streamSimple: (model, context, options) => lazyStream(model, async () => (await load()).streamSimple(model, context, options), undefined, options?.signal),
     };
     if (capabilities?.fetchDeferred) {
         api.fetchDeferred = (model, handle, options) => lazyStream(model, async () => {
@@ -75,7 +76,7 @@ export function lazyApi(load, capabilities) {
             if (!implementation.fetchDeferred)
                 throw new Error("API does not support deferred responses");
             return implementation.fetchDeferred(model, handle, options);
-        });
+        }, undefined, options?.signal);
     }
     if (capabilities?.cancelDeferred) {
         api.cancelDeferred = async (model, handle, options) => {

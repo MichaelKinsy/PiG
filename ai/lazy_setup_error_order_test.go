@@ -30,7 +30,7 @@ func errorMessageBeforeTimestamp(t *testing.T, stream *AssistantMessageEventStre
 func TestModelsSetupErrorListsErrorMessageBeforeTimestamp(t *testing.T) {
 	model := &Model{ID: "m1", ProviderMeta: ProviderMetadata{ProviderID: "demo", API: "openai-completions"}}
 	stream := NewAssistantMessageEventStream()
-	pushModelsSetupError(stream, model, errors.New(`Provider demo has no API implementation for "x"`))
+	pushModelsSetupError(t.Context(), stream, model, errors.New(`Provider demo has no API implementation for "x"`))
 	if errorFirst, data := errorMessageBeforeTimestamp(t, stream); !errorFirst {
 		t.Fatalf("setup error message order: %s", data)
 	}
