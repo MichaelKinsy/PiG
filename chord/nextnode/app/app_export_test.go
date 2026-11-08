@@ -261,6 +261,11 @@ func TestAppLeavesAFailedAddressFailedAfterAnExport(t *testing.T) {
 	}
 	defer hold.Release()
 	awaitStatus(t, found, "project|p1", func(status string) bool { return status == "failed" })
+	// The failed start is reported with the app's full error (the public one is "worker failed to start").
+	s.errors.expect()
+	if got := s.errors.kinds(); !slices.Contains(got, AppErrorWorkers) {
+		t.Fatalf("reported %v, want the worker's failed start (workers)", got)
+	}
 	if err := s.app.ExportData(address, filepath.Join(t.TempDir(), "p1.tar"), background); err != nil {
 		t.Fatal(err)
 	}

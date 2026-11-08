@@ -237,3 +237,64 @@ func TestAppStartsWithoutWorkerKindsAndWithoutAWorkerPrincipalWorkerKindsNeedIt(
 		t.Fatalf("start: %v", err)
 	}
 }
+
+// A worker kind's Authorize and Start are required, as Pi's types require them: a nil one is a start error (before anything opens),
+// not a panic when the first worker starts.
+func TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything(t *testing.T) {
+	for _, missing := range []struct {
+		name string
+		edit func(*AppWorkerKind)
+	}{
+		{"Authorize", func(kind *AppWorkerKind) { kind.Authorize = nil }},
+		{"Start", func(kind *AppWorkerKind) { kind.Start = nil }},
+	} {
+		t.Run(missing.name, func(t *testing.T) {
+			options, _ := testOptions(t, nil)
+			kind := testWorker(t, project, "")
+			missing.edit(&kind)
+			options.Workers = []AppWorkerKind{kind}
+			_, err := StartServer(options, background)
+			if err == nil || err.Error() != `startServer: worker kind "project" needs Authorize and Start` {
+				t.Fatalf("start: %v", err)
+			}
+			if _, err := os.Stat(options.DataDir); err == nil {
+				t.Fatal("a refused worker kind opened the data directory")
+			}
+		})
+	}
+}
+
+// workerHosts is the address of each worker by its principal's key: an address's entry ends with it (a long-running server starts
+// addresses without end), and one address never ends another's entry when they share a principal key.
+func TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver(t *testing.T) {
+	hosts := &workerHosts{keys: map[string]string{}, principals: map[string]string{}}
+	hosts.set("pk-a", "project|a")
+	hosts.set("pk-b", "project|b")
+	hosts.forget("project|a")
+	if _, ok := hosts.get("pk-a"); ok {
+		t.Fatal("an ended address's entry stays")
+	}
+	if got, ok := hosts.get("pk-b"); !ok || got != "project|b" {
+		t.Fatalf("the other address's entry = %q, %v", got, ok)
+	}
+	// Two addresses with one principal key: the later start owns it, and the earlier one ending takes nothing of it.
+	hosts.set("pk-shared", "project|c")
+	hosts.set("pk-shared", "project|d")
+	hosts.forget("project|c")
+	if got, ok := hosts.get("pk-shared"); !ok || got != "project|d" {
+		t.Fatalf("shared entry after the first address ended = %q, %v", got, ok)
+	}
+	// An address restarted under another principal key leaves nothing of its first.
+	hosts.set("pk-old", "project|e")
+	hosts.set("pk-new", "project|e")
+	if _, ok := hosts.get("pk-old"); ok {
+		t.Fatal("a restarted address keeps its old principal key's entry")
+	}
+	hosts.forget("project|e")
+	hosts.forget("project|d")
+	hosts.forget("project|b")
+	hosts.forget("project|never-started")
+	if len(hosts.keys) != 0 || len(hosts.principals) != 0 {
+		t.Fatalf("entries left: %v %v", hosts.keys, hosts.principals)
+	}
+}

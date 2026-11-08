@@ -70,6 +70,10 @@ type WorkersOptions struct {
 	// OnOutput is a worker's output; without it, mirrored to this process's own.
 	OnOutput func(address contracts.Address, stream string, chunk []byte)
 	OnError  func(err WorkersError)
+	// Forgotten is called, on the component's loop (it must not block), once an address has no worker, no operation and no failure
+	// left: the app's per-address bookkeeping made at Start ends there. Pi has no such hook (its app keeps the entries it made at start for
+	// the process's life); this is a Go addition that changes nothing observable.
+	Forgotten func(address contracts.Address)
 
 	// clock is the clock of the component's timers; the loop's own by default. Tests give one with virtual timers.
 	clock clock
@@ -643,6 +647,9 @@ func (c *Workers) forget(record *routed) {
 	if record.pending == 0 && record.child == nil && record.failure == nil {
 		delete(c.addresses, record.address.Key)
 		c.order = slices.DeleteFunc(c.order, func(key string) bool { return key == record.address.Key })
+		if c.options.Forgotten != nil {
+			c.options.Forgotten(record.address)
+		}
 	}
 }
 

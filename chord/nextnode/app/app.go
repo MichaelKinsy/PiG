@@ -364,6 +364,11 @@ func StartServer(options AppOptions, ctx context.Context) (*App, error) {
 	if len(options.Workers) > 0 && options.Principal.Worker == nil {
 		return nil, errors.New("startServer: worker kinds need principal.worker")
 	}
+	for _, kind := range options.Workers {
+		if kind.Authorize == nil || kind.Start == nil {
+			return nil, fmt.Errorf("startServer: worker kind %q needs Authorize and Start", workerKindName(kind))
+		}
+	}
 	dataDir := options.DataDir
 	if dataDir == "" {
 		dataDir = DefaultDataDir(options.Name)
@@ -492,7 +497,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
 	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
-	workerHosts := &workerHosts{keys: map[string]string{}}
+	workerHosts := &workerHosts{keys: map[string]string{}, principals: map[string]string{}}
 	link := &OwnerLink{}
 	owner := options.Principal.Owner
 	themeChoice, err := surfaces.ThemeChoiceFacet()
@@ -633,16 +638,45 @@ func failedPlugins(report host.LoadReport) error {
 	return fmt.Errorf("plugin %q failed to load: %w", first.Plugin, first.Error)
 }
 
-// workerHosts is the address key of each worker by its principal's key: the principal its link stamps on its telemetry batches.
+// workerKindName is the name of a worker kind for a message (its host kind may be missing in a bad option).
+func workerKindName(kind AppWorkerKind) string {
+	if kind.Kind == nil {
+		return ""
+	}
+	return kind.Kind.Kind
+}
+
+// workerHosts is the address key of each worker by its principal's key: the principal its link stamps on its telemetry batches. An
+// entry ends with its address (forget): Pi's map keeps them for the process's life, which grows with every address ever started.
 type workerHosts struct {
-	mu   sync.Mutex
-	keys map[string]string
+	mu sync.Mutex
+	// keys is the address key by principal key; principals is the principal key each address key made, to find it again.
+	keys       map[string]string
+	principals map[string]string
 }
 
 func (w *workerHosts) set(principalKey, address string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if previous, ok := w.principals[address]; ok && previous != principalKey && w.keys[previous] == address {
+		delete(w.keys, previous)
+	}
 	w.keys[principalKey] = address
+	w.principals[address] = principalKey
+}
+
+// forget drops the entry the address made, unless another address took its principal key since.
+func (w *workerHosts) forget(address string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	principalKey, ok := w.principals[address]
+	if !ok {
+		return
+	}
+	delete(w.principals, address)
+	if w.keys[principalKey] == address {
+		delete(w.keys, principalKey)
+	}
 }
 
 func (w *workerHosts) get(principalKey string) (string, bool) {
@@ -765,9 +799,10 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 		Lock: func(address contracts.Address) (string, error) {
 			return workerLock(options.Name, dataDir, address), nil
 		},
-		IdleMs:  idle,
-		Plugins: a.Plugins,
-		OnError: func(err workers.WorkersError) { a.report(AppErrorWorkers, err) },
+		IdleMs:    idle,
+		Plugins:   a.Plugins,
+		OnError:   func(err workers.WorkersError) { a.report(AppErrorWorkers, err) },
+		Forgotten: func(address contracts.Address) { hosts.forget(address.Key) },
 	}, ctx)
 }
 
