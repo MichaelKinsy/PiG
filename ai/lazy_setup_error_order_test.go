@@ -132,7 +132,9 @@ func TestSimpleStreamKeyAssertionIsSetupAndRequestFailureIsInModule(t *testing.T
 // for a live request and as aborted once the request's signal is aborted, with the rejection's message either way.
 func TestLazySetupRejectionIsAbortedWhenTheRequestSignalIsAborted(t *testing.T) {
 	model := &Model{ID: "m1", ProviderMeta: ProviderMetadata{ProviderID: "demo", API: "openai-responses"}}
-	setup := func(context.Context) (*AssistantMessageEventStream, error) { return nil, errors.New("auth setup failed") }
+	setup := func(context.Context) (*AssistantMessageEventStream, error) {
+		return nil, errors.New("auth setup failed")
+	}
 	live := LazyStream(context.Background(), model, setup).Result()
 	if live.StopReason != StopReasonError || live.ErrorMessage != "auth setup failed" {
 		t.Fatalf("live request = %+v, want an error", live)

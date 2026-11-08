@@ -13,12 +13,20 @@ func TestModelsDispatchSetupErrorsAreAbortedWhenTheRequestSignalIsAborted(t *tes
 		ID: "demo",
 		API: ProviderAPIMap{
 			"api-a": &ProviderStreams{
-				Stream:        func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) { return nil, nil },
-				StreamSimple:  func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) { return nil, nil },
-				FetchDeferred: func(context.Context, *Model, DeferredHandle, DeferredFetchOptions) (*AssistantMessageEventStream, error) { return nil, nil },
+				Stream: func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) {
+					return nil, nil
+				},
+				StreamSimple: func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) {
+					return nil, nil
+				},
+				FetchDeferred: func(context.Context, *Model, DeferredHandle, DeferredFetchOptions) (*AssistantMessageEventStream, error) {
+					return nil, nil
+				},
 			},
 			"api-b": &ProviderStreams{
-				Stream: func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) { return nil, nil },
+				Stream: func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) {
+					return nil, nil
+				},
 			},
 		},
 	})

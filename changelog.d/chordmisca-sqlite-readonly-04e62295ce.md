@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- Chord sync: the batch decoder scanned the whole unfinished line for a newline on every 64 KiB chunk (quadratic: 128 MiB took 9.4 s); it scans only the new bytes now.
+- Chord sync: the batch decoder scanned the whole unfinished line for a newline on every 64 KiB chunk (quadratic: 128 MiB took 9.4 s); it scans only the new bytes now. <!-- fix: 04e62295ce -->

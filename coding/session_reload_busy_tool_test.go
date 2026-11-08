@@ -1,6 +1,7 @@
 package coding
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"path/filepath"
@@ -137,7 +138,7 @@ func jsonEqual(t *testing.T, a, b []byte) bool {
 	}
 	leftJSON, _ := json.Marshal(left)
 	rightJSON, _ := json.Marshal(right)
-	return string(leftJSON) == string(rightJSON)
+	return bytes.Equal(leftJSON, rightJSON)
 }
 
 // Ports "still reloads and replaces the runner when idle" of 9221-reload-during-tool.test.ts: the reload shuts the old runner down once, the

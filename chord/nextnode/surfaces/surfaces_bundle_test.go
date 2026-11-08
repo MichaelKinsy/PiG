@@ -38,7 +38,7 @@ func project(t *testing.T, files map[string]string, linked ...string) string {
 		t.Fatal(err)
 	}
 	for _, name := range linked {
-		testenv.Symlink(t, filepath.Join(dir, "workspace", name), filepath.Join(dir, "node_modules", name))
+		testenv.RequireDirectoryLink(t, filepath.Join(dir, "workspace", name), filepath.Join(dir, "node_modules", name))
 	}
 	return dir
 }

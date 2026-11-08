@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -28,9 +27,6 @@ func harnessChildAlive(pid int) bool {
 
 func startHarnessEntry(t *testing.T, body string) (*exec.Cmd, string) {
 	t.Helper()
-	if runtime.GOOS == "windows" {
-		t.Skip("the stand-in binary is a POSIX shell script")
-	}
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skipf("node unavailable: %v", err)
@@ -106,9 +102,6 @@ func TestHarnessEntryKeepsBinaryExitStatus(t *testing.T) {
 
 // The watchdog kills only a process that started when the binary did, so a binary that is already gone (its pid free, perhaps reused) ends the watchdog without a kill.
 func TestHarnessWatchdogIgnoresGoneBinary(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("the watchdog identifies the binary by pid alone on Windows")
-	}
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skipf("node unavailable: %v", err)
