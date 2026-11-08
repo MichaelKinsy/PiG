@@ -26,6 +26,8 @@ type Options struct {
 	Columns, Rows int
 	// Host adds to the test host options (Stubs, Worker, ...); Facets is ignored.
 	Host p2test.TestHostOptions
+	// Prepare sets the runtime's state before it starts (`runtime.connected = true`).
+	Prepare func(*tuiruntime.TuiRuntime)
 }
 
 // Fixture is the test host, terminal and runtime.
@@ -70,6 +72,17 @@ func (f *Fixture) Send(data string) {
 	f.Do(func() { f.TUI.HandleTerminalInput(data) })
 }
 
+// Burst sends every input in one owner-loop turn, so no asynchronous result (an autocomplete answer, a posted continuation)
+// lands between two of them: Pi's tests call `terminal.sendInput` synchronously in a row and rely on the same.
+func (f *Fixture) Burst(inputs ...string) {
+	f.T.Helper()
+	f.Do(func() {
+		for _, data := range inputs {
+			f.TUI.HandleTerminalInput(data)
+		}
+	})
+}
+
 // Poll waits for cond (run on the owner loop) to hold.
 func (f *Fixture) Poll(cond func() bool) {
 	f.T.Helper()
@@ -105,7 +118,7 @@ func New(t testing.TB, options Options) *Fixture {
 	f.Host = p2test.NewTestHost(t, hostOptions)
 	f.Terminal = vterm.New(columns, rows)
 	f.TUI = pitui.NewTuiAltScreen(f.Terminal, nil, t.TempDir())
-	f.start(f.Host.Host, nil)
+	f.start(f.Host.Host, options.Prepare)
 	return f
 }
 

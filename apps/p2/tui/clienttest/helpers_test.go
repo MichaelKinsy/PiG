@@ -43,6 +43,21 @@ func fixtureSession() contract.Session {
 	}
 }
 
+// chars splits text into the one-character inputs a terminal delivers.
+func chars(text string) []string {
+	out := make([]string, 0, len(text))
+	for _, char := range text {
+		out = append(out, string(char))
+	}
+	return out
+}
+
+// typedEnter types text and presses Enter in one owner-loop turn: Pi's tests send the characters and Enter synchronously in a
+// row, so no asynchronous answer (an argument completion) lands before Enter submits.
+func typedEnter(f *tuitest.Fixture, text string) {
+	f.Burst(append(chars(text), enter)...)
+}
+
 func typed(f *tuitest.Fixture, text string) {
 	for _, char := range text {
 		f.Send(string(char))

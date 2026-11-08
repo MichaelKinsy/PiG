@@ -142,6 +142,8 @@ type ChatStubOptions struct {
 	Entries func(query EntriesQuery) (items []durable.EntryRecord, more bool)
 	// Model is the `model` state, nil for none.
 	Model any
+	// Stats is the `stats` state, nil for none.
+	Stats any
 	// Methods replace the stub's methods by name.
 	Methods map[string]p2test.StubMethod
 	// Members may change an instance's members (a live shell cell); conversation is its params'.
@@ -239,7 +241,7 @@ func NewChatStub(t testing.TB, options ChatStubOptions) *ChatStub {
 		}
 		members := p2test.StubMembers{
 			Variant: variant,
-			State:   map[string]any{"view": view, "stats": self.Cell(nil), "model": self.Cell(options.Model), "liveShell": self.Cell(nil)},
+			State:   map[string]any{"view": view, "stats": self.Cell(options.Stats), "model": self.Cell(options.Model), "liveShell": self.Cell(nil)},
 			Methods: methods,
 		}
 		if options.Members != nil {

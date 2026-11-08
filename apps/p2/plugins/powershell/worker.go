@@ -16,6 +16,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/powershell/contract"
+	powershelltui "github.com/MichaelKinsy/PiG/apps/p2/plugins/powershell/tui"
 	subagents "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
@@ -347,7 +348,8 @@ func init() {
 	workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return facet.Serve(contract.PowerShell, host.LocalFactory(servePowerShell), host.ServeOptions{})
 	})
-	hosts.RegisterPlugin(hosts.Plugin{Name: "powershell", Worker: &workerFacet})
+	tuiFacet := powershelltui.Facet
+	hosts.RegisterPlugin(hosts.Plugin{Name: "powershell", Worker: &workerFacet, TUI: &tuiFacet})
 }
 
 // workerFacet is the plugin's worker facet, set at init.

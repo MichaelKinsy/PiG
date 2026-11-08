@@ -40,6 +40,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/projects"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/prompt"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/proxy-marker"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/quiet-tools"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/radius"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/search"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/send-file"

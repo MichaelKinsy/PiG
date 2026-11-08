@@ -499,8 +499,7 @@ func TestMoveEnvFollowsTheStoredProjectKeepsTheSubfolderWorksWhileTheSessionsMac
 	// The Mac goes away: back by this device's label, without asking the Mac anything.
 	s.setDown("mac", true)
 	listed := s.calls.count("list")
-	typed(s.Fixture, "/move test-host")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/move test-host")
 	pollContains(t, s.Fixture, "Move this session to /home/me/projects/pi/pi/apps?")
 	typed(s.Fixture, "y")
 	tuitest.Poll(t, func() bool { return s.relocateCount() == 2 })
@@ -518,17 +517,14 @@ func TestMoveEnvFollowsTheStoredProjectKeepsTheSubfolderWorksWhileTheSessionsMac
 		{"/move mac", "mac is unreachable: connect ECONNREFUSED"},
 		{"/move local", "The session is already at /home/me/projects/pi/pi/apps"},
 	} {
-		typed(s.Fixture, each[0])
-		s.Send(enter)
+		typedEnter(s.Fixture, each[0])
 		tuitest.Poll(t, s.noticed(each[1]))
 	}
 	// A subfolder the target does not have: the target's root, and the notice says so.
 	s.setDown("mac", false)
-	typed(s.Fixture, "/cd /home/me/projects/pi/pi/missing")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/cd /home/me/projects/pi/pi/missing")
 	tuitest.Poll(t, func() bool { return s.relocateCount() == 3 })
-	typed(s.Fixture, "/move mac")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/move mac")
 	tuitest.Poll(t, s.noticed("missing does not exist on mac; moving to the project's root"))
 	pollContains(t, s.Fixture, "Move this session to mac:/Users/me/projects/pi/pi?")
 	typed(s.Fixture, "y")
@@ -537,11 +533,9 @@ func TestMoveEnvFollowsTheStoredProjectKeepsTheSubfolderWorksWhileTheSessionsMac
 		t.Fatalf("relocate = %+v", got)
 	}
 	// `/cd` outside the project's place keeps the project: `/move` goes to the target place's root.
-	typed(s.Fixture, "/cd /tmp")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/cd /tmp")
 	tuitest.Poll(t, func() bool { return s.relocateCount() == 5 })
-	typed(s.Fixture, "/move test-host")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/move test-host")
 	pollContains(t, s.Fixture, "Move this session to /home/me/projects/pi/pi?")
 	typed(s.Fixture, "y")
 	tuitest.Poll(t, func() bool { return s.relocateCount() == 6 })
@@ -562,8 +556,7 @@ func TestMoveEnvFollowsTheStoredProjectKeepsTheSubfolderWorksWhileTheSessionsMac
 			name, ok := s.projectOf("s")
 			return ok == has && name == want
 		})
-		typed(s.Fixture, "/move mac")
-		s.Send(enter)
+		typedEnter(s.Fixture, "/move mac")
 		tuitest.Poll(t, s.noticed(each.notice))
 	}
 	if s.relocateCount() != 6 {
@@ -587,8 +580,7 @@ func TestMoveWithoutAnArgumentAPickerOfTheProjectsPlacesTheCurrentOneMarkedOnlyR
 		})
 		return places == 3
 	})
-	typed(s.Fixture, "/move")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/move")
 	// Every place in projects.json's order, this device marked current; the cursor skips gpu (unreachable) for mac.
 	pollScreen(t, s.Fixture, matches(` {2}✗ gpu {2}~/projects/pi/pi +connect ECONNREFUSED *\n {2}• test-host {2}~/projects/pi/pi +current *\n→ ✓ mac {2}~/projects/pi/pi`))
 	if !matches(`Move within pi`)(s.Screen()) {
@@ -608,8 +600,7 @@ func TestMoveWithoutAnArgumentAPickerOfTheProjectsPlacesTheCurrentOneMarkedOnlyR
 		t.Fatal("the current place moved the session")
 	}
 	// Escape cancels.
-	typed(s.Fixture, "/move")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/move")
 	pollScreen(t, s.Fixture, matches(`→ ✓ mac`))
 	s.Send("\x1b")
 	pollScreen(t, s.Fixture, func(screen string) bool { return !strings.Contains(screen, "Move within pi") })
@@ -617,8 +608,7 @@ func TestMoveWithoutAnArgumentAPickerOfTheProjectsPlacesTheCurrentOneMarkedOnlyR
 		t.Fatal("Escape moved the session")
 	}
 	// Enter on a reachable place is `/move <it>`: the subfolder kept, the move confirmed.
-	typed(s.Fixture, "/move")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/move")
 	pollScreen(t, s.Fixture, matches(`→ ✓ mac`))
 	s.Send(enter)
 	pollContains(t, s.Fixture, "Move this session to mac:/Users/me/projects/pi/pi/apps?")
@@ -639,13 +629,11 @@ func TestMoveWithoutAnArgumentAPickerOfTheProjectsPlacesTheCurrentOneMarkedOnlyR
 		return places == 1
 	})
 	pollContains(t, s.Fixture, "mac:/Users/me/projects/pi/pi/apps • Fixture")
-	typed(s.Fixture, "/move")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/move")
 	tuitest.Poll(t, s.noticed("Project pi has no place on another machine"))
 	_ = s.members.Replace(membersJSON(map[string]string{}))
 	tuitest.Poll(t, func() bool { _, ok := s.projectOf("s"); return !ok })
-	typed(s.Fixture, "/move")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/move")
 	tuitest.Poll(t, s.noticed("This session belongs to no project: start one from a project's row in /sessions"))
 	if strings.Contains(s.Screen(), "Move within") {
 		t.Fatal("a picker shows")
