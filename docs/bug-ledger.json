@@ -3704,8 +3704,6 @@
         "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks",
         "ai/usage_json_test.go::TestUsageCostTotalFromProviderWire",
         "automation/ci/bugledger/bugledger_test.go::TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote",
-        "chord/host/close_queued_hold_test.go::TestCloseDropsAHoldQueuedBeforeItsLinkClosed",
-        "chord/state_source_test.go::TestConformanceReplicatedStateSourceContract",
         "durable/core/driver/watch_test.go::TestConversationWatchFollowsCommits",
         "durable/core/driver/watch_test.go::TestDocumentWatchValueFollowsCommitsUntilStopped",
         "durable/documents_family_definition_test.go::TestDocFamilyDefinitionCarriesPisFamilyDiscriminator",
@@ -4497,6 +4495,25 @@
       ]
     },
     {
+      "id": "BF-2123e97",
+      "title": "fix(chord): the heartbeat report marker names the upstream file under the root layout",
+      "symptom": "fix(chord): the heartbeat report marker names the upstream file under the root layout",
+      "rootCause": "packages/chord/src/next/host/host.ts moved to src/host/host.ts with Pi's root move ().",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "2123e97d81",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-2165463",
       "title": "On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once…",
       "symptom": "On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once with `EPERM: operation not permitted, mkdir '….lock'` when another process has just released the lock and Windows still holds the directory pending deletion.",
@@ -4720,6 +4737,30 @@
       "tests": [
         "durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes",
         "durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit"
+      ]
+    },
+    {
+      "id": "BF-2293426",
+      "title": "fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait",
+      "symptom": "fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait",
+      "rootCause": "Ports Pi main, on top of the sign-in package. Token refresh tries the redirect URI the application signs in with (RedirectURL on McpAuthProviderOptions and McpSignInOptions) before the loopback and stored ones, so tokens from a Client ID Metadata Document with only an https callback route can be refreshed. Ending the sign-in's context also stops the wait for the refresh lock; a lock that arrives later runs nothing and is released. McpRefreshLockBusyError makes StartMcpSignIn skip the refresh; any other lock failure fails it. The credential store reports a lock held by another process (ELOCKED) as the busy error.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "22934263b9",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "mcp/oauth/auth_provider_pi_test.go::TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed",
+        "mcp/oauth/sign_in_pi_test.go::TestCancellationCancelsAtOnceWhileAnotherProcessHoldsTheRefreshLockAndRefreshesNothing",
+        "mcp/oauth/sign_in_pi_test.go::TestSignInFailsWhenTheRefreshLockFailsForAnotherReason",
+        "mcp/oauth/sign_in_pi_test.go::TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong"
       ]
     },
     {
@@ -5801,11 +5842,7 @@
           "date": "2026-11-06"
         }
       ],
-      "tests": [
-        "chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeCloseEndsPendingRead",
-        "chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeCloseEndsWrites",
-        "chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeWriteWhileReadWaits"
-      ]
+      "tests": []
     },
     {
       "id": "BF-286d303",
@@ -6771,6 +6808,46 @@
       "tests": [
         "chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes"
       ]
+    },
+    {
+      "id": "BF-31312ab",
+      "title": "Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop…",
+      "symptom": "Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop, before reading what the peer had sent meanwhile.",
+      "rootCause": "Ports Pi. The heartbeat no longer counts time the process did not run (a laptop's sleep, a blocked event loop) as silence: after such a pause each open link pings at once and closes only if its peer stays silent for close - ping.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop, before reading what the peer had sent meanwhile. Time the process did not run no longer counts as silence: after such a pause each open link pings at once and closes only if its peer stays silent for `close - ping` (15 s by default).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "31312ab0f6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-31312ab-2",
+      "title": "Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a…",
+      "symptom": "Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a protocol error, the worker closing its own link): the worker is stopped, `WorkerLinkLostError` (`worker_link_lost`) is reported, and its holders get a new worker.",
+      "rootCause": "Ports Pi. The heartbeat no longer counts time the process did not run (a laptop's sleep, a blocked event loop) as silence: after such a pause each open link pings at once and closes only if its peer stays silent for close - ping.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a protocol error, the worker closing its own link): the worker is stopped, `WorkerLinkLostError` (`worker_link_lost`) is reported, and its holders get a new worker. A second lost link within a minute of the last recovery still fails the address (public error `worker lost its link`). Crashes, `fatal`s and failed starts still stay failed until `Retry` or a rollout.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "31312ab0f6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-316eac6",
@@ -7767,7 +7844,6 @@
         "ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets",
         "ai/openai_responses_tool_result_output_test.go::TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder",
         "ai/radius_sampling_by_level_test.go::TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel",
-        "codemode/declarations_test.go::TestMalformedRefPercentEncodingIsAnError",
         "coding/extension/extensiontest/fake_test.go::TestFake_RecordsProjectTrustHandlersWithTheirTrustContext",
         "coding/extension/host/inproc/boundary_test.go::TestTypedOnTurnEndHandlerResultChainsThroughEmitBoundary",
         "coding/extension/host/inproc/cache_warming_test.go::TestTypedOnCacheWarmingDecisionHandlerOverridesAction",
@@ -8614,14 +8690,7 @@
           "date": "2026-10-13"
         }
       ],
-      "tests": [
-        "chord/host/link_upstream_test.go::TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName",
-        "chord/host/link_upstream_test.go::TestLinksAnAlreadyClosedLinkIsNotKeptAndStartsNoPinger",
-        "chord/host/manager_upstream_test.go::TestHostManagerAChildWithoutALockDoesNotInheritTheParentsLock",
-        "chord/host/manager_upstream_test.go::TestProcessLock",
-        "chord/host/manager_upstream_test.go::TestProcessLockAdmitsOneHolderWhenTheTemporaryDirectoryIsTooDeepForASocketPath",
-        "chord/host/manager_worker_unix_test.go::TestLockSocketPathKeepsTheSocketPathWithinSunPath"
-      ]
+      "tests": []
     },
     {
       "id": "BF-3b3dba6",
@@ -8643,6 +8712,52 @@
       ],
       "tests": [
         "ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput"
+      ]
+    },
+    {
+      "id": "BF-3b49d43",
+      "title": "Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is…",
+      "symptom": "Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.",
+      "rootCause": "Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b49d43239",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsCrossingAFailedOrABoundOnTheWire",
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind"
+      ]
+    },
+    {
+      "id": "BF-3b49d43-2",
+      "title": "Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged…",
+      "symptom": "Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).",
+      "rootCause": "Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b49d43239",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsCrossingAFailedOrABoundOnTheWire",
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind"
       ]
     },
     {
@@ -9220,9 +9335,6 @@
       "tests": [
         "agent/stream_fn_descriptor_test.go::TestAgentEffectiveStreamFunction",
         "agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
-        "chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener",
-        "chord/host/manager_ipc_listener_test.go::TestNodeChannelGivesTheFirstMessageListenerTheMessagesThatCameBeforeIt",
-        "chord/host/manager_ipc_listener_test.go::TestNodeChannelQueuesAMessageThatArrivesDuringTheReplayBehindTheBacklog",
         "coding/cli/extension_stale_copy_test.go::TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath",
         "coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll",
         "coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes",
@@ -10174,10 +10286,7 @@
           "date": "2026-10-13"
         }
       ],
-      "tests": [
-        "chord/host/node_delay_test.go::TestAwaitVoteDeadlineAboveNodeTimeoutMaxRejectsAfterOneMillisecond",
-        "chord/host/node_delay_test.go::TestNodeDelayMatchesNodeTimers"
-      ]
+      "tests": []
     },
     {
       "id": "BF-43d2597",
@@ -11003,7 +11112,6 @@
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWhileWaitingForTheBrowser",
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded",
         "coding/mcpext/oauth_request_timeout_internal_test.go::TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout",
-        "coding/mcpext/oauth_request_timeout_internal_test.go::TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout",
         "coding/mcpext/responsive_test.go::TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish",
         "coding/mcpext/responsive_test.go::TestMcpCommandWithoutTheManagerStillWaitsForTheStartupConnections",
         "coding/mcpext/responsive_test.go::TestMcpDirectToolCallWaitsForItsServersReconnect",
@@ -11046,7 +11154,6 @@
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWhileWaitingForTheBrowser",
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded",
         "coding/mcpext/oauth_request_timeout_internal_test.go::TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout",
-        "coding/mcpext/oauth_request_timeout_internal_test.go::TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout",
         "coding/mcpext/responsive_test.go::TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish",
         "coding/mcpext/responsive_test.go::TestMcpCommandWithoutTheManagerStillWaitsForTheStartupConnections",
         "coding/mcpext/responsive_test.go::TestMcpDirectToolCallWaitsForItsServersReconnect",
@@ -11089,7 +11196,6 @@
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWhileWaitingForTheBrowser",
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded",
         "coding/mcpext/oauth_request_timeout_internal_test.go::TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout",
-        "coding/mcpext/oauth_request_timeout_internal_test.go::TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout",
         "coding/mcpext/responsive_test.go::TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish",
         "coding/mcpext/responsive_test.go::TestMcpCommandWithoutTheManagerStillWaitsForTheStartupConnections",
         "coding/mcpext/responsive_test.go::TestMcpDirectToolCallWaitsForItsServersReconnect",
@@ -11206,11 +11312,7 @@
           "date": "2026-10-13"
         }
       ],
-      "tests": [
-        "chord/host/manager_upstream_test.go::TestProcessLock",
-        "chord/host/manager_upstream_test.go::TestProcessLockAdmitsOneHolderWhenTheTemporaryDirectoryIsTooDeepForASocketPath",
-        "chord/host/manager_worker_unix_test.go::TestLockSocketPathKeepsTheSocketPathWithinSunPath"
-      ]
+      "tests": []
     },
     {
       "id": "BF-48a28fe",
@@ -11612,10 +11714,7 @@
           "date": "2026-10-24"
         }
       ],
-      "tests": [
-        "chord/host/schema_pi_oracle_test.go::TestADecodedDescriptionIsWrittenBackInDeclaredOrderLikePi",
-        "chord/host/schema_pi_oracle_test.go::TestNormalizeOverADecodedDescriptionKeepsPiMemberOrder"
-      ]
+      "tests": []
     },
     {
       "id": "BF-4c45afa",
@@ -13630,7 +13729,6 @@
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWhileWaitingForTheBrowser",
         "coding/mcpext/oauth_cancel_test.go::TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded",
         "coding/mcpext/oauth_request_timeout_internal_test.go::TestSignInMcpServerGivesEveryAuthorizationServerRequestTheOAuthRequestTimeout",
-        "coding/mcpext/oauth_request_timeout_internal_test.go::TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout",
         "coding/mcpext/responsive_test.go::TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish",
         "coding/mcpext/responsive_test.go::TestMcpCommandWithoutTheManagerStillWaitsForTheStartupConnections",
         "coding/mcpext/responsive_test.go::TestMcpDirectToolCallWaitsForItsServersReconnect",
@@ -15160,6 +15258,40 @@
       ]
     },
     {
+      "id": "BF-604e180",
+      "title": "fix(codemode,tool-search): follow local schema refs in tool search and codemode summaries",
+      "symptom": "fix(codemode,tool-search): follow local schema refs in tool search and codemode summaries",
+      "rootCause": "Ports Pi main (#11850, fixing #11803). codemode.ResolveSchemaRef (and ResolveSchemaRefJSON for schema text) is the single resolver: a malformed percent escape names nothing instead of failing, so SchemaToType, RenderToolSignature, RenderToolSample, RenderDeclarations and RenderToolOutputType no longer return an error and CreateDescription no longer fails (URIError is removed; callers migrated). tool_search's schemaText (coding and durable) follows local refs once each, and the codemode 'resolves to' summary resolves $ref chains against the output schema root.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "604e18084d",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/declarations_parity_print_test.go::TestCodemodeDeclarationsParity",
+        "codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown",
+        "codemode/declarations_test.go::TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments",
+        "codemode/declarations_test.go::TestResolveSchemaRefReturnsNothingForRemoteMissingAndMalformedReferences",
+        "codemode/upstream_oracle_test.go::TestSchemaToTypeMatchesPi",
+        "codemode/upstream_oracle_test.go::TestToolOutputTypeMatchesPi",
+        "coding/extension/builtin/codemode/description_helpers_test.go::TestMalformedRefInAToolSchemaRendersAsUnknownInTheDescription",
+        "coding/extension/builtin/codemode/schema_uri_error_test.go::TestExecuteRunsWithAToolSchemaWithMalformedRefEncoding",
+        "coding/extension/builtin/codemode/tool_refs_pi_test.go::TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go::TestSchemaRefsFollowsEscapedPointerSegments",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go::TestSchemaRefsLeavesOutUnreferencedDefinitionsAndRemoteOrMissingReferences",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go::TestSchemaRefsReadsNamesAndDescriptionsBehindLocalReferences",
+        "coding/extension/builtin/toolsearch/schema_refs_pi_test.go::TestSchemaRefsReadsRecursiveAndSharedDefinitionsOnce",
+        "durable/toolsearch/toolsearch_test.go::TestFindsAToolByAParameterDescriptionBehindALocalReferenceAndNotByUnreferencedDefinitions"
+      ]
+    },
+    {
       "id": "BF-609d2bd",
       "title": "fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does",
       "symptom": "fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does",
@@ -15456,8 +15588,6 @@
         "coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes",
         "coding/mcpext/fixtures_test.go::TestMain",
         "coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty",
-        "coding/mcpext/jstrim_internal_test.go::TestResponseFromRedirectURLTrimsLikeJavaScript",
-        "coding/mcpext/jstrim_internal_test.go::TestWaitForAuthorizationResponseCancelsOnAJavaScriptBlankAnswer",
         "coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit",
         "coding/mcpext/manager_test.go::TestMcpManagerViewRedirectURLTrimsLikeJavaScript",
         "coding/mcpext/tools_test.go::TestMCPToolsShowsBlobsOfTextTypesWithBOMPaddedMimeTypesAsText",
@@ -15497,8 +15627,6 @@
         "coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript",
         "coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes",
         "coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty",
-        "coding/mcpext/jstrim_internal_test.go::TestResponseFromRedirectURLTrimsLikeJavaScript",
-        "coding/mcpext/jstrim_internal_test.go::TestWaitForAuthorizationResponseCancelsOnAJavaScriptBlankAnswer",
         "coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit",
         "coding/mcpext/manager_test.go::TestMcpManagerViewRedirectURLTrimsLikeJavaScript",
         "coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle",
@@ -15802,6 +15930,27 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-62b28a2",
+      "title": "fix(mcp/oauth): close remaining connections when the OAuth callback server closes",
+      "symptom": "fix(mcp/oauth): close remaining connections when the OAuth callback server closes",
+      "rootCause": "Ports Pi main (#11855, fixing #11311). Close() waited for a browser's unused preconnect or spare keep-alive socket: Go's Shutdown treats a connection that never sent a request as active for up to 5 s, and the 2 s bound made /mcp login stall on Connecting. Close() now drops the connections that have not sent a request before it shuts down; in-flight and idle connections keep Shutdown's handling, so a callback response being written is not cut off.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "62b28a24c6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen"
+      ]
     },
     {
       "id": "BF-62c3691",
@@ -22493,9 +22642,7 @@
           "date": "2026-10-24"
         }
       ],
-      "tests": [
-        "chord/host/schema_pi_oracle_test.go::TestAssertValidMatchesPi"
-      ]
+      "tests": []
     },
     {
       "id": "BF-787c354",
@@ -23311,8 +23458,6 @@
         }
       ],
       "tests": [
-        "chord/host/schema_pi_oracle_test.go::TestAssertValidMatchesPi",
-        "chord/host/schema_pi_oracle_test.go::TestCanonicalIdentityAndNormalizeMatchPi",
         "internal/typebox/value_oracle_test.go::TestValueMatchesTypeboxOnCases"
       ]
     },
@@ -24427,11 +24572,6 @@
       ],
       "tests": [
         "chord/json_test.go::TestIsJsonValueChecksStrictJSONWithoutNormalizing",
-        "chord/replicated_state_delivery_upstream_test.go::TestAttachedReplicatedStateListenerErrors",
-        "chord/replicated_state_delivery_upstream_test.go::TestMutableReplicatedStateReportsRejectedCallbacksThroughItsDefaultReporter",
-        "chord/replicated_state_delivery_upstream_test.go::TestReplicatedStatePublicDelivery",
-        "chord/replicated_state_upstream_test.go::TestAuthoritativeReplicatedStateSources",
-        "chord/replicated_state_upstream_test.go::TestTransactionalReplicatedState",
         "durable/session/session_watches_test.go::TestSessionDocumentWatches",
         "internal/goroutineid/goroutineid_test.go::TestCurrentIdentifiesTheCallingGoroutine"
       ]
@@ -32361,6 +32501,30 @@
       ]
     },
     {
+      "id": "BF-a79074e",
+      "title": "Chord: a reload whose new factory pins a keyed member of another object (`ref.keyed.at(key)`) no longer fails…",
+      "symptom": "Chord: a reload whose new factory pins a keyed member of another object (`ref.keyed.at(key)`) no longer fails the whole plugin with \"is valid only in the factory\".",
+      "rootCause": "The recording self a reload runs the new factory on handed out references with no dependent, so a factory that pins a keyed member of another object (ref.keyed.at(key)) failed the whole plugin with 'is valid only in the factory'. Pi's recording self hands out an inert value that takes any call. Includes the ported hold.test.ts cases of Pi (calls during a swap never see not_ready; a call at the gate when the swap parks survives its hold's loading).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a reload whose new factory pins a keyed member of another object (`ref.keyed.at(key)`) no longer fails the whole plugin with \"is valid only in the factory\". The recording self a reload runs the factory on handed out references with no dependent.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a79074ec58",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/next/host/remote_hold_gate_test.go::TestReloadARecordedFactoryMayPinAKeyOnItsInertReference",
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind",
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay"
+      ]
+    },
+    {
       "id": "BF-a7be906",
       "title": "Pressing Enter in the model picker's search box selects the highlighted model even when `tui.select.confirm`…",
       "symptom": "Pressing Enter in the model picker's search box selects the highlighted model even when `tui.select.confirm` is rebound.",
@@ -33963,10 +34127,7 @@
           "date": "2026-10-13"
         }
       ],
-      "tests": [
-        "chord/host/link_upstream_test.go::TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName",
-        "chord/host/link_upstream_test.go::TestLinksAnAlreadyClosedLinkIsNotKeptAndStartsNoPinger"
-      ]
+      "tests": []
     },
     {
       "id": "BF-b04bb32",
@@ -35096,9 +35257,7 @@
           "date": "2026-10-30"
         }
       ],
-      "tests": [
-        "chord/host/wire_test.go::TestIsFrameChecksWithoutRecompilingTheFrameSchema"
-      ]
+      "tests": []
     },
     {
       "id": "BF-b88044f",
@@ -37026,23 +37185,6 @@
         }
       ],
       "tests": [
-        "chord/host/boundary_upstream_test.go::TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord",
-        "chord/host/contract_upstream_test.go::TestContractsBindOtherVersionsOnlyThroughAcceptsAdapters",
-        "chord/host/contract_upstream_test.go::TestContractsCompareOpaqueMembersByNameVersionAndFunctionMembersStructurally",
-        "chord/host/contract_upstream_test.go::TestContractsCoverAdditiveChangesAndRefuseBreakingOnes",
-        "chord/host/contract_upstream_test.go::TestContractsFingerprintsAreStableAndDescriptionBased",
-        "chord/host/contract_upstream_test.go::TestContractsNormalizeInputAndOmitDefaultsFromTheIdentity",
-        "chord/host/contract_upstream_test.go::TestContractsRejectReservedMemberNamesAndOpaqueRemoteMembers",
-        "chord/host/errors_test.go::TestAsChordErrorKeepsChordErrorsAndWrapsOthers",
-        "chord/host/errors_test.go::TestChordErrorCarriesPiFields",
-        "chord/host/errors_test.go::TestForbiddenDefaultsOnlyAnOmittedMessage",
-        "chord/host/errors_test.go::TestIsChordErrorIsInstanceofWithAnOptionalCode",
-        "chord/host/errors_test.go::TestRunAllRunsEveryStepAndAggregates",
-        "chord/host/schema_upstream_test.go::TestCanonicalJSONMatchesJavaScript",
-        "chord/host/wire_test.go::TestFrameSchemaIsPiFrameSchema",
-        "chord/host/wire_test.go::TestFramesRoundTrip",
-        "chord/host/wire_test.go::TestIsFrameRejectsMalformedFrames",
-        "chord/host/wire_test.go::TestWireErrorsKeepCodeReasonAndMessage",
         "internal/typebox/value_oracle_test.go::TestValueMatchesTypeboxOnCases",
         "third_party/jsonschema/items_location_test.go::TestItemsAfterPrefixItemsReportTheElementIndex"
       ]
@@ -41465,7 +41607,6 @@
         "ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets",
         "ai/openai_responses_tool_result_output_test.go::TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder",
         "ai/radius_sampling_by_level_test.go::TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel",
-        "codemode/declarations_test.go::TestMalformedRefPercentEncodingIsAnError",
         "coding/extension/extensiontest/fake_test.go::TestFake_RecordsProjectTrustHandlersWithTheirTrustContext",
         "coding/extension/host/inproc/boundary_test.go::TestTypedOnTurnEndHandlerResultChainsThroughEmitBoundary",
         "coding/extension/host/inproc/cache_warming_test.go::TestTypedOnCacheWarmingDecisionHandlerOverridesAction",
@@ -44680,8 +44821,6 @@
         }
       ],
       "tests": [
-        "chord/host/schema_upstream_test.go::TestCleanedKeepsAFieldOfARecordWhoseValueSchemaIsNull",
-        "chord/host/schema_upstream_test.go::TestNormalizeWritesATupleHoleAsNull",
         "chord/next/data/validator_test.go::TestFailedChecks"
       ]
     },
@@ -45295,6 +45434,26 @@
         "tui/bash_execution_test.go::TestBashExecutionAppendOutputCleansChunksAndExposesOutputAndCommand",
         "tui/component_accessors_test.go::TestBashExecutionAppendOutputSanitizesAndGettersReadItBack"
       ]
+    },
+    {
+      "id": "BF-ea921ca",
+      "title": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)…",
+      "symptom": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand.",
+      "rootCause": "Ports Pi. A worker killed by a signal left its lock's socket file, and every later start of its address failed closed on it, retry too. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. ProcessLock also treats ENOTSOCK as stale instead of retrying until its context ended.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. `ProcessLock` on macOS no longer spins until its context ends when a regular file sits at the lock's path (`ENOTSOCK`); it fails closed naming the file, as for a socket file nobody listens on.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ea921ca80b",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-eaa4ed7",
@@ -47836,6 +47995,26 @@
       ]
     },
     {
+      "id": "BF-f5efecf",
+      "title": "Chord's objects no longer answer a call `not_ready` during a reload while the caller sees them `live`: a call…",
+      "symptom": "Chord's objects no longer answer a call `not_ready` during a reload while the caller sees them `live`: a call over a link to an object whose restart had drained, sent while its hold was still bound to the old instance, got `not_ready: ... not live yet`.",
+      "rootCause": "Ports Pi. A call arriving while an attempt activates waits for its outcome (bounded by readyTimeout) instead of failing not_ready while its client sees live. Fates start in the reverse of the order objects went live, so a pure dependent of a swapping provider swaps instead of parking. Includes the ported 'fates start dependents first' object tests.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's objects no longer answer a call `not_ready` during a reload while the caller sees them `live`: a call over a link to an object whose restart had drained, sent while its hold was still bound to the old instance, got `not_ready: ... not live yet`. Such a call now waits for the object's new attempt (live, failed or ended), bounded by `readyTimeout` (`unavailable/park_timeout`); a parked attempt showing `failed { waiting }` rejects it with that cause.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f5efecf629",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f6305d9",
       "title": "A `new_session`, `fork`, `clone` or `switch_session` in the same RPC batch as a `compact` aborts the…",
       "symptom": "A `new_session`, `fork`, `clone` or `switch_session` in the same RPC batch as a `compact` aborts the compaction instead of waiting for it (D148).",
@@ -48175,9 +48354,7 @@
           "date": "2026-10-24"
         }
       ],
-      "tests": [
-        "chord/host/schema_pi_oracle_test.go::TestAssertValidOverADecodedDescriptionKeepsTheDeclaredOrderLikePi"
-      ]
+      "tests": []
     },
     {
       "id": "BF-f6e7d49",
@@ -50965,10 +51142,6 @@
     {
       "id": "D177",
       "title": "The calls of a parallel durable tool round start in unspecified order"
-    },
-    {
-      "id": "D178",
-      "title": "Facet modules load in an isolated Node child, not in the host process"
     },
     {
       "id": "D180",
