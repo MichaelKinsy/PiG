@@ -192,15 +192,15 @@ func TestEmbeddedBundleIsBranded(t *testing.T) {
 	}
 }
 
-// countingFS counts what is opened by name.
+// countingFS counts the whole-file reads by name (a Stat opens a file without reading its content).
 type countingFS struct {
 	fs.FS
 	opened map[string]int
 }
 
-func (c *countingFS) Open(name string) (fs.File, error) {
+func (c *countingFS) ReadFile(name string) ([]byte, error) {
 	c.opened[name]++
-	return c.FS.Open(name)
+	return fs.ReadFile(c.FS, name)
 }
 
 // Loading the bundle reads its manifest (and the brand's small public files), not its files: the content is read when a file is
@@ -222,6 +222,6 @@ func TestBundleFilesAreReadWhenFirstServed(t *testing.T) {
 	}
 	script.Body()
 	if got := counting.opened["dist/"+bundle.Script]; got != 1 {
-		t.Errorf("the script was opened %d times, want once", got)
+		t.Errorf("the script was read %d times, want once", got)
 	}
 }
