@@ -7707,6 +7707,9 @@
     {
       "path": "packages/durable/test-workers/storage.test.ts",
       "disposition": "ported",
+      "protects": "A Durable Object SQLite statement's reported changed-row count is SQLite's changes(), not the billed rowsWritten count that includes index writes (1 and 10 where the real cursor reports 3 and 20); the storage runs inside the workerd runtime.",
+      "pigTest": "PiG's own form: chord/sqlite/cloudflare TestDurableObjectSqliteDriver runs the same runChanges probe (1, 0, 10, 10 on a table with two indexes) over Go's fake Durable Object storage on a native SQLite connection, and durable/storage/sqlite/cloudflare runs the storage conformance suite and the schema migration on it. A Go cursor that reports inflated billed writes was considered.",
+      "whyNot": "Go's DurableObjectSqlCursor has no rowsWritten member, so the adapter cannot read the billing count and there is nothing for a fake to inflate: the property is held by the type plus the probe. The real count and the workerd runtime exist only in Cloudflare's runtime (workerd, a JavaScript and C++ binary with no Go form); only the workerd-process case is designed out.",
       "upstreamTestHash": "sha256:5db861cef8bedf21f5c2fcad8b4a6ea742e8700f97c4445a2d49c4402a66b66c",
       "evidence": [
         "durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectStorageConformance",
@@ -7813,13 +7816,17 @@
     {
       "path": "packages/durable/test/env-node.test.ts",
       "disposition": "ported",
+      "protects": "A failed taskkill spawn is ignored when a command is aborted; truncateFile takes only integer sizes; a temp directory is removable after taskkill leaves descendants holding it; the filesystem, line reader and shell behave as Pi's.",
+      "pigTest": "durable/env/node/shell_kill_failure_test.go fails the killProcessTree seam and expects the aborted result; truncateFile takes int64 and filesystem_test.go tests -1 and MAX_SAFE_INTEGER+1; t.TempDir's cleanup retries on Windows for the temp-dir case. A compile-fail test of the int64 parameter was considered.",
+      "whyNot": "Of the non-ported pieces: truncateFile sizes 1.5, NaN and Infinity cannot be written against an int64 parameter, so the property is the type and a test would only repeat the compiler (compile-fail harness question is open with the owner); removeTempDir is Node test scaffolding that Go's t.TempDir replaces, and nothing in PiG's code runs it.",
       "upstreamTestHash": "sha256:27d23c2473c758952a9023e8462c59287952a9f1f03dea06e73cbf6881927cd0",
       "evidence": [
         "durable/env/node/filesystem_test.go",
         "durable/env/node/shell_test.go",
-        "durable/env/line_scan_test.go"
+        "durable/env/line_scan_test.go",
+        "durable/env/node/shell_kill_failure_test.go#TestShellIgnoresAKillThatFailsToSpawnDuringAbort"
       ],
-      "rationale": "All cases of the filesystem, text line reader and shell describes ported with their upstream titles as Go test names (durable/env/node/filesystem_test.go, shell_test.go). Unrepresentable in Go and handled as follows: the truncateFile sizes 1.5, NaN and Infinity cannot be passed to the int64 parameter, so the type rejects them (-1 and MAX_SAFE_INTEGER+1 are tested); the vi.spyOn(FileHandle.prototype) cases use the package seams syncFile and readFileAt; the legacy WSL case does not replace process.platform (the stdin transport depends only on the path); the win32-only detached-descendant case runs on every platform with a background sleep; 'ignores asynchronous taskkill spawn errors during abort' is not ported because Go's Start returns that error synchronously and every killProcessTree caller discards it; Node one-liners (process.execPath) are replaced by bash printf/head producing the same bytes. Not upstream cases, added to pin behavior: BOM dropped at the start of a text line reader and of each output stream, partial final line counted against the spill line threshold. The decoder cases moved with the decoder to durable/env/line_scan_test.go. Pi 1.0.3: the cwd case now also proves the command ran in the cwd (cwd-marker.txt, shell_test.go) and flushFile on a directory is is_directory on every platform (filesystem_test.go; the Windows branch that expected permission_denied is gone). removeTempDir (retries removal while Windows taskkill leaves descendants holding the directory) is designed out: t.TempDir's cleanup retries on Windows. Not upstream cases: a U+FEFF after a chunk boundary stays in the text line reader, and Exec refuses a command that is neither a string nor an argv. 0.5.2 (Pi 61060ddf, #9490): the legacy-WSL case is a five-row table over the shell path and SystemRoot (unset, a custom directory for System32 and Sysnative, empty, and a launcher on another drive). TestShellUsesStdinCommandTransportForLegacyWSLBashPaths runs the five rows as subtests with Pi's titles; the three D:\\WinNT rows fail against the earlier fixed C:\\Windows pattern. durable/env/node now reads the launcher test from internal/shellconfig, the one function coding-agent's shell.ts also uses, and its taskkill uses `||` for SystemRoot."
+      "rationale": "All cases of the filesystem, text line reader and shell describes ported with their upstream titles as Go test names (durable/env/node/filesystem_test.go, shell_test.go). Unrepresentable in Go and handled as follows: the truncateFile sizes 1.5, NaN and Infinity cannot be passed to the int64 parameter, so the type rejects them (-1 and MAX_SAFE_INTEGER+1 are tested); the vi.spyOn(FileHandle.prototype) cases use the package seams syncFile and readFileAt; the legacy WSL case does not replace process.platform (the stdin transport depends only on the path); the win32-only detached-descendant case runs on every platform with a background sleep; 'ignores asynchronous taskkill spawn errors during abort' runs in PiG's own form (shell_kill_failure_test.go): Go's Start returns a failed taskkill spawn synchronously, so the test fails the killProcessTree seam, kills the shell by hand as Pi's does and expects the aborted result, on every platform; Node one-liners (process.execPath) are replaced by bash printf/head producing the same bytes. Not upstream cases, added to pin behavior: BOM dropped at the start of a text line reader and of each output stream, partial final line counted against the spill line threshold. The decoder cases moved with the decoder to durable/env/line_scan_test.go. Pi 1.0.3: the cwd case now also proves the command ran in the cwd (cwd-marker.txt, shell_test.go) and flushFile on a directory is is_directory on every platform (filesystem_test.go; the Windows branch that expected permission_denied is gone). removeTempDir (retries removal while Windows taskkill leaves descendants holding the directory) is designed out: t.TempDir's cleanup retries on Windows. Not upstream cases: a U+FEFF after a chunk boundary stays in the text line reader, and Exec refuses a command that is neither a string nor an argv. 0.5.2 (Pi 61060ddf, #9490): the legacy-WSL case is a five-row table over the shell path and SystemRoot (unset, a custom directory for System32 and Sysnative, empty, and a launcher on another drive). TestShellUsesStdinCommandTransportForLegacyWSLBashPaths runs the five rows as subtests with Pi's titles; the three D:\\WinNT rows fail against the earlier fixed C:\\Windows pattern. durable/env/node now reads the launcher test from internal/shellconfig, the one function coding-agent's shell.ts also uses, and its taskkill uses `||` for SystemRoot."
     },
     {
       "path": "packages/durable/test/env-truncate.test.ts",
@@ -8251,9 +8258,6 @@
     {
       "path": "packages/durable/test/harness-telemetry.test.ts",
       "disposition": "ported",
-      "protects": "A commit listener that fails is reported once as a listener_error report metric and the span data never contains the error text.",
-      "pigTest": "A Go test in durable/harness with InMemoryTelemetry: an observeCommits listener whose Advance returns an error for the pi.user entry, then assert one setup report, one pi.durable.reports metric with type listener_error, and no error text in the spans. The core driver tests (watch_test.go, listener_reports_core_test.go) cover the listener_error end but not the telemetry metric or the span leak check.",
-      "whyNot": "FLIP to planned. Pi's case rejects a promise after the turn, and a Go listener returns its error from Advance, so the timing differs but the property does not. Owner proposal: durable lane. The case is not type-level, so the earlier type-level label was wrong.",
       "upstreamTestHash": "sha256:2221b035579538d1dd3a3d6029d93e0e224682ae2793ab5e0ca84ea0d6003652",
       "evidence": [
         "durable/harness/harness_telemetry_test.go",
@@ -8282,14 +8286,12 @@
         "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryCountsAnOutsideSpanSessionFailureWithoutStartingASpan",
         "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryCountsReportsRaisedWithANoopSpanWithoutCreatingARoot",
         "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan",
+        "durable/harness/harness_telemetry_late_listener_test.go#TestDurableTelemetryCountsAListenerFailureThatArrivesAfterEverySpanSettled",
         "durable/codemode/telemetry_replay_test.go#TestDurableTelemetryEmitsReplayForACodemodeJournalResultWithoutRerunningItsNestedTool",
         "durable/storage/record_carriers_test.go#TestStorageKeepsTaskAndSubmissionTelemetryCarriers",
         "durable/record_carriers_wire_test.go#TestRecordCarriersAreOptionalPlainJsonMembers"
       ],
-      "rationale": "All 23 upstream cases run in the evidence files; 1 type-level cases are designed out. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders (TypeBox Type.Object to pi-schema obj); the Go tests declare their tool parameters as Go schemas, so the cases are unchanged.",
-      "designedOutCases": [
-        "Durable telemetry › preserves async listener error containment and report counting"
-      ]
+      "rationale": "All 24 upstream cases run in the evidence files. The case 'preserves async listener error containment and report counting' runs in PiG's own form (TestDurableTelemetryCountsAListenerFailureThatArrivesAfterEverySpanSettled): Pi's listener returns a promise that rejects after every span settled; a Go commit listener returns nothing from Advance and fails by panic, so the late failure is a listener that fails on a commit made after the submission's spans settled. The test asserts Pi's results: one report with the error, one pi.durable.reports counter with type listener_error only, no span left open or given the report event, and no error text in any span. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders (TypeBox Type.Object to pi-schema obj); the Go tests declare their tool parameters as Go schemas, so the cases are unchanged."
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
@@ -8339,6 +8341,9 @@
     {
       "path": "packages/durable/test/images-wasm-module.test.ts",
       "disposition": "ported",
+      "protects": "The image processor entry points prepare a 1x1 GIF to the exact {data, mimeType: image/gif} result when a WebAssembly module is supplied by the caller.",
+      "pigTest": "durable/images/node TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF compares the same result through the Node and Cloudflare entry points. A Go test that compiles and passes a WebAssembly module was considered.",
+      "whyNot": "The wasm parameter is a WebAssembly.Module the TypeScript caller compiles and passes; Go's processors link the image code natively and take no module, so there is no module to hand over. The result the case checks is held by the test above.",
       "upstreamTestHash": "sha256:53cc856094ba97638f1af4c18c908481a76d517710080666840127443756cd72",
       "evidence": [
         "durable/images/node/node_test.go#TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF"
@@ -8417,21 +8422,16 @@
     {
       "path": "packages/durable/test/session-conversation-tails.test.ts",
       "disposition": "ported",
-      "protects": "The markers a tail keeps are not changed after they are written.",
-      "pigTest": "A Go test that mutates a record returned to a caller after the write and asserts the kept marker is unchanged.",
-      "whyNot": "Object.isFrozen has no Go form. The PiG form (no aliasing mutation of kept markers) is possible since kept markers are shared: FLIP to planned, owner proposal: durable lane.",
       "upstreamTestHash": "sha256:e7fc989babae389e6f035bda5e415f4984b9835c945ca292de375c84fa27762c",
       "evidence": [
         "durable/session/conversation_tails_test.go",
         "durable/session/conversation_tails_test.go#TestConversationTailsReadsOnceThenFollowsCommits",
         "durable/session/conversation_tails_test.go#TestConversationTailsKnowsNewRootConversationIsEmptyAndForkOnlyOnceReadOrWritten",
         "durable/session/conversation_tails_test.go#TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt",
-        "durable/session/conversation_tails_test.go#TestConversationTailsKeepsBoundedNumberOfConversationsFewerWithMarkers"
+        "durable/session/conversation_tails_test.go#TestConversationTailsKeepsBoundedNumberOfConversationsFewerWithMarkers",
+        "durable/session/conversation_tails_test.go#TestConversationTailsFreezesTheMarkersItKeeps"
       ],
-      "rationale": "Four of the five cases run with Pi's inputs and expectations (4096 conversations and 256 markers after 5000 conversations). The fifth, 'freezes the markers it keeps', asserts only Object.isFrozen on the written record and is designed out under the owner's 2026-11-03 JS-only values and mechanics category: Go has no Object.freeze (conversation_tails.go shares the kept markers; records are immutable by convention).",
-      "designedOutCases": [
-        "conversation tails › freezes the markers it keeps"
-      ]
+      "rationale": "All five cases run. Four with Pi's inputs and expectations (4096 conversations and 256 markers after 5000 conversations). The fifth, 'freezes the markers it keeps', applies entry(2, 1, 1) to fresh tails and asserts Object.isFrozen on the written record; Go has no Object.freeze, so TestConversationTailsFreezesTheMarkersItKeeps holds what the freeze protects, on the same input: nothing the caller does to the record it wrote (the head pointer, the model messages, the kind) or to a marker it was given changes the marker the tails keep. ConversationTails.Apply now keeps a detached copy and Marker returns one (the test fails on the earlier shared marker)."
     },
     {
       "path": "packages/durable/test/session-deferred-commits.test.ts",
@@ -8446,19 +8446,14 @@
     {
       "path": "packages/durable/test/session-document-retention.test.ts",
       "disposition": "ported",
-      "protects": "With timers that cannot be unreferenced, the document cache keeps no timer and evicts on commits.",
-      "pigTest": "A Go test that an idle cache holds no goroutine or timer after eviction, in the style of durable/harness/goroutines_test.go.",
-      "whyNot": "Node's unreferenced timers do not exist in Go. The PiG-shaped property (no goroutine or timer left behind) is possible: FLIP to planned, owner proposal: durable lane.",
       "upstreamTestHash": "sha256:6f565e4b984119711b89eb6fdaea86faae24da4bc33e7ef5e39778f048bc66ac",
       "evidence": [
         "durable/session/session_document_retention_test.go#TestSessionDocumentCacheRetention",
         "durable/harness/document_retention_test.go#TestHarnessDocumentRetentionFollowsSettings",
-        "durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept"
+        "durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept",
+        "durable/session/session_document_retention_timers_test.go#TestSessionDocumentCacheKeepsNoTimerWhereTimersCannotBeBackground"
       ],
-      "rationale": "Follows Pi 5f312dac; the case 'keeps no timer where timers cannot be unreferenced, and evicts on commits' stays designed out (Node unreferenced-timer mechanics; approved by the owner ruling 2026-10-13, tests-120-b; case and approval carried from the b3a29f11 mapping). Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders and in the writes recorder (it wraps Storage.commit with batches and a receive callback); the Go port reads the writes through the test storage's AdmittedCommits, so the cases are unchanged.",
-      "designedOutCases": [
-        "document cache retention › keeps no timer where timers cannot be unreferenced, and evicts on commits"
-      ]
+      "rationale": "Follows Pi 5f312dac; all cases run. The case 'keeps no timer where timers cannot be unreferenced, and evicts on commits' (:468) runs in PiG's own form (TestSessionDocumentCacheKeepsNoTimerWhereTimersCannotBeBackground): Pi replaces setTimeout with one that returns a plain number, a timer that cannot be unreferenced; the Go Session's SetTimer hook declines the background timers the eviction asks for, and the test pins the same property with Pi's inputs (retention 1000, two bumps, the clock advanced 10 s, an empty commit): at most one timer is asked for, the commit evicts, the cache is empty, and no foreground timer is armed. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders and in the writes recorder (it wraps Storage.commit with batches and a receive callback); the Go port reads the writes through the test storage's AdmittedCommits, so the cases are unchanged."
     },
     {
       "path": "packages/durable/test/session-documents.test.ts",
