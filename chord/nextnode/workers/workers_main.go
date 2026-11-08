@@ -74,6 +74,11 @@ type WorkerLoad struct {
 	// the NodeHost (the server, whose holds it relays).
 	Principal data.Principal
 	Peer      data.Principal
+	// Store is the NodeHost's store (RuntimeLoad.Store): the worker's own file, where the plugins' persisted documents and tables live;
+	// CloseTimeout and ReadyTimeout are the NodeHost's (RuntimeLoad's). Nil: none, the host's defaults.
+	Store        *plugins.StoreOptions
+	CloseTimeout *time.Duration
+	ReadyTimeout *time.Duration
 }
 
 // BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
@@ -372,6 +377,7 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 	node, report, err := p.runtime.Load(plugins.RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
+		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout,
 	}, ctx)
 	if err != nil {
 		return host.LoadReport{}, err
