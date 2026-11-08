@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/test/next/host/route.test.ts: routes (§3) on whole relayed hosts, once per codec as upstream's
@@ -817,4 +818,41 @@ func TestResolveFailuresAndReResolvesAResolveThatEndsItsGoroutineIsARejectedReso
 			t.Fatalf("error = %+v, want resolve_failed session|S1", errs[0])
 		}
 	})
+}
+
+// route.test.ts › resolve spans (slice 9) › marks a resolve that rejected failed (`resolve_failed`), a root linked to the
+// hold that started it.
+func TestResolveSpansMarkAResolveThatRejectedFailedResolveFailedARootLinkedToTheHoldThatStartedIt(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	options := allRecord(recorder)
+	options.Resolve = func(contracts.Address, func() resolved, context.Context) (resolved, error) {
+		return resolved{}, errors.New("no worker")
+	}
+	r := relay(t, options)
+	readyTimeout := 50 * time.Millisecond
+	tracedUnder(t, recorder, "request", func(ctx context.Context) {
+		_, err := r.Tab.Get(ctx, PlacedNotes, routeS("S1"), GetOptions{ReadyTimeout: &readyTimeout})
+		if err == nil {
+			t.Error("get resolved, want a rejection")
+		}
+	})
+	resolve := spanWhere(t, recorder, "chord.resolve", nil)
+	relayed := spanWhere(t, recorder, "chord.relay", nil)
+	if resolve.ParentID != nil {
+		t.Errorf("chord.resolve parent = %v, want a root", *resolve.ParentID)
+	}
+	spanAttributesAre(t, resolve, telemetry.SpanAttributes{
+		telemetry.Attr("chord.host", "server"), telemetry.Attr("kind", "session"), telemetry.Attr("address", "session|S1"),
+		telemetry.Attr("outcome", "failed"),
+	})
+	if resolve.Status.Status != telemetry.SpanStatusCodeError || resolve.Status.Error == nil ||
+		resolve.Status.Error.Name != "resolve_failed" || resolve.Status.Error.Message != "no worker" {
+		t.Errorf("resolve status = %+v %+v, want error resolve_failed: no worker", resolve.Status, resolve.Status.Error)
+	}
+	if !linksTo(resolve, relayed) || !linksTo(relayed, resolve) {
+		t.Errorf("resolve links %v, relay links %v, want each the other", linksOf(resolve), linksOf(relayed))
+	}
+	if relayed.Status.Error == nil || relayed.Status.Error.Name != "relay_failed" || relayed.Status.Error.Message != "session|S1: no worker" {
+		t.Errorf("relay status = %+v, want relay_failed: session|S1: no worker", relayed.Status.Error)
+	}
 }

@@ -257,6 +257,7 @@ func txObject(t *testing.T, label string, options objectOptions, meter *nexttest
 	}
 	if meter != nil {
 		o.batch = state.NewBatch(report, meter.Telemetry.Metrics())
+		o.telemetry = meter.Telemetry
 	} else {
 		o.batch = state.NewBatch(report, nil)
 	}
@@ -821,7 +822,7 @@ func (owner *tableOwner) AssertLive() error {
 }
 func (owner *tableOwner) Fail(err *data.ChordError) { owner.o.Fail(err) }
 
-var openFence = store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+var openFence = store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 
 // storedObject is a restartable store object with `N` and `Edits` (and, persisted, `P` and the keyed `K`) on a store
 // with an outbox; its handles by attempt.

@@ -55,7 +55,7 @@ func TestStoreOnDurableObjectTellsCheckByMessage(t *testing.T) {
 		}, ctx); err != nil {
 			t.Fatal(err)
 		}
-		fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+		fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 		_, err = chordStore.Commit([]store.StagedWrite{checkedWrite{}}, fence, ctx)
 		if err == nil {
 			t.Fatal("the commit succeeded")

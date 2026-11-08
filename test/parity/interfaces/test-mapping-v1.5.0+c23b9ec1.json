@@ -2328,13 +2328,21 @@
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/plugins/lists/worker.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:22afbe9db3be1818842f466e76b8dc06c5d5213e0dd31ceaa65777d6ae9bca51"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:22afbe9db3be1818842f466e76b8dc06c5d5213e0dd31ceaa65777d6ae9bca51",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_examples_tutorial_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in plugins_examples_tutorial_test.go (TestTutorialListsPluginOnAListsWorker)."
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/plugins/traces/clock.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bb8c1305e4727dd134487975daeaa72cb0eef45306b6cbbb24ce5d48a5cf6098"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bb8c1305e4727dd134487975daeaa72cb0eef45306b6cbbb24ce5d48a5cf6098",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_examples_tutorial_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in plugins_examples_tutorial_test.go (TestTutorialTracesClockClamped)."
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/tutorial.test.ts",
