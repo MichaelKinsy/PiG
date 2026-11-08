@@ -28,16 +28,6 @@ import (
 
 const portsOrigin = "https://0123456789abcdef0123456789abcdef.rdtun.com"
 
-func resultText(result *delta.JsonObject) string {
-	var out strings.Builder
-	for _, part := range list(result.Value("content")) {
-		if object(part).Value("type") == "text" {
-			out.WriteString(object(part).Value("text").(string))
-		}
-	}
-	return out.String()
-}
-
 func TestPortsToolDefaultsPrivateListsPublicEndpointsFencesGuestsAndClosesOnArchive(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"share.test"}})
