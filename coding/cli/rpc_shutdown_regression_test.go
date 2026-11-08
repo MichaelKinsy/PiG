@@ -42,7 +42,7 @@ func TestRPCSettledShutdownDoesNotBlockEventFlush(t *testing.T) {
 	}
 }
 
-// Synchronous fire-and-forget effects cannot release command admission before a later ctx.shutdown in the same handler prefix.
+// Synchronous fire-and-forget effects cannot release command admission before a later ctx.shutdown in the same handler prefix. Pi runs checkShutdownRequested after the command's response (rpc-mode.ts:763-766,809-813), so the response precedes the notification.
 func TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder(t *testing.T) {
 	for _, impl := range rpcShutdownImplementations {
 		t.Run(impl.name, func(t *testing.T) {
@@ -53,12 +53,8 @@ func TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder(t *testing.T) {
 			p.waitForExit("after a synchronous UI effect and shutdown")
 			want := []rpcRecord{
 				{"type": "extension_ui_request", "method": "setTitle", "title": "quitting"},
-				rpcShutdownStartedNotify,
 				handledPromptResponse("quit"),
-			}
-			if impl.name == "pig" {
-				// pig divergence (D231): follows Pi main 1708b4788, where the shutdown waits for the command's prompt response.
-				want = []rpcRecord{want[0], want[2], want[1]}
+				rpcShutdownStartedNotify,
 			}
 			if !reflect.DeepEqual(records, want) {
 				t.Fatalf("stdout=%v, want %v", records, want)

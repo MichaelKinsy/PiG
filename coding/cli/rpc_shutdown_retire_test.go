@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Pi 0.87.1: a command that replaces the Session, stdin ending at once and a quit session_shutdown handler that never settles while it keeps the event loop alive: Pi answers the command, prints no extension_error, and stays alive until a signal ends it. Pig retires the replaced Session's host when the command returns; it must not shut that host down under the pending quit emission. The held loop makes the ordering deterministic: neither process can exit before the command answers.
+// Pi (pin c23b9ec1): a command that replaces the Session, stdin ending at once and a quit session_shutdown handler that never settles while it keeps the event loop alive: Pi answers the command, prints no extension_error, and stays alive until a repeated signal ends it with 143: the first signal does not interrupt the started shutdown (rpc-mode.ts:383-391). Pig retires the replaced Session's host when the command returns; it must not shut that host down under the pending quit emission. The held loop makes the ordering deterministic: neither process can exit before the command answers.
 func TestRPCInputEndAfterCommandReplacementKeepsPendingQuitShutdownQuiet(t *testing.T) {
 	for _, impl := range rpcShutdownImplementations {
 		t.Run(impl.name, func(t *testing.T) {
@@ -23,19 +23,9 @@ func TestRPCInputEndAfterCommandReplacementKeepsPendingQuitShutdownQuiet(t *test
 				out = append(out, r)
 				return isSuccessResponse(r, "c")
 			})
-			if impl.name == "pig" {
-				// pig divergence (D234): follows Pi main ace560c30, where the first signal does not interrupt the started shutdown and a repeated one exits 143.
-				signalRPC(t, p, syscall.SIGTERM, syscall.SIGTERM)
-			} else if err := p.cmd.Process.Signal(syscall.SIGTERM); err != nil {
-				t.Fatal(err)
-			}
+			signalRPC(t, p, syscall.SIGTERM, syscall.SIGTERM)
 			out = append(out, drainRPCOutput(p)...)
-			status := waitForRPCTermination(t, p)
-			if impl.name == "pig" {
-				requireExited(t, status, 143)
-			} else if !status.Signaled() || status.Signal() != syscall.SIGTERM {
-				t.Fatalf("wait status = %v, want SIGTERM", status)
-			}
+			requireExited(t, waitForRPCTermination(t, p), 143)
 			want := []rpcRecord{
 				{"type": "extension_ui_request", "method": "notify", "message": "session_shutdown started", "notifyType": "info"},
 				handledPromptResponse("c"),

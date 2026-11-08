@@ -470,6 +470,8 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	)
 	var shutdown *rpcShutdown
 	shutdownInvoked := make(chan struct{})
+	// inputEnded closes when stdin ended: no response to a dialog can arrive after that.
+	inputEnded := make(chan struct{})
 	// A termination signal holds the run from the moment it arrives, before anything is killed: Pi's handler kills
 	// tracked children and awaits the disposal on its one event loop (rpc-mode.ts:366-376,726-744), so a run in flight
 	// goes on only once a session_shutdown handler awaits a timer or I/O, or after the Session is disposed.
@@ -506,6 +508,32 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			// pig additive (D232): a connection's session retires its own extension Host through the normal release; only a process about to exit holds its retirements for TerminateProcesses.
 			if extensionHost, _ := rpcExtensionHost(sess()); extensionHost != nil && transport.processOwned {
 				extensionHost.HoldRetirements()
+			}
+			// Pi's dispose awaits session.abort() before session_shutdown (agent-session-runtime.ts:409-417, Pi main 7a53c310a, #9126): agent.abort() runs synchronously, before the event loop turns, and the interrupted run settles while the Session is still connected. So the abort flag is set while a signal's hold is still in place (the killed tool's turn ends as aborted and starts no next request), then the hold ends and the run goes on to its end.
+			sess().RequestAbort()
+			release()
+			// A run that waits on a dialog stdin can no longer answer never settles, so Pi's await never returns, nothing keeps its event loop alive and the process exits without session_shutdown.
+			//portlint:allow ctxbackground Pi's dispose awaits session.abort() with no signal (agent-session-runtime.ts:409-417); the wait ends only when the process can make no progress
+			abortCtx, stopAbort := context.WithCancel(context.Background())
+			abandoned := make(chan struct{})
+			go func() {
+				defer close(abandoned)
+				select {
+				case <-inputEnded:
+				case <-abortCtx.Done():
+					return
+				}
+				select {
+				case <-rpcUI.PendingRequest():
+					stopAbort()
+				case <-abortCtx.Done():
+				}
+			}()
+			err := sess().WaitForIdle(abortCtx)
+			stopAbort()
+			<-abandoned
+			if err != nil {
+				return
 			}
 			rt.EmitQuitShutdownContext(shutdownContext)
 			invocation.Acknowledge(shutdownContext)
@@ -927,6 +955,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}
 		})
 		close(inputLines)
+		close(inputEnded)
 		if extensionHost, _ := rpcExtensionHost(sess()); extensionHost != nil {
 			extensionHost.EndInput()
 		}
