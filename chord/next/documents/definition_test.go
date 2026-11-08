@@ -3,6 +3,7 @@ package documents
 // Ports packages/chord/test/next/documents/definition.test.ts
 
 import (
+	"context"
 	"math"
 	"reflect"
 	"regexp"
@@ -211,4 +212,42 @@ func TestStateDefinitionInitialIsSafeToShareBetweenHosts(t *testing.T) {
 		})
 	}
 	group.Wait()
+}
+
+// A StateDefinition keeps every option it was declared with: Keyed, Persist, and the Initial, Migrate and CheckpointWhen
+// functions it was given are the ones its methods call (Pi's `defineState` returns them on the definition).
+func TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions(t *testing.T) {
+	checkpointed := 0
+	definition := mustDefine(t, "kept", StateOptions{
+		Schema:  contracts.Obj(contracts.Prop("n", contracts.Int())),
+		Version: 2,
+		Initial: func() *JsonObject { return obj("n", 7.0) },
+		Migrate: func(old *JsonObject, from int) (*JsonObject, error) {
+			return obj("n", old.Value("n").(float64)+float64(from)), nil
+		},
+		Keyed:   true,
+		Persist: true,
+		CheckpointWhen: func(_ *JsonObject, _ []delta.Op, info CheckpointInfo) bool {
+			checkpointed = info.DeltasSinceBase
+			return info.DeltasSinceBase >= 3
+		},
+	})
+	if !definition.Keyed || !definition.Persist {
+		t.Fatalf("Keyed %v, Persist %v, want both as declared", definition.Keyed, definition.Persist)
+	}
+	initial, err := definition.Initial(context.Background())
+	if err != nil || initial.Value("n") != 7.0 {
+		t.Fatalf("Initial() = %v, %v, want n 7", initial, err)
+	}
+	migrated, err := definition.Migrate(obj("n", 10.0), 1, context.Background())
+	if err != nil || migrated.Value("n") != 11.0 {
+		t.Fatalf("Migrate(n 10, from 1) = %v, %v, want n 11", migrated, err)
+	}
+	if !definition.CheckpointWhen(obj("n", 0.0), nil, CheckpointInfo{DeltasSinceBase: 3}) || checkpointed != 3 || definition.CheckpointWhen(obj("n", 0.0), nil, CheckpointInfo{DeltasSinceBase: 1}) {
+		t.Fatalf("CheckpointWhen did not call the declared function (last info %d)", checkpointed)
+	}
+	plain := mustDefine(t, "plain", StateOptions{Schema: contracts.Obj(contracts.Prop("n", contracts.Int())), Version: 1, Initial: func() *JsonObject { return obj("n", 0.0) }})
+	if plain.Keyed || plain.Persist || plain.CheckpointWhen(obj("n", 0.0), nil, CheckpointInfo{DeltasSinceBase: 100}) {
+		t.Fatalf("a definition declared with none is keyed %v, persisted %v, or checkpoints", plain.Keyed, plain.Persist)
+	}
 }

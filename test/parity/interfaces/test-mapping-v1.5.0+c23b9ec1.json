@@ -3405,12 +3405,15 @@
     },
     {
       "path": "packages/chord/test/node/web/page.test.ts",
-      "disposition": "ported",
+      "disposition": "partial",
       "upstreamTestHash": "sha256:bf7d5a585b21af094470ffd57cb986b866607feea95329446bc3729d60e0b6a7",
       "evidence": [
         "chord/nextnode/app/app_web_browser_test.go"
       ],
-      "rationale": "All 3 upstream cases run in app_web_browser_test.go over Chromium (skipped without CHROMIUM_BIN); \"a page › records a click as the root of one trace through the server into the worker, stored by the server\" is TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer: the vendored fixture web/telemetry.ts clicks, host.Root traces it as page.write, and the SQLite store the server writes holds the one trace page.write -> chord.call -> chord.relay (server) -> chord.relay (the worker's Go host) -> two chord.method spans (forced difference D460: the worker's Go host relays to the NodeHost that runs the plugin's types, one chord.relay span more than Pi's worker host), the click's id browser:<uuid>:<n> and principal {\"kind\":\"owner\"}."
+      "rationale": "2 of 3 upstream cases run in app_web_browser_test.go over Chromium. The third runs as TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer (vendored fixture web/telemetry.ts, SQLite store: the trace page.write -> chord.call -> chord.relay (server) -> chord.relay (the worker's Go host, forced difference D460) -> two chord.method spans, the click's id browser:<uuid>:<n>, one trace id) except its last assertion: the click span's chord.principal {\"kind\":\"owner\"}. The Go app gives the ingest facet a PrincipalAttributes hook that returns nothing (nextnode/app/app.go), so a page's spans record no principal; the host's principal-attribute function is not exported to the app. Open: wire it, then assert.",
+      "missingCases": [
+        "a page › records a click as the root of one trace through the server into the worker, stored by the server"
+      ]
     },
     {
       "path": "packages/chord/test/node/web/styles.test.ts",

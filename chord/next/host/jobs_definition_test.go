@@ -196,3 +196,34 @@ func TestJobTypesAreOneConcreteShapeTheCompilerChecks(t *testing.T) {
 		t.Fatal("a job context without a state has a State")
 	}
 }
+
+// A JobDefinition keeps every option it was declared with: its Accepts adapters, its Concurrency limit and its Persist rule
+// survive DefineJob (Pi's `defineJob` returns them on the definition), and a definition without them has none.
+func TestJobDefinitionKeepsItsAcceptsConcurrencyAndPersistOptionsAfterDefineJob(t *testing.T) {
+	adapter := JobAdapter{
+		Args:   func(old any) (any, error) { return old, nil },
+		Result: func(old any) (any, error) { return old, nil },
+	}
+	persisted, err := documents.DefineState("keep.state", documents.StateOptions{
+		Version: 1, Schema: contracts.Obj(contracts.Prop("n", contracts.Int())), Initial: func() *delta.JsonObject { return jsonObject("n", float64(0)) },
+		Persist: true, CheckpointWhen: func(*documents.JsonObject, []delta.Op, documents.CheckpointInfo) bool { return false },
+	})
+	must(t, err)
+	kept := mustJob(t, "app.kept", JobOptions{
+		Version: 3, Args: jobArgs(), Result: contracts.Int(), State: persisted, Concurrency: new(2),
+		Accepts: JobAccepts{1: adapter, 2: adapter}, Persist: &JobPersistence{Resume: ResumeAbandon},
+	})
+	if len(kept.Accepts) != 2 || kept.Accepts[1].Args == nil || kept.Accepts[2].Result == nil {
+		t.Fatalf("Accepts = %+v, want the two adapters it was declared with", kept.Accepts)
+	}
+	if kept.Concurrency == nil || *kept.Concurrency != 2 {
+		t.Fatalf("Concurrency = %v, want 2", kept.Concurrency)
+	}
+	if kept.Persist == nil || kept.Persist.Resume != ResumeAbandon {
+		t.Fatalf("Persist = %+v, want the abandon rule it was declared with", kept.Persist)
+	}
+	bare := mustJob(t, "app.bare", JobOptions{Version: 1, Args: jobArgs(), Result: contracts.Int()})
+	if len(bare.Accepts) != 0 || bare.Concurrency != nil || bare.Persist != nil {
+		t.Fatalf("a job declared with none has Accepts %v, Concurrency %v, Persist %v", bare.Accepts, bare.Concurrency, bare.Persist)
+	}
+}

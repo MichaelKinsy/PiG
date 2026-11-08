@@ -178,3 +178,33 @@ func TestKeysTypeAnIntKeyColumnAsANumberAndAStrOneAsAString(t *testing.T) {
 	_, err = mixed.Rows.Key(Row{"id": "a", "at": "1"}, "get")
 	qFails(t, err, `key column "at"`)
 }
+
+// A TableDefinition keeps what NewTableDefinition was given: its columns by name (ByName, Column), its Indexes and, for a table
+// built with one, the Evolution it came about by; a base has no Evolution.
+func TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition(t *testing.T) {
+	indexes := IndexRecords{{Name: "by_path", Columns: []string{"path", "at"}}}
+	base, err := NewTableDefinition("edits", TableOptions{Version: 1, Columns: tableColumns(), Key: []string{"id"}, Indexes: indexes}, nil)
+	if err != nil {
+		t.Fatalf("NewTableDefinition: %v", err)
+	}
+	qEqual(t, base.Indexes, indexes)
+	if base.Evolution != nil {
+		t.Fatalf("a base has Evolution %+v, want none", base.Evolution)
+	}
+	if len(base.ByName) != 5 || base.ByName["path"].Name != "path" {
+		t.Fatalf("ByName = %v, want the five columns by name", base.ByName)
+	}
+	at, err := base.Column("at", "test")
+	if err != nil || at.Name != "at" {
+		t.Fatalf("Column(at) = %+v, %v", at, err)
+	}
+	_, err = base.Column("nope", "test")
+	qFails(t, err, `no column "nope"`)
+	next, err := NewTableDefinition("edits", TableOptions{Version: 2, Columns: tableColumns(), Key: []string{"id"}, Indexes: indexes}, &Evolution{Previous: base})
+	if err != nil {
+		t.Fatalf("NewTableDefinition(evolution): %v", err)
+	}
+	if next.Evolution == nil || next.Evolution.Previous != base {
+		t.Fatalf("Evolution = %+v, want the version before it", next.Evolution)
+	}
+}
