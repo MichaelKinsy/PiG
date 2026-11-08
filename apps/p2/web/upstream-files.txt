@@ -425,7 +425,6 @@ plugins/send-file/worker.ts
 plugins/sessions/BranchSheet.tsx
 plugins/sessions/SessionSheet.tsx
 plugins/sessions/contract.ts
-plugins/sessions/lock-worker.ts
 plugins/sessions/package.json
 plugins/sessions/web.tsx
 plugins/sharing/contract.ts
@@ -574,6 +573,8 @@ plugins/radius/contract.ts
 <<<<<<<<< Temporary merge branch 1
 <<<<<<<<<<< Temporary merge branch 1
 ||||||||||| 61a9fb49714
-||||||| merged common ancestors
-=========
 =======
+||||||| merged common ancestors
+||||||||||| 2da9fb86b5e
+===========
+=========

@@ -19,6 +19,5 @@ send-file
 sessions
 sharing
 subagents
-terminals
 web-shell
 workspace
