@@ -173,6 +173,9 @@ type UIBridge struct {
 
 	// OnHostStateChanged is called when host state that runtimes replicate changed with no extension call or event to announce it. Set by the Host, which pushes the new state to every connected runtime off the caller's goroutine (see [UIBridge.HostStateChanged]).
 	OnHostStateChanged func()
+	// OnHostStateChanging and OnHostStateSettled bracket a change of the identity state (the model, the session id, name and file) that the Session makes: the first runs before the change is visible, the second after the change was reported through OnHostStateChanged. Set by the Host (see [UIBridge.HostStateChanging]).
+	OnHostStateChanging func()
+	OnHostStateSettled  func()
 
 	// invalidateTUI triggers a TUI render cycle.
 	invalidateTUI func()
@@ -542,7 +545,7 @@ type CommandInfo struct {
 }
 
 // Snapshot returns the current host-side state visible to the extension via
-// upstream-faithful synchronous getters. Missing usage stays absent; unknown token and percentage counts stay null.
+// upstream-faithful synchronous getters.
 //
 // The result is suitable for the protocol's [StatePayload]: callers send it
 // at handshake time (embedded in [ReadyPayload]) and on host-side state
@@ -675,11 +678,6 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	}
 	if actions.HasPendingMessages != nil {
 		state.HasPendingMessages = actions.HasPendingMessages()
-	}
-	if actions.GetContextUsage != nil {
-		if cu := actions.GetContextUsage(); cu != nil {
-			state.ContextUsage = &extensionContextUsageDTO{Tokens: cu.Tokens, ContextWindow: cu.ContextWindow, Percent: cu.Percent}
-		}
 	}
 	if actions.GetSystemPrompt != nil {
 		state.SystemPrompt = actions.GetSystemPrompt()
@@ -1091,6 +1089,26 @@ func (b *UIBridge) HostStateChanged() {
 	b.mu.RUnlock()
 	if changed != nil {
 		changed()
+	}
+}
+
+// HostStateChanging tells the Host that the Session's model, session id, name or file is about to change, and HostStateSettled that the change was reported through [UIBridge.HostStateChanged]. A host call can read the new state before the owner reports it, and its reply must not outrun the push of that state to the runtime that made it, so the Host flushes the state before every reply while a change is in flight. Every HostStateChanging has one HostStateSettled; both return at once.
+func (b *UIBridge) HostStateChanging() {
+	b.mu.RLock()
+	changing := b.OnHostStateChanging
+	b.mu.RUnlock()
+	if changing != nil {
+		changing()
+	}
+}
+
+// HostStateSettled ends the change HostStateChanging began.
+func (b *UIBridge) HostStateSettled() {
+	b.mu.RLock()
+	settled := b.OnHostStateSettled
+	b.mu.RUnlock()
+	if settled != nil {
+		settled()
 	}
 }
 
@@ -4561,7 +4579,7 @@ func (b *UIBridge) modelWire(actions *HostCallbacks) any {
 		if info := actions.GetModelInfo(); info != nil {
 			return info
 		}
-		return nil
+		return json.RawMessage("null")
 	}
 	key := actions.GetModelKey()
 	b.mu.Lock()

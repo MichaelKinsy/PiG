@@ -1,14 +1,12 @@
 package sdk
 
 import (
-	"fmt"
-	"os"
 	"runtime/debug"
 	"slices"
 	"sync"
 )
 
-// stateFeed delivers each change of a value the host replicates (the theme, the tool-expansion state) to the handlers an extension subscribed. Upstream Pi calls a widget component's invalidate() on such a change, and the component reads the new value at its next render; a subprocess extension has no component to invalidate, so it subscribes.
+// stateFeed delivers each change of a value the host replicates (the theme, the tool-expansion state, the Git branch) to the handlers an extension subscribed. Upstream Pi calls a widget component's invalidate() on such a change, and the component reads the new value at its next render; a subprocess extension has no component to invalidate, so it subscribes.
 //
 // Handlers run on a worker of their own, one delivery at a time in the order the changes arrived, never on the message loop or the goroutine that reads the host's replies, so a handler can make a blocking host call. A handler that panics is recovered and does not stop the others. An unsubscribe changes only later deliveries: a delivery already queued still reaches the handlers subscribed when the change arrived.
 type stateFeed[T any] struct {
@@ -83,7 +81,7 @@ func (f *stateFeed[T]) run(e *Extension) {
 func (f *stateFeed[T]) call(ctx Context, handler func(Context, T), value T) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "extension: recovered from panic in a %s change handler: %v\n%s\n", f.what, r, debug.Stack())
+			diagnosticf("extension: recovered from panic in a %s change handler: %v\n%s\n", f.what, r, debug.Stack())
 		}
 	}()
 	handler(ctx, value)

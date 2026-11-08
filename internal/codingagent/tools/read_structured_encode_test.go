@@ -167,3 +167,19 @@ func BenchmarkReadToolExecute(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkReadToolExecuteSmallFile is one read of a 300-byte file, the common case: the 140 KB benchmark above cannot show what a read costs that does not fill a chunk.
+func BenchmarkReadToolExecuteSmallFile(b *testing.B) {
+	dir := b.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "small.ts"), []byte(strings.Repeat("export const x = 1;\n", 15)), 0o600); err != nil {
+		b.Fatal(err)
+	}
+	tool := &ReadTool{CWD: dir}
+	args := json.RawMessage(`{"path":"small.ts"}`)
+	b.ReportAllocs()
+	for b.Loop() {
+		if result, err := tool.Execute(b.Context(), "id", args, nil); err != nil || result.IsError {
+			b.Fatal(err, result.Content)
+		}
+	}
+}

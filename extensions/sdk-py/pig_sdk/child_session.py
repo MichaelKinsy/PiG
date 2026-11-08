@@ -17,11 +17,11 @@ Async contract (Pi's promises, kept as blocking calls):
 
 from __future__ import annotations
 
-import sys
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
+from ._diagnostic import diagnose
 
 if TYPE_CHECKING:
     from . import Extension, ToolDefinition
@@ -294,7 +294,7 @@ class AgentSession:
         try:
             self._call("childSession.dispose", {})
         except Exception as error:  # noqa: BLE001 - reported where the host shows extension output, as Pi's dispose never fails
-            print(f"pig: dispose of child session {self._id} failed: {error}", file=sys.stderr)
+            diagnose(f"pig: dispose of child session {self._id} failed: {error}" + "\n")
 
     def _stop(self) -> None:
         """End the delivery: queued events are dropped and no listener runs again."""
@@ -321,7 +321,7 @@ class AgentSession:
             return _clone_stream_value(root)
         except Exception as error:  # noqa: BLE001 - a protocol violation drops the event, not the connection
             self._replica = None
-            print(f"pig: child session {self._id}: {error}", file=sys.stderr)
+            diagnose(f"pig: child session {self._id}: {error}" + "\n")
             return None
 
     def _enqueue(self, seq: int, event: Any) -> None:
@@ -346,7 +346,7 @@ class AgentSession:
                 try:
                     listener(event)
                 except Exception as error:  # noqa: BLE001 - a throwing listener does not stop Pi's emission
-                    print(f"pig: child session {self._id} listener raised: {error!r}", file=sys.stderr)
+                    diagnose(f"pig: child session {self._id} listener raised: {error!r}" + "\n")
             with self._cond:
                 self._delivered = seq
                 self._cond.notify_all()

@@ -11,7 +11,7 @@ import (
 var LogLineSchema = schema.Obj(schema.Properties{
 	schema.Prop("id", schema.Num()),
 	schema.Prop("time", schema.Num()),
-	schema.Prop("level", schema.Union([]schema.Schema{schema.Lit("stdout"), schema.Lit("stderr"), schema.Lit("event"), schema.Lit("error")})),
+	schema.Prop("level", schema.Union([]schema.Schema{p2runtime.Literal("stdout"), p2runtime.Literal("stderr"), p2runtime.Literal("event"), p2runtime.Literal("error")})),
 	schema.Prop("text", schema.Str()),
 })
 
