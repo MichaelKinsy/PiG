@@ -1,8 +1,9 @@
 package surfaces
 
-import "maps"
-
-import "testing"
+import (
+	"maps"
+	"testing"
+)
 
 // pi: packages/chord/test/surfaces/themes.test.ts
 
