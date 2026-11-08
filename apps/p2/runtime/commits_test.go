@@ -9,46 +9,27 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// A CommitSignal wakes its waiters after the commits its filter accepts, and nothing else (commits.ts).
+// A VersionSignal wakes its waiters after a change, and a context that ends ends a wait (commits.ts's signal, as the MCP
+// worker's activations use it).
 
-type fakeSource struct {
-	observer durable.CommitObserver
-	detached bool
-}
-
-func (f *fakeSource) ObserveCommits(observer durable.CommitObserver) durable.CommitObservation {
-	f.observer = observer
-	return detach(func() { f.detached = true })
-}
-
-type detach func()
-
-func (d detach) Detach() { d() }
-
-func TestCommitSignalWakesOnAcceptedCommitsOnly(t *testing.T) {
-	source := &fakeSource{}
-	signal := NewCommitSignal(source, func(publication durable.CommitPublication) bool { return publication.Seq == 7 })
+func TestVersionSignalWakesWaitersOnABump(t *testing.T) {
+	var signal VersionSignal
 	seen := signal.Version()
 	woke := make(chan error, 1)
 	go func() { woke <- signal.Next(context.Background(), seen) }()
-	// A commit the filter refuses wakes nobody.
-	source.observer.Advance(context.Background(), durable.CommitPublication{Seq: 1})
 	select {
 	case err := <-woke:
-		t.Fatalf("woken by a refused commit: %v", err)
+		t.Fatalf("woken without a change: %v", err)
 	case <-time.After(50 * time.Millisecond):
 	}
-	if signal.Version() != seen {
-		t.Fatalf("version %d", signal.Version())
-	}
-	source.observer.Advance(context.Background(), durable.CommitPublication{Seq: 7})
+	signal.Bump()
 	select {
 	case err := <-woke:
 		if err != nil {
 			t.Fatal(err)
 		}
 	case <-time.After(5 * time.Second):
-		t.Fatal("an accepted commit must wake the waiter")
+		t.Fatal("a change must wake the waiter")
 	}
 	if signal.Version() != seen+1 {
 		t.Fatalf("version %d", signal.Version())
@@ -59,9 +40,8 @@ func TestCommitSignalWakesOnAcceptedCommitsOnly(t *testing.T) {
 	}
 }
 
-func TestCommitSignalNextEndsWithItsContext(t *testing.T) {
-	source := &fakeSource{}
-	signal := NewCommitSignal(source, func(durable.CommitPublication) bool { return true })
+func TestVersionSignalNextEndsWithItsContext(t *testing.T) {
+	var signal VersionSignal
 	ctx, cancel := context.WithCancelCause(context.Background())
 	cause := errors.New("done")
 	woke := make(chan error, 1)
@@ -74,8 +54,14 @@ func TestCommitSignalNextEndsWithItsContext(t *testing.T) {
 	if err := signal.Next(ctx, signal.Version()); !errors.Is(err, cause) {
 		t.Fatalf("an ended context refuses at once: %v", err)
 	}
-	signal.Close()
-	if !source.detached {
-		t.Fatal("Close must detach the observation")
+}
+
+func TestChangesDocumentIsAboutTheDocumentKindOnly(t *testing.T) {
+	if ChangesDocument(durable.CommitPublication{}, "p2.subagents") {
+		t.Fatal("an empty commit changes no document")
+	}
+	publication := durable.CommitPublication{Changes: []durable.CommitChange{durable.DocumentChange{Record: durable.DocumentRecord{Kind: "p2.subagents"}}}}
+	if !ChangesDocument(publication, "p2.subagents") || ChangesDocument(publication, "p2.other") {
+		t.Fatal("a document's change is for its own kind")
 	}
 }
