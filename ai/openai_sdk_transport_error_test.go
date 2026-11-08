@@ -49,8 +49,8 @@ func TestOpenAISDKTransportErrorConnectionReset(t *testing.T) {
 			provider := newMatrixProvider(t, &GeneratedModel{ID: "fixture", Provider: "fixture", API: api}, "http://"+listener.Addr().String(), false)
 			defer func() { _ = provider.Close() }()
 			err = openAISDKStreamError(t, provider, StreamOptions{MaxRetries: new(0)})
-			// A peer that resets on accept reaches the dial (`connect ECONNRESET <addr>`), the request write or the response read, by timing: the
-			// pinned pi-ai gives each of those, with the same text, for a Node-hosted and a Go-hosted server alike.
+			// A peer that resets on accept reaches the dial (`connect ECONNRESET <addr>`), the request write or the response read. The pinned pi-ai
+			// mostly says `connect` (56 of 60 runs against this server); PiG says `read` in most runs because Go's dial returns before the reset (D520).
 			message := ""
 			if err != nil {
 				message = err.Error()

@@ -17,8 +17,8 @@ import (
 // error-body.test.ts "surfaces the reason from a real openai SDK connection failure" against the pinned pi-ai, then the same local server
 // through the three stream APIs (openai-completions, openai-responses, anthropic-messages). undici's cause reaches the message:
 // `connect ECONNREFUSED <addr>` for a closed port, `read ECONNRESET` for a peer that resets after it read the request, and
-// `other side closed (UND_ERR_SOCKET)` for a peer that closes. A peer that resets on accept reaches Node's connect, write or read by timing
-// (probed with a Node-hosted and a Go-hosted server: all three occur), so TestOpenAISDKTransportErrorConnectionReset covers it.
+// `other side closed (UND_ERR_SOCKET)` for a peer that closes. A peer that resets on accept is not compared here: Node mostly reports `connect ECONNRESET <addr>` and PiG
+// `read ECONNRESET` (D520), so TestOpenAISDKTransportErrorConnectionReset accepts the three operations.
 func TestConnectionErrorKeepsCauseThroughSDKsMatchesPi(t *testing.T) {
 	t.Run("refused", func(t *testing.T) {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
