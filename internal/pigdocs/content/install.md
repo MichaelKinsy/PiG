@@ -38,7 +38,7 @@ with `npm update -g @pi-in-go/pig` and uninstall with
 `npm uninstall -g @pi-in-go/pig`. `pig update` does not replace an
 npm-installed binary; update through npm.
 
-Install the command with Go 1.26 or newer, without a source checkout:
+Install the command with Go 1.27 or newer, without a source checkout (an older Go, 1.21 or newer, downloads the toolchain `go.mod` names unless `GOTOOLCHAIN=local`):
 
 ```bash
 go install github.com/MichaelKinsy/PiG/cmd/pig@latest

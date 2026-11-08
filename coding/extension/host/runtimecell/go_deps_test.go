@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -156,6 +157,44 @@ func TestRenderGoModDoesNotDuplicateSDKWorkspaceModule(t *testing.T) {
 	}
 	if count := strings.Count(result, "replace github.com/MichaelKinsy/PiG/extensions/sdk => "); count != 1 {
 		t.Fatalf("SDK replacement count = %d, want 1:\n%s", count, result)
+	}
+}
+
+// A module that requires the root PiG module declares the root's Go 1.27 floor; the generated module must declare at least that, or
+// the go command asks for `go mod tidy` and the extension does not build.
+func TestRenderGoModRaisesTheLanguageVersionToTheHighestExtensionModule(t *testing.T) {
+	dir := t.TempDir()
+	write := func(root, goLine string) string {
+		t.Helper()
+		path := filepath.Join(dir, root)
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(path, "go.mod"), []byte("module example.com/"+root+"\n\n"+goLine+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	low, root126 := write("low", "go 1.26"), write("exact", "go 1.26.0")
+	newer, newest := write("newer", "go 1.27"), write("newest", "go 1.27.3")
+	for _, tc := range []struct {
+		name  string
+		roots []string
+		want  string
+	}{
+		{"floor", []string{low, root126}, "1.26.0"},
+		{"two-part version is spelled with a patch", []string{low, newer}, "1.27.0"},
+		{"highest wins", []string{newest, newer, low}, "1.27.3"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var extensions []GoExtension
+			for i, root := range tc.roots {
+				extensions = append(extensions, GoExtension{Name: strconv.Itoa(i), Root: root, ModulePath: "example.com/" + filepath.Base(root)})
+			}
+			if result := renderGoMod(extensions, "/sdk"); !strings.Contains(result, "\ngo "+tc.want+"\n") {
+				t.Fatalf("want go %s:\n%s", tc.want, result)
+			}
+		})
 	}
 }
 

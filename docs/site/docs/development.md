@@ -23,7 +23,7 @@ The qualified verification toolchain is:
 - Rust and Cargo 1.97.1;
 - tmux 3.7 on Unix.
 
-Use the versions pinned by the repository and CI image metadata.
+Use the versions pinned by the repository and CI image metadata. The root module declares Go 1.27 as its language floor, because it imports `encoding/json/v2`; the extension SDK and the other nested modules keep Go 1.26.
 
 ## Build
 
