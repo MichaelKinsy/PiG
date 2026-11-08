@@ -50,7 +50,7 @@ func NewCompactionSummaryMessageComponentWithSurface(message CompactionSummaryMe
 		tokensBefore:  message.TokensBefore,
 		markdownTheme: markdownTheme,
 	}
-	component.surface.install(surface, &component.Box.invalidatable)
+	component.surface.install(surface, &component.invalidatable)
 	component.updateDisplay()
 	return component
 }

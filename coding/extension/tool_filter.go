@@ -1,10 +1,11 @@
 package extension
 
 import (
-	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 // Ports packages/coding-agent/src/core/mcp-servers.ts (createToolNameMatcher, isMcpToolName) and the `--tools` and

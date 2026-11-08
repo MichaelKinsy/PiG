@@ -35,7 +35,7 @@ func NewSkillInvocationMessageComponentWithSurface(block ParsedSkillBlock, markd
 		skillBlock:    block,
 		markdownTheme: markdownTheme,
 	}
-	component.surface.install(surface, &component.Box.invalidatable)
+	component.surface.install(surface, &component.invalidatable)
 	component.updateDisplay()
 	return component
 }

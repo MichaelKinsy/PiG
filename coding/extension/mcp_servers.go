@@ -3,7 +3,6 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"regexp"
 	"slices"
 	"strings"
@@ -11,8 +10,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
-
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -363,19 +362,6 @@ func objectMap(raw json.RawMessage) (map[string]json.RawMessage, bool) {
 }
 
 func isString(raw json.RawMessage) bool { return len(raw) > 0 && raw[0] == '"' }
-
-func isStringRecord(raw json.RawMessage) bool {
-	m, ok := objectMap(raw)
-	if !ok {
-		return false
-	}
-	for _, v := range m {
-		if !isString(v) {
-			return false
-		}
-	}
-	return true
-}
 
 func stringField(fields map[string]json.RawMessage, key string) (string, bool) {
 	raw, ok := fields[key]

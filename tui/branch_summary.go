@@ -33,7 +33,7 @@ func NewBranchSummaryMessageComponentWithSurface(message BranchSummaryMessage, m
 		summary:       message.Summary,
 		markdownTheme: markdownTheme,
 	}
-	component.surface.install(surface, &component.Box.invalidatable)
+	component.surface.install(surface, &component.invalidatable)
 	component.updateDisplay()
 	return component
 }
