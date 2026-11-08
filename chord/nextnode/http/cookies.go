@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsclock"
 )
 
-// Ports packages/chord/src/next-node/http/cookies.ts. Cookies (decision "The HTTP component's security baseline" (5)):
+// Ports packages/chord/src/node/http/cookies.ts. Cookies (decision "The HTTP component's security baseline" (5)):
 // `Cookie` makes a signed `Set-Cookie` value with the safe defaults (`HttpOnly`, `Path=/`, `SameSite=Strict`, `Secure` on
 // a remote origin), `ReadCookie` reads one back, its signature checked in constant time.
 //

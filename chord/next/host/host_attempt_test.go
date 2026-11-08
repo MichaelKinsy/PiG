@@ -1336,7 +1336,7 @@ var (
 	}))
 )
 
-func TestAttemptParkedAttemptsRunNoTimerWhileParkedButParkedLongsNoDependencyDeadlineNoBackoffTheFactoryRunOnce(t *testing.T) {
+func TestAttemptParkedAttemptsRunNoTimerWhileParkedButTheReportsNoDependencyDeadlineNoBackoffTheFactoryRunOnce(t *testing.T) {
 	loop := newScopeLoop()
 	var factories atomic.Int32
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -1355,13 +1355,18 @@ func TestAttemptParkedAttemptsRunNoTimerWhileParkedButParkedLongsNoDependencyDea
 		waiting.Cause.Error.Message != "waiting for app.missing: app.missing is not served here" {
 		t.Fatalf("state = %+v (cause %+v), want failed waiting for app.missing", waiting, waiting.Cause)
 	}
-	// `parked_long`'s one timer fired (once, after readyTimeout); nothing else runs.
+	// The unbound reference's report fired after 5 s, `parked_long`'s after readyTimeout, each once; nothing else runs.
 	if got := loop.TimerCount(); got != 0 {
 		t.Fatalf("timers = %d, want 0", got)
 	}
-	wantErrors := []HostError{{Kind: ErrParkedLong, Object: "app.view", WaitingFor: "app.missing", State: "failed", Since: 0}}
-	if got := factories.Load(); got != 1 || !reflect.DeepEqual(errs.All(), wantErrors) {
-		t.Fatalf("factories %d, errors %v, want 1 and %v", got, errs.All(), wantErrors)
+	got := errs.All()
+	if len(got) != 2 {
+		t.Fatalf("errors = %v, want unbound_long then parked_long", got)
+	}
+	sameUnboundLong(t, got[0], "app.missing", 0, data.CodeUnavailable, "app.missing is not served here", "")
+	wantParked := HostError{Kind: ErrParkedLong, Object: "app.view", WaitingFor: "app.missing", State: "failed", Since: 0}
+	if factories.Load() != 1 || !reflect.DeepEqual(got[1], wantParked) {
+		t.Fatalf("factories %d, second error %v, want 1 and %v", factories.Load(), got[1], wantParked)
 	}
 	view.Release()
 }

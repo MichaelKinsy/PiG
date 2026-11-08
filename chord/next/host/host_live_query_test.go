@@ -330,7 +330,7 @@ func TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver(t *te
 		b.put(t, id, "t"+string(rune('0'+id)))
 	}
 	report := reloadMust(t)(reloadApp(b.host, func(h FacetHost) error { return (&lqQueries{}).serveBoard(h, 2, nil) }))
-	if len(report.Objects) != 1 || report.Objects[0].Object != "app.board" || report.Objects[0].Kind != reloadedKindOfABoard {
+	if len(report.Objects) != 1 || report.Objects[0].Object != "app.board" || report.Objects[0].Kind != ReloadRestarted {
 		t.Fatalf("objects = %+v, failed = %+v, plugins = %+v", report.Objects, report.Failed, report.Plugins)
 	}
 	turn(b.host)
