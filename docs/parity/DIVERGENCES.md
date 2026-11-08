@@ -3828,3 +3828,39 @@ Call-site markers: `internal/codingagent/interactive_tree.go` (`navigateTree`), 
 Evidence: `TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap` (red without the hold: the editor painted during the navigation), `TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose`, `TestTreeDialogsOfOtherContextsNeverStartTheHold`, `TestTreeNavigationPaintsAnExtensionDialog` and `TestTreeNavigationPaintsAnExtensionOverlay` (`internal/codingagent/interactive_tree_frames_test.go`); scenario `tree/15-tree-navigation-no-stale-frame` (fails 42 of 119 sampled panes with `holdFrames` a no-op).
 
 Parity allowance: scenario `tree/15-tree-navigation-no-stale-frame` runs a `session_before_tree` handler that awaits 600 ms. Both programs end on the same pane (`output_equal`). PiG's pane, sampled every 10 ms from the choice until "Navigated to selected point" shows, never shows the old leaf with the prompt gone (`pig_no_stale_frames`); Pi's samples are not asserted, because Pi shows that pane throughout the await.
+
+## D502 `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go facets, not JavaScript values handed to one in-process host
+
+What: Pi's `testPlugin(dir, { kind, modules, stubs, ... })` (`packages/chord/src/node/plugins/testing.ts`) builds the plugin, evaluates it in the test's own process with live JavaScript `modules`, loads it with live `stubs` (`PluginFacet[]`) on one new in-memory host and returns that host. PiG's `TestPlugin` (`chord/nextnode/plugins/plugins_testing.go`) builds with the same `BuildFacet` and options and the same discovery, but a plugin evaluates only in the Node subprocess (AGENTS.md: no embedded JavaScript runtime; `docs/plan/chord-plugins-node-evaluator.md`), so: `Modules` are files the subprocess imports (the app's API as modules on disk, as a production host's `HostPackages`), not instances; a stub is a Go facet on a Go host (`TestPluginOptions.Stubs`, bridged to the plugin's host as `BridgedFacet` is, so it serves local types without keyed members) or a JavaScript module (`TestPluginOptions.Core`, which may also serve or contribute to registries and serve remote types); the result holds two hosts, the plugin's `NodeHost` (`TestedPlugin.Host`, reached through `NodeHost.Get` and `NodeHost.Hold`, the Go forms of `host.get` and `host.hold` for a local type) and the stubs' Go host (`TestedPlugin.Stubs`); and a facet that throws while it evaluates fails as `testPlugin: setup failed: ...` like a setup that throws, where Pi rejects with the evaluation's own error.
+
+Why: a live JavaScript closure, module instance or `Host` cannot cross the process boundary, and the alternative (a second evaluator of plugins in the Go process) is forbidden. The topology is the one apps run (a Go host with a Node host as its child), so a plugin that passes `TestPlugin` meets its stubs through the same bridge it meets Go core facets through in production.
+
+Scope: `TestPlugin`, `TestPluginOptions`, `TestStub`, `TestedPlugin.Host` and `Stubs`; the cases of `testing.test.ts` and example 52 give the same inputs (plugin files, API, contracts) and the same expectations (values read, contributions, names listed, errors) through these forms. Behaviour that is Pi's: the build and its refusals (`failed to build`), the versioned-API check, the root and kind derivation (single-file and checkout plugins, kinds named by files, `*.test.*`/`*.d.ts` naming none), the collecting facet and its fixed point, the wait for activations bounded by `timeouts.ready`, an in-memory store.
+
+Owner decision: pending sign-off (option (a), port with a Go `TestPlugin`, 2026-11-08 00:36Z; this record is the residue).
+
+Call-site markers: `chord/nextnode/plugins/plugins_testing.go` (`TestStub`, `TestPlugin`), `chord/nextnode/plugins/node/testing.mjs`.
+
+Evidence: `TestTestPlugin*` (`chord/nextnode/plugins/plugins_testing_test.go`, the cases of `testing.test.ts`) and `TestExample52TestPlugin` (`plugins_examples_testplugin_test.go`).
+
+Parity allowance: none needed beyond the forms above; the Pi cases pass with Go stubs, file modules and the two hosts.
+
+Remove when: Pi evaluates plugins out of process (its stubs then need a wire form too) or PiG gets an in-process evaluator.
+
+## D503 `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript closure or registry token crosses
+
+What: Pi's `TestedPlugin.contributions(R)` takes the registry token `R` and returns its entries with their live values, and `root(fn, context, options)` runs the closure `fn` as the host's principal or `options.principal`. PiG's `TestedPlugin.Contributions(name, ctx)` takes the registry's name and returns `[]Contribution{Plugin, Type, Version, Value}` with each value as JSON data (a function or other non-data value in a contribution does not cross; the control channel's value form carries `bytes()` leaves), and `RootPrincipal(principal, ctx)` runs the fixed closure `async (ctx) => ctx.principal` of Pi's own test on the plugin's host and answers the principal its context has (the host's own for nil). The error for a registry that is not collected is Pi's message (`testPlugin: registry <name> is not collected ...`).
+
+Why: the plugin's host is in the Node subprocess; a Go function cannot run there as an object's code, and a JavaScript closure written in a Go test is not a Go value. The helper's own reads (the collection's fixed point over `undeclaredRegistries`, `activationsUnderWay`, `timeouts.ready`, `unservedNames`, the reload that adds the collecting facet) run in the subprocess (`node/testing.mjs`), so the host's internals never cross; only their results do.
+
+Scope: `TestedPlugin.Contributions`, `RootPrincipal`, `Unserved`. A test that needs `ctx.get` of other objects as another principal has no Go form of `root` yet; it reads through `NodeHost.Get` as the host's principal.
+
+Owner decision: pending sign-off (same option as D502).
+
+Call-site markers: `chord/nextnode/plugins/plugins_testing.go` (`Contributions`, `RootPrincipal`), `chord/nextnode/plugins/node/testing.mjs`.
+
+Evidence: `TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor` (`plugins_testing_test.go`: contributions by name, root as the host and as `u2`), `TestExample52TestPlugin`.
+
+Parity allowance: none needed.
+
+Remove when: PiG's plugin host can run a Go closure in the plugin's host process, or Pi's `root` takes data.
