@@ -225,3 +225,29 @@ func TestMappingEvaluatorKillsAProcessThatDoesNotAnswer(t *testing.T) {
 		t.Fatalf("got %q, %v after the process was killed", got, err)
 	}
 }
+
+// A kill that an evaluation's timer or context made runs late, on a goroutine of its own: it must not land on the process of the
+// evaluation after it. Here the timer of a slow module fires, the kill is held back until the module has answered, and then
+// it is let go: the next module is evaluated on a live process.
+func TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne(t *testing.T) {
+	timeout := 50 * time.Millisecond
+	evaluator := newMappingEvaluator(NodeOptions{ReadyTimeout: &timeout})
+	defer evaluator.close()
+	release, finished := make(chan struct{}), make(chan struct{})
+	evaluator.killThrough = func(kill func()) {
+		<-release
+		kill()
+		close(finished)
+	}
+	// The timer fires 50 ms in; the module answers after 150 ms, with the kill still held.
+	got, err := evaluator.evaluate(context.Background(), `const t = Date.now(); while (Date.now() - t < 150) {} module.exports = { default: { a: "b" } };`)
+	if err != nil || got != `{"a":"b"}` {
+		t.Fatalf("got %q, %v: the held kill ended the evaluation", got, err)
+	}
+	close(release)
+	<-finished
+	evaluator.killThrough = nil
+	if got, err := evaluator.evaluate(context.Background(), `module.exports = { default: { c: "d" } };`); err != nil || got != `{"c":"d"}` {
+		t.Fatalf("got %q, %v: the late kill of the evaluation before landed on this one", got, err)
+	}
+}

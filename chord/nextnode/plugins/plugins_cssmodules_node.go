@@ -46,6 +46,8 @@ type mappingEvaluator struct {
 	output *bufio.Reader
 	stderr *tailWriter
 	closed bool
+	// killThrough, when set (a test), runs a kill of the process through it: it may hold the kill back.
+	killThrough func(kill func())
 }
 
 // newMappingEvaluator is an evaluator that starts its process when it is first used.
@@ -174,16 +176,49 @@ func (e *mappingEvaluator) ask(ctx context.Context, js string) (mappingReply, er
 	}
 	timeout := e.timeout()
 	cmd := e.cmd
-	kill := func() { _ = cmd.Process.Kill() }
-	silent := time.AfterFunc(timeout, kill)
-	defer silent.Stop()
-	defer context.AfterFunc(ctx, kill)()
+	// A kill runs on a goroutine of its own, and may be late: it only counts while this ask is, so it never lands on the process
+	// of the next one. A process killed during the ask is ended before ask returns, whatever the ask got.
+	var guard sync.Mutex
+	live, killed, silenced := true, false, false
+	kill := func(byTimer bool) func() {
+		do := func() {
+			guard.Lock()
+			defer guard.Unlock()
+			if live {
+				killed, silenced = true, silenced || byTimer
+				_ = cmd.Process.Kill()
+			}
+		}
+		return func() {
+			if e.killThrough != nil {
+				e.killThrough(do)
+				return
+			}
+			do()
+		}
+	}
+	silent := time.AfterFunc(timeout, kill(true))
+	stopWatching := context.AfterFunc(ctx, kill(false))
+	defer func() {
+		silent.Stop()
+		stopWatching()
+		guard.Lock()
+		live = false
+		ended := killed
+		guard.Unlock()
+		if ended {
+			e.stop()
+		}
+	}()
 	if _, err := e.input.Write(append(request, '\n')); err != nil {
 		return mappingReply{}, fmt.Errorf("the Node subprocess that evaluates CSS module mappings did not take the module: %w", err)
 	}
 	line, err := readLine(e.output, maxFrame)
 	if err != nil {
-		if !silent.Stop() {
+		guard.Lock()
+		timedOut := silenced
+		guard.Unlock()
+		if timedOut {
 			return mappingReply{}, fmt.Errorf("the Node subprocess that evaluates CSS module mappings did not answer within %s", timeout)
 		}
 		return mappingReply{}, fmt.Errorf("the Node subprocess that evaluates CSS module mappings ended: %w", err)
