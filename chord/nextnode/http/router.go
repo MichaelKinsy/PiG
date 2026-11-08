@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
-// Ports packages/chord/src/next-node/http/router.ts. The router (slice 10 §2, D1, D2, D8): the registry `Http` that plugins
+// Ports packages/chord/src/node/http/router.ts. The router (slice 10 §2, D1, D2, D8): the registry `Http` that plugins
 // contribute routes, wraps, sockets, allowed hosts, framers, relays and CSP sources to, and its `compose`, which builds the
 // router every request reads: patterns matched segment by segment (exact before `:name` before a trailing `*`), each
 // route's wraps resolved in phase and contributor order, conflicts reported with the first by plugin name winning.
@@ -131,6 +131,10 @@ type HttpContribution struct {
 	Relays []*HttpRelay
 	// Csp is extra CSP sources by directive.
 	Csp []CspEntry
+	// Scripts are the paths scripts load from (`/_chord/web/`): with any, `script-src` is these paths of the request's origin
+	// and the response's nonce instead of the whole origin, so no other same-origin response (an upload served as JavaScript)
+	// runs as a script.
+	Scripts []string
 }
 
 // Lookup is what a route or socket lookup found.
@@ -157,6 +161,8 @@ type Router struct {
 	Relays []*HttpRelay
 	// Csp is the extra CSP sources by directive.
 	Csp []CspEntry
+	// Scripts are the paths scripts load from; none: the whole origin.
+	Scripts []string
 	// SocketHandlers are the socket handlers it serves: a socket handed out by one no longer here is closed.
 	SocketHandlers map[*HttpSocket]struct{}
 	// order is the number of its composition, counted over every composition in the process: a router composed later has a
@@ -227,6 +233,7 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 			router.Framers.Add(framer)
 		}
 		router.Relays = append(router.Relays, value.Relays...)
+		router.Scripts = append(router.Scripts, value.Scripts...)
 		for _, extra := range value.Csp {
 			router.Csp = addCsp(router.Csp, extra)
 		}
