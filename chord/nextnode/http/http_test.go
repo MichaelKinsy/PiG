@@ -141,13 +141,19 @@ func httpExpectCollected(t *testing.T, refs []weak.Pointer[byte]) {
 	t.Fatalf("%d of %d objects were not collected", remaining, len(refs))
 }
 
-func TestStartupFetchWaitsForThePublicationThenServesTheRegistriesAreResolvedOnce(t *testing.T) {
+func TestStartupFetchAnswers503BeforeLoadAtOnceThenServesTheRegistriesAreResolvedOnce(t *testing.T) {
 	server := serving(t, []plugin{{"@app/who", httpWhoami}}, servedOptions{noLoad: true})
-	early := httpAsync(func() *nethttp.Response { return httpFetch(server, "/whoami") })
-	time.Sleep(50 * time.Millisecond)
+	// At once: the answer is not waited for (bounded well under the host's old 5 s wait).
+	started := time.Now()
+	if got := httpStatus(server, "/whoami"); got != 503 {
+		t.Fatalf("status = %d, want 503", got)
+	}
+	if elapsed := time.Since(started); elapsed > 5*time.Second {
+		t.Fatalf("the 503 took %v, want at once", elapsed)
+	}
 	server.load()
-	if got := fetchText(t, receive(t, early, "the early answer")); got != "null" { //nolint:bodyclose // fetchText closes the body
-		t.Fatalf("early answer = %q, want null", got)
+	if got := fetchText(t, httpFetch(server, "/whoami")); got != "null" { //nolint:bodyclose // fetchText closes the body
+		t.Fatalf("answer = %q, want null", got)
 	}
 	calls := server.registryCalls.count()
 	for range 3 {
@@ -155,18 +161,6 @@ func TestStartupFetchWaitsForThePublicationThenServesTheRegistriesAreResolvedOnc
 	}
 	if got := server.registryCalls.count(); got != calls {
 		t.Fatalf("registry calls = %d, want %d", got, calls)
-	}
-	server.close()
-}
-
-func TestStartupAnswers503ToARequestWaitingPastTheHostsReadyTimeout(t *testing.T) {
-	server := serving(t, nil, servedOptions{noLoad: true, readyTimeout: 50 * time.Millisecond})
-	if got := httpStatus(server, "/x"); got != 503 {
-		t.Fatalf("status = %d, want 503", got)
-	}
-	server.load()
-	if got := httpStatus(server, "/x"); got != 404 {
-		t.Fatalf("status = %d, want 404", got)
 	}
 	server.close()
 }
