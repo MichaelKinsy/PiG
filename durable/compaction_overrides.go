@@ -79,10 +79,12 @@ func (set CompactionOverrides) MarshalJSON() ([]byte, error) {
 		if i > 0 {
 			out.WriteByte(',')
 		}
+		//perf:ok cold: compaction settings are encoded when a conversation is configured, not per turn
 		key, err := json.Marshal(entry.Model)
 		if err != nil {
 			return nil, err
 		}
+		//perf:ok cold: compaction settings are encoded when a conversation is configured, not per turn
 		value, err := json.Marshal(entry.Override)
 		if err != nil {
 			return nil, err
