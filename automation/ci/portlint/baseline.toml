@@ -3307,13 +3307,13 @@ snippet = "port := int(*aux.CallbackPort)"
 
 [[hit]]
 check = "numbers"
-file = "coding/extension/mcp_servers.go"
+file = "internal/mcpshared/config.go"
 func = "validateOAuth"
 snippet = "if err := json.Unmarshal(v, &n); err != nil || len(v) == 0 || v[0] == '\"' || n != float64(int(n)) || n < 1 || n > 65535 {"
 
 [[hit]]
 check = "numbers"
-file = "coding/extension/mcp_servers.go"
+file = "internal/mcpshared/config.go"
 func = "validateOAuth"
 snippet = "port, hasPort = int(n), true"
 
@@ -3337,9 +3337,9 @@ snippet = "perServer = min(maxServerDescriptionChars, (MaxServersSectionChars-si
 
 [[hit]]
 check = "numbers"
-file = "coding/mcpext/oauth.go"
-func = "newCallbackSettings"
-snippet = "p, _ := strconv.Atoi(u.Port)"
+file = "internal/mcpshared/config.go"
+func = "validateOAuth"
+snippet = "if p, _ := strconv.Atoi(u.Port); p != port {"
 
 [[hit]]
 check = "numbers"
@@ -4812,8 +4812,8 @@ snippet = "return encoded[0:8] + \"-\" + encoded[8:12] + \"-\" + encoded[12:16] 
 
 [[hit]]
 check = "utf16units"
-file = "codemode/declarations.go"
-func = "resolveRef"
+file = "internal/schemaref/schemaref.go"
+func = "Segments"
 snippet = "for segment := range strings.SplitSeq(ref[2:], \"/\") {"
 
 [[hit]]
@@ -4854,19 +4854,19 @@ snippet = "return filepath.Join(home, value[2:])"
 
 [[hit]]
 check = "utf16units"
-file = "coding/mcpext/tools.go"
+file = "internal/mcpshared/naming.go"
 func = "CreateMcpToolName"
 snippet = "if len(name) <= maxToolNameLength && (isTaken == nil || !isTaken(name)) {"
 
 [[hit]]
 check = "utf16units"
-file = "coding/mcpext/tools.go"
+file = "internal/mcpshared/naming.go"
 func = "CreateMcpToolName"
 snippet = "hash := hex.EncodeToString(digest[:])[:8]"
 
 [[hit]]
 check = "utf16units"
-file = "coding/mcpext/tools.go"
+file = "internal/mcpshared/naming.go"
 func = "CreateMcpToolName"
 snippet = "return name[:min(len(name), maxToolNameLength-len(hash)-1)] + \"_\" + hash"
 
