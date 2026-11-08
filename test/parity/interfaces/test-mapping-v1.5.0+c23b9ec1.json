@@ -5091,6 +5091,7 @@
       "evidence": [
         "internal/codingagent/mermaid_integration_test.go#TestMermaidBlockWiring",
         "internal/codingagent/mermaid_transform_test.go#TestMermaidTransformMatchesUpstream",
+        "internal/codingagent/mermaid_transform_test.go#TestMermaidThemedTransformMatchesUpstream",
         "internal/codingagent/mermaid_render_cache_test.go",
         "internal/codingagent/mermaid_upstream_test.go#TestMermaidRenderingUpstream",
         "internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidUnsupportedAndOversizedRemainSource"
