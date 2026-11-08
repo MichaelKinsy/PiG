@@ -1,6 +1,7 @@
 package codemode
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
@@ -8,6 +9,7 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -28,7 +30,7 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 	})
 	// A registry's value is read inside a section of the host's loop (`RegistryValue`): its contributions change there.
 	extension := func() *p2runtime.P2Extension {
-		value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
+		value, err := registryValue(fixture.Host, p2runtime.Extensions.Registry)
 		if err != nil {
 			t.Logf("registry: %v", err)
 			return nil
@@ -42,7 +44,7 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 	}
 	switchIs := func(want bool) func() (bool, error) {
 		return func() (bool, error) {
-			value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
+			value, err := registryValue(fixture.Host, p2runtime.ExtensionSwitches.Registry)
 			if err != nil {
 				return false, nil
 			}
@@ -105,4 +107,19 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 		t.Fatal(err)
 	}
 	wait(func() (bool, error) { return extension() != nil, nil }, "the extension again")
+}
+
+// registryValue is a registry's current value (the source reads inside a section of the host's loop); an error while it has
+// none, so a poll tries again.
+func registryValue(h host.Host, registry registries.Registry[any, any]) (value any, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("registry %s: %v", registry.Name, recovered)
+		}
+	}()
+	source, err := h.Registry(p2test.Background, registry, host.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return source.Value(), nil
 }
