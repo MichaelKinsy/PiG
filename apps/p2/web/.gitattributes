@@ -1,0 +1,3 @@
+# Vendored Pi files and the generated bundle are byte-exact: MANIFEST and the bundle's names are hashes of them.
+* -text
+dist/** -diff linguist-generated
