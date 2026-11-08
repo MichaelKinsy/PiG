@@ -6,6 +6,7 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/harness"
 )
 
 // Registry is the session's subagent registry (empty when absent), its agents' key order in Order.
@@ -54,4 +55,29 @@ func LocationOf(location *LocationValue) *p2runtime.Location {
 		return nil
 	}
 	return &p2runtime.Location{Cwd: location.Cwd, Env: location.Env}
+}
+
+// PlaceSubagent gives the subagent working in conversation its own location, in tx (a granted `location_move`): its
+// registry entry and its agent cwd. False when the conversation is not a subagent (one-shot agents are not).
+func PlaceSubagent(tx durable.Tx, conversation durable.ConversationId, location p2runtime.Location) (bool, error) {
+	state, err := durable.TxDoc[SubagentState](tx, SubagentsDoc, durable.ROOT_CONVERSATION_ID)
+	if err != nil {
+		return false, err
+	}
+	agents := state.Object("agents")
+	for _, name := range agents.Keys() {
+		agent := agents.Object(name)
+		if id, _ := agent.Get("conversationId").(float64); durable.ConversationId(id) != conversation {
+			continue
+		}
+		var env any
+		if location.Env != nil {
+			env = *location.Env
+		}
+		if err := agent.Set("location", delta.JsonObjectOf("cwd", location.Cwd, "env", env)); err != nil {
+			return false, err
+		}
+		return true, harness.Configure(tx, conversation, harness.AgentChange{Cwd: harness.SetTo(location.Cwd)})
+	}
+	return false, nil
 }
