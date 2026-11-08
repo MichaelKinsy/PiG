@@ -452,6 +452,8 @@ func (o *attemptQueryOwner) Report(err error) {
 
 // Query implements StoreSelf: a live query is run before the object goes live (after its tables are prepared), again in
 // the commit step of every commit of the object that writes its table, and detached when its attempt ends.
+//
+// pig divergence (D431): Pi main 2439933cf, ahead of the v1.5.0 pin.
 func (a *attempt) Query(table *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
 	a.assertDeclaring("query")
 	object := a.object
@@ -1734,7 +1736,7 @@ func (a *attempt) prepareTables(dl *deadline) *keyedPromise[struct{}] {
 			a.object.host.enter(func() { admitted = !a.token.Sealed() && a.abandoned == nil })
 			return admitted
 		},
-		Adopt: func(int64, []int64) error { return nil },
+		Adopt: func(int64, []int64, int) error { return nil },
 	}
 	dl.pause()
 	prepared := awaitTask(a.object.host, func() (struct{}, error) {
@@ -2016,6 +2018,10 @@ func unwrapMember(value any) any {
 		return wrapped.source
 	case *exposedKeyed:
 		return wrapped.handle
+	case stateWatchable:
+		// `ref.state` for a caller outside the host's sections wraps its source in a section; a derive reads the source
+		// itself, in the sections it computes in.
+		return wrapped.inner
 	}
 	return value
 }

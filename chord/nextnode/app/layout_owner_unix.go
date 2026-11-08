@@ -3,16 +3,15 @@
 package app
 
 import (
-	"fmt"
-	"io/fs"
 	"os"
 	"syscall"
 )
 
-// checkDirectoryOwner refuses a data directory another user owns (Pi: `uid !== process.getuid()`).
-func checkDirectoryOwner(dataDir string, info fs.FileInfo) error {
-	if stat, ok := info.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Getuid() {
-		return fmt.Errorf("startServer: the data directory %s belongs to another user (uid %d)", dataDir, stat.Uid)
+// ownerOf is the user id that owns the file info describes (Pi's `stat.uid`); ok is false where the platform has none.
+func ownerOf(info os.FileInfo) (uid int, ok bool) {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, false
 	}
-	return nil
+	return int(stat.Uid), true
 }

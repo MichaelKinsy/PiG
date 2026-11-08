@@ -53,7 +53,7 @@ func notesFacet(t *testing.T) (host.HostFacet, *contracts.Contract) {
 				Methods: map[string]contracts.MethodFunction{
 					"write": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						_, err := handle.Change(ctx, func(draft *delta.Object) (any, error) {
-							draft.Set("text", args)
+							_ = draft.Set("text", args)
 							return nil, nil
 						})
 						return nil, err

@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -18,7 +20,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
-	"github.com/google/uuid"
 )
 
 // Ports packages/chord/src/node/app/worker.ts

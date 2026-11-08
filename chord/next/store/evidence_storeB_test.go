@@ -43,7 +43,7 @@ func storeBMigrateTo2(t *testing.T, count int) storeBMigrationRun {
 			task()
 		}
 	}
-	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 	must(t, prepareTables([]DeclaredTable{{Definition: versions.v2, Table: migrationTable}}, store, fence, "app.store", background, yield))
 	record := store.Table(migrationTable)
 	qEqual(t, []any{record.Version, record.State}, []any{2, StateReady})

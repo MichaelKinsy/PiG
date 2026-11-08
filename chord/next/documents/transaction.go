@@ -132,6 +132,9 @@ type Transaction struct {
 	// persistence is when its commit reaches the store (a run state's deferred change, D8).
 	persistence CommitPersistence
 	state       txState
+	// adoptions are what its commit adopts (set at its preparation); rows the table rows the step's writes changed.
+	adoptions []*adoption
+	rows      int
 	// queued rejects the commit while it waits in the store's queue (cut): its caller is told at once (rule 3).
 	queued chan error
 }
@@ -145,6 +148,20 @@ func NewTransaction(documents *Documents, token *SealToken, release func(), ctx 
 		documents: documents, token: token, release: release, ctx: ctx, persistence: persistence,
 		entries: map[DocumentSlot]map[string]*Entry{},
 	}
+}
+
+// Committed is what its commit adopted: its documents, their ops, its store writes and the table rows they changed (all
+// 0 before it committed). A section.
+func (tx *Transaction) Committed() (documents, ops, writes, rows int) {
+	for _, a := range tx.adoptions {
+		if a.prepared != nil {
+			ops += len(a.prepared.Ops())
+		}
+	}
+	if tx.writes != nil {
+		writes = len(tx.writes.staged)
+	}
+	return len(tx.adoptions), ops, writes, tx.rows
 }
 
 // Token is the seal token the transaction runs under.
@@ -541,6 +558,7 @@ func (tx *Transaction) prepareCommit() ([]*adoption, error) {
 		}
 		adoptions = append(adoptions, &adoption{entry: e, prepared: prepared, retires: retires, stored: stored})
 	}
+	tx.adoptions = adoptions
 	return adoptions, nil
 }
 
@@ -560,9 +578,12 @@ func (tx *Transaction) step(chordStore *store.ChordStore, staged []store.StagedW
 			})
 			return admitted
 		},
-		Adopt: func(int64, []int64) error {
+		Adopt: func(_ int64, _ []int64, rows int) error {
 			var err error
-			tx.documents.Do(func() { err = tx.adopt(adoptions) })
+			tx.documents.Do(func() {
+				tx.rows = rows
+				err = tx.adopt(adoptions)
+			})
 			return err
 		},
 	}

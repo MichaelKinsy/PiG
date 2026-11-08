@@ -155,9 +155,9 @@ func shortestDigits(scratch []byte, value float64) ([]byte, int) {
 	n := 0
 	exp := 0
 	for i := 0; i < len(e); i++ {
-		switch c := e[i]; {
-		case c == '.':
-		case c == 'e':
+		switch c := e[i]; c {
+		case '.':
+		case 'e':
 			exp, _ = strconv.Atoi(string(e[i+1:]))
 			i = len(e)
 		default:

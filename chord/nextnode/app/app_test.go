@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Ports packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1): `StartServer`: the layout and the start-data object, start and
@@ -92,9 +93,7 @@ func TestAppRefusesASecondServerOnTheSameDataDirectoryWhileTheFirstRuns(t *testi
 func TestAppRefusesASecondServerOnTheSameDataDirectoryThroughASymbolicLink(t *testing.T) {
 	first := startTestApp(t, nil, nil)
 	link := filepath.Join(t.TempDir(), "link")
-	if err := os.Symlink(first.dataDir, link); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, first.dataDir, link)
 	_, err := StartServer(optionsFor(t, link, first.root), background)
 	if err == nil || !strings.Contains(err.Error(), "another server runs on") {
 		t.Fatalf("second start: %v", err)
@@ -143,10 +142,10 @@ func TestAppMakesTheDataDirectoryPrivateAtEveryStartAlsoWhenItExistedLooser(t *t
 }
 
 func TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThroughALink(t *testing.T) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
+	// The kit refuses the home directory: a home of this test's own, so that the real one is neither read nor touched.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	start := func(dir string) error {
 		options, _ := testOptions(t, func(o *AppOptions) { o.DataDir = dir })
 		app, err := StartServer(options, background)
@@ -163,9 +162,7 @@ func TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThr
 		t.Fatalf("root: %v", err)
 	}
 	link := filepath.Join(t.TempDir(), "home-link")
-	if err := os.Symlink(home, link); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, home, link)
 	if err := start(link); err == nil || !strings.Contains(err.Error(), "is the home directory") {
 		t.Fatalf("link to home: %v", err)
 	}
@@ -193,6 +190,10 @@ func TestAppNamesTheAddressListenedOnInTheOwnerLink(t *testing.T) {
 }
 
 func TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed(t *testing.T) {
+	// Registered first, so it runs after the starts: nothing of the app, its HTTP component, its workers or its plugins is left.
+	t.Cleanup(func() {
+		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
+	})
 	options, _ := testOptions(t, nil)
 	writePlugin(t, options.Root, "broken", "@test/broken", map[string]string{"server.ts": "export default {"})
 	_, err := StartServer(options, background)
@@ -221,7 +222,43 @@ func TestAppRefusesAnOwnerThatIsNotStrictJSONOrIsTheServersPrincipalBeforeItOpen
 	}
 }
 
-func TestAppRefusesWorkerKindsWithoutAWorkerPrincipal(t *testing.T) {
+// Pi builds each worker kind's entry at start and rejects the start for one that does not build; a Go entry is an executable, and
+// one that cannot start is the same refusal (workers.CreateWorkers checks it).
+func TestAppRejectsWhenAWorkerKindsEntryDoesNotBuildWithEverythingClosed(t *testing.T) {
+	t.Cleanup(func() {
+		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
+	})
+	options, _ := testOptions(t, nil)
+	kind := testWorker(t, project, "")
+	kind.Entry = filepath.Join(t.TempDir(), "no-such-worker")
+	options.Workers = []AppWorkerKind{kind}
+	refused, err := StartServer(options, background)
+	if err == nil {
+		_ = refused.Close(background)
+	}
+	if err == nil || !strings.Contains(err.Error(), kind.Entry) {
+		t.Fatalf("start: %v, want an error naming the entry %q", err, kind.Entry)
+	}
+	// Closed: the data directory's lock is free again.
+	options.Workers = nil
+	started, err := StartServer(options, background)
+	if err != nil {
+		t.Fatalf("second start: %v", err)
+	}
+	if err := started.Close(background); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Pi's last part is a type error (`@ts-expect-error`: worker kinds without `principal.worker`); here it is refused at start.
+func TestAppStartsWithoutWorkerKindsAndWithoutAWorkerPrincipalWorkerKindsNeedIt(t *testing.T) {
+	s := startTestApp(t, nil, func(o *AppOptions) { o.Principal.Worker = nil })
+	if len(s.app.Workers) != 0 {
+		t.Fatalf("workers = %d, want 0", len(s.app.Workers))
+	}
+	if err := s.app.Close(background); err != nil {
+		t.Fatal(err)
+	}
 	options, _ := testOptions(t, nil)
 	options.Principal.Worker = nil
 	options.Workers = []AppWorkerKind{testWorker(t, project, "")}

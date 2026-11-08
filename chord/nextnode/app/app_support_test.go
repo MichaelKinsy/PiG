@@ -91,10 +91,15 @@ func (e *appErrors) add(err AppError) {
 	e.list = append(e.list, err)
 }
 
-func (e *appErrors) all() []AppError {
+// kinds are the kinds of what the app reported, in order.
+func (e *appErrors) kinds() []AppErrorKind {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	return append([]AppError(nil), e.list...)
+	var kinds []AppErrorKind
+	for _, err := range e.list {
+		kinds = append(kinds, err.Kind)
+	}
+	return kinds
 }
 
 // started is a started test app and what it reported.

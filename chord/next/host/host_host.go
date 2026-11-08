@@ -179,9 +179,10 @@ type Host interface {
 	// of it (the closure rule); both are reported (ReloadReport.Failed); options.Failed names plugins the caller passes as
 	// their loaded facet because their new code failed before (a build, an evaluation): the same for the closure rule and
 	// the report. Then it commits in one batch (types, registries, contributions; a publication waking the requests for
-	// the names it serves) and every object of a changed or removed plugin takes its fate: swapped in place, restarted
-	// after its drain, retried, or ended (its type removed). Returns the report once every fate started (swaps and retries
-	// checked their dependencies; it does not wait for objects to go live). Reloads run one after another. It fails before
+	// the names it serves) and every object of a changed or removed plugin takes its fate: restarted (its old attempt
+	// finishes its old work, then a new attempt runs on the new code), retried, or ended (its type removed). Returns the
+	// report once every restart started and every retry checked its dependencies; it does not wait for objects to go
+	// live. Reloads run one after another. It fails before
 	// `Load` returned; fails `released/closed` after `Close`; ctx's abort before the commit fails `aborted` and changes
 	// nothing, after it only ends the wait (`aborted`, its details.committed naming what the commit applied:
 	// CommittedReload).

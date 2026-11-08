@@ -120,6 +120,8 @@ type fakeSocket struct {
 	mu      sync.Mutex
 	closed  bool
 	onClose func()
+	// beforeClose runs at the first Close, before the close listener: a socket goroutine whose open lands as the link closes.
+	beforeClose func()
 }
 
 func (s *fakeSocket) OnClose(listener func()) { s.mu.Lock(); s.onClose = listener; s.mu.Unlock() }
@@ -131,8 +133,11 @@ func (s *fakeSocket) Close() {
 		return
 	}
 	s.closed = true
-	listener := s.onClose
+	listener, before := s.onClose, s.beforeClose
 	s.mu.Unlock()
+	if before != nil {
+		before()
+	}
 	if listener != nil {
 		listener()
 	}
@@ -309,6 +314,23 @@ func TestClosesTheLinkAtStopAndOpensNoOther(t *testing.T) {
 	}
 }
 
+// An open that lands as the loop stops (queued before the close of its link) is not reported: the loop ends Connecting. Pi's
+// LoopLink close ends synchronously, so it cannot reach this; a Go socket's goroutine can.
+func TestAnOpenLandingAsTheLoopStopsReportsNothing(t *testing.T) {
+	w := newFakeWorld()
+	states := loopIn(w, nil)
+	socket := w.last()
+	socket.beforeClose = socket.events.Opened
+	w.handle.Stop()
+	if !socket.isClosed() {
+		t.Fatal("the link stayed open")
+	}
+	w.advance(60_000)
+	if !reflect.DeepEqual(*states, []ConnectionState{Connecting}) {
+		t.Fatalf("states = %v, want [connecting] only", *states)
+	}
+}
+
 // Stop ends the question CanRetry is deciding: its context is cancelled and no goroutine is left behind.
 func TestStopCancelsAPendingCanRetry(t *testing.T) {
 	w := newFakeWorld()
@@ -325,4 +347,5 @@ func TestStopCancelsAPendingCanRetry(t *testing.T) {
 	if n := w.socketCount(); n != 1 {
 		t.Fatalf("sockets = %d, want 1", n)
 	}
+	noSurfacesGoroutines(t)
 }
