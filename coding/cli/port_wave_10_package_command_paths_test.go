@@ -318,6 +318,46 @@ func TestPortWave10PackageCommandPaths(t *testing.T) {
 	})
 
 	// upstream: packages/coding-agent/test/package-command-paths.test.ts:952
+	// Pi 342514bdf (#11707): update does not call packages up to date when npm left an older version installed or when offline.
+	prepareStaleNpmPackage := func(t *testing.T, f packageCommandPathsFixture) {
+		t.Helper()
+		installed := filepath.Join(f.agentDir, "npm", "node_modules", "fake-package")
+		require.NoError(t, os.MkdirAll(installed, 0o755))
+		writeStartupFixtureFile(t, filepath.Join(installed, "package.json"), `{"name":"fake-package","version":"1.2.0"}`)
+		// `npm view` reports the newer version, but `npm install` succeeds without changing anything.
+		fakeNpmPath := filepath.Join(f.root, "fake-stale-npm.cjs")
+		writeStartupFixtureFile(t, fakeNpmPath, `if (process.argv.includes("view")) console.log(JSON.stringify("1.3.0"));`)
+		writePackageCommandSettings(t, filepath.Join(f.agentDir, "settings.json"), map[string]any{
+			"packages": []string{"npm:fake-package"}, "npmCommand": []string{nodeExecutableForPackageCommand(t), fakeNpmPath},
+		})
+	}
+	// upstream: packages/coding-agent/test/package-command-paths.test.ts "does not report packages as up to date when npm left an older version installed"
+	t.Run("does not report packages as up to date when npm left an older version installed", func(t *testing.T) {
+		f := newPackageCommandPathsFixture(t)
+		prepareStaleNpmPackage(t, f)
+
+		stdout, _, code := capturePackageCommand(t, "update", "--extensions")
+
+		assert.Equal(t, 0, code)
+		assert.Contains(t, stdout, "npm:fake-package is still 1.2.0 (registry reports 1.3.0)")
+		assert.Contains(t, stdout, "No packages were updated, see the warnings above")
+		assert.NotContains(t, stdout, "up to date")
+	})
+
+	// upstream: packages/coding-agent/test/package-command-paths.test.ts "does not report packages as up to date in offline mode"
+	t.Run("does not report packages as up to date in offline mode", func(t *testing.T) {
+		f := newPackageCommandPathsFixture(t)
+		prepareStaleNpmPackage(t, f)
+		t.Setenv("PI_OFFLINE", "1")
+		t.Setenv("PI_SKIP_VERSION_CHECK", "1")
+
+		stdout, _, code := capturePackageCommand(t, "update", "--extensions")
+
+		assert.Equal(t, 0, code)
+		assert.Contains(t, stdout, "Skipped package updates (offline mode)")
+		assert.NotContains(t, stdout, "up to date")
+	})
+
 	t.Run("suggests the configured source when update input omits the npm prefix", func(t *testing.T) {
 		f := newPackageCommandPathsFixture(t)
 		settingsPath := filepath.Join(f.agentDir, "settings.json")
