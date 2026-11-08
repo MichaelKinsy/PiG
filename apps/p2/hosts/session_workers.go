@@ -405,12 +405,12 @@ func (w *SessionWorkers) Relocate(ctx context.Context, session string, steps p2r
 		}
 		// Not running: the next start reads the moved catalog; holders arriving meanwhile wait (suspended).
 		if status != "running" {
-			return w.suspended(session, steps.Update)
+			return w.suspended(ctx, session, steps.Update)
 		}
 		refusal, err := steps.Prepare(ctx)
 		if err != nil {
 			if w.statusOf(session) != "running" {
-				return w.suspended(session, steps.Update)
+				return w.suspended(ctx, session, steps.Update)
 			}
 			// The fence may be up (the failure came after it): never leave a worker that refuses everything.
 			p2runtime.ProcessLogs.Append(source, p2runtime.LogEvent, fmt.Sprintf("Preparing a move failed (%s); stopping the worker", err))
@@ -440,7 +440,7 @@ func (w *SessionWorkers) Relocate(ctx context.Context, session string, steps p2r
 		if err := w.whileRunning(ctx, session, timeout, steps.Move); err != nil {
 			p2runtime.ProcessLogs.Append(source, p2runtime.LogEvent, fmt.Sprintf("The worker could not follow the move (%s); restarting it", err))
 			// The catalog is moved: the next start (now, if held) reads it; a failed start is the worker's error.
-			return w.suspended(session, func(context.Context) error { return nil })
+			return w.suspended(ctx, session, func(context.Context) error { return nil })
 		}
 		return nil
 	})
@@ -458,7 +458,7 @@ func (w *SessionWorkers) Pause(ctx context.Context, session string, prepare func
 			if err != nil {
 				if w.statusOf(session) == "running" {
 					p2runtime.ProcessLogs.Append(SessionPrefix+session, p2runtime.LogEvent, fmt.Sprintf("Preparing to pause failed (%s); stopping the worker", err))
-					_ = w.suspended(session, func(context.Context) error { return nil })
+					_ = w.suspended(ctx, session, func(context.Context) error { return nil })
 					return err
 				}
 			}
@@ -466,7 +466,7 @@ func (w *SessionWorkers) Pause(ctx context.Context, session string, prepare func
 				return errors.New(refusal)
 			}
 		}
-		return w.suspended(session, work)
+		return w.suspended(ctx, session, work)
 	})
 }
 
@@ -501,7 +501,7 @@ func (w *SessionWorkers) Resume(ctx context.Context, session string) error {
 	delete(w.crashRestart, session)
 	w.mu.Unlock()
 	return w.serial(ctx, session, func() error {
-		return w.suspended(session, func(context.Context) error {
+		return w.suspended(ctx, session, func(context.Context) error {
 			source := SessionPrefix + session
 			dismissNotices(source)
 			p2runtime.ProcessLogs.Append(source, p2runtime.LogEvent, "Worker retry requested")
@@ -521,7 +521,7 @@ func dismissNotices(source string) {
 // Stop stops the session's worker and clears its failure: the next hold (one waiting now too) starts it again.
 func (w *SessionWorkers) Stop(ctx context.Context, session string) error {
 	return w.serial(ctx, session, func() error {
-		return w.suspended(session, func(context.Context) error {
+		return w.suspended(ctx, session, func(context.Context) error {
 			dismissNotices(SessionPrefix + session)
 			return nil
 		})
@@ -561,7 +561,7 @@ func (w *SessionWorkers) Close(ctx context.Context) error {
 
 // suspended runs work while the session's worker is stopped and its holders wait (suspended); then starts it if held and
 // waits for that start's outcome (running or failed), as callers read the worker's state next.
-func (w *SessionWorkers) suspended(session string, work func(ctx context.Context) error) error {
+func (w *SessionWorkers) suspended(ctx context.Context, session string, work func(ctx context.Context) error) error {
 	address := addressOf(session)
 	if err := w.workers.Stop(address, chordctx.Background()); err != nil {
 		return err
@@ -572,7 +572,7 @@ func (w *SessionWorkers) suspended(session string, work func(ctx context.Context
 	if retry != nil && err == nil {
 		err = retry
 	}
-	if started := w.started(session, began); started != nil && err == nil {
+	if started := w.started(ctx, session, began); started != nil && err == nil {
 		err = started
 	}
 	return err
@@ -629,12 +629,13 @@ func (w *SessionWorkers) whileRunning(ctx context.Context, session string, timeo
 // that shows. Go has no turns to count, and the route says it plainly: began is whether the retry started a resolve (the
 // address is held, its link gone: a stop returns once its worker's link closed), so a start is awaited exactly when one is
 // coming, and an unheld session waits for nothing. One already under way (starting) is awaited as well.
-func (w *SessionWorkers) started(session string, began bool) error {
+func (w *SessionWorkers) started(ctx context.Context, session string, began bool) error {
 	if !began && w.statusOf(session) != "starting" {
 		return nil
 	}
-	// Close ends the wait: a start that never shows (the component closed under it) has nothing to await.
-	ctx, cancel := chordctx.WithCancel(chordctx.Background())
+	// The wait is the caller's operation's: its ctx ending (a cancelled relocation) ends it, and so does Close (a start that
+	// never shows, the component closed under it, has nothing to await).
+	ctx, cancel := chordctx.WithCancel(ctx)
 	defer cancel(nil)
 	go func() {
 		select {
@@ -653,14 +654,14 @@ func (w *SessionWorkers) started(session string, began bool) error {
 	if err != nil {
 		return err
 	}
-	w.shown(session)
+	w.shown(ctx, session)
 	return nil
 }
 
 // shown blocks until the observers of `Hosts.workers` were told what the workers' state shows of the session now: the
 // publication follows the state on its own goroutine, and Pi's follows it first (its waiters resume after it). It ends
 // with Close.
-func (w *SessionWorkers) shown(session string) {
+func (w *SessionWorkers) shown(ctx context.Context, session string) {
 	key := "session|" + session
 	for {
 		status, pid := workerEntry(w.stateObject(), key)
@@ -674,6 +675,8 @@ func (w *SessionWorkers) shown(session string) {
 		select {
 		case <-changed:
 		case <-w.done:
+			return
+		case <-ctx.Done():
 			return
 		}
 	}
