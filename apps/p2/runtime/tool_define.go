@@ -27,8 +27,8 @@ func ToolsByName(extensions *KeyedTable[*P2Extension]) map[string]P2Tool {
 	return byName
 }
 
-// ToolSchemaOf is a tool's declaration; its parameters' declaration order is kept (the model sees it).
-func ToolSchemaOf(name, description string, parameters schema.Schema) ai.ToolSchema {
+// MustToolSchemaOf is ToolSchemaOf for a tool whose declaration is a program constant: it panics on the error ToolSchemaOf returns.
+func MustToolSchemaOf(name, description string, parameters schema.Schema) ai.ToolSchema {
 	declared, err := json.Marshal(struct {
 		Name        string        `json:"name"`
 		Description string        `json:"description"`
