@@ -4372,51 +4372,51 @@ rationale = ""
 [[files]]
 path = "packages/env/src/connection.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:env/remote_abort_test.go#TestConnectionAbortStopsWaitingForAStartThatDoesNotFinish", "test:env/remote_abort_test.go#TestConnectionAbortSettlesASentRequestTheDaemonDoesNotAnswer"]
+rationale = "Pi c96e368e2: aborting while the connection starts rejects with aborted, an unanswered cancel settles as aborted after one second (env/connection.go connect and send)."
 
 [[files]]
 path = "packages/env/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:env/process_test.go"]
+rationale = "Exports process (OpenProcess) as Pi 9c9ce8547 does; the Go package exports env.OpenProcess."
 
 [[files]]
 path = "packages/env/src/list-files.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:env/remote_abort_test.go#TestRemoteFileOperationsStopWaitingForTheConnectionWhenAborted"]
+rationale = "Pi c96e368e2: listFiles passes the abort signal to info(); env/list_files.go already passes ctx to Connection.Info, which now honors it."
 
 [[files]]
 path = "packages/env/src/process.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:env/process_test.go"]
+rationale = "Pi 9c9ce8547 and 032656b6c: OpenProcess is env/process.go, run against Pi's daemon and PiG's by env/process_test.go."
 
 [[files]]
 path = "packages/env/src/remote-env.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:env/remote_abort_test.go#TestRemoteExecOnAHostThatDoesNotAnswer", "test:env/remote_exec_abort_order_test.go"]
+rationale = "Pi c96e368e2: exec enforces its timeout locally and resolves the working directory under the abort signal; file operations stop waiting for the connection (env/remote_env.go Exec)."
 
 [[files]]
 path = "packages/env/src/ssh.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:env/ssh_arguments_test.go#TestSshArgumentsMatchPi"]
+rationale = "Pi c96e368e2: ConnectTimeout=15 in the ssh arguments (env/ssh.go), compared with Pi's recorded arguments."
 
 [[files]]
 path = "packages/env/src/watch.ts"
 change = "modified"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Type-only change (the Context import path); Go has no counterpart for an import path."
 
 [[files]]
 path = "packages/mcp/src/config.ts"
@@ -4554,65 +4554,65 @@ rationale = "Pi main f40984747: a failed SSE response is closed (mcp/streamable_
 [[files]]
 path = "packages/schema/src/builders.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/pi_main_follow_upstream_test.go#TestPiMainRecursiveBuildsASchemaThatChecksEveryLevel"]
+rationale = "Pi af79b0c3d: recursive is schema.Recursive; unsafe is type-level and the bigint builder needs a bigint value, both designed out."
 
 [[files]]
 path = "packages/schema/src/checks.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/pi_main_follow_upstream_test.go#TestPiMainRejectsNaNAndInfinityAsANumber", "test:schema/pi_main_follow_upstream_test.go#TestPiMainLeafChecksAgreeWithTheStandaloneCheck"]
+rationale = "Pi 55a5c6914 (finite numbers) and equal (schema.Equal) are ported; the leaf-code inlining of 20c637b1a is a JavaScript closure-call optimization with no observable effect, designed out; the bigint and undefined checks have no Go value."
 
 [[files]]
 path = "packages/schema/src/coerce.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/pi_main_follow_upstream_test.go#TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef"]
+rationale = "Pi 2bd2c2d0a: the base of an unindexed node goes through baseFor; 55a5c6914: number is finite. The bigint and undefined conversions have no Go value."
 
 [[files]]
 path = "packages/schema/src/compiler.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/pi_main_follow_upstream_test.go#TestPiMainLeafChecksAgreeWithTheStandaloneCheck"]
+rationale = "Pi 20c637b1a and af79b0c3d: the inlined leaf codes and the bigint number mode are designed out (no observable effect, no Go bigint); the behaviour they pin is TestPiMainLeafChecksAgreeWithTheStandaloneCheck."
 
 [[files]]
 path = "packages/schema/src/explain.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/pi_main_follow_upstream_test.go#TestPiMainExplainsNestedResourcesWithARelativeID", "test:schema/pi_main_follow_upstream_test.go#TestPiMainRejectsNaNAndInfinityAsANumber"]
+rationale = "Pi 2bd2c2d0a (branch bases, the copy without $id) and 55a5c6914 (NaN and Infinity named); the bigint and required-undefined rules have no Go value."
 
 [[files]]
 path = "packages/schema/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/pi_main_follow_upstream_test.go#TestPiMainEqual"]
+rationale = "Barrel: the new exports are schema.Recursive and schema.Equal; unsafe and bigint have no Go form."
 
 [[files]]
 path = "packages/schema/src/resolver.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/pi_main_follow_upstream_test.go#TestPiMainRelativeRootIDAppliedOnce", "test:schema/pi_main_follow_upstream_test.go#TestPiMainRelativeRootIDWithUnevaluatedKeywords"]
+rationale = "Pi 2bd2c2d0a: rootBase is the default base and baseFor indexes before applying an $id (schema/resolver.go)."
 
 [[files]]
 path = "packages/schema/src/typebox-static.ts"
 change = "modified"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Type-level only: Static of TypeBox schemas has no Go form."
 
 [[files]]
 path = "packages/schema/src/validator.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/pi_main_follow_upstream_test.go#TestPiMainValidateChecksWithoutCoercing"]
+rationale = "Pi af79b0c3d: validate is Validator.Validate, and Parse reuses it."
 
 [[files]]
 path = "packages/telemetry/src/index.ts"
@@ -4638,34 +4638,34 @@ rationale = ""
 [[files]]
 path = "packages/tui/src/components/markdown.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments"]
+rationale = "Pi 54280c4ff: HTML comments are hidden (tui/markdown_html_comments.go)."
 
 [[files]]
 path = "packages/tui/src/terminal-image.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageCapabilities"]
+rationale = "Pi 2af8a42f5: Alacritty is detected for OSC 8 hyperlinks without TERM_PROGRAM."
 
 [[files]]
 path = "packages/tui/src/tui-alt-screen.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover", "test:tui/tui_alt_screen_kitty_order_test.go#TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows"]
+rationale = "Pi 4622edb79: Kitty images are drawn after the rows they cover on every terminal (tui/tui_alt_screen.go)."
 
 [[files]]
 path = "packages/tui/src/tui.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/tui_render_upstream_test.go#TestUpstreamTUIBoundedRender"]
+rationale = "Pi 25490ea49: cursor extraction strips every marker from the selected line and the line resets strip them from every other line (tui/tui.go)."
 
 [[files]]
 path = "packages/tui/src/utils.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/render_regressions_upstream_test.go#TestUpstreamTabWidth"]
+rationale = "Pi 25490ea49: sliceWithWidth does not carry an APC code from before the range (tui/widthx/slice.go)."

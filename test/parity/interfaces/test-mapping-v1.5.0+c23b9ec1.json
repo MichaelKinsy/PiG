@@ -8893,13 +8893,13 @@
         "Value.Convert.String › Should Convert 8",
         "Value.Convert.String › Should Convert 14",
         "Value.Convert.Unknown › Should Convert 2",
-        "Value.Convert.Boolean › Should Convert 20@337",
-        "Value.Convert.Boolean › Should Convert 17@390",
-        "Value.Convert.Boolean › Should Convert 18@395",
-        "Value.Convert.Boolean › Should Convert 19@400",
-        "Value.Convert.Boolean › Should Convert 23@420",
-        "Value.Convert.Number › Should Convert 10@940",
-        "Value.Convert.Number › Should Convert 11@945"
+        "Value.Convert.Boolean › Should Convert 20@336",
+        "Value.Convert.Boolean › Should Convert 17@389",
+        "Value.Convert.Boolean › Should Convert 18@394",
+        "Value.Convert.Boolean › Should Convert 19@399",
+        "Value.Convert.Boolean › Should Convert 23@419",
+        "Value.Convert.Number › Should Convert 10@925",
+        "Value.Convert.Number › Should Convert 11@930"
       ]
     },
     {
@@ -9433,7 +9433,6 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:92e28ec8d82413f289f317de3440b9049eed7d87a7a0442969cd4374727982ce",
       "evidence": [
-        "tui/render_regressions_upstream_test.go#TestUpstreamTabWidth",
         "tui/render_regressions_upstream_test.go#TestUpstreamTabWidth"
       ],
       "rationale": "All four upstream cases retain their exact strings, slices, control sequences and terminal geometry. The production TUI case asserts every terminal cell in the 16x3 viewport and the absence of literal output tabs. A compiling mutation retaining visible tabs fails both output normalization and the physical-row regression. Pi main 25490ea49 adds two slice cases, run as TestUpstreamTabWidth subtests."
@@ -9469,8 +9468,7 @@
         "tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
         "tui/terminal_image_upstream_test.go#enables hyperlinks and Kitty images for Herdr",
         "tui/terminal_image_upstream_test.go#lets PI_HYPERLINKS=0 disable Rex hyperlinks",
-        "tui/terminal_image_orca_test.go#TestDetectCapabilitiesOrca",
-        "tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageCapabilities"
+        "tui/terminal_image_orca_test.go#TestDetectCapabilitiesOrca"
       ],
       "rationale": "All 82 cases are ported; the two Orca cases of Pi f09d01b8 (disabled without a signal, Kitty with ORCA_IMAGE_PROTOCOL) are TestDetectCapabilitiesOrca. Pi main 2af8a42f5 adds the Alacritty cases (TestUpstreamTerminalImageCapabilities)."
     },
@@ -9528,7 +9526,7 @@
         "tui/tui_alt_screen_v087_test.go",
         "tui/mouse_test.go",
         "tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "tui/tui_alt_screen_wezterm_test.go#TestAltScreenRedrawsWezTermKittyImagesAfterWritesToCoveredRows",
+        "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows",
         "tui/tui_alt_screen_v087_test.go#TestAltScreenModifiedNavigationReachesFocusedComponent",
         "tui/tui_alt_screen_v087_test.go#TestAltScreenKeyboardNavigationHasFourRowsOfPageOverlap",
         "tui/tui_alt_screen_test.go#TestAltScreenKeyboardPageAndEdgeScroll",
@@ -9539,7 +9537,6 @@
         "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText",
         "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageInAPaddedColoredBoxWhoseFirstLineIsAboveTheViewport",
         "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret",
-        "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows",
         "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover"
       ],
       "rationale": "Pi 3bae8527 'defers viewport keys to a focused list' and 'gives viewport keys back when autocomplete closes'. Pi main 25490ea49 and 4622edb79 change or add three cases (tui/tui_alt_screen_kitty_order_test.go)."
@@ -9578,8 +9575,7 @@
         "tui/fake_cursor_test.go#TestMainScreenDrawsTheFocusedFakeCursorAndOmitsItWhenTheHardwareCursorIsShown",
         "tui/fake_cursor_test.go#TestMainScreenKeepsTheFakeCursorOfAnUnfocusedInput",
         "tui/fake_cursor_test.go#TestMainScreenOmitsAFocusedFakeCursorWhoseEndMarkerTruncationDropped",
-        "tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "tui/tui_render_upstream_test.go#TestUpstreamTUIBoundedRender"
+        "tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
       ],
       "rationale": "Pi 19ce8059 'does not write OSC 133 prompt markers to the terminal'. Pi main 25490ea49 adds two cursor-marker cases, run as TestUpstreamTUIBoundedRender subtests."
     },
