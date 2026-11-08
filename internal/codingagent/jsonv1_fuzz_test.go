@@ -49,9 +49,9 @@ func FuzzModelsJSONProviderOrderMatchesV1(f *testing.F) {
 func BenchmarkModelRegistryReaders(b *testing.B) {
 	doc := jsonseed.Typical()
 	b.Run("decodeOrderedHeaderEntries", func(b *testing.B) {
-		jsonseed.Bench(b, doc, func(d []byte) { decodeOrderedHeaderEntriesV1(d) }, func(d []byte) { decodeOrderedHeaderEntries(d) })
+		jsonseed.Bench(b, doc, func(d []byte) { _, _ = decodeOrderedHeaderEntriesV1(d) }, func(d []byte) { _, _ = decodeOrderedHeaderEntries(d) })
 	})
 	b.Run("orderedObjectValues", func(b *testing.B) {
-		jsonseed.Bench(b, doc, func(d []byte) { orderedObjectValuesV1(d) }, func(d []byte) { orderedObjectValues(d) })
+		jsonseed.Bench(b, doc, func(d []byte) { _, _, _ = orderedObjectValuesV1(d) }, func(d []byte) { _, _, _ = orderedObjectValues(d) })
 	})
 }
