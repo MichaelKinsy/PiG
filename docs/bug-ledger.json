@@ -2010,6 +2010,28 @@
       ]
     },
     {
+      "id": "BF-0bed50c",
+      "title": "fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs…",
+      "symptom": "fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs nothing without a Node extension",
+      "rootCause": "A session switch clears the Session's message numbering (the counter goes on) and the Node process's object table, so the messages of the session left are collectable, as Pi's WeakMap of them is. A Node message_end handler's in-place edit of event.message goes back to the host in the reply, and the host writes it into the message (agent.ReplaceMessageInPlace, moved from the Session), as the tool_call edited input does: later handlers, turn_end, agent_end and the saved entry hold the edit, as in Pi. Messages are numbered when a Node handler receives them (lazily, for a Node runtime only), a message nobody numbered names no entry, and noting an entry is a ring that copies nothing. Regenerated…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0bed50c8ff",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/session_message_sequence_test.go::TestReplaceInnerReleasesTheNumberedMessages",
+        "test/extension-conformance/event_payload_test.go::TestConformance_EventPayloadsReachEverySDKUnchanged"
+      ]
+    },
+    {
       "id": "BF-0c44f84",
       "title": "fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check",
       "symptom": "fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check",
@@ -32538,6 +32560,25 @@
       "tests": []
     },
     {
+      "id": "BF-9cf54d7",
+      "title": "fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi",
+      "symptom": "fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi",
+      "rootCause": "Pi emits message_end to the extensions and then appends event.message to the session, so the entry's message is the event's own object and every handler of the event shares it. The Node runtime received the event and the session log as separate payloads, so an extension that finds an entry by entry.message === message found none. Paseo's Pi integration does exactly that to learn the entry id of the prompt it sent, so through PiG its timeline lacked the user message until a restart and a conversation rewind was refused. The runtime now makes the two one object, matching by role, timestamp and tool call id and then by value, in either arrival order. Regenerated runtime-node.pack and its…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9cf54d7b97",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9d02a48",
       "title": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where…",
       "symptom": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where it ignores `const`; literal data such as `default` and `examples` is left as written.",
@@ -33906,102 +33947,6 @@
       ],
       "tests": [
         "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry"
-      ]
-    },
-    {
-      "id": "BF-D600",
-      "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
-      "symptom": "Not a Pi bug.",
-      "rootCause": "a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins (\"a worker started after an edit of the entry's imported source runs the code the base was built with\"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D600",
-      "removeWhen": "PiG's worker is a Node entry again.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "70b2b7bf42",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "23978e4efb",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "981a62878f",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "d6646c05d7",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/app/app_changes_test.go::TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes",
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks",
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs",
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith",
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose"
-      ]
-    },
-    {
-      "id": "BF-D603",
-      "title": "PipeTransport.Close bounds its wait for the killed program",
-      "symptom": "none; a program that survives a kill is outside Pi's model.",
-      "rootCause": "a pipe whose exit is never reported would hold a Go caller (shutdown, a server restart) forever; an error lets it go on. The exit-watcher goroutine of such a pipe still waits for the exit.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D603",
-      "removeWhen": "Pi bounds the wait, or the owner declines the bound.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "a6f7334b23",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "f71606fe5b",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "239eb351c0",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "40b12101e0",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-D604",
-      "title": "A link's upgrade waits for the bases to be built (Pi's links connect at once)",
-      "symptom": "Not a Pi bug.",
-      "rootCause": "the Go server listens before the plugins' Node host has loaded (about 0.5 s), and a page of a restarted server reconnects in that gap, before the bases have started. It then holds the empty set, its base differs from the page's, and the page reloads (`Outdated`): a seamless reconnect becomes a reload, and Pi's ported test of a failed plugin script tried again at a reconnect fails every time. Pi's build takes about 100 ms after a start of a few milliseconds, so the window is rarely open there.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D604",
-      "removeWhen": "the Go server's start no longer leaves a window (the plugins' host loads before the listen), or the scripts objects wait for the build themselves.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "7fe095c5d0",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/app/app_bases_linux_test.go::TestAppHoldsALinkUntilTheBasesAreBuilt",
-        "chord/nextnode/app/app_web_styles_test.go::TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsStylesheetNeverOneWithoutTheOther"
       ]
     },
     {
@@ -55429,19 +55374,9 @@
       "entry": "BF-D540"
     },
     {
-      "id": "D600",
-      "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
-      "entry": "BF-D600"
-    },
-    {
-      "id": "D603",
-      "title": "PipeTransport.Close bounds its wait for the killed program",
-      "entry": "BF-D603"
-    },
-    {
-      "id": "D604",
-      "title": "A link's upgrade waits for the bases to be built (Pi's links connect at once)",
-      "entry": "BF-D604"
+      "id": "D541",
+      "title": "A message object is one per Node process and one per ExtensionRunner call; Pi's extensions and callers all…",
+      "entry": "BF-e99791b"
     },
     {
       "id": "D605",

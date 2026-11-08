@@ -91,6 +91,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0b85f55](#bf-0b85f55) | The Rust SDK keeps every session entry when one entry of the session file holds an unpaired surrogate (it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0bbe365](#bf-0bbe365) | fix(codingagent): footer context usage refreshes on a context_edit entry (Pi getContextUsage) | PiG's own defect | All platforms | Unreleased |
 | [BF-0bc05bf](#bf-0bc05bf) | Fixed `!` and RPC `bash` output keeping fragments of color codes, such as a stray `m`, when a code was split… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0bed50c](#bf-0bed50c) | fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs… | PiG's own defect | All platforms | Unreleased |
 | [BF-0c44f84](#bf-0c44f84) | fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check | PiG's own defect | All platforms | Unreleased |
 | [BF-0c7d23f](#bf-0c7d23f) | A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi… | PiG's own defect | Windows | Unreleased |
 | [BF-0cced6a](#bf-0cced6a) | RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting… | PiG's own defect | All platforms | 0.7.0 |
@@ -1182,6 +1183,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9c1a0e9](#bf-9c1a0e9) | An OpenAI Responses stream event or output item with a member of an unexpected type is read as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9c98038](#bf-9c98038) | An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-9ca3b94](#bf-9ca3b94) | fix(chord/nextnode/browsertest): Close of a browser whose Start failed before its connection kills Chromium… | PiG's own defect | All platforms | Unreleased |
+| [BF-9cf54d7](#bf-9cf54d7) | fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-9d02a48](#bf-9d02a48) | Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9d2095f](#bf-9d2095f) | fix(durable/core): fewer TinyGo heap sites for deferred commits; a read or host operation that stores held… | PiG's own defect | All platforms | Unreleased |
 | [BF-9d25f73](#bf-9d25f73) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -1228,9 +1230,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D520](#bf-d520) | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D521](#bf-d521) | A bigint in validated tool arguments is the string `<digits>n`, where Pi holds a JavaScript bigint | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D540](#bf-d540) | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D600](#bf-d600) | A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D603](#bf-d603) | PipeTransport.Close bounds its wait for the killed program | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D604](#bf-d604) | A link's upgrade waits for the bases to be built (Pi's links connect at once) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
@@ -2903,6 +2902,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0bc05bf8de` (2026-10-07)
 - **Tests:** `coding/session_bash_persistence_upstream_test.go::TestUpstreamBashEscapeSequencesSplitAcrossChunks`, `internal/codingagent/tools/sanitize_split_ansi_test.go::TestExecuteBashWithOperationsFlushesPendingANSIAtExit`
 - **Release note:** Fixed `!` and RPC `bash` output keeping fragments of color codes, such as a stray `m`, when a code was split across output chunks.
+
+### BF-0bed50c
+
+**fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs nothing without a Node extension
+- **Root cause:** A session switch clears the Session's message numbering (the counter goes on) and the Node process's object table, so the messages of the session left are collectable, as Pi's WeakMap of them is. A Node message_end handler's in-place edit of event.message goes back to the host in the reply, and the host writes it into the message (agent.ReplaceMessageInPlace, moved from the Session), as the tool_call edited input does: later handlers, turn_end, agent_end and the saved entry hold the edit, as in Pi. Messages are numbered when a Node handler receives them (lazily, for a Node runtime only), a message nobody numbered names no entry, and noting an entry is a ring that copies nothing. Regenerated…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0bed50c8ff` (2026-11-07)
+- **Tests:** `coding/session_message_sequence_test.go::TestReplaceInnerReleasesTheNumberedMessages`, `test/extension-conformance/event_payload_test.go::TestConformance_EventPayloadsReachEverySDKUnchanged`
 
 ### BF-0c44f84
 
@@ -18005,6 +18017,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9ca3b9445d` (2026-11-08)
 - **Tests:** None recorded.
 
+### BF-9cf54d7
+
+**fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi
+- **Root cause:** Pi emits message_end to the extensions and then appends event.message to the session, so the entry's message is the event's own object and every handler of the event shares it. The Node runtime received the event and the session log as separate payloads, so an extension that finds an entry by entry.message === message found none. Paseo's Pi integration does exactly that to learn the entry id of the prompt it sent, so through PiG its timeline lacked the user message until a restart and a conversation rewind was refused. The runtime now makes the two one object, matching by role, timestamp and tool call id and then by value, in either arrival order. Regenerated runtime-node.pack and its…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9cf54d7b97` (2026-11-07)
+- **Tests:** None recorded.
+
 ### BF-9d02a48
 
 **Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where…**
@@ -18678,51 +18703,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** PiG ships for such a system and its `Stat_t` carries a birth time, or Go's `syscall` gives one.
 - **Fix commits:** `018a05add9` (2026-11-07), `0bbbe98158` (2026-11-07)
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry`
-
-### BF-D600
-
-**A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D600)
-- **Symptom:** Not a Pi bug.
-- **Root cause:** a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins ("a worker started after an edit of the entry's imported source runs the code the base was built with"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** PiG's worker is a Node entry again.
-- **Fix commits:** `70b2b7bf42` (2026-11-07), `23978e4efb` (2026-11-08), `981a62878f` (2026-11-08), `d6646c05d7` (2026-11-08)
-- **Tests:** `chord/nextnode/app/app_changes_test.go::TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes`, `chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks`, `chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs`, `chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith`, `chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose`
-
-### BF-D603
-
-**PipeTransport.Close bounds its wait for the killed program**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D603)
-- **Symptom:** none; a program that survives a kill is outside Pi's model.
-- **Root cause:** a pipe whose exit is never reported would hold a Go caller (shutdown, a server restart) forever; an error lets it go on. The exit-watcher goroutine of such a pipe still waits for the exit.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Pi bounds the wait, or the owner declines the bound.
-- **Fix commits:** `a6f7334b23` (2026-11-07), `f71606fe5b` (2026-11-07), `239eb351c0` (2026-11-08), `40b12101e0` (2026-11-08)
-- **Tests:** None recorded.
-
-### BF-D604
-
-**A link's upgrade waits for the bases to be built (Pi's links connect at once)**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D604)
-- **Symptom:** Not a Pi bug.
-- **Root cause:** the Go server listens before the plugins' Node host has loaded (about 0.5 s), and a page of a restarted server reconnects in that gap, before the bases have started. It then holds the empty set, its base differs from the page's, and the page reloads (`Outdated`): a seamless reconnect becomes a reload, and Pi's ported test of a failed plugin script tried again at a reconnect fails every time. Pi's build takes about 100 ms after a start of a few milliseconds, so the window is rarely open there.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the Go server's start no longer leaves a window (the plugins' host loads before the listen), or the scripts objects wait for the build themselves.
-- **Fix commits:** `7fe095c5d0` (2026-11-08)
-- **Tests:** `chord/nextnode/app/app_bases_linux_test.go::TestAppHoldsALinkUntilTheBasesAreBuilt`, `chord/nextnode/app/app_web_styles_test.go::TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsStylesheetNeverOneWithoutTheOther`
 
 ### BF-D605
 
@@ -28225,9 +28205,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D520 | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | [BF-D520](#bf-d520) |
 | D521 | A bigint in validated tool arguments is the string `<digits>n`, where Pi holds a JavaScript bigint | [BF-D521](#bf-d521) |
 | D540 | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | [BF-D540](#bf-d540) |
-| D600 | A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no… | [BF-D600](#bf-d600) |
-| D603 | PipeTransport.Close bounds its wait for the killed program | [BF-D603](#bf-d603) |
-| D604 | A link's upgrade waits for the bases to be built (Pi's links connect at once) | [BF-D604](#bf-d604) |
+| D541 | A message object is one per Node process and one per ExtensionRunner call; Pi's extensions and callers all… | [BF-e99791b](#bf-e99791b) |
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 
 ## Fix-titled commits that are not bugs in a release
