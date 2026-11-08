@@ -55,7 +55,7 @@ func linesPlugin(t testing.TB, text string) map[string]string {
 	}
 	return map[string]string{
 		"escapes.ts": string(escapes),
-		"ts": strings.Join([]string{
+		"tui.ts": strings.Join([]string{
 			`import { defineFacet } from "@test/app/v1";`,
 			`import { Lines } from "@test/app/v1/tui";`,
 			`import { escapes } from "./escapes.ts";`,
