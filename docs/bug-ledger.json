@@ -33295,6 +33295,35 @@
       ]
     },
     {
+      "id": "BF-D601",
+      "title": "The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript…",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "these modules run in the user's browser (DOM, `window`, React) or in a JavaScript context the launcher starts (the app's terminal code and the plugins' registered scripts are evaluated there). A Go process cannot be that runtime, so there is nothing to port; the faithful form is the file itself. Behavior equals Pi's because the code is Pi's.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D601",
+      "removeWhen": "PiG runs the browser page or the terminal sandbox from Go-authored code.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "9ca9bbb711",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "1c0169d935",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount",
+        "chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick",
+        "chord/nextnode/surfaces/surfaces_react_test.go::TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable"
+      ]
+    },
+    {
       "id": "BF-D604",
       "title": "A link's upgrade waits for the bases to be built (Pi's links connect at once)",
       "symptom": "Not a Pi bug.",
@@ -54165,6 +54194,11 @@
       "id": "D600",
       "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
       "entry": "BF-D600"
+    },
+    {
+      "id": "D601",
+      "title": "The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript…",
+      "entry": "BF-D601"
     },
     {
       "id": "D604",

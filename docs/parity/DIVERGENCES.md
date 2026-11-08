@@ -4054,6 +4054,28 @@ Evidence: `TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTh
 
 Parity allowance: Pi's `base.test.ts` and the worker-base tests of `workers.test.ts` that bundle a Node module, the `NODE_COMPILE_CACHE` and `cache/node` assertions of `layout.test.ts` and `app.test.ts`, and the `app.test.ts` tests that hold a worker kind's base build on a pipe have no counterpart.
 
+## D601 The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript shipped unchanged, not a Go port
+
+What: Pi's `@earendil-works/chord/web` (`startPage`, `pageEnvironment`, `followLanguage`, `followThemes`, `PageOptions`), `@earendil-works/chord/react` (`HostProvider`, `useHold`, `useHost`, `useMessages`, `usePageState`, `useRefState`, `useRegistry`, `useWatch`, `watchStore`, `ExternalStore`) and the sandbox side of `@earendil-works/chord/tui` (`Bridge`, `SandboxChannel`, `BridgeTerminal`, `TerminalRuntime`, `TerminalRuntimeOptions`, `startTerminalRuntime`) have no Go declaration. PiG embeds Pi's own source files for them in the server (`chord/nextnode/surfaces/client`: `pi/chord/src/{web,react,tui}`, React 19.3.0 beside them, the terminal sandbox's bootstrap) and serves them to the browser and to the Node sandbox the Go launcher starts.
+
+Why: these modules run in the user's browser (DOM, `window`, React) or in a JavaScript context the launcher starts (the app's terminal code and the plugins' registered scripts are evaluated there). A Go process cannot be that runtime, so there is nothing to port; the faithful form is the file itself. Behavior equals Pi's because the code is Pi's.
+
+Pi bug: Not a Pi bug.
+
+Scope: `chord/nextnode/surfaces/client` (vendored tree, `manifest.json`, `automation/gen/vendor-chord-surfaces-client.sh`), the interface rows of `pkg:chord/web`, `pkg:chord/react` and the sandbox half of `pkg:chord/tui` (designed out in `test/parity/interface-closure/autobind/reviewed-decisions.json`).
+
+Owner decision: approved 2026-11-08 (Pi's chord web/react/tui-sandbox client modules ship as Pi's TypeScript unchanged; `client_manifest_test.go` checks their hashes). Drafted by the ChordGapTui lane.
+
+Remove when: PiG runs the browser page or the terminal sandbox from Go-authored code.
+
+Call-site markers: `chord/nextnode/surfaces/client/client.go`.
+
+Evidence: `TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable` (`chord/nextnode/surfaces`), `TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount`, `TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick` (`chord/nextnode/app`, real Chromium), `chord/nextnode/tui/tui_kit_upstream_test.go`.
+
+Parity allowance: none needed: Pi's tests for these modules run over the shipped files.
+
+SCRUTINIZED:approved
+
 ## D604 A link's upgrade waits for the bases to be built (Pi's links connect at once)
 
 What: with a web or terminal surface, Pi's server listens, then builds the bases; the scripts object shows an empty set (`base: ""`) until the first set is published, on the assumption that no client holds it then. PiG's `StartServer` returns when the server listens, and its links endpoint (`LinksOptions.OptionsFunc`) holds each upgrade until `BasesBuilt` (or the app's close, which refuses it) before the link is accepted. Plain HTTP requests (the owner page, the API) are answered meanwhile as in Pi; a page or surface file waits for its own base.
@@ -4086,7 +4108,7 @@ Pi bug: none.
 
 Scope: `chord/next/host` (`Host.Delegate`, `Host.Serves`, `destination`, the closure rule's placement by the staged table), `chord/nextnode/plugins` (`node/destination.mjs`, `node/resolve.mjs`, `RuntimeLoad.ParentServes`), `chord/nextnode/app` (`start`). Nothing changes for a host without a delegate, or a NodeHost without `ParentServes`.
 
-Owner decision: owner sign-off pending (draft).
+Owner decision: approved 2026-11-08 (owner, 'proceed and approve').
 
 Remove when: never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.
 
@@ -4095,3 +4117,5 @@ Call-site markers: `chord/next/host/host_host.go` (`Delegate`, `Serves`), `chord
 Evidence: `TestDelegateServesTheUnionOfTheHostsTypes...`, `TestDelegateWhatTheDelegatesOwnLinkAsksForAndNothingServesIsNotSentBackToIt`, `TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched`, `TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack`, `TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestart...`, `TestDelegateIsRefusedFor...`, `TestDelegateTheClosureRuleReadsTheStagedTable...`, `TestHostServesTheTypesOfItsPublishedTableAndNoOtherName` (`chord/next/host/host_delegate_test.go`), `TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer` (`chord/nextnode/app/app_delegate_test.go`: binds, calls, the principal difference), and the server rows of the reload suite (`chord/nextnode/app/reload_*_test.go`).
 
 Parity allowance: none.
+
+SCRUTINIZED:approved
