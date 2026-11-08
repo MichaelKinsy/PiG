@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/tui"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/components"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/tuitest"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
@@ -27,14 +28,16 @@ func catalogHeld(held *gate) p2test.Stub {
 			Variant: "owner",
 			State:   map[string]any{"sessions": rows, "defaultCwd": "/work", "defaultEnv": nil, "operations": []any{}},
 			Methods: map[string]p2test.StubMethod{
-				"rename": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+				"rename": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					chordctx.Suspend(ctx)
 					if err := held.call(); err != nil {
 						return nil, err
 					}
 					update("title", args.(*delta.JsonObject).Value("title"))
 					return nil, nil
 				},
-				"pin": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+				"pin": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					chordctx.Suspend(ctx)
 					if err := held.call(); err != nil {
 						return nil, err
 					}

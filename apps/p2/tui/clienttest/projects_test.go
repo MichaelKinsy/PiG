@@ -17,6 +17,7 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/tuitest"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
@@ -193,7 +194,7 @@ func newProjectsSetup(t *testing.T, facets ...host.Facet) *projectsSetup {
 		methods := map[string]p2test.StubMethod{
 			"warm": noop,
 			"list": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return []any{}, nil },
-			"listDirectory": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+			"listDirectory": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				object := args.(*delta.JsonObject)
 				env, _ := object.Value("env").(string)
 				path := object.Value("path").(string)
@@ -202,6 +203,7 @@ func newProjectsSetup(t *testing.T, facets ...host.Facet) *projectsSetup {
 					return nil, errors.New("connect ECONNREFUSED")
 				}
 				if env == "mac" {
+					chordctx.Suspend(ctx)
 					<-macGate
 				}
 				if env == "nope" {
