@@ -3933,3 +3933,35 @@ Call-site markers: `ai/anthropic_threads.go`.
 Evidence: `TestAnthropicMessageThreadsCreateThenContinue` and the other `TestAnthropicMessageThreads*` cases (`ai/anthropic_message_threads_test.go`, Pi's `anthropic-message-threads.test.ts`).
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+
+## D370 The OAuth callback server drops connections that have not sent a request when it closes
+
+What: PiG ports Pi main 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311), which is not in Pi 1.5.0. Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`.
+
+Why: Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.
+
+Pi bug: 1.5.0 waits for the browser to drop the socket, for minutes.
+
+Owner decision: owner sign-off pending.
+
+SCRUTINIZED:pending
+
+Remove when: the pinned Pi release contains 63ea042ce and PiG's close matches it.
+
+Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen` (`mcp/oauth/oauth_test.go`).
+
+## D371 Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`
+
+What: PiG ports Pi main 6d3e342b2 (`fix(coding-agent): follow local schema refs in tool search and codemode summaries`, #11850, fixing #11803), which is not in Pi 1.5.0. `tool_search` reads names and descriptions behind local `$ref`s, the codemode summary resolves `$ref` chains, and a `$ref` with a malformed percent escape names nothing, so the `codemode` render functions return a string only (they returned the URIError as an error).
+
+Why: One MCP tool with such a ref failed every codemode run.
+
+Pi bug: 1.5.0 throws `URI malformed` out of every codemode run.
+
+Owner decision: owner sign-off pending.
+
+SCRUTINIZED:pending
+
+Remove when: the pinned Pi release contains 6d3e342b2.
+
+Evidence: `TestMalformedRefPercentEncodingRendersAsUnknown`, `TestResolveSchemaRef*` (`codemode/declarations_test.go`), `TestSchemaRefs*` (`coding/extension/builtin/toolsearch/schema_refs_pi_test.go`), `TestFindsAToolByAParameterDescriptionBehindALocalReference...` (`durable/toolsearch/toolsearch_test.go`), `TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`.
