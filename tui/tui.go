@@ -824,7 +824,7 @@ type tuiBase struct {
 
 	mu sync.Mutex // protects render state
 
-	stopped bool // set by Stop(); prevents further Render() calls
+	stopped atomic.Bool // set by Stop(); prevents further Render() calls (RequestRender reads it from component goroutines)
 }
 
 // TuiMainScreen is the main-screen renderer: differential rendering into the terminal's
@@ -1154,7 +1154,7 @@ func (t *tuiBase) ShowOverlay(c Component, opts OverlayOptions) *OverlayHandle {
 
 // hideTerminalCursor hides the cursor while running; after Stop the shell owns it. Mirrors upstream hideTerminalCursor.
 func (t *tuiBase) hideTerminalCursor() {
-	if !t.stopped {
+	if !t.stopped.Load() {
 		t.HideCursor()
 	}
 }
@@ -1793,7 +1793,7 @@ func (t *tuiBase) Height() int { _, height := t.size(); return height }
 // Use it when the physical buffer is invalid, including semantic transcript
 // replacement, not for ordinary dynamic shrink or streaming updates.
 func (t *TuiMainScreen) ForceFullRender() {
-	if t.stopped {
+	if t.stopped.Load() {
 		return
 	}
 	t.mu.Lock()
@@ -1809,7 +1809,7 @@ func (t *TuiMainScreen) ForceFullRender() {
 // force is upstream's requestRender(force = false): true resets the render state so the next frame is a full repaint and renders on the next
 // owner-loop turn instead of waiting for the frame throttle.
 func (t *tuiBase) RequestRender(force ...bool) {
-	if t.stopped {
+	if t.stopped.Load() {
 		return
 	}
 	forced := len(force) > 0 && force[0]
@@ -1886,7 +1886,7 @@ func (t *tuiBase) issueFrameRenderRequest() {
 // RenderNow renders immediately, cancelling any pending render; force=true makes the frame a full repaint.
 // Mirrors upstream renderNow(force) (tui.ts:982).
 func (t *tuiBase) RenderNow(force ...bool) {
-	if t.stopped {
+	if t.stopped.Load() {
 		return
 	}
 	if len(force) > 0 && force[0] {
@@ -1903,7 +1903,7 @@ func (t *tuiBase) RenderNow(force ...bool) {
 // RequestImmediateRender preempts a throttled frame and coalesces keyboard updates onto the next owner-loop turn. It exposes TuiBase.requestImmediateRender to the Go driver's separately owned input path.
 func (t *tuiBase) RequestImmediateRender() {
 	t.mu.Lock()
-	if t.stopped || t.immediateRenderRequested {
+	if t.stopped.Load() || t.immediateRenderRequested {
 		t.mu.Unlock()
 		return
 	}
@@ -2010,7 +2010,7 @@ func (t *tuiBase) runScheduledRender(generation uint64) {
 
 func (t *tuiBase) renderScheduled(generation uint64) {
 	t.mu.Lock()
-	current := generation == t.renderGeneration && !t.stopped
+	current := generation == t.renderGeneration && !t.stopped.Load()
 	t.mu.Unlock()
 	if !current {
 		return
@@ -2071,7 +2071,7 @@ func (t *tuiBase) cancelPendingRenderLocked() {
 //
 //perf:hot
 func (t *tuiBase) Render() {
-	if t.stopped {
+	if t.stopped.Load() {
 		return
 	}
 	t.CancelPendingRender()
@@ -2813,7 +2813,7 @@ func (t *TuiMainScreen) RestoreRenderState(state TuiMainScreenRenderState) {
 
 // Start resumes the main-screen renderer after a terminal handoff. The driver restores input and requests the full repaint, as Pi's TUI.start does.
 func (t *TuiMainScreen) Start() {
-	t.stopped = false
+	t.stopped.Store(false)
 	t.HideCursor()
 	if t.colorSchemeNotificationsEnabled() {
 		writeColorSchemeNotifications(t.out, true)
@@ -2831,7 +2831,7 @@ func (t *TuiMainScreen) StopWithOptions(options StopOptions) {
 
 // stopWithOptionsLocked also serves the overflow path, which already holds the render lock.
 func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
-	t.stopped = true
+	t.stopped.Store(true)
 	t.cancelPendingRenderLocked()
 	if t.colorSchemeNotificationsEnabled() {
 		writeColorSchemeNotifications(t.out, false)

@@ -460,6 +460,17 @@ func (c *Channel) decode(bytes []byte) (Message, error) {
 	return CheckMessage(message, c.ctx)
 }
 
+// ProtocolMismatchError is a handshake with a peer on another link protocol version. Its text is the handshake's report;
+// a peer on a newer version (Newer) means this code is outdated (Pi's `newerPeerProtocol` read that off the text).
+type ProtocolMismatchError struct{ Peer, Local int }
+
+func (e *ProtocolMismatchError) Error() string {
+	return fmt.Sprintf("handshake: protocol %d, this host speaks %d", e.Peer, e.Local)
+}
+
+// Newer is whether the peer speaks a newer protocol than this host.
+func (e *ProtocolMismatchError) Newer() bool { return e.Peer > e.Local }
+
 // greet handles the first message: the peer's `hello` in this link's codec and protocol version.
 func (c *Channel) greet(bytes []byte) error {
 	message, err := c.decode(bytes)
@@ -471,7 +482,7 @@ func (c *Channel) greet(bytes []byte) error {
 		return fmt.Errorf("handshake: %s before hello", message.Kind())
 	}
 	if hello.Protocol != data.ProtocolVersion {
-		return fmt.Errorf("handshake: protocol %d, this host speaks %d", hello.Protocol, data.ProtocolVersion)
+		return &ProtocolMismatchError{Peer: hello.Protocol, Local: data.ProtocolVersion}
 	}
 	// The queue is taken and flushed under the lock that opens the channel: a Send racing with the handshake either queues
 	// before it (and is flushed here, in order) or finds the channel open after the queued ones went out. A copy taken

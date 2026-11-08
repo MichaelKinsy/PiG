@@ -97,3 +97,20 @@ func TestBundleHoldsTheLinkedPluginsWebFacets(t *testing.T) {
 		t.Errorf("web/plugins.txt is %v, want %v", strings.Fields(string(listedPlugins)), want)
 	}
 }
+
+// `p2 tui` loads the tui facet of every plugin that has a tui.ts in Pi (apps/p2/plugins/*/tui.ts at the pinned commit), and of no other.
+func TestTheTerminalClientLoadsTheTUIFacetsOfThePluginsPiGivesOne(t *testing.T) {
+	want := strings.Fields(`artifacts chat chat-mode codemode coding-tools devices envs history login logs mcp models ports powershell prompt
+		quiet-tools search send-file sessions sharing status subagents terminals workspace`)
+	plugins, err := hosts.SelectPlugins(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, facet := range hosts.TUIFacets(plugins) {
+		got = append(got, facet.Name)
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("tui facets = %v, want %v", got, want)
+	}
+}

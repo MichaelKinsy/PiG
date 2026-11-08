@@ -16,7 +16,6 @@ import (
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/apps/p2/tui/jsvalue"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/tools"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/transcript"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -97,7 +96,7 @@ func streamingTools(message *ai.AssistantMessage) []transcript.ToolView {
 	var views []transcript.ToolView
 	for _, block := range message.Content {
 		if call, ok := block.(ai.ToolCall); ok {
-			views = append(views, transcript.ToolView{ID: call.ID, Name: call.Name, Args: jsvalue.ObjectFromDelta(call.Arguments), Status: transcript.ToolPending})
+			views = append(views, transcript.ToolView{ID: call.ID, Name: call.Name, Args: transcript.CallArguments(call), Status: transcript.ToolPending})
 		}
 	}
 	return views

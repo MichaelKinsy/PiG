@@ -1,9 +1,11 @@
 package host
 
 import (
+	"errors"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
@@ -116,6 +118,13 @@ func BatchHostError(err state.BatchError) HostError {
 // RegistryHostError is a registry's report as a HostError.
 func RegistryHostError(err registries.RegistryError) HostError {
 	return HostError{Kind: HostErrorKind(err.Kind), Error: err.Error, Registry: &err}
+}
+
+// NewerPeerProtocol is whether failure is a link handshake with a peer on a newer link protocol: this code is outdated
+// (Pi's `newerPeerProtocol`, which read it off the handshake's message).
+func NewerPeerProtocol(failure HostError) bool {
+	var mismatch *link.ProtocolMismatchError
+	return failure.Kind == ErrProtocolError && errors.As(failure.Error, &mismatch) && mismatch.Newer()
 }
 
 // GetOptions is what `host.get` and `host.hold` take besides the type, the params and the context.

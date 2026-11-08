@@ -451,3 +451,21 @@ func TestNativeSourceRelease(t *testing.T) {
 		nexttest.ExpectCollected(t, ref)
 	})
 }
+
+// A watch is opened from a client's goroutine (a TUI's scope following a source) while the host ends the source (the client closing): the source's batch is read
+// and dropped from two goroutines, which the race detector reports unless the batch is read atomically.
+func TestFollowedSourceOpensWatchesWhileItEnds(t *testing.T) {
+	h := newHarness(t, nil)
+	for range 200 {
+		source := newFailable(h.batch, 1)
+		opened := make(chan struct{})
+		go func() {
+			defer close(opened)
+			if watch, err := source.OpenWatch(background); err == nil {
+				<-watch.Closed()
+			}
+		}()
+		source.End()
+		<-opened
+	}
+}
