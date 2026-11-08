@@ -202,3 +202,14 @@ func (p *Providers) Logout(provider string) error {
 	_, err := p.ref.Call("logout", delta.JsonObjectOf("providerId", provider), p.ctx)
 	return err
 }
+
+// Refresh fetches provider's current model list and returns how many models it has.
+func (p *Providers) Refresh(provider string) (int, error) {
+	out, err := p.ref.Call("refresh", delta.JsonObjectOf("providerId", provider), p.ctx)
+	if err != nil {
+		return 0, err
+	}
+	object, _ := out.(*delta.JsonObject)
+	models, _ := object.Value("models").(float64)
+	return int(models), nil
+}
