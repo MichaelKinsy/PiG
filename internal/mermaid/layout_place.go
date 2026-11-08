@@ -73,8 +73,9 @@ func assignTracks(spans []trackSpan, shortestFirst bool) (assigned [][2]int, cou
 		for ti, members := range tracks {
 			fits := true
 			for _, m := range members {
-				if !(m.end+2 <= span.start || span.end+2 <= m.start ||
-					((m.from == span.from || m.to == span.to) && !m.labeled && !span.labeled)) {
+				apart := m.end+2 <= span.start || span.end+2 <= m.start
+				shared := (m.from == span.from || m.to == span.to) && !m.labeled && !span.labeled
+				if !apart && !shared {
 					fits = false
 					break
 				}
@@ -165,14 +166,6 @@ func filled[T any](n int, v T) []T {
 	return out
 }
 
-func maxOf(xs []int) int {
-	m := xs[0]
-	for _, x := range xs[1:] {
-		m = max(m, x)
-	}
-	return m
-}
-
 // labelCols is an edge label's width on its arrival end: -1 when it has none.
 func tdLabelW(e edge) int {
 	w := -1
@@ -241,7 +234,7 @@ func placeTd(ranks []int, maxRank int, byRank [][]int, sizes nodeSizes, g *graph
 			spreadL = cx
 		}
 		slots := len(skips)
-		if !(hasFwd && aligned) && hasFwd {
+		if hasFwd && !aligned {
 			slots++
 		}
 		slot := func(i int) int {
@@ -262,7 +255,7 @@ func placeTd(ranks []int, maxRank int, byRank [][]int, sizes nodeSizes, g *graph
 		}
 		for j, si := range skips {
 			k := j
-			if !(hasFwd && aligned) && hasFwd {
+			if hasFwd && !aligned {
 				k = j + 1
 			}
 			items = append(items, entry{slot: slot(k), w: tdLabelW(g.edges[si]), skip: si})
@@ -355,7 +348,7 @@ func placeTd(ranks []int, maxRank int, byRank [][]int, sizes nodeSizes, g *graph
 
 	edgeBus := make([]int, len(g.edges))
 	busTracks := make([]int, maxRank+1)
-	for r := 0; r < maxRank; r++ {
+	for r := range maxRank {
 		spans := busSpans(g, ranks, centers, r, false, true)
 		// Skip departures ride the bus tracks of their own band: endpoint
 		// sharing folds them onto their siblings' row, so a node's forward fan
@@ -414,7 +407,7 @@ func placeTd(ranks []int, maxRank int, byRank [][]int, sizes nodeSizes, g *graph
 			entersInto[ranks[e.to]] = true
 		}
 	}
-	for r := 0; r < maxRank; r++ {
+	for r := range maxRank {
 		if entersInto[r+1] {
 			busTracks[r]++
 		}
@@ -461,7 +454,7 @@ func placeTd(ranks []int, maxRank int, byRank [][]int, sizes nodeSizes, g *graph
 
 	// Approach rows sit just above each band's arrival-head row.
 	skipApproach := filled(maxRank+1, -1)
-	for r := 0; r < maxRank; r++ {
+	for r := range maxRank {
 		if entersInto[r+1] {
 			skipApproach[r+1] = rankY[r+1] - 2
 		}
@@ -605,7 +598,7 @@ func placeLr(ranks []int, maxRank int, byRank [][]int, sizes nodeSizes, g *graph
 
 	edgeBus := make([]int, len(g.edges))
 	busTracks := make([]int, maxRank+1)
-	for r := 0; r < maxRank; r++ {
+	for r := range maxRank {
 		spans := busSpans(g, ranks, centers, r, true, false)
 		// Straight-skip departures ride their own band's bus tracks: endpoint
 		// sharing folds them onto their siblings' column, one fan origin.

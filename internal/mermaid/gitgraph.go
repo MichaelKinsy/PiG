@@ -74,8 +74,8 @@ var gitgraphDiagram = diagram{
 				}
 			}
 		}
-		for i := len(commits) - 1; i >= 0; i-- {
-			c := commits[i]
+		for i, c := range slices.Backward(commits) {
+
 			rows = append(rows, gitRow{commit: true, at: i})
 			if c.mergeFrom != -1 {
 				rows = append(rows, gitRow{open: true, parent: c.lane, lane: c.mergeFrom})

@@ -393,8 +393,8 @@ func stripCardinalityPrefix(s string) (string, string) {
 	t := trimStartJS(s)
 	if strings.HasPrefix(t, "\"") {
 		rest := t[1:]
-		if q := strings.Index(rest, "\""); q != -1 {
-			return trimStartJS(rest[q+1:]), rest[:q]
+		if before, after, ok := strings.Cut(rest, "\""); ok {
+			return trimStartJS(after), before
 		}
 	}
 	return t, ""

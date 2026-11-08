@@ -375,19 +375,21 @@ func readAtShape(chars []rune, start int) shaped {
 	i := start
 	depth := 0
 	inQuotes := false
+loop:
 	for ; i < len(chars); i++ {
 		c := chars[i]
-		if inQuotes {
+		switch {
+		case inQuotes:
 			if c == '"' {
 				inQuotes = false
 			}
-		} else if c == '"' {
+		case c == '"':
 			inQuotes = true
-		} else if c == '{' {
+		case c == '{':
 			depth++
-		} else if c == '}' {
+		case c == '}':
 			if depth == 0 {
-				break
+				break loop
 			}
 			depth--
 		}
@@ -497,8 +499,10 @@ func parseLink(chars []rune, start int) *link {
 		// The label runs to the closing operator, which always starts with two
 		// link chars (`--`, `-.`, `==`): a lone `=`/`.`/`-` is label text, and a
 		// quoted stretch is label text throughout (`A --"a=b"--> B`).
+	scan:
 		for j < len(chars) {
-			if chars[j] == '"' {
+			switch {
+			case chars[j] == '"':
 				j++
 				for j < len(chars) && chars[j] != '"' {
 					j++
@@ -506,9 +510,9 @@ func parseLink(chars []rune, start int) *link {
 				if j < len(chars) {
 					j++
 				}
-			} else if isLinkChar(chars[j]) && isLinkChar(charAt(chars, j+1)) {
-				break
-			} else {
+			case isLinkChar(chars[j]) && isLinkChar(charAt(chars, j+1)):
+				break scan
+			default:
 				j++
 			}
 		}

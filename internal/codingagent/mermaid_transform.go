@@ -301,7 +301,7 @@ func themedLines(art mermaid.Art, theme *tui.Theme) []string {
 	for i, row := range art.Styled {
 		displayArt.Styled[i] = make([]mermaid.Span, len(row))
 		for j, span := range row {
-			if span.Href != nil && !(linkLabels && span.Role == mermaid.RoleText) {
+			if span.Href != nil && !linkLabels || span.Role != mermaid.RoleText {
 				span.Href = nil
 			}
 			displayArt.Styled[i][j] = span

@@ -167,15 +167,16 @@ func erTokens(s string) []string {
 	var cur strings.Builder
 	inQuotes := false
 	for _, c := range s {
-		if c == '"' {
+		switch {
+		case c == '"':
 			inQuotes = !inQuotes
 			cur.WriteRune(c)
-		} else if !inQuotes && jsstring.IsSpace(c) {
+		case !inQuotes && jsstring.IsSpace(c):
 			if cur.Len() > 0 {
 				out = append(out, cur.String())
 				cur.Reset()
 			}
-		} else {
+		default:
 			cur.WriteRune(c)
 		}
 	}

@@ -4,7 +4,10 @@
 
 package mermaid
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // `sequenceDiagram`: participants, messages, notes and block dividers. Ported
 // from lovely-mermaid diagrams/sequence.ts. Lenient: an unreadable statement is
@@ -281,12 +284,7 @@ func parseSequence(src string) *sequence {
 }
 
 func isOneOf(s string, options ...string) bool {
-	for _, o := range options {
-		if s == o {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(options, s)
 }
 
 func parseNoteAnchor(rest string, seq *sequence) (text string, anchor noteAnchor, ok bool) {

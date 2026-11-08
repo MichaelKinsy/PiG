@@ -37,19 +37,6 @@ func absInt(n int) int {
 	return n
 }
 
-func maxIntsOr(xs []int, def int) int {
-	if len(xs) == 0 {
-		return def
-	}
-	m := xs[0]
-	for _, x := range xs[1:] {
-		if x > m {
-			m = x
-		}
-	}
-	return m
-}
-
 type placed struct {
 	x, y, w, h, cx, cy, rank int
 }
