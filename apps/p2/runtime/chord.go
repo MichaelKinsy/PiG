@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -62,4 +63,29 @@ func CtxOf(ctx context.Context) host.Ctx {
 		return each
 	}
 	return nil
+}
+
+// FollowNative is a state source following a native that tells listeners of its changes (subscribe returns the stop):
+// `self.Follow` of a synchronous observer, so the state is the native's, never a copy a routine keeps. Its value is read()
+// at activation and after every change, sent whole (`[["r", value]]`: derives over it diff for the wire). Both run once the
+// object's natives opened, so they may read a native's value. A change the native makes inside a method reaches the source
+// before the method's answer. A read that fails at activation fails the activation with its error (Pi: it throws); after a
+// change, the source fails until the next change.
+func FollowNative(self host.Self, subscribe func(changed func()) (stop func()), read func() (delta.JsonValue, error)) chord.Watchable[delta.JsonValue] {
+	return self.Follow(func(observer host.FollowObserver[any], ctx context.Context) (*host.FollowAttachment[delta.JsonValue], error) {
+		detach := subscribe(func() {
+			value, err := read()
+			if err != nil {
+				observer.Advance(chord.WatchCall[any]{Kind: chord.WatchCallFailed, Error: err}, ctx)
+				return
+			}
+			observer.Advance(chord.WatchCall[any]{Kind: chord.WatchCallValue, Value: value, Ops: []delta.Op{{"r", value}}}, ctx)
+		})
+		value, err := read()
+		if err != nil {
+			detach()
+			return nil, err
+		}
+		return &host.FollowAttachment[delta.JsonValue]{Value: value, Detach: detach}, nil
+	})
 }
