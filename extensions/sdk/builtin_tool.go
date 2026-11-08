@@ -97,11 +97,10 @@ type EditToolOptions struct {
 	Operations *EditOperations
 }
 
-// GrepOperations is Pi's GrepOperations. IsDirectory is required and fails when the path does not exist; ReadFile is accepted and ignored, since Pi main (8da141c2a) takes
-// grep's context lines from ripgrep and never reads a matched file.
+// GrepOperations is Pi's GrepOperations: IsDirectory is required and fails when the path does not exist. Pi main (8da141c2a) takes grep's context lines from ripgrep and
+// no longer has a readFile member, so there is none here.
 type GrepOperations struct {
 	IsDirectory func(absolutePath string) (bool, error)
-	ReadFile    func(absolutePath string) (string, error)
 }
 
 // GrepToolOptions is Pi's GrepToolOptions.
@@ -298,9 +297,6 @@ func grepSpec(cwd string, options *GrepToolOptions) (builtinSpec, error) {
 			return spec, err
 		}
 		spec.setOperations("isDirectory")
-		if ops.ReadFile != nil {
-			spec.options.Operations = append(spec.options.Operations, "readFile")
-		}
 		spec.callbacks.grep = ops
 	}
 	return spec, nil
@@ -854,8 +850,6 @@ func (c *builtinCallbacks) call(member string, raw json.RawMessage) (any, error)
 		case c.edit != nil:
 			data, err := c.edit.ReadFile(path.Path)
 			return base64.StdEncoding.EncodeToString(data), err
-		case c.grep != nil && c.grep.ReadFile != nil:
-			return c.grep.ReadFile(path.Path)
 		}
 	case "operations.access":
 		if err := decode(&path); err != nil {

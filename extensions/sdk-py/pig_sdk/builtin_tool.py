@@ -111,11 +111,10 @@ class EditToolOptions:
 
 @dataclass
 class GrepOperations:
-    """Pi's GrepOperations: ``is_directory(path) -> bool`` (required; raises when the path does not exist) and ``read_file(path) -> str`` (optional; without it
-    matched files are streamed from the local file system)."""
+    """Pi's GrepOperations: ``is_directory(path) -> bool`` (required; raises when the path does not exist). Pi main (8da141c2a) takes grep's context lines from
+    ripgrep and no longer has a ``readFile`` member, so there is none here."""
 
     is_directory: Callable[[str], bool]
-    read_file: Callable[[str], str] | None = None
 
 
 @dataclass
@@ -269,14 +268,10 @@ def _grep_spec(cwd: str, options: Any) -> _Spec:
     spec = _Spec("grep", cwd)
     ops = _member(options, "operations")
     if ops is not None:
-        is_directory, read_file = _member(ops, "is_directory"), _member(ops, "read_file")
+        is_directory = _member(ops, "is_directory")
         _require("grep", is_directory=is_directory)
         spec.callbacks["operations.isDirectory"] = lambda args: bool(is_directory(args["path"]))
-        names = ["isDirectory"]
-        if read_file is not None:
-            names.append("readFile")
-            spec.callbacks["operations.readFile"] = lambda args: read_file(args["path"])
-        _operations_names(spec.options, names)
+        _operations_names(spec.options, ["isDirectory"])
     return spec
 
 

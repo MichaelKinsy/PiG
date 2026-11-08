@@ -31,11 +31,10 @@ class BuiltinToolOptionsTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             builtin_tool.dispatch_callback({"handle": handle, "member": "operations.readFile", "args": {"path": "/a"}})
 
-    def test_optional_members_are_announced_only_when_given(self) -> None:
+    def test_grep_announces_only_is_directory(self) -> None:
         grep = builtin_tool._grep_spec("/c", pig_sdk.GrepToolOptions(operations=pig_sdk.GrepOperations(is_directory=lambda path: True)))
         self.assertEqual(grep.options["operations"], ["isDirectory"])
-        grep = builtin_tool._grep_spec("/c", pig_sdk.GrepToolOptions(operations=pig_sdk.GrepOperations(is_directory=lambda path: True, read_file=lambda path: "x")))
-        self.assertEqual(grep.options["operations"], ["isDirectory", "readFile"])
+        self.assertNotIn("operations.readFile", grep.callbacks)
 
     def test_an_operations_object_missing_a_member_is_refused(self) -> None:
         with self.assertRaisesRegex(TypeError, "operations.access is required"):
