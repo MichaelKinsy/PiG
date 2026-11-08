@@ -17,7 +17,7 @@ import (
 //     replicated log ended e1,e2,e3,e5,e4 under the name of the older writer.
 //   - nested: the session_info_changed handler that starts in a write after an await reads the state the write's push carries (Pi runs it inside the call).
 //   - nestedHanded, nestedQueued: the setter's event starts inside the setter while the loop holds a request (handed to it, or taken from its queue and not
-//     started), as the host waits for it to start before it answers the setter.
+//     started), as the host waits for it to start before it answers the setter, and the request the loop held still runs after the setter returns.
 //   - replaced: a log is replaced by a page with a lower count that holds the whole log, the page the host sends when a cursor is out of range
 //     (Session.RawEntriesPage), and the following pages extend it. A guard against lower-count pages would break that replacement, and Pi's own log has no stale page to guard against.
 func TestNodeAppliesHostStateInFrameOrder(t *testing.T) {
@@ -39,8 +39,8 @@ func TestNodeAppliesHostStateInFrameOrder(t *testing.T) {
 		"limboNoLoaded": map[string]any{"name": "renamed", "ids": "e1,e2,e3,e4,e5", "host": "renamed e1,e2,e3,e4,e5"},
 		"nested":        map[string]any{"afterWrite": "nested-name e1,e2,e3", "inEvent": "nested-name e1,e2,e3"},
 		"replaced":      "e1,e2,e3 n1,n2 n1,n2,n3",
-		"nestedHanded":  "started ev | setter returned",
-		"nestedQueued":  "started ev | setter returned",
+		"nestedHanded":  "started ev | setter returned | c ran",
+		"nestedQueued":  "started ev | setter returned | c ran",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("state order\n got %s\nwant %v", out, want)

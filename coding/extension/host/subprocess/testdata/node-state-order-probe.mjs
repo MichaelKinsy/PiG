@@ -177,7 +177,7 @@ async function nestedWithRequest(shape) {
   await host.deliver(command("ra", "a"));
   await timer(60);
   await state.stop();
-  return order.filter((item) => item === "started ev" || item === "setter returned").join(" | ");
+  return order.filter((item) => item === "started ev" || item === "setter returned" || item === "c ran").join(" | ");
 }
 out.nestedHanded = await nestedWithRequest("handed");
 out.nestedQueued = await nestedWithRequest("queued");
