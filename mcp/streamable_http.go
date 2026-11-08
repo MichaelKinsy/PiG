@@ -361,7 +361,7 @@ func (t *StreamableHTTPTransport) Send(ctx context.Context, message JSONRPCMessa
 		}
 		var items []json.RawMessage
 		if isJSONArray(data) {
-			if err := json.Unmarshal(data, &items); err != nil {
+			if err := deepFallback(json.Unmarshal(data, &items), data, &items); err != nil {
 				return err
 			}
 		} else {

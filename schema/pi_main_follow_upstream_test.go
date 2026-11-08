@@ -1,7 +1,7 @@
 package schema_test
 
 // Ports the packages/schema tests Pi main adds after v1.5.0: 2bd2c2d0a (relative root $id, #11726), 20c637b1a (leaf checks inlined by object and array
-// loops), af79b0c3d (validate, recursive, equal; bigint and undefined have no Go value and are designed out, see schema/README.md) and
+// loops), af79b0c3d (validate, recursive, equal; its bigint and undefined tests are in pi_main_bigint_upstream_test.go) and
 // 55a5c6914 (num rejects NaN and Infinity).
 
 import (

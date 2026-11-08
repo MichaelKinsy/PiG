@@ -232,7 +232,7 @@
     #:runtime-get-error #:runtime-get-model #:runtime-get-model-of-type #:runtime-get-models #:runtime-get-models-of-type #:runtime-get-physical-model
     #:runtime-get-provider #:runtime-get-provider-auth-status #:runtime-get-providers #:runtime-get-registered-native-provider
     #:runtime-get-registered-provider-config #:runtime-get-registered-provider-ids #:runtime-has-configured-auth-p #:runtime-is-using-oauth-p
-    #:runtime-is-using-subscription-p #:runtime-list-credentials #:runtime-login #:runtime-logout #:runtime-provider-display-name #:runtime-refresh
+    #:runtime-is-using-subscription-p #:runtime-list-credentials #:runtime-login #:runtime-logout #:runtime-provider-display-name #:runtime-refresh #:runtime-settle-credential-writes
     #:runtime-register-native-provider #:runtime-register-provider #:runtime-register-virtual-model #:runtime-registry #:runtime-registry-classify
     #:runtime-registry-complete #:runtime-registry-find #:runtime-registry-find-of-type #:runtime-registry-generate-images #:runtime-registry-get-all
     #:runtime-registry-get-api-key-and-headers #:runtime-registry-get-api-key-for-provider #:runtime-registry-get-available

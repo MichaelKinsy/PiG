@@ -167,8 +167,33 @@
     (let ((model (b-with (b-native-model "rt-native") "provider" "rt-native")))
       (pig:runtime-register-native-provider rt (b-native-provider "rt-native" "Runtime Native" model "r" (lambda (input) (declare (ignore input)) nil) (lambda (input) (declare (ignore input)) nil)))
       (pig:runtime-unregister-provider rt "rt-native"))
+    (pig:runtime-settle-credential-writes rt)
+    (setf (gethash "settled" r) (b-yes t))
     (setf (gethash "stored" r) (b-read-json auth))
+    (setf (gethash "pending" r) (b-settle-pending-probe rt auth))
     r))
+
+(defun b-settle-pending-probe (rt auth)
+  "Holds AUTH's lock so a login's credential write is in flight, then reports the stored key when settle returns with the lock released 1.5 s later."
+  (let ((lock (concatenate 'string auth ".lock/")) (login-ok :false))
+    (ensure-directories-exist lock)
+    (let ((login (sb-thread:make-thread
+                  (lambda ()
+                    (handler-case
+                        (progn (pig:runtime-login rt "openai" "api_key" (lambda (p) (declare (ignore p)) "sk-pending")
+                                                  :notify (lambda (e) (declare (ignore e)) nil))
+                               (setf login-ok t))
+                      (error () nil))))))
+      (sleep 0.8)
+      (sb-thread:make-thread (lambda () (sleep 1.5) (sb-ext:delete-directory lock)))
+      (let ((start (get-internal-real-time)))
+        (pig:runtime-settle-credential-writes rt)
+        (let* ((waited (>= (- (get-internal-real-time) start) internal-time-units-per-second))
+               (entry (pig:jget (b-read-json auth) "openai"))
+               (key (if (b-null entry) :null (let ((k (pig:jget entry "key"))) (if (b-null k) :null k)))))
+          (sb-thread:join-thread login :default nil)
+          (pig:runtime-logout rt "openai")
+          (pig:obj "keyAtSettle" key "waited" (b-yes waited) "login" login-ok))))))
 
 ;;; ---------------------------------------------------------------- model_registry
 
