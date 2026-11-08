@@ -308,6 +308,7 @@ func TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate(t 
 	ctx := t.Context()
 	var mu sync.Mutex
 	var grants []string
+	reached, hold := make(chan struct{}, 2), make(chan struct{})
 	origin := listen(t, func(w http.ResponseWriter, r *http.Request, serverOrigin string) {
 		switch r.URL.Path {
 		case "/.well-known/oauth-protected-resource/mcp":
@@ -329,7 +330,8 @@ func TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate(t 
 				jsonResponse(w, 400, map[string]any{"error": "invalid_grant"})
 				return
 			}
-			time.Sleep(20 * time.Millisecond)
+			reached <- struct{}{}
+			<-hold
 			jsonResponse(w, 200, map[string]any{"access_token": "a2", "refresh_token": "r2", "token_type": "Bearer", "expires_in": 3600})
 		default:
 			w.WriteHeader(404)
@@ -353,6 +355,9 @@ func TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate(t 
 	for range 2 {
 		wg.Go(func() { errs <- handler.OnUnauthorized(ctx, unauthorized(origin, "a1")) })
 	}
+	// The refresh is in flight at the token endpoint; both callers have been started.
+	<-reached
+	close(hold)
 	wg.Wait()
 	close(errs)
 	for err := range errs {
@@ -1061,11 +1066,13 @@ func TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect(t *tes
 	var stalled []string
 	var mu sync.Mutex
 	release := make(chan struct{})
+	arrived := make(chan struct{}, 64)
 	// Accepts every request and never answers.
 	origin := listen(t, func(_ http.ResponseWriter, r *http.Request, _ string) {
 		mu.Lock()
 		stalled = append(stalled, r.URL.Path)
 		mu.Unlock()
+		arrived <- struct{}{}
 		select {
 		case <-r.Context().Done():
 		case <-release:
@@ -1087,12 +1094,12 @@ func TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect(t *tes
 			_, err := oauth.AuthorizeMcp(ctx, provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp"})
 			done <- err
 		}()
-		deadline := time.Now().Add(10 * time.Second)
 		for count() != before+1 {
-			if time.Now().After(deadline) {
+			select {
+			case <-arrived:
+			case <-time.After(10 * time.Second):
 				t.Fatal("the flow never reached the stalled request")
 			}
-			time.Sleep(time.Millisecond)
 		}
 		cancel()
 		select {
@@ -1157,5 +1164,77 @@ func TestMCPOAuthRejectsNonHTTPAuthorizationEndpointsWhichThePlatformURLHandlerW
 		if err == nil || !strings.HasPrefix(err.Error(), "Invalid authorization endpoint ") {
 			t.Fatalf("StartAuthorization of %q: err = %v", value, err)
 		}
+	}
+}
+
+// A wait that ends with its context frees its state, so the same state can wait again; a wait begun after Close fails at once (D370).
+func TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext(t *testing.T) {
+	callback, err := oauth.ListenOAuthCallbackServer(oauth.OAuthCallbackServerOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	registered := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		_, err := callback.WaitForCallback(oauth.WithCallbackRegistered(ctx, func() { close(registered) }), "s1")
+		done <- err
+	}()
+	<-registered
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled wait = %v", err)
+	}
+	pending := startWait(t, callback, "s1")
+	//nolint:bodyclose // readAllBody closes the body
+	response, err := http.Get(callback.RedirectURL + "?code=abc&state=s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = readAllBody(response)
+	if received, err := pending(); err != nil || received.Code != "abc" {
+		t.Fatalf("second wait = %#v, %v", received, err)
+	}
+	_ = callback.Close()
+	if _, err := callback.WaitForCallback(t.Context(), "s2"); err == nil || err.Error() != "OAuth callback server closed" {
+		t.Fatalf("wait after Close = %v", err)
+	}
+}
+
+// D373: the exchange that consumed the PKCE verifier drops it from the stored state.
+func TestAuthorizeMcpDropsTheVerifierAfterTheExchange(t *testing.T) {
+	ctx := t.Context()
+	origin := listen(t, func(w http.ResponseWriter, r *http.Request, serverOrigin string) {
+		switch r.URL.Path {
+		case "/.well-known/oauth-protected-resource/mcp":
+			jsonResponse(w, 200, map[string]any{"resource": serverOrigin + "/mcp"})
+		case "/.well-known/oauth-authorization-server":
+			jsonResponse(w, 200, map[string]any{
+				"issuer": serverOrigin, "authorization_endpoint": serverOrigin + "/authorize", "token_endpoint": serverOrigin + "/token",
+				"response_types_supported": []string{"code"},
+			})
+		case "/token":
+			jsonResponse(w, 200, map[string]any{"access_token": "a1", "token_type": "Bearer"})
+		default:
+			w.WriteHeader(404)
+		}
+	})
+	store := &oauth.MemoryOAuthStateStore{}
+	provider, err := oauth.NewMcpOAuthProvider(oauth.McpOAuthProviderOptions{
+		ServerURL: origin + "/mcp", RedirectURL: "http://127.0.0.1/callback", ClientMetadata: oauth.OAuthClientMetadata{ClientName: "test"},
+		ClientID: "client", Store: store, OnRedirect: func(context.Context, oauth.URL) error { return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := provider.SaveCodeVerifier(ctx, "verifier"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := oauth.AuthorizeMcp(ctx, provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp", AuthorizationCode: "code"}); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := store.Load(ctx)
+	if state == nil || state.Tokens == nil || state.Tokens.AccessToken != "a1" || state.CodeVerifier != "" {
+		t.Fatalf("state = %#v", state)
 	}
 }

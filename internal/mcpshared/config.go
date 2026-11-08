@@ -119,6 +119,7 @@ func validateBaseFields(fields map[string]json.RawMessage) string {
 	return ""
 }
 
+// pig divergence (D372): Pi main 76c040a2a validates the shared fields, then the url, headers and OAuth, and the exposure last; Pi 1.5.0 checked the exposure first.
 func validateHTTPFields(fields map[string]json.RawMessage, url string, options McpServerConfigOptions) (nodeurl.HTTPURL, string) {
 	parsed, err := nodeurl.ParseHTTPURL(url)
 	if err != nil {
@@ -206,9 +207,11 @@ func validateOAuth(fields map[string]json.RawMessage, options McpServerConfigOpt
 	port, hasPort := 0, false
 	if v, ok := oauth["callbackPort"]; ok {
 		var n float64
+		//portlint:allow numbers a JSON number is finite, and a value outside the int range converts to a different float, so the check still rejects it like Number.isInteger (config.ts validateOAuth)
 		if err := json.Unmarshal(v, &n); err != nil || len(v) == 0 || v[0] == '"' || n != float64(int(n)) || n < 1 || n > 65535 {
 			return "oauth.callbackPort must be a port number"
 		}
+		//portlint:allow numbers n is an integer from 1 to 65535 here (config.ts validateOAuth)
 		port, hasPort = int(n), true
 	}
 	callbackURL, hasCallbackURL := "", false
@@ -220,6 +223,7 @@ func validateOAuth(fields map[string]json.RawMessage, options McpServerConfigOpt
 		callbackURL, hasCallbackURL = s, true
 		u, _ := nodeurl.ParseHTTPURL(s)
 		if u.Port != "" && hasPort {
+			//portlint:allow numbers u.Port is the serialized port of a parsed URL: at most five decimal digits, or empty (config.ts validateOAuth)
 			if p, _ := strconv.Atoi(u.Port); p != port {
 				return "oauth.callbackUrl and oauth.callbackPort name different ports"
 			}
