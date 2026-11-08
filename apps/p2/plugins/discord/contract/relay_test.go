@@ -221,7 +221,26 @@ type fakeState struct {
 	state State
 }
 
-func (f *fakeState) Value() State { f.mu.Lock(); defer f.mu.Unlock(); return f.state }
+// Value is a copy, as the server's state reads decode a new one each time.
+func (f *fakeState) Value() State {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := State{Bindings: map[string]*Binding{}, Pending: map[string]*Pending{}}
+	for key, binding := range f.state.Bindings {
+		copy := *binding
+		copy.Threads = map[string]*ThreadBinding{}
+		for id, thread := range binding.Threads {
+			each := *thread
+			copy.Threads[id] = &each
+		}
+		out.Bindings[key] = &copy
+	}
+	for key, pending := range f.state.Pending {
+		copy := *pending
+		out.Pending[key] = &copy
+	}
+	return out
+}
 func (f *fakeState) Change(_ context.Context, update func(*State)) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -375,7 +394,7 @@ func TestSaysWhyWhenATurnEndsWithoutAnAnswerOrNeverEnds(t *testing.T) {
 	eq(t, "text", posts[len(posts)-1].Text, "(No answer: The model failed.)")
 	trigger := r.discord.say("c1", message("<@"+botID+"> two"))
 	r.on("bot-a", trigger)
-	r.state.Value().Pending[trigger.ID].Since -= PendingTimeout + 1
+	_ = r.state.Change(ctx, func(draft *State) { draft.Pending[trigger.ID].Since -= PendingTimeout + 1 })
 	r.check()
 	posts = r.discord.posts()
 	if !strings.Contains(posts[len(posts)-1].Text, "did not answer in time") {
@@ -712,9 +731,11 @@ func TestPutsOnlyTheNewest200IntoAHugeBatch(t *testing.T) {
 func TestCatchesUpAfterDowntimeOneBatchPerLinkAndThread(t *testing.T) {
 	r := setup(t, binding(func(b *Binding) { b.Cursor = sp("1") }))
 	delivered := r.discord.say("c1", message("<@"+botID+"> already answered"))
-	link := r.state.Value().Bindings["c1"]
-	link.Cursor = sp(delivered.ID)
-	link.Threads["t1"] = &ThreadBinding{Conversation: 41, Name: "Release plan", Cursor: sp("1")}
+	_ = r.state.Change(ctx, func(draft *State) {
+		link := draft.Bindings["c1"]
+		link.Cursor = sp(delivered.ID)
+		link.Threads["t1"] = &ThreadBinding{Conversation: 41, Name: "Release plan", Cursor: sp("1")}
+	})
 	r.discord.say("c1", message("good morning"))
 	r.discord.say("c1", message("<@"+botID+"> me too", by("u9", "Eve")))
 	r.discord.say("c1", message("<@"+botID+"> first question"))
