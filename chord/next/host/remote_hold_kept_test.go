@@ -493,8 +493,8 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 		keptWant(t, "ran", ran.all(), []string(nil))
 	})
 
-	// hold.test.ts: calls in flight across a `loading` unbind › a failed unbind still rejects: a live failure answers its calls with the failure, later ones not_ready
-	t.Run("a failed unbind still rejects: a live failure answers its calls with the failure, later ones not_ready", func(t *testing.T) {
+	// hold.test.ts: calls in flight across a `loading` unbind › a failed unbind still rejects: a live failure answers its calls with the failure, and calls crossing it too
+	t.Run("a failed unbind still rejects: a live failure answers its calls with the failure, and calls crossing it too", func(t *testing.T) {
 		gate := newSignal()
 		t.Cleanup(gate.fire)
 		var self Self
@@ -527,10 +527,10 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 			t.Fatalf("error = call %d %q, want call 0 it broke", call, text)
 		}
 		peer.Next("failed")
-		// Told a failure, the hold takes no calls by the old names.
+		// Told a failure, the hold takes no calls by the old names: one that crossed the `failed` gets that cause.
 		k.call(1, "ping")
-		if call, code, _, _ := k.error(); call != 1 || code != "not_ready" {
-			t.Fatalf("error = call %d %s, want call 1 not_ready", call, code)
+		if call, _, _, text := k.error(); call != 1 || text != "it broke" {
+			t.Fatalf("error = call %d %q, want call 1 it broke", call, text)
 		}
 		gate.fire()
 	})
@@ -642,5 +642,84 @@ func TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay(t *testing.T) {
 		rel.Transported()
 		// Only the call that ran on the old code ran: the kept one was aborted at the worker.
 		keptWant(t, "ran", ran.all(), []string{"1"})
+	})
+}
+
+// pi: packages/chord/test/remote/hold.test.ts (Pi edc9c6989): the reload fixes of calls crossing a `failed` or a `bound` on the wire.
+func TestHoldCallsCrossingAFailedOrABoundOnTheWire(t *testing.T) {
+	// hold.test.ts: a call by the old variant's index crossing a fresh bound of another variant is decoded by the old names (audit F4)
+	t.Run("a call by the old variant's index crossing a fresh bound of another variant is decoded by the old names (audit F4)", func(t *testing.T) {
+		ran := &keptRan{}
+		k := keptServer(t, keptCode{n: 1, ran: ran}, keptOptions{noAck: true})
+		k.peer.Ack(link.Optional[int]{})
+		k.reload(keptCode{n: 2, variant: "b", ran: ran})
+		bound := k.peer.Next("bound").(*link.BoundMessage)
+		b := wireNames(t, keptContract, "b")
+		if bound.Holds[0].Variant != b.Variant {
+			t.Fatalf("variant = %d, want %d", bound.Holds[0].Variant, b.Variant)
+		}
+		// Sent before the consumer applied that `bound`: by variant a's indexes (`bump` is 0, which is `ping` in b).
+		k.call(0, "bump")
+		k.call(1, "ping")
+		k.sync()
+		first := k.answersTo(0)
+		if len(first) != 1 || first[0].Kind() != "error" {
+			t.Fatalf("answers to 0 = %v, want one error", first)
+		}
+		if inner := first[0].(*link.ErrorMessage).Error.Value("error").(*delta.JsonObject); inner.Value("code") != "invalid" || inner.Value("reason") != "member" {
+			t.Fatalf("error = %s, want invalid/member", rhWire(t, first[0].(*link.ErrorMessage).Error))
+		}
+		second := k.answersTo(1)
+		if len(second) != 1 || second[0].Kind() != "result" || partValue(t, second[0].(*link.ResultMessage).Value) != 2.0 {
+			t.Fatalf("answers to 1 = %v, want the result 2", second)
+		}
+		keptWant(t, "ran", ran.all(), []string{"ping"})
+		// Applied and acknowledged: now by variant b's indexes.
+		k.peer.Ack(link.Optional[int]{})
+		k.peer.Send(&link.CallMessage{Call: 2, Hold: 0, Method: b.Methods["ping"]})
+		if call, value := k.result(); call != 2 || value != 2.0 {
+			t.Fatalf("result = %d %v, want 2 2", call, value)
+		}
+		keptWant(t, "ran", ran.all(), []string{"ping", "ping"})
+		if k.peer.Closed() {
+			t.Fatalf("the link closed")
+		}
+	})
+
+	// hold.test.ts: a call crossing a removal's failed gets the removal's cause, never not_ready (audit F3)
+	t.Run("a call crossing a removal's failed gets the removal's cause, never not_ready (audit F3)", func(t *testing.T) {
+		k := keptServer(t, keptCode{n: 1}, keptOptions{})
+		reloadMust(t)(k.server.Reload(nil, background, ReloadOptions{}))
+		failed := k.peer.Next("failed").(*link.FailedMessage)
+		if failed.Cause.Kind != "waiting" || !strings.Contains(rhWire(t, failed.Cause.Error), "unavailable") {
+			t.Fatalf("cause = %s, want waiting unavailable", rhJSON(t, failed.Cause))
+		}
+		// Sent as a consumer sends it before the `failed` reaches it.
+		k.call(0, "ping")
+		answer := k.peer.Next("error").(*link.ErrorMessage)
+		rhEqual(t, "error", answer.Error, failed.Cause.Error)
+	})
+
+	// hold.test.ts: a call crossing a version refusal's failed gets contract_mismatch, never not_ready (audit F3)
+	t.Run("a call crossing a version refusal's failed gets contract_mismatch, never not_ready (audit F3)", func(t *testing.T) {
+		k := keptServer(t, keptCode{n: 1}, keptOptions{})
+		// The new code serves version 2 only: the version 1 hold is refused.
+		answer := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 2.0, nil }
+		k.reloadFacet(DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(keptV2, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+				return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
+					State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant(jsonObject("text", "v2"))},
+					Methods: map[string]contracts.MethodFunction{"bump": answer, "ping": answer},
+				}}, nil
+			}, ServeOptions{})
+		}))
+		failed := k.peer.Next("failed").(*link.FailedMessage)
+		if failed.Cause.Kind != "waiting" || !strings.Contains(rhWire(t, failed.Cause.Error), "contract_mismatch") {
+			t.Fatalf("cause = %s, want waiting contract_mismatch", rhJSON(t, failed.Cause))
+		}
+		k.call(0, "ping")
+		if call, code, _, _ := k.error(); call != 0 || code != "contract_mismatch" {
+			t.Fatalf("error = call %d %s, want call 0 contract_mismatch", call, code)
+		}
 	})
 }

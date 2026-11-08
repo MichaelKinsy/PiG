@@ -61,6 +61,8 @@ type providerSide struct {
 	sent []*hostLink
 	// inFlight is this host's own messages in flight.
 	inFlight int
+	// ownSent and ownAcked count this host's own `bound` and `state` messages sent, and acknowledged by its consumer.
+	ownSent, ownAcked int
 	// touchedHolds are the holds the current batch touched, in order; its flush sends or queues them.
 	touchedHolds []*hold
 	// waiting are the holds whose ops wait in their pending queues for a slot.
@@ -507,9 +509,7 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 	}
 	served := entry.(*hold)
 	if !served.callable() {
-		p.refuse(message.Call, data.NewChordError(data.ChordErrorInit{
-			Code: data.CodeNotReady, Message: fmt.Sprintf("hold %d: not bound yet", served.id),
-		}, nil))
+		p.refuse(message.Call, served.refusal())
 		return nil, nil
 	}
 	name, resultBytes, err := served.method(message.Method)
@@ -598,8 +598,16 @@ func (p *providerSide) ack() {
 		return
 	}
 	p.inFlight--
+	p.ownAcked++
 	p.slotFreed()
 }
+
+// nextOwn is the number the next of this host's own `bound` and `state` messages gets (counted from 1).
+func (p *providerSide) nextOwn() int { return p.ownSent + 1 }
+
+// acknowledged is whether its consumer acknowledged this host's own message number own, so applied it: a call it sent after
+// that arrives after the `ack` (one direction keeps its order).
+func (p *providerSide) acknowledged(own int) bool { return p.ownAcked >= own }
 
 // flush is the end of a batch: while a slot is free and nothing waits, one `state` message with an entry per touched
 // hold; otherwise each touched hold's ops join its pending queues until a slot frees.
@@ -684,6 +692,7 @@ func (p *providerSide) result(id int, result any, bytes bool) (*link.ResultMessa
 // sendOwn sends one of this host's own `bound` or `state` messages, taking a slot.
 func (p *providerSide) sendOwn(message link.OriginMessage) {
 	p.inFlight++
+	p.ownSent++
 	p.sent = append(p.sent, nil)
 	p.send(message)
 }
