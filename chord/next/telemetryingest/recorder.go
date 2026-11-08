@@ -71,6 +71,10 @@ type Recorder struct {
 	droppedSpans         int
 	droppedMeasurements  int
 	stopped              bool
+	facade               interface {
+		telemetry.TelemetryMetrics
+		telemetry.TelemetryPropagation
+	}
 }
 
 var (
@@ -85,10 +89,29 @@ func NewRecorder(scope func() string, capacity int) *Recorder {
 }
 
 // Metrics is the adapter's metric capability, itself.
-func (recorder *Recorder) Metrics() telemetry.TelemetryMetrics { return recorder }
+func (recorder *Recorder) Metrics() telemetry.TelemetryMetrics {
+	if recorder.facade != nil {
+		return recorder.facade
+	}
+	return recorder
+}
 
 // Propagation is the adapter's propagation capability, itself.
-func (recorder *Recorder) Propagation() telemetry.TelemetryPropagation { return recorder }
+func (recorder *Recorder) Propagation() telemetry.TelemetryPropagation {
+	if recorder.facade != nil {
+		return recorder.facade
+	}
+	return recorder
+}
+
+// Facade makes the capabilities its spans hand out (their Metrics and Propagation) those of facade, an adapter built on
+// this recorder (the SQLite store): a span of the store carries the store. Set once, before the first span.
+func (recorder *Recorder) Facade(facade interface {
+	telemetry.TelemetryMetrics
+	telemetry.TelemetryPropagation
+}) {
+	recorder.facade = facade
+}
 
 // Stopped reports whether it stopped: later spans are inert, later measurements ignored.
 func (recorder *Recorder) Stopped() bool {
@@ -145,8 +168,8 @@ type remoteParent struct {
 func (parent *remoteParent) StartSpan(options telemetry.SpanOptions, callback func(telemetry.TelemetrySpan) error) error {
 	return parent.owner.start(&parent.identity, options, callback)
 }
-func (parent *remoteParent) Metrics() telemetry.TelemetryMetrics         { return parent.owner }
-func (parent *remoteParent) Propagation() telemetry.TelemetryPropagation { return parent.owner }
+func (parent *remoteParent) Metrics() telemetry.TelemetryMetrics         { return parent.owner.Metrics() }
+func (parent *remoteParent) Propagation() telemetry.TelemetryPropagation { return parent.owner.Propagation() }
 func (parent *remoteParent) recorderIdentity() identity                  { return parent.identity }
 
 // inertSpan is what a stopped recorder or a settled span hands out: it records nothing and keeps the recorder's
@@ -160,8 +183,8 @@ func (inertSpan) AddLink(telemetry.SpanLink)                       {}
 func (inertSpan) AddEvent(string, telemetry.SpanAttributes)        {}
 func (inertSpan) SetAttributes(telemetry.SpanAttributes)           {}
 func (inertSpan) SetStatus(telemetry.SpanStatus)                   {}
-func (span inertSpan) Metrics() telemetry.TelemetryMetrics         { return span.owner }
-func (span inertSpan) Propagation() telemetry.TelemetryPropagation { return span.owner }
+func (span inertSpan) Metrics() telemetry.TelemetryMetrics         { return span.owner.Metrics() }
+func (span inertSpan) Propagation() telemetry.TelemetryPropagation { return span.owner.Propagation() }
 
 type link struct {
 	traceID, spanID string
@@ -190,8 +213,8 @@ type recorderSpan struct {
 }
 
 func (span *recorderSpan) recorderIdentity() identity                  { return span.identity }
-func (span *recorderSpan) Metrics() telemetry.TelemetryMetrics         { return span.owner }
-func (span *recorderSpan) Propagation() telemetry.TelemetryPropagation { return span.owner }
+func (span *recorderSpan) Metrics() telemetry.TelemetryMetrics         { return span.owner.Metrics() }
+func (span *recorderSpan) Propagation() telemetry.TelemetryPropagation { return span.owner.Propagation() }
 
 func (span *recorderSpan) StartSpan(options telemetry.SpanOptions, callback func(telemetry.TelemetrySpan) error) error {
 	span.owner.mu.Lock()
