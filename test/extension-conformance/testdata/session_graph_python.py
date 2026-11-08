@@ -684,6 +684,8 @@ def model_runtime_script(ctx, args):
     r["login"] = {"credential": credential, "prompts": seen, "events": events2, "listed": sorted(c["providerId"] for c in rt.list_credentials()), "status": rt.get_provider_auth_status("openai")}
     rt.logout("openai")
     r["login"]["afterLogout"] = sorted(c["providerId"] for c in rt.list_credentials())
+    rt.settle_credential_writes()
+    r["settled"] = True
     with open(auth) as handle:
         r["stored"] = json.load(handle)
     return r

@@ -167,6 +167,8 @@
     (let ((model (b-with (b-native-model "rt-native") "provider" "rt-native")))
       (pig:runtime-register-native-provider rt (b-native-provider "rt-native" "Runtime Native" model "r" (lambda (input) (declare (ignore input)) nil) (lambda (input) (declare (ignore input)) nil)))
       (pig:runtime-unregister-provider rt "rt-native"))
+    (pig:runtime-settle-credential-writes rt)
+    (setf (gethash "settled" r) (b-yes t))
     (setf (gethash "stored" r) (b-read-json auth))
     r))
 

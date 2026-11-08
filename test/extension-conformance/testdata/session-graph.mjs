@@ -625,6 +625,7 @@ async function modelRuntimeScript({ mrAuth, mrModels, mrStore, mrServer }) {
   r.login = { credential: plain(credential), prompts: seen, events: events2, listed: (await rt.listCredentials()).map((entry) => entry.providerId).sort(), status: rt.getProviderAuthStatus("openai") };
   await rt.logout("openai");
   r.login.afterLogout = (await rt.listCredentials()).map((entry) => entry.providerId).sort();
+  r.settled = (await rt.settleCredentialWrites()) === undefined;
   r.stored = readJson(mrAuth);
   return r;
 }

@@ -215,7 +215,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-runtime.js",
-      "sha256": "4ecbf3c107a38f4736a969ac5b13eb21afb9ccd8089dc0ef4be7f837dbca46b0"
+      "sha256": "a9b00ec30579a467c3ed962866aa3d2a01c21abcb99b016f398bba5c0e5faa9c"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/models-store.js",
@@ -271,7 +271,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/runtime-credentials.js",
-      "sha256": "2bf389ca2b04bd4dcee56433ca845cd8d9d96d0ccf84d2d0e9ad2a5e3957bda1"
+      "sha256": "d89cc868493c450f4f0f3fc47b925048c6b3ca86bcab0b575338de5d9c5ac6db"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/sdk.js",

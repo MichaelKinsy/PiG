@@ -13114,6 +13114,8 @@ var RuntimeCredentials = class {
   }
   store;
   overrides = /* @__PURE__ */ new Map();
+  /** Modifications not yet written or failed, for example an OAuth refresh. */
+  pendingModifications = /* @__PURE__ */ new Set();
   constructor(store) {
     this.store = store;
   }
@@ -13140,7 +13142,19 @@ var RuntimeCredentials = class {
     return [...entries.values()];
   }
   modify(providerId, fn, options) {
-    return this.store.modify(providerId, fn, options);
+    const modification = this.store.modify(providerId, fn, options);
+    const pending = modification.then(() => void 0, () => void 0);
+    this.pendingModifications.add(pending);
+    void pending.finally(() => this.pendingModifications.delete(pending));
+    return modification;
+  }
+  /**
+   * Resolves when every modification started so far is written or failed. An OAuth refresh may
+   * already have spent the single-use refresh token, so exiting before its result is written would
+   * leave only the spent token in auth.json.
+   */
+  async settled() {
+    await Promise.all(this.pendingModifications);
   }
   async delete(providerId, options) {
     options?.signal?.throwIfAborted();
@@ -13559,6 +13573,13 @@ var ModelRuntime = class _ModelRuntime {
       this.credentials.removeRuntimeApiKey(providerId);
       await this.synchronizeCredentialState(providerId, "removeRuntimeApiKey", void 0, signal);
     });
+  }
+  /**
+   * Wait until credential writes already in progress finish, such as an OAuth refresh started by a
+   * background catalog refresh. Call before the process exits so a rotated token is not lost.
+   */
+  settleCredentialWrites() {
+    return this.credentials.settled();
   }
   listCredentials(options) {
     return this.credentials.list(options);

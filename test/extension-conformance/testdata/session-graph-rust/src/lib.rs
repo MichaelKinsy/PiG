@@ -2213,6 +2213,8 @@ fn model_runtime_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     rt.logout("openai")?;
     login["afterLogout"] = json!(listed(&rt)?);
     r.insert("login".into(), login);
+    rt.settle_credential_writes()?;
+    r.insert("settled".into(), json!(true));
     r.insert(
         "stored".into(),
         serde_json::from_str(&std::fs::read_to_string(auth)?).map_err(io::Error::other)?,
