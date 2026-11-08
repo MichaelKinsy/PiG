@@ -787,18 +787,23 @@ func TestAToolCallInTheManagerDoesNotHoldTheHostsLoopAndLeaseChangesRacingTheHos
 		noError(t, <-slow)
 	})
 	t.Run("setLocations and releaseLeases answered while the host closes", func(t *testing.T) {
-		for round := 0; round < 25; round++ {
+		for round := 0; round < 20; round++ {
 			h := newMcpHost(t, func(log string) map[string]any { return map[string]any{"files": stdioEntry(t, log, nil)} })
 			one := h.at("one")
-			s1 := h.worker("s1", 1)
-			done := make(chan struct{})
-			go func() {
-				defer close(done)
-				_ = s1.setLocations(one)
-				_, _ = h.manager.Call("releaseLeases", delta.JsonObjectOf("session", "s1", "generation", float64(1)), p2test.Background)
-			}()
+			var calls sync.WaitGroup
+			for caller := 0; caller < 8; caller++ {
+				session := fmt.Sprintf("s%d", caller)
+				calls.Add(1)
+				go func() {
+					defer calls.Done()
+					for generation := 1; generation <= 4; generation++ {
+						_, _ = h.manager.Call("setLocations", delta.JsonObjectOf("session", session, "generation", float64(generation), "incarnation", "i", "locations", []any{one}), p2test.Background)
+						_, _ = h.manager.Call("releaseLeases", delta.JsonObjectOf("session", session, "generation", float64(generation)), p2test.Background)
+					}
+				}()
+			}
 			h.shutdown()
-			<-done
+			calls.Wait()
 		}
 	})
 }
