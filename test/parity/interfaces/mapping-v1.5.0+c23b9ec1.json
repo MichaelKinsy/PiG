@@ -123799,9 +123799,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Rollout"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestRolloutHostStoppedIsTheHostThatStoppedCleanly",
         "test:chord/nextnode/app/app_surfaces_test.go#TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed",
-        "test:chord/nextnode/app/reload_rollout_test.go#TestARolloutAcrossHostsReloadsTheServerThenTheRunningWorkersThenTheClientsAWorkerNotRunningStartsOnTheNewCode"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed"
       ]
     },
     {
