@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// packages/ai/src/types.ts:295-300 (fetchDeferred, cancelDeferred).
+// packages/ai/src/types.ts:295-300 (fetchDeferred, cancelDeferred). A setup that rejects under an aborted signal ends as "aborted" (lazy.ts:83, Pi f3a64af07).
 func TestLazyAPISetupOrderingCancellationAndLoadFailure(t *testing.T) {
 	started := make(chan struct{})
 	ctx, cancel := context.WithCancel(t.Context())
@@ -27,7 +27,7 @@ func TestLazyAPISetupOrderingCancellationAndLoadFailure(t *testing.T) {
 	}
 	cancel()
 	result := stream.Result()
-	if result.StopReason != StopReasonError || result.ErrorMessage != context.Canceled.Error() || result.Provider != "test-provider" || result.Model != "model" {
+	if result.StopReason != StopReasonAborted || result.ErrorMessage != context.Canceled.Error() || result.Provider != "test-provider" || result.Model != "model" {
 		t.Fatalf("setup rejection=%#v", result)
 	}
 	events := []AssistantEventType{}
