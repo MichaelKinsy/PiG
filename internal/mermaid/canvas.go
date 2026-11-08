@@ -296,7 +296,25 @@ func (c *canvas) toLines() (plain []string, styled [][]Span, width int) {
 		if last > width {
 			width = last
 		}
+		// Size the row's spans and bytes first, so neither grows by doubling.
+		runs, size := 0, 0
+		cr, ct, chf := RoleNone, "", ""
+		for x := 0; x < last; x++ {
+			i := c.idx(x, y)
+			if c.ch[i] == cont {
+				continue
+			}
+			role, tag, href := c.role[i], c.tagAt(i), c.hrefAt(i)
+			if size == 0 || role != cr || tag != ct || href != chf {
+				runs++
+			}
+			cr, ct, chf = role, tag, href
+			size += len(c.ch[i])
+		}
 		var spans []Span
+		if runs > 0 {
+			spans = make([]Span, 0, runs)
+		}
 		push := func(text string, role Role, tag, href string) {
 			if text == "" {
 				return
@@ -312,7 +330,7 @@ func (c *canvas) toLines() (plain []string, styled [][]Span, width int) {
 			spans = append(spans, span)
 		}
 		var plainRow strings.Builder
-		plainRow.Grow(last)
+		plainRow.Grow(size)
 		// A run is a slice of the row built so far: Builder.String shares the
 		// buffer and appends never touch written bytes, so no run is copied.
 		runStart := 0
