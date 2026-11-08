@@ -308,10 +308,10 @@ def new_extension() -> pig_sdk.Extension:
 		wantStderr            string
 		wantToolResult        bool
 	}{
-		{"throwing handler/text", "text", throwing, "Extension error (" + throwing + "): shutdown boom\n", false},
-		{"throwing handler/json", "json", throwing, "Extension error (" + throwing + "): shutdown boom\n", false},
-		{"slow handler/text", "text", slow, "test-faux: unhandled request \"(no output)\n\nCommand exited with code 137\"\n", true},
-		{"python handler waiting for idle/text", "text", waitsForIdle, "test-faux: unhandled request \"(no output)\n\nCommand exited with code 137\"\n", true},
+		{"throwing handler/text", "text", throwing, "Extension error (" + throwing + "): shutdown boom\nThis operation was aborted\n", true},
+		{"throwing handler/json", "json", throwing, "Extension error (" + throwing + "): shutdown boom\n", true},
+		{"slow handler/text", "text", slow, "This operation was aborted\n", true},
+		{"python handler waiting for idle/text", "text", waitsForIdle, "This operation was aborted\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workDir, agentDir, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()

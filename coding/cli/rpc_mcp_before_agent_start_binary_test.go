@@ -28,7 +28,10 @@ func TestRPCPromptAnswersAfterTheBuiltinMCPBeforeAgentStartHandler(t *testing.T)
 		want  []string
 	}{
 		{name: "builtin mcp", input: steerFirst, want: []string{"s", "p"}},
-		{name: "no extensions", input: steerFirst, extra: []string{"--no-extensions"}, want: []string{"p", "s"}},
+		// The pin's prompt() awaits the async _preparePrompt before _startRun (Pi main, #9154), which puts the prompt's answer one microtask later still:
+		// without the extension a prompt that follows a steer in the batch answers after it, and one that precedes it answers first. Probed on the pin (Pi 1.5.0+c23b9ec1).
+		{name: "no extensions", input: steerFirst, extra: []string{"--no-extensions"}, want: []string{"s", "p"}},
+		{name: "no extensions prompt first", input: promptFirst, extra: []string{"--no-extensions"}, want: []string{"p", "s"}},
 		// Pi 1.1.0 prepared inline and answered this prompt first; Pi 1.2.0's _prepareRun hop puts it after the steer.
 		{name: "builtin mcp prompt first", input: promptFirst, want: []string{"s", "p"}},
 	} {
