@@ -23,7 +23,7 @@ import (
 
 func TestAppLaysOutTheDataDirectoryServesAppInfoAndTheServersPluginsAndClosesEverything(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, nil)
-	if got := dirEntries(t, s.dataDir); !slices.Equal(got, []string{"logs", "owner-token", "plugins", "server", "workers"}) {
+	if got := dirEntries(t, s.dataDir); !slices.Equal(got, []string{"cache", "logs", "owner-token", "plugins", "server", "workers"}) {
 		t.Fatalf("data directory = %v", got)
 	}
 	server := dirEntries(t, filepath.Join(s.dataDir, "server"))
@@ -119,8 +119,8 @@ func TestAppMakesTheDataDirectoryPrivateAtEveryStartAlsoWhenItExistedLooser(t *t
 		}
 		return info.Mode().Perm()
 	}
-	paths := []string{".", "server", "workers", "plugins", "logs", "server/store.sqlite", "server/cookie-secret", "owner-token"}
-	want := []os.FileMode{0o700, 0o700, 0o700, 0o700, 0o700, 0o600, 0o600, 0o600}
+	paths := []string{".", "server", "workers", "plugins", "logs", "cache", "cache/workers", "server/store.sqlite", "server/cookie-secret", "owner-token"}
+	want := []os.FileMode{0o700, 0o700, 0o700, 0o700, 0o700, 0o700, 0o700, 0o600, 0o600, 0o600}
 	for i, path := range paths {
 		if got := mode(path); got != want[i] {
 			t.Fatalf("%s mode = %o, want %o", path, got, want[i])

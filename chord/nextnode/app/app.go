@@ -517,7 +517,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	core = append(core, options.Facets...)
 	for _, kind := range options.Workers {
-		created, err := a.workersOf(kind, opened.layout.DataDir, workerHosts, ctx)
+		created, err := a.workersOf(kind, opened.layout, workerHosts, ctx)
 		if err != nil {
 			return err
 		}
@@ -693,8 +693,10 @@ func hostPackagesOf(api AppAPI, kind AppKind) []string {
 	return packages
 }
 
-// workersOf is the workers component of one worker kind: started with the kit's part of the start data beside the app's.
-func (a *App) workersOf(kind AppWorkerKind, dataDir string, hosts *workerHosts, ctx context.Context) (*workers.Workers, error) {
+// workersOf is the workers component of one worker kind (its base copied after the listen, into the kind's directory under
+// `cache/workers/`): started with the kit's part of the start data beside the app's.
+func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts, ctx context.Context) (*workers.Workers, error) {
+	dataDir := layout.DataDir
 	options := a.options
 	facet := kind.Facet
 	if facet == "" {
@@ -705,6 +707,8 @@ func (a *App) workersOf(kind AppWorkerKind, dataDir string, hosts *workerHosts, 
 	idle := kind.IdleMs
 	return workers.CreateWorkers(a.Host, kind.Kind, workers.WorkersOptions{
 		Kind: facet, Entry: kind.Entry, ExecArgv: kind.ExecArgv, Env: kind.Env,
+		// Each kind's base copy, in its own directory of the data directory's cache, made again at every start.
+		BaseDir: filepath.Join(layout.WorkerBases, kind.Kind.Kind),
 		// The server reaches its workers' kit objects (`HostData`) whatever the app admits.
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
 			return data.SamePrincipal(principal, server, chordctx.Background()) || kind.Authorize(principal, address), nil

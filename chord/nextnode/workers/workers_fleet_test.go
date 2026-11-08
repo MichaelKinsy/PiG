@@ -43,6 +43,8 @@ type fleetOptions struct {
 	env map[string]string
 	// entry is the workers' program: the fixture's by default.
 	entry string
+	// baseDir is the directory the worker base's copy is written into (WorkersOptions.BaseDir).
+	baseDir string
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -133,9 +135,10 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 		entry = fixtureEntry(t)
 	}
 	workers, err := CreateWorkers(server, fixtureSession, WorkersOptions{
-		Kind:  "worker",
-		Entry: entry,
-		Env:   withEnv(fixtureEnvironment("worker"), options.env),
+		Kind:    "worker",
+		Entry:   entry,
+		BaseDir: options.baseDir,
+		Env:     withEnv(fixtureEnvironment("worker"), options.env),
 		Authorize: func(_ data.Principal, address contracts.Address) (bool, error) {
 			if options.onAuthorize != nil {
 				options.onAuthorize(address)

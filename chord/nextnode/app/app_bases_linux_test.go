@@ -5,8 +5,10 @@ package app
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -178,6 +180,49 @@ func TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuil
 	defer stop()
 	if got := surfaceGet(t, s.port, "/", nil).status; got != 200 {
 		t.Fatalf("page = %d, want 200: the build went on", got)
+	}
+	<-s.app.BaseWatched()
+}
+
+// D604: a link's upgrade is held until the bases are built, where Pi's connects at once.
+func TestAppHoldsALinkUntilTheBasesAreBuilt(t *testing.T) {
+	entry, pipe := heldWebEntry(t)
+	s := startUnbuilt(t, nil, withPublicWeb(entry, plainPage))
+	headers := ownerHeaders(t, s.app)
+	status := make(chan int, 1)
+	go func() {
+		request, err := http.NewRequest(http.MethodGet, "http://127.0.0.1:"+strconv.Itoa(s.port)+"/chord", nil)
+		if err != nil {
+			t.Error(err)
+			status <- 0
+			return
+		}
+		for name, value := range headers {
+			request.Header.Set(name, value)
+		}
+		request.Header.Set("Connection", "Upgrade")
+		request.Header.Set("Upgrade", "websocket")
+		request.Header.Set("Sec-WebSocket-Version", "13")
+		request.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+		request.Header.Set("Origin", "http://127.0.0.1:"+strconv.Itoa(s.port))
+		response, err := http.DefaultClient.Do(request)
+		if err != nil {
+			t.Error(err)
+			status <- 0
+			return
+		}
+		_ = response.Body.Close()
+		status <- response.StatusCode
+	}()
+	select {
+	case got := <-status:
+		t.Fatalf("the link answered %d before the bases were built", got)
+	case <-time.After(300 * time.Millisecond):
+	}
+	stop := feedPipe(t, pipe, "export {};")
+	defer stop()
+	if got := <-status; got != http.StatusSwitchingProtocols {
+		t.Fatalf("link = %d, want 101 once the bases are built", got)
 	}
 	<-s.app.BaseWatched()
 }

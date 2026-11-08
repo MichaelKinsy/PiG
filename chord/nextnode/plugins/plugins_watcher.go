@@ -680,7 +680,7 @@ type latch struct {
 func (l *latch) release() {
 	l.remaining--
 	if l.remaining == 0 {
-		close(l.done)
+		close(l.done) //portlint:allow doubleclose the latch counts down to zero once: remaining reaches 0 on exactly one release, in a section
 	}
 }
 
@@ -735,7 +735,7 @@ func (w *pluginWatcher) recordBase(inputs BaseInputs) <-chan struct{} {
 	w.records = append(w.records, record)
 	compared := &latch{remaining: len(record), done: make(chan struct{})}
 	if len(record) == 0 {
-		close(compared.done)
+		close(compared.done) //portlint:allow doubleclose a latch made in this call, closed here only when it has nothing to wait for (no release follows)
 	}
 	for path := range record {
 		w.recorded[path] = struct{}{}
