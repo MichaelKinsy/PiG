@@ -80,12 +80,12 @@ func (plan *RadiusMcpServerPlan) Apply() (bool, error) {
 // with `auth` set, as Pi's `{ ...existing.config, auth }` does, and a new one is the Radius MCP URL. `auth` replaces the
 // MCP OAuth sign-in, so `oauth` is removed.
 func radiusMcpServerConfig(mcpPath, name string, existing bool, providerID string) (json.RawMessage, error) {
-	// The one-member object Pi writes as { provider }; a map would encode in sorted key order, which is the same for one key.
-	provider, err := json.Marshal(providerID)
+	auth, err := json.Marshal(struct {
+		Provider string `json:"provider"`
+	}{providerID})
 	if err != nil {
 		return nil, err
 	}
-	auth := append(append([]byte(`{"provider":`), provider...), '}')
 	server := orderedjson.New()
 	if existing {
 		raw, err := globalMcpServerJSON(mcpPath, name)

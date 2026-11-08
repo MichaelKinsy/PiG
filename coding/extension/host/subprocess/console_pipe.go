@@ -46,16 +46,20 @@ func newConsolePipe(sink io.Writer) (*consolePipe, error) {
 		_ = write.Close()
 		return nil, err
 	}
+	done := make(chan struct{})
 	c := &consolePipe{
 		read:   read,
 		write:  write,
 		sink:   sink,
 		prefix: append([]byte("\x00pig-console-flush:"), hex.EncodeToString(nonce[:])...),
-		done:   make(chan struct{}),
+		done:   done,
 		acks:   make(map[uint64]chan struct{}),
 	}
 	//portlint:allow golifetime the copy ends when the process's write ends and the host's close (finish) end the pipe, and finish waits for it
-	go c.forward()
+	go func() {
+		defer close(done)
+		c.forward()
+	}()
 	return c, nil
 }
 
@@ -75,8 +79,6 @@ func (c *consolePipe) marker(seq uint64) []byte {
 
 // forward forwards the pipe to the sink, removing flush markers and acknowledging them. It never stops on a sink error: a sink drops its own failed writes.
 func (c *consolePipe) forward() {
-	//portlint:allow doubleclose only forward closes done, once, when it returns; one goroutine forwards each pipe
-	defer close(c.done)
 	buf := make([]byte, consoleBufferSize+c.markerLen())
 	held := 0
 	for {
