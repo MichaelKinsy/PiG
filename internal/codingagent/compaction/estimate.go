@@ -67,22 +67,7 @@ func customContentChars(content any) int {
 		}
 		chars := 0
 		for _, block := range blocks {
-			var fields map[string]json.RawMessage
-			if json.Unmarshal(block, &fields) != nil {
-				continue
-			}
-			var kind string
-			if json.Unmarshal(fields["type"], &kind) != nil {
-				continue
-			}
-			switch kind {
-			case "text":
-				var blockText string
-				_ = json.Unmarshal(fields["text"], &blockText)
-				chars += jsLength(blockText)
-			case "image":
-				chars += estimatedImageChars
-			}
+			chars += rawBlockChars(block)
 		}
 		return chars
 	}
@@ -102,6 +87,29 @@ func customContentChars(content any) int {
 			}
 		}
 		return chars
+	}
+	return 0
+}
+
+// rawBlockChars sizes one content block kept as JSON text: a text block by its text, an image block by the image estimate, anything else (or a block that does not decode) as 0.
+func rawBlockChars(block json.RawMessage) int {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(block, &fields) != nil {
+		return 0
+	}
+	var kind string
+	if json.Unmarshal(fields["type"], &kind) != nil {
+		return 0
+	}
+	switch kind {
+	case "text":
+		var text string
+		if json.Unmarshal(fields["text"], &text) != nil {
+			return 0
+		}
+		return jsLength(text)
+	case "image":
+		return estimatedImageChars
 	}
 	return 0
 }
