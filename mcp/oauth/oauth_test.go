@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1018,6 +1019,43 @@ func TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne(t *t
 }
 
 // Pi 1.2.0 packages/mcp/test/oauth.test.ts:537 "MCP OAuth" "stops when its signal aborts, without falling back to a redirect" (#10565):
+
+// Pi main 63ea042ce packages/mcp/test/oauth.test.ts "OAuthCallbackServer pages" "closes while the browser keeps an unused connection open" (#11311)
+func TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen(t *testing.T) {
+	callback, err := oauth.ListenOAuthCallbackServer(oauth.OAuthCallbackServerOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(callback.RedirectURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spare, err := net.Dial("tcp", u.Host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = spare.Close() }()
+	pending := startWait(t, callback, "s1")
+	//nolint:bodyclose // readAllBody closes the body
+	response, err := http.Get(callback.RedirectURL + "?code=abc&state=s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if body := readAllBody(response); body != "Authorization complete. You may close this window." {
+		t.Fatalf("body = %q", body)
+	}
+	if received, err := pending(); err != nil || received.Code != "abc" {
+		t.Fatalf("callback = %#v, %v", received, err)
+	}
+	closed := make(chan struct{})
+	go func() { _ = callback.Close(); close(closed) }()
+	select {
+	case <-closed:
+	case <-time.After(1 * time.Second):
+		t.Fatal("Close did not return while a spare connection was open")
+	}
+}
+
 // the flow stops when its context ends (Go's AbortSignal), without falling back to a redirect.
 func TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect(t *testing.T) {
 	var stalled []string

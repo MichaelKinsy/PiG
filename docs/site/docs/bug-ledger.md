@@ -278,7 +278,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-33fe10d](#bf-33fe10d) | `ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33fe10d-2](#bf-33fe10d-2) | Live-Pi oracles `TestExtensionSelectorMatchesPi` (4,320 probes) and `TestExtensionInputMatchesPi` (1,144… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3452432](#bf-3452432) | Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-348a3a8](#bf-348a3a8) | Markdown no longer shows HTML comments (`<!-- ... -->`) as text in Extension Updates, What's New… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-348a3a8](#bf-348a3a8) | Markdown no longer shows HTML comments (`<!-- ... -->`) as text in Extension Updates, What's New… | PiG's own defect | All platforms | Unreleased |
 | [BF-349684c](#bf-349684c) | A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued… | PiG's own defect | All platforms | Unreleased |
 | [BF-34aa421](#bf-34aa421) | fix(agent): hand the stream function Pi's messages; repair the tool flow in the provider path | PiG's own defect | All platforms | Unreleased |
 | [BF-34b8e92](#bf-34b8e92) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -915,7 +915,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8b9e467](#bf-8b9e467) | `PIG_PROFILE=metrics` reports the exact cumulative allocation counts | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8bc7c8f](#bf-8bc7c8f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-8bf0832](#bf-8bf0832) | A tool card whose call and result are both known when it is first drawn, as after resuming a session or when… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-8c3339c](#bf-8c3339c) | Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-8c3339c](#bf-8c3339c) | Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection… | PiG's own defect | All platforms | Unreleased |
 | [BF-8c3f5a1](#bf-8c3f5a1) | fix(tui): a finished block's hidden thinking run keeps no streaming memos | PiG's own defect | All platforms | Unreleased |
 | [BF-8c5a7a4](#bf-8c5a7a4) | The Go, Python and Rust extension SDKs' `serializeConversation` (`SerializeConversation`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8c7bacf](#bf-8c7bacf) | `delta.AssertValidOp` checks path safety as Pi's `assertValidOp` does: it rejects a negative, fractional… | PiG's own defect | All platforms | 0.5.0 |
@@ -943,8 +943,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9139ed8](#bf-9139ed8) | Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-918f21c](#bf-918f21c) | `formatThousands` (`tui/compaction_summary.go`, compaction-summary-message.ts:40… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-919575a](#bf-919575a) | A JSON syntax error reports what V8's `JSON.parse` reports in two cases it got wrong: a number or string… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-91a0cfd](#bf-91a0cfd) | A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-91a0cfd-2](#bf-91a0cfd-2) | A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-91a0cfd](#bf-91a0cfd) | A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its… | PiG's own defect | All platforms | Unreleased |
+| [BF-91a0cfd-2](#bf-91a0cfd-2) | A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error… | PiG's own defect | All platforms | Unreleased |
 | [BF-91e912a](#bf-91e912a) | Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91f9946](#bf-91f9946) | OpenRouter image generation reads the chat completions body as Pi does, checked against the pinned Pi in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9208423](#bf-9208423) | fix(imageprocessing): an image with no pixels is not encoded as PNG | PiG's own defect | All platforms | Unreleased |
@@ -1725,8 +1725,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fac4703-2](#bf-fac4703-2) | `TestSettingsSelectorMatchesPi` walks every row under rebound, multi-key and unbound `app.message.followUp` /… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fac4703-3](#bf-fac4703-3) | `TestSelectListInputMatchesPi` also runs under the Kitty keyboard protocol (CSI-u enter, escape, ctrl+j… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-facd278](#bf-facd278) | A TIFF image is now decoded the way Pi decodes it (Photon links the `tiff` 0.9.1 crate under `image` 0.24.9)… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-fb4d32e](#bf-fb4d32e) | A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-fb4d32e-2](#bf-fb4d32e-2) | Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm) | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-fb4d32e](#bf-fb4d32e) | A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another… | PiG's own defect | All platforms | Unreleased |
+| [BF-fb4d32e-2](#bf-fb4d32e-2) | Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm) | PiG's own defect | All platforms | Unreleased |
 | [BF-fba9b47](#bf-fba9b47) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
 | [BF-fbd3640](#bf-fbd3640) | The legacy credential migration writes `auth.json` and the rewritten `settings.json` with the key order Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fc1703f](#bf-fc1703f) | Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -5337,17 +5337,15 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **Markdown no longer shows HTML comments (`<!-- ... -->`) as text in Extension Updates, What's New…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D265)
+- **Source:** PiG's own defect
 - **Symptom:** Markdown no longer shows HTML comments (`<!-- ... -->`) as text in Extension Updates, What's New, `/changelog` and messages.
 - **Root cause:** Block html tokens that hold only comments are removed after lexing, in lists and quotes too, with one blank line when it sat between blank lines or at an end; block and inline comments are stripped from the text that renders; an unclosed comment runs to the end of its block.
 - **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 54280c4ff. Then the call-site markers, `tui/markdown_html_comments.go`'s divergence note, `testdata/pi_markdown_overlay.mjs` and this record go; the overlay's anchors stop matching when the pin's `markdown.js` already holds the change.
-- **Fix commits:** `348a3a8859` (2026-11-05), `fe8b5e3ab8` (2026-11-05)
-- **Tests:** `tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsDifferFromPinnedPi`, `tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsMatchPiMain`, `tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsStreamLikeAFreshRender`, `tui/markdown_html_comments_upstream_test.go::TestUpstreamMarkdownHTMLComments`
-- **Release note:** Markdown no longer shows HTML comments (`<!-- ... -->`) as text in Extension Updates, What's New, `/changelog` and messages. A comment-only block disappears with one of its blank lines, so no extra gap remains; an inline comment is skipped, so `See <!-- c --> the docs.` renders `See the docs.`; an unclosed comment stays hidden while it streams. Follows Pi main 54280c4ff ahead of the pin (D265).
+- **Fix commits:** `348a3a8859` (2026-11-05)
+- **Tests:** `tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsMatchPiMain`, `tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsStreamLikeAFreshRender`, `tui/markdown_html_comments_upstream_test.go::TestUpstreamMarkdownHTMLComments`
+- **Release note:** Markdown no longer shows HTML comments (`<!-- ... -->`) as text in Extension Updates, What's New, `/changelog` and messages. A comment-only block disappears with one of its blank lines, so no extra gap remains; an inline comment is skipped, so `See <!-- c --> the docs.` renders `See the docs.`; an unclosed comment stays hidden while it streams. Follows Pi main 54280c4ff.
 
 ### BF-349684c
 
@@ -14167,17 +14165,15 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D304)
+- **Source:** PiG's own defect
 - **Symptom:** Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection starts ends with `aborted` instead of waiting for the start, a sent request settles as `aborted` when the daemon does not answer its cancel within a second, `RemoteExecutionEnv.Exec` enforces its timeout locally, file operations stop waiting for the connection when cancelled, and `ssh` uses `ConnectTimeout=15`.
 - **Root cause:** D304 is a draft, owner sign-off pending. Ports packages/env/test/remote-abort.test.ts.
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing c96e368e2. Then the call-site markers and this record go.
-- **Fix commits:** `8c3339c527` (2026-11-07), `b1333a0834` (2026-11-07), `e36295f188` (2026-11-07)
-- **Tests:** `env/connection_cancelled_request_test.go::TestRequestCancelledWhileTheDaemonStartsIsAbortedAtOnce`, `env/connection_cancelled_request_test.go::TestRequestWithACancelledContextIsNotSentAndIsAborted`, `env/main_test.go::TestMain`, `env/regressions_test.go::TestExecFailureOfATimeoutWithoutATimeout`, `env/remote_abort_test.go::TestConnectionAbortSettlesASentRequestTheDaemonDoesNotAnswer`, `env/remote_abort_test.go::TestConnectionAbortStopsWaitingForAStartThatDoesNotFinish`, `env/remote_abort_test.go::TestRemoteExecOnAHostThatDoesNotAnswer`, `env/remote_abort_test.go::TestRemoteFileOperationsStopWaitingForTheConnectionWhenAborted` and 1 more in docs/bug-ledger.json
-- **Release note:** Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection starts ends with `aborted` instead of waiting for the start, a sent request settles as `aborted` when the daemon does not answer its cancel within a second, `RemoteExecutionEnv.Exec` enforces its timeout locally, file operations stop waiting for the connection when cancelled, and `ssh` uses `ConnectTimeout=15`. Follows Pi main c96e368e2 ahead of the pin (D304).
+- **Fix commits:** `8c3339c527` (2026-11-07)
+- **Tests:** `env/connection_cancelled_request_test.go::TestRequestCancelledWhileTheDaemonStartsIsAbortedAtOnce`, `env/connection_cancelled_request_test.go::TestRequestWithACancelledContextIsNotSentAndIsAborted`, `env/main_test.go::TestMain`, `env/regressions_test.go::TestExecFailureOfATimeoutWithoutATimeout`, `env/remote_abort_test.go::TestConnectionAbortSettlesASentRequestTheDaemonDoesNotAnswer`, `env/remote_abort_test.go::TestConnectionAbortStopsWaitingForAStartThatDoesNotFinish`, `env/remote_abort_test.go::TestRemoteExecOnAHostThatDoesNotAnswer`, `env/remote_abort_test.go::TestRemoteFileOperationsStopWaitingForTheConnectionWhenAborted`
+- **Release note:** Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection starts ends with `aborted` instead of waiting for the start, a sent request settles as `aborted` when the daemon does not answer its cancel within a second, `RemoteExecutionEnv.Exec` enforces its timeout locally, file operations stop waiting for the connection when cancelled, and `ssh` uses `ConnectTimeout=15`. Follows Pi main c96e368e2 ahead of the pin.
 
 ### BF-8c3f5a1
 
@@ -14558,33 +14554,29 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D302)
+- **Source:** PiG's own defect
 - **Symptom:** A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its local `$ref`s: the `$id` was applied twice, so compiling failed with `Unresolved $ref` and tool arguments were rejected under `UnresolvedRefsReject`.
 - **Root cause:** D302 and D303 are drafts, owner sign-off pending.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing 2bd2c2d0a. Then the call-site markers and this record go.
-- **Fix commits:** `27312c857f` (2026-11-07), `91a0cfd13d` (2026-11-07), `b1333a0834` (2026-11-07)
-- **Tests:** `schema/coerce_oracle_test.go::TestCoerceMatchesPi`, `schema/errors_golden_test.go::TestErrorsMatchPi`, `schema/pi_main_follow_upstream_test.go::TestPiMainClosedObjectFindsPropertiesInAnyOrder`, `schema/pi_main_follow_upstream_test.go::TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef`, `schema/pi_main_follow_upstream_test.go::TestPiMainEqual`, `schema/pi_main_follow_upstream_test.go::TestPiMainExplainsNestedResourcesWithARelativeID`, `schema/pi_main_follow_upstream_test.go::TestPiMainLeafChecksAgreeWithTheStandaloneCheck`, `schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveBuildsASchemaThatChecksEveryLevel` and 5 more in docs/bug-ledger.json
-- **Release note:** A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its local `$ref`s: the `$id` was applied twice, so compiling failed with `Unresolved $ref` and tool arguments were rejected under `UnresolvedRefsReject`. The same holds with `unevaluatedProperties` and `unevaluatedItems`, when explaining errors under nested resources and on the first coercion of a schema with `$dynamicRef`. Follows Pi main 2bd2c2d0a ahead of the pin (D302).
+- **Fix commits:** `91a0cfd13d` (2026-11-07)
+- **Tests:** `schema/pi_main_follow_upstream_test.go::TestPiMainClosedObjectFindsPropertiesInAnyOrder`, `schema/pi_main_follow_upstream_test.go::TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef`, `schema/pi_main_follow_upstream_test.go::TestPiMainEqual`, `schema/pi_main_follow_upstream_test.go::TestPiMainExplainsNestedResourcesWithARelativeID`, `schema/pi_main_follow_upstream_test.go::TestPiMainLeafChecksAgreeWithTheStandaloneCheck`, `schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveBuildsASchemaThatChecksEveryLevel`, `schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveSchemasNestWithDistinctIDs`, `schema/pi_main_follow_upstream_test.go::TestPiMainRejectsNaNAndInfinityAsANumber` and 3 more in docs/bug-ledger.json
+- **Release note:** A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its local `$ref`s: the `$id` was applied twice, so compiling failed with `Unresolved $ref` and tool arguments were rejected under `UnresolvedRefsReject`. The same holds with `unevaluatedProperties` and `unevaluatedItems`, when explaining errors under nested resources and on the first coercion of a schema with `$dynamicRef`. Follows Pi main 2bd2c2d0a ahead of the pin.
 
 ### BF-91a0cfd-2
 
 **A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D303)
+- **Source:** PiG's own defect
 - **Symptom:** A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error names it (`expected number, got NaN`), as TypeBox does.
 - **Root cause:** D302 and D303 are drafts, owner sign-off pending.
 - **User impact:** Crash, hang or runaway process
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing 55a5c6914. Then the call-site markers and this record go.
-- **Fix commits:** `27312c857f` (2026-11-07), `91a0cfd13d` (2026-11-07), `b1333a0834` (2026-11-07)
+- **Fix commits:** `91a0cfd13d` (2026-11-07)
 - **Tests:** `schema/pi_main_follow_upstream_test.go::TestPiMainClosedObjectFindsPropertiesInAnyOrder`, `schema/pi_main_follow_upstream_test.go::TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef`, `schema/pi_main_follow_upstream_test.go::TestPiMainEqual`, `schema/pi_main_follow_upstream_test.go::TestPiMainExplainsNestedResourcesWithARelativeID`, `schema/pi_main_follow_upstream_test.go::TestPiMainLeafChecksAgreeWithTheStandaloneCheck`, `schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveBuildsASchemaThatChecksEveryLevel`, `schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveSchemasNestWithDistinctIDs`, `schema/pi_main_follow_upstream_test.go::TestPiMainRejectsNaNAndInfinityAsANumber` and 3 more in docs/bug-ledger.json
-- **Release note:** A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error names it (`expected number, got NaN`), as TypeBox does. Follows Pi main 55a5c6914 ahead of the pin (D303).
+- **Release note:** A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error names it (`expected number, got NaN`), as TypeBox does. Follows Pi main 55a5c6914 ahead of the pin.
 
 ### BF-91e912a
 
@@ -25468,33 +25460,29 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D300)
+- **Source:** PiG's own defect
 - **Symptom:** A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another visible or scrollback row, and a selection to the right of the caret no longer repeats the marker, so terminals that print the payload of an unknown APC sequence show no stray `pi:c` text.
 - **Root cause:** Ports Pi main (#9441) and (#11890) with their tests, as drafts D300 and D301, owner sign-off pending.
 - **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing 25490ea49. Then the call-site markers and this record go.
-- **Fix commits:** `b1333a0834` (2026-11-07), `d846b5a14d` (2026-11-07), `fb4d32eb1c` (2026-11-07)
+- **Fix commits:** `fb4d32eb1c` (2026-11-07)
 - **Tests:** `tui/render_regressions_upstream_test.go::TestUpstreamTabWidth`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenClearsRowsBeforeKittyImages`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows`, `tui/tui_render_upstream_test.go::TestUpstreamTUIBoundedRender`
-- **Release note:** A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another visible or scrollback row, and a selection to the right of the caret no longer repeats the marker, so terminals that print the payload of an unknown APC sequence show no stray `pi:c` text. Follows Pi main 25490ea49 ahead of the pin (D300).
+- **Release note:** A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another visible or scrollback row, and a selection to the right of the caret no longer repeats the marker, so terminals that print the payload of an unknown APC sequence show no stray `pi:c` text. Follows Pi main 25490ea49 ahead of the pin.
 
 ### BF-fb4d32e-2
 
 **Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm)**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D301)
+- **Source:** PiG's own defect
 - **Symptom:** Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm).
 - **Root cause:** Ports Pi main (#9441) and (#11890) with their tests, as drafts D300 and D301, owner sign-off pending.
 - **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing 4622edb79. Then the call-site markers and this record go.
-- **Fix commits:** `b1333a0834` (2026-11-07), `d846b5a14d` (2026-11-07), `fb4d32eb1c` (2026-11-07)
+- **Fix commits:** `fb4d32eb1c` (2026-11-07)
 - **Tests:** `tui/render_regressions_upstream_test.go::TestUpstreamTabWidth`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenClearsRowsBeforeKittyImages`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows`, `tui/tui_render_upstream_test.go::TestUpstreamTUIBoundedRender`
-- **Release note:** Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm). The alt screen now draws images after clearing and writing the rows they cover on every Kitty-protocol terminal, not only WezTerm. Follows Pi main 4622edb79 ahead of the pin (D301).
+- **Release note:** Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm). The alt screen now draws images after clearing and writing the rows they cover on every Kitty-protocol terminal, not only WezTerm. Follows Pi main 4622edb79 ahead of the pin.
 
 ### BF-fba9b47
 
@@ -25886,17 +25874,11 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D260 | .dart, .nix, .groovy and .gradle files are highlighted in read and write views | [BF-c3656e5](#bf-c3656e5) |
 | D261 | SSE lines end at CR, LF or CRLF | [BF-D261](#bf-d261) |
 | D262 | The startup benchmark disposes the session runtime | [BF-D262](#bf-d262) |
-| D265 | PiG follows Pi main 54280c4ff ahead of the v1.5.0 pin: Markdown hides HTML comments | [BF-348a3a8](#bf-348a3a8) |
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |
 | D269 | A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session | [BF-D269](#bf-d269) |
 | D270 | After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first | [BF-D270](#bf-d270) |
-| D300 | PiG follows Pi main 25490ea49 ahead of the v1.5.0 pin: cursor markers never reach the terminal | [BF-fb4d32e](#bf-fb4d32e) |
-| D301 | PiG follows Pi main 4622edb79 ahead of the v1.5.0 pin: fullscreen Kitty images are drawn after the rows they… | [BF-fb4d32e-2](#bf-fb4d32e-2) |
-| D302 | PiG follows Pi main 2bd2c2d0a ahead of the v1.5.0 pin: a relative root $id is applied once when resolving… | [BF-91a0cfd](#bf-91a0cfd) |
-| D303 | PiG follows Pi main 55a5c6914 ahead of the v1.5.0 pin: a number is finite | [BF-91a0cfd-2](#bf-91a0cfd-2) |
-| D304 | PiG follows Pi main c96e368e2 ahead of the v1.5.0 pin: Stop and timeouts end remote calls at once while the… | [BF-8c3339c](#bf-8c3339c) |
 | D310 | `/reload` and a session switch remove every extension overlay | [BF-D310](#bf-d310) |
 | D311 | `ctrl+o` applies to user bash output shown while the agent is working | [BF-D311](#bf-d311) |
 | D312 | The model selectors keep the row the user browsed to when a catalog refresh lands | [BF-D312](#bf-d312) |

@@ -7638,24 +7638,17 @@
       "rootCauseSource": "commit",
       "userImpact": "Wrong display",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D265",
-      "removeWhen": "the pinned Pi release contains 54280c4ff. Then the call-site markers, `tui/markdown_html_comments.go`'s divergence note, `testdata/pi_markdown_overlay.mjs` and this record go; the overlay's anchors stop matching when the pin's `markdown.js` already holds the change.",
+      "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Markdown no longer shows HTML comments (`\u003c!-- ... --\u003e`) as text in Extension Updates, What's New, `/changelog` and messages. A comment-only block disappears with one of its blank lines, so no extra gap remains; an inline comment is skipped, so `See \u003c!-- c --\u003e the docs.` renders `See the docs.`; an unclosed comment stays hidden while it streams. Follows Pi main 54280c4ff ahead of the pin (D265).",
+      "releaseNote": "Markdown no longer shows HTML comments (`\u003c!-- ... --\u003e`) as text in Extension Updates, What's New, `/changelog` and messages. A comment-only block disappears with one of its blank lines, so no extra gap remains; an inline comment is skipped, so `See \u003c!-- c --\u003e the docs.` renders `See the docs.`; an unclosed comment stays hidden while it streams. Follows Pi main 54280c4ff.",
       "origin": "release note",
       "commits": [
         {
           "hash": "348a3a8859",
           "date": "2026-11-05"
-        },
-        {
-          "hash": "fe8b5e3ab8",
-          "date": "2026-11-05"
         }
       ],
       "tests": [
-        "tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsDifferFromPinnedPi",
         "tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsMatchPiMain",
         "tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsStreamLikeAFreshRender",
         "tui/markdown_html_comments_upstream_test.go::TestUpstreamMarkdownHTMLComments"
@@ -25545,23 +25538,13 @@
       "rootCauseSource": "commit",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D304",
-      "removeWhen": "the pin reaches a Pi release containing c96e368e2. Then the call-site markers and this record go.",
+      "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection starts ends with `aborted` instead of waiting for the start, a sent request settles as `aborted` when the daemon does not answer its cancel within a second, `RemoteExecutionEnv.Exec` enforces its timeout locally, file operations stop waiting for the connection when cancelled, and `ssh` uses `ConnectTimeout=15`. Follows Pi main c96e368e2 ahead of the pin (D304).",
+      "releaseNote": "Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection starts ends with `aborted` instead of waiting for the start, a sent request settles as `aborted` when the daemon does not answer its cancel within a second, `RemoteExecutionEnv.Exec` enforces its timeout locally, file operations stop waiting for the connection when cancelled, and `ssh` uses `ConnectTimeout=15`. Follows Pi main c96e368e2 ahead of the pin.",
       "origin": "release note",
       "commits": [
         {
           "hash": "8c3339c527",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "b1333a0834",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "e36295f188",
           "date": "2026-11-07"
         }
       ],
@@ -25573,8 +25556,7 @@
         "env/remote_abort_test.go::TestConnectionAbortSettlesASentRequestTheDaemonDoesNotAnswer",
         "env/remote_abort_test.go::TestConnectionAbortStopsWaitingForAStartThatDoesNotFinish",
         "env/remote_abort_test.go::TestRemoteExecOnAHostThatDoesNotAnswer",
-        "env/remote_abort_test.go::TestRemoteFileOperationsStopWaitingForTheConnectionWhenAborted",
-        "env/ssh_arguments_test.go::TestSshArgumentsMatchPi"
+        "env/remote_abort_test.go::TestRemoteFileOperationsStopWaitingForTheConnectionWhenAborted"
       ]
     },
     {
@@ -26585,29 +26567,17 @@
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D302",
-      "removeWhen": "the pin reaches a Pi release containing 2bd2c2d0a. Then the call-site markers and this record go.",
+      "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its local `$ref`s: the `$id` was applied twice, so compiling failed with `Unresolved $ref` and tool arguments were rejected under `UnresolvedRefsReject`. The same holds with `unevaluatedProperties` and `unevaluatedItems`, when explaining errors under nested resources and on the first coercion of a schema with `$dynamicRef`. Follows Pi main 2bd2c2d0a ahead of the pin (D302).",
+      "releaseNote": "A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its local `$ref`s: the `$id` was applied twice, so compiling failed with `Unresolved $ref` and tool arguments were rejected under `UnresolvedRefsReject`. The same holds with `unevaluatedProperties` and `unevaluatedItems`, when explaining errors under nested resources and on the first coercion of a schema with `$dynamicRef`. Follows Pi main 2bd2c2d0a ahead of the pin.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "27312c857f",
-          "date": "2026-11-07"
-        },
-        {
           "hash": "91a0cfd13d",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "b1333a0834",
           "date": "2026-11-07"
         }
       ],
       "tests": [
-        "schema/coerce_oracle_test.go::TestCoerceMatchesPi",
-        "schema/errors_golden_test.go::TestErrorsMatchPi",
         "schema/pi_main_follow_upstream_test.go::TestPiMainClosedObjectFindsPropertiesInAnyOrder",
         "schema/pi_main_follow_upstream_test.go::TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef",
         "schema/pi_main_follow_upstream_test.go::TestPiMainEqual",
@@ -26629,23 +26599,13 @@
       "rootCauseSource": "commit",
       "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D303",
-      "removeWhen": "the pin reaches a Pi release containing 55a5c6914. Then the call-site markers and this record go.",
+      "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error names it (`expected number, got NaN`), as TypeBox does. Follows Pi main 55a5c6914 ahead of the pin (D303).",
+      "releaseNote": "A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error names it (`expected number, got NaN`), as TypeBox does. Follows Pi main 55a5c6914 ahead of the pin.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "27312c857f",
-          "date": "2026-11-07"
-        },
-        {
           "hash": "91a0cfd13d",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "b1333a0834",
           "date": "2026-11-07"
         }
       ],
@@ -50046,21 +50006,11 @@
       "rootCauseSource": "commit",
       "userImpact": "Wrong display",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D300",
-      "removeWhen": "the pin reaches a Pi release containing 25490ea49. Then the call-site markers and this record go.",
+      "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another visible or scrollback row, and a selection to the right of the caret no longer repeats the marker, so terminals that print the payload of an unknown APC sequence show no stray `pi:c` text. Follows Pi main 25490ea49 ahead of the pin (D300).",
+      "releaseNote": "A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another visible or scrollback row, and a selection to the right of the caret no longer repeats the marker, so terminals that print the payload of an unknown APC sequence show no stray `pi:c` text. Follows Pi main 25490ea49 ahead of the pin.",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "b1333a0834",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "d846b5a14d",
-          "date": "2026-11-07"
-        },
         {
           "hash": "fb4d32eb1c",
           "date": "2026-11-07"
@@ -50083,21 +50033,11 @@
       "rootCauseSource": "commit",
       "userImpact": "Wrong display",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D301",
-      "removeWhen": "the pin reaches a Pi release containing 4622edb79. Then the call-site markers and this record go.",
+      "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm). The alt screen now draws images after clearing and writing the rows they cover on every Kitty-protocol terminal, not only WezTerm. Follows Pi main 4622edb79 ahead of the pin (D301).",
+      "releaseNote": "Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm). The alt screen now draws images after clearing and writing the rows they cover on every Kitty-protocol terminal, not only WezTerm. Follows Pi main 4622edb79 ahead of the pin.",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "b1333a0834",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "d846b5a14d",
-          "date": "2026-11-07"
-        },
         {
           "hash": "fb4d32eb1c",
           "date": "2026-11-07"
@@ -51357,11 +51297,6 @@
       "entry": "BF-D262"
     },
     {
-      "id": "D265",
-      "title": "PiG follows Pi main 54280c4ff ahead of the v1.5.0 pin: Markdown hides HTML comments",
-      "entry": "BF-348a3a8"
-    },
-    {
       "id": "D266",
       "title": "An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the…",
       "entry": "BF-D266"
@@ -51385,31 +51320,6 @@
       "id": "D270",
       "title": "After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first",
       "entry": "BF-D270"
-    },
-    {
-      "id": "D300",
-      "title": "PiG follows Pi main 25490ea49 ahead of the v1.5.0 pin: cursor markers never reach the terminal",
-      "entry": "BF-fb4d32e"
-    },
-    {
-      "id": "D301",
-      "title": "PiG follows Pi main 4622edb79 ahead of the v1.5.0 pin: fullscreen Kitty images are drawn after the rows they…",
-      "entry": "BF-fb4d32e-2"
-    },
-    {
-      "id": "D302",
-      "title": "PiG follows Pi main 2bd2c2d0a ahead of the v1.5.0 pin: a relative root $id is applied once when resolving…",
-      "entry": "BF-91a0cfd"
-    },
-    {
-      "id": "D303",
-      "title": "PiG follows Pi main 55a5c6914 ahead of the v1.5.0 pin: a number is finite",
-      "entry": "BF-91a0cfd-2"
-    },
-    {
-      "id": "D304",
-      "title": "PiG follows Pi main c96e368e2 ahead of the v1.5.0 pin: Stop and timeouts end remote calls at once while the…",
-      "entry": "BF-8c3339c"
     },
     {
       "id": "D310",

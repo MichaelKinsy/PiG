@@ -88,10 +88,11 @@ var inputSchema = json.RawMessage(`{"type":"object","required":["code"],"propert
 
 // describeFields is the field names of an object schema, `{ output, exit_code, full_output_path? }`, with the fields of
 // object-typed fields depth levels deep: `{ content, structuredContent?: { results } }`. It reports false for other
-// schemas.
+// schemas. Local `$ref`s resolve against root.
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeFields).
-func describeFields(schema json.RawMessage, depth int) (string, bool) {
+func describeFields(schema, root json.RawMessage, depth int) (string, bool) {
+	schema = followRef(schema, root)
 	object := objectOf(schema)
 	if object == nil {
 		return "", false
@@ -135,10 +136,10 @@ func describeFields(schema json.RawMessage, depth int) (string, bool) {
 			optional = ""
 		}
 		field := name + optional
-		if constValue, ok := constOf(values[i]); ok {
+		if constValue, ok := constOf(followRef(values[i], root)); ok {
 			field = strings.Join([]string{field, constValue}, ": ")
 		} else if depth > 0 {
-			if nested, ok := describeFields(values[i], depth-1); ok {
+			if nested, ok := describeFields(values[i], root, depth-1); ok {
 				field = strings.Join([]string{field, nested}, ": ")
 			}
 		}
@@ -169,16 +170,16 @@ func constOf(schema json.RawMessage) (string, bool) {
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeOutput).
 func describeOutput(name string, schema json.RawMessage) (string, error) {
-	rendered, err := sandbox.RenderToolOutputType(schema)
-	if err != nil {
-		return "", err
-	}
+	rendered := sandbox.RenderToolOutputType(schema)
 	if rendered == "string" {
 		return "a string", nil
 	}
-	fields, ok := describeFields(schema, 1)
-	if !ok {
-		fields, ok = describeUnionFields(schema)
+	var fields string
+	var ok bool
+	if len(schema) > 0 {
+		if fields, ok = describeFields(schema, schema, 1); !ok {
+			fields, ok = describeUnionFields(schema, schema)
+		}
 	}
 	if ok {
 		return "`" + fields + "`", nil
@@ -197,8 +198,8 @@ func describeOutput(name string, schema json.RawMessage) (string, error) {
 // It reports false for other schemas.
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeUnionFields).
-func describeUnionFields(schema json.RawMessage) (string, bool) {
-	object := objectOf(schema)
+func describeUnionFields(schema, root json.RawMessage) (string, bool) {
+	object := objectOf(followRef(schema, root))
 	if object == nil {
 		return "", false
 	}
@@ -212,13 +213,36 @@ func describeUnionFields(schema json.RawMessage) (string, bool) {
 	}
 	described := make([]string, len(values))
 	for i, variant := range values {
-		fields, ok := describeFields(variant, 0)
+		fields, ok := describeFields(variant, root, 0)
 		if !ok {
 			return "", false
 		}
 		described[i] = fields
 	}
 	return strings.Join(described, " | "), true
+}
+
+// followRef is the subschema the local `$ref` chain of schema names in root, so MCP output schemas that put their models in `$defs` still show field
+// names. Remote, missing, and cyclic references stop at the schema holding them.
+//
+// Ports packages/coding-agent/src/extensions/codemode/tool.ts (followRef).
+func followRef(schema, root json.RawMessage) json.RawMessage {
+	// A schema holding a reference names its target by that reference, so a repeated schema text is a cycle.
+	seen := map[string]bool{}
+	current := schema
+	for isRecord(current) && !seen[string(current)] {
+		ref, ok := stringArg(field(current, "$ref"))
+		if !ok {
+			break
+		}
+		target, ok := sandbox.ResolveSchemaRefJSON(ref, root)
+		if !ok {
+			break
+		}
+		seen[string(current)] = true
+		current = target
+	}
+	return current
 }
 
 // describeScriptCall is a declared tool's description followed by how scripts call it and what the call resolves to.
@@ -290,11 +314,7 @@ func prepareLoadout(loadout extension.ToolLoadout, options Options) *extension.T
 		defaultBudget := DefaultInlineBudget
 		budget = &defaultBudget
 	}
-	description, err := CreateDescription(listed, DescriptionOptions{Models: options.Models, Namespaces: namespaces, Guidelines: guidelines, Deferred: deferred, InlineBudget: budget})
-	if err != nil {
-		panic(err) // upstream: see above, a thrown prepareLoadout.
-	}
-	descriptions[ToolName] = description
+	descriptions[ToolName] = CreateDescription(listed, DescriptionOptions{Models: options.Models, Namespaces: namespaces, Guidelines: guidelines, Deferred: deferred, InlineBudget: budget})
 	hidden := []string{}
 	if mode == ModeOnly {
 		declared := map[string]bool{}
@@ -314,8 +334,7 @@ func prepareLoadout(loadout extension.ToolLoadout, options Options) *extension.T
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (createCodemodeToolDefinition).
 func Definition(options Options) extension.ToolDefinition {
-	// No tools are listed, so no schema reference is decoded and rendering cannot fail.
-	description, _ := CreateDescription(nil, DescriptionOptions{Models: options.Models})
+	description := CreateDescription(nil, DescriptionOptions{Models: options.Models})
 	return extension.ToolDefinition{
 		Name:             ToolName,
 		Label:            ToolName,

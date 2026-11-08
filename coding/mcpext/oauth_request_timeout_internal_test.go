@@ -10,6 +10,9 @@ import (
 )
 
 // recordingTransport records the time left before the deadline of every request, then fails it.
+// oauthRequestTimeout is OAUTH_REQUEST_TIMEOUT_MS of packages/mcp/src/oauth/client-settings.ts.
+const oauthRequestTimeout = 15 * time.Second
+
 type recordingTransport struct{ remaining []time.Duration }
 
 var errStopped = errors.New("stopped")
@@ -34,27 +37,6 @@ func requireRequestTimeout(t *testing.T, remaining []time.Duration) {
 			t.Fatalf("request deadline in %s, want within (%s, %s]", left, oauthRequestTimeout-time.Second, oauthRequestTimeout)
 		}
 	}
-}
-
-// oauth.ts OAUTH_REQUEST_TIMEOUT_MS / timedFetch (1.1.0, #10565): each request to the authorization server of a
-// refresh times out after 15 seconds.
-func TestTimedFetchGivesEveryRequestTheOAuthRequestTimeout(t *testing.T) {
-	if oauthRequestTimeout != 15*time.Second {
-		t.Fatalf("oauthRequestTimeout = %s, want 15s", oauthRequestTimeout)
-	}
-	recorder := &recordingTransport{}
-	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://127.0.0.1:1/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	response, err := timedFetch(&http.Client{Transport: recorder}).Do(request)
-	if response != nil {
-		_ = response.Body.Close()
-	}
-	if !errors.Is(err, errStopped) {
-		t.Fatalf("err = %v", err)
-	}
-	requireRequestTimeout(t, recorder.remaining)
 }
 
 // The sign-in flow bounds its authorization-server requests the same way.

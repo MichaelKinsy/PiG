@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Pi main c96e368e2 (D304): Connection.request awaits untilAborted(#connect(), signal), so a request whose signal is already aborted rejects with code `aborted` and is never sent, also on a started connection.
+// Pi main c96e368e2: Connection.request awaits untilAborted(#connect(), signal), so a request whose signal is already aborted rejects with code `aborted` and is never sent, also on a started connection.
 func TestRequestWithACancelledContextIsNotSentAndIsAborted(t *testing.T) {
 	t.Parallel()
 	connection := daemonConnection(t)
@@ -31,7 +31,7 @@ func TestRequestWithACancelledContextIsNotSentAndIsAborted(t *testing.T) {
 	}
 }
 
-// Pi main c96e368e2 (D304): a request whose signal aborts while the daemon starts rejects at once with code `aborted`; the start goes on and the request is never sent.
+// Pi main c96e368e2: a request whose signal aborts while the daemon starts rejects at once with code `aborted`; the start goes on and the request is never sent.
 func TestRequestCancelledWhileTheDaemonStartsIsAbortedAtOnce(t *testing.T) {
 	t.Parallel()
 	daemon := daemonBinary(t)
