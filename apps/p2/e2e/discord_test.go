@@ -6,6 +6,7 @@
 package e2e_test
 
 import (
+	"encoding/json"
 	"context"
 	"fmt"
 	"net/http"
@@ -249,7 +250,8 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 		if want := []any{delta.JsonObjectOf("id", "discord:500:0", "name", "notes.txt")}; !jsonEqual(data.Value("attachments"), want) {
 			t.Fatalf("attachments = %v", data.Value("attachments"))
 		}
-		if !strings.Contains(fmt.Sprint(entry.Value("model")), "<attachments>") {
+		model, _ := json.Marshal(entry.Value("model"))
+		if !strings.Contains(string(model), "<attachments>") {
 			t.Fatalf("the model message lacks the attachments: %v", entry.Value("model"))
 		}
 		mirror, err := p2test.HoldIn(f.Owner, filescontract.FileSummaries, delta.NewJsonObject(0), "owner")
