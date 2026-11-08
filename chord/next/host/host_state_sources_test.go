@@ -20,7 +20,7 @@ import (
 
 // Mirrors "native sources as derive sources › `ref.state` is a derive source: a state member can show a dependency's reachability".
 func TestNativeSourcesAsDeriveSourcesRefStateIsADeriveSourceAStateMemberCanShowADependencysReachability(t *testing.T) {
-	flaky := exLocal("app.flaky", contracts.Params{contracts.Prop("id", contracts.Int())})
+	flaky := mustContract(contracts.Local("app.flaky", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())}, Members: []contracts.LocalEntry{}}))
 	watcher := exLocal("app.watcher", contracts.Params{}, contracts.Mem("flaky", contracts.Str()))
 	var flakySelf Self
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
