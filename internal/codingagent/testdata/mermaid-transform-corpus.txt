@@ -94,3 +94,7 @@
 {"md": "```mermaid\nsequenceDiagram\n  A->>B: seq [1;1:1A]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": true, "availableWidth": 200}
 {"md": "```mermaid\nsequenceDiagram\n  A->>\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 200}
 {"md": "```mermaid\nsequenceDiagram\n  A->>\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": true, "availableWidth": 200}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "user", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "summary", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "custom", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "changelog", "isStreaming": false, "availableWidth": 80}
