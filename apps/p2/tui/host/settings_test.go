@@ -40,7 +40,7 @@ func TestSavePrefsPatchesPrivilegedBindingsTheEditorCommandAndLauncherOnlyKeysAr
 	}
 	before := jsonOf(t, `{"keybindings":{"app.tools.expand":"ctrl+e"},"settings":{"terminal":{"imageWidthCells":80}},"mouse":"on","externalEditor":"vim"}`).(map[string]any)
 	after := host.ApplyPrefsPatch(before, ok)
-	want := jsonOf(t, `{"keybindings":{"app.model.select":["ctrl+k"],"p2.palette":[]},"settings":{"terminal":{"showImages":false},"hideThinkingBlock":true},"mouse":"on","externalEditor":"vim","theme":"light"}`)
+	want := jsonOf(t, `{"keybindings":{"app.model.select":"ctrl+k","p2.palette":[]},"settings":{"terminal":{"showImages":false},"hideThinkingBlock":true},"mouse":"on","externalEditor":"vim","theme":"light"}`)
 	if !reflect.DeepEqual(any(after), want) {
 		t.Fatalf("after = %v", after)
 	}

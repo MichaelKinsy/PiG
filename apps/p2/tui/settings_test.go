@@ -136,7 +136,9 @@ func TestSettingsListsPluginRowsTuiSettingFieldsAndSavesThemUnderPlugins(t *test
 func TestHideThinkingBlockSetsTheThinkingViewTheToggleHoldsUntilTheSettingChangesAndAcrossAReload(t *testing.T) {
 	f, _ := settingsRuntime(t)
 	yes, no := true, false
-	update := func(rt *runtime.TuiRuntime, settings prefs.TuiSettings) { rt.Appearance.Update(runtime.AppearanceUpdate{Local: localSettings(settings)}) }
+	update := func(rt *runtime.TuiRuntime, settings prefs.TuiSettings) {
+		rt.Appearance.Update(runtime.AppearanceUpdate{Local: localSettings(settings)})
+	}
 	f.Do(func() {
 		rt := f.Runtime
 		if rt.ShowThinking {
