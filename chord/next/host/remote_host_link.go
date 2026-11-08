@@ -128,9 +128,9 @@ func (l *hostLink) close() {
 }
 
 // tick is the heartbeat (see Channel.Tick).
-func (l *hostLink) tick(now int64, ping, close time.Duration) {
+func (l *hostLink) tick(now, paused int64, ping, close time.Duration) {
 	if l.channel != nil {
-		l.channel.Tick(now, ping.Milliseconds(), close.Milliseconds())
+		l.channel.Tick(now, paused, ping.Milliseconds(), close.Milliseconds())
 	}
 }
 
