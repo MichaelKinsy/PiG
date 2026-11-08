@@ -85,7 +85,7 @@ func (a *App) emptyState(c *ui.Context, h *surfacehost.Host, sessions *screens.S
 // hero is the empty state's head: the banner, tagline, question and folder.
 func (a *App) hero(c *ui.Context, sessions *screens.Sessions, v sprite.Variant, scale int) {
 	t := c.Theme()
-	ui.Image(c, marks.banner(v, scale)).Size(float32(sprite.BannerWidth*scale), float32(sprite.BannerHeight*scale)).Fit(ui.Contain)
+	ui.Image(c, marks.banner(v, c.Theme().Dark, scale)).Size(float32(sprite.BannerWidth*scale), float32(sprite.BannerHeight*scale)).Fit(ui.Contain)
 	if v.Tagline != "" {
 		ui.Text(c, v.Tagline).FontSize(14).TextColor(t.TextMuted)
 	}

@@ -6,16 +6,14 @@ package sprite
 
 import (
 	"context"
-	"fmt"
 	"image"
 	"image/color"
-	"math"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
+	websprite "github.com/MichaelKinsy/PiG/apps/p2/brand/sprite"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
@@ -56,57 +54,26 @@ func Scaled(v Variant, scale int) *image.NRGBA {
 	return upscale(Grid(v), scale)
 }
 
-// The banner is the empty state's head, the same grid as the web's /__p2_brand/login.svg (apps/p2/brand/sprite): the pig, a
-// gap, the "PiG." wordmark, each inside a margin, on a plate the wordmark's colours read on. BannerWidth by BannerHeight cells.
+// The banner is the empty state's head, the web's login.svg grid (apps/p2/brand/sprite.BannerCells, which both clients call, so
+// they draw the same pixels): the pig, a gap, the "PiG." wordmark, each inside a margin, on no plate (transparent outside the
+// painted cells, as the terminal's header). The wordmark's colours are darkened to 3:1 on a light page. BannerWidth by
+// BannerHeight cells.
 const (
-	bannerMargin = 2
-	bannerGap    = 2
-	BannerWidth  = bannerMargin + extension.LoginMascotWidth + bannerGap + extension.LoginHeroWidth + bannerMargin
-	BannerHeight = bannerMargin + extension.LoginMascotHeight + bannerMargin
+	BannerWidth  = 2 + extension.LoginMascotWidth + 2 + extension.LoginHeroWidth + 2
+	BannerHeight = 2 + extension.LoginMascotHeight + 2
 )
 
-// Plates the banner sits on, as the web's: the page's dark surface and white.
-var (
-	darkPlate  = color.NRGBA{R: 0x10, G: 0x1c, B: 0x1a, A: 0xFF}
-	lightPlate = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
-)
-
-// Banner is v's banner with every cell scale pixels square (6 is the empty state's size, 5 under 560 px wide).
-func Banner(v Variant, scale int) *image.NRGBA {
-	def := piglogin.LoginDefinitionFor(v)
-	colors := map[byte]color.NRGBA{}
-	for symbol, hex := range def.Palette {
-		var r, g, b uint8
-		if _, err := fmt.Sscanf(strings.ToLower(hex), "#%02x%02x%02x", &r, &g, &b); err == nil && len(symbol) == 1 {
-			colors[symbol[0]] = color.NRGBA{R: r, G: g, B: b, A: 0xFF}
-		}
+// Banner is v's banner for a page (dark or light) with every cell scale pixels square (6 is the empty state's size, 5 under
+// 560 px wide).
+func Banner(v Variant, dark bool, scale int) *image.NRGBA {
+	theme := websprite.Light
+	if dark {
+		theme = websprite.Dark
 	}
-	// The wordmark's letters: the palette symbols its rows use, but not the drop shadow.
-	var letters []color.NRGBA
-	hero := strings.Join(def.Hero, "")
-	for symbol, c := range colors {
-		if symbol != '#' && strings.IndexByte(hero, symbol) >= 0 {
-			letters = append(letters, c)
-		}
-	}
-	plate := plateFor(letters)
 	cells := image.NewNRGBA(image.Rect(0, 0, BannerWidth, BannerHeight))
-	for y := range BannerHeight {
-		for x := range BannerWidth {
-			cells.SetNRGBA(x, y, plate)
-		}
+	for _, cell := range websprite.BannerCells(v, websprite.Page(theme)) {
+		cells.SetNRGBA(cell.X, cell.Y, color.NRGBA{R: cell.Color.R, G: cell.Color.G, B: cell.Color.B, A: cell.Color.A})
 	}
-	draw := func(grid []string, offsetX int) {
-		for y, row := range grid {
-			for x := range len(row) {
-				if c, ok := colors[row[x]]; ok && row[x] != '.' {
-					cells.SetNRGBA(offsetX+x, bannerMargin+y, c)
-				}
-			}
-		}
-	}
-	draw(def.Mascot, bannerMargin)
-	draw(def.Hero, bannerMargin+extension.LoginMascotWidth+bannerGap)
 	return upscale(cells, scale)
 }
 
@@ -118,37 +85,6 @@ func upscale(grid *image.NRGBA, scale int) *image.NRGBA {
 		}
 	}
 	return out
-}
-
-// plateFor is the plate with the better mean WCAG contrast over the wordmark's colours (as the web's banner).
-func plateFor(letters []color.NRGBA) color.NRGBA {
-	if len(letters) > 0 && meanContrast(letters, lightPlate) > meanContrast(letters, darkPlate) {
-		return lightPlate
-	}
-	return darkPlate
-}
-
-func meanContrast(letters []color.NRGBA, plate color.NRGBA) float64 {
-	total := 0.0
-	for _, l := range letters {
-		hi, lo := luminance(l), luminance(plate)
-		if lo > hi {
-			hi, lo = lo, hi
-		}
-		total += (hi + 0.05) / (lo + 0.05)
-	}
-	return total / float64(len(letters))
-}
-
-func luminance(c color.NRGBA) float64 {
-	ch := func(v uint8) float64 {
-		f := float64(v) / 255
-		if f <= 0.03928 {
-			return f / 12.92
-		}
-		return math.Pow((f+0.055)/1.055, 2.4)
-	}
-	return 0.2126*ch(c.R) + 0.7152*ch(c.G) + 0.0722*ch(c.B)
 }
 
 // Watch calls changed whenever the saved selection changes (written by /sprite in a terminal, a game, or this app) until ctx
