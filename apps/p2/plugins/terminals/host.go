@@ -418,7 +418,7 @@ func (h *Host) connection(ctx context.Context, name *string) (*env.Connection, m
 			entry := &connEntry{done: make(chan struct{}), shellEnv: map[string]string{}}
 			h.connections[""] = entry
 			go h.start(entry, "", func() (*env.Connection, error) {
-				return hostenv.Local(ctx, func(text string) { hostLog("pi-env: " + text) })
+				return hostenv.Local(ctx, hostLog)
 			})
 			return entry
 		})
@@ -439,7 +439,7 @@ func (h *Host) connection(ctx context.Context, name *string) (*env.Connection, m
 		entry := &connEntry{revision: remote.Revision, done: make(chan struct{}), shellEnv: remote.ShellEnv}
 		h.connections[*name] = entry
 		go h.start(entry, *name, func() (*env.Connection, error) {
-			return remote.Connect(ctx, func(text string) { hostLog("pi-env " + *name + ": " + text) })
+			return remote.Connect(ctx, hostLog)
 		})
 		return entry
 	})
