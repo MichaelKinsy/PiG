@@ -253,11 +253,16 @@ func (storage *StoreStorage) Publishing(ctx context.Context, publish func()) {
 		publish()
 		return
 	}
-	// publish never fails: the batch's own failure is the host's (it tells its onError).
-	_ = batch.Within(func() error {
-		publish()
-		return nil
-	}, ctx)
+	// The batch has no locks: the host serializes every call to it. A commit's writer calls from a goroutine of its own, so
+	// the publication is a section of the host's loop (inline when the caller is in one), as Pi's continuation after the
+	// commit's `await` is on its one event loop.
+	batch.Section(func() {
+		// publish never fails: the batch's own failure is the host's (it tells its onError).
+		_ = batch.Within(func() error {
+			publish()
+			return nil
+		}, ctx)
+	})
 }
 
 // MintId takes a fresh id from the store's one allocator.

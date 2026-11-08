@@ -31,20 +31,20 @@ func scalingFile(t *testing.T, dir string, lines int) string {
 
 func TestScalingTools(t *testing.T) {
 	rg := requireRG(t)
-	// grep formats limit x (2*context+1) lines for an output it cuts to 50KB (grep.ts:176-282). PiG measures the lines past those 50KB instead of building them (#9276), so with the file fixed the memory does not grow with the context.
+	// grep takes limit x (2*context+1) lines from ripgrep and keeps its output only up to the 50KB cap (grep.ts, Pi 8da141c2a, #9276), so with the file fixed the memory does not grow with the context.
 	bigDir := t.TempDir()
 	scalingFile(t, bigDir, 20000)
 	testscaling.Check(t, testscaling.Case{Name: "grep 100 matches with context n in a 20,000-line file", Size: 100, Bound: testscaling.Constant, Prepare: func(n int) func() {
 		args, _ := json.Marshal(map[string]any{"pattern": "match", "context": n, "limit": 100})
 		tool := &GrepTool{CWD: bigDir, RgPath: rg}
 		return func() {
-			// The output must be the byte-truncated context listing, or the gate measures an error or no-match path (an rg that fails under the test's HOME reports "No matches found").
+			// The output must be the 100-match context listing, or the gate measures an error or no-match path (an rg that fails under the test's HOME reports "No matches found").
 			result, err := tool.Execute(context.Background(), "", args, nil)
 			if err != nil || result.IsError {
 				panic(fmt.Sprint(err, result.Content))
 			}
-			if details, ok := result.Details.(*GrepDetails); !ok || details.Truncation == nil || details.MatchLimitReached != 100 {
-				panic(fmt.Sprintf("grep did not format 100 matches with context into a truncated output: %v", result.Content))
+			if details, ok := result.Details.(*GrepDetails); !ok || details.MatchLimitReached != 100 {
+				panic(fmt.Sprintf("grep did not list 100 matches with context: %v", result.Content))
 			}
 		}
 	}})
