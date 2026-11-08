@@ -539,6 +539,36 @@
       ]
     },
     {
+      "id": "BF-04e6229",
+      "title": "Chord sync: the batch decoder scanned the whole unfinished line for a newline on every 64 KiB chunk…",
+      "symptom": "Chord sync: the batch decoder scanned the whole unfinished line for a newline on every 64 KiB chunk (quadratic: 128 MiB took 9.4 s); it scans only the new bytes now.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord sync: the batch decoder scanned the whole unfinished line for a newline on every 64 KiB chunk (quadratic: 128 MiB took 9.4 s); it scans only the new bytes now.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "04e62295ce",
+          "date": "2026-11-07"
+        }
+      ],
+      "commitsFrom": "release note",
+      "tests": [
+        "chord/next/documents/documents_telemetry_test.go::TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
+        "chord/next/documents/documents_telemetry_test.go::TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric",
+        "chord/next/documents/documents_telemetry_test.go::TestTransactionsTheirContextsEndCancelledAreReportedForACallersCancellationWhileTheChangeWaitsOnTheLine",
+        "chord/next/store/catalog_test.go::TestCatalog",
+        "chord/next/store/group_commit_test.go::TestGroupCommit",
+        "chord/next/store/store_test.go::TestStore",
+        "chord/next/store/table_migration_test.go::TestMigrationResumption",
+        "chord/sqlite/cloudflare/store_check_test.go::TestStoreOnDurableObjectTellsCheckByMessage"
+      ]
+    },
+    {
       "id": "BF-05102ad",
       "title": "In RPC mode, a termination signal that arrives while the mode starts or tears down no longer skips the…",
       "symptom": "In RPC mode, a termination signal that arrives while the mode starts or tears down no longer skips the extensions' `session_shutdown`: the shutdown the signal started is now run by the mode itself when no signal hook was left to run it.",
@@ -39982,6 +40012,29 @@
       "commitsFrom": "release note",
       "tests": [
         "coding/cli/standard_piglet_startup_test.go::TestStandardPigletStartsWithoutReplacedBuiltinWarning"
+      ]
+    },
+    {
+      "id": "BF-d237217",
+      "title": "fix(chord): sync bounds a log line at V8's string length in UTF-16 units and counts sizes in them; a closed…",
+      "symptom": "fix(chord): sync bounds a log line at V8's string length in UTF-16 units and counts sizes in them; a closed scheduler's fired timer does nothing; a group's turn and admission reject with what they throw (D432 removed)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d23721752b",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/sync/limits_test.go::TestLineLimit",
+        "chord/sync/limits_test.go::TestSizesCountUTF16Units",
+        "internal/jsstring/slice_test.go::TestLengthBytesIsLength"
       ]
     },
     {
