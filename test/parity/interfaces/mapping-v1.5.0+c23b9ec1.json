@@ -34422,7 +34422,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -34444,7 +34444,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -34464,6 +34464,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -34484,6 +34485,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -34491,7 +34493,7 @@
       "id": "pkg:ai/.#ToolCallArgumentsStream::property:finish",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e0474332f3d836d10bacaf8fd26d598d6e61d1995f1728e05c97850fa57ca050",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -34504,14 +34506,14 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
       "id": "pkg:ai/.#ToolCallArgumentsStream::property:finish::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3fc6833bd40efb792cf24d7bacb5e571605dd8e673d6c7d41ad0856f5a5aba75",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -34524,7 +34526,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -34911,8 +34913,8 @@
       ],
       "evidence": [
         "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream",
-        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript",
-        "test:ai/transcript_resolve_equivalence_test.go#TestResolveTranscriptToolsMatchesTheCopyingReference"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports",
+        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript"
       ]
     },
     {
@@ -46101,7 +46103,7 @@
       "id": "pkg:ai/api/openai-responses-shared#getResponsesToolSupport",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b024d3699bbe3b5ba908f49264e9044519f9b3e709f0e266983c70daad4eab97",
-      "rationale": "Derived by the interface gap detector: getResponsesToolSupport is Go ai/openai_responses.go#GetResponsesToolSupport (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getResponsesToolSupport is Go ai/openai_responses.go#GetResponsesToolSupport (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/openai_responses.go#GetResponsesToolSupport"
       ],
@@ -46114,14 +46116,14 @@
         "call:ai/openai_responses.go#GetResponsesToolSupport"
       ],
       "evidence": [
-        "reach:ai/openai_responses.go#GetResponsesToolSupport"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports"
       ]
     },
     {
       "id": "pkg:ai/api/openai-responses-shared#getResponsesToolSupport::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:018a5dea1e84eedaa8cbff81c6e0750932dc155ff3a527be1d4a64d096b28cca",
-      "rationale": "Derived by the interface gap detector: getResponsesToolSupport::call:0 is Go ai/openai_responses.go#GetResponsesToolSupport (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getResponsesToolSupport::call:0 is Go ai/openai_responses.go#GetResponsesToolSupport (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/openai_responses.go#GetResponsesToolSupport"
       ],
@@ -46134,7 +46136,7 @@
         "call:ai/openai_responses.go#GetResponsesToolSupport"
       ],
       "evidence": [
-        "reach:ai/openai_responses.go#GetResponsesToolSupport"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports"
       ]
     },
     {
@@ -48802,7 +48804,7 @@
       "id": "pkg:ai/api/transform-messages#SplitErrorToolResult",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0bee1544969169fdc88e2fdf13498fe1014cb45530b657ac4cf921948915679e",
-      "rationale": "Derived by the interface gap detector: SplitErrorToolResult is Go ai/transform_messages.go#SplitErrorToolResult (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SplitErrorToolResult is Go ai/transform_messages.go#SplitErrorToolResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResult"
       ],
@@ -48815,14 +48817,14 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "reach:ai/anthropic.go#anthConvertMessagesDetailed"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#SplitErrorToolResult::property:caption",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fdb691e5b562ee12d9f9393c9969df5770741ce19cdc0cac077be8dd0ca1792e",
-      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:caption is Go ai/transform_messages.go#SplitErrorToolResult.Caption (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:caption is Go ai/transform_messages.go#SplitErrorToolResult.Caption (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResult.Caption"
       ],
@@ -48835,14 +48837,14 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "reach:ai/anthropic.go#anthConvertMessagesDetailed"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#SplitErrorToolResult::property:content",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2fbfcf8eedda04bd4e5ed8866dd231af07ace38f5e2695f1972ce0e2e10cd386",
-      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:content is Go ai/transform_messages.go#SplitErrorToolResult.Content (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:content is Go ai/transform_messages.go#SplitErrorToolResult.Content (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResult.Content"
       ],
@@ -48855,14 +48857,14 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "reach:ai/anthropic.go#anthConvertMessagesDetailed"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#SplitErrorToolResult::property:images",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:91b62dfa13a84d8b5132065ce4fadcb383ed46330b779d68362780629eefdd2c",
-      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:images is Go ai/transform_messages.go#SplitErrorToolResult.Images (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:images is Go ai/transform_messages.go#SplitErrorToolResult.Images (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResult.Images"
       ],
@@ -48875,14 +48877,14 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "reach:ai/anthropic.go#anthConvertMessagesDetailed"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#splitErrorToolResultImages",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cfd0c00d7da8c98697528f95ac240316a17d94e5217222fc713cd9c2b3a31fca",
-      "rationale": "Derived by the interface gap detector: splitErrorToolResultImages is Go ai/transform_messages.go#SplitErrorToolResultImages (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: splitErrorToolResultImages is Go ai/transform_messages.go#SplitErrorToolResultImages (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResultImages"
       ],
@@ -48895,14 +48897,14 @@
         "call:ai/transform_messages.go#SplitErrorToolResultImages"
       ],
       "evidence": [
-        "reach:ai/transform_messages.go#SplitErrorToolResultImages"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#splitErrorToolResultImages::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:06800dc661dd1cdea93b0bd031d5e79510c4daf853185240833cdeb6f938f318",
-      "rationale": "Derived by the interface gap detector: splitErrorToolResultImages::call:0 is Go ai/transform_messages.go#SplitErrorToolResultImages (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: splitErrorToolResultImages::call:0 is Go ai/transform_messages.go#SplitErrorToolResultImages (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResultImages"
       ],
@@ -48915,7 +48917,7 @@
         "call:ai/transform_messages.go#SplitErrorToolResultImages"
       ],
       "evidence": [
-        "reach:ai/transform_messages.go#SplitErrorToolResultImages"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
@@ -80707,7 +80709,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -80729,7 +80731,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -80749,6 +80751,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -80769,6 +80772,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -80776,7 +80780,7 @@
       "id": "pkg:ai/compat#ToolCallArgumentsStream::property:finish",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e0474332f3d836d10bacaf8fd26d598d6e61d1995f1728e05c97850fa57ca050",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -80789,14 +80793,14 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
       "id": "pkg:ai/compat#ToolCallArgumentsStream::property:finish::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3fc6833bd40efb792cf24d7bacb5e571605dd8e673d6c7d41ad0856f5a5aba75",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -80809,7 +80813,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -81196,8 +81200,8 @@
       ],
       "evidence": [
         "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream",
-        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript",
-        "test:ai/transcript_resolve_equivalence_test.go#TestResolveTranscriptToolsMatchesTheCopyingReference"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports",
+        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript"
       ]
     },
     {
@@ -101710,7 +101714,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -101732,7 +101736,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -101752,6 +101756,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -101772,6 +101777,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -101779,7 +101785,7 @@
       "id": "pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:finish",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e0474332f3d836d10bacaf8fd26d598d6e61d1995f1728e05c97850fa57ca050",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -101792,14 +101798,14 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
       "id": "pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:finish::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3fc6833bd40efb792cf24d7bacb5e571605dd8e673d6c7d41ad0856f5a5aba75",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -101812,7 +101818,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -102901,8 +102907,8 @@
       ],
       "evidence": [
         "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream",
-        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript",
-        "test:ai/transcript_resolve_equivalence_test.go#TestResolveTranscriptToolsMatchesTheCopyingReference"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports",
+        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript"
       ]
     },
     {
@@ -182005,6 +182011,7 @@
       ],
       "evidence": [
         "test:tui/keybinding_hints_oracle_test.go#TestKeybindingHintsMatchPi",
+        "test:coding/extension/proof_core_test.go#TestKeybindingHintsOfEveryRenderOptionFormatTheHostKeys",
         "test:tui/tree_label_key_hints_test.go#TestTreeLabelHintsResolveConfiguredKeys"
       ]
     },
@@ -182026,6 +182033,7 @@
       ],
       "evidence": [
         "test:tui/keybinding_hints_oracle_test.go#TestKeybindingHintsMatchPi",
+        "test:coding/extension/proof_core_test.go#TestKeybindingHintsOfEveryRenderOptionFormatTheHostKeys",
         "test:tui/tree_label_key_hints_test.go#TestTreeLabelHintsResolveConfiguredKeys"
       ]
     },
@@ -182047,6 +182055,7 @@
       ],
       "evidence": [
         "test:tui/keybinding_hints_oracle_test.go#TestKeybindingHintsMatchPi",
+        "test:coding/extension/proof_core_test.go#TestKeybindingHintsOfEveryRenderOptionFormatTheHostKeys",
         "test:tui/keybinding_hints_test.go#TestActionKeyTextJoinsBoundKeysWithoutCapitalizing"
       ]
     },
@@ -182068,6 +182077,7 @@
       ],
       "evidence": [
         "test:tui/keybinding_hints_oracle_test.go#TestKeybindingHintsMatchPi",
+        "test:coding/extension/proof_core_test.go#TestKeybindingHintsOfEveryRenderOptionFormatTheHostKeys",
         "test:tui/keybinding_hints_test.go#TestActionKeyTextJoinsBoundKeysWithoutCapitalizing"
       ]
     },
@@ -264723,7 +264733,7 @@
       "id": "pkg:mcp/.#McpTransportSendOptions",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c1e4349c41f3a04a36de85a82829b7dcc8dd355f581b09da90c4fc956aac3263",
-      "rationale": "Pi mcp/src/transports/transport.ts:9-16 McpTransportSendOptions is the options bag of McpTransport.send whose only member is the AbortSignal `signal`. By rule S1 an options bag whose only member is a signal is the Go call's leading context.Context, so Go has no type for it: Transport.Send(ctx, message) and OrderedSender.SendOrdered(ctx, message, placed) (mcp/transport.go) take the signal as ctx, and StreamableHTTPTransport.Send hands it to authorizedFetch, which does not dispatch once it has ended (TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds, TestStreamableHTTPTransportDoesNotRetryRequestsThatWereCancelledWhileAuthorizationWasRecovering). Designed out by the tern lead's directive (chord-strict-120 Round 3: Send takes context.Context, no shim).",
+      "rationale": "Pi mcp/src/transports/transport.ts:9-16 McpTransportSendOptions is the options bag of McpTransport.send whose only member is the AbortSignal `signal`. By rule S1 an options bag whose only member is a signal is the Go call's leading context.Context, so Go has no type for it: Transport.Send(ctx, message) and OrderedSender.SendOrdered(ctx, message, placed) (mcp/transport.go) take the signal as ctx, and StreamableHTTPTransport.Send hands it to authorizedFetch, which does not dispatch once it has ended (TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds, TestStreamableHTTPTransportDoesNotRetryRequestsThatWereCancelledWhileAuthorizationWasRecovering). Designed out by the tern lead's directive (chord-strict-120 Round 3: Send takes context.Context, no shim). Intention check (probe: read Pi transports/transport.ts:9-24, where the options bag has the single member `signal` that stops dispatch after the sender stops waiting; Transport.Send's context is that signal, pinned by the transport tests).",
       "pigTargets": [
         "mcp/transport.go#Transport.Send"
       ]
@@ -264732,7 +264742,7 @@
       "id": "pkg:mcp/.#McpTransportSendOptions::property:signal",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:8a3599829b340aade9210d2ba01342ddd4b904b85132d7d569005701d05ab3be",
-      "rationale": "McpTransportSendOptions.signal is the ctx argument of Transport.Send and OrderedSender.SendOrdered (rule S1; see pkg:mcp/.#McpTransportSendOptions): it ends once the sender no longer waits for a reply, and the HTTP transport does not dispatch after that (TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds). Designed out by the tern lead's directive (chord-strict-120 Round 3: Send takes context.Context, no shim).",
+      "rationale": "McpTransportSendOptions.signal is the ctx argument of Transport.Send and OrderedSender.SendOrdered (rule S1; see pkg:mcp/.#McpTransportSendOptions): it ends once the sender no longer waits for a reply, and the HTTP transport does not dispatch after that (TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds). Designed out by the tern lead's directive (chord-strict-120 Round 3: Send takes context.Context, no shim). Intention check (probe: read Pi transports/transport.ts:9-24, where the options bag has the single member `signal` that stops dispatch after the sender stops waiting; Transport.Send's context is that signal, pinned by the transport tests).",
       "pigTargets": [
         "mcp/transport.go#Transport.Send"
       ]
@@ -271029,9 +271039,9 @@
         "call:mcp/oauth/errors.go#NewMcpRefreshLockBusyError"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName",
         "test:mcp/oauth/sign_in_pi_test.go#TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong",
-        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName"
       ]
     },
     {
@@ -271051,6 +271061,7 @@
         "call:mcp/oauth/errors.go#NewMcpRefreshLockBusyError"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName",
         "test:mcp/oauth/sign_in_pi_test.go#TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong"
       ]
     },
@@ -271080,6 +271091,7 @@
         "call:mcp/oauth/errors.go#McpRefreshLockBusyError.Error"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName",
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
         "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
       ]
@@ -271101,6 +271113,7 @@
         "call:mcp/oauth/errors.go#McpRefreshLockBusyError.Name"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName",
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
         "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
       ]
@@ -271131,16 +271144,16 @@
         "call:mcp/oauth/loopback.go#WaitForLoopbackSignIn"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName",
         "test:mcp/oauth/loopback_trim_test.go#TestWaitForLoopbackSignInCancelsOnAJavaScriptBlankAnswer",
-        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName"
       ]
     },
     {
       "id": "pkg:mcp/oauth#McpSignInCancelledError::construct:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:338952f312c7f037dace82ce8ec5b7861fdf29eaffcb7bd720dd15135a96c58a",
-      "rationale": "Derived by the interface gap detector: McpSignInCancelledError::construct:0 is Go mcp/oauth/sign_in.go#NewMcpSignInCancelledError (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: McpSignInCancelledError::construct:0 is Go mcp/oauth/sign_in.go#NewMcpSignInCancelledError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "mcp/oauth/sign_in.go#NewMcpSignInCancelledError"
       ],
@@ -271153,7 +271166,7 @@
         "call:mcp/oauth/sign_in.go#NewMcpSignInCancelledError"
       ],
       "evidence": [
-        "reach:mcp/oauth/sign_in.go#NewMcpSignInCancelledError"
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName"
       ]
     },
     {
@@ -271182,6 +271195,7 @@
         "call:mcp/oauth/sign_in.go#McpSignInCancelledError.Error"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName",
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
         "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
       ]
@@ -271203,6 +271217,7 @@
         "call:mcp/oauth/sign_in.go#McpSignInCancelledError.Name"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName",
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
         "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
       ]
@@ -275776,7 +275791,7 @@
       "id": "pkg:schema/.#CoercingValidator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f88eacd057705de17759d989769b674dd0cf9a1c37bba88fe22c07fcf5bc7e77",
-      "rationale": "Pi packages/schema/src/validator.ts:58 CoercingValidator::construct:0 (Pi 1.5.0, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.0 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:58 CoercingValidator::construct:0 (Pi 1.5.0, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.0 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). Intention check (probe: grepped Pi for `new CoercingValidator(` and found only validator.ts:25-26 inside compile(); Go's schema/validator.go.CompileCoercing is that one call site, pinned by TestCoerceUpstream).",
       "pigTargets": [
         "schema/validator.go#CompileCoercing"
       ]
@@ -276076,7 +276091,7 @@
       "id": "pkg:schema/.#CompileOptions::property:coerce",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3af09d79b0c8ee00ffdb590b413c2e47c852f10b7e5f0d294c2c496f12e5d120",
-      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.0, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.0 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.0, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.0 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). Intention check (probe: read Pi validator.ts:14-26 and types.ts:23-24, where options.coerce === true only selects the class; CompileCoercing is that selection, pinned by TestCoerceUpstream).",
       "pigTargets": [
         "schema/validator.go#CompileCoercing",
         "schema/types.go#CompileOptions"
@@ -276676,7 +276691,7 @@
       "id": "pkg:schema/.#ParseResult",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:bba05fa9efb31f2588fa52fb40297b1946ab4ef3613864f27fa35617df4aa8e9",
-      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.0): ParseResult\u003cT\u003e = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\").",
+      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.0): ParseResult\u003cT\u003e = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\"). Intention check (probe: read Pi types.ts:34-36 and validator.ts:64-66,84-; Go's struct carries the same two outcomes, pinned by TestCoerceUpstream and TestPiMainValidateChecksWithoutCoercing).",
       "pigTargets": [
         "schema/types.go#ParseResult"
       ]
@@ -276685,7 +276700,7 @@
       "id": "pkg:schema/.#Properties",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d5b5365aa47c294dfc461d3f0da41a6524d5d517cbd2e829f018657c6d754470",
-      "rationale": "Pi packages/schema/src/builders.ts:162 Properties (Pi 1.5.0): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/builders.ts:162 Properties (Pi 1.5.0): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go). Intention check (probe: read Pi builders.ts:202-243, where Object.entries gives the own-key order obj() keeps; Go's ordered slice follows the same rule, pinned by TestObjUsesOwnKeyOrder).",
       "pigTargets": [
         "schema/builders.go#Properties"
       ]
@@ -277034,7 +277049,7 @@
       "id": "pkg:schema/.#Validator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:80d350d9fe873a423b4b332572354a05be33d03dba4d401acb8bbef202452c07",
-      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.0): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.0): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go). Intention check (probe: grepped Pi for `new Validator(` and found only validator.ts:25-26 inside compile(); Go's schema/validator.go.Compile is that one call site, pinned by TestErrors).",
       "pigTargets": [
         "schema/validator.go#Compile"
       ]
@@ -302920,7 +302935,7 @@
       "id": "pkg:tui/.#TuiAltScreen::property:%5BSymbol.VIEWPORT_TUI%5D",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ba15dd02339a17c5b56d26db293b3be608f50675304afb31dc6769537d3aa3c5",
-      "rationale": "[VIEWPORT_TUI] is a Symbol.for brand (tui.ts:484, tui-alt-screen.ts:204) that isViewportTUI reads (tui.ts:491) to tell the alt-screen renderer from the main-screen one. A Go value has no Symbol-keyed members; PiG answers the same question by ViewportTUI interface membership in tui.IsViewportTUI (tui/tui_alt_screen.go:57), the language-mechanics case AGENTS.md lists (no Symbol.for). Designed out with that citation.",
+      "rationale": "[VIEWPORT_TUI] is a Symbol.for brand (tui.ts:484, tui-alt-screen.ts:204) that isViewportTUI reads (tui.ts:491) to tell the alt-screen renderer from the main-screen one. A Go value has no Symbol-keyed members; PiG answers the same question by ViewportTUI interface membership in tui.IsViewportTUI (tui/tui_alt_screen.go:57), the language-mechanics case AGENTS.md lists (no Symbol.for). Designed out with that citation. Intention check (probe: read Pi tui.ts:501-509 and tui-alt-screen.ts:205, where the brand only answers isViewportTUI; Go's interface membership gives the same answer, pinned by the tui alt-screen tests).",
       "pigTargets": [
         "tui/tui_alt_screen.go#IsViewportTUI"
       ]
@@ -306989,7 +307004,7 @@
       "id": "pkg:tui/.#ViewportTUI::property:%5BSymbol.VIEWPORT_TUI%5D",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ba15dd02339a17c5b56d26db293b3be608f50675304afb31dc6769537d3aa3c5",
-      "rationale": "[VIEWPORT_TUI] is a Symbol.for brand (tui.ts:484, tui-alt-screen.ts:204) that isViewportTUI reads (tui.ts:491) to tell the alt-screen renderer from the main-screen one. A Go value has no Symbol-keyed members; PiG answers the same question by ViewportTUI interface membership in tui.IsViewportTUI (tui/tui_alt_screen.go:57), the language-mechanics case AGENTS.md lists (no Symbol.for). Designed out with that citation.",
+      "rationale": "[VIEWPORT_TUI] is a Symbol.for brand (tui.ts:484, tui-alt-screen.ts:204) that isViewportTUI reads (tui.ts:491) to tell the alt-screen renderer from the main-screen one. A Go value has no Symbol-keyed members; PiG answers the same question by ViewportTUI interface membership in tui.IsViewportTUI (tui/tui_alt_screen.go:57), the language-mechanics case AGENTS.md lists (no Symbol.for). Designed out with that citation. Intention check (probe: read Pi tui.ts:501-509 and tui-alt-screen.ts:205, where the brand only answers isViewportTUI; Go's interface membership gives the same answer, pinned by the tui alt-screen tests).",
       "pigTargets": [
         "tui/tui_alt_screen.go#IsViewportTUI"
       ]
