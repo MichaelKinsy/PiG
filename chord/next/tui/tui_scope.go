@@ -29,8 +29,10 @@ import (
 
 // Ports packages/chord/src/tui/scope.ts.
 
-// OptimisticAdd adds an optimistic action shown while call runs; it returns call's error (see Optimistic).
-type OptimisticAdd[A any] func(action A, call func() error) error
+// OptimisticAdd adds an optimistic action shown while call runs; it returns call's result (see Optimistic). Pi's
+// `<R>(action, call: Promise<R>) => Promise<R>` is generic per call; a Go function value cannot be, so R is a
+// parameter of the type.
+type OptimisticAdd[A, R any] func(action A, call func() (R, error)) (R, error)
 
 // TuiScope is a component's scope: what it holds and follows, until Dispose.
 type TuiScope struct {
@@ -204,7 +206,7 @@ func Registry[C, V any](s *TuiScope, token registries.Registry[C, V]) func() (V,
 // order; then read's again. pending says a call is in flight. Each change calls changed. A call over a link settles after
 // the changes its answering host committed before answering (decision "A call's answer follows its state"), so the value
 // shown next is the real one. A failed call is its caller's to handle; its action goes as a succeeded one's does.
-func Optimistic[T, A any](s *TuiScope, read func() T, reduce func(current T, action A) T) (shown func() T, add OptimisticAdd[A], pending func() bool) {
+func Optimistic[T, A, R any](s *TuiScope, read func() T, reduce func(current T, action A) T) (shown func() T, add OptimisticAdd[A, R], pending func() bool) {
 	var mu sync.Mutex
 	// Kept until every call settled, as React keeps the updates of transitions still in flight.
 	var actions []A
@@ -224,7 +226,7 @@ func Optimistic[T, A any](s *TuiScope, read func() T, reduce func(current T, act
 		mu.Unlock()
 		s.redraw()
 	}
-	add = func(action A, call func() error) error {
+	add = func(action A, call func() (R, error)) (R, error) {
 		mu.Lock()
 		actions = append(append([]A(nil), actions...), action)
 		inFlight++
@@ -259,8 +261,8 @@ func Optimistic[T, A any](s *TuiScope, read func() T, reduce func(current T, act
 }
 
 // OptimisticLast is Optimistic without a reducer: the last action in flight is the value.
-func OptimisticLast[T any](s *TuiScope, read func() T) (func() T, OptimisticAdd[T], func() bool) {
-	return Optimistic(s, read, func(_ T, action T) T { return action })
+func OptimisticLast[T, R any](s *TuiScope, read func() T) (func() T, OptimisticAdd[T, R], func() bool) {
+	return Optimistic[T, T, R](s, read, func(_ T, action T) T { return action })
 }
 
 // sameActions is JavaScript's identity of two action lists: the same array of the same length. Lists are replaced, never
