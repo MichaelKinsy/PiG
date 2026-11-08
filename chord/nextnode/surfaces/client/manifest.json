@@ -905,6 +905,26 @@
 			"sha256": "6e9dbd90ae345976c464f9b8b4540b117d4c05aa670202b53a732e06af737ef6"
 		},
 		{
+			"path": "pi/node_modules/@earendil-works/pi-telemetry/src/index.ts",
+			"sha256": "d5b6c156f6201154a388c4eab2a2d8dc71bd5dae67a5f6246a54c0b1795c9d5a"
+		},
+		{
+			"path": "pi/node_modules/@earendil-works/pi-telemetry/src/memory.ts",
+			"sha256": "e3be09d86803c34fe807672727161a1d66d8dd03ff69fa8ce2532a986a580a7b"
+		},
+		{
+			"path": "pi/node_modules/@earendil-works/pi-telemetry/src/metrics.ts",
+			"sha256": "4a7ca7009322e63e12dff530b8850e97e0539f109ac41d90f635b1102103e4f1"
+		},
+		{
+			"path": "pi/node_modules/@earendil-works/pi-telemetry/src/noop.ts",
+			"sha256": "77eec443152d4ca9898ded124b1b2e75fb8f31bc01e3e74bfcb0306158e0853d"
+		},
+		{
+			"path": "pi/node_modules/@earendil-works/pi-telemetry/src/render.ts",
+			"sha256": "6d470393502b4a77a0f29f5d92ffa5260891ed2ad018fea19451a5570a7cb713"
+		},
+		{
 			"path": "tui/bootstrap.cjs.in",
 			"sha256": "672169f0cfc352af0a892970abdb099cfede277e93a72dce2ed31171a126e944"
 		}
