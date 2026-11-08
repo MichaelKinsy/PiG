@@ -6,10 +6,13 @@ coding-tools
 envs
 login
 logs
+ports
 powershell
+prompt
 send-file
 sessions
 sharing
 subagents
 terminals
 web-shell
+workspace
