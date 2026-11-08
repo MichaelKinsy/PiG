@@ -133,6 +133,15 @@ func withTerminal(t *testing.T, touch bool, run func(page *terminalPage)) {
 	}
 	id := object(created).Value("id").(string)
 	page := &terminalPage{Chromium: p2test.StartChromium(t), t: t, origin: "http://127.0.0.1:" + strconv.Itoa(fixture.Server.Port)}
+	t.Cleanup(func() {
+		if t.Failed() {
+			var state string
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 10*time.Second)
+			defer cancel()
+			_ = page.Evaluate(ctx, `JSON.stringify({text: document.body.innerText.slice(0, 1500), sockets: (window.terminalSockets||[]).map(s => [s.url.replace(/token=[^&]*/, 'token=…'), s.readyState])})`, &state)
+			t.Logf("the page: %s", state)
+		}
+	})
 	if touch {
 		page.call("Emulation.setDeviceMetricsOverride", map[string]any{"width": 390, "height": 844, "mobile": true, "deviceScaleFactor": 1})
 		page.call("Emulation.setTouchEmulationEnabled", map[string]any{"enabled": true, "maxTouchPoints": 1})

@@ -332,7 +332,7 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 		}
 		// Its answer is reported to the main conversation; that turn ends before the next script.
 		if _, err := p2test.Until(chat.Member("view"), func(view delta.JsonValue) bool {
-			return view != nil && strings.Contains(marshal(t, view), `<sender kind=\"subagent\" name=\"own\"/>`) && !running(view)
+			return view != nil && hasText(view, func(text string) bool { return text == `<sender kind="subagent" name="own"/>` }) && !running(view)
 		}, 60*time.Second); err != nil {
 			t.Fatal(err)
 		}
