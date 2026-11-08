@@ -37,3 +37,7 @@ plugins/logs/contract.ts
 plugins/logs/web.tsx
 plugins/logs/style.css
 plugins/sharing/web.tsx
+plugins/chat/outbox.ts
+plugins/chat/session-start.ts
+test/p2/outbox.test.ts
+test/p2/session-start.test.ts
