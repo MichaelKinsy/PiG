@@ -107004,8 +107004,8 @@
       ],
       "evidence": [
         "test:chord/next/contracts/host_kind_test.go#TestHostKinds",
-        "test:chord/nextnode/app/app_delegate_test.go#TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer",
-        "test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore"
+        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes"
       ]
     },
     {
@@ -115633,9 +115633,9 @@
         "public-api:chord/next/surfaces/surfaces_scripts.go#WebScripts"
       ],
       "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
       ]
     },
     {
@@ -116331,8 +116331,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116354,8 +116354,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116377,8 +116377,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
-        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped",
+        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116400,8 +116400,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
-        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped",
+        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116490,7 +116490,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns",
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_export_test.go#TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWorkerAfterIt"
+        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart"
       ]
     },
     {
@@ -116666,9 +116666,9 @@
         "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOtherCodeAnother"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
+        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles"
       ]
     },
     {
@@ -116715,9 +116715,9 @@
         "call:chord/nextnode/app/app.go#App.report"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
       ]
     },
     {
@@ -117332,9 +117332,9 @@
         "call:chord/nextnode/app/app.go#StartServer"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAppFailsToStartWhenASurfacesBaseBundleDoesNotBuildWithEverythingClosed",
         "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
-        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink"
+        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
+        "test:chord/nextnode/app/app_test.go#TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThroughALink"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117355,9 +117355,9 @@
         "call:chord/nextnode/app/app.go#StartServer"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAppFailsToStartWhenASurfacesBaseBundleDoesNotBuildWithEverythingClosed",
         "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
-        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink"
+        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
+        "test:chord/nextnode/app/app_test.go#TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThroughALink"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120746,7 +120746,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
         "test:chord/nextnode/http/review_test.go#TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses",
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser"
       ]
     },
     {
@@ -121937,7 +121937,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_baseinputs_test.go#TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem",
         "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestARecordedBaseAfterTheCloseWatchesNothing",
-        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkFindsAnEditMadeBetweenABaseBuildAndItsWatchWithNoLaterEvent"
+        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestRecordBaseSettlesOnceItsFirstComparisonsEnded"
       ]
     },
     {
@@ -122641,7 +122641,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122664,7 +122664,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123008,43 +123008,13 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:watchBase",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:5cb4746b71a95183ce0812a62bdbd7fbe9270309e395438cdb6f2a8ebf4d9b45",
-      "rationale": "Derived by the interface gap detector: Plugins::property:watchBase is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
-      ],
-      "evidence": [
-        "reach:chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:5cb4746b71a95183ce0812a62bdbd7fbe9270309e395438cdb6f2a8ebf4d9b45"
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:watchBase::call:0",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:7353ca5a23f7ab3b76d1110665c354c9385562d8dd2b2929e50c8a5a82f779ab",
-      "rationale": "Derived by the interface gap detector: Plugins::property:watchBase::call:0 is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
-      ],
-      "evidence": [
-        "reach:chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:7353ca5a23f7ab3b76d1110665c354c9385562d8dd2b2929e50c8a5a82f779ab"
     },
     {
       "id": "pkg:chord/plugins#PluginScript",
@@ -123162,8 +123132,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
       ]
     },
     {
@@ -130550,9 +130520,9 @@
         "call:chord/nextnode/workers/workers_workers.go#CreateWorkers"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain",
         "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
+        "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -130573,9 +130543,9 @@
         "call:chord/nextnode/workers/workers_workers.go#CreateWorkers"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain",
         "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
+        "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -130958,9 +130928,9 @@
         "call:chord/nextnode/app/app.go#App.workersOf"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain",
         "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
+        "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
       ]
     },
     {
@@ -130980,9 +130950,9 @@
         "call:chord/nextnode/workers/workers_workers.go#CreateWorkers"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain",
         "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
+        "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
       ]
     },
     {

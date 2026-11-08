@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -21,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
 // pi: packages/chord/src/next-node/workers/workers.ts
@@ -29,7 +29,7 @@ import (
 // stay (a crash, a `fatal`, a failed start: no fork for a new hold, holders `failed { waiting }`) until `retry` or a
 // rollout, a running worker's lost link recovered from once a minute (workers_blocked_unix_test.go), idle stops and `busy`,
 // `stop` and its suspension, the per-address queue, `close`, stale lock files cleared, nothing kept of 1,000 addresses, and
-// the worker base (a worker runs the private copy of the entry made at creation; a broken entry rejects its creation). Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
+// the worker base (a private copy of the entry made by its build, which a start waits for and fails with while it failed). Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
 
 func requireCode(t *testing.T, err error, code data.ChordErrorCode, reason data.ChordErrorReason) {
 	t.Helper()
@@ -733,23 +733,51 @@ func TestGC1000FailedAndRetriedAddressesLeaveNoStateNoRecordAndNoSuspension(t *t
 	expectCollected(t, collected...)
 }
 
-// Pi's `describe('the worker base (decision "Workers start from the base code the server booted with")')`: its first test.
-// Pi's base is a bundle of the entry's imported source in a private file; Go's is a private copy of the entry executable
-// made by CreateWorkers, which every worker forks and Close removes.
+// Pi's `describe('the worker base (decision "Workers start from the base code the server booted with")')`: Pi's base is a bundle of the
+// entry's imported source, built in memory and written at the first fork. A Go worker's is a private copy of the entry executable,
+// made by Build (a program cannot be held in memory), which every worker forks and Close removes (docs/parity/DIVERGENCES.md D600).
 
-// TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheComponentWasCreatedWith runs `it("a worker
-// started after an edit of the entry's imported source runs the code the component was created with")`.
-func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheComponentWasCreatedWith(t *testing.T) {
-	dir := t.TempDir()
-	entry := filepath.Join(dir, "entry"+filepath.Ext(fixtureEntry(t)))
+// copiedEntry is a copy of the fixture's worker program in a new directory: its path.
+func copiedEntry(t *testing.T) string {
+	t.Helper()
 	original, err := os.ReadFile(fixtureEntry(t))
 	if err != nil {
 		t.Fatal(err)
 	}
+	entry := filepath.Join(t.TempDir(), "entry"+filepath.Ext(fixtureEntry(t)))
 	if err := os.WriteFile(entry, original, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	return entry
+}
+
+// forkedFrom is the path the worker of id S1 ran from (what the fixture reports with fixtureReportExecutable).
+func forkedFrom(f *fleet) string {
+	var from string
+	for _, line := range f.output.all() {
+		if path, ok := strings.CutPrefix(line, "session|S1 executable "); ok {
+			from = path
+		}
+	}
+	return from
+}
+
+// TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith runs `it("a worker started after an
+// edit of the entry's imported source runs the code the base was built with")`.
+func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith(t *testing.T) {
+	entry := copiedEntry(t)
 	f := newFleet(t, fleetOptions{entry: entry, env: map[string]string{fixtureReportExecutable: "1"}})
+	if f.workers.Built() != nil {
+		t.Fatal("built before anything asked for it")
+	}
+	built := f.workers.Build()
+	resolved, err := filepath.Abs(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want, ok := built.Inputs[resolved]; built.Err != nil || !ok || len(built.Inputs) != 1 || want != plugins.ContentHash(mustRead(t, entry)) {
+		t.Fatalf("build = %+v, want the entry with its bytes' hash", built)
+	}
 	// Half way through an edit: the program on disk is no longer one that runs.
 	if err := os.Remove(entry); err != nil {
 		t.Fatal(err)
@@ -762,61 +790,148 @@ func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeT
 	if label := labelOf(t, notes); label != "S1 v1" {
 		t.Fatalf("label = %q, want S1 v1", label)
 	}
-	var forkedFrom string
-	for _, line := range f.output.all() {
-		if path, ok := strings.CutPrefix(line, "session|S1 executable "); ok {
-			forkedFrom = path
-		}
+	from := forkedFrom(f)
+	if from == "" || from == entry {
+		t.Fatalf("the worker ran from %q, want the base's copy (not %q)", from, entry)
 	}
-	if forkedFrom == "" || forkedFrom == entry {
-		t.Fatalf("the worker ran from %q, want the component's private copy (not %q)", forkedFrom, entry)
-	}
-	if _, err := os.Stat(forkedFrom); err != nil {
+	if _, err := os.Stat(from); err != nil {
 		t.Fatalf("the worker's file is gone while the component lives: %v", err)
 	}
 	notes.Release()
 	if err := f.workers.Close(background); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(forkedFrom); !os.IsNotExist(err) {
+	if _, err := os.Stat(from); !os.IsNotExist(err) {
 		t.Fatalf("the worker's file after Close: %v, want it removed", err)
 	}
 }
 
-func TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain(t *testing.T) {
-	dir := t.TempDir()
-	serverAddress := fixtureServer.Address(nil)
-	server, err := host.CreateHost(host.HostOptions{Address: &serverAddress, Principal: delta.JsonObjectOf("kind", "server"), OnError: func(host.HostError) {}})
+// listDir is the names in dir.
+func listDir(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugs := newPlugins(t, dir)
-	options := WorkersOptions{
-		Kind:      "worker",
-		Entry:     filepath.Join(dir, "no-such-worker"),
-		Env:       fixtureEnvironment("worker"),
-		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-		Principal: func(contracts.Address) (data.Principal, error) { return delta.JsonObjectOf("kind", "server"), nil },
-		Start:     func(contracts.Address, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf(), nil },
-		Lock:      func(address contracts.Address) (string, error) { return "chord-test:" + dir + ":" + address.Key, nil },
-		Plugins:   plugs,
-		OnError:   func(WorkersError) {},
+	var names []string
+	for _, entry := range entries {
+		names = append(names, entry.Name())
 	}
-	// Pi's `rejects.toThrow(/Unexpected ";"/)`: the rejection says why the entry cannot be used (here the entry's path and the file it lacks).
-	_, err = CreateWorkers(server, fixtureSession, options, background)
-	if err == nil || !strings.Contains(err.Error(), "workers: the worker entry cannot be started") || !strings.Contains(err.Error(), options.Entry) || !errors.Is(err, fs.ErrNotExist) {
-		t.Fatalf("CreateWorkers with an entry that is no program = %v, want the entry cannot be started: %q: not exist", err, options.Entry)
-	}
-	options.Entry = fixtureEntry(t)
-	workers, err := CreateWorkers(server, fixtureSession, options, background)
+	return names
+}
+
+func mustRead(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("CreateWorkers after the failed one: %v", err)
-	}
-	if err := workers.Close(background); err != nil {
 		t.Fatal(err)
 	}
-	if err := server.Close(background); err != nil {
+	return data
+}
+
+// Pi's `writes nothing before the first file(): a handle never forked leaves a named directory as it is, also at remove`: a
+// component that closed before its build copies nothing, and its close leaves the directory as it is (another start's, by then).
+func TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs(t *testing.T) {
+	named := filepath.Join(t.TempDir(), "bases", "worker")
+	if err := os.MkdirAll(named, 0o700); err != nil {
 		t.Fatal(err)
+	}
+	other := filepath.Join(named, "worker")
+	if err := os.WriteFile(other, []byte("another start's"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := newFleet(t, fleetOptions{baseDir: named})
+	if err := f.workers.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if built := f.workers.Build(); built.Err == nil {
+		t.Fatal("a closed component built")
+	}
+	if got := mustRead(t, other); string(got) != "another start's" {
+		t.Fatalf("the named directory's file = %q after the close, want it as it was", got)
+	}
+}
+
+// Pi's `in a named directory: emptied first (an earlier build's files go), written again there, removed by remove`.
+func TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose(t *testing.T) {
+	named := filepath.Join(t.TempDir(), "bases", "worker")
+	if err := os.MkdirAll(named, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(named, "worker-old"), []byte("stale"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := newFleet(t, fleetOptions{baseDir: named, env: map[string]string{fixtureReportExecutable: "1"}})
+	if built := f.workers.Build(); built.Err != nil {
+		t.Fatal(built.Err)
+	}
+	copied := filepath.Join(named, "worker"+filepath.Ext(fixtureEntry(t)))
+	if names := listDir(t, named); len(names) != 1 || filepath.Join(named, names[0]) != copied {
+		t.Fatalf("the directory = %v, want only %s", names, copied)
+	}
+	if info, err := os.Stat(named); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("the directory = %v, %v, want mode 0700", info, err)
+	}
+	// A cleaner of temporary files removed it: written again (the entry has the bytes the base was built with).
+	if err := os.Remove(copied); err != nil {
+		t.Fatal(err)
+	}
+	notes := f.hold(fixtureNotes, "S1")
+	until(t, func() bool { return refKind(notes) == host.RefStateLive })
+	if from := forkedFrom(f); from != copied {
+		t.Fatalf("the worker ran from %q, want %q", from, copied)
+	}
+	notes.Release()
+	if err := f.workers.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(named); !os.IsNotExist(err) {
+		t.Fatalf("the directory after Close: %v, want it removed", err)
+	}
+}
+
+// Pi's `a start waits for the base's build, and starts it when nothing did`: the worker base's build is the entry's check here.
+func TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid(t *testing.T) {
+	f := newFleet(t, fleetOptions{})
+	if f.workers.Built() != nil {
+		t.Fatal("built before anything asked for it")
+	}
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	until(t, func() bool { return refKind(notes) == host.RefStateLive })
+	if built := f.workers.Built(); built == nil || built.Err != nil {
+		t.Fatalf("built = %+v, want built", built)
+	}
+	if starts := f.starts.all(); !reflect.DeepEqual(starts, []string{"session|S1"}) {
+		t.Fatalf("starts = %v", starts)
+	}
+}
+
+// Pi's `a broken entry fails its build and every start (worker_failed, the public start error); nothing forks`: an entry that is no
+// program that can be started is the Go worker base that does not build.
+func TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks(t *testing.T) {
+	f := newFleet(t, fleetOptions{entry: filepath.Join(t.TempDir(), "no-such-worker")})
+	if built := f.workers.Build(); built.Err == nil || !strings.Contains(built.Err.Error(), "the worker entry cannot be started") {
+		t.Fatalf("build = %+v, want the entry that cannot be started", built)
+	}
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	until(t, func() bool { return refKind(notes) == host.RefStateFailed })
+	cause := failedCause(t, notes)
+	if cause.Kind != data.FailureWaiting || cause.Error.Code != data.CodeUnavailable || cause.Error.Message != "worker failed to start" {
+		t.Fatalf("cause = %+v / %+v", cause, cause.Error)
+	}
+	// The app's start data is not asked for: the base fails the start first.
+	if starts := f.starts.all(); len(starts) != 0 {
+		t.Fatalf("starts = %v, want none", starts)
+	}
+	errs := f.errors.all()
+	failed, ok := errs[0].(WorkerFailedError)
+	if len(errs) != 1 || !ok || failed.Address != "session|S1" {
+		t.Fatalf("errors = %+v, want one worker_failed for session|S1", errs)
+	}
+	if state := f.stateOf("S1"); state == nil || state.Status != WorkerFailed {
+		t.Fatalf("state = %+v, want failed", state)
 	}
 }
 

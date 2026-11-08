@@ -74,11 +74,11 @@ func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScr
 		t.Fatal(err)
 	}
 	start := decoded.(*delta.JsonObject)
-	if start.Value("base") != s.app.Tui.Base || start.Value("script") != "/_chord/tui/base."+s.app.Tui.Base+".js" ||
+	if start.Value("base") != s.app.Tui.Base() || start.Value("script") != "/_chord/tui/base."+s.app.Tui.Base()+".js" ||
 		!regexp.MustCompile(`^/_chord/tui/plugins\.[0-9a-f]{16}\.js$`).MatchString(start.Value("combined").(string)) {
 		t.Fatalf("start = %s", body)
 	}
-	if _, baseBody := httpDo(t, s.port, "GET", "/_chord/tui/base", nil); baseBody != `"`+s.app.Tui.Base+`"` {
+	if _, baseBody := httpDo(t, s.port, "GET", "/_chord/tui/base", nil); baseBody != `"`+s.app.Tui.Base()+`"` {
 		t.Fatalf("base = %s", baseBody)
 	}
 	_, base := httpDo(t, s.port, "GET", start.Value("script").(string), headers)

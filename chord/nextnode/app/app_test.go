@@ -23,7 +23,7 @@ import (
 
 func TestAppLaysOutTheDataDirectoryServesAppInfoAndTheServersPluginsAndClosesEverything(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, nil)
-	if got := dirEntries(t, s.dataDir); !slices.Equal(got, []string{"logs", "owner-token", "plugins", "server", "workers"}) {
+	if got := dirEntries(t, s.dataDir); !slices.Equal(got, []string{"cache", "logs", "owner-token", "plugins", "server", "workers"}) {
 		t.Fatalf("data directory = %v", got)
 	}
 	server := dirEntries(t, filepath.Join(s.dataDir, "server"))
@@ -119,8 +119,8 @@ func TestAppMakesTheDataDirectoryPrivateAtEveryStartAlsoWhenItExistedLooser(t *t
 		}
 		return info.Mode().Perm()
 	}
-	paths := []string{".", "server", "workers", "plugins", "logs", "server/store.sqlite", "server/cookie-secret", "owner-token"}
-	want := []os.FileMode{0o700, 0o700, 0o700, 0o700, 0o700, 0o600, 0o600, 0o600}
+	paths := []string{".", "server", "workers", "plugins", "logs", "cache", "cache/workers", "server/store.sqlite", "server/cookie-secret", "owner-token"}
+	want := []os.FileMode{0o700, 0o700, 0o700, 0o700, 0o700, 0o700, 0o700, 0o600, 0o600, 0o600}
 	for i, path := range paths {
 		if got := mode(path); got != want[i] {
 			t.Fatalf("%s mode = %o, want %o", path, got, want[i])
@@ -222,35 +222,6 @@ func TestAppRefusesAnOwnerThatIsNotStrictJSONOrIsTheServersPrincipalBeforeItOpen
 	}
 }
 
-// Pi builds each worker kind's entry at start and rejects the start for one that does not build; a Go entry is an executable, and
-// one that cannot start is the same refusal (workers.CreateWorkers checks it).
-func TestAppRejectsWhenAWorkerKindsEntryDoesNotBuildWithEverythingClosed(t *testing.T) {
-	t.Cleanup(func() {
-		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
-	})
-	options, _ := testOptions(t, nil)
-	kind := testWorker(t, project, "")
-	kind.Entry = filepath.Join(t.TempDir(), "no-such-worker")
-	options.Workers = []AppWorkerKind{kind}
-	refused, err := StartServer(options, background)
-	if err == nil {
-		_ = refused.Close(background)
-	}
-	if err == nil || !strings.Contains(err.Error(), kind.Entry) {
-		t.Fatalf("start: %v, want an error naming the entry %q", err, kind.Entry)
-	}
-	// Closed: the data directory's lock is free again.
-	options.Workers = nil
-	started, err := StartServer(options, background)
-	if err != nil {
-		t.Fatalf("second start: %v", err)
-	}
-	if err := started.Close(background); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// Pi's last part is a type error (`@ts-expect-error`: worker kinds without `principal.worker`); here it is refused at start.
 func TestAppStartsWithoutWorkerKindsAndWithoutAWorkerPrincipalWorkerKindsNeedIt(t *testing.T) {
 	s := startTestApp(t, nil, func(o *AppOptions) { o.Principal.Worker = nil })
 	if len(s.app.Workers) != 0 {

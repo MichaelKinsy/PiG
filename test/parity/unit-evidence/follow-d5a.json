@@ -3,10 +3,10 @@
   "upstream": "packages/chord/src/host/host.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad"
+   "TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad"
   ],
   "upstream_reference": "packages/chord/test/host/host.test.ts",
-  "mutation": "chord/next/host/host_host.go (Load): `if twice {` -> `if twice && false {` (TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad FAILS: host_host_test.go:290: failed = [], want [[a plugin \"a\" is loaded twice]])"
+  "mutation": "chord/next/host/host_host.go (Load): `if twice {` -> `if twice && false {` (TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad FAILS: host_host_test.go:290: failed = [], want [[a plugin \"a\" is loaded twice]])"
  },
  {
   "upstream": "packages/chord/src/host/host.ts",
@@ -21,11 +21,10 @@
   "upstream": "packages/chord/src/host/host.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestHostCloseFailsAGetWaitingForLoad",
    "TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose"
   ],
   "upstream_reference": "packages/chord/test/host/host.test.ts",
-  "mutation": "chord/next/host/host_host.go: `h.unbound.close(closed)` -> `_ = closed` (TestHostCloseFailsAGetWaitingForLoad FAILS: host_host_test.go:856: err = app.info: did not become live within 60000 ms, want {released closed \"the host is closed\"}; TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose FAILS: host_unbound_test.go:305: the get's outcome = app.missing is not served here, want released/closed)"
+  "mutation": "chord/next/host/host_host.go: `h.unbound.close(closed)` -> `_ = closed` (TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose FAILS: host_unbound_test.go:305: the get's outcome = app.missing is not served here, want released/closed)"
  },
  {
   "upstream": "packages/chord/src/host/activity.ts",
@@ -49,10 +48,10 @@
   "upstream": "packages/chord/src/host/unbound.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestHostReferencesWaitingInTheIndexBeforeThePublicationAreLoadingPlacedByIt"
+   "TestTheIndexWakesEveryRequestAtThePublicationOutOfTheIndexFirstADeletedOneIsNotWoken"
   ],
   "upstream_reference": "packages/chord/test/host/unbound.test.ts",
-  "mutation": "chord/next/host/host_unbound.go: `request.wake()` -> `_ = request` (TestHostReferencesWaitingInTheIndexBeforeThePublicationAreLoadingPlacedByIt FAILS: host_unbound_test.go:214: info state = loading, want live)"
+  "mutation": "chord/next/host/host_unbound.go: `request.wake()` -> `_ = request` (TestTheIndexWakesEveryRequestAtThePublicationOutOfTheIndexFirstADeletedOneIsNotWoken, TestTheIndexWakesTheRequestsOfTheNamesAReloadServesOnlyCarryOverPublicationsWakePerName and TestTheIndexWakesInInsertionOrderOfNamesAndRequests FAIL)"
  },
  {
   "upstream": "packages/chord/src/host/root.ts",

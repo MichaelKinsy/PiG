@@ -22,7 +22,7 @@ import (
 // Ports the "applies changes", "applying changes one after another" and "base code" tests of
 // packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1). The base-code tests that start a server with no `base` given are in
 // app_executable_test.go; the one with a lazy optional import has no Go form (D603: an executable has no import graph). The worker
-// kind's built-from files (a worker's entry is an executable, not a script built by the plugins component) are D600. The
+// kind's built-from file is its entry executable (D600). The
 // serialization test holds the first build through App's `build` and `rollout` fields, where Pi replaces the component's methods.
 // The "installs" test is ported below.
 
@@ -204,7 +204,7 @@ func TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed(t *testin
 }
 
 // `Base` names files and directories whose change marks `base` (the app's own code changed: restart), not a rewrite with the
-// same bytes (Pi's app.test.ts; its cases for a worker kind's base files wait for the worker base, T11).
+// same bytes (Pi's app.test.ts; its case for a worker kind's base file is below).
 func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 	for _, name := range []string{"api/v1.ts", "start.ts"} {
 		t.Run(name, func(t *testing.T) {
@@ -245,6 +245,56 @@ func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 			untilMarks(t, s.app, "base", func(m plugins.PluginsState) bool { return m.Base })
 		})
 	}
+}
+
+// Pi's `marks base for ... a file a worker kind's base was built from, not for a rewrite with the same bytes`: a worker kind's base is
+// its entry executable's copy (D600), recorded with its bytes; the rewrite marks nothing, an edit marks `base`, and the app's
+// `BaseWatched` settles once the records' first comparisons ended.
+func TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes(t *testing.T) {
+	// A small program: this test starts no worker, and a rewrite of a large file is read half written by the watcher on a slow disk.
+	original, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes := []byte("#!/bin/sh\nexit 0\n")
+	entry := filepath.Join(t.TempDir(), "worker"+filepath.Ext(original))
+	if err := os.WriteFile(entry, bytes, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, func(o *AppOptions) {
+		worker := testWorker(t, project, "")
+		worker.Entry = entry
+		o.Workers = []AppWorkerKind{worker}
+	})
+	<-s.app.BaseWatched()
+	if s.app.Plugins.Marks().Base {
+		t.Fatal("base is marked at start")
+	}
+	if got := s.errors.kinds(); len(got) != 0 {
+		t.Fatalf("reported %v", got)
+	}
+	// The barrier is a plugin edit: the watcher handles events in order, so once it shows the plugin dirty it has seen the rewrite.
+	if err := replaceFile(entry, bytes); err != nil {
+		t.Fatal(err)
+	}
+	editEcho(t, s.root, "barrier")
+	untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
+	if s.app.Plugins.Marks().Base {
+		t.Fatal("base is marked by a rewrite with the same bytes")
+	}
+	if err := replaceFile(entry, append(append([]byte(nil), bytes...), '\n')); err != nil {
+		t.Fatal(err)
+	}
+	untilMarks(t, s.app, "base", func(m plugins.PluginsState) bool { return m.Base })
+}
+
+// replaceFile makes path hold data in one step (a file written beside it, renamed over it): a watcher never reads it half written.
+func replaceFile(path string, data []byte) error {
+	next := path + ".next"
+	if err := os.WriteFile(next, data, 0o755); err != nil {
+		return err
+	}
+	return os.Rename(next, path)
 }
 
 // gitRepository makes a local bare repository `<name>.git` of files, tagged tag, and returns its `file://` URL (no network).
