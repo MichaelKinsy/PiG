@@ -262,3 +262,20 @@ func TestSessionNumbersNothingWhenNoExtensionAsksForNumbers(t *testing.T) {
 		})
 	}
 }
+
+// A Node process's table of message objects is keyed by the number alone, and Sessions and graph runners that reach one process number their messages independently: the numbers come from one counter, so no two messages of the process share one.
+func TestMessageSequencesNeverRepeatAcrossInstances(t *testing.T) {
+	var first, second messageSequences
+	seen := map[uint64]bool{}
+	for i := range 20 {
+		sequences := &first
+		if i%2 == 1 {
+			sequences = &second
+		}
+		number := sequences.Sequence(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserText("m")}})
+		if number == 0 || seen[number] {
+			t.Fatalf("message %d numbered %d, which another message of the process holds", i, number)
+		}
+		seen[number] = true
+	}
+}

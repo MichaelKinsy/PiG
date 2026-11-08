@@ -77,6 +77,7 @@ const xrefRealm = new Realm(() => {
 });
 installCloneHooks(xrefRealm);
 installTestCollect(xrefRealm);
+xrefRealm.messages = { numberOf: messageNumber, resolve: resolveMessage };
 const sharedBus = new SharedBus(xrefRealm, process.env.PIG_EVENT_BUS === "routed");
 const XREF_REQUESTS = new Set(["xref.op", "events.dispatch", "events.migrate"]);
 // Emissions whose foreign listener prefix ran while this process was idle. Pi runs such a listener's continuations only after the emitter's synchronous run, so this process waits for the emitter's first microtask (events.proceed) before its own microtasks run.
@@ -139,21 +140,39 @@ function replaceMessageInPlace(target, source) {
   Object.assign(target, source);
 }
 
+// messageNumbers is the number the host gave each message object this process holds: an object that crosses to another process (pi.events, xref) names its message by it, and the receiving process resolves the number to its own object (resolveMessage), so the message is === the receiver's own payload message, as in Pi's one realm.
+const messageNumbers = new WeakMap();
+
+// pig divergence (D541): only a process that holds the message resolves it; one that does not gets a proxy to the sender's object, and an edit made later to one process's object is not made to the other's.
+function messageNumber(object) {
+  return messageNumbers.get(object);
+}
+
+function resolveMessage(seq) {
+  return messageObjects.get(seq)?.object;
+}
+
+// applyHostValue records value as the one the host last sent for held, and makes the held object hold it when it is another value. The same members in another order (an entry's JSON against an event payload's) are the same value, and an edit a handler made to the object since stays: it is the handler's own, and a payload that carries the host's value again does not undo it.
+function applyHostValue(held, value) {
+  const text = JSON.stringify(value);
+  if (text === held.hostValue) return;
+  const previous = JSON.parse(held.hostValue);
+  held.hostValue = text;
+  if (isDeepStrictEqual(previous, value)) return;
+  if (value !== held.object && !isDeepStrictEqual(held.object, value)) replaceMessageInPlace(held.object, value);
+}
+
 // sharedMessage is the object this process holds for the message the host numbered seq, which an event carries as message: the object an earlier event or the session entry gave it, made to hold the value the event carries, or message itself the first time. A message the host did not number, or one this process cannot tell from another, stays as it came.
 function sharedMessage(seq, message) {
   if (!Number.isSafeInteger(seq) || seq <= 0 || !message || typeof message !== "object") return message;
   const held = messageObjects.get(seq);
-  const hostValue = JSON.stringify(message);
   if (held === undefined) {
-    messageObjects.set(seq, { object: message, hostValue });
+    messageObjects.set(seq, { object: message, hostValue: JSON.stringify(message) });
+    messageNumbers.set(message, seq);
     if (messageObjects.size > MESSAGE_OBJECT_LIMIT) messageObjects.delete(messageObjects.keys().next().value);
     return message;
   }
-  // The host's value for the message is what the last payload carried: an edit a handler made to the object since (in message_start, turn_end or agent_end, or later on a kept object) is the handler's own, and a payload that carries the host's value again does not undo it.
-  if (held.hostValue !== hostValue) {
-    held.hostValue = hostValue;
-    if (message !== held.object && !isDeepStrictEqual(held.object, message)) replaceMessageInPlace(held.object, message);
-  }
+  applyHostValue(held, message);
   return held.object;
 }
 
@@ -3594,11 +3613,7 @@ export class Runtime {
     const held = messageObjects.get(seq);
     if (held === undefined || held.object === entry.message) return;
     // An entry that shows the value the host last sent is that message, with whatever edits a handler made to the object since.
-    const hostValue = JSON.stringify(entry.message);
-    if (held.hostValue !== hostValue) {
-      held.hostValue = hostValue;
-      replaceMessageInPlace(held.object, entry.message);
-    }
+    applyHostValue(held, entry.message);
     entry.message = held.object;
   }
 

@@ -4529,6 +4529,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				Args:        argsJSON,
 				encodedArgs: !streamed,
 			}
+			// pig divergence (D541): the numbers name messages for the objects of this process only; another process holds its own object for a number.
 			// Only a Node runtime shares message objects between its payloads; numbering a message for another SDK would cost a Session allocations it has no use for.
 			if (event == "message_start" || event == "message_end" || event == "turn_end" || event == "agent_end") && me.hostsNodeRuntime() {
 				payload.MessageSeqs = extension.MessageSequences(parent)
