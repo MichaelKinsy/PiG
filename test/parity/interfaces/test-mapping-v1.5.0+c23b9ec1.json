@@ -61,8 +61,17 @@
     },
     {
       "path": "packages/ai/test/abort.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:91d7b131993ac13536a998e80b0a6497291fc8735a7e967899c8dcdcec5a22ab"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:91d7b131993ac13536a998e80b0a6497291fc8735a7e967899c8dcdcec5a22ab",
+      "evidence": [
+        "ai/abort_upstream_test.go#TestAbortMatrixUpstream",
+        "coding/model_runtime_abort_upstream_test.go#TestModelRuntimeProviderTimeoutWithoutRequestCancellationIsError",
+        "test/parity/scenarios/providers-faux-streaming/14-provider-immediate-abort.toml",
+        "ai/abort_upstream_test.go",
+        "coding/model_runtime_setup_abort_upstream_test.go",
+        "coding/session_tool_admission_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 abort.test.ts has 43 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/anthropic-auth-token.test.ts",
@@ -174,8 +183,12 @@
     },
     {
       "path": "packages/ai/test/anthropic-message-threads.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c3c9855ef1f514fe9246f75f7a9acec233b6a6b7cad68c228bee9dc80d43a18b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c3c9855ef1f514fe9246f75f7a9acec233b6a6b7cad68c228bee9dc80d43a18b",
+      "evidence": [
+        "ai/anthropic_message_threads_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 anthropic-message-threads.test.ts has 14 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/anthropic-mid-conversation-effort.test.ts",
@@ -238,13 +251,24 @@
     },
     {
       "path": "packages/ai/test/anthropic-strict-tool-schema.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:121d976168c2330e41702e4c0a87bc673dbf210979e8812f1b8d3f69ee201512"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:121d976168c2330e41702e4c0a87bc673dbf210979e8812f1b8d3f69ee201512",
+      "evidence": [
+        "ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicStrictToolSchemas",
+        "ai/anthropic_strict_keywords_test.go",
+        "ai/anthropic_strict_tool_schema_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 anthropic-strict-tool-schema.test.ts has 3 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/anthropic-temperature-compat.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:304e85db98b340ebe6fd592acaf00b7fed6aef10b8c8dce4b236df4bf3334371"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:304e85db98b340ebe6fd592acaf00b7fed6aef10b8c8dce4b236df4bf3334371",
+      "evidence": [
+        "ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamTemperatureCompat",
+        "ai/anthropic_options_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 anthropic-temperature-compat.test.ts has 7 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/anthropic-thinking-binding-e2e.test.ts",
@@ -483,8 +507,12 @@
     },
     {
       "path": "packages/ai/test/clamp-max-tokens.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:df80896bb514f1dfc0f4b4f3bb16027dc1b746741345597e666b09239f93691e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:df80896bb514f1dfc0f4b4f3bb16027dc1b746741345597e666b09239f93691e",
+      "evidence": [
+        "ai/clamp_max_tokens_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 clamp-max-tokens.test.ts has 7 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/classifier-images-live.test.ts",
@@ -499,8 +527,15 @@
     },
     {
       "path": "packages/ai/test/classifier-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5e8e83b1d4deec3a66bb40b4ee77fc3415f2aa6dc4ce4376d42e53a965d45e65"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5e8e83b1d4deec3a66bb40b4ee77fc3415f2aa6dc4ce4376d42e53a965d45e65",
+      "evidence": [
+        "ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "coding/extension_model_types_wire_test.go#TestExtensionClassifyAction",
+        "ai/opencode_endpoints_upstream_test.go#TestOpenCodeCatalogUsesProtocolSpecificEndpoints",
+        "ai/classifier_models_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 classifier-models.test.ts has 10 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/cloudflare-ai-binding.test.ts",
@@ -589,18 +624,35 @@
     },
     {
       "path": "packages/ai/test/context-overflow.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7f3aae44de8845fdb4f360ae16f4dc26afb5824d40e0771ee869a5c113a87546"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7f3aae44de8845fdb4f360ae16f4dc26afb5824d40e0771ee869a5c113a87546",
+      "evidence": [
+        "ai/context_overflow_upstream_test.go#TestContextOverflowMatrixUpstream",
+        "ai/context_overflow_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 context-overflow.test.ts has 36 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/cross-provider-handoff.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9859c97788b5e644b633b2bac72a4f6869818800aa46b9c65cd78f082337396b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9859c97788b5e644b633b2bac72a4f6869818800aa46b9c65cd78f082337396b",
+      "evidence": [
+        "ai/cross_provider_handoff_upstream_test.go#TestCrossProviderHandoffUpstream",
+        "agent/transform_test.go#TestNormalizeMessages_ThinkingNormalization",
+        "agent/transform_provider_path_test.go#TestCleanToolCycleSurvivesProviderRequest",
+        "ai/cross_provider_handoff_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 cross-provider-handoff.test.ts has 2 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/empty.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:75e86fd3b03ce18dc6702052a6ff314e096b6249017e3c5b14af7efbed553faa"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:75e86fd3b03ce18dc6702052a6ff314e096b6249017e3c5b14af7efbed553faa",
+      "evidence": [
+        "ai/empty_upstream_test.go#TestEmptyMessagesUpstream",
+        "ai/empty_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 empty.test.ts has 124 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/env-api-keys.test.ts",
@@ -613,8 +665,19 @@
     },
     {
       "path": "packages/ai/test/error-body.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:99555b5788c823d0880b9937093218b23c49fde8ed07dea8c7c4cf4b01e19d7f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:99555b5788c823d0880b9937093218b23c49fde8ed07dea8c7c4cf4b01e19d7f",
+      "evidence": [
+        "ai/error_body_upstream_test.go#TestNormalizeProviderErrorUpstream",
+        "ai/error_body_upstream_test.go#TestFormatProviderErrorUpstream",
+        "ai/error_body_upstream_test.go#TestProviderErrorTrimmingMatchesJS",
+        "test/parity/scenarios/providers-faux-streaming/16-provider-http-error-body.toml",
+        "ai/connection_cause_oracle_test.go",
+        "ai/error_body_cause_upstream_test.go",
+        "ai/error_body_truncate_upstream_test.go",
+        "ai/error_body_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 error-body.test.ts has 21 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/event-stream.test.ts",
@@ -671,8 +734,14 @@
     },
     {
       "path": "packages/ai/test/generate-models-strict.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:00458d0fd5df2cc234f5b1d10b9130e14b9b620509e134e449828f49f7e99ec9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:00458d0fd5df2cc234f5b1d10b9130e14b9b620509e134e449828f49f7e99ec9",
+      "evidence": [
+        "cmd/gen-models/generate_models_strict_test.go#TestGenerateModelsStrict",
+        "cmd/gen-models/catalog_generation_utils_test.go",
+        "cmd/gen-models/generate_models_strict_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 generate-models-strict.test.ts has 1 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",
@@ -686,8 +755,15 @@
     },
     {
       "path": "packages/ai/test/github-copilot-oauth.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c0c3c4b864d3616403c171541e6ce97c12c0b427d0a2eb9efaec0f4fa37cc6eb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c0c3c4b864d3616403c171541e6ce97c12c0b427d0a2eb9efaec0f4fa37cc6eb",
+      "evidence": [
+        "ai/github_copilot_oauth_upstream_test.go",
+        "ai/github_copilot_catalog_upstream_test.go",
+        "internal/codingagent/copilot_catalog_upstream_test.go#TestCopilotAuthenticatedAccountAvailableModelsUpstream",
+        "internal/codingagent/copilot_catalog_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 github-copilot-oauth.test.ts has 13 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/github-copilot-request-size-overflow.test.ts",
@@ -833,8 +909,16 @@
     },
     {
       "path": "packages/ai/test/image-tool-result.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c391fa2f624fb525506e26889f58c7d59bf9b82f1b933fe185ad804ac6166bdd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c391fa2f624fb525506e26889f58c7d59bf9b82f1b933fe185ad804ac6166bdd",
+      "evidence": [
+        "ai/image_tool_result_upstream_test.go#TestImageToolResultMatrixUpstream",
+        "ai/image_tool_result_wire_test.go#TestGeneratedModelToModelPreservesCapabilities",
+        "ai/image_tool_result_wire_test.go#TestMistralImageToolResultWireKeys",
+        "test/parity/scenarios/providers-faux-streaming/17-image-tool-result-wire.toml",
+        "ai/image_tool_result_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 image-tool-result.test.ts has 46 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/images-models.test.ts",
@@ -1135,8 +1219,29 @@
     },
     {
       "path": "packages/ai/test/openai-codex-stream.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f959812c62a9dc54489b7496c4a25ed22bf1e24956115729d9cd5b25ef3240cc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f959812c62a9dc54489b7496c4a25ed22bf1e24956115729d9cd5b25ef3240cc",
+      "evidence": [
+        "ai/openai_codex_sse_upstream_test.go#TestCodexSSEAndPayloadUpstream",
+        "ai/openai_codex_sse_upstream_test.go#TestCodexSSELifetimeUpstream",
+        "ai/openai_codex_retry_upstream_test.go#TestCodexSSERetriesUpstream",
+        "ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream",
+        "coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+        "test/parity/scenarios/providers-faux-streaming/24-codex-payload-lifetime.toml",
+        "test/parity/scenarios/providers-faux-streaming/25-codex-continuation-recovery.toml",
+        "ai/user_agent_test.go",
+        "coding/codex_model_headers_test.go#TestCodexModelsJSONHeadersOverrideIdentityDefaults",
+        "ai/identity_test.go#TestFormatUserAgentForms",
+        "ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi",
+        "ai/openai_codex_retry_backoff_release_test.go",
+        "ai/openai_codex_retry_upstream_test.go",
+        "ai/openai_codex_sse_upstream_test.go",
+        "ai/openai_codex_websocket_test.go",
+        "ai/openai_codex_ws_upstream_test.go",
+        "coding/codex_model_headers_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 openai-codex-stream.test.ts has 32 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/openai-completions-cache-control-format.test.ts",
@@ -1149,18 +1254,37 @@
     },
     {
       "path": "packages/ai/test/openai-completions-empty-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8727a532e1048d85517f462dc846b8170eb154e0e56b3fcd404907bd908ffd84"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8727a532e1048d85517f462dc846b8170eb154e0e56b3fcd404907bd908ffd84",
+      "evidence": [
+        "coding/openai_completions_empty_tools_upstream_test.go#TestOpenAICompletionsEmptyToolsUpstream",
+        "coding/openai_completions_empty_tools_upstream_test.go#TestOpenAICompletionsCloudflareEmptyToolsUpstream",
+        "test/parity/scenarios/providers-faux-streaming/16-completions-runtime-options.toml",
+        "ai/openai_test.go",
+        "coding/openai_completions_empty_tools_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 openai-completions-empty-tools.test.ts has 12 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/openai-completions-non-null-assistant-content.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ab06a46cee61291d8793a1b904cc201f902b09dc5ec19efef7e9e4fe2da25f05"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ab06a46cee61291d8793a1b904cc201f902b09dc5ec19efef7e9e4fe2da25f05",
+      "evidence": [
+        "ai/openai_completions_non_null_assistant_content_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 openai-completions-non-null-assistant-content.test.ts has 3 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/openai-completions-prompt-cache.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:276535dc7e725b031e734fd3595cb644e1728a7e12520e0bf0aa8274c7fe8a01"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:276535dc7e725b031e734fd3595cb644e1728a7e12520e0bf0aa8274c7fe8a01",
+      "evidence": [
+        "ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
+        "test/parity/scenarios/providers-faux-streaming/15-openai-cache-affinity.toml",
+        "ai/openai_prompt_cache_upstream_test.go",
+        "ai/openai_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 openai-completions-prompt-cache.test.ts has 22 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/openai-completions-provider-stream-event.test.ts",
@@ -1217,8 +1341,14 @@
     },
     {
       "path": "packages/ai/test/openai-completions-thinking-as-text.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2d8a28901775fd509435e7051cb0074e8cd8cbc6955ed56f235e95f62e5fdd8a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2d8a28901775fd509435e7051cb0074e8cd8cbc6955ed56f235e95f62e5fdd8a",
+      "evidence": [
+        "ai/openai_test.go#TestConvertMessagesWithCompat_ThinkingAsText",
+        "ai/openai_contract_0861_test.go#TestOpenAICompletionsThinkingAsTextUsesPlainContentParts",
+        "ai/openai_completions_thinking_as_text_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 openai-completions-thinking-as-text.test.ts has 3 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/openai-completions-thinking-token-budget.test.ts",
@@ -1233,13 +1363,30 @@
     },
     {
       "path": "packages/ai/test/openai-completions-tool-choice.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:eb4565b4c9c70544f230f8b7151aa061d4d608c13ff1ae1eed5b7f2fbde63da2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:eb4565b4c9c70544f230f8b7151aa061d4d608c13ff1ae1eed5b7f2fbde63da2",
+      "evidence": [
+        "ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoicePayloadUpstream",
+        "ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
+        "ai/openai_tool_choice_stream_upstream_test.go#TestOpenAICompletionsToolChoiceStreamUpstream",
+        "test/parity/scenarios/providers-faux-streaming/22-completions-tool-choice.toml",
+        "test/parity/scenarios/providers-faux-streaming/23-completions-interleaved-deltas.toml",
+        "ai/openai_tool_choice_formats_upstream_test.go",
+        "ai/openai_tool_choice_payload_upstream_test.go",
+        "ai/openai_tool_choice_stream_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 openai-completions-tool-choice.test.ts has 49 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/openai-completions-tool-result-images.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:aa61195696e59371a53959022431c60ae10def46b033da70990236c14ed6164b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:aa61195696e59371a53959022431c60ae10def46b033da70990236c14ed6164b",
+      "evidence": [
+        "ai/openai_completions_images_priority_upstream_test.go#TestOpenAICompletionsToolResultImagesUpstream",
+        "ai/openai_completions_empty_tool_result_test.go#TestToolResultWhitespaceOnly_NoOutputPlaceholder",
+        "ai/openai_completions_images_priority_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 openai-completions-tool-result-images.test.ts has 3 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/openai-completions-vllm-priority.test.ts",
@@ -1281,8 +1428,15 @@
     },
     {
       "path": "packages/ai/test/openai-responses-compat.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d0e872d02d22bf4cd424696c4630d80583ef96c5f02829ec16b7847a8cadd818"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d0e872d02d22bf4cd424696c4630d80583ef96c5f02829ec16b7847a8cadd818",
+      "evidence": [
+        "ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
+        "ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatHeadersUpstream",
+        "test/parity/scenarios/providers-faux-streaming/15-openai-cache-affinity.toml",
+        "ai/openai_responses_compat_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 openai-responses-compat.test.ts has 18 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/openai-responses-empty-tool-result.test.ts",
@@ -1342,8 +1496,12 @@
     },
     {
       "path": "packages/ai/test/openai-responses-prompt-cache.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:17de0ec9bf7c1fabd7882e6a0522684c785142c811c040111e3eb06243164827"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:17de0ec9bf7c1fabd7882e6a0522684c785142c811c040111e3eb06243164827",
+      "evidence": [
+        "ai/openai_responses_prompt_cache_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 openai-responses-prompt-cache.test.ts has 4 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/openai-responses-reasoning-replay-e2e.test.ts",
@@ -1578,8 +1736,16 @@
     },
     {
       "path": "packages/ai/test/qwen-token-plan-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ccbbb158c71cb09d291d1e6f311a717ef4954c5d8a57c3c2cc9c05e4f657d764"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ccbbb158c71cb09d291d1e6f311a717ef4954c5d8a57c3c2cc9c05e4f657d764",
+      "evidence": [
+        "ai/qwen_token_plan_models_test.go#qwen-token-plan-models.test.ts",
+        "ai/auth_env_keys_test.go#TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable",
+        "ai/port_wave_12_helpers_test.go#assertThinkingLevelPresence",
+        "ai/auth_env_keys_test.go",
+        "ai/qwen_token_plan_models_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 qwen-token-plan-models.test.ts has 13 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/radius-oauth.test.ts",
@@ -1636,8 +1802,26 @@
     },
     {
       "path": "packages/ai/test/retry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1e5c229c06082014f8b3cb809b402fc3322646f57f4fc1e147ebb5740c7eb697"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1e5c229c06082014f8b3cb809b402fc3322646f57f4fc1e147ebb5740c7eb697",
+      "evidence": [
+        "ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification",
+        "ai/assistant_retry_test.go#TestRetryDelayMsCapsAgentRetryDelay",
+        "ai/assistant_retry_test.go#TestRetryAssistantCall",
+        "ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_test.go",
+        "ai/google_retry_request_test.go",
+        "ai/google_stream_upstream_test.go",
+        "ai/openai_completions_retry_upstream_test.go",
+        "ai/openai_decisions_upstream_test.go",
+        "ai/provider_retry_request_upstream_test.go",
+        "coding/base_tools_override_test.go",
+        "coding/provider_retry_messages_upstream_test.go",
+        "coding/session_base_tools_override_test.go",
+        "coding/session_dns_retry_test.go",
+        "coding/session_retry_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 retry.test.ts has 28 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/sampling-options.test.ts",
@@ -1653,8 +1837,24 @@
     },
     {
       "path": "packages/ai/test/stream.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7465b9dc2d050c209e240e84a979626cb59471a99cd2c4c4a136d48000258b7e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7465b9dc2d050c209e240e84a979626cb59471a99cd2c4c4a136d48000258b7e",
+      "evidence": [
+        "ai/cloudflare_stream_upstream_test.go",
+        "ai/cloudflare_streams_test.go",
+        "ai/event_stream_duration_upstream_test.go",
+        "ai/event_stream_generic_test.go",
+        "ai/event_stream_timing_test.go",
+        "ai/openai_codex_retry_backoff_release_test.go",
+        "ai/openai_codex_retry_upstream_test.go",
+        "ai/openai_codex_sse_upstream_test.go",
+        "ai/openai_codex_websocket_test.go",
+        "ai/openai_codex_ws_upstream_test.go",
+        "ai/stream_upstream_test.go",
+        "ai/user_agent_test.go",
+        "coding/codex_model_headers_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 stream.test.ts has 238 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/streaming-json.test.ts",
@@ -1683,8 +1883,14 @@
     },
     {
       "path": "packages/ai/test/supports-xhigh.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e30dc68887932d35b027a4885e10ebf6483df997a5d5961cefe8e0679b73e11c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e30dc68887932d35b027a4885e10ebf6483df997a5d5961cefe8e0679b73e11c",
+      "evidence": [
+        "ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream",
+        "test/parity/scenarios/ai-sdk/02-catalog-metadata.toml",
+        "ai/supports_xhigh_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 supports-xhigh.test.ts has 30 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/system-message-replay.test.ts",
@@ -1749,8 +1955,17 @@
     },
     {
       "path": "packages/ai/test/tokens.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4ebac99572708225cdd296a04834b33fb1c2ef9ad76876598e6babc21d21a969"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4ebac99572708225cdd296a04834b33fb1c2ef9ad76876598e6babc21d21a969",
+      "evidence": [
+        "ai/tokens_cases_upstream_test.go",
+        "ai/tokens_upstream_test.go#TestTokensOnAbortUpstream",
+        "ai/google_raw_thinking_test.go#TestGoogleRawThinkingOptions",
+        "test/parity/scenarios/providers-faux-streaming/16-google-native-thinking.toml",
+        "ai/clamp_max_tokens_test.go",
+        "ai/total_tokens_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 tokens.test.ts has 32 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/tool-call-id-normalization.test.ts",
@@ -1763,13 +1978,26 @@
     },
     {
       "path": "packages/ai/test/tool-call-without-result.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c2bc31860f6a55783a329e46f59e6870c4eb82a5ce4f755f7d4bca9023ae25e2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c2bc31860f6a55783a329e46f59e6870c4eb82a5ce4f755f7d4bca9023ae25e2",
+      "evidence": [
+        "ai/tool_call_without_result_cases_test.go",
+        "ai/tool_call_without_result_upstream_test.go#TestToolCallWithoutResultUpstream",
+        "ai/tool_flow_test.go#TestProviderToolFlowBoundaries",
+        "test/parity/scenarios/providers-faux-streaming/15-missing-tool-results.toml"
+      ],
+      "rationale": "Pi c23b9ec1 tool-call-without-result.test.ts has 31 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/total-tokens.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:27e5730c07207be962e45205bc0d39ed13a8b4be57b85f81548820c1667057ab"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:27e5730c07207be962e45205bc0d39ed13a8b4be57b85f81548820c1667057ab",
+      "evidence": [
+        "ai/total_tokens_upstream_test.go#TestTotalTokensUpstream",
+        "ai/provider_matrix_test.go",
+        "ai/total_tokens_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 total-tokens.test.ts has 36 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/transcript-tool-changes.test.ts",
@@ -1823,8 +2051,17 @@
     },
     {
       "path": "packages/ai/test/unicode-surrogate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1a9896a45c4bb11fa3661672fa42efd55a62c98326028cf3356e35774bae0e69"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1a9896a45c4bb11fa3661672fa42efd55a62c98326028cf3356e35774bae0e69",
+      "evidence": [
+        "ai/unicode_surrogate_cases_test.go",
+        "ai/unicode_surrogate_upstream_test.go#TestUnicodeSurrogateUpstream",
+        "ai/sanitize_unicode_test.go#TestSanitizeSurrogatesCodeUnits",
+        "test/parity/scenarios/providers-faux-streaming/14-unicode-tool-results.toml",
+        "ai/message_text_surrogate_test.go",
+        "ai/unicode_surrogate_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 unicode-surrogate.test.ts has 93 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/uuid.test.ts",
@@ -1886,8 +2123,14 @@
     },
     {
       "path": "packages/ai/test/xai-responses.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4500dc249f04766b3b014f5d0d4b91bd3afb4f2002c8fec8f2e9bcb22e6f547a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4500dc249f04766b3b014f5d0d4b91bd3afb4f2002c8fec8f2e9bcb22e6f547a",
+      "evidence": [
+        "ai/xai_responses_upstream_test.go",
+        "test/parity/scenarios/providers-faux-streaming/11-xai-omitted-reasoning.toml",
+        "ai/identity_test.go#TestFormatUserAgentForms"
+      ],
+      "rationale": "Pi c23b9ec1 xai-responses.test.ts has 11 case sites. Each is ported in the Go tests named in evidence with Pi's inputs and expected results, hermetic (no network, no credentials); provider-matrix cases are enumerated from the pinned Pi inventory so a changed case count fails the Go test. Re-bound to the pin hash after the follow/ai re-port of the c23b9ec1 changes."
     },
     {
       "path": "packages/ai/test/xhigh.test.ts",
@@ -3529,8 +3772,8 @@
       ],
       "rationale": "42 of the 44 upstream cases run in store_test.go and the group commit cases in group_commit_test.go, among them 'rejects a grouped commit whose admission throws with that error' (Admit is recovered per commit; only that commit rejects, with the panic value, an error itself or a ThrownError) and 'rejects a group's commits with what its turn throws after COMMIT' (the host listener's panic rejects the commits not settled, with that error itself). The other two are drafted as designed out, DRAFT FOR OWNER REVIEW (no owner approval recorded yet; they stay open until the owner decides), because each asserts what a TypeScript metrics adapter throws and Go's callbacks do not throw: Both 'stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats' and '... after a lone commit's COMMIT too': telemetry.TelemetryCounter.Add returns nothing, so an adapter's failure is a panic; the store stops, memory takes the whole group or the lone commit (it is durable), no seq repeats, and later commits and reads reject storage_failed, as in Pi. The differences are the caller of the commit whose turn it was: Pi rejects its promise with storage_failed, Go re-panics in the caller of the group's first commit (or the lone commit), and the others of the group reject storage_failed. The panicking-adapter cases 'stops the store when a metrics adapter panics after a group's COMMIT' and '... after a lone commit's COMMIT too' in group_commit_test.go assert the Go form. Pi's int() key typing (d7704516e) is TypeScript typing and has no case.",
       "designedOutCases": [
-        "group commit \u203a stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
-        "group commit \u203a stops the store when a metrics adapter throws after a lone commit's COMMIT too"
+        "group commit › stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
+        "group commit › stops the store when a metrics adapter throws after a lone commit's COMMIT too"
       ]
     },
     {

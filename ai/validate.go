@@ -147,6 +147,7 @@ func sameValue(a, b any) bool {
 func appendStringify(dst []byte, value any) []byte {
 	switch value := value.(type) {
 	case *big.Int:
+		// pig divergence (D521): a bigint is the string `<digits>n` (Pi's probes' notation), not a JavaScript bigint.
 		return append(append(append(dst, '"'), value.String()...), 'n', '"')
 	case nil:
 		return append(dst, "null"...)
