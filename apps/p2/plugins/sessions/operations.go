@@ -308,6 +308,10 @@ func serveOperations(facet host.FacetHost) error {
 		copied := self.Registry(contract.SessionCopied.Registry)
 		failed := self.State(failedState).(*documents.Singleton)
 		preparing := self.State(preparingState).(*documents.Singleton)
+		// The jobs below read these registries off the host's loop: start them here, in the object's own section, so
+		// that a job's first read only reads (a registry's first read composes it).
+		_, _ = contract.SessionArchived.Table(archived)
+		_, _ = contract.SessionCopied.Table(copied)
 
 		dataDir := func() string {
 			info, _ := server.Member("info").Value()
