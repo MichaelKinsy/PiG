@@ -63,6 +63,8 @@ func TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkA
 	// The page holds the Go server's choice itself, as the owner.
 	tab.hold("choice", "choice", 10*time.Second, "", "pick")
 	tab.waitState("choice", "live")
+	sleepFor(3 * time.Second)
+	t.Logf("DIAG value=%s", evalAs[string](tab, `(() => { try { const m = globalThis.reload.refs.choice.pick; return JSON.stringify([m.value, Object.keys(m), typeof m.watch]); } catch (e) { return String(e); } })()`))
 	waitFrame(tab, "choice", "null")
 	// The plugin's object holds the Go server's choice through the Node host's link to the Go host: it binds.
 	tab.hold("lang", "lang", 10*time.Second, "", "pick")
