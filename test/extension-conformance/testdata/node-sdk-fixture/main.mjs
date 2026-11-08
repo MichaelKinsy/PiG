@@ -162,6 +162,9 @@ export default function (pi) {
     out.model1 = ctx.model?.id ?? "";
     out.provider1 = ctx.model?.provider ?? "";
     out.qualified1 = `${out.provider1}/${out.model1}`;
+    // The log read again once the serve loop ran: a push it applied a second time would collapse the log to one entry.
+    out.entryCountLater = ctx.sessionManager.getEntries().length;
+    out.lastLater = lastType();
     ctx.ui.notify(JSON.stringify(out), "info");
   }});
   pi.registerCommand("active_tools_set", { description: "Set the active tools to the comma-separated names", handler: async (args) => pi.setActiveTools(String(args).trim().split(",")) });
