@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 )
 
 func TestMain(m *testing.M) { p2test.Main(m) }

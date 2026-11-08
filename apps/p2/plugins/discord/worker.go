@@ -51,9 +51,9 @@ type LinkState struct {
 // DiscordLinkDoc is `p2.discord-link`.
 var DiscordLinkDoc = durable.DefineDoc(durable.DocDefinition[LinkState]{
 	CommonDocDefinition: durable.CommonDocDefinition[LinkState]{
-		Kind:    "p2.discord-link",
-		Version: 1,
-		Initial: func() LinkState { return LinkState{Threads: map[string]string{}} },
+		Kind:           "p2.discord-link",
+		Version:        1,
+		Initial:        func() LinkState { return LinkState{Threads: map[string]string{}} },
 		CheckpointWhen: func(LinkState, []durable.Op, durable.CheckpointInfo) bool { return true },
 	},
 	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
@@ -104,7 +104,10 @@ var workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) 
 	return facet.Serve(contract.DiscordIngress, host.RemoteFactory(serveIngress), host.ServeOptions{})
 })
 
-func floatOf(object *delta.JsonObject, key string) float64 { f, _ := object.Value(key).(float64); return f }
+func floatOf(object *delta.JsonObject, key string) float64 {
+	f, _ := object.Value(key).(float64)
+	return f
+}
 
 func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) (contracts.Implementation, error) {
 	if who, err := p2runtime.FromChord(principal); err != nil || !isServer(who) {
@@ -512,7 +515,9 @@ func turn(ctx context.Context, session harness.Harness, files *host.Reference, i
 		}
 		end = float64(message.Timestamp)
 	}
-	answer := strings.TrimFunc(text.String(), func(r rune) bool { return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\u00a0' || r == '\ufeff' || r == '\v' || r == '\f' })
+	answer := strings.TrimFunc(text.String(), func(r rune) bool {
+		return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\u00a0' || r == '\ufeff' || r == '\v' || r == '\f'
+	})
 	sent, err := offered(files, conversation, start, end, ctx)
 	if err != nil {
 		return nil, err
