@@ -1,18 +1,20 @@
 package runtime
 
 import (
+	"slices"
+
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
-// Ports apps/p2/src/runtime/schemas.ts: schemas several plugins' contracts share (browser-safe). A contract imports
-// only the API and its own plugin's files, so what two contracts both use lives here: attachments (files, chat), model
-// references and thinking levels (sessions, chat), pages of a conversation's entries (chat, the clients' transcripts),
-// directory listings (envs, locations) and artifact descriptions (artifacts, the transcript).
+// Ports apps/p2/src/runtime/schemas.ts: schemas several plugins' contracts share. A contract imports only the API and
+// its own plugin's files, so what two contracts both use lives here: attachments (files, chat), model references and
+// thinking levels (sessions, chat), pages of a conversation's entries (chat, the clients' transcripts), directory
+// listings (envs, locations) and artifact descriptions (artifacts, the transcript).
 
 // AttachmentSchema is an attachment of a message: an upload of the session (its `Files`, space `uploads`) as written to
-// the machine where the receiving conversation works (`path`), never into the project. `localPath` is the local upload
-// copy, retained for inline images when path points to the remote host.
+// the machine where the receiving conversation works (Path), never into the project. LocalPath is the local upload
+// copy, retained for inline images when Path points to the remote host.
 var AttachmentSchema = schema.Obj(schema.Properties{
 	schema.Prop("id", schema.Str()),
 	schema.Prop("name", schema.Str()),
@@ -22,10 +24,20 @@ var AttachmentSchema = schema.Obj(schema.Properties{
 	schema.Opt("mimeType", schema.Str()),
 })
 
+// Attachment is an attachment of a message (`AttachmentSchema`).
+type Attachment struct {
+	ID        string
+	Name      string
+	Path      string
+	LocalPath *string
+	Size      float64
+	MimeType  *string
+}
+
 // MaxAttachments is the most attachments per message.
 const MaxAttachments = 20
 
-// ModelRefSchema is a model: its provider and its ID.
+// ModelRefSchema is a provider and a model ID.
 var ModelRefSchema = schema.Obj(schema.Properties{
 	schema.Prop("provider", schema.Str(schema.MinLength(1))),
 	schema.Prop("modelId", schema.Str(schema.MinLength(1))),
@@ -44,26 +56,18 @@ var ThinkingLevelSchema = func() schema.Schema {
 	return chordjson.ObjectOf("type", "string", "enum", levels)
 }()
 
-// IsThinkingLevel reports whether value is a thinking level.
+// IsThinkingLevel reports whether value is one of ThinkingLevels.
 func IsThinkingLevel(value any) bool {
 	text, ok := value.(string)
-	if !ok {
-		return false
-	}
-	for _, level := range ThinkingLevels {
-		if level == text {
-			return true
-		}
-	}
-	return false
+	return ok && slices.Contains(ThinkingLevels, text)
 }
 
 // MaxEntriesPage is the most entries per `Chat.entries` page (a page is also cut at about 1 MB of entries).
 const MaxEntriesPage = 200
 
 // EntriesQuerySchema is a page of a conversation's entries (`Conversation.entries()`), for `ConversationTranscript`'s
-// loader: the oldest and newest entry IDs that may be returned, the order (default `descending`, newest first) and the
-// page size.
+// loader: the oldest and newest entry ID that may be returned, the order (default `descending`, newest first) and the
+// limit.
 var EntriesQuerySchema = schema.Obj(schema.Properties{
 	schema.Opt("minEntryId", schema.Int(schema.Minimum(0))),
 	schema.Opt("maxEntryId", schema.Int(schema.Minimum(0))),
@@ -72,7 +76,7 @@ var EntriesQuerySchema = schema.Obj(schema.Properties{
 })
 
 // EntriesPageSchema is a page of entries: Durable entry records in the query's order, and whether more entries match
-// the query (the page was full, or cut at its byte bound).
+// (the page was full, or cut at its byte bound).
 var EntriesPageSchema = schema.Obj(schema.Properties{
 	schema.Prop("items", schema.Arr(schema.Unknown())),
 	schema.Prop("more", schema.Bool()),
@@ -87,6 +91,25 @@ var DirectoryListingSchema = schema.Obj(schema.Properties{
 	schema.Prop("truncated", schema.Bool()),
 })
 
+// DirectoryListing is the folders of a directory (`DirectoryListingSchema`). Parent is nil at a root.
+type DirectoryListing struct {
+	Path        string
+	Parent      *string
+	Directories []string
+	Truncated   bool
+}
+
+// ArtifactType is how an artifact renders.
+type ArtifactType string
+
+// The artifact types.
+const (
+	ArtifactHTML     ArtifactType = "html"
+	ArtifactSVG      ArtifactType = "svg"
+	ArtifactMarkdown ArtifactType = "markdown"
+	ArtifactText     ArtifactType = "text"
+)
+
 // ArtifactInfoSchema is one version of an artifact: the artifact tool's result details and the artifacts plugin's index
 // entries.
 var ArtifactInfoSchema = schema.Obj(schema.Properties{
@@ -95,3 +118,11 @@ var ArtifactInfoSchema = schema.Obj(schema.Properties{
 	schema.Prop("type", schema.Union([]schema.Schema{Literal("html"), Literal("svg"), Literal("markdown"), Literal("text")})),
 	schema.Prop("version", schema.Int(schema.Minimum(1))),
 })
+
+// ArtifactInfo is one version of an artifact (`ArtifactInfoSchema`).
+type ArtifactInfo struct {
+	Name    string
+	Title   string
+	Type    ArtifactType
+	Version int
+}
