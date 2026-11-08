@@ -22,6 +22,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/env"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // recordedWorkers is the session workers component of a test server: no worker runs (a stopped worker only gets the
@@ -81,6 +83,9 @@ func (sshManager) WorkingDirectory(_ context.Context, env, cwd string, create bo
 	}
 	return "/" + env + cwd, nil
 }
+
+// Connection is never used by these tests.
+func (sshManager) Connection(string, *chordjson.Object) *env.Connection { return nil }
 
 // inert are methods of a stubbed local object that nothing under test calls.
 func inert(names ...string) map[string]p2test.StubMethod {
