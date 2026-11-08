@@ -50946,6 +50946,26 @@
       ]
     },
     {
+      "id": "BF-fcccc8b",
+      "title": "The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a…",
+      "symptom": "The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a span read another event's time in stored traces.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a span read another event's time in stored traces. Each event keeps its own.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fcccc8bc97",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-fce99d3",
       "title": "The \"Your first ten minutes\" and Quickstart pages now describe the first-time setup screen (theme, sprite and…",
       "symptom": "They said PiG had no setup screen.",

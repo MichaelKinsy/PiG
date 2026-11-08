@@ -338,7 +338,6 @@ func (span *memorySpan) AddEvent(name string, attributes SpanAttributes) {
 	}
 	span.record.Events = append(span.record.Events, RecordedTelemetryEvent{Name: name, Attributes: copyAttributes(attributes)})
 	span.eventTimes = append(span.eventTimes, jsclock.PerformanceNow()-span.clock)
-	span.eventTimes = append(span.eventTimes, jsclock.PerformanceNow()-span.clock)
 }
 
 func (span *memorySpan) SetAttributes(attributes SpanAttributes) {
