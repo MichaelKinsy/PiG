@@ -1,0 +1,4 @@
+### Fixed
+
+- Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop, before reading what the peer had sent meanwhile. Time the process did not run no longer counts as silence: after such a pause each open link pings at once and closes only if its peer stays silent for `close - ping` (15 s by default). <!-- fix: 9f7d909f8 -->
+- Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a protocol error, the worker closing its own link): the worker is stopped, `WorkerLinkLostError` (`worker_link_lost`) is reported, and its holders get a new worker. A second lost link within a minute of the last recovery still fails the address (public error `worker lost its link`). Crashes, `fatal`s and failed starts still stay failed until `Retry` or a rollout. <!-- fix: 9f7d909f8 -->

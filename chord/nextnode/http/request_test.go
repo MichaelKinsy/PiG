@@ -26,7 +26,7 @@ func TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce(t *te
 	var mu sync.Mutex
 	var seen HttpRequest
 	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /notes/:id", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /notes/:id", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
 			mu.Lock()
 			seen = request
 			mu.Unlock()
@@ -59,14 +59,14 @@ func TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce(t *te
 // reading is a server whose `POST /json` answers the JSON it read (limit 16), `POST /body` the bytes it read (limit 16).
 func reading(t *testing.T) *testServer {
 	return serving(t, []plugin{{"@app/a", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("POST /json", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+		publicRoute("POST /json", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
 			value, err := request.JSON(16)
 			if err != nil {
 				return HttpResponse{}, err
 			}
 			return jsonOf(value), nil
 		}),
-		RouteFunc("POST /body", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+		publicRoute("POST /body", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
 			bytes := 0
 			for chunk, err := range request.Body(16) {
 				if err != nil {
@@ -129,7 +129,7 @@ func TestBodiesAnswer413BeforeAChunkedUploadPastTheLimitHasEnded(t *testing.T) {
 
 func TestBodiesDrainASmallBodyNobodyReadAndKeepTheConnectionALargeOneClosesIt(t *testing.T) {
 	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("POST /ignore", func(HttpRequest, host.Ctx) (HttpResponse, error) { return jsonOf(float64(1)), nil }),
+		publicRoute("POST /ignore", func(HttpRequest, host.Ctx) (HttpResponse, error) { return jsonOf(float64(1)), nil }),
 	}})}}, servedOptions{})
 	transport := &nethttp.Transport{MaxConnsPerHost: 1}
 	client := &nethttp.Client{Transport: transport}
