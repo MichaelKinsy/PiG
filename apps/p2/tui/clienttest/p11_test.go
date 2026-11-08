@@ -614,6 +614,8 @@ func TestFilesChangesAndGrepReadTheWorkspaceParticipantsGuestsAndReadersCannot(t
 	pollContains(t, s.Fixture, "Changes on main (1)")
 	s.Send(enter)
 	pollContains(t, s.Fixture, "Changes: src/main.ts")
+	// The title shows before the diff's body arrives (Pi's synchronous stub hides the gap).
+	pollContains(t, s.Fixture, "-2 const answer = 41;")
 	diff := s.Screen()
 	mustMatch(t, `-2 const answer = 41;`, diff)
 	mustMatch(t, `\+2 const answer = 42;`, diff)
@@ -621,6 +623,7 @@ func TestFilesChangesAndGrepReadTheWorkspaceParticipantsGuestsAndReadersCannot(t
 	s.Send(esc)
 	s.Do(func() { s.Runtime.Ctx.Commands().Run("p2.grep", "answer") })
 	pollContains(t, s.Fixture, `Search "answer" (1)`)
+	pollScreen(t, s.Fixture, matches(`src/main\.ts:2`))
 	mustMatch(t, `src/main\.ts:2`, s.Screen())
 	s.Send(enter)
 	pollScreen(t, s.Fixture, func(screen string) bool {
