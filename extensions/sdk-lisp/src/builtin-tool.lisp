@@ -16,7 +16,7 @@
   `(defstruct (,name (:constructor ,(intern (format nil "MAKE-~A" name)) (&key ,@slots))) ,@slots))
 
 (def-tool-options model-image-resize-options max-width max-height max-bytes jpeg-quality)
-(def-tool-options read-operations read-file access detect-image-mime-type)
+(def-tool-options read-operations read-file access detect-image-mime-type create-read-stream)
 (def-tool-options read-tool-options auto-resize-images resize-options operations)
 (def-tool-options write-operations write-file mkdir)
 (def-tool-options write-tool-options operations)
@@ -72,6 +72,31 @@
   "The octets of a read-file result: an octet vector, or a string as UTF-8."
   (if (stringp value) (sb-ext:string-to-octets value :external-format :utf-8) value))
 
+(defconstant +bt-read-stream-chunk+ (* 64 1024) "The most an operations.readStream call returns: the 64 KB chunks fs.createReadStream yields.")
+
+(defun bt-read-stream-callbacks (spec create)
+  "The callbacks of :create-read-stream, a function of a path that returns a binary input stream (element type (unsigned-byte 8)): the host opens it, reads it a
+chunk per call (an empty answer is the end) and closes it."
+  (let ((streams (make-hash-table :test 'equal)) (lock (sb-thread:make-mutex :name "pig read streams")) (counter 0))
+    (flet ((lookup (args)
+             (let ((id (jget args "stream")))
+               (or (sb-thread:with-mutex (lock) (gethash id streams)) (error "read stream ~A is not open" id)))))
+      (bt-callback spec "operations.createReadStream"
+                   (lambda (args)
+                     (let ((stream (funcall create (jget args "path"))))
+                       (sb-thread:with-mutex (lock)
+                         (let ((id (format nil "~D" (incf counter)))) (setf (gethash id streams) stream) id)))))
+      (bt-callback spec "operations.readStream"
+                   (lambda (args)
+                     (let* ((stream (lookup args)) (buffer (make-array +bt-read-stream-chunk+ :element-type '(unsigned-byte 8))) (count (read-sequence buffer stream)))
+                       (if (zerop count) "" (bt-base64-encode (subseq buffer 0 count))))))
+      (bt-callback spec "operations.closeStream"
+                   (lambda (args)
+                     (let ((stream (lookup args)))
+                       (sb-thread:with-mutex (lock) (remhash (jget args "stream") streams))
+                       (close stream)
+                       nil))))))
+
 (defun bt-read-spec (cwd options)
   (let* ((spec (make-bt-spec "read" cwd)) (table (bt-spec-options spec)))
     (when options
@@ -96,6 +121,9 @@
             (when detect
               (setf names (append names (list "detectImageMimeType")))
               (bt-callback spec "operations.detectImageMimeType" (lambda (args) (funcall detect (jget args "path")))))
+            (when (read-operations-create-read-stream ops)
+              (setf names (append names (list "createReadStream")))
+              (bt-read-stream-callbacks spec (read-operations-create-read-stream ops)))
             (bt-set-operations spec names)))))
     spec))
 

@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -324,7 +325,58 @@ func (c *builtinCallbacks) readOperations(members []string) *tools.ReadOperation
 			return callString(c.call("operations.detectImageMimeType", pathArgs{path}))
 		}
 	}
+	if slices.Contains(members, "createReadStream") {
+		ops.CreateReadStream = c.createReadStream
+	}
 	return ops
+}
+
+// createReadStream opens the extension's stream of the file (Pi's createReadStream) and reads it a chunk per call; Close ends it in the extension.
+func (c *builtinCallbacks) createReadStream(_ context.Context, path string) (io.ReadCloser, error) {
+	id, err := callString(c.call("operations.createReadStream", pathArgs{path}))
+	if err != nil {
+		return nil, err
+	}
+	return &callbackStream{callbacks: c, id: id}, nil
+}
+
+// callbackStream reads a stream that lives in an extension: one operations.readStream call per chunk, which is empty at the end of the stream.
+type callbackStream struct {
+	callbacks *builtinCallbacks
+	id        string
+	pending   []byte
+	done      bool
+}
+
+type streamArgs struct {
+	Stream string `json:"stream"`
+}
+
+func (s *callbackStream) Read(p []byte) (int, error) {
+	for len(s.pending) == 0 {
+		if s.done {
+			return 0, io.EOF
+		}
+		encoded, err := callString(s.callbacks.call("operations.readStream", streamArgs{s.id}))
+		if err != nil {
+			return 0, err
+		}
+		if encoded == "" {
+			s.done = true
+			continue
+		}
+		if s.pending, err = base64.StdEncoding.DecodeString(encoded); err != nil {
+			return 0, decodeCallbackResult(err)
+		}
+	}
+	n := copy(p, s.pending)
+	s.pending = s.pending[n:]
+	return n, nil
+}
+
+func (s *callbackStream) Close() error {
+	_, err := s.callbacks.call("operations.closeStream", streamArgs{s.id})
+	return err
 }
 
 func (c *builtinCallbacks) writeOperations() *tools.WriteOperations {

@@ -274,6 +274,7 @@ func selectLinesFromStream(ctx context.Context, stream io.Reader, startLine, lim
 	}
 
 	bufp := readChunkPool.Get().(*[]byte)
+	//perf:ok fixed-size pool: every buffer is readStreamChunk and the read never grows it, so a Put cannot retain a larger one
 	defer readChunkPool.Put(bufp)
 	buf := *bufp
 	for {

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import zlib from "node:zlib";
+import { Readable } from "node:stream";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import * as piAi from "@earendil-works/pi-ai";
 import { Value } from "typebox/value";
@@ -1118,12 +1119,14 @@ export default function (pi) {
     const hook = c.hook ? (spawn) => { log.push(`spawnHook:${spawn.command}`); return { command: "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"", cwd: spawn.cwd, env: { ...spawn.env, HOOK_VAR: "hook-env" } }; } : undefined;
     const custom = c.ops === "custom";
     switch (c.tool) {
-      case "read": return { autoResizeImages: c.autoResizeImages ?? undefined, operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from(`OPS:${p}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
+      case "read": if (c.ops === "stream") return { operations: { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from(`OPS:${p}`); }, access: async (p) => { log.push(`access:${p}`); }, createReadStream: (p) => { log.push(`createReadStream:${p}`); return Readable.from([Buffer.from("STREAM:"), Buffer.from(`${p}\n`)]); } } };
+        return { autoResizeImages: c.autoResizeImages ?? undefined, operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from(`OPS:${p}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
       case "write": return { operations: custom ? { writeFile: async (p, content) => { log.push(`writeFile:${p}:${content}`); }, mkdir: async (d) => { log.push(`mkdir:${d}`); } } : undefined };
       case "edit": return { operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from("hello world\n"); }, writeFile: async (p, content) => { log.push(`writeFile:${p}:${content}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
       case "ls": return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return true; }, stat: async (p) => { log.push(`stat:${p}`); return { isDirectory: () => !p.includes(".") }; }, readdir: async (p) => { log.push(`readdir:${p}`); return ["b.txt", "a.txt", "sub"]; } } : undefined };
       // readFile is not a member of Pi main's GrepOperations (8da141c2a): a JS extension may still pass one, and Pi never calls it. The native SDKs have no such member.
-      case "grep": return { operations: custom ? { isDirectory: async (p) => { log.push(`isDirectory:${p}`); throw new Error("no such path for the probe"); }, readFile: async (p) => { log.push(`readFile:${p}`); return ""; } } : undefined };
+      case "grep": if (c.ops === "grepdir") return { operations: { isDirectory: async (p) => { log.push(`isDirectory:${p}`); return true; }, readFile: async (p) => { log.push(`readFile:${p}`); return ""; } } };
+        return { operations: custom ? { isDirectory: async (p) => { log.push(`isDirectory:${p}`); throw new Error("no such path for the probe"); }, readFile: async (p) => { log.push(`readFile:${p}`); return ""; } } : undefined };
       case "find": if (c.ops === "globlimit") return { operations: { exists: async (p) => { log.push(`exists:${p}`); return true; }, glob: async (pattern, cwd, o) => { log.push(`glob:${pattern}:limit=${o.limit}`); return ["a.txt", "b.txt", "c.txt"].slice(0, o.limit); } } };
         return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return false; }, glob: async (pattern) => { log.push(`glob:${pattern}`); return []; } } : undefined };
       case "powershell": return { exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined };
