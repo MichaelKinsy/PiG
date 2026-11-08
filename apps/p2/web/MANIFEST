@@ -42,3 +42,4 @@ cc1523cb184b86e6f5cfa600af0cab2a5fe9e2b96cc3524e5c00fb6863821132  plugins/chat/o
 dd155cfcf49b4739f31e87440d6ffabd9aee16902c2e3bc5bb8bf9bd6218326b  plugins/chat/session-start.ts
 bbb294f915ed448ae8c467a72e4db3763e9ced1f0ad891050037a380af325e16  test/p2/outbox.test.ts
 b435ef3cb087cb2a87fef20acd7d690282ed125fa8b4bc0e74d0bbaee483a206  test/p2/session-start.test.ts
+2415173b773e12b256f5cde7032e3011e205b066284a419c61e17c351e05047b  plugins/tree/contract.ts
