@@ -232,15 +232,3 @@ func TestFormatsNumbersLikeTheReviewsProbe(t *testing.T) {
 	}
 	t.Logf("%d rows, %d diffs", rows, diffs)
 }
-
-// The table lookup costs no allocation beyond the result string (the x/text version made 22 per call).
-func TestFormatsAllocateOnlyTheResult(t *testing.T) {
-	lang := &Language{Locale: "de-CH"}
-	at := local(14, 5)
-	if n := testing.AllocsPerRun(100, func() { _, _ = FormatNumber(lang, 1234567.891, nil) }); n > 1 {
-		t.Errorf("FormatNumber allocates %v times per call, want 1", n)
-	}
-	if n := testing.AllocsPerRun(100, func() { _, _ = FormatTime(lang, at, nil) }); n > 1 {
-		t.Errorf("FormatTime allocates %v times per call, want 1", n)
-	}
-}

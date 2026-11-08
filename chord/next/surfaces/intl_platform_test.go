@@ -6,8 +6,8 @@ import (
 )
 
 // Review RevChordIntl P2-1: the platform's default locale is that of the FIRST set variable of LC_ALL, LC_MESSAGES, LANG (ICU's own
-// order: a variable that is set decides, whatever it holds); `C` and `POSIX` are en-US. A set-but-empty variable would give ICU's root
-// locale, whose data the tables do not hold (a recorded gap: it falls back to en-US here).
+// order: a variable that is set decides, whatever it holds); `C` and `POSIX` are en-US; a set-but-empty variable is `und`, ICU's root
+// locale (formats: intl_root_test.go).
 func TestPlatformLocaleIsThatOfTheFirstSetVariable(t *testing.T) {
 	cases := []struct {
 		name                  string
@@ -21,6 +21,7 @@ func TestPlatformLocaleIsThatOfTheFirstSetVariable(t *testing.T) {
 		{name: "C is en-US even with a later tag", all: "C", setAll: true, lang: "de_DE", setLg: true, want: "en-US"},
 		{name: "POSIX is en-US", messages: "POSIX", setMsg: true, lang: "de_DE", setLg: true, want: "en-US"},
 		{name: "a set variable that is no tag stops the search", all: "not a tag", setAll: true, lang: "de_DE", setLg: true, want: "en-US"},
+		{name: "a set-but-empty variable is und", all: "", setAll: true, lang: "de_DE", setLg: true, want: "und"},
 		{name: "none set", want: "en-US"},
 	}
 	for _, c := range cases {

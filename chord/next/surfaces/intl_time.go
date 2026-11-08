@@ -43,6 +43,12 @@ const (
 )
 
 // timeLocale is a locale's row of patterns (one per valid option shape) and the numbering system's digit zero.
+// regionRow is the root time row of a region (generated).
+type regionRow struct {
+	region string
+	row    uint16
+}
+
 type timeLocale struct {
 	row  uint16
 	zero rune
@@ -150,7 +156,11 @@ func FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, err
 	if !found {
 		return "", fmt.Errorf("%w: no table for these options", ErrOption)
 	}
-	locale := intlTimeLocaleData[li]
+	// ICU's root locale (no data for the tag or the platform's locale): the row of the platform locale's region, digits 0-9.
+	locale := timeLocale{row: rootTimeRow(), zero: '0'}
+	if li >= 0 {
+		locale = intlTimeLocaleData[li]
+	}
 	pattern := &intlTimePatterns[intlTimeRows[locale.row][column]]
 	hour, minute, second := at.Local().Clock()
 	var buf [64]byte

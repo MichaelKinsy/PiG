@@ -14,6 +14,8 @@
 //
 // The closed option shapes mirror surfaces_format.go (what Pi's call sites pass: none, `{timeStyle: "short"}`,
 // `{hour: "numeric"}`, fraction digits); the Go drift test runs Node over a large random corpus against the tables.
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import process from "node:process";
 
 const U = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -38,6 +40,24 @@ for (const a of L) for (const b of L) {
 for (const l of langs) {
   const c = canonical(l);
   if (c !== l) languageAliases.set(l, c);
+}
+// Compound aliases (CLDR's languageAlias keys with a variant: `hy-arevmda` is `hyw`, `zh-hakka` is `hak`): a language plus one
+// variant that Intl replaces by another language. Only replacements that are a bare language, script and region are modeled.
+const aliasVariants = ["arevela", "arevmda", "hakka", "xiang", "guoyu", "lojban", "aluku", "njiva", "nedis", "rozaj", "1901", "1994", "1996", "bauddha", "biske", "boont", "fonipa", "scotland", "valencia", "polyton", "monoton", "pinyin", "wadegile", "oxendict", "uccor", "ao1990", "tarask", "saaho", "solba", "vaidika", "simple", "synnejyl", "heploc", "hepburn", "basiceng", "cornu", "kkcor", "kscor", "tongyong", "jauer", "rumgr", "surmiran", "sursilv", "sutsilv", "vallader", "puter", "kociewie", "ekavsk", "ijekavsk", "newfound", "nulik", "ulster"];
+const compoundAliases = new Map();
+for (const l of langs) {
+  for (const v of aliasVariants) {
+    let c;
+    try {
+      c = Intl.getCanonicalLocales(`${l}-${v}`)[0];
+    } catch {
+      continue;
+    }
+    const parts = c.split("-");
+    // a language alias that already gives the result (`aar-arevela` is `aa` as `aar` is) needs no compound entry
+    if (parts[0] === l || c === languageAliases.get(l) || parts.length > 3 || parts.slice(1).some((x) => !/^[A-Z][a-z]{3}$|^[A-Z]{2}$|^[0-9]{3}$/.test(x))) continue;
+    compoundAliases.set(`${l}-${v}`, c);
+  }
 }
 const regions = [];
 for (const a of U) for (const b of U) regions.push(a + b);
@@ -82,6 +102,16 @@ function split(tag) {
 const join = (t) => [t.lang, t.script, t.region, ...t.variants].filter(Boolean).join("-");
 function aliased(tag) {
   const t = split(tag);
+  for (const v of t.variants) {
+    const ca = compoundAliases.get(`${t.lang}-${v}`);
+    if (ca === undefined) continue;
+    const r = split(ca);
+    t.lang = r.lang;
+    if (t.script === "") t.script = r.script;
+    if (t.region === "") t.region = r.region;
+    t.variants.splice(t.variants.indexOf(v), 1);
+    break;
+  }
   const la = languageAliases.get(t.lang);
   if (la !== undefined) {
     const r = split(la);
@@ -302,8 +332,7 @@ function renderTime(p, zero, hour, minute, second) {
 }
 const instant = (h, m, s) => new Date(Date.UTC(2026, 0, 1, h, m, s));
 
-function timePatternOf(locale, zero, sh) {
-  const fmt = new Intl.DateTimeFormat(locale, optionsOf(sh));
+function timePatternOf(locale, zero, sh, fmt = new Intl.DateTimeFormat(locale, optionsOf(sh))) {
   const at = (h) => fmt.formatToParts(instant(h, 5, 7));
   const text = (parts) => parts.map((p) => p.value).join("");
   const nine = at(9), two = at(14), zeroH = at(0);
@@ -360,17 +389,17 @@ const patterns = [], patternIndex = new Map();
 const rows = [], rowIndex = new Map();
 const timeLocales = [];
 let checked = 0;
-for (const locale of timeDomain.avail) {
-  const zeroProbe = new Intl.DateTimeFormat(locale, { minute: "2-digit", second: "2-digit", timeZone: "UTC" }).formatToParts(instant(0, 0, 0)).find((q) => q.type === "minute").value;
-  const zero = String.fromCodePoint([...zeroProbe][0].codePointAt(0));
+shapeSlots.forEach((sh, i) => (sh.i = i));
+// The row of a locale: one pattern per shape, each checked against what the formatter prints. fmtFor(sh) is the formatter.
+function rowOf(label, zero, fmtFor) {
   const row = [];
   for (const sh of shapeSlots) {
-    const { p, fmt } = timePatternOf(locale, zero, sh);
+    const { p, fmt } = timePatternOf(label, zero, sh, fmtFor(sh));
     for (let h = 0; h < 24; h++) for (const [m, s] of HMS) {
       const want = fmt.format(instant(h, m, s));
       const got = renderTime(p, zero, h, m, s);
       checked++;
-      if (want !== got) failures.push(`time ${locale} ${JSON.stringify(optionsOf(sh))} ${h}:${m}:${s}: node ${JSON.stringify(want)} model ${JSON.stringify(got)}`);
+      if (want !== got) failures.push(`time ${label} ${JSON.stringify(optionsOf(sh))} ${h}:${m}:${s}: node ${JSON.stringify(want)} model ${JSON.stringify(got)}`);
     }
     const key = patternKey(p);
     if (!patternIndex.has(key)) (patternIndex.set(key, patterns.length), patterns.push(p));
@@ -378,7 +407,85 @@ for (const locale of timeDomain.avail) {
   }
   const rkey = row.join(",");
   if (!rowIndex.has(rkey)) (rowIndex.set(rkey, rows.length), rows.push(row));
-  timeLocales.push({ locale, row: rowIndex.get(rkey), zero: zero.codePointAt(0) });
+  return rowIndex.get(rkey);
+}
+for (const locale of timeDomain.avail) {
+  const zeroProbe = new Intl.DateTimeFormat(locale, { minute: "2-digit", second: "2-digit", timeZone: "UTC" }).formatToParts(instant(0, 0, 0)).find((q) => q.type === "minute").value;
+  const zero = String.fromCodePoint([...zeroProbe][0].codePointAt(0));
+  timeLocales.push({ locale, row: rowOf(locale, zero, (sh) => new Intl.DateTimeFormat(locale, optionsOf(sh))), zero: zero.codePointAt(0) });
+}
+
+// ---- Root data: what the default locale prints when ICU has no data for it (LANG=xx_YY, or a variable set to the empty string: the
+// locale `und`). The process's default locale is read from the environment, so a child Node per environment observes it; the
+// numbers are those of en-US (checked below) and the times depend on the region (its hour cycle).
+const ROOT_INSTANTS = [];
+for (let h = 0; h < 24; h++) for (const [m, s] of [...HMS, [1, 0], [30, 0], [59, 0]]) ROOT_INSTANTS.push([h, m, s]);
+const valuesSource = "[" + VALUES.map((v) => (Object.is(v, -0) ? "-0" : String(v))).join(",") + "]";
+const CHILD = `
+const { shapes, at, full, numbers } = JSON.parse(process.env.ROOT_PROBE);
+const out = shapes.map((o) => {
+  const f = new Intl.DateTimeFormat(undefined, o);
+  return { hc: f.resolvedOptions().hourCycle, at: at.map(([h, m, s]) => { const d = new Date(Date.UTC(2026, 0, 1, h, m, s)); return full ? [f.format(d), f.formatToParts(d)] : f.format(d); }) };
+});
+const values = ${valuesSource};
+const formatted = numbers.map((o) => values.map((v) => new Intl.NumberFormat(undefined, o).format(v)));
+process.stdout.write(JSON.stringify({ out, locale: new Intl.DateTimeFormat().resolvedOptions().locale, formatted }));
+`;
+function probeRoot(env, full) {
+  const probe = JSON.stringify({ shapes: shapeSlots.map(optionsOf), at: ROOT_INSTANTS, full, numbers: NUMBER_OPTIONS });
+  const r = spawnSync(process.execPath, ["-e", CHILD], { env: { PATH: process.env.PATH, ROOT_PROBE: probe, ...env }, encoding: "utf8", maxBuffer: 1 << 30 });
+  if (r.status !== 0) throw new Error(`root probe ${JSON.stringify(env)}: ${r.stderr}`);
+  return JSON.parse(r.stdout);
+}
+const fingerprint = (r) => createHash("sha1").update(JSON.stringify([r.out.map((o) => [o.hc, o.at]), r.formatted])).digest("hex");
+function replayFmt(entry) {
+  const byTime = new Map(ROOT_INSTANTS.map(([h, m, s], i) => [instant(h, m, s).getTime(), entry.at[i]]));
+  const get = (d) => {
+    const r = byTime.get(d.getTime());
+    if (r === undefined) throw new Error("root probe: instant not recorded");
+    return r;
+  };
+  return { format: (d) => get(d)[0], formatToParts: (d) => get(d)[1], resolvedOptions: () => ({ hourCycle: entry.hc }) };
+}
+const enUS = numberFormats.get("en-US");
+function rootRowOf(env, label) {
+  const r = probeRoot(env, true);
+  NUMBER_OPTIONS.forEach((o, k) => {
+    const minFD = o.minimumFractionDigits ?? 0;
+    const maxFD = o.maximumFractionDigits ?? Math.max(minFD, 3);
+    VALUES.forEach((v, n) => {
+      if (r.formatted[k][n] !== renderNumber(enUS, v, minFD, maxFD)) failures.push(`root number ${label} ${JSON.stringify(o)} ${v}: node ${JSON.stringify(r.formatted[k][n])} en-US ${JSON.stringify(renderNumber(enUS, v, minFD, maxFD))}`);
+    });
+  });
+  return rowOf(label, "0", (sh) => replayFmt(r.out[sh.i]));
+}
+const rootUndRow = rootRowOf({ LC_ALL: "" }, "root(und)");
+const rootDefaultProbe = probeRoot({ LANG: "xx" }, false);
+const rootDefaultRow = rootRowOf({ LANG: "xx" }, "root(xx)");
+const rootRegions = []; // [region, row] where the region's root row differs from the one of a tag with no region
+{
+  const byFingerprint = new Map();
+  const defaultFingerprint = fingerprint(rootDefaultProbe);
+  for (const region of probeRegions) {
+    const r = probeRoot({ LANG: `xx_${region}` }, false);
+    if (r.locale !== `xx-${region}`) continue; // not a region the environment parser keeps
+    const fp = fingerprint(r);
+    if (fp === defaultFingerprint) continue;
+    if (!byFingerprint.has(fp)) byFingerprint.set(fp, { region, regions: [] });
+    byFingerprint.get(fp).regions.push(region);
+  }
+  for (const { region, regions: members } of byFingerprint.values()) {
+    const row = rootRowOf({ LANG: `xx_${region}` }, `root(xx-${region})`);
+    for (const m of members) rootRegions.push([m, row]);
+  }
+  rootRegions.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  // a language "und" with a region has the same data as an unknown language with it
+  for (const region of ["US", "GB", "DE", "IN"]) {
+    const a = fingerprint(probeRoot({ LANG: `und_${region}` }, false));
+    const b = fingerprint(probeRoot({ LANG: `xx_${region}` }, false));
+    if (a !== b) failures.push(`root und-${region} differs from xx-${region}`);
+  }
+  log("root rows:", rootRegions.length, "regions with their own row,", byFingerprint.size, "distinct");
 }
 if (failures.length > 0) {
   log(failures.slice(0, 40).join("\n"), `\n${failures.length} failures`);
@@ -420,6 +527,7 @@ const intlOracleICU = ${q(ICU)}
 out += pairs("intlLanguageAliases", languageAliases);
 out += pairs("intlScriptAliases", scriptAliases);
 out += pairs("intlRegionAliases", regionAliases);
+out += pairs("intlCompoundAliases", compoundAliases);
 out += strings("intlNumberLocales", numberDomain.avail);
 out += pairs("intlNumberExceptions", numberDomain.exceptions);
 out += `var intlNumberLocaleFormat = [...]uint16{${numberData.join(", ")}}\n\n`;
@@ -429,5 +537,9 @@ out += pairs("intlTimeExceptions", timeDomain.exceptions);
 out += `var intlTimeLocaleData = [...]timeLocale{\n${timeLocales.map((t) => `\t{row: ${t.row}, zero: ${t.zero}},\n`).join("")}}\n\n`;
 out += `// intlTimeShapeSlots are the valid shape slots in ascending order: the columns of intlTimeRows.\nvar intlTimeShapeSlots = [...]uint8{${shapeSlots.map((s) => s.slot).join(", ")}}\n\n`;
 out += `var intlTimePatterns = [...]timePattern{\n${patterns.map((p) => `\t{cycle: ${p.cycle}, tmpl: ${q(p.tmpl)}, periods: []dayPeriod{${p.periods.map((d) => `{${d.start}, ${q(d.text)}}`).join(", ")}}},\n`).join("")}}\n\n`;
+out += "// The root locale's time rows (see the generator): ICU has no data for the platform locale. intlTimeRootDefaultRow is the row of a tag\n";
+out += "// with no region or a region without its own, intlTimeRootUndRow that of the locale und; intlTimeRootRegions are the regions with\n";
+out += "// their own row (hour cycle), sorted.\n";
+out += `const intlTimeRootDefaultRow = ${rootDefaultRow}\nconst intlTimeRootUndRow = ${rootUndRow}\n\nvar intlTimeRootRegions = [...]regionRow{\n${rootRegions.map(([r, row]) => `\t{${q(r)}, ${row}},\n`).join("")}}\n\n`;
 out += `var intlTimeRows = [...][${shapeSlots.length}]uint16{\n${rows.map((r) => `\t{${r.join(", ")}},\n`).join("")}}\n`;
 await new Promise((done) => process.stdout.write(out, done));
