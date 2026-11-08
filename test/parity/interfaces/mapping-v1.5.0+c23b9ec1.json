@@ -107692,9 +107692,9 @@
       "id": "pkg:chord/.#JobCtx",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:13403a272b5f05e66158d1d213adf05e0c8391591123d52e8529895a88734020",
-      "rationale": "TL: JobCtx<P, S> is a TypeScript type-level computation over its type parameters (Ctx<P> & { readonly jobId: string } & ([S] extends [undefined] ? unknown : { readonly state: RunState<S> })); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/host/types.go#Principal. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
+      "rationale": "Pi packages/chord/src/jobs/job.ts:58 JobCtx (Pi 1.5.0+c23b9ec1): JobCtx\u003cP, S\u003e = Ctx\u003cP\u003e \u0026 { readonly jobId: string } \u0026 ([S] extends [undefined] ? unknown : { readonly state: RunState\u003cS\u003e }) is a TypeScript type-level computation over its type parameters (an intersection, with a conditional that adds `state` only for a job that has a state); it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics). The Go type that carries the shape where it is used is the host.JobCtx interface (chord/next/host/jobs_job.go): Ctx, JobID() and State(), nil for a job without a state definition. Exercised by TestRunGetsACtxWithTheRunsIDTheHostsPrincipalForALocalObjectAndNoStateWithoutOne (chord/next/host/jobs_job_runs_test.go).",
       "pigTargets": [
-        "chord/host/types.go#Principal"
+        "chord/next/host/jobs_job.go#JobCtx"
       ]
     },
     {
@@ -112683,9 +112683,9 @@
       "id": "pkg:chord/.#Reference",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:58e8939ca23fa3d666161da379746be82f9f9e0ec014639641cde9c88f0a2090",
-      "rationale": "TL: Reference<C> is a TypeScript type-level computation over its type parameters (ShapeOf<C>[\"kind\"] extends \"local\" ? Implementation<C> & Lifecycle : InVariants<C, never>); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/host/contract.go#Contract. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
+      "rationale": "Pi packages/chord/src/host/reference.ts:37 Reference (Pi 1.5.0+c23b9ec1): Reference\u003cC\u003e = ShapeOf\u003cC\u003e[\"kind\"] extends \"local\" ? Implementation\u003cC\u003e \u0026 Lifecycle : InVariants\u003cC, never\u003e is a TypeScript type-level computation over its type parameters (a conditional on the contract's kind); it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics). The Go type that carries the shape where it is used is the host.Reference value (chord/next/host/host_reference.go), whose members are the contract's and the lifecycle's. Exercised by host_reference_test.go (chord/next/host).",
       "pigTargets": [
-        "chord/host/contract.go#Contract"
+        "chord/next/host/host_reference.go#Reference"
       ]
     },
     {
