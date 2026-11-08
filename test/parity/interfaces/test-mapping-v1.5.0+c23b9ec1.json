@@ -15,6 +15,9 @@
     {
       "path": "packages/agent/test/agent-tool-typebox.test.ts",
       "disposition": "designed-out",
+      "protects": "AgentTool params, execute() and prepareArguments() are typed by the tool's schema: Execute never sees arguments of another shape.",
+      "pigTest": "A Go test of the same property through the Go API: TestAgentToolArgumentsOfASchemaReachExecuteAsTheSchemaShape and TestPrepareArguments_PreparedArgumentsAreStillValidated run the upstream schema through RunToolCall. A compile-fail test of the type itself was considered.",
+      "whyNot": "The Go test already runs the runtime half of the property. The type half has no generic parameter in Go (AgentTool takes json.RawMessage), so a compile-fail test would pin a type Go does not have.",
       "upstreamTestHash": "sha256:ae0464bc26bb9dcc135741eed18444a6cb9c65f85dab119d5b357bbab598528a",
       "evidence": [
         "agent/prepare_arguments_test.go#TestAgentToolArgumentsOfASchemaReachExecuteAsTheSchemaShape",
@@ -546,6 +549,9 @@
     {
       "path": "packages/ai/test/compat-schema.test.ts",
       "disposition": "ported",
+      "protects": "The provider superset schema keeps the property types of its valid values.",
+      "pigTest": "A Go reflection test of the compat structs against the schema tree types, and a Go compat schema tree test (the two default cases already run on the tree).",
+      "whyNot": "Go compat structs are typed and the compiler checks their field types. A reflection test would restate the struct declaration. PLANNED-IF-OWNER-WANTS: the shared compile-fail question in handoffs/next/RESUME-DesignedOutAudit.md.",
       "upstreamTestHash": "sha256:ba2d5e9d5a4555d29b518cc8cbd3a5a9ce126ce7341a90eb17f945ca283cc615",
       "evidence": [
         "internal/codingagent/configschema/compat_schema_upstream_test.go#TestCompatSchemasPreserveAPISpecificDefaults",
@@ -839,6 +845,9 @@
     {
       "path": "packages/ai/test/images-models.test.ts",
       "disposition": "ported",
+      "protects": "An image entry point refuses a model that is not an image model with an 'is not an image model' error.",
+      "pigTest": "A Go test that passes a chat model to ai.Models.GenerateImages and coding.ModelRuntime.GenerateImages. The classifier twin (ai.AssertClassifierModel, accepts any model) is ported as TestExtensionClassifyAction.",
+      "whyNot": "Both entry points take *ImageModel, so a chat model cannot be passed and no runtime check exists to test. The check is the compiler. The accepting twin is ported.",
       "upstreamTestHash": "sha256:8739d53df9b6d50ad1211b52590ab7488917636e43e2b7b12ef751583206f780",
       "evidence": [
         "ai/models_typed_upstream_test.go#TestModelTypesUpstream",
@@ -1985,6 +1994,9 @@
     {
       "path": "packages/chord/test/contracts/declare.test.ts",
       "disposition": "ported",
+      "protects": "A keyed member cannot be declared in a remote contract.",
+      "pigTest": "A Go test that declares a keyed member in a remote contract and expects a declaration error, and a compile-fail test that type-checks the snippet with go/types.",
+      "whyNot": "A runtime declaration test cannot be written because *KeyedMember is no Schema and the compiler refuses the call. A compile-fail test is possible but nothing runs it today: shared question in the RESUME.",
       "upstreamTestHash": "sha256:179bf56414a9a95212c04b6e137f7b778532a97bda8f956364dada4915253df1",
       "evidence": [
         "chord/next/contracts/declare_test.go#TestDeclarationChecks",
@@ -2043,6 +2055,9 @@
     {
       "path": "packages/chord/test/data/args.test.ts",
       "disposition": "ported",
+      "protects": "A call replacement takes its arguments as values.",
+      "pigTest": "A Go test that pins the CheckedArgs.Call field type. TestCallReplacementArgumentsAreValues already does this by reflection.",
+      "whyNot": "The pin exists and is the PiG form. A compile-fail test would only duplicate the reflection check.",
       "upstreamTestHash": "sha256:f980f2518c939d6a6c611d58c4bf3d12441cf8f8e38d2ac91b0cdad21ee2400d",
       "evidence": [
         "chord/next/data/args_test.go#TestBindProvider",
@@ -2141,6 +2156,9 @@
     {
       "path": "packages/chord/test/delta-op-text-retention.test.ts",
       "disposition": "designed-out",
+      "protects": "Append ops from a growing string do not keep every revision of the text alive (no unbounded memory growth).",
+      "pigTest": "A Go test that tracks, diffs and applies a long growing string for many revisions, then forces GC and compares runtime.MemStats HeapAlloc (or a finalizer on each revision) with a bound. Go substrings share their source array, so the hazard is real in Go too. TestAppendTextOwnsTheTextItKeeps covers only AppendText.",
+      "whyNot": "FLIP to planned. It is possible: tracker, diffRevisions and applyImmutable are Go and a heap bound is deterministic after runtime.GC. Owner proposal: ChordDelta3, delta evidence batch. No longer designed out.",
       "upstreamTestHash": "sha256:262f4f728505051753a57de57f0a279cd31f958c0452e5662f57415ae354666e",
       "evidence": [
         "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps"
@@ -2396,6 +2414,9 @@
     {
       "path": "packages/chord/test/host/follow.test.ts",
       "disposition": "ported",
+      "protects": "follow infers the value type from the attachment without a type argument.",
+      "pigTest": "A Go test that follows an attachment and reads a typed value, and a compile-fail test of the generic inference.",
+      "whyNot": "The upstream case is a TypeScript compile-time assertion (expectTypeOf or a typed fixture), so no runtime behavior exists to port. The Go generic call is exercised by every ported follow case, which would not compile if inference failed.",
       "upstreamTestHash": "sha256:7163597e13d8d64375d364e40bcab6099b3aea1cd82bf1bee2269fccf6934df7",
       "evidence": [
         "chord/next/host/host_follow_test.go"
@@ -3387,6 +3408,9 @@
     {
       "path": "packages/chord/test/store/columns.test.ts",
       "disposition": "ported",
+      "protects": "Row types carry optional opt(...) and defaulted fields.",
+      "pigTest": "A Go test that puts and reads rows with optional and defaulted fields (the ported cases already do).",
+      "whyNot": "The upstream case is a TypeScript compile-time assertion (expectTypeOf or a typed fixture), so no runtime behavior exists to port. The ported row cases compile only if the typed row accepts those fields.",
       "upstreamTestHash": "sha256:6b2e106cb68743e54c7d3f603a940d98e4558f3082ee4e36e708136842a3146c",
       "evidence": [
         "chord/next/store/columns_test.go"
@@ -3522,6 +3546,9 @@
     {
       "path": "packages/chord/test/store/store.test.ts",
       "disposition": "ported",
+      "protects": "A metrics adapter that throws after COMMIT stops the store: memory keeps the committed group, no seq repeats, later commits reject storage_failed.",
+      "pigTest": "A Go test with a panicking telemetry counter, for the group and the lone commit.",
+      "whyNot": "FLIP to ported: ChordDelta3 ports both cases on fix/chord-delta-close (the Go store recovers a panicking counter as a failing adoption). This row is superseded when that branch lands. No longer designed out.",
       "upstreamTestHash": "sha256:65a12ac4b523b6c94be83390ef602104946e059715d4c43ed548ed373e6d6124",
       "evidence": [
         "chord/next/store/store_test.go",
@@ -3818,6 +3845,9 @@
     {
       "path": "packages/codemode/test/sandbox.test.ts",
       "disposition": "ported",
+      "protects": "The worker host accepts a worker path, reports a missing worker file as a sandbox error, and ignores Node --watch notifications.",
+      "pigTest": "PiG's analogue of the worker file is SandboxOptions.Wasm, a function that supplies the QuickJS module. Go tests with a failing Wasm supplier (inline_test.go:127) and a bad module (custom_module_engine_test.go:46) exist. A worker-backend test that a failing Wasm supplier gives a sandbox error was considered.",
+      "whyNot": "FLIP the first two cases to planned: add the worker-backend test with Wasm returning an error and a custom Wasm supplier (owner proposal: a codemode lane). The --watch case has no Go form: no Node process, no watch notification, so it stays designed out.",
       "upstreamTestHash": "sha256:f9252a9b5851d6187ce3bdbefe89f83fff5c5395b197c378640936fd94a9da63",
       "evidence": [
         "codemode/sandbox_test.go#TestEmbeddedSourcesMatchTheirRecordedHashes",
@@ -4755,6 +4785,9 @@
     {
       "path": "packages/coding-agent/test/first-time-setup.test.ts",
       "disposition": "ported",
+      "protects": "shouldRunFirstTimeSetup gates the setup dialog on Pi's official distribution, the default agent directory and a missing settings.json.",
+      "pigTest": "Go tests of PiG's own gate: TestShouldRunFirstTimeSetupGate and TestFirstTimeSetupOriginalCasesAsFork run the four upstream inputs with PiG's identity, and TestForkedDistributionDoesNotBlockOnOfficialFirstTime. A test with a fake official identity was considered and rejected by review.",
+      "whyNot": "Upstream's property is that only the official distribution runs the setup. PiG is never that distribution (D2, D88), so the cases cannot run as written. The PiG-shaped tests exist and carry the gate property for PiG.",
       "upstreamTestHash": "sha256:4d76184e78fba400d2bd7ba2d593d0fde6bc20a87c28d29cc11fec6fb338e035",
       "evidence": [
         "internal/codingagent/settings_explicit_values_test.go#TestAnalyticsSettings",
@@ -5420,6 +5453,9 @@
     {
       "path": "packages/coding-agent/test/pi-user-agent.test.ts",
       "disposition": "divergence",
+      "protects": "The user-agent string names the product, version, platform, runtime and architecture.",
+      "pigTest": "A Go test of codingAgentUserAgent that asserts PiG's own form (D65), and the bug-report caller test.",
+      "whyNot": "The upstream string is Pi's form and D65 approves PiG's form, so the same inputs cannot hold. The PiG-shaped test exists in bug_report_test.go.",
       "upstreamTestHash": "sha256:d90ac6970564ba4f4a67759795ec6153e153a1135c036873a1b8656cd8e34a2a",
       "evidence": [
         "internal/codingagent/bug_report_test.go#TestBugReportEnvironmentUsesPiGUserAgent"
@@ -5545,6 +5581,9 @@
     {
       "path": "packages/coding-agent/test/references.test.ts",
       "disposition": "designed-out",
+      "protects": "The reference doc docs/models-configuration.md matches what the models.json schemas render.",
+      "pigTest": "A Go test in internal/pigdocs that checks that PiG's own models.md and config.md name every property of the vendored models.schema.json and settings schema (the schemas are byte-identical to Pi's).",
+      "whyNot": "FLIP to planned. It is possible, because PiG ships hand-written schema docs in internal/pigdocs/content and nothing checks them against the schemas. Owner proposal: a docs lane. No longer designed out.",
       "upstreamTestHash": "sha256:e9a25e5e160394561ca1893b5080d447424909678f503a3043bcf99c3dd43bdb",
       "rationale": "New in Pi 8efd314f: checks that docs/models-configuration.md matches what scripts/generate-references.ts renders from the models.json schemas. PiG has no generated reference doc; the schemas themselves are byte-identical to Pi's (schemas/models.schema.json), which the configschema tests and make generate-schemas keep."
     },
@@ -7679,6 +7718,9 @@
     {
       "path": "packages/durable/test-workers/wake.test.ts",
       "disposition": "designed-out",
+      "protects": "A Durable Object wakes from storage after eviction and its alarm resumes due sleeps.",
+      "pigTest": "Go tests of the same Harness behavior on both engines (TestSleepingTasks cases already run). A test in a workerd process was considered.",
+      "whyNot": "The case tests the Cloudflare Workers runtime hosting Pi's Harness, and Go does not run there. The Harness behavior it depends on is ported on both engines.",
       "upstreamTestHash": "sha256:aed33a3d3354c6317d3604d3411fdd05168b33e2875044020a2dfbda1a210ec0",
       "evidence": [
         "durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks",
@@ -8209,6 +8251,9 @@
     {
       "path": "packages/durable/test/harness-telemetry.test.ts",
       "disposition": "ported",
+      "protects": "A commit listener that fails is reported once as a listener_error report metric and the span data never contains the error text.",
+      "pigTest": "A Go test in durable/harness with InMemoryTelemetry: an observeCommits listener whose Advance returns an error for the pi.user entry, then assert one setup report, one pi.durable.reports metric with type listener_error, and no error text in the spans. The core driver tests (watch_test.go, listener_reports_core_test.go) cover the listener_error end but not the telemetry metric or the span leak check.",
+      "whyNot": "FLIP to planned. Pi's case rejects a promise after the turn, and a Go listener returns its error from Advance, so the timing differs but the property does not. Owner proposal: durable lane. The case is not type-level, so the earlier type-level label was wrong.",
       "upstreamTestHash": "sha256:2221b035579538d1dd3a3d6029d93e0e224682ae2793ab5e0ca84ea0d6003652",
       "evidence": [
         "durable/harness/harness_telemetry_test.go",
@@ -8278,6 +8323,9 @@
     {
       "path": "packages/durable/test/harness-view.test.ts",
       "disposition": "ported",
+      "protects": "A conversation window refuses bounds that are not integers or that put max below min.",
+      "pigTest": "The Go case 'rejects window bounds that are not integers or put `max` below `min`' (harness_view_test.go:844) runs min 0, max below min and max 0 through Watch and ObserveConversation.",
+      "whyNot": "Only the non-integer inputs (1.5, NaN) have no Go form, because Min and Max are *int. The rest of the case is ported at runtime. A compile-fail test would pin the int type and add nothing.",
       "upstreamTestHash": "sha256:cccc828f5697f731c878f37ff04b278e79457d1bc9913d29398f2763395c3183",
       "evidence": [
         "durable/harness/harness_view_test.go#TestConversationView",
@@ -8369,6 +8417,9 @@
     {
       "path": "packages/durable/test/session-conversation-tails.test.ts",
       "disposition": "ported",
+      "protects": "The markers a tail keeps are not changed after they are written.",
+      "pigTest": "A Go test that mutates a record returned to a caller after the write and asserts the kept marker is unchanged.",
+      "whyNot": "Object.isFrozen has no Go form. The PiG form (no aliasing mutation of kept markers) is possible since kept markers are shared: FLIP to planned, owner proposal: durable lane.",
       "upstreamTestHash": "sha256:e7fc989babae389e6f035bda5e415f4984b9835c945ca292de375c84fa27762c",
       "evidence": [
         "durable/session/conversation_tails_test.go",
@@ -8395,6 +8446,9 @@
     {
       "path": "packages/durable/test/session-document-retention.test.ts",
       "disposition": "ported",
+      "protects": "With timers that cannot be unreferenced, the document cache keeps no timer and evicts on commits.",
+      "pigTest": "A Go test that an idle cache holds no goroutine or timer after eviction, in the style of durable/harness/goroutines_test.go.",
+      "whyNot": "Node's unreferenced timers do not exist in Go. The PiG-shaped property (no goroutine or timer left behind) is possible: FLIP to planned, owner proposal: durable lane.",
       "upstreamTestHash": "sha256:6f565e4b984119711b89eb6fdaea86faae24da4bc33e7ef5e39778f048bc66ac",
       "evidence": [
         "durable/session/session_document_retention_test.go#TestSessionDocumentCacheRetention",
@@ -8528,6 +8582,9 @@
     {
       "path": "packages/durable/test/tool-args-typebox.test.ts",
       "disposition": "designed-out",
+      "protects": "Tool arguments in execute() and prepareArguments() are typed by the parameter schema.",
+      "pigTest": "TestToolArgumentsOfASchemaReachExecuteAsTheSchemaShape through the Go API (runs a full call and a call that fails validation).",
+      "whyNot": "The Go test covers the runtime half. The type half has no form because Execute and PrepareArguments take any.",
       "upstreamTestHash": "sha256:af661354a4a3f0062027688f75d789cf45e2e747bf17f70aeec8ba53b96fc848",
       "evidence": [
         "durable/harness/harness_tools_test.go#TestToolArgumentsOfASchemaReachExecuteAsTheSchemaShape"
@@ -8696,6 +8753,9 @@
     {
       "path": "packages/evals/test/configured-runtime.test.ts",
       "disposition": "designed-out",
+      "protects": "loadConfiguredModelRuntime builds a model runtime from the configured provider settings.",
+      "pigTest": "The Go tests of the exported loader (evalsuites), which run unchanged.",
+      "whyNot": "Pi moved the loader into the test file because its evals read session.modelRuntime. A PiG Session lives in a pig process, so the exported loader stays and its Go tests are the test.",
       "upstreamTestHash": "sha256:3d34e219b07fabdbcaeedf54098ba5fab536383ad75b0441cae68e17c09add41",
       "rationale": "Pi 9628c848 moved loadConfiguredModelRuntime into the test because its evals read session.modelRuntime; a PiG Session lives in a pig process, so evalsuites still needs the exported loader and the Go tests are unchanged."
     },
@@ -9012,6 +9072,9 @@
     {
       "path": "packages/schema/test/builders.test.ts",
       "disposition": "ported",
+      "protects": "Builders carry the static type of the values they accept.",
+      "pigTest": "A Go test of the builders' runtime behavior (all other cases are ported), and a compile-fail test of Static<S>.",
+      "whyNot": "Static<S> has no Go form (schema/README.md). The compile-fail option is the shared question in the RESUME.",
       "upstreamTestHash": "sha256:e5a3274c35c460d0e640d8fa24219788937375246744e97cfd87d245f2e9dae2",
       "evidence": [
         "schema/builders_upstream_test.go",
@@ -9079,6 +9142,9 @@
     {
       "path": "packages/schema/test/typebox-static.test.ts",
       "disposition": "designed-out",
+      "protects": "Static<> of a TypeBox schema equals the TypeScript type of its valid values.",
+      "pigTest": "The coercion cases of coerce.test.ts cover the one runtime call (compile(...,{coerce:true}).parse). A Go reflection test of schema output types was considered.",
+      "whyNot": "All cases are compile-time assertions of a TypeScript type system. Go has no Static. The only runtime call is already covered.",
       "upstreamTestHash": "sha256:6211182603cc9b548785be37bb399c8bb071ce9480fe38a84a7936eb8b60c377",
       "evidence": [
         "schema/coerce_upstream_test.go#TestCoerceUpstream"
