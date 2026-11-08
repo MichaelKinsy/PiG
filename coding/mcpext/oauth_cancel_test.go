@@ -12,10 +12,10 @@ import (
 )
 
 // Sign-in cancellation (1.1.0, #10565; packages/coding-agent/src/extensions/mcp/oauth.ts signInMcpServer): ending the
-// context stops the sign-in at any step with McpSignInCancelledError. The step-by-step session cases are in
+// context stops the sign-in at any step with oauth.McpSignInCancelledError. The step-by-step session cases are in
 // coding/mcp_oauth_session_upstream_test.go.
 
-func signInStore(t *testing.T, serverURL string) mcpext.McpOAuthServerStore {
+func signInStore(t *testing.T, serverURL string) oauth.McpOAuthServerStore {
 	t.Helper()
 	store, err := mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, t.TempDir()).ForServer("test", serverURL)
 	if err != nil {
@@ -25,7 +25,7 @@ func signInStore(t *testing.T, serverURL string) mcpext.McpOAuthServerStore {
 }
 
 func isSignInCancelled(err error) bool {
-	_, ok := errors.AsType[*mcpext.McpSignInCancelledError](err)
+	_, ok := errors.AsType[*oauth.McpSignInCancelledError](err)
 	return ok
 }
 
@@ -50,7 +50,7 @@ func TestSignInMcpServerStopsWithoutRequestsWhenItsContextAlreadyEnded(t *testin
 	err := mcpext.SignInMcpServer(ctx, mcpext.SignInOptions{ServerURL: server.URL + "/mcp", Store: signInStore(t, server.URL+"/mcp"), Prompt: blockingPrompt{make(chan struct{})}})
 
 	if !isSignInCancelled(err) || requests != 0 {
-		t.Fatalf("err = %v with %d requests, want McpSignInCancelledError without requests", err, requests)
+		t.Fatalf("err = %v with %d requests, want oauth.McpSignInCancelledError without requests", err, requests)
 	}
 }
 
@@ -69,7 +69,7 @@ func TestSignInMcpServerReportsAnAbortedAuthorizationServerRequestAsACancellatio
 	<-arrived
 	cancel()
 	if err := <-done; !isSignInCancelled(err) {
-		t.Fatalf("err = %v, want McpSignInCancelledError", err)
+		t.Fatalf("err = %v, want oauth.McpSignInCancelledError", err)
 	}
 }
 
@@ -84,7 +84,7 @@ func TestSignInMcpServerStopsWhileWaitingForTheBrowser(t *testing.T) {
 	<-prompt.shown
 	cancel()
 	if err := <-done; !isSignInCancelled(err) {
-		t.Fatalf("err = %v, want McpSignInCancelledError", err)
+		t.Fatalf("err = %v, want oauth.McpSignInCancelledError", err)
 	}
 }
 
