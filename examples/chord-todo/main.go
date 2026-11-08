@@ -118,7 +118,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		return fmt.Errorf("the owner's sign-in set no cookie (status %d)", signIn.StatusCode)
 	}
 	cookie := cookies[0]
-	fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
+	_, _ = fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
 	request, err := http.NewRequest(http.MethodGet, origin, nil)
 	if err != nil {
 		return err
@@ -129,10 +129,10 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		return err
 	}
 	_ = signedIn.Body.Close()
-	fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
 
 	if serve {
-		fmt.Fprintln(out, "serving; the owner link:", server.OwnerLink())
+		_, _ = fmt.Fprintln(out, "serving; the owner link:", server.OwnerLink())
 		interrupted, stop := signal.NotifyContext(ctx, os.Interrupt)
 		defer stop()
 		<-interrupted.Done()

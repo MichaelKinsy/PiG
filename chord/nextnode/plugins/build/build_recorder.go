@@ -4,8 +4,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/evanw/esbuild/pkg/api"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Recorder records what a build read: the one read of each file, its hash kept by path, its bytes for esbuild. It is safe for
