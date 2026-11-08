@@ -1,5 +1,7 @@
 // Command p2 is p2's executable: `p2 server` (the default; Pi's `npm start`, src/hosts/server.ts) starts the server, and
 // `p2 worker` is a session worker, which the server starts itself (the same executable, D473).
+//
+// pig divergence (D470): p2 is its own Go module and binary under apps/p2, outside Stock and Piglets.
 package main
 
 import (

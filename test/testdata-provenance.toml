@@ -23,6 +23,11 @@
 expectations_from = "2026-10-10T00:00:00Z"
 
 [[golden]]
+paths = ["apps/p2/plugins/terminals/ghostty/testdata/golden.json"]
+owner = "pi"
+generator = "apps/p2/plugins/terminals/ghostty/testdata/gen.mjs"
+
+[[golden]]
 paths = ["ai/providers/bedrock/testdata/bedrock-eventstream/golden.json"]
 owner = "pi"
 generator = "ai/providers/bedrock/testdata/bedrock-eventstream/probe.mjs"

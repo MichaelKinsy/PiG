@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -150,10 +151,13 @@ type placed struct {
 
 // sameValue is whether a and b are the same JSON value (one object or array, unchanged).
 func sameValue(a, b any) bool {
-	defer func() { _ = recover() }()
 	if x, ok := a.([]any); ok {
 		y, ok := b.([]any)
 		return ok && len(x) == len(y) && (len(x) == 0 || &x[0] == &y[0])
+	}
+	// Two values of one uncomparable type (an object) are not compared: they are taken as changed.
+	if kind := reflect.TypeOf(a); kind != nil && kind == reflect.TypeOf(b) && !kind.Comparable() {
+		return false
 	}
 	return a == b
 }

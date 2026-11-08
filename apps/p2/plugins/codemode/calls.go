@@ -89,6 +89,7 @@ func (r *runningCalls) cancel(ctx context.Context, session harness.Harness) {
 			defer group.Done()
 			// Already settling: the abort below decides.
 			func() {
+				// upstream: apps/p2/plugins/codemode/calls.ts:cancel
 				defer func() { _ = recover() }()
 				api.Output(removedMessage + "\n")
 				reported(ctx, session, api)

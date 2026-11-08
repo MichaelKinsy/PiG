@@ -65,7 +65,7 @@ func TestTerminalCapabilityProbeDoesNotMistakeOtherFailuresOrSuccessfulInvalidRe
 	}
 }
 
-// pig additive: the probe is abandoned after 5 s, as Pi's timer rejects.
+// The probe is abandoned after 5 s, as Pi's timer rejects.
 func TestTerminalCapabilityProbeTimesOut(t *testing.T) {
 	var cancelled = make(chan struct{})
 	start := time.Now()
