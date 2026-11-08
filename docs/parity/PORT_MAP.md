@@ -1045,6 +1045,9 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/sqlite/schema.ts` | `durable/storage/sqlite/schema.go` (tests in durable/storage/sqlite/schema_test.go) | ✅ |
 | `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` (re-exports chord/sqlite/node; OpenNodeSqliteStorage) | ✅ |
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
+| `packages/durable/src/storage/sqlite/commit.ts` | `durable/storage/sqlite/commit.go` | ✅ |
+| `packages/durable/src/storage/sqlite/rows.ts` | `durable/storage/sqlite/commit.go` (documentRow; the cell encoders are in storage.go and statements.go) | ✅ |
+| `packages/durable/src/storage/sqlite/statements.ts` | `durable/storage/sqlite/statements.go` | ✅ |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` (re-exports chord/sqlite/cloudflare; OpenDurableObjectSqliteStorage) | ✅ |
 | `packages/durable/src/storage/store/commit.ts` | `durable/storage/store/commit.go` | 🟡 |
 | `packages/durable/src/storage/store/documents.ts` | `durable/storage/store/documents.go` | 🟡 |
