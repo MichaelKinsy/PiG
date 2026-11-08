@@ -72,6 +72,7 @@ func TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep(t *testing.T)
 		"bad literal":    `{"jsonrpc":"2.0","id":1,"result":{"x":` + deep + `,"y":nul}}`,
 		// The flaws below sit inside the part nested more than 32 levels down, where the fallback checks the text itself.
 		"control byte in the deep part":   `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat(`{"a":`, deepLevels) + `"` + "\x01" + `"` + strings.Repeat("}", deepLevels) + `}}`,
+		"mismatched closer after a value": `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat("[", deepLevels) + `1}` + strings.Repeat("]", deepLevels-1) + `}}`,
 		"mismatched closer":               `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat("[", deepLevels) + `}` + strings.Repeat("]", deepLevels-1) + `}}`,
 		"trailing comma in the deep part": `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat(`{"a":`, deepLevels) + `[1,]` + strings.Repeat("}", deepLevels) + `}}`,
 		"bad escape in the deep part":     `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat(`[`, deepLevels) + `"\x"` + strings.Repeat("]", deepLevels) + `}}`,
@@ -88,9 +89,9 @@ func TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep(t *testing.T)
 	}
 }
 
-// Differential: wherever encoding/json decodes the text, unmarshalJSON gives the same members; where it does not, unmarshalJSON accepts only text
+// Differential: wherever encoding/json decodes the text, deepFallback gives the same members; where it does not, deepFallback accepts only text
 // that is JSON once the depth is ignored, and keeps every member as the original bytes.
-func FuzzUnmarshalJSONMatchesEncodingJSON(f *testing.F) {
+func FuzzDeepFallbackMatchesEncodingJSON(f *testing.F) {
 	for _, s := range []string{`{"a":1}`, `{"a":[1,{"b":"c"}],"d":null}`, `[1,2,]`, `{"a":"\u0000pigdeep0"}`, `{"\u0000pigdeep0":0}`, strings.Repeat(`[`, 40) + strings.Repeat(`]`, 40), `{"a":` + strings.Repeat(`{"b":`, 40) + `1` + strings.Repeat(`}`, 40) + `}`, `{"a":1e400}`, "{\"a\":\"\xff\"}", `{"a":1} x`, ` {"a" : [ ] } `, "{\"a\":\"\x01\"}", `{"a":[}`} {
 		f.Add([]byte(s), uint8(0))
 		f.Add([]byte(s), uint8(3))
@@ -101,11 +102,11 @@ func FuzzUnmarshalJSONMatchesEncodingJSON(f *testing.F) {
 			data = []byte(`{"w":` + strings.Repeat(`[`, 10010) + string(data) + strings.Repeat(`]`, 10010) + `}`)
 		}
 		var got, want map[string]json.RawMessage
-		gotErr := unmarshalJSON(data, &got)
+		gotErr := deepFallback(json.Unmarshal(data, &got), data, &got)
 		wantErr := json.Unmarshal(data, &want)
 		if wantErr == nil {
 			if gotErr != nil || len(got) != len(want) {
-				t.Fatalf("%q: unmarshalJSON %v / %d members, encoding/json ok / %d", data, gotErr, len(got), len(want))
+				t.Fatalf("%q: deepFallback %v / %d members, encoding/json ok / %d", data, gotErr, len(got), len(want))
 			}
 			for k, v := range want {
 				if !bytes.Equal(got[k], v) {
