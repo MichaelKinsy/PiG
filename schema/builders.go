@@ -212,38 +212,6 @@ func BigExclusiveMaximum(n *big.Int) BigIntOption { return bigIntBound{"exclusiv
 // BigMultipleOf sets `multipleOf` of a BigInt.
 func BigMultipleOf(n *big.Int) BigIntOption { return bigIntBound{"multipleOf", n} }
 
-// BigintBounds is Pi's BigintBounds: the bounds of a bigint, each a bigint. A nil field is absent. Options returns the BigInt options of the
-// fields that are set, in the order Pi declares the members (minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf), for
-// BigInt(bounds.Options()...). A caller who needs another order of the keywords passes BigMinimum and the others to BigInt in that order.
-type BigintBounds struct {
-	Minimum          *big.Int
-	Maximum          *big.Int
-	ExclusiveMinimum *big.Int
-	ExclusiveMaximum *big.Int
-	MultipleOf       *big.Int
-}
-
-// Options returns the BigInt option of each bound that is set.
-func (b BigintBounds) Options() []BigIntOption {
-	var options []BigIntOption
-	if b.Minimum != nil {
-		options = append(options, BigMinimum(b.Minimum))
-	}
-	if b.Maximum != nil {
-		options = append(options, BigMaximum(b.Maximum))
-	}
-	if b.ExclusiveMinimum != nil {
-		options = append(options, BigExclusiveMinimum(b.ExclusiveMinimum))
-	}
-	if b.ExclusiveMaximum != nil {
-		options = append(options, BigExclusiveMaximum(b.ExclusiveMaximum))
-	}
-	if b.MultipleOf != nil {
-		options = append(options, BigMultipleOf(b.MultipleOf))
-	}
-	return options
-}
-
 // MinItems sets `minItems` of an array.
 func MinItems(n int) ArrayOption { return itemKeyword{"minItems", float64(n)} }
 
