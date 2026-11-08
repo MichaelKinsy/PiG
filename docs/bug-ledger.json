@@ -16296,6 +16296,26 @@
       "tests": []
     },
     {
+      "id": "BF-62b2278",
+      "title": "Chord: a registry value's watch that ended through its context's cancellation could race with the host's…",
+      "symptom": "Chord: a registry value's watch that ended through its context's cancellation could race with the host's close (a data race under `-race`); the watch now ends as a section of its host, like the rest of the code that touches the registry.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a registry value's watch that ended through its context's cancellation could race with the host's close (a data race under `-race`); the watch now ends as a section of its host, like the rest of the code that touches the registry.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "62b2278409",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-62c3691",
       "title": "`grep` with a large `context` no longer holds every context line in memory: its memory is bounded by the 50KB…",
       "symptom": "`grep` with a large `context` no longer holds every context line in memory: its memory is bounded by the 50KB output it returns, with the same text and truncation details (#9276).",
