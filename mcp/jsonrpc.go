@@ -69,13 +69,13 @@ func (id *JSONRPCID) UnmarshalJSON(data []byte) error {
 	switch data[0] {
 	case '"':
 		var s string
-		if err := deepFallback(json.Unmarshal(data, &s), data, &s); err != nil {
+		if err := json.Unmarshal(data, &s); err != nil {
 			return err
 		}
 		*id = StringID(s)
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		var n float64
-		if err := deepFallback(json.Unmarshal(data, &n), data, &n); err != nil {
+		if err := json.Unmarshal(data, &n); err != nil {
 			return err
 		}
 		*id = NumberID(n)
@@ -253,7 +253,7 @@ func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 	var m JSONRPCMessage
 	if raw, ok := fields["jsonrpc"]; ok {
 		var v string
-		if deepFallback(json.Unmarshal(raw, &v), raw, &v) == nil {
+		if json.Unmarshal(raw, &v) == nil {
 			m.JSONRPC = v
 		}
 	}
@@ -268,7 +268,7 @@ func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 	}
 	if raw, ok := fields["method"]; ok {
 		var v string
-		if len(raw) > 0 && raw[0] == '"' && deepFallback(json.Unmarshal(raw, &v), raw, &v) == nil {
+		if len(raw) > 0 && raw[0] == '"' && json.Unmarshal(raw, &v) == nil {
 			m.Method, m.hasMethod = v, true
 		}
 	}
@@ -283,7 +283,7 @@ func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 		if deepFallback(json.Unmarshal(raw, &obj), raw, &obj) == nil && obj != nil {
 			var message string
 			code, isNumber := jsonNumber(obj["code"])
-			if isNumber && isJSONString(obj["message"]) && deepFallback(json.Unmarshal(obj["message"], &message), obj["message"], &message) == nil {
+			if isNumber && isJSONString(obj["message"]) && json.Unmarshal(obj["message"], &message) == nil {
 				e = JSONRPCErrorObject{Code: errorCode(code), Message: message, Data: obj["data"]}
 				m.Error = &e
 			}

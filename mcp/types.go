@@ -129,7 +129,7 @@ func (a *ToolAnnotations) UnmarshalJSON(data []byte) error {
 	}
 	*a = ToolAnnotations{}
 	var title string
-	if deepFallback(json.Unmarshal(fields["title"], &title), fields["title"], &title) == nil {
+	if json.Unmarshal(fields["title"], &title) == nil {
 		a.Title = title
 	}
 	hint := func(name string) *bool {
