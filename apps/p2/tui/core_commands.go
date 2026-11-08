@@ -361,12 +361,13 @@ var CoreFacet = host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf)
 			return err
 		}
 	}
-	return p2runtime.Contribute(facet, "p2.tui-core", func(self host.StoreSelf) error {
-		p2runtime.ContributeKeyed(self, runtime.TuiCommands, CoreCommands()...)
-		// pi's built-in transformer, ahead of plugin transformers ("10:…").
-		p2runtime.ContributeKeyed(self, runtime.TuiMarkdownTransformers, p2runtime.Entry("00:mermaid", render.MarkdownTransformer(components.MermaidMarkdownTransformer)))
-		// The host's user shell entries (`!cmd`, runtime/shell.go) as pi's bash execution component.
-		p2runtime.ContributeKeyed(self, runtime.TuiEntryRenderers, p2runtime.Entry(p2runtime.ShellEntry, components.ShellEntryRenderer))
-		return nil
-	})
+	if err := runtime.TuiCommands.Contribute(self, CoreCommands()...); err != nil {
+		return err
+	}
+	// pi's built-in transformer, ahead of plugin transformers ("10:…").
+	if err := runtime.TuiMarkdownTransformers.Contribute(self, p2runtime.Entry("00:mermaid", render.MarkdownTransformer(components.MermaidMarkdownTransformer))); err != nil {
+		return err
+	}
+	// The host's user shell entries (`!cmd`, runtime/shell.go) as pi's bash execution component.
+	return runtime.TuiEntryRenderers.Contribute(self, p2runtime.Entry(p2runtime.ShellEntry, components.ShellEntryRenderer))
 })

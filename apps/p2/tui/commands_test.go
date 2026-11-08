@@ -37,11 +37,8 @@ func plain(lines []string) string {
 }
 
 func commandsFacet(commands ...registries.RecordEntry[runtime.TuiCommand]) chordhost.Facet {
-	return chordhost.DefineFacet(func(facet chordhost.FacetHost, _ chordhost.FacetSelf) error {
-		return p2runtime.Contribute(facet, "test.commands", func(self chordhost.StoreSelf) error {
-			p2runtime.ContributeKeyed(self, runtime.TuiCommands, commands...)
-			return nil
-		})
+	return chordhost.DefineFacet(func(_ chordhost.FacetHost, self chordhost.FacetSelf) error {
+		return runtime.TuiCommands.Contribute(self, commands...)
 	})
 }
 

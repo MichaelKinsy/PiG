@@ -75,33 +75,20 @@ var TuiSlots = p2runtime.NewKeyedRegistry[*TuiSlot]("p2.tui-slots")
 
 // TuiFacet is a TUI facet: one slot and, optionally, its commands (section 7.1); setup declares what else it serves (a registry its plugin defines).
 func TuiFacet(name string, factory TuiFactory, commands p2runtime.Keyed[TuiCommand], setup func(facet host.FacetHost) error) host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 		if setup != nil {
 			if err := setup(facet); err != nil {
 				return err
 			}
 		}
-		return p2runtime.Contribute(facet, "p2.tui-slot/"+contractSafe(name), func(self host.StoreSelf) error {
-			p2runtime.ContributeKeyed(self, TuiSlots, p2runtime.Entry(name, &TuiSlot{Factory: factory}))
-			if len(commands) > 0 {
-				p2runtime.ContributeKeyed(self, TuiCommands, commands...)
-			}
-			return nil
-		})
-	})
-}
-
-// contractSafe maps a slot name (`composer:chip`) onto the characters a contract name allows.
-func contractSafe(name string) string {
-	return strings.Map(func(r rune) rune {
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '.', r == '_', r == '~', r == '-':
-			return r
-		case r >= 'A' && r <= 'Z':
-			return r + ('a' - 'A')
+		if err := TuiSlots.Contribute(self, p2runtime.Entry(name, &TuiSlot{Factory: factory})); err != nil {
+			return err
 		}
-		return '-'
-	}, name)
+		if len(commands) > 0 {
+			return TuiCommands.Contribute(self, commands...)
+		}
+		return nil
+	})
 }
 
 // panelMinColumns: below this many columns the side panel is hidden: the chat would be too narrow next to it.
