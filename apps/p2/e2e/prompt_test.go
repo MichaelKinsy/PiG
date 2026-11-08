@@ -135,7 +135,7 @@ func TestPromptResourcesReachTheModelAndApplyLive(t *testing.T) {
 	})
 }
 
-func jsonText(t *testing.T, value any) string {
+func promptJSON(t *testing.T, value any) string {
 	t.Helper()
 	encoded, err := chordjson.Marshal(value)
 	if err != nil {
@@ -164,11 +164,11 @@ func TestPromptResourcesOnTheWorkerParticipantsOnlyLiveTemplatesExpandWithSkills
 		return list(value)
 	}
 	templates := populated(resources.Member("templates"), func(value []any) bool { return len(value) > 0 })
-	if got := jsonText(t, templates); got != `[{"name":"greet","description":"Greets","source":"global"}]` {
+	if got := promptJSON(t, templates); got != `[{"name":"greet","description":"Greets","source":"global"}]` {
 		t.Fatalf("templates = %s", got)
 	}
 	skills := populated(resources.Member("skills"), func(value []any) bool { return len(value) > 0 })
-	if got := jsonText(t, skills); got != `[{"name":"deploy","description":"Deploys the app."}]` {
+	if got := promptJSON(t, skills); got != `[{"name":"deploy","description":"Deploys the app."}]` {
 		t.Fatalf("skills = %s", got)
 	}
 	expand := func(text string) *delta.JsonObject {
@@ -179,7 +179,7 @@ func TestPromptResourcesOnTheWorkerParticipantsOnlyLiveTemplatesExpandWithSkills
 		}
 		return object(answered)
 	}
-	if got := jsonText(t, expand("/greet world")); got != `{"text":"Hello world!"}` {
+	if got := promptJSON(t, expand("/greet world")); got != `{"text":"Hello world!"}` {
 		t.Fatalf("expand template = %s", got)
 	}
 	skill := expand("/skill:deploy go")
@@ -189,7 +189,7 @@ func TestPromptResourcesOnTheWorkerParticipantsOnlyLiveTemplatesExpandWithSkills
 	if !regexp.MustCompile(`^<skill name="deploy" location="[^"]+SKILL\.md">\n[\s\S]*Run the deploy script\.\n</skill>\n\ngo$`).MatchString(skill.Value("text").(string)) {
 		t.Fatalf("skill text = %q", skill.Value("text"))
 	}
-	if got := jsonText(t, expand("no command")); got != `{"text":"no command"}` {
+	if got := promptJSON(t, expand("no command")); got != `{"text":"no command"}` {
 		t.Fatalf("expand plain = %s", got)
 	}
 	// The project's templates appear live.
