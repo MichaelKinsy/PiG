@@ -71,7 +71,7 @@ type McpSignInStart struct {
 
 // Redirect is the browser step of a "redirect" result.
 func (s McpSignInStart) Redirect() McpSignInRedirect {
-	return McpSignInRedirect{Kind: s.Kind, AuthorizationURL: s.AuthorizationURL, RedirectURL: s.RedirectURL, State: s.State, Scope: s.Scope}
+	return McpSignInRedirect(s)
 }
 
 // McpAuthorizationResponse is an authorization response: from a callback server, a callback route, or [ResponseFromRedirectURL].
