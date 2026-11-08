@@ -28,7 +28,7 @@ type hostile struct {
 	paths  []string
 	cookie []string
 	// chord answers the WebSocket path; nil refuses it.
-	chord func(w http.ResponseWriter, r *http.Request)
+	chord  func(w http.ResponseWriter, r *http.Request)
 	chords atomic.Int32
 }
 
@@ -180,7 +180,7 @@ func (s *crashSurface) Render(int) []string {
 	}
 	return []string{"Original server facet"}
 }
-func (s *crashSurface) crash() { panic(s.value) }
+func (s *crashSurface) crash()      { panic(s.value) }
 func (s *crashSurface) Invalidate() {}
 func (s *crashSurface) Dispose()    {}
 func (s *crashSurface) HandleInput(string) {

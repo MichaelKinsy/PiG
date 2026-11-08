@@ -38,16 +38,16 @@ func mermaidCodeSpan(line string) string {
 }
 
 func styleMermaidSpan(span mermaid.Span, t *theme.Theme) string {
-	switch span.Cls {
-	case mermaid.ClsBorder:
+	switch span.Role {
+	case mermaid.RoleBorder:
 		return t.Fg("borderMuted", span.Text)
-	case mermaid.ClsText:
+	case mermaid.RoleText:
 		return t.Fg("text", span.Text)
-	case mermaid.ClsEdge:
+	case mermaid.RoleEdge:
 		return t.Fg("accent", span.Text)
-	case mermaid.ClsEdgeLabel:
+	case mermaid.RoleEdgeLabel:
 		return t.Fg("muted", span.Text)
-	case mermaid.ClsTitle:
+	case mermaid.RoleTitle:
 		return t.Fg("accent", t.Bold(span.Text))
 	}
 	return span.Text

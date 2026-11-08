@@ -223,14 +223,14 @@ func (s *SignIns) Begin(server OAuthServer, redirect SignInRedirect) (SignInStar
 	if previous := s.flows[server.Name]; previous != nil {
 		s.dropLocked(previous)
 	}
-	if start.Authorized {
+	if start.Kind == oauth.McpSignInKindAuthorized {
 		s.mu.Unlock()
 		closeCallback()
 		s.notify()
 		s.changed(server.Name)
 		return SignInStart{Authorized: true}, nil
 	}
-	created := &flow{id: randomUUID(), server: server, options: options, authorization: start.Redirect, callback: callback, status: flowWaiting}
+	created := &flow{id: randomUUID(), server: server, options: options, authorization: start.Redirect(), callback: callback, status: flowWaiting}
 	created.timer = time.AfterFunc(s.timeout, func() { s.fail(created, errors.New("The sign-in expired; start it again")) })
 	s.flows[server.Name] = created
 	s.mu.Unlock()
@@ -238,11 +238,11 @@ func (s *SignIns) Begin(server OAuthServer, redirect SignInRedirect) (SignInStar
 		registered := make(chan struct{})
 		var once sync.Once
 		path := "/"
-		if url, err := nodeurl.ParseHTTPURL(start.Redirect.RedirectURL); err == nil {
+		if url, err := nodeurl.ParseHTTPURL(start.Redirect().RedirectURL); err == nil {
 			path = url.Pathname
 		}
 		go func() {
-			response, err := callback.WaitForCallback(oauth.WithCallbackRegistered(s.ctx, func() { once.Do(func() { close(registered) }) }), start.Redirect.State, path)
+			response, err := callback.WaitForCallback(oauth.WithCallbackRegistered(s.ctx, func() { once.Do(func() { close(registered) }) }), start.Redirect().State, path)
 			once.Do(func() { close(registered) })
 			if err != nil {
 				s.fail(created, err)
@@ -257,7 +257,7 @@ func (s *SignIns) Begin(server OAuthServer, redirect SignInRedirect) (SignInStar
 		}
 	}
 	s.notify()
-	return SignInStart{URL: start.Redirect.AuthorizationURL}, nil
+	return SignInStart{URL: start.Redirect().AuthorizationURL}, nil
 }
 
 // Complete completes the route sign-in whose state the authorization response carries (an error response fails it); the
@@ -374,7 +374,7 @@ func (s *SignIns) finish(current *flow, response oauth.McpAuthorizationResponse)
 	}
 	current.status = flowCompleting
 	s.mu.Unlock()
-	if err := oauth.CompleteMcpSignIn(s.ctx, current.options, current.authorization, response); err != nil {
+	if err := oauth.CompleteMcpSignIn(s.ctx, oauth.McpCompleteSignInOptions{McpSignInOptions: current.options, Authorization: current.authorization, Response: response}); err != nil {
 		s.fail(current, err)
 		return data.NewPluginError("sign_in", err.Error())
 	}
