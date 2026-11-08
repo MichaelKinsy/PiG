@@ -63,6 +63,9 @@ func driftNode(t *testing.T) string {
 		t.Fatalf("node -p: %v", err)
 	}
 	if icu := strings.TrimSpace(string(out)); icu != intlOracleICU {
+		if os.Getenv("CI") != "" {
+			t.Fatalf("node has ICU %s, the tables are from ICU %s: CI must run the pinned Node (make intl-tables after a pin bump)", icu, intlOracleICU)
+		}
 		t.Skipf("node has ICU %s, the tables are from ICU %s: run this test with the pinned Node (make intl-tables after a pin bump)", icu, intlOracleICU)
 	}
 	return node

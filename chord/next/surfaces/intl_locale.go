@@ -316,16 +316,25 @@ func resolveParts(parts tagParts, available []string, exceptions []localePair) (
 	return bestAvailable(available, parts.aliased().key())
 }
 
-// platformLocale is the platform's default locale (`Intl`'s): the first of LC_ALL, LC_MESSAGES, LANG that is a tag,
-// else en-US.
+// platformLocale is the platform's default locale (ICU's): the first of LC_ALL, LC_MESSAGES, LANG that is set decides, even when it
+// holds no tag (then en-US); `C` and `POSIX` are en-US. A variable set to the empty string would give ICU's root locale, whose data the
+// tables do not hold: en-US here (a recorded gap).
 func platformLocale() string {
 	for _, name := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
-		value, _, _ := strings.Cut(os.Getenv(name), ".")
+		value, set := os.LookupEnv(name)
+		if !set {
+			continue
+		}
+		value, _, _ = strings.Cut(value, ".")
 		value, _, _ = strings.Cut(value, "@")
 		value = strings.ReplaceAll(value, "_", "-")
+		if value == "C" || value == "POSIX" {
+			return "en-US"
+		}
 		if _, err := parseTag(value); err == nil {
 			return value
 		}
+		return "en-US"
 	}
 	return "en-US"
 }
