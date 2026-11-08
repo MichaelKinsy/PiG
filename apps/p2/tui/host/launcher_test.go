@@ -206,3 +206,8 @@ func containsAll(text string, parts ...string) bool {
 	}
 	return true
 }
+
+func record(value any) map[string]any {
+	m, _ := value.(map[string]any)
+	return m
+}
