@@ -40,14 +40,14 @@ func TestAJobRunningAcrossAReloadAcrossARestartOf(t *testing.T) {
 			hand.open("a")
 			tab.browser.Wait(`globalThis.reload.frames.tasks?.some((frame) => Array.isArray(frame) && frame.length > 0)`)
 			frames := tab.frames("tasks")
-			expectEqual(t, "entries", frames[len(frames)-1], []any{entry})
+			expectEqual(t, "entries", frames[len(frames)-1], `["`+entry+`"]`)
 			// A run started now runs on the new code.
 			tab.call("tasks", "start", "b")
 			hand.entered("b")
 			hand.open("b")
 			tab.browser.Wait(`globalThis.reload.frames.tasks?.at(-1)?.length === 2`)
 			frames = tab.frames("tasks")
-			expectEqual(t, "two entries", frames[len(frames)-1], []any{entry, "v2-finish(done:run-v2:b)"})
+			expectEqual(t, "two entries", frames[len(frames)-1], `["`+entry+`","v2-finish(done:run-v2:b)"]`)
 		})
 	}
 }
