@@ -410,7 +410,7 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 	}
 	admitted := admission.(*Admitted)
 	// A fresh script nonce per response (decision "A CSP nonce per response").
-	webRequest := newWebRequest(request, admitted, c.nonces.Next())
+	webRequest := newWebRequest(request, admitted, c.nonces.Next(), connection.RemoteAddress)
 	match, status := router.Route(request.Method(), webRequest.Path())
 	if status != Found {
 		code := 404
@@ -663,7 +663,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		refuse(w, 403)
 		return
 	}
-	webRequest := newWebRequest(request, admitted, c.nonces.Next())
+	webRequest := newWebRequest(request, admitted, c.nonces.Next(), connectionOf(r).RemoteAddress)
 	principal := c.principal(registrySet.authenticatorsNow(), webRequest, signal)
 	if c.isClosing() || signal.Err() != nil {
 		refuse(w, 503)
