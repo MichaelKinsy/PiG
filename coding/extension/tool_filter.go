@@ -1,6 +1,7 @@
 package extension
 
 import (
+	"github.com/MichaelKinsy/PiG/mcp"
 	"slices"
 	"strings"
 	"sync"
@@ -217,7 +218,7 @@ func (s *ToolScope) KindOf(info ToolInfo) (ToolClass, string) {
 		namespace = info.Namespace.Name
 	}
 	switch {
-	case IsMcpResourceTool(info.Name) || strings.HasPrefix(source, McpSourcePrefix) || strings.HasPrefix(namespace, McpNamespace("")):
+	case IsMcpResourceTool(info.Name) || strings.HasPrefix(source, McpSourcePrefix) || strings.HasPrefix(namespace, mcp.McpNamespace("")):
 		return ToolClassMCP, McpAdapterEntry
 	case source == "" || source == "builtin":
 		return ToolClassBuiltin, ""
@@ -292,7 +293,7 @@ func (s *ToolScope) McpServerOf(info ToolInfo) string {
 		return server
 	}
 	if info.Namespace != nil {
-		return strings.TrimPrefix(info.Namespace.Name, McpNamespace(""))
+		return strings.TrimPrefix(info.Namespace.Name, mcp.McpNamespace(""))
 	}
 	return ""
 }

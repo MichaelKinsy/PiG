@@ -84,7 +84,7 @@ func checkSshArgumentCases(t *testing.T, call func(target SshTarget, strict bool
 			continue
 		}
 		checked++
-		want := withPiMainConnectTimeout(c.Args)
+		want := c.Args
 		if err != nil || !slices.Equal(got, want) {
 			t.Errorf("target %+v strict %v: %q, %v\nPi gives %q", c.Target, c.StrictHostKeys, got, err, want)
 		}
@@ -150,14 +150,4 @@ func TestSshProgramDefaultsOnlyWhenUnset(t *testing.T) {
 			t.Fatalf("set program %q = %q", program, got)
 		}
 	}
-}
-
-// withPiMainConnectTimeout is the recorded arguments of the pinned Pi with the option Pi main c96e368e2 adds before ServerAliveInterval (D304): a host that is down fails
-// a connection attempt within 15 s.
-func withPiMainConnectTimeout(args []string) []string {
-	at := slices.Index(args, "ServerAliveInterval=15")
-	if at < 1 {
-		return args
-	}
-	return slices.Concat(args[:at-1], []string{"-o", "ConnectTimeout=15"}, args[at-1:])
 }

@@ -48,8 +48,8 @@ func TestMcpAuthProviderRefreshUsesTheConfiguredAuthServerMetadataURL(t *testing
 	provider := mcpext.NewMcpAuthProvider(mcpext.McpAuthProviderOptions{
 		ServerURL: serverURL,
 		Store:     store,
-		Settings: func() (mcpext.McpOAuthSettings, error) {
-			return mcpext.McpOAuthSettings{AuthServerMetadataURL: metadataURL}, nil
+		Settings: func() (oauth.McpOAuthSettings, error) {
+			return oauth.McpOAuthSettings{AuthServerMetadataURL: metadataURL}, nil
 		},
 	})
 	handler, ok := provider.(mcp.UnauthorizedHandler)
