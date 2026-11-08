@@ -416,7 +416,7 @@ func newPlugins(t testing.TB, root string) *plugins.Plugins {
 	}
 	component := plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots:   []plugins.PluginRoot{{Path: root}},
-		Kinds:   []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord"}}},
+		Kinds:   []plugins.KindEntry{{Name: "worker", Definition: plugins.KindDefinition{Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord"}}}},
 		OnError: func(plugins.PluginsError) {},
 	}, background)
 	t.Cleanup(component.Close)

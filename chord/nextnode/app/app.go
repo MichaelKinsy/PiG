@@ -477,9 +477,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	kinds := make([]plugins.KindDefinition, len(options.Kinds))
+	kinds := make([]plugins.KindEntry, len(options.Kinds))
 	for i, kind := range options.Kinds {
-		kinds[i] = plugins.KindDefinition{Name: kind.Name, Platform: kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}
+		kinds[i] = plugins.KindEntry{Name: kind.Name, Definition: plugins.KindDefinition{Platform: kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}}
 	}
 	base := make([]string, len(options.Base))
 	for i, path := range options.Base {

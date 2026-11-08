@@ -139,7 +139,7 @@ func (e *exErrors) none(t *testing.T) {
 }
 
 // exComponent is the example's `createPlugins`: Node kinds (or a browser one) keeping Chord and the extra packages external.
-func exComponent(t *testing.T, roots []string, cache string, kinds []KindDefinition, edit func(*PluginsOptions)) (*Plugins, *exErrors) {
+func exComponent(t *testing.T, roots []string, cache string, kinds []KindEntry, edit func(*PluginsOptions)) (*Plugins, *exErrors) {
 	t.Helper()
 	collected := &exErrors{}
 	options := PluginsOptions{Roots: exRoots(roots), Kinds: kinds, OnError: collected.add, Node: NodeOptions{CacheDir: cache}}
@@ -160,8 +160,8 @@ func exRoots(paths []string) []PluginRoot {
 	return roots
 }
 
-func exNodeKind(name string, packages ...string) KindDefinition {
-	return KindDefinition{Name: name, Platform: PlatformNode, HostPackages: append([]string{exChord}, packages...)}
+func exNodeKind(name string, packages ...string) KindEntry {
+	return KindEntry{Name: name, Definition: KindDefinition{Platform: PlatformNode, HostPackages: append([]string{exChord}, packages...)}}
 }
 
 // exNode is a Node host loaded with a kind's plugins, attached to its Go host, with the probe when the host has one.
@@ -451,7 +451,7 @@ func exFailures(t *testing.T, failed []host.PluginFailure) map[string]string {
 func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 	cache := t.TempDir()
 	root := filepath.Join(exCopy(t, "35-plugins", "plugins"), "plugins")
-	plugins, collected := exComponent(t, []string{root}, cache, []KindDefinition{exNodeKind("server"), exNodeKind("worker")}, nil)
+	plugins, collected := exComponent(t, []string{root}, cache, []KindEntry{exNodeKind("server"), exNodeKind("worker")}, nil)
 
 	// 2. A worker and a server, each loading the plugins' facets of its kind (no core facets here).
 	workerAddress, probeAddress := exWorkerKind.Address(nil), workerKind.Address(nil)
@@ -567,7 +567,7 @@ func TestExample36PluginFailures(t *testing.T) {
 	cache := t.TempDir()
 	base := exCopy(t, "36-plugin-failures", "plugins")
 	root := filepath.Join(base, "plugins")
-	plugins, collected := exComponent(t, []string{root}, cache, []KindDefinition{exNodeKind("server")}, nil)
+	plugins, collected := exComponent(t, []string{root}, cache, []KindEntry{exNodeKind("server")}, nil)
 	buildDirty := func(names ...string) *Built {
 		t.Helper()
 		exDirty(t, plugins, names...)
@@ -788,7 +788,7 @@ func TestExample37PluginImports(t *testing.T) {
 	}
 	// 1. The component. Its host packages: Chord, the app's ES module and a CommonJS module of the app.
 	modules := HostPackages{"@example/app": filepath.Join(base, "app", "index.ts"), "@example/legacy": filepath.Join(base, "app", "legacy.cjs")}
-	plugins, collected := exComponent(t, []string{root}, cache, []KindDefinition{exNodeKind("server", "@example/app", "@example/legacy")}, func(options *PluginsOptions) {
+	plugins, collected := exComponent(t, []string{root}, cache, []KindEntry{exNodeKind("server", "@example/app", "@example/legacy")}, func(options *PluginsOptions) {
 		options.Install = InstallOptions{NpmCommand: []string{"node", fakeNpm}}
 	})
 
@@ -886,7 +886,7 @@ func TestExample38WatchAndRollout(t *testing.T) {
 	base := exCopy(t, "38-watch-and-rollout", "plugins", "app")
 	root, app := filepath.Join(base, "plugins"), filepath.Join(base, "app")
 	incoming := filepath.Join("testdata", "examples", "38-watch-and-rollout", "incoming", "extra")
-	plugins, collected := exComponent(t, []string{root}, cache, []KindDefinition{exNodeKind("server"), exNodeKind("worker")}, func(options *PluginsOptions) {
+	plugins, collected := exComponent(t, []string{root}, cache, []KindEntry{exNodeKind("server"), exNodeKind("worker")}, func(options *PluginsOptions) {
 		// The app's own code: a change marks `base`. A stand-in for npm (no network; these plugins have no dependencies).
 		options.Base = []string{app}
 		options.Install = InstallOptions{NpmCommand: []string{"node", "-e", ""}}
@@ -1055,7 +1055,7 @@ func exBrowser(t *testing.T) (*Plugins, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugins, collected := exComponent(t, []string{root}, t.TempDir(), []KindDefinition{{Name: "web", Platform: PlatformBrowser, HostPackages: []string{exChord}}}, func(options *PluginsOptions) {
+	plugins, collected := exComponent(t, []string{root}, t.TempDir(), []KindEntry{{Name: "web", Definition: KindDefinition{Platform: PlatformBrowser, HostPackages: []string{exChord}}}}, func(options *PluginsOptions) {
 		options.PublicPath = new("/plugin-assets/")
 	})
 	t.Cleanup(func() { collected.none(t) })
@@ -1192,7 +1192,7 @@ const exAcmeApi = "@acme/app"
 
 // exAcmeKinds are the kinds of the app of 49 to 51: `server` (Node) and `web` (browser), each with the API's shared module
 // and its own, plus the versions' modules the example lists. Chord is no host package of either.
-func exAcmeKinds(versions ...string) []KindDefinition {
+func exAcmeKinds(versions ...string) []KindEntry {
 	var server, web []string
 	for _, version := range versions {
 		server = append(server, exAcmeApi+"/"+version)
@@ -1202,9 +1202,9 @@ func exAcmeKinds(versions ...string) []KindDefinition {
 			web = append(web, exAcmeApi+"/v3/web")
 		}
 	}
-	return []KindDefinition{
-		{Name: "server", Platform: PlatformNode, HostPackages: server},
-		{Name: "web", Platform: PlatformBrowser, HostPackages: web},
+	return []KindEntry{
+		{Name: "server", Definition: KindDefinition{Platform: PlatformNode, HostPackages: server}},
+		{Name: "web", Definition: KindDefinition{Platform: PlatformBrowser, HostPackages: web}},
 	}
 }
 

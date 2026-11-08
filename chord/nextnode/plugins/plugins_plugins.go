@@ -32,12 +32,16 @@ import (
 // goroutines at once (one build per facet of the plugins to build: Pi's Promise.all).
 
 // KindDefinition is one facet kind: Node or browser builds, and the host packages (by specifier) its builds keep external.
-// Name is the kind (`server`, `worker`, `web`): upstream's record key, which Go keeps as a field so the kinds stay in the
-// order the app gave them.
 type KindDefinition struct {
-	Name         string
 	Platform     Platform
 	HostPackages []string
+}
+
+// KindEntry is one entry of upstream's `kinds` record: the kind (`server`, `worker`, `web`), the record's key, and its definition.
+// A record keeps its keys in insertion order and a Go map does not, so the kinds are a slice of entries in the order the app gave them.
+type KindEntry struct {
+	Name       string
+	Definition KindDefinition
 }
 
 // PluginsErrorKind tags a PluginsError: a failure of the batch of the marks (the kinds of state.BatchError) or of the
@@ -70,7 +74,7 @@ type PluginsOptions struct {
 	Api *AppApi
 	// Kinds are the app's facet kinds (one file per kind in a plugin), each with where its builds run and the host packages
 	// they keep external, in the app's order.
-	Kinds []KindDefinition
+	Kinds []KindEntry
 	// Base is the server's own base code, files and directories, hashed when the component is created: `base` is set while one
 	// differs from it or a source file is new in one of the directories (the app restarts its hosts; Chord restarts nothing).
 	Base []string
@@ -202,7 +206,7 @@ func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
 	}
 	for i, kind := range options.Kinds {
 		c.kindNames[i] = kind.Name
-		c.kinds[kind.Name] = kind
+		c.kinds[kind.Name] = kind.Definition
 	}
 	report := func(kind PluginsErrorKind, err error) {
 		if options.OnError != nil {

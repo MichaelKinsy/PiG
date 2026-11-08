@@ -97,12 +97,12 @@ func (c *pcComponent) quiet(t *testing.T) {
 }
 
 // pcKinds is the fixtures' app's kinds (support.ts's `kindsOf`).
-func pcKinds(modules []string) []KindDefinition {
+func pcKinds(modules []string) []KindEntry {
 	packages := append(slices.Clone(pcHostPackages), modules...)
-	return []KindDefinition{
-		{Name: "server", Platform: PlatformNode, HostPackages: packages},
-		{Name: "worker", Platform: PlatformNode, HostPackages: packages},
-		{Name: "web", Platform: PlatformBrowser, HostPackages: packages},
+	return []KindEntry{
+		{Name: "server", Definition: KindDefinition{Platform: PlatformNode, HostPackages: packages}},
+		{Name: "worker", Definition: KindDefinition{Platform: PlatformNode, HostPackages: packages}},
+		{Name: "web", Definition: KindDefinition{Platform: PlatformBrowser, HostPackages: packages}},
 	}
 }
 
