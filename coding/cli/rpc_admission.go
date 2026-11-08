@@ -444,12 +444,16 @@ func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
 		fail(fmt.Errorf("Cannot submit a prompt while compaction is in progress. Wait for compaction to finish and retry."))
 		return
 	}
+	// upstream: agent-session.ts prompt() awaits _preparePrompt (Pi main, #9154), an async function: a rejection it throws reaches prompt()'s
+	// catch one microtask later than a throw inside prompt() itself did, and so does the start of _startRun after it returns the trigger.
+	// "handled" and "queued" call preflightResult inside _preparePrompt and add no hop.
+	failPrepared := func(err error) { a.turn.Microtask(func() { fail(err) }) }
 	a.input(cmd.Message, rpcImages(cmd.Images), cmd.StreamingBehavior).then(func(input rpcInputResult, err error) {
 		if a.ctx.Err() != nil {
 			return
 		}
 		if err != nil {
-			fail(err)
+			failPrepared(err)
 			return
 		}
 		if input.handled {
@@ -459,7 +463,7 @@ func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
 		text := a.catalog.expandPrompt(input.text)
 		if a.session.IsStreaming() {
 			if cmd.StreamingBehavior == "" {
-				fail(fmt.Errorf("Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."))
+				failPrepared(fmt.Errorf("Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."))
 				return
 			}
 			if cmd.StreamingBehavior == "followUp" {
@@ -468,46 +472,54 @@ func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
 				a.session.QueueSteer(text, input.images)
 			}
 			if err := a.session.FlushEvents(a.ctx); err != nil {
-				fail(err)
+				failPrepared(err)
 				return
 			}
 			a.turn.Microtask(func() { a.write(rpcDispositionSuccess(id, "prompt", coding.DispositionQueued)) })
 			return
 		}
 		if err := a.validateModel(); err != nil {
-			fail(err)
+			failPrepared(err)
 			return
 		}
-		// upstream: agent-session.ts:2133 prompt() awaits _startRun, which marks the Session busy before its compaction check and
-		// before_agent_start (:1832-1837), so input that arrives meanwhile queues into this run or is rejected.
-		start, err := a.session.BeginRunStart()
-		if err != nil {
-			fail(err)
-			return
-		}
-		failStarted := func(err error) {
-			start.Abandon()
-			fail(err)
-		}
-		prepare := func() {
-			a.beforeAgentStart(id, start, coding.BuildUserContent(text, input.images), len(input.images) > 0, failStarted)
-		}
-		if slices.ContainsFunc(a.session.Messages(), func(m agent.AgentMessage) bool { return m.Assistant != nil }) {
-			checked := a.promptCompactionCheck()
-			checked.then(func(_ struct{}, err error) {
-				switch {
-				case err != nil && !a.session.AgentRunAbortRequested():
-					failStarted(err)
-				case a.ctx.Err() == nil:
-					prepare()
-				default:
-					start.Abandon()
-				}
-			})
-		} else {
-			prepare()
-		}
+		a.turn.Microtask(func() { a.startPrompt(id, text, input, fail) })
 	})
+}
+
+// startPrompt is prompt() after _preparePrompt returned its trigger: _startRun marks the Session busy and prepares the run.
+func (a *rpcAdmission) startPrompt(id rpcRequestID, text string, input rpcInputResult, fail func(error)) {
+	if a.ctx.Err() != nil {
+		return
+	}
+	// upstream: agent-session.ts:2133 prompt() awaits _startRun, which marks the Session busy before its compaction check and
+	// before_agent_start (:1832-1837), so input that arrives meanwhile queues into this run or is rejected.
+	start, err := a.session.BeginRunStart()
+	if err != nil {
+		fail(err)
+		return
+	}
+	failStarted := func(err error) {
+		start.Abandon()
+		fail(err)
+	}
+	prepare := func() {
+		a.beforeAgentStart(id, start, coding.BuildUserContent(text, input.images), len(input.images) > 0, failStarted)
+	}
+	if slices.ContainsFunc(a.session.Messages(), func(m agent.AgentMessage) bool { return m.Assistant != nil }) {
+		checked := a.promptCompactionCheck()
+		checked.then(func(_ struct{}, err error) {
+			switch {
+			case err != nil && !a.session.AgentRunAbortRequested():
+				failStarted(err)
+			case a.ctx.Err() == nil:
+				prepare()
+			default:
+				start.Abandon()
+			}
+		})
+	} else {
+		prepare()
+	}
 }
 
 // promptCompactionCheck is prompt()'s compaction check. Pi's check resumes without I/O unless it compacts, so only a due compaction leaves the loop, and the
