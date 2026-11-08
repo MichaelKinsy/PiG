@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	codingtui "github.com/MichaelKinsy/PiG/apps/p2/plugins/coding-tools/tui"
 	codemodetui "github.com/MichaelKinsy/PiG/apps/p2/plugins/codemode/tui"
+	codingtui "github.com/MichaelKinsy/PiG/apps/p2/plugins/coding-tools/tui"
 	powershelltui "github.com/MichaelKinsy/PiG/apps/p2/plugins/powershell/tui"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/components"

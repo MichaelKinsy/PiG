@@ -85,14 +85,14 @@ func (funcComponent) Invalidate()                 {}
 // box is a bordered, titled body over a footer line.
 func box(ctx runtime.TuiContext, title string, body pitui.Component, footer func() string) *pitui.Container {
 	container := pitui.NewContainer()
-	rule := funcComponent{func(width int) []string { return []string{border(ctx, width)} }}
+	rule := &funcComponent{func(width int) []string { return []string{border(ctx, width)} }}
 	container.Add(rule)
-	container.Add(funcComponent{func(width int) []string {
+	container.Add(&funcComponent{func(width int) []string {
 		current := ctx.Theme().Current()
 		return []string{truncate(current.Fg("accent", current.Bold(title)), width)}
 	}})
 	container.Add(body)
-	container.Add(funcComponent{func(width int) []string {
+	container.Add(&funcComponent{func(width int) []string {
 		return []string{truncate(ctx.Theme().Current().Fg("dim", footer()), width)}
 	}})
 	container.Add(rule)

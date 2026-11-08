@@ -42,6 +42,25 @@ type p4Setup struct {
 
 // newP4Setup is the server stubs that record every call; rows is the catalog the owner sees.
 func newP4Setup(t *testing.T, rows []contract.Session, screen string) *p4Setup {
+	return newP4With(t, rows, screen, p4Options{})
+}
+
+// p4Options are what the chat tests of tui-p4 change in `setup`.
+type p4Options struct {
+	// guest is the visitor's role: the sessions are the guest's, the owner-only Models never exists.
+	guest bool
+	// worker replaces the session worker's stubs (the recording Chat); nil: an idle conversation.
+	worker func(s *p4Setup) []p2test.Stub
+	// server are more server stubs; facets more TUI facets (after the core one).
+	server []p2test.Stub
+	facets []host.Facet
+	// noNavigate keeps the topology's own navigation (a test that has not navigated yet).
+	noNavigate bool
+	// models adds the owner's Models (recording its calls); a guest never has it.
+	models bool
+}
+
+func newP4With(t *testing.T, rows []contract.Session, screen string, options p4Options) *p4Setup {
 	t.Helper()
 	s := &p4Setup{calls: &calls{}}
 	sessions := p2test.Stub{Contract: contract.Sessions, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
@@ -58,6 +77,9 @@ func newP4Setup(t *testing.T, rows []contract.Session, screen string) *p4Setup {
 				}
 				return out
 			})
+		}
+		if options.guest {
+			return p2test.StubMembers{Variant: "guest", State: map[string]any{"sessions": cell}}
 		}
 		return p2test.StubMembers{
 			Variant: "owner",
@@ -138,12 +160,25 @@ func newP4Setup(t *testing.T, rows []contract.Session, screen string) *p4Setup {
 			},
 		}
 	}}
+	worker := []p2test.Stub{chatWorker()}
+	if options.worker != nil {
+		worker = options.worker(s)
+	}
+	server := append([]p2test.Stub{sessions, subagents, search, status, reads}, options.server...)
+	if options.models {
+		server = append(server, p4Models(s))
+	}
+	server = append(server, p2test.Stub{Contract: statuscontract.SessionMetrics, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, _ p2test.StubSelf) p2test.StubMembers {
+		return p2test.StubMembers{Variant: "reader", State: map[string]any{"clients": float64(2), "usage": nil}}
+	}})
 	s.Topology = tuitest.NewTopology(t, tuitest.TopologyOptions{
-		Server: []p2test.Stub{sessions, subagents, search, status, reads}, Worker: []p2test.Stub{chatWorker()},
-		Facets:  []host.Facet{tui.CoreFacet, sessionstui.Facet, subagentstui.Facet, searchtui.Facet},
-		Columns: 100,
+		Server: server, Worker: worker,
+		Facets:  append(append([]host.Facet{tui.CoreFacet}, options.facets...), sessionstui.Facet, subagentstui.Facet, searchtui.Facet),
+		Columns: 100, Role: roleOf(map[bool]string{true: "guest", false: "owner"}[options.guest]),
 	})
-	s.Do(func() { s.Runtime.Navigate(screen, rows[0].ID, true, nil) })
+	if !options.noNavigate {
+		s.Do(func() { s.Runtime.Navigate(screen, rows[0].ID, true, nil) })
+	}
 	return s
 }
 
