@@ -214,7 +214,7 @@ emit({ results, names });
 		}
 	}
 	for i, n := range names {
-		got := CreateMcpToolName(n.Server, n.Tool, func(name string) bool {
+		got := mcp.CreateMcpToolName(n.Server, n.Tool, func(name string) bool {
 			return (n.Taken != "" && name == n.Taken) || (n.TakeSuffix && strings.HasSuffix(name, "_x"))
 		})
 		if got != want.Names[i] {
