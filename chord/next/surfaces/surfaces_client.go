@@ -307,7 +307,9 @@ func newUpdates(h host.Host, loaded *LoadedFacets, left map[string]bool, options
 	return u
 }
 
-// follow holds the scripts object and applies every set it shows, the first included (a reconnect's snapshot too).
+// follow holds the scripts object and applies every set frame it delivers (a reconnect's snapshot too). As in Pi, the set the
+// hold bound with (the watch's acquisition value) is not delivered: Pi's client.test.ts styles tests expect the first Prepare to be
+// the published set's. A client of another base learns it at its next frame or reconnect (ServerBase).
 func (u *updates) follow() error {
 	held, err := u.host.Hold(u.ctx, u.options.Scripts, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
