@@ -123418,98 +123418,174 @@
     },
     {
       "id": "pkg:chord/react#ExternalStore",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:580f013ccceaafe9303f91cb5a5aa30a0e46fefa3f34a06dbd0417432dd6918c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:580f013ccceaafe9303f91cb5a5aa30a0e46fefa3f34a06dbd0417432dd6918c",
+      "rationale": "Pi packages/chord/src/react/stores.ts (Pi 1.5.0+c23b9ec1): the React bindings' store adapter (ExternalStore, watchStore) feeds React `useSyncExternalStore`, which exists only in React. It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts#watchStore"
+      ]
     },
     {
       "id": "pkg:chord/react#HostProvider",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4c4f24370c6afcaec37b34f4a292b0e359b564a539a26aec82699a5d0da94767"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4c4f24370c6afcaec37b34f4a292b0e359b564a539a26aec82699a5d0da94767",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#HostProvider::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ac9f3bd2b895c09dadf00b1c5625436564e13dd8b92440ef040a491b8667e8d9"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ac9f3bd2b895c09dadf00b1c5625436564e13dd8b92440ef040a491b8667e8d9",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useHold",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:57c6edfdbf02849369e294c60589bc358ea81de5e46b77f77124dfe4a2c3c723"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:57c6edfdbf02849369e294c60589bc358ea81de5e46b77f77124dfe4a2c3c723",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useHold::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a162533035fa9045db9bd9c3968f96e4d05039539b6ca03b21eeea3990be535b"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a162533035fa9045db9bd9c3968f96e4d05039539b6ca03b21eeea3990be535b",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useHost",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3e89c7bcde9a0160320281329afe0ca39ac309dde39c2981c41b9194a9375c9e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:3e89c7bcde9a0160320281329afe0ca39ac309dde39c2981c41b9194a9375c9e",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useHost::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:01992e72652e5570f6b14a6c2870f2449a7799ce43ee5270b2875d0766bc4fd6"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:01992e72652e5570f6b14a6c2870f2449a7799ce43ee5270b2875d0766bc4fd6",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useMessages",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9bce23b1991c8d40e70bcf4f63a4bad88e3b6dcd5365d9375d2693f56908a47b"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9bce23b1991c8d40e70bcf4f63a4bad88e3b6dcd5365d9375d2693f56908a47b",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useMessages::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2d8cd28fdff38a1d2a51e43d178db204e43756f15bcb5fca6128768f9102cad8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:2d8cd28fdff38a1d2a51e43d178db204e43756f15bcb5fca6128768f9102cad8",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#usePageState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f2401c98983c92b3a70470e83b98b76eb63c86192f9cfd94cb006290515947c5"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f2401c98983c92b3a70470e83b98b76eb63c86192f9cfd94cb006290515947c5",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#usePageState::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ebbc4ff5886c17049a368a1fc943e9c18decbe86ee50dc709e7d4d19e19eefc"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9ebbc4ff5886c17049a368a1fc943e9c18decbe86ee50dc709e7d4d19e19eefc",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useRefState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d808deda9552205ba1556467f288a3d04d151dc3b9fe748b0c2c06cfc77d18b3"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d808deda9552205ba1556467f288a3d04d151dc3b9fe748b0c2c06cfc77d18b3",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useRefState::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9bd7e646c8604007ec3fb948e4b57c1c3e356d2b7d5f7179ac48f019dd26faaf"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9bd7e646c8604007ec3fb948e4b57c1c3e356d2b7d5f7179ac48f019dd26faaf",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useRegistry",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6343af48796641e2fcfdebae8b2bb74e9e6068bbe6aaa2a1156d4587d33e7bf6"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6343af48796641e2fcfdebae8b2bb74e9e6068bbe6aaa2a1156d4587d33e7bf6",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useRegistry::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c701fe50c4856b0257be2faf00a8a3a410c386f4ac8da4d63380fa0ccf7bb975"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:c701fe50c4856b0257be2faf00a8a3a410c386f4ac8da4d63380fa0ccf7bb975",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useWatch",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4a4b61f7646b21cd7ca40a5d81947f6e435fd1f28b44ccd9850534b337e1e280"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4a4b61f7646b21cd7ca40a5d81947f6e435fd1f28b44ccd9850534b337e1e280",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useWatch::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e17bb205aeb430c58bd9f6dc1c18a4020de897b1704101cfad71cbfa406ac77c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e17bb205aeb430c58bd9f6dc1c18a4020de897b1704101cfad71cbfa406ac77c",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.0+c23b9ec1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#watchStore",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:61ee3f79af27825d1313f5481c229a5701de6fc49bad3b2ae344401233bfada7"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:61ee3f79af27825d1313f5481c229a5701de6fc49bad3b2ae344401233bfada7",
+      "rationale": "Pi packages/chord/src/react/stores.ts (Pi 1.5.0+c23b9ec1): the React bindings' store adapter (ExternalStore, watchStore) feeds React `useSyncExternalStore`, which exists only in React. It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts#watchStore"
+      ]
     },
     {
       "id": "pkg:chord/react#watchStore::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d5db19880fb85dc12c574800ef5dbc737ab6f0706a9fe10d60c352db4df53ab9"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d5db19880fb85dc12c574800ef5dbc737ab6f0706a9fe10d60c352db4df53ab9",
+      "rationale": "Pi packages/chord/src/react/stores.ts (Pi 1.5.0+c23b9ec1): the React bindings' store adapter (ExternalStore, watchStore) feeds React `useSyncExternalStore`, which exists only in React. It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts#watchStore"
+      ]
     },
     {
       "id": "pkg:chord/sqlite/cloudflare#DurableObjectSqliteDatabase",
@@ -128506,148 +128582,486 @@
     },
     {
       "id": "pkg:chord/tui/launcher#filterOutput",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8f3a3dbd01cef1a31bd441a63ae19367b6ce87775c639224ce86e8bf5dcb9de1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8f3a3dbd01cef1a31bd441a63ae19367b6ce87775c639224ce86e8bf5dcb9de1",
+      "rationale": "Derived by the interface gap detector: filterOutput is Go chord/nextnode/tui/tui_filter.go#FilterOutput (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_filter.go#FilterOutput"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_filter.go#FilterOutput"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_filter_test.go#TestTheFrameLimitCountsBytesAndUnitsAsPisFilterDoes",
+        "test:chord/nextnode/tui/tui_filter_test.go#TestWhatIsDroppedRefusesAFrameOver64KiB",
+        "test:chord/nextnode/tui/tui_frames_test.go#TestSplittingFramesCutsALargeTrueColourPaintBetweenSequencesEachFrameUnder64KiBAndPassingTheFilterWhole"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#filterOutput::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2b8f65fb2b69a4b280845d684d668b59795aed76e7a659200c05382b8dcc8a75"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2b8f65fb2b69a4b280845d684d668b59795aed76e7a659200c05382b8dcc8a75",
+      "rationale": "Derived by the interface gap detector: filterOutput::call:0 is Go chord/nextnode/tui/tui_filter.go#FilterOutput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_filter.go#FilterOutput"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_filter.go#FilterOutput"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_filter_test.go#TestTheFrameLimitCountsBytesAndUnitsAsPisFilterDoes",
+        "test:chord/nextnode/tui/tui_filter_test.go#TestWhatIsDroppedRefusesAFrameOver64KiB",
+        "test:chord/nextnode/tui/tui_frames_test.go#TestSplittingFramesCutsALargeTrueColourPaintBetweenSequencesEachFrameUnder64KiBAndPassingTheFilterWhole"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#PromptTerminal",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8418a4acddac324ec6c95848e490fddced0d0a0732f18f887d35975e0a01189b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8418a4acddac324ec6c95848e490fddced0d0a0732f18f887d35975e0a01189b",
+      "rationale": "Derived by the interface gap detector: PromptTerminal is Go chord/nextnode/tui/tui_actions.go#PromptTerminal (name rule N4), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_actions.go#PromptTerminal"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_actions.go#Act"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/tui/tui_actions.go#Act"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#requireSandboxNode",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4a27120b041f3ad8ebbac7c197927a3a9a92841ed95840a7373cc1f36c6d7278"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4a27120b041f3ad8ebbac7c197927a3a9a92841ed95840a7373cc1f36c6d7278",
+      "rationale": "Derived by the interface gap detector: requireSandboxNode is Go chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_test.go#TestTheNodeItNeedsRefusesANodeOlderThan2651WithAClearError"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#requireSandboxNode::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1db7a4236068d93629c81505ce993d7717c34eb9d87c548be54a12273083f84a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1db7a4236068d93629c81505ce993d7717c34eb9d87c548be54a12273083f84a",
+      "rationale": "Derived by the interface gap detector: requireSandboxNode::call:0 is Go chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_test.go#TestTheNodeItNeedsRefusesANodeOlderThan2651WithAClearError"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#RunningTerminal",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a80889fe67ca526c13d93554df4fb6a2f1facecad4ce75a9d9dc8fa1d5db1465"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a80889fe67ca526c13d93554df4fb6a2f1facecad4ce75a9d9dc8fa1d5db1465",
+      "rationale": "Derived by the interface gap detector: RunningTerminal is Go chord/nextnode/tui/tui_launcher.go#RunningTerminal (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_launcher.go#RunningTerminal"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#startTerminal",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:52c63171b908b7855821cd3df2198c7e29a282b37387a3f874cac6c5fbe837ff"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:52c63171b908b7855821cd3df2198c7e29a282b37387a3f874cac6c5fbe837ff",
+      "rationale": "Derived by the interface gap detector: startTerminal is Go chord/nextnode/tui/tui_launcher.go#StartTerminal (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/tui/launcher#startTerminal::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0d14b6ee1313e053d94de70687d4c6ad6b0191880e9c59217593c269f1521627"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0d14b6ee1313e053d94de70687d4c6ad6b0191880e9c59217593c269f1521627",
+      "rationale": "Derived by the interface gap detector: startTerminal::call:0 is Go chord/nextnode/tui/tui_launcher.go#StartTerminal (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/tui/launcher#TerminalCredentials",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d691216380d168154a9490120f4247ab6626cae12c088136edd7548413bc2a20"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d691216380d168154a9490120f4247ab6626cae12c088136edd7548413bc2a20",
+      "rationale": "Derived by the interface gap detector: TerminalCredentials is Go chord/nextnode/tui/tui_credentials.go#TerminalCredentials (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_credentials.go#TerminalCredentials"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_credentials.go#TokenOf"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns",
+        "test:chord/nextnode/tui/tui_credentials_test.go#TestPairingRefusesACodeThatIsNoPlainCodeShowingNothing",
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#terminalFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a843ebb4b7f32193b85ee789e595da369a718ea8c9773a97b410645d1377a629"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a843ebb4b7f32193b85ee789e595da369a718ea8c9773a97b410645d1377a629",
+      "rationale": "Derived by the interface gap detector: terminalFile is Go chord/nextnode/tui/tui_launcher.go#TerminalFile (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_launcher.go#TerminalFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#TerminalFile"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_test.go#TestTheFilesTheSandboxMayFetchAreTheTerminalSurfacesAfterDotSegmentsAndEncodingsResolveOpusM2FableL1"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#terminalFile::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b1deb8fd1d62a1f3cbdd479f22b39d1d3d8d5eeba8f9c6cfbf9ec629ce0de070"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b1deb8fd1d62a1f3cbdd479f22b39d1d3d8d5eeba8f9c6cfbf9ec629ce0de070",
+      "rationale": "Derived by the interface gap detector: terminalFile::call:0 is Go chord/nextnode/tui/tui_launcher.go#TerminalFile (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_launcher.go#TerminalFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#TerminalFile"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_test.go#TestTheFilesTheSandboxMayFetchAreTheTerminalSurfacesAfterDotSegmentsAndEncodingsResolveOpusM2FableL1"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#TerminalOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0154ccb8719e5d819268b0b12f257c9166663dba06f710734debe0e6dc96f90a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0154ccb8719e5d819268b0b12f257c9166663dba06f710734debe0e6dc96f90a",
+      "rationale": "Derived by the interface gap detector: TerminalOptions is Go chord/nextnode/tui/tui_launcher.go#TerminalOptions (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_launcher.go#TerminalOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#Launcher.reply"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+      ]
     },
     {
       "id": "pkg:chord/tui#AttachedFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cc80e6d9fef274f159aaf5d9e8cc111ba38b399227b73994a1cb3ba714b1add3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cc80e6d9fef274f159aaf5d9e8cc111ba38b399227b73994a1cb3ba714b1add3",
+      "rationale": "Derived by the interface gap detector: AttachedFile is Go chord/nextnode/tui/tui_actions.go#AttachedFile (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_actions.go#AttachedFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_actions.go#Attach"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_actions_test.go#TestAttachingAFileShowsThePathByItsTextBeforeTheYesRefusesADirectoryAMissingFileAndOneOver16MiBAlikeOpusL2E5E9"
+      ]
     },
     {
       "id": "pkg:chord/tui#Bridge",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:31f28afbbbc91eb68ce8cdb7fcac3501a0c5e5b0f093cbbcad7a2136fe653f8b"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:31f28afbbbc91eb68ce8cdb7fcac3501a0c5e5b0f093cbbcad7a2136fe653f8b",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeRequest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:eb672fb124cec5950735ff3ac7a9fec486220f508d68dc72b12b232db867e012"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:eb672fb124cec5950735ff3ac7a9fec486220f508d68dc72b12b232db867e012",
+      "rationale": "Derived by the interface gap detector: BridgeRequest is Go chord/nextnode/tui/tui_bridge.go#BridgeRequest (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_bridge.go#BridgeRequest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_actions.go#Act"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_actions_test.go#TestCopyingRefusesTextWithControlOrBidirectionalCharactersWithoutAskingFableM1OpusL3",
+        "test:chord/nextnode/tui/tui_actions_test.go#TestCopyingShowsEveryLineUpToFiveThenHowManyMoreOSC52OnlyOnceConfirmed",
+        "test:chord/nextnode/tui/tui_actions_test.go#TestCopyingWrapsALongLineInsteadOfCuttingItOpusE6"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeStart",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:978492214dfff7df486fb23f4e0331fcafae14316c9f5b0229716a13813bd81a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:978492214dfff7df486fb23f4e0331fcafae14316c9f5b0229716a13813bd81a",
+      "rationale": "Derived by the interface gap detector: BridgeStart is Go chord/nextnode/tui/tui_bridge.go#BridgeStart (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_bridge.go#BridgeStart"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#Launcher.startSandbox"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxGivesRawDownloadedCodeNoBuiltinAndNoImportWhateverItPutsOnObjectPrototype"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:35b58a71e5cce14035e2830ae52565e66744078503e866592447fb6530bfca85"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:35b58a71e5cce14035e2830ae52565e66744078503e866592447fb6530bfca85",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4974ebd7ff28eab38d35bef8ada7bf7f9ea05e5d22176fe6b6ddaeb7761d25f5"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4974ebd7ff28eab38d35bef8ada7bf7f9ea05e5d22176fe6b6ddaeb7761d25f5",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal::property:columns",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6dfb699c8d113d1ce1332c120eb33a4ac545e0e4ec5d3dd4536ca13a8c6fabd6"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6dfb699c8d113d1ce1332c120eb33a4ac545e0e4ec5d3dd4536ca13a8c6fabd6",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal::property:onInput",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1177299611562c48af555e999e9278da15c7f73eee3177a3440869ef6b28bf25"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:1177299611562c48af555e999e9278da15c7f73eee3177a3440869ef6b28bf25",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal::property:onInput::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0e85019224532dacf568f3a10408d7006567c363876052b4f1cdd3ddeb5ed4b8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0e85019224532dacf568f3a10408d7006567c363876052b4f1cdd3ddeb5ed4b8",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal::property:onResize",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2163e57af18ddcd9854936348c8832222124c3f226113ce564081498b1ea7523"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:2163e57af18ddcd9854936348c8832222124c3f226113ce564081498b1ea7523",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal::property:onResize::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e5e1c15662b79d2855db76acedbc6f9f99883a525aeedbd46138bcbef3a420df"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e5e1c15662b79d2855db76acedbc6f9f99883a525aeedbd46138bcbef3a420df",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal::property:rows",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b284e4fa21a06f80f94b2b3c03d685a7f8cf3c5d172cedd3878d0e8e13858240"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b284e4fa21a06f80f94b2b3c03d685a7f8cf3c5d172cedd3878d0e8e13858240",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal::property:write",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b3887b06cb15be8411d6a7ce279b1c683e10c064578c657284c742297524ec0e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b3887b06cb15be8411d6a7ce279b1c683e10c064578c657284c742297524ec0e",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal::property:write::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:58b7f996ae136c4abf2791382d6df90ea00cfb07c04cbfd732211787fdb3fe21"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:58b7f996ae136c4abf2791382d6df90ea00cfb07c04cbfd732211787fdb3fe21",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#LauncherMessage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3b6c988deefbdc86fe8df4fc3ab0e243972f25206e175f3e2e8ad46877a052c8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3b6c988deefbdc86fe8df4fc3ab0e243972f25206e175f3e2e8ad46877a052c8",
+      "rationale": "Derived by the interface gap detector: LauncherMessage is Go chord/nextnode/tui/tui_bridge.go#LauncherMessage (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_bridge.go#LauncherMessage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#Launcher.answer"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_pipe_test.go#TestWritingTheLaunchersMessagesWithTheirTextOrBytesAsTheBody"
+      ]
     },
     {
       "id": "pkg:chord/tui#OptimisticAdd",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:935cb2f29e68328c99531ce9b47ce7b5e91a5585e8def84cd7f8a61f45c1e4aa"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:935cb2f29e68328c99531ce9b47ce7b5e91a5585e8def84cd7f8a61f45c1e4aa",
+      "rationale": "Derived by the interface gap detector: OptimisticAdd is Go chord/next/tui/tui_scope.go#OptimisticAdd (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#OptimisticAdd"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#OptimisticAdd"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticNeverCallsChangedAfterDispose"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/tui#OptimisticAdd::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c393338fa05f08ebaaa42e10e997cc0a3145037f579264656d311d324ad8d9c2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c393338fa05f08ebaaa42e10e997cc0a3145037f579264656d311d324ad8d9c2",
+      "rationale": "Derived by the interface gap detector: OptimisticAdd::call:0 is Go chord/next/tui/tui_scope.go#OptimisticAdd (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#OptimisticAdd"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#OptimisticAdd"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticNeverCallsChangedAfterDispose"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/tui#PageState",
@@ -128673,88 +129087,303 @@
     },
     {
       "id": "pkg:chord/tui#SandboxMessage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:aaf5a020008d80c4697c3fdf1ffa011b5bdec71d1401fb56ab8c72acb686dbe0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:aaf5a020008d80c4697c3fdf1ffa011b5bdec71d1401fb56ab8c72acb686dbe0",
+      "rationale": "Derived by the interface gap detector: SandboxMessage is Go chord/nextnode/tui/tui_bridge.go#SandboxMessage (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_bridge.go#SandboxMessage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#Launcher.handle"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedAfterItsDialFinishedButBeforeTheLoopTookItIsClosedAndNeverOpened",
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedDuringItsDialStaysClosedAndASendOnItIsDropped",
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop"
+      ]
     },
     {
       "id": "pkg:chord/tui#startTerminalRuntime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ce6f31b982fd07052f51a1be01192e6a5fedb68d50dbdef49f17ff757565bcf0"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ce6f31b982fd07052f51a1be01192e6a5fedb68d50dbdef49f17ff757565bcf0",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#startTerminalRuntime::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e427e0b3e7396b7e128e8bedafadb29c3acf8943370b88fab66bff8bf19a6ec2"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e427e0b3e7396b7e128e8bedafadb29c3acf8943370b88fab66bff8bf19a6ec2",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalRuntime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3d063bbe88612fdb57e4523a699e483261121967eea1f167ae51691c67a33dc5"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:3d063bbe88612fdb57e4523a699e483261121967eea1f167ae51691c67a33dc5",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalRuntimeOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ba0f7cf56928cf3190f7d055ad1d28380703662600b521a72cef24b405397673"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ba0f7cf56928cf3190f7d055ad1d28380703662600b521a72cef24b405397673",
+      "rationale": "Pi packages/chord/src/tui/{bridge,channel,terminal,runtime}.ts (Pi 1.5.0+c23b9ec1): the sandbox side of the terminal bridge (Bridge as the bootstrap leaves it on globalThis, SandboxChannel, BridgeTerminal, startTerminalRuntime evaluating the plugins' registered scripts in the sandbox). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised through the Go launcher that carries the other end of the bridge: chord/nextnode/tui/tui_kit_upstream_test.go (Pi's node/tui/launcher.test.ts and surfaces/tui.test.ts run a real sandbox on Pi's bootstrap) and chord/nextnode/tui/tui_frames_test.go.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts#startTerminalRuntime"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e9d7cc96aa57e81347d30a4363db6f9c986520c927be91391300d47a63f1898b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e9d7cc96aa57e81347d30a4363db6f9c986520c927be91391300d47a63f1898b",
+      "rationale": "Derived by the interface gap detector: TerminalTheme is Go chord/next/tui/tui_theme.go#TerminalTheme (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#NewTerminalTheme"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5540cfd1a70d90760af8a5df03fd4473032649d3492e9de6bbc0c138c6a36840"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5540cfd1a70d90760af8a5df03fd4473032649d3492e9de6bbc0c138c6a36840",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::construct:0 is Go chord/next/tui/tui_theme.go#NewTerminalTheme (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#NewTerminalTheme"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#NewTerminalTheme"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::property:bg",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:00a91b4f4b909e64739c2f978604b2f05ac2991880a538ae63708dc1a7600f64"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:00a91b4f4b909e64739c2f978604b2f05ac2991880a538ae63708dc1a7600f64",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::property:bg is Go chord/next/tui/tui_theme.go#TerminalTheme.Bg (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme.Bg"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#TerminalTheme.Bg"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::property:bg::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b964b5a97e56db9c477af486bdc492137b2fb344469cc8d0cdc33900d65af397"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b964b5a97e56db9c477af486bdc492137b2fb344469cc8d0cdc33900d65af397",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::property:bg::call:0 is Go chord/next/tui/tui_theme.go#TerminalTheme.Bg (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme.Bg"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#TerminalTheme.Bg"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::property:fg",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:88c84ce971ba29a8711e5eb9a675e69603a335d80233178eb50280e035231db6"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:88c84ce971ba29a8711e5eb9a675e69603a335d80233178eb50280e035231db6",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::property:fg is Go chord/next/tui/tui_theme.go#TerminalTheme.Fg (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme.Fg"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#TerminalTheme.Fg"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::property:fg::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b964b5a97e56db9c477af486bdc492137b2fb344469cc8d0cdc33900d65af397"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b964b5a97e56db9c477af486bdc492137b2fb344469cc8d0cdc33900d65af397",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::property:fg::call:0 is Go chord/next/tui/tui_theme.go#TerminalTheme.Fg (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme.Fg"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#TerminalTheme.Fg"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::property:onChange",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9e56b2bb916b0f93739526e2daceb0a6846d066cb40caf2e9e83fde91e97a8e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9e56b2bb916b0f93739526e2daceb0a6846d066cb40caf2e9e83fde91e97a8e0",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::property:onChange is Go chord/next/tui/tui_theme.go#TerminalTheme.OnChange (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme.OnChange"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#TerminalTheme.OnChange"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::property:onChange::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e5e1c15662b79d2855db76acedbc6f9f99883a525aeedbd46138bcbef3a420df"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e5e1c15662b79d2855db76acedbc6f9f99883a525aeedbd46138bcbef3a420df",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::property:onChange::call:0 is Go chord/next/tui/tui_theme.go#TerminalTheme.OnChange (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme.OnChange"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#TerminalTheme.OnChange"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::property:set",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ed41e17549fea9d65de9b603010949c848ddcbe341121b0a92aeffd61e090eec"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ed41e17549fea9d65de9b603010949c848ddcbe341121b0a92aeffd61e090eec",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::property:set is Go chord/next/tui/tui_theme.go#TerminalTheme.Set (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme.Set"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#TerminalTheme.Set"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::property:set::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7eabe692382d345ec03251906ac6277c23b122625af0ee172c330ecba290d64b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7eabe692382d345ec03251906ac6277c23b122625af0ee172c330ecba290d64b",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::property:set::call:0 is Go chord/next/tui/tui_theme.go#TerminalTheme.Set (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme.Set"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#TerminalTheme.Set"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TerminalTheme::property:theme",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a008863b8ae3d07c663a08fb07e65710d90ebf13c7a4bb3f2d986cdbbfac288c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a008863b8ae3d07c663a08fb07e65710d90ebf13c7a4bb3f2d986cdbbfac288c",
+      "rationale": "Derived by the interface gap detector: TerminalTheme::property:theme is Go chord/next/tui/tui_theme.go#TerminalTheme.Theme (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_theme.go#TerminalTheme.Theme"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_theme.go#TerminalTheme.Theme"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_theme_test.go#TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfANewThemeUntilRemoved"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:72c014eba530827046bdc10643ab044666777e3f5f5287f7b00343adfd40becb"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:72c014eba530827046bdc10643ab044666777e3f5f5287f7b00343adfd40becb",
+      "rationale": "Derived by the interface gap detector: TuiScope is Go chord/next/tui/tui_scope.go#TuiScope (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#TuiScope"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_scope.go#NewTuiScope"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange",
+        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::construct:0",
@@ -128774,8 +129403,8 @@
       ],
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticNeverCallsChangedAfterDispose"
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending"
       ]
     },
     {
@@ -128796,8 +129425,8 @@
       ],
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticNeverCallsChangedAfterDispose"
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending"
       ]
     },
     {
@@ -128818,29 +129447,93 @@
       ],
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticNeverCallsChangedAfterDispose"
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending"
       ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:hold",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2a85a5554f06cce3fffb3e0e8ab28be36e33f0ca73b4195e7ff13cea9cfcf5b1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2a85a5554f06cce3fffb3e0e8ab28be36e33f0ca73b4195e7ff13cea9cfcf5b1",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:hold is Go chord/next/tui/tui_scope.go#TuiScope.Hold (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#TuiScope.Hold"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_scope.go#TuiScope.Hold"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange",
+        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:hold::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1732662b47cbadf021186e4d69f3a9a67a56ccd801fc082674dd4ac04a5a4437"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1732662b47cbadf021186e4d69f3a9a67a56ccd801fc082674dd4ac04a5a4437",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:hold::call:0 is Go chord/next/tui/tui_scope.go#TuiScope.Hold (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#TuiScope.Hold"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_scope.go#TuiScope.Hold"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange",
+        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:messages",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bf2371b2b0b3b4429cea30a15dd0cec4c829b2a459a710495bb6cb60242a2442"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bf2371b2b0b3b4429cea30a15dd0cec4c829b2a459a710495bb6cb60242a2442",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:messages is Go chord/next/tui/tui_scope.go#TuiScope.Messages (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#TuiScope.Messages"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_scope.go#TuiScope.Messages"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChangedUntilDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:messages::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d9a122beb676273ee310e793f30c813645f476a569478bc5aac009a4e388a570"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d9a122beb676273ee310e793f30c813645f476a569478bc5aac009a4e388a570",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:messages::call:0 is Go chord/next/tui/tui_scope.go#TuiScope.Messages (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#TuiScope.Messages"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/tui/tui_scope.go#TuiScope.Messages"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChangedUntilDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:optimistic",
@@ -128986,13 +129679,43 @@
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:watch",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:133d4f2fcb98589eedf0bf23ad3019ff4b7dd9d5adaad8c72446a7c9c5c8ee24"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:133d4f2fcb98589eedf0bf23ad3019ff4b7dd9d5adaad8c72446a7c9c5c8ee24",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:watch is Go chord/next/tui/tui_scope.go#WatchJSON (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#WatchJSON"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#WatchJSON"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestScopeWatchReadsNothingFromAJSONWatchableWithoutAValue"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:watch::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:188fb169161d24bdd797312d66a588dc28bd79c59d125b078a210e3610d74a60"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:188fb169161d24bdd797312d66a588dc28bd79c59d125b078a210e3610d74a60",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:watch::call:0 is Go chord/next/tui/tui_scope.go#WatchJSON (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#WatchJSON"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#WatchJSON"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestScopeWatchReadsNothingFromAJSONWatchableWithoutAValue"
+      ]
     },
     {
       "id": "pkg:chord/watch#NativeWatch",
@@ -130342,48 +131065,84 @@
     },
     {
       "id": "pkg:chord/web#followLanguage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:edc275020a4c8229bfaca9722660a6904e5143c4a454c19d4aaba6b1ac6db093"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:edc275020a4c8229bfaca9722660a6904e5143c4a454c19d4aaba6b1ac6db093",
+      "rationale": "Pi packages/chord/src/web/*.ts (Pi 1.5.0+c23b9ec1): the browser side of the web surface (startPage and its options, pageEnvironment over window/document, the language and theme followers that write the root element and `\u003cstyle\u003e`). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests node/web/language.test.ts and node/web/page.test.ts as chord/nextnode/app/app_web_browser_test.go TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick, TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme and TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/web/page.ts#startPage"
+      ]
     },
     {
       "id": "pkg:chord/web#followLanguage::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:25aca4bde12ca32801053d345c75f928efc8f2d655cd73d9017e7595a5eb6046"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:25aca4bde12ca32801053d345c75f928efc8f2d655cd73d9017e7595a5eb6046",
+      "rationale": "Pi packages/chord/src/web/*.ts (Pi 1.5.0+c23b9ec1): the browser side of the web surface (startPage and its options, pageEnvironment over window/document, the language and theme followers that write the root element and `\u003cstyle\u003e`). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests node/web/language.test.ts and node/web/page.test.ts as chord/nextnode/app/app_web_browser_test.go TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick, TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme and TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/web/page.ts#startPage"
+      ]
     },
     {
       "id": "pkg:chord/web#followThemes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a39b0c0660aeca09e671482a703fed5f038af3e00e828a231a57ae46e6cfc499"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a39b0c0660aeca09e671482a703fed5f038af3e00e828a231a57ae46e6cfc499",
+      "rationale": "Pi packages/chord/src/web/*.ts (Pi 1.5.0+c23b9ec1): the browser side of the web surface (startPage and its options, pageEnvironment over window/document, the language and theme followers that write the root element and `\u003cstyle\u003e`). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests node/web/language.test.ts and node/web/page.test.ts as chord/nextnode/app/app_web_browser_test.go TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick, TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme and TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/web/page.ts#startPage"
+      ]
     },
     {
       "id": "pkg:chord/web#followThemes::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:666251fa63d2ba3b00608fc3ccfe33e94e2fb638dcd32ad7646ea82e579f427c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:666251fa63d2ba3b00608fc3ccfe33e94e2fb638dcd32ad7646ea82e579f427c",
+      "rationale": "Pi packages/chord/src/web/*.ts (Pi 1.5.0+c23b9ec1): the browser side of the web surface (startPage and its options, pageEnvironment over window/document, the language and theme followers that write the root element and `\u003cstyle\u003e`). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests node/web/language.test.ts and node/web/page.test.ts as chord/nextnode/app/app_web_browser_test.go TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick, TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme and TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/web/page.ts#startPage"
+      ]
     },
     {
       "id": "pkg:chord/web#pageEnvironment",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7935cd7a9d3e29a8f865c6c6f541adbe4689589caaba5dac63973e1ca75f3032"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:7935cd7a9d3e29a8f865c6c6f541adbe4689589caaba5dac63973e1ca75f3032",
+      "rationale": "Pi packages/chord/src/web/*.ts (Pi 1.5.0+c23b9ec1): the browser side of the web surface (startPage and its options, pageEnvironment over window/document, the language and theme followers that write the root element and `\u003cstyle\u003e`). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests node/web/language.test.ts and node/web/page.test.ts as chord/nextnode/app/app_web_browser_test.go TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick, TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme and TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/web/page.ts#startPage"
+      ]
     },
     {
       "id": "pkg:chord/web#pageEnvironment::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:26fd9ed17b0afdacfe13660513996a737fcf4c6ef396813e272dbbfe6441b8ed"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:26fd9ed17b0afdacfe13660513996a737fcf4c6ef396813e272dbbfe6441b8ed",
+      "rationale": "Pi packages/chord/src/web/*.ts (Pi 1.5.0+c23b9ec1): the browser side of the web surface (startPage and its options, pageEnvironment over window/document, the language and theme followers that write the root element and `\u003cstyle\u003e`). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests node/web/language.test.ts and node/web/page.test.ts as chord/nextnode/app/app_web_browser_test.go TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick, TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme and TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/web/page.ts#startPage"
+      ]
     },
     {
       "id": "pkg:chord/web#PageOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9a15777631305983541fd1017c93ebe0a5375c6799ae013e6effc43e1b2a034f"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9a15777631305983541fd1017c93ebe0a5375c6799ae013e6effc43e1b2a034f",
+      "rationale": "Pi packages/chord/src/web/*.ts (Pi 1.5.0+c23b9ec1): the browser side of the web surface (startPage and its options, pageEnvironment over window/document, the language and theme followers that write the root element and `\u003cstyle\u003e`). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests node/web/language.test.ts and node/web/page.test.ts as chord/nextnode/app/app_web_browser_test.go TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick, TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme and TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/web/page.ts#startPage"
+      ]
     },
     {
       "id": "pkg:chord/web#startPage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a5d414528516ae22da13a5300f04580761c7c2a9a996d960c3f8e054d5c9f8ba"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a5d414528516ae22da13a5300f04580761c7c2a9a996d960c3f8e054d5c9f8ba",
+      "rationale": "Pi packages/chord/src/web/*.ts (Pi 1.5.0+c23b9ec1): the browser side of the web surface (startPage and its options, pageEnvironment over window/document, the language and theme followers that write the root element and `\u003cstyle\u003e`). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests node/web/language.test.ts and node/web/page.test.ts as chord/nextnode/app/app_web_browser_test.go TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick, TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme and TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/web/page.ts#startPage"
+      ]
     },
     {
       "id": "pkg:chord/web#startPage::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:36201febe6ae1c0c257f28bd82036878ccfb84d5ef65affa83bd2f2248e6de27"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:36201febe6ae1c0c257f28bd82036878ccfb84d5ef65affa83bd2f2248e6de27",
+      "rationale": "Pi packages/chord/src/web/*.ts (Pi 1.5.0+c23b9ec1): the browser side of the web surface (startPage and its options, pageEnvironment over window/document, the language and theme followers that write the root element and `\u003cstyle\u003e`). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests node/web/language.test.ts and node/web/page.test.ts as chord/nextnode/app/app_web_browser_test.go TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick, TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme and TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/web/page.ts#startPage"
+      ]
     },
     {
       "id": "pkg:chord/workers/child#CrossedError",

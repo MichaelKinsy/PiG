@@ -473,25 +473,6 @@ pkg:chord/plugins/runtime#PluginRuntime::property:reload::call:0	chord	signature
 pkg:chord/plugins/runtime#RuntimeLoad	chord	type-mismatch	chord/nextnode/plugins/plugins_runtime.go#RuntimeLoad
 pkg:chord/plugins/runtime#createPluginRuntime	chord	child-gap	chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime
 pkg:chord/plugins/runtime#createPluginRuntime::call:0	chord	signature-mismatch	chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime
-pkg:chord/react#ExternalStore	chord	no-go-symbol	
-pkg:chord/react#HostProvider	chord	no-go-symbol	
-pkg:chord/react#HostProvider::call:0	chord	child-gap	
-pkg:chord/react#useHold	chord	no-go-symbol	
-pkg:chord/react#useHold::call:0	chord	child-gap	
-pkg:chord/react#useHost	chord	no-go-symbol	
-pkg:chord/react#useHost::call:0	chord	child-gap	
-pkg:chord/react#useMessages	chord	no-go-symbol	
-pkg:chord/react#useMessages::call:0	chord	child-gap	
-pkg:chord/react#usePageState	chord	no-go-symbol	
-pkg:chord/react#usePageState::call:0	chord	child-gap	
-pkg:chord/react#useRefState	chord	no-go-symbol	
-pkg:chord/react#useRefState::call:0	chord	child-gap	
-pkg:chord/react#useRegistry	chord	no-go-symbol	
-pkg:chord/react#useRegistry::call:0	chord	child-gap	
-pkg:chord/react#useWatch	chord	no-go-symbol	
-pkg:chord/react#useWatch::call:0	chord	child-gap	
-pkg:chord/react#watchStore	chord	no-go-symbol	
-pkg:chord/react#watchStore::call:0	chord	child-gap	
 pkg:chord/surfaces#BaseBundle	chord	no-go-symbol	
 pkg:chord/surfaces#PageAssets	chord	no-go-symbol	
 pkg:chord/surfaces#ServedFile	chord	no-go-symbol	
@@ -572,73 +553,12 @@ pkg:chord/sync#pullSession::call:0	chord	signature-mismatch	chord/sync/client.go
 pkg:chord/sync#uploadSession	chord	child-gap	chord/sync/client.go#UploadSession
 pkg:chord/sync#uploadSession::call:0	chord	signature-mismatch	chord/sync/client.go#UploadSession
 pkg:chord/telemetry-sqlite#TelemetryBatch	chord	no-go-symbol	
-pkg:chord/tui#AttachedFile	chord	no-go-symbol	
-pkg:chord/tui#Bridge	chord	no-go-symbol	
-pkg:chord/tui#BridgeRequest	chord	no-go-symbol	
-pkg:chord/tui#BridgeStart	chord	no-go-symbol	
-pkg:chord/tui#BridgeTerminal	chord	no-go-symbol	
-pkg:chord/tui#BridgeTerminal::construct:0	chord	child-gap	
-pkg:chord/tui#BridgeTerminal::property:columns	chord	child-gap	
-pkg:chord/tui#BridgeTerminal::property:onInput	chord	child-gap	
-pkg:chord/tui#BridgeTerminal::property:onInput::call:0	chord	child-gap	
-pkg:chord/tui#BridgeTerminal::property:onResize	chord	child-gap	
-pkg:chord/tui#BridgeTerminal::property:onResize::call:0	chord	child-gap	
-pkg:chord/tui#BridgeTerminal::property:rows	chord	child-gap	
-pkg:chord/tui#BridgeTerminal::property:write	chord	child-gap	
-pkg:chord/tui#BridgeTerminal::property:write::call:0	chord	child-gap	
-pkg:chord/tui#LauncherMessage	chord	no-go-symbol	
-pkg:chord/tui#OptimisticAdd	chord	not-exercised	chord/next/tui/tui_scope.go#OptimisticAdd
-pkg:chord/tui#OptimisticAdd::call:0	chord	signature-mismatch	chord/next/tui/tui_scope.go#OptimisticAdd
-pkg:chord/tui#SandboxMessage	chord	no-go-symbol	
-pkg:chord/tui#TerminalRuntime	chord	no-go-symbol	
-pkg:chord/tui#TerminalRuntimeOptions	chord	no-go-symbol	
-pkg:chord/tui#TerminalTheme	chord	no-go-symbol	
-pkg:chord/tui#TerminalTheme::construct:0	chord	child-gap	
-pkg:chord/tui#TerminalTheme::property:bg	chord	child-gap	
-pkg:chord/tui#TerminalTheme::property:bg::call:0	chord	child-gap	
-pkg:chord/tui#TerminalTheme::property:fg	chord	child-gap	
-pkg:chord/tui#TerminalTheme::property:fg::call:0	chord	child-gap	
-pkg:chord/tui#TerminalTheme::property:onChange	chord	child-gap	
-pkg:chord/tui#TerminalTheme::property:onChange::call:0	chord	child-gap	
-pkg:chord/tui#TerminalTheme::property:set	chord	child-gap	
-pkg:chord/tui#TerminalTheme::property:set::call:0	chord	child-gap	
-pkg:chord/tui#TerminalTheme::property:theme	chord	child-gap	
-pkg:chord/tui#TuiScope	chord	child-gap	chord/next/tui/tui_scope.go#TuiScope
-pkg:chord/tui#TuiScope::property:hold	chord	child-gap	chord/next/tui/tui_scope.go#TuiScope.Hold
-pkg:chord/tui#TuiScope::property:hold::call:0	chord	undecidable	chord/next/tui/tui_scope.go#TuiScope.Hold
-pkg:chord/tui#TuiScope::property:messages	chord	child-gap	chord/next/tui/tui_scope.go#TuiScope.Messages
-pkg:chord/tui#TuiScope::property:messages::call:0	chord	undecidable	chord/next/tui/tui_scope.go#TuiScope.Messages
-pkg:chord/tui#TuiScope::property:watch	chord	member-missing	chord/next/tui/tui_scope.go#TuiScope
-pkg:chord/tui#TuiScope::property:watch::call:0	chord	member-missing	chord/next/tui/tui_scope.go#TuiScope
-pkg:chord/tui#startTerminalRuntime	chord	no-go-symbol	
-pkg:chord/tui#startTerminalRuntime::call:0	chord	child-gap	
-pkg:chord/tui/launcher#PromptTerminal	chord	no-go-symbol	
-pkg:chord/tui/launcher#RunningTerminal	chord	no-go-symbol	
-pkg:chord/tui/launcher#TerminalCredentials	chord	no-go-symbol	
-pkg:chord/tui/launcher#TerminalOptions	chord	no-go-symbol	
-pkg:chord/tui/launcher#filterOutput	chord	no-go-symbol	
-pkg:chord/tui/launcher#filterOutput::call:0	chord	child-gap	
-pkg:chord/tui/launcher#requireSandboxNode	chord	no-go-symbol	
-pkg:chord/tui/launcher#requireSandboxNode::call:0	chord	child-gap	
-pkg:chord/tui/launcher#startTerminal	chord	no-go-symbol	
-pkg:chord/tui/launcher#startTerminal::call:0	chord	child-gap	
-pkg:chord/tui/launcher#terminalFile	chord	no-go-symbol	
-pkg:chord/tui/launcher#terminalFile::call:0	chord	child-gap	
 pkg:chord/watch#NativeWatch	chord	child-gap	chord/watch_impl.go#NativeWatch
 pkg:chord/watch#NativeWatch::property:end	chord	child-gap	chord/watch_impl.go#watchLifecycle.End
 pkg:chord/watch#NativeWatch::property:end::call:0	chord	signature-mismatch	chord/watch_impl.go#watchLifecycle.End
 pkg:chord/watch#Watch	chord	child-gap	chord/watch_impl.go#Watch
 pkg:chord/watch#Watch::property:end	chord	child-gap	chord/watch_impl.go#watchLifecycle.End
 pkg:chord/watch#Watch::property:end::call:0	chord	signature-mismatch	chord/watch_impl.go#watchLifecycle.End
-pkg:chord/web#PageOptions	chord	undecidable	chord/next/store/table_handle.go#PageOptions
-pkg:chord/web#followLanguage	chord	no-go-symbol	
-pkg:chord/web#followLanguage::call:0	chord	child-gap	
-pkg:chord/web#followThemes	chord	no-go-symbol	
-pkg:chord/web#followThemes::call:0	chord	child-gap	
-pkg:chord/web#pageEnvironment	chord	no-go-symbol	
-pkg:chord/web#pageEnvironment::call:0	chord	child-gap	
-pkg:chord/web#startPage	chord	no-go-symbol	
-pkg:chord/web#startPage::call:0	chord	child-gap	
 pkg:chord/workers#ProcessLock	chord	no-go-symbol	
 pkg:chord/workers#WorkerPlugins	chord	child-gap	chord/nextnode/workers/workers_main.go#WorkerPlugins
 pkg:chord/workers#WorkerPlugins::property:load	chord	child-gap	chord/nextnode/workers/workers_main.go#WorkerPlugins.Load
