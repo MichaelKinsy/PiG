@@ -55,6 +55,9 @@ const (
 	// ErrDeriveFailed: a derive's compute threw (Object, Member when it is an exposed state member, Error), once per
 	// failure episode.
 	ErrDeriveFailed HostErrorKind = "derive_failed"
+	// ErrQueryFailed: a live query's run in a commit threw (a row its code cannot read), once per failure episode (a good
+	// run ends it): the query is a failed member until then (Object, Table, Error; `self.query`).
+	ErrQueryFailed HostErrorKind = "query_failed"
 	// ErrRoutineFailed: a routine's call threw, or its source failed for good (Object, Routine, Error).
 	ErrRoutineFailed HostErrorKind = "routine_failed"
 	// ErrJobFailed: a job's `run` threw, not after an abort (Object, Job, ID, Error): its outcome is `failed { threw }`.
@@ -77,14 +80,16 @@ const (
 // object's type, with its params key when it has params. Only the fields the Kind lists are set; Batch and Registry are
 // set for their kinds, which Kind then repeats.
 type HostError struct {
-	Kind       HostErrorKind
-	Object     string
-	Failure    data.FailureCause
-	Error      error
-	Native     Position
-	Routine    Position
-	Address    string
-	Member     string
+	Kind    HostErrorKind
+	Object  string
+	Failure data.FailureCause
+	Error   error
+	Native  Position
+	Routine Position
+	Address string
+	Member  string
+	// Table is a query_failed's table (its name in the object).
+	Table      string
 	Job        string
 	ID         string
 	Restarts   int

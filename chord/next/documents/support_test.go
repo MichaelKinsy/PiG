@@ -156,7 +156,16 @@ func (c *fakeClock) Advance(ms int64) {
 }
 
 // object is a documents owner: the object's name, batch, context, store and live failures.
+// liveQueries are the object's live queries, made by the first use (the tests have none, the store asks for them).
+func (o *object) liveQueries() *store.LiveQueries {
+	if o.queries == nil {
+		o.queries = store.NewLiveQueries()
+	}
+	return o.queries
+}
+
 type object struct {
+	queries   *store.LiveQueries
 	t         *testing.T
 	label     string
 	loop      *loop
