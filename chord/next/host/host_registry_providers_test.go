@@ -87,7 +87,7 @@ func TestTheTablesMemoryKeepsNothingOfAClosedHostRecordsTablesAndFollowedContrib
 		Initial: func() *delta.JsonObject { return jsonObject("on", true) },
 	})
 	must(t, err)
-	kept := exLocal("app.kept", contracts.Params{})
+	kept := mustContract(contracts.Local("app.kept", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{}}))
 	refs := func() (weak.Pointer[registries.RegistryValueSource], weak.Pointer[chordHost]) {
 		host := newHost(t, HostOptions{OnError: noopOnError})
 		mustLoad(t)(host.Load([]HostFacet{rvPlugin("@app/kept", func(h FacetHost, _ FacetSelf) error {
