@@ -117,3 +117,16 @@ func TestValidateToolArgumentsValidatesTheSchemaItIsGiven(t *testing.T) {
 		t.Fatalf("error = %v, want Pi's %s", err, want)
 	}
 }
+
+// A root schema of `{"type":"undefined"}` converts null arguments to undefined, which Pi's validateToolArguments returns as undefined: no arguments, not an error.
+func TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments(t *testing.T) {
+	tool := ai.ToolSchema{Name: "none", Parameters: map[string]any{"type": "undefined"}}
+	got, err := ai.ValidateToolArguments(tool, ai.ToolCall{Name: "none"})
+	if err != nil || got != nil {
+		t.Fatalf("ValidateToolArguments = %v, %v; want no arguments and no error", got, err)
+	}
+	raw, err := ai.ValidateToolArgumentsJSON("none", []byte(`{"type":"undefined"}`), []byte(`null`))
+	if err != nil || raw != nil {
+		t.Fatalf("ValidateToolArgumentsJSON = %q, %v; want nil, nil", raw, err)
+	}
+}

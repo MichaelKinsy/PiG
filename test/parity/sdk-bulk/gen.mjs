@@ -255,11 +255,11 @@ for (let i = 0; i < 300; i++) {
 write("tui-colors.json", co);
 
 // ---------------------------------------------------------------- terminal capabilities, hyperlink
-const envKeys = ["TMUX", "TERM", "TERM_PROGRAM", "TERMINAL_EMULATOR", "COLORTERM", "KITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE", "WARP_SESSION_ID", "WARP_TERMINAL_SESSION_UUID", "ITERM_SESSION_ID", "WT_SESSION", "PI_HYPERLINKS", "PI_IMAGE_PROTOCOL", "PI_TRUE_COLOR"];
+const envKeys = ["TMUX", "TERM", "TERM_PROGRAM", "TERMINAL_EMULATOR", "COLORTERM", "KITTY_WINDOW_ID", "ALACRITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE", "WARP_SESSION_ID", "WARP_TERMINAL_SESSION_UUID", "ITERM_SESSION_ID", "WT_SESSION", "PI_HYPERLINKS", "PI_IMAGE_PROTOCOL", "PI_TRUE_COLOR"];
 const envPool = {
 	TMUX: ["/tmp/tmux-1/default,1,0"], TERM: ["xterm-256color", "tmux-256color", "screen", "screen-256color", "xterm-ghostty", "xterm-direct", "alacritty", "dumb", "XTERM-DIRECT", "TMUX", "Screen"],
 	TERM_PROGRAM: ["kitty", "ghostty", "WezTerm", "wezterm", "WarpTerminal", "iTerm.app", "alacritty", "vscode", "zed", "Apple_Terminal", "tmux"], TERMINAL_EMULATOR: ["JetBrains-JediTerm", "other"],
-	COLORTERM: ["truecolor", "24bit", "TrueColor", "yes", ""], KITTY_WINDOW_ID: ["1"], GHOSTTY_RESOURCES_DIR: ["/x"], WEZTERM_PANE: ["0"], WARP_SESSION_ID: ["s"], WARP_TERMINAL_SESSION_UUID: ["u"], ITERM_SESSION_ID: ["w0t0p0"], WT_SESSION: ["g"],
+	COLORTERM: ["truecolor", "24bit", "TrueColor", "yes", ""], KITTY_WINDOW_ID: ["1"], ALACRITTY_WINDOW_ID: ["1"], GHOSTTY_RESOURCES_DIR: ["/x"], WEZTERM_PANE: ["0"], WARP_SESSION_ID: ["s"], WARP_TERMINAL_SESSION_UUID: ["u"], ITERM_SESSION_ID: ["w0t0p0"], WT_SESSION: ["g"],
 	PI_HYPERLINKS: ["1", "0", "true", ""], PI_IMAGE_PROTOCOL: ["kitty", "KITTY", "iterm2", "ITerm2", "none", "0", "sixel", ""], PI_TRUE_COLOR: ["1", "0", "yes", ""],
 };
 const platformDesc = Object.getOwnPropertyDescriptor(process, "platform");
