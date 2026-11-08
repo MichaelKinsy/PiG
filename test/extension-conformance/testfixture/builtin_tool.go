@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"strings"
 	"sync"
@@ -106,6 +107,17 @@ func builtinProbeSpec(c builtinProbeCase, log *builtinCallLog) (definition func(
 				Access:   func(path string) error { log.add("access:%s", path); return nil },
 			}
 		}
+		if c.Ops == "stream" {
+			// The stream is the file's text in two pieces; ReadFile is there to show the tool does not use it when a stream is.
+			options.Operations = &sdk.ReadOperations{
+				ReadFile: func(path string) ([]byte, error) { log.add("readFile:%s", path); return []byte("OPS:" + path), nil },
+				Access:   func(path string) error { log.add("access:%s", path); return nil },
+				CreateReadStream: func(path string) (io.ReadCloser, error) {
+					log.add("createReadStream:%s", path)
+					return io.NopCloser(io.MultiReader(strings.NewReader("STREAM:"), strings.NewReader(path+"\n"))), nil
+				},
+			}
+		}
 		return func() (sdk.BuiltinToolDefinition, error) { return sdk.CreateReadToolDefinition(cwd, options) },
 			func() (sdk.BuiltinTool, error) { return sdk.CreateReadTool(cwd, options) }
 	case "write":
@@ -153,6 +165,9 @@ func builtinProbeSpec(c builtinProbeCase, log *builtinCallLog) (definition func(
 				log.add("isDirectory:%s", path)
 				return false, errors.New("no such path for the probe")
 			}}
+		}
+		if c.Ops == "grepdir" {
+			options.Operations = &sdk.GrepOperations{IsDirectory: func(path string) (bool, error) { log.add("isDirectory:%s", path); return true, nil }}
 		}
 		return func() (sdk.BuiltinToolDefinition, error) { return sdk.CreateGrepToolDefinition(cwd, options) },
 			func() (sdk.BuiltinTool, error) { return sdk.CreateGrepTool(cwd, options) }

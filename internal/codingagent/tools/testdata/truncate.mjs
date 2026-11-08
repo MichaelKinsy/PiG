@@ -15,7 +15,6 @@ const run = ({ fn, content, maxLines, maxBytes, n }) => {
 		case "head": return t.truncateHead(content, options);
 		case "tail": return t.truncateTail(content, options);
 		case "line": return t.truncateLine(content, n);
-		case "middle": return t.truncateMiddle(content, n);
 		case "size": return t.formatSize(n);
 	}
 };

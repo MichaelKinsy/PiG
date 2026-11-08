@@ -3002,10 +3002,12 @@ func (s *Session) IsCompacting() bool {
 	return s.compacting.Load() || s.branchSumCancel != nil
 }
 
+// isManualCompacting reports a manual compaction or a branch summary in progress: a prompt submitted during either is rejected
+// (agent-session.ts: _compactionAbortController !== undefined || _branchSummaryAbortController !== undefined).
 func (s *Session) isManualCompacting() bool {
 	s.compactMu.Lock()
 	defer s.compactMu.Unlock()
-	return s.manualCompacting
+	return s.manualCompacting || s.branchSumCancel != nil
 }
 
 func (s *Session) beginCompaction() bool {
@@ -3083,7 +3085,8 @@ const treeNavigationInProgressError = "Wait for the current compaction or tree n
 // navigateTree is the internal implementation. NavigateTree (public SDK) and
 // NavigateTreeHandle (InteractiveSessionHandle bridge) both call this.
 func (s *Session) navigateTree(ctx context.Context, targetID string, opts NavigateTreeOptions) (NavigateTreeResult, error) {
-	if s.agent.IsStreaming() {
+	// A prompt that is still in its input hooks and auth checks owns the context (#9154).
+	if s.agent.IsStreaming() || s.runState.promptPreflight.Load() > 0 {
 		return NavigateTreeResult{}, errors.New("Wait for the current response to finish before navigating the session tree.")
 	}
 
@@ -3102,15 +3105,21 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 	// callers may release their ordered initiation lane while this admitted
 	// operation continues asynchronously.
 	extension.CallInitiated(ctx)
-	defer func() {
-		cancel()
-		s.compactMu.Lock()
-		s.branchSumCancel = nil
-		s.branchSumDone = nil
-		close(done)
-		s.compactMu.Unlock()
-		s.notifyIdleWaiters()
-	}()
+	var releaseOnce sync.Once
+	release := func() {
+		releaseOnce.Do(func() {
+			cancel()
+			s.compactMu.Lock()
+			s.branchSumCancel = nil
+			s.branchSumDone = nil
+			close(done)
+			s.compactMu.Unlock()
+			s.notifyIdleWaiters()
+		})
+	}
+	// A navigation that session_tree handlers start owns the Session operation by then, so the first one releases it before the event
+	// (the selected context is installed) and only once.
+	defer release()
 
 	// Snapshot current leaf under lock.
 	s.mu.Lock()
@@ -3225,6 +3234,8 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 	currentLeafID := s.inner.GetLeafID()
 	s.mu.Unlock()
 
+	// The selected context is installed; session_tree handlers may now prompt or navigate again.
+	release()
 	s.emitSessionTree(ctx, currentLeafID, oldLeafID, summaryID, summary != nil && summary.FromExtension)
 	return NavigateTreeResult{EditorText: editorText, SummaryEntry: s.branchSummaryEntry(summaryID)}, nil
 }

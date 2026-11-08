@@ -35,7 +35,8 @@ import { BUILTIN_PATH_PREFIX, getResourcePathKey } from "./source-info.js";
 const NETWORK_TIMEOUT_MS = 10000;
 const UPDATE_CHECK_CONCURRENCY = 4;
 const GIT_UPDATE_CONCURRENCY = 4;
-function isOfflineModeEnabled() {
+/** Whether PI_OFFLINE is set; package installs and updates then skip all network access. */
+export function isOfflineModeEnabled() {
     const value = process.env.PI_OFFLINE;
     if (!value)
         return false;
@@ -914,10 +915,8 @@ export class DefaultPackageManager {
         const npmCheckResults = await this.runWithConcurrency(npmCheckTasks, UPDATE_CHECK_CONCURRENCY);
         const userNpmUpdates = [];
         const projectNpmUpdates = [];
-        for (const result of npmCheckResults) {
-            if (!result.shouldUpdate) {
-                continue;
-            }
+        const npmUpdates = npmCheckResults.filter((result) => result.shouldUpdate);
+        for (const result of npmUpdates) {
             if (result.entry.scope === "user") {
                 userNpmUpdates.push(result.entry);
             }
@@ -932,13 +931,59 @@ export class DefaultPackageManager {
         if (projectNpmUpdates.length > 0) {
             tasks.push(this.updateNpmBatch(projectNpmUpdates, "project"));
         }
+        const gitUpdates = [];
         if (gitCandidates.length > 0) {
             const gitTasks = gitCandidates.map((entry) => async () => this.withProgress("update", entry.source, `Updating ${entry.source}...`, async () => {
+                const targetDir = this.getGitInstallPath(entry.parsed, entry.scope);
+                const from = await this.getGitHead(targetDir);
                 await this.updateGit(entry.parsed, entry.scope);
+                const to = await this.getGitHead(targetDir);
+                if (from !== to) {
+                    gitUpdates.push({ source: entry.source, type: "git", scope: entry.scope, from, to });
+                }
             }));
             tasks.push(this.runWithConcurrency(gitTasks, GIT_UPDATE_CONCURRENCY).then(() => { }));
         }
         await Promise.all(tasks);
+        const updated = [];
+        for (const { entry } of npmUpdates) {
+            const installedPath = this.getManagedNpmInstallPath(entry.parsed, entry.scope);
+            const to = existsSync(installedPath) ? this.getInstalledNpmVersion(installedPath) : undefined;
+            if (to !== entry.installedVersion) {
+                updated.push({ source: entry.source, type: "npm", scope: entry.scope, from: entry.installedVersion, to });
+            }
+        }
+        // Keep git results in configured order, independent of completion order.
+        for (const entry of gitCandidates) {
+            const update = gitUpdates.find((u) => u.source === entry.source && u.scope === entry.scope);
+            if (update)
+                updated.push(update);
+        }
+        // Report each changed package, e.g. "npm:foo 1.2.0 -> 1.3.0".
+        for (const pkg of updated) {
+            const format = (value) => value === undefined ? "(none)" : pkg.type === "git" ? value.slice(0, 7) : value;
+            const scope = pkg.scope === "project" ? " (project)" : "";
+            this.emitProgress({
+                type: "result",
+                action: "update",
+                source: pkg.source,
+                message: `${pkg.source}${scope} ${format(pkg.from)} -> ${format(pkg.to)}`,
+            });
+        }
+    }
+    async getGitHead(targetDir) {
+        if (!existsSync(targetDir))
+            return undefined;
+        try {
+            const head = await this.runCommandCapture("git", ["rev-parse", "HEAD"], {
+                cwd: targetDir,
+                timeoutMs: NETWORK_TIMEOUT_MS,
+            });
+            return head.trim() || undefined;
+        }
+        catch {
+            return undefined;
+        }
     }
     async shouldUpdateNpmSource(source, scope) {
         const installedPath = this.getManagedNpmInstallPath(source, scope);
