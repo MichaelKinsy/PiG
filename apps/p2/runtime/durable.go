@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord"
@@ -222,14 +223,38 @@ func AnswerOrigin(tx durable.Tx, conversation durable.ConversationId, answer dur
 // whichever plugins offer such tools. Subscribe observes both registries' compositions (its listener called inside the
 // Chord batch that composed, so it only wakes the scheduler).
 func DurableRegistry(extensions, switches *registries.RegistryValueSource) harness.RegistryReader {
-	return &durableRegistry{extensions: extensions, switches: switches, snapshots: map[*KeyedTable[*P2Extension]]map[string]durable.RegistrySnapshot{}}
+	r := &durableRegistry{extensions: extensions, switches: switches, snapshots: map[*KeyedTable[*P2Extension]]map[string]durable.RegistrySnapshot{}}
+	// Primed here, before any scheduler holds its lock: the scheduler reads Snapshot under it, and a read of a registry
+	// value is a section of the host's loop, whose commits' publications wait for that lock.
+	r.composition.Store(r.read())
+	return r
 }
 
 type durableRegistry struct {
 	extensions, switches *registries.RegistryValueSource
 
+	// composition is the registries' last composition seen: both values and the switched-off names. Snapshot reads it
+	// without the host's loop, which a section may hold while it waits for the scheduler's lock (Snapshot is called
+	// under that lock). A composition refreshes it, in the batch that composed: a Snapshot taken between a registry's change and
+	// its follower's refresh reads the composition before (the scheduler subscribes first, so a change wakes it after the refresh).
+	composition atomic.Pointer[composed]
+
 	mu        sync.Mutex
 	snapshots map[*KeyedTable[*P2Extension]]map[string]durable.RegistrySnapshot
+}
+
+// composed is what the registries composed: the extensions, and the names of those switched off.
+type composed struct {
+	table *KeyedTable[*P2Extension]
+	off   []string
+	key   string
+}
+
+// read is the registries' values now, a section of the host's loop.
+func (r *durableRegistry) read() *composed {
+	table, _ := r.extensions.Value().(*KeyedTable[*P2Extension])
+	off, _ := r.disabled()
+	return &composed{table: table, off: off, key: strings.Join(off, "\n")}
 }
 
 func (r *durableRegistry) disabled() ([]string, error) {
@@ -248,9 +273,8 @@ func (r *durableRegistry) disabled() ([]string, error) {
 }
 
 func (r *durableRegistry) Snapshot() durable.RegistrySnapshot {
-	table, _ := r.extensions.Value().(*KeyedTable[*P2Extension])
-	off, _ := r.disabled()
-	key := strings.Join(off, "\n")
+	seen := r.composition.Load()
+	table, off, key := seen.table, seen.off, seen.key
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	byKey := r.snapshots[table]
@@ -298,8 +322,8 @@ func (r *durableRegistry) Snapshot() durable.RegistrySnapshot {
 // reconsider).
 func (r *durableRegistry) Subscribe(listener func()) func() {
 	stops := []func(){
-		Follow[any](chord.NativeWatchable[any](r.extensions), func(any) { listener() }),
-		Follow[any](chord.NativeWatchable[any](r.switches), func(any) { listener() }),
+		Follow[any](chord.NativeWatchable[any](r.extensions), func(any) { r.composition.Store(r.read()); listener() }),
+		Follow[any](chord.NativeWatchable[any](r.switches), func(any) { r.composition.Store(r.read()); listener() }),
 	}
 	return func() {
 		for _, stop := range stops {

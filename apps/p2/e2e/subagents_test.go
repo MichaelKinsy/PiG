@@ -1,6 +1,7 @@
 // Ports test/p2/subagents.test.ts, subagent-cwd.test.ts and subagent-team.test.ts (Pi main c23b9ec1) under the fake
-// provider. Not ported here: the workspace panel and upload of a subagent's own cwd (the workspace plugin's lane) and
-// the MCP tool of a subagent's script (mcp-worker.test.ts's case, once the MCP lane lands).
+// provider. Not ported here (pending, rows/p2-agenttools.md): "reaches MCP tools installed after the spawn" (the MCP lane,
+// fix/p2-mcp, is not in this tree) and `history_search` in the default tools of "gives all the caller's tools by default"
+// (the chat tree's history lane, fix/p2-tree-history).
 
 package e2e_test
 
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -22,6 +24,7 @@ import (
 	sharingcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing/contract"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
 	subagentscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
+	workspacecontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/workspace/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -148,11 +151,10 @@ func TestSubagentsFakeProvider(t *testing.T) {
 	})
 
 	t.Run("configures tools and opens a child's independent transcript", func(t *testing.T) {
-		// Pi's flow also chooses the `artifact` tool, which has no Go plugin yet: `read` stands in for it.
-		f.send(`subagent {"action":"configure","name":"helper","model":"faux/faux-1","thinkingLevel":"high","tools":["bash","read"]}`)
+		f.send("subagent-configure")
 		f.until(children.Member("children"), func(v delta.JsonValue) bool {
 			c := f.childNamed(v, "helper")
-			return c != nil && marshal(t, c.Value("tools")) == `["bash","read"]`
+			return c != nil && marshal(t, c.Value("tools")) == `["bash","artifact"]`
 		})
 		sub := f.hold(child.Value("conversationId").(float64))
 		view := f.until(sub.Member("view"), func(v delta.JsonValue) bool {
@@ -160,7 +162,7 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		})
 		// The sidebar lists the chosen tools; the agent also has `team` (`scope: "subagent"`), offered from the start.
 		agent := object(object(object(view).Value("docs")).Value("pi.agent"))
-		if marshal(t, agent.Value("tools")) != `["bash","read","team"]` || marshal(t, object(agent.Value("modelTools")).Value("add")) != `["team"]` {
+		if marshal(t, agent.Value("tools")) != `["bash","artifact","team"]` || marshal(t, object(agent.Value("modelTools")).Value("add")) != `["team"]` {
 			t.Errorf("agent = %s", marshal(t, agent))
 		}
 		if _, err := sub.Call("configure", delta.JsonObjectOf("model", delta.JsonObjectOf("provider", "faux", "modelId", "faux-1"), "thinkingLevel", "off"), p2test.Background); err != nil {
@@ -378,7 +380,7 @@ func hasPrefixOf(prefix string) func(string) bool {
 }
 
 // Pi Mobile 24e3fccdd: spawn takes a cwd (e.g. a git worktree the main agent created first).
-func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
+func TestASubagentSpawnedWithItsOwnCwdRunsItsToolsThereAndItsWorkspaceViewAndUploadsFollow(t *testing.T) {
 	f := &agentFixture{t: t}
 	p2test.NoLeakedGoroutines(t)
 	f.Fixture = p2test.StartFixture(t, hosts.ServerOptions{})
@@ -458,6 +460,47 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 		t.Errorf("pwd = %q", got)
 	}
 	sub.Release()
+
+	// The workspace panel of each viewed conversation lists its own working directory.
+	listing := func(conversation float64) []string {
+		t.Helper()
+		workspace, err := p2test.HoldIn(f.Owner, workspacecontract.Workspace, delta.JsonObjectOf("session", f.Session, "conversation", conversation), "reader")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer workspace.Release()
+		answer, err := workspace.Call("query", delta.JsonObjectOf("kind", "list", "path", ""), p2test.Background)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if object(answer).Value("kind") != "list" {
+			t.Fatalf("answer = %v", answer)
+		}
+		var names []string
+		for _, entry := range list(object(answer).Value("entries")) {
+			names = append(names, object(entry).Value("name").(string))
+		}
+		return names
+	}
+	conversation := agent.Value("conversationId").(float64)
+	if got := listing(conversation); strings.Join(got, ",") != "marker.txt" {
+		t.Errorf("the subagent's workspace = %v", got)
+	}
+	if got := listing(1); strings.Join(got, ",") != "worktree" {
+		t.Errorf("the main workspace = %v", got)
+	}
+	// An upload in the subagent's view lands in its directory.
+	upload, err := p2test.HTTP(f.Fixture.Server.Port, "/workspace-upload?"+urlValues("session", f.Session, "conversation", strconv.Itoa(int(conversation)), "path", "", "name", "up.txt"),
+		p2test.HTTPOptions{Method: http.MethodPost, Headers: map[string]string{"Origin": "http://127.0.0.1:" + strconv.Itoa(f.Fixture.Server.Port)}, Body: strings.NewReader("uploaded")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upload.Status != 200 {
+		t.Fatalf("upload = %d %s", upload.Status, upload.Body)
+	}
+	if data, err := os.ReadFile(filepath.Join(worktree, "up.txt")); err != nil || string(data) != "uploaded" {
+		t.Errorf("up.txt = %q, %v", data, err)
+	}
 }
 
 // A subagent left with a stale cwd by an earlier move works in the session's cwd again (Pi Mobile 78056b34e): the worker
@@ -780,7 +823,9 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 			t.Fatal(agentResultText(spawned))
 		}
 		given := toolsOf(spawned)
-		for _, each := range []string{"read", "bash", "codemode"} {
+		// Pi's list also names `history_search` (the chat tree's history plugin, fix/p2-tree-history, is not in this tree yet:
+		// pending, rows/p2-agenttools.md).
+		for _, each := range []string{"read", "bash", "codemode", "location_move"} {
 			if !contains(given, each) {
 				t.Errorf("missing %s", each)
 			}
