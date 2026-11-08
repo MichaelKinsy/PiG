@@ -89,7 +89,7 @@ func TestOverflowFullRenderPathsEmitRowUnchanged(t *testing.T) {
 			if got := out.String(); got != want {
 				t.Fatalf("bytes = %q, want %q", got, want)
 			}
-			if ui.stopped {
+			if ui.stopped.Load() {
 				t.Fatal("full render stopped the renderer")
 			}
 			requireNoCrashLog(t, dir)
@@ -158,7 +158,7 @@ func TestOverflowDifferentialTerminatesWithCrashLog(t *testing.T) {
 	if got, want := out.String(), " \x1b[1B\r\n\x1b[?25h"; got != want {
 		t.Fatalf("terminal bytes = %q, want %q", got, want)
 	}
-	if !ui.stopped {
+	if !ui.stopped.Load() {
 		t.Fatal("renderer not stopped")
 	}
 	out.Reset()
