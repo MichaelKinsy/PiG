@@ -3,7 +3,7 @@
 // fingerprint, and `contractOf` declares the Pi contract of it with Pi's own `local`/`remote`. The rebuilt contract hashes to
 // the fingerprint it crossed with, or `contractOf` throws: a type that differs from what the other side declared is refused
 // as Pi refuses a contract of another fingerprint.
-import { keyed, local, method, remote } from "@earendil-works/chord/next";
+import { keyed, local, method, remote } from "@earendil-works/chord";
 
 /**
  * A local contract's members as its declaration: `{ state }` is a state schema, `{ keyed }` a keyed member and

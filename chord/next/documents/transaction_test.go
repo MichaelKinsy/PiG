@@ -811,8 +811,9 @@ func TestTheSealFenceRefusesASealedAttemptsTransactionsWaitingForTheLineAndEvery
 // tableOwner is the owner of an object's table handles: the object's documents are their scope.
 type tableOwner struct{ o *object }
 
-func (owner *tableOwner) Label() string { return owner.o.label }
-func (owner *tableOwner) Scope() any    { return owner.o.documents }
+func (owner *tableOwner) Label() string               { return owner.o.label }
+func (owner *tableOwner) Scope() any                  { return owner.o.documents }
+func (owner *tableOwner) Queries() *store.LiveQueries { return owner.o.liveQueries() }
 func (owner *tableOwner) AssertLive() error {
 	var err error
 	owner.o.Do(func() { err = owner.o.documents.AssertLive() })

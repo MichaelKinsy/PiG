@@ -191,3 +191,57 @@ func TestRenderTraceWritesJSONStringifyValues(t *testing.T) {
 		t.Fatalf("RenderTrace = %q, want %q", got, want)
 	}
 }
+
+// Ports the two cases of packages/telemetry/test/render.test.ts added by Pi main 378d45a0 (lengths of time to the
+// microsecond; control characters escaped).
+func TestRenderTraceRendersLengthsOfTimeToTheMicrosecond(t *testing.T) {
+	root := renderSpan("root", func(span *telemetry.StoredSpan) {
+		span.StartedMs, span.EndedMs = 1_793_789_452_816.123, 1_793_789_452_816.431
+		span.Events = []telemetry.StoredSpanEvent{{Name: "half", TimeMs: 0.15400000002, Attributes: telemetry.SpanAttributes{}}}
+	})
+	if got, want := telemetry.RenderTrace([]telemetry.StoredSpan{root}), "root (0.308ms)\n  · half (+0.154ms)"; got != want {
+		t.Fatalf("RenderTrace = %q, want %q", got, want)
+	}
+}
+
+func TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessages(t *testing.T) {
+	hostile := "\x1b]0;PWNED\x07\x1b[2J"
+	rendered := telemetry.RenderTrace([]telemetry.StoredSpan{renderSpan("root", func(span *telemetry.StoredSpan) {
+		span.Name = "name" + hostile
+		span.Attributes = telemetry.SpanAttributes{telemetry.Attr("key"+hostile, hostile)}
+		span.Events = []telemetry.StoredSpanEvent{{Name: "event" + hostile, TimeMs: 1, Attributes: telemetry.SpanAttributes{}}}
+		span.Links = []telemetry.StoredSpanLink{{TraceID: hostile, SpanID: "span\u009b" + hostile}}
+		span.Status = telemetry.SpanStatus{Status: telemetry.SpanStatusCodeError, Error: &telemetry.SpanStatusError{Name: "error" + hostile, Message: "message\u007f" + hostile}}
+	})})
+	for _, line := range strings.Split(rendered, "\n") {
+		for _, char := range line {
+			if char <= 0x1f || (char >= 0x7f && char <= 0x9f) {
+				t.Fatalf("line %q holds control character %U", line, char)
+			}
+		}
+	}
+	for _, want := range []string{
+		`name\u001b]0;PWNED\u0007\u001b[2J`,
+		`→ link trace \u001b]0;PWNED`,
+		`span\u009b`,
+		`message\u007f`,
+		`key\u001b]0;PWNED\u0007\u001b[2J="\u001b]0;PWNED\u0007\u001b[2J"`,
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Errorf("rendered lacks %q:\n%s", want, rendered)
+		}
+	}
+}
+
+// A name clipped inside a surrogate pair (three-byte WTF-8 surrogates, as the failure clipping leaves) keeps its lone surrogate next
+// to an escaped control character: JS strings hold it as it is.
+func TestRenderTraceKeepsALoneSurrogateBesideAnEscapedControlCharacter(t *testing.T) {
+	name := "a\x1b\xed\xa0\x80b"
+	rendered := telemetry.RenderTrace([]telemetry.StoredSpan{renderSpan("root", func(span *telemetry.StoredSpan) { span.Name = name })})
+	if want := "a\\u001b\xed\xa0\x80b"; !strings.Contains(rendered, want) {
+		t.Errorf("rendered lacks %q:\n%q", want, rendered)
+	}
+	if strings.Contains(rendered, "\uFFFD") {
+		t.Errorf("rendered holds U+FFFD: %q", rendered)
+	}
+}

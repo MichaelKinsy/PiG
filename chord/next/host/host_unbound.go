@@ -118,6 +118,13 @@ func (i *unboundIndex) add(name string, request unboundRequest, cause *data.Fail
 	}
 }
 
+// Names are the names requests wait for, sorted.
+func (i *unboundIndex) Names() []string {
+	names := i.names.items()
+	slices.Sort(names)
+	return names
+}
+
 // delete: request ended or binds: it leaves the index.
 func (i *unboundIndex) delete(name string, request unboundRequest) {
 	requests := i.byName[name]
