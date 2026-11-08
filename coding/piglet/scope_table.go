@@ -1,10 +1,10 @@
 package piglet
 
 import (
-	"github.com/MichaelKinsy/PiG/mcp"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 // The tool scope rule table of the docs (internal/pigdocs/content/piglets.md and mcp.md) is computed here from the same
@@ -84,7 +84,7 @@ func scopeRows() []scopeRow {
 func probe(name string) extension.ToolInfo {
 	info := extension.ToolInfo{Name: name}
 	if strings.HasPrefix(name, "mcp__docs__") {
-		info.Namespace = &extension.ToolNamespace{Name: mcp.McpNamespace("docs")}
+		info.Namespace = &extension.ToolNamespace{Name: mcpshared.McpNamespace("docs")}
 	}
 	return info
 }
