@@ -24050,6 +24050,30 @@
       ]
     },
     {
+      "id": "BF-7434ca9",
+      "title": "fix(cli): pig --version prints Pi's bare version; remove D63",
+      "symptom": "fix(cli): pig --version prints Pi's bare version; remove D63",
+      "rootCause": "pig --version and -v print coding.UpstreamPackageVersion, as pi --version does. The composite version stays in the help banner, the startup line and the separate fields of pig version. Self-update, the installer, the npm e2e and the bench arm check read the PiG release from pig version. PIG_VERSION_FORMAT, the D63 entry, its docs and its call-site markers are removed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7434ca91ae",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "automation/release/set-version/main_test.go::TestSetVersionRejectsAREADMEWithoutTheVersionExample",
+        "automation/release/set-version/main_test.go::TestSetVersionWritesTheREADMEVersionExample",
+        "test/parity/runner/asserts_version_test.go::TestDivergeTokensAreEvaluatedAgainstOutput",
+        "test/parity/runner/asserts_version_test.go::TestExpandVersionTokensUsesThePins"
+      ]
+    },
+    {
       "id": "BF-7472171",
       "title": "An extension dialog (`select`, `confirm`, `input`, `editor`) that opens while another is shown now replaces…",
       "symptom": "Previously the second dialog failed with \"another extension dialog is already open\" or waited for the first to close.",
