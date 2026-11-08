@@ -367,7 +367,7 @@ func (c *Workers) Retry(address contracts.Address, _ context.Context) error {
 // Step is a rollout step shipping the kind's current set to every worker, one result per worker (§4).
 func (c *Workers) Step(name string) plugins.RolloutStep {
 	return plugins.RolloutStep{Name: name, Kinds: []string{c.options.Kind}, Reload: func(_ *plugins.Built, applied map[string][]plugins.PluginScript, ctx context.Context) (plugins.StepResult, error) {
-		hosts, err := c.rollout(applied[c.options.Kind], ctx)
+		hosts, err := c.Rollout(applied[c.options.Kind], ctx)
 		return plugins.StepResult{Hosts: hosts}, err
 	}}
 }
@@ -889,12 +889,13 @@ func (c *Workers) idleFor() time.Duration {
 	return defaultIdle
 }
 
-// rollout is the rollout step (§4): scripts is the set as this rollout applied it (Pi reads `plugins.current(kind)` in the
+// Rollout is the rollout step (§4), for an app that ships the set itself (without a plugins component, p2's compiled-in
+// plugins): scripts is the set as this rollout applied it (Pi reads `plugins.current(kind)` in the
 // same synchronous section as the rollout's ship; the component hands it over); the
 // failures recorded before it cleared and the held ones retried (listed once ready or failed); the set shipped to every
 // worker whose last applied set differs, in parallel. ctx's abort ends only this wait: the entries still waiting are listed
 // with its error.
-func (c *Workers) rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
+func (c *Workers) Rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
 	key := keyOf(scripts)
 	type entry struct {
 		host  string
