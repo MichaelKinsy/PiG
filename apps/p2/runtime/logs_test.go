@@ -256,3 +256,37 @@ func TestForkedHostsCaptureStdoutAndStderrIncludingFailedStartupDiagnostics(t *t
 		t.Fatalf("lines = %+v", store.Lines("worker"))
 	}
 }
+
+// A worker's stacks are redacted line by line: a redaction of a line that holds no secret must not pay for the secrets or the
+// environment again (it matched every environment name, and sorted and percent-encoded every secret, per line: 230 allocations,
+// which starved the report of a failed test of its worker's stacks when the machine was loaded).
+func TestRedactingALineWithNoSecretDoesNotRebuildTheSecretsEachTime(t *testing.T) {
+	for index := range 30 {
+		t.Setenv("P2_REDACT_TOKEN_"+strings.Repeat("x", index), "environment-secret-value-"+strings.Repeat("y", index))
+	}
+	redactor := NewLogRedactor()
+	for index := range 40 {
+		redactor.AddSecret(strings.Repeat("s", 10+index) + " x")
+	}
+	line := "\t/home/user/p2/plugins/prompt/worker.go:192 +0x829"
+	if got := redactor.Redact(line); got != line {
+		t.Fatalf("Redact changed a line without secrets: %q", got)
+	}
+	allocations := testing.AllocsPerRun(50, func() { redactor.Redact(line) })
+	if allocations > 60 {
+		t.Fatalf("Redact allocated %v times for a line without secrets (the secrets and the environment are rebuilt per call)", allocations)
+	}
+}
+
+func TestRedactionSeesAnEnvironmentSecretSetAfterTheFirstRedaction(t *testing.T) {
+	redactor := NewLogRedactor()
+	redactor.Redact("warm")
+	t.Setenv("P2_LATE_TOKEN", "late secret value")
+	if got := redactor.Redact("a late secret value b"); strings.Contains(got, "late secret value") {
+		t.Fatalf("an environment secret set after the first redaction was printed: %q", got)
+	}
+	redactor.AddSecret("a b&c")
+	if got := redactor.Redact("x a%20b%26c y"); strings.Contains(got, "a%20b%26c") {
+		t.Fatalf("the percent-encoded form of a secret was printed: %q", got)
+	}
+}
