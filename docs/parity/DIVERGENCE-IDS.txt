@@ -60,3 +60,4 @@ D351: Anthropic non-strict tool schemas keep root $defs (Pi main 4a6a58eb, not i
 D352: Anthropic message threads (Pi main a758f3ae4, not in Pi 1.5.0; see docs/parity/divergences/D352.md); owner sign-off pending.
 D540: the plugins watcher's directory identity has no birth time on a Unix whose stat Go does not expose it for (see docs/parity/divergences/D540.md); owner sign-off pending.
 D607: the plugins component loads hosts through a Node subprocess it starts; Pi's evaluate, stack and runtime run there (see docs/parity/divergences/D607.md); owner sign-off pending (2026-11-08).
+D608: a client surface is built after the server's listen (NewWebSurface/NewTuiSurface return at once, Build builds), where Pi's webSurface/tuiSurface await the build (see docs/parity/divergences/D608.md); owner sign-off pending (2026-11-08).

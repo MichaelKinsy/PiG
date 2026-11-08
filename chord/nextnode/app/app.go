@@ -149,15 +149,15 @@ type AppLimits struct {
 // AppTimeouts are the hosts' timeouts (`HostOptions.closeTimeout`, `HostOptions.readyTimeout`, `HostOptions.reloadDrainTimeout`):
 // zero is the host's default.
 type AppTimeouts struct {
-	Close time.Duration
-	Ready time.Duration
-	// ReloadDrain bounds how long a reload's restart keeps an object's old attempt open for old work.
-	ReloadDrain time.Duration
+	CloseTimeout time.Duration
+	ReadyTimeout time.Duration
+	// ReloadDrainTimeout bounds how long a reload's restart keeps an object's old attempt open for old work.
+	ReloadDrainTimeout time.Duration
 }
 
-func (t AppTimeouts) close() *time.Duration       { return optionalDuration(t.Close) }
-func (t AppTimeouts) ready() *time.Duration       { return optionalDuration(t.Ready) }
-func (t AppTimeouts) reloadDrain() *time.Duration { return optionalDuration(t.ReloadDrain) }
+func (t AppTimeouts) close() *time.Duration       { return optionalDuration(t.CloseTimeout) }
+func (t AppTimeouts) ready() *time.Duration       { return optionalDuration(t.ReadyTimeout) }
+func (t AppTimeouts) reloadDrain() *time.Duration { return optionalDuration(t.ReloadDrainTimeout) }
 
 func optionalDuration(d time.Duration) *time.Duration {
 	if d == 0 {
@@ -202,6 +202,9 @@ type AppOptions struct {
 	Facets []host.HostFacet
 	// Telemetry is the app's telemetry store; nil: none.
 	Telemetry AppTelemetry
+	// PrincipalAttributes is who a span was for (`createHost`'s `principalAttributes`): the server's hook, also stamped on the spans
+	// pages send (the principal of their link). Nil: none.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// Web is the web surface (slice 11): the app's web entry, its page template, the paths serving the page; the `web` facet kind.
 	// Nil: no web surface.
 	Web *AppWeb
@@ -245,14 +248,14 @@ func (k KitStart) json() *delta.JsonObject {
 		files.Set("maxTotal", float64(k.Files.MaxTotal))
 	}
 	timeouts := delta.NewJsonObject(0)
-	if k.Timeouts.Close != 0 {
-		timeouts.Set("closeTimeout", float64(k.Timeouts.Close/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	if k.Timeouts.CloseTimeout != 0 {
+		timeouts.Set("closeTimeout", float64(k.Timeouts.CloseTimeout/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
-	if k.Timeouts.Ready != 0 {
-		timeouts.Set("readyTimeout", float64(k.Timeouts.Ready/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	if k.Timeouts.ReadyTimeout != 0 {
+		timeouts.Set("readyTimeout", float64(k.Timeouts.ReadyTimeout/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
-	if k.Timeouts.ReloadDrain != 0 {
-		timeouts.Set("reloadDrainTimeout", float64(k.Timeouts.ReloadDrain/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	if k.Timeouts.ReloadDrainTimeout != 0 {
+		timeouts.Set("reloadDrainTimeout", float64(k.Timeouts.ReloadDrainTimeout/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
 	object := delta.JsonObjectOf("dir", k.Dir, "facet", k.Facet, "principal", k.Principal, "server", k.Server, "files", files, "telemetry", k.Telemetry)
 	if k.Uploads != 0 {
@@ -287,13 +290,13 @@ func decodeKitStart(value delta.JsonValue) (KitStart, error) {
 	}
 	if timeouts, ok := object.Value("timeouts").(*delta.JsonObject); ok {
 		if n, ok := timeouts.Value("closeTimeout").(float64); ok {
-			kit.Timeouts.Close = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+			kit.Timeouts.CloseTimeout = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 		if n, ok := timeouts.Value("readyTimeout").(float64); ok {
-			kit.Timeouts.Ready = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+			kit.Timeouts.ReadyTimeout = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 		if n, ok := timeouts.Value("reloadDrainTimeout").(float64); ok {
-			kit.Timeouts.ReloadDrain = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+			kit.Timeouts.ReloadDrainTimeout = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 	}
 	if kit.Dir == "" || kit.Facet == "" {
@@ -442,7 +445,8 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	hostOptions := host.HostOptions{
 		Address: nil, Principal: options.Principal.Server, Store: opened.store,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(),
-		OnError: func(err host.HostError) { a.report(AppErrorHost, err) },
+		OnError:             func(err host.HostError) { a.report(AppErrorHost, err) },
+		PrincipalAttributes: options.PrincipalAttributes,
 	}
 	server := Server.Address(nil)
 	hostOptions.Address = &server
@@ -525,7 +529,12 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			WorkerHost: func(principal data.Principal) (string, bool) {
 				return workerHosts.get(data.PrincipalKey(principal, chordctx.Background(), nil))
 			},
-			PrincipalAttributes: func(data.Principal) telemetry.SpanAttributes { return nil },
+			PrincipalAttributes: func(principal data.Principal) telemetry.SpanAttributes {
+				if options.PrincipalAttributes == nil {
+					return nil
+				}
+				return options.PrincipalAttributes(principal)
+			},
 		})})
 	}
 	core = append(core, options.Facets...)
