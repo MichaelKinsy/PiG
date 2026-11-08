@@ -443,7 +443,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	for _, each := range made {
 		a.surfaces = append(a.surfaces, each)
-		core = append(core, host.HostFacet{Name: "chord." + each.name, Facet: each.facet})
+		core = append(core, each.facets...)
 		a.Plugins.WatchBase(each.inputs)
 		switch each.name {
 		case "web":
