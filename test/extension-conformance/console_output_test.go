@@ -79,7 +79,7 @@ func equalLines(a, b []string) bool {
 // probeLines are the console-probe lines of text, in order: the rest of PiG's output (diagnostics from other parts of the run) is not the row's concern.
 func probeLines(text string) []string {
 	var lines []string
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.HasPrefix(line, "probe-out-") || strings.HasPrefix(line, "probe-err-") {
 			lines = append(lines, line)
 		}
