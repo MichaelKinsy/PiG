@@ -25,6 +25,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/logs"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/discord"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/ports"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/proxy-marker"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/radius"
