@@ -61,6 +61,9 @@ var ExtensionSwitches = NewKeyedRegistry[*bool]("p2.extension-switches")
 // the plugin.
 const codemodeExtension = "codemode"
 
+// GuardTool is guardTool for the plugins' tests (Pi exports it): tool as Durable runs it.
+func GuardTool(tool P2Tool) *durable.ToolRegistration { return guardTool(tool) }
+
 // guardTool is tool as Durable runs it: unchanged without requirements, else refusing calls that do not meet them.
 func guardTool(tool P2Tool) *durable.ToolRegistration {
 	if tool.Origin != "owner" && tool.Scope != "main" {

@@ -87,6 +87,11 @@ func (sshManager) WorkingDirectory(_ context.Context, env, cwd string, create bo
 // Connection is never used by these tests.
 func (sshManager) Connection(string, *chordjson.Object) *env.Connection { return nil }
 
+// ListDirectory is never used by these tests.
+func (sshManager) ListDirectory(context.Context, string, string) (p2runtime.DirectoryListing, error) {
+	return p2runtime.DirectoryListing{}, nil
+}
+
 // inert are methods of a stubbed local object that nothing under test calls.
 func inert(names ...string) map[string]p2test.StubMethod {
 	methods := map[string]p2test.StubMethod{}

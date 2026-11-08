@@ -101,7 +101,8 @@ func estimateContentChars(content any) int {
 	return 0
 }
 
-// utf16Length is a JavaScript string's length: the UTF-16 code units of the text. A byte that is not UTF-8 counts as the one unit of U+FFFD. JavaScript reads the
+// utf16Length is a JavaScript string's length: the UTF-16 code units of the text. The SDK holds an unpaired surrogate as WTF-8 (the three bytes of its code point,
+// extensions/sdk/json), which is the one unit the JavaScript string had; any other byte that is not UTF-8 counts as the one unit of U+FFFD. JavaScript reads the
 // length of a string in constant time, so an ASCII prefix, one unit per byte, is skipped eight bytes at a time and only the rest is decoded.
 func utf16Length(text string) int {
 	prefix := 0
@@ -114,13 +115,33 @@ func utf16Length(text string) int {
 		prefix++
 	}
 	units := prefix
-	for _, r := range text[prefix:] {
+	rest := text[prefix:]
+	for _, r := range rest {
 		units++
 		if r >= 0x10000 {
 			units++
 		}
 	}
+	// range read the three bytes of each WTF-8 surrogate as three invalid bytes, three units where the surrogate is one. Only a lead byte 0xED can start one, so a text with
+	// none (almost every text) costs this one vectorised search.
+	for {
+		at := strings.IndexByte(rest, 0xED)
+		if at < 0 {
+			break
+		}
+		if wtf8Surrogate(rest[at:]) {
+			units -= 2
+			at += 2
+		}
+		rest = rest[at+1:]
+	}
 	return units
+}
+
+// wtf8Surrogate reports whether text starts with the three bytes of a surrogate code point, U+D800 to U+DFFF: the form the SDK holds an unpaired surrogate in. UTF-8 has
+// no such sequence, so utf8.DecodeRuneInString reads it as three invalid bytes.
+func wtf8Surrogate(text string) bool {
+	return len(text) >= 3 && text[0] == 0xED && text[1] >= 0xA0 && text[1] <= 0xBF && text[2]&0xC0 == 0x80
 }
 
 // jsonStringifyLength is the UTF-16 length of JSON.stringify(value) for a decoded JSON value, without building the text. A key order does not change a
@@ -162,11 +183,11 @@ func jsonStringifyLength(value any, standIns map[rune]bool) int {
 	return 0
 }
 
-// jsonQuotedLength is the UTF-16 length of JSON.stringify(text): quotes, the short escapes, \u00XX for the other control characters, and every other
-// character as it is (U+2028 and U+2029 included).
+// jsonQuotedLength is the UTF-16 length of JSON.stringify(text): quotes, the short escapes, \u00XX for the other control characters and \uXXXX for an unpaired
+// surrogate, and every other character as it is (U+2028 and U+2029 included).
 func jsonQuotedLength(text string, standIns map[rune]bool) int {
 	length := 2
-	for _, r := range text {
+	for i, r := range text {
 		switch {
 		case r == '"' || r == '\\' || r == '\b' || r == '\f' || r == '\n' || r == '\r' || r == '\t':
 			length += 2
@@ -174,6 +195,9 @@ func jsonQuotedLength(text string, standIns map[rune]bool) int {
 			length += 6
 		case r >= 0x10000:
 			length += 2
+		case r == utf8.RuneError && wtf8Surrogate(text[i:]):
+			// JSON.stringify writes an unpaired surrogate as its six-character escape; range reads its three bytes as three invalid bytes, each counting one.
+			length += 6 - 3 + 1
 		default:
 			length++
 		}
