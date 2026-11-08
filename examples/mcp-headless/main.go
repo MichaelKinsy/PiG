@@ -31,7 +31,7 @@ func main() {
 func run(command string, args []string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "mcp-headless", Version: "0.0.1"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "mcp-headless", Version: "0.0.1"})
 	defer func() {
 		if closeErr := client.Close(); err == nil && closeErr != nil {
 			err = fmt.Errorf("close: %w", closeErr)

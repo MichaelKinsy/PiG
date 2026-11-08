@@ -544,7 +544,7 @@ func TestPicoSqliteStorage(t *testing.T) {
 
 	t.Run("auto-checkpoints WAL frames and truncates the WAL on close", func(t *testing.T) {
 		pages := 1
-		storage, path := createSqliteStorage(t, node.NodeSqliteStorageOptions{NodeSqliteDatabaseOptions: node.NodeSqliteDatabaseOptions{WalAutoCheckpointPages: &pages}})
+		storage, path := createSqliteStorage(t, node.NodeSqliteStorageOptions{WalAutoCheckpointPages: &pages})
 		createRoot(t, storage)
 		for index := range 20 {
 			commit(t, storage, durable.EntryWrite{Value: entry(mint[durable.EntryId](t, storage), durable.ROOT_CONVERSATION_ID,

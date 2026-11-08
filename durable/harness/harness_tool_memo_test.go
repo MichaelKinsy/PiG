@@ -25,7 +25,7 @@ func TestToolExecutionApiMemoReadsAbsentThenTheFirstCandidateWins(t *testing.T) 
 	}
 	var got observed
 	addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "remember", Description: "Memoizes", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: "remember", Description: "Memoizes", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			var err error
 			_, got.beforePresent, err = api.Memo(ctx, "k")

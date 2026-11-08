@@ -203,15 +203,15 @@ func packageRows(packages []probePackage, probe *probeResult) []matrixRow {
 				continue // a re-exported type: no runtime value to realize
 			}
 			rows = append(rows, matrixRow{
-				surfaceRow: surfaceRow{Group: group, Key: pkg.Module + ": " + exp.Name, Decl: exp.Kind + " " + exp.Name, Kind: kindExport},
-				Cells:      map[string]cell{"node": nodeCell(got.probeCell)},
-				Exception:  map[string]string{},
+				Group: group, Key: pkg.Module + ": " + exp.Name, Decl: exp.Kind + " " + exp.Name, Kind: kindExport,
+				Cells:     map[string]cell{"node": nodeCell(got.probeCell)},
+				Exception: map[string]string{},
 			})
 			for _, m := range exp.Members {
 				rows = append(rows, matrixRow{
-					surfaceRow: surfaceRow{Group: group, Key: pkg.Module + ": " + exp.Name + "." + m, Decl: exp.Name + "." + m, Kind: kindExportMember},
-					Cells:      map[string]cell{"node": nodeCell(got.Members[m])},
-					Exception:  map[string]string{},
+					Group: group, Key: pkg.Module + ": " + exp.Name + "." + m, Decl: exp.Name + "." + m, Kind: kindExportMember,
+					Cells:     map[string]cell{"node": nodeCell(got.Members[m])},
+					Exception: map[string]string{},
 				})
 			}
 		}

@@ -54,7 +54,7 @@ func openMcpPipeTransport(t *testing.T, connection *Connection, cwd string, prog
 
 func connectOverPipe(t *testing.T, transport *mcp.PipeTransport) *mcp.Client {
 	t.Helper()
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "env-pipe-test", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "env-pipe-test", Version: "1.0.0"})
 	result, err := client.Connect(t.Context(), transport)
 	if err != nil {
 		t.Fatal(err)

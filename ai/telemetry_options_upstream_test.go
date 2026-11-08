@@ -33,7 +33,7 @@ func TestTelemetryOptionsInheritedByEveryRequestOptionSurfaceUpstream(t *testing
 	if got := (StreamOptions{Telemetry: telemetryOptionsContext}).Telemetry; got != telemetryOptionsContext {
 		t.Errorf("StreamOptions.Telemetry = %v", got)
 	}
-	if got := (DeferredFetchOptions{StreamOptions: StreamOptions{Telemetry: telemetryOptionsContext}}).Telemetry; got != telemetryOptionsContext {
+	if got := (DeferredFetchOptions{Telemetry: telemetryOptionsContext}).Telemetry; got != telemetryOptionsContext {
 		t.Errorf("DeferredFetchOptions.Telemetry = %v", got)
 	}
 	if got := (DeferredCancelOptions{Telemetry: telemetryOptionsContext}).Telemetry; got != telemetryOptionsContext {
@@ -161,7 +161,7 @@ func TestTelemetryOptionsSurviveImageDispatchUpstream(t *testing.T) {
 			return AssistantImages{API: requestModel.API, Provider: requestModel.Provider, Model: requestModel.ID, Output: []ContentBlock{}, StopReason: ImagesStopReasonStop}, nil
 		}}},
 	}))
-	result := models.GenerateImages(t.Context(), &imageModel, imagesRequest, ModelsImagesOptions{ImagesOptions: ImagesOptions{Telemetry: telemetryOptionsContext}})
+	result := models.GenerateImages(t.Context(), &imageModel, imagesRequest, ModelsImagesOptions{Telemetry: telemetryOptionsContext})
 	if result.StopReason != ImagesStopReasonStop {
 		t.Fatalf("models.GenerateImages = %s", result.ErrorMessage)
 	}
@@ -185,7 +185,7 @@ func TestTelemetryOptionsSurviveClassifierDispatch(t *testing.T) {
 			return ClassifierResult{API: model.API, Provider: model.Provider, Model: model.ID, StopReason: ClassifierStopReasonStop}, nil
 		}}},
 	}))
-	result := models.Classify(t.Context(), classifier, classifierTestContext(), ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{Telemetry: telemetryOptionsContext}})
+	result := models.Classify(t.Context(), classifier, classifierTestContext(), ModelsClassifierOptions{Telemetry: telemetryOptionsContext})
 	if result.StopReason != ClassifierStopReasonStop {
 		t.Fatalf("models.Classify = %s", result.ErrorMessage)
 	}

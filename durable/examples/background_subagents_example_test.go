@@ -55,10 +55,10 @@ func TestExample22SubagentBackground(t *testing.T) {
 	// Each subagent is its own conversation. The main conversation keeps a small document that maps subagent names
 	// to their conversations. A fork of the main conversation starts without subagents.
 	subagentsDoc := durable.DefineDoc(durable.DocDefinition[subagentsState]{
-		CommonDocDefinition: durable.CommonDocDefinition[subagentsState]{Kind: "app.subagents", Version: 1, Initial: func() subagentsState {
+		Kind: "app.subagents", Version: 1, Initial: func() subagentsState {
 			return subagentsState{Agents: map[string]subagentRecord{}, Reporters: map[string]durable.TaskId{}}
-		}, CheckpointWhen: func(subagentsState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
+		}, CheckpointWhen: func(subagentsState, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial,
 	})
 
 	// A subagent must outlive the main agent's turns, so its conversation is owned by an anchor: a background task
@@ -184,21 +184,19 @@ func TestExample22SubagentBackground(t *testing.T) {
 
 	var subagentTools *durable.Extension
 	subagentTool := new(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{
-			Name: "subagent",
-			Description: "Manage persistent subagents that work in the background. Actions: spawn (name, message), send (name, message; " +
-				"followUp: true queues it after the current answer instead of steering), stop (name: aborts its current work), " +
-				"status (name, or all subagents without one). Answers are reported back to you when they arrive.",
-			Parameters: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"action":   map[string]any{"type": "string", "enum": []any{"spawn", "send", "stop", "status"}},
-					"name":     map[string]any{"type": "string"},
-					"message":  map[string]any{"type": "string"},
-					"followUp": map[string]any{"type": "boolean"},
-				},
-				"required": []any{"action"},
+		Name: "subagent",
+		Description: "Manage persistent subagents that work in the background. Actions: spawn (name, message), send (name, message; " +
+			"followUp: true queues it after the current answer instead of steering), stop (name: aborts its current work), " +
+			"status (name, or all subagents without one). Answers are reported back to you when they arrive.",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"action":   map[string]any{"type": "string", "enum": []any{"spawn", "send", "stop", "status"}},
+				"name":     map[string]any{"type": "string"},
+				"message":  map[string]any{"type": "string"},
+				"followUp": map[string]any{"type": "boolean"},
 			},
+			"required": []any{"action"},
 		},
 		// A call interrupted by a crash is not rerun: repeating stop could stop newer work. The model sees that the
 		// call was interrupted and can check with status.

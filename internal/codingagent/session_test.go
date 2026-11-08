@@ -632,13 +632,11 @@ func TestGetSessionNameLatestWins(t *testing.T) {
 		id, _ := generateEntryID()
 		parent := sess.GetLeafID()
 		return SessionInfoEntry{
-			SessionEntryBase: SessionEntryBase{
-				Type:      "session_info",
-				ID:        id,
-				ParentID:  parent,
-				Timestamp: "2026-05-02T00:00:00Z",
-			},
-			Name: name,
+			Type:      "session_info",
+			ID:        id,
+			ParentID:  parent,
+			Timestamp: "2026-05-02T00:00:00Z",
+			Name:      name,
 		}
 	}
 

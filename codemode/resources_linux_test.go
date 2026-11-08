@@ -83,7 +83,7 @@ func TestConcurrentExecutionsReturnMemoryAndDescriptors(t *testing.T) {
 
 // The same for the inline launcher, whose channel holds the session and whose halt guard's timer reaches the channel.
 func TestConcurrentInlineExecutionsReturnMemoryAndDescriptors(t *testing.T) {
-	sandbox, err := NewInlineSandbox(InlineSandboxOptions{SandboxOptions: SandboxOptions{TimeoutMs: 60_000, MemoryLimitBytes: 256 << 20}})
+	sandbox, err := NewInlineSandbox(InlineSandboxOptions{TimeoutMs: 60_000, MemoryLimitBytes: 256 << 20})
 	if err != nil {
 		t.Fatal(err)
 	}

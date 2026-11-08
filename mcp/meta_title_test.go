@@ -16,7 +16,7 @@ func TestClientKeepsServerTitleAndResultMeta(t *testing.T) {
 		return map[string]any{"protocolVersion": "2025-06-18", "capabilities": map[string]any{"resources": map[string]any{}},
 			"serverInfo": map[string]any{"name": "titled", "version": "1.0.0", "title": "Titled Server"}}, nil
 	})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "c", Version: "1", Title: "Client Title"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "c", Version: "1", Title: "Client Title"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestClientDecodesEveryListedMemberAndServerCapability(t *testing.T) {
 			"capabilities": map[string]any{"experimental": map[string]any{"x": 1}, "logging": map[string]any{}, "prompts": map[string]any{"listChanged": true},
 				"completions": map[string]any{}, "resources": map[string]any{}}}, nil
 	})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "c", Version: "1"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "c", Version: "1"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}

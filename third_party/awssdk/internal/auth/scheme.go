@@ -91,11 +91,11 @@ func GetAuthenticationSchemes(p *smithy.Properties) ([]AuthenticationScheme, err
 		return nil, &NoAuthenticationSchemesFoundError{}
 	}
 
-	authSchemes, _ := p.Get("authSchemes").([]interface{})
+	authSchemes, _ := p.Get("authSchemes").([]any)
 
 	var unsupportedSchemes []string
 	for _, scheme := range authSchemes {
-		authScheme, _ := scheme.(map[string]interface{})
+		authScheme, _ := scheme.(map[string]any)
 
 		version := authScheme["name"].(string)
 		switch version {
@@ -154,7 +154,7 @@ func GetDisableDoubleEncoding(ctx context.Context) (value bool, ok bool) {
 	return value, ok
 }
 
-func getSigningName(authScheme map[string]interface{}) *string {
+func getSigningName(authScheme map[string]any) *string {
 	signingName, ok := authScheme["signingName"].(string)
 	if !ok || signingName == "" {
 		return nil
@@ -162,8 +162,8 @@ func getSigningName(authScheme map[string]interface{}) *string {
 	return &signingName
 }
 
-func getSigningRegionSet(authScheme map[string]interface{}) []string {
-	untypedSigningRegionSet, ok := authScheme["signingRegionSet"].([]interface{})
+func getSigningRegionSet(authScheme map[string]any) []string {
+	untypedSigningRegionSet, ok := authScheme["signingRegionSet"].([]any)
 	if !ok {
 		return nil
 	}
@@ -174,7 +174,7 @@ func getSigningRegionSet(authScheme map[string]interface{}) []string {
 	return signingRegionSet
 }
 
-func getSigningRegion(authScheme map[string]interface{}) *string {
+func getSigningRegion(authScheme map[string]any) *string {
 	signingRegion, ok := authScheme["signingRegion"].(string)
 	if !ok || signingRegion == "" {
 		return nil
@@ -182,7 +182,7 @@ func getSigningRegion(authScheme map[string]interface{}) *string {
 	return &signingRegion
 }
 
-func getDisableDoubleEncoding(authScheme map[string]interface{}) *bool {
+func getDisableDoubleEncoding(authScheme map[string]any) *bool {
 	disableDoubleEncoding, ok := authScheme["disableDoubleEncoding"].(bool)
 	if !ok {
 		return nil

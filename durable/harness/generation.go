@@ -463,7 +463,7 @@ func generationPollHandler(ctx context.Context, task durable.RunningTask[Generat
 		return failGenerationNoModel(ctx, runtime, &ref)
 	}
 	signal := runtime.Signal()
-	message := runtime.Models().FetchDeferred(signal, model, *checkpoint.Handle, ai.DeferredFetchOptions{StreamOptions: ai.StreamOptions{Signal: signal, Telemetry: chordctx.Telemetry(ctx)}})
+	message := runtime.Models().FetchDeferred(signal, model, *checkpoint.Handle, ai.DeferredFetchOptions{Signal: signal, Telemetry: chordctx.Telemetry(ctx)})
 	if message == nil {
 		return errors.New("deferred fetch returned no message")
 	}

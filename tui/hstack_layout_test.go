@@ -21,10 +21,10 @@ func TestHStackGivesAVisibleEntrysPredicateTheUnboundedViewport(t *testing.T) {
 	for _, tc := range []struct{ width, want int }{{20, 20}, {1, 1}, {0, 1}, {-5, 1}} {
 		var seen []LayoutViewport
 		child := &stubComponent{lines: []string{"x"}}
-		stack := NewHStack([]StackEntry{{Component: child, StackEntryOptions: StackEntryOptions{Visible: func(viewport LayoutViewport) bool {
+		stack := NewHStack([]StackEntry{{Component: child, Visible: func(viewport LayoutViewport) bool {
 			seen = append(seen, viewport)
 			return true
-		}}}}, StackOptions{})
+		}}}, StackOptions{})
 		stack.Render(tc.width)
 		want := LayoutViewport{Width: tc.want, Height: maxSafeInteger}
 		if len(seen) != 1 || seen[0] != want {
@@ -64,7 +64,7 @@ func TestHStackClipsAChildToItsAllocatedWidth(t *testing.T) {
 	overlong := &stubComponent{lines: []string{"ABCDEF"}}
 	stack := NewHStack([]StackEntry{
 		{Component: lead},
-		{Component: overlong, StackEntryOptions: StackEntryOptions{Basis: new(3), Shrink: new(0)}},
+		{Component: overlong, Basis: new(3), Shrink: new(0)},
 	}, StackOptions{})
 	if got, want := hstackRows(stack, 20), []string{"zABC"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("rows = %q, want %q", got, want)

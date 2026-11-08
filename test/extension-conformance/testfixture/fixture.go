@@ -3182,7 +3182,7 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("editor-install-viewport", "Install a custom editor that captures viewport input until it receives t", func(ctx sdk.Context, args string) error {
 		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent {
-			return &viewportEditor{conformanceEditor: conformanceEditor{Editor: base}}
+			return &viewportEditor{Editor: base}
 		})
 	})
 	ext.Command("select-page-probe", "Report getSelectPageIndex for a key under the default keybindings", func(ctx sdk.Context, args string) error {

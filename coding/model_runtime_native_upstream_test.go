@@ -226,7 +226,7 @@ func TestModelRuntimeNativeCompatibilityUpstream(t *testing.T) {
 				return out, nil
 			}
 		}
-		reply := runtime.FetchDeferred(t.Context(), selected, handle, ai.DeferredFetchOptions{Wait: new(float64(25)), StreamOptions: ai.StreamOptions{Headers: ai.ProviderHeaders{"X-Fetch": new("fetch")}, TransformHeaders: transform("fetch")}})
+		reply := runtime.FetchDeferred(t.Context(), selected, handle, ai.DeferredFetchOptions{Wait: new(float64(25)), Headers: ai.ProviderHeaders{"X-Fetch": new("fetch")}, TransformHeaders: transform("fetch")})
 		if reply.StopReason != ai.StopReasonStop {
 			t.Fatalf("fetch=%+v", reply)
 		}

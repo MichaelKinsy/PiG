@@ -106,7 +106,7 @@ func TestRunFailure(t *testing.T) {
 		setup := chatSetup(t)
 		gate, started := deferred(), deferred()
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "hold", Description: "Waits", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+			Name: "hold", Description: "Waits", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 			Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				started.resolve()
 				if err := gate.wait(ctx); err != nil {

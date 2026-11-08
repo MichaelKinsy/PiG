@@ -30,11 +30,11 @@ func TestObserveOnlyHandlersReturnNoResult(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{observeOnly("/observe", events...)}, t.TempDir())
 	ctx := context.Background()
 
-	call, err := runner.EmitToolCall(ctx, extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1"}, ToolName: "bash"})
+	call, err := runner.EmitToolCall(ctx, extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "c1", ToolName: "bash"})
 	if err != nil || call != nil {
 		t.Fatalf("EmitToolCall = %+v, %v; want nil, nil", call, err)
 	}
-	result, err := runner.EmitToolResult(ctx, extension.CustomToolResultEvent{ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "c1", IsError: true}, ToolName: "bash"})
+	result, err := runner.EmitToolResult(ctx, extension.CustomToolResultEvent{Type: "tool_result", ToolCallID: "c1", IsError: true, ToolName: "bash"})
 	if err != nil || result != nil {
 		t.Fatalf("EmitToolResult = %+v, %v; want nil, nil", result, err)
 	}
@@ -104,7 +104,7 @@ func TestTypedNilToolCallResultIsNoResult(t *testing.T) {
 		return (*extension.ToolCallEventResult)(nil), nil
 	}}
 	runner := inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
-	got, err := runner.EmitToolCall(context.Background(), extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call"}, ToolName: "bash"})
+	got, err := runner.EmitToolCall(context.Background(), extension.CustomToolCallEvent{Type: "tool_call", ToolName: "bash"})
 	if err != nil || got != nil {
 		t.Fatalf("EmitToolCall = %+v, %v; want nil, nil", got, err)
 	}

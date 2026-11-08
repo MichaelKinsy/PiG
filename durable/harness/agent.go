@@ -203,13 +203,11 @@ type AgentState struct {
 
 // AgentDoc is the built-in agent document; rewindable so forks start from the agent at their fork entry.
 var AgentDoc = durable.DefineDoc(durable.DocDefinition[AgentState]{
-	CommonDocDefinition: durable.CommonDocDefinition[AgentState]{
-		Kind:              "pi.agent",
-		Version:           1,
-		CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return true },
+	Kind:              "pi.agent",
+	Version:           1,
+	CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return true },
 
-		Initial: func() AgentState { return AgentState{} },
-	},
+	Initial:           func() AgentState { return AgentState{} },
 	DocumentSemantics: durable.NewRewindableConversationSemantics(durable.ForkAsOf).DocumentSemantics,
 })
 

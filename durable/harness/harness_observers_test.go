@@ -26,8 +26,8 @@ type observersProgressState struct {
 }
 
 var observersProgress = durable.DefineDoc(durable.DocDefinition[observersProgressState]{
-	CommonDocDefinition: durable.CommonDocDefinition[observersProgressState]{Kind: "test.observers.progress", Version: 1, Initial: func() observersProgressState { return observersProgressState{Lines: []string{}} }, CheckpointWhen: func(observersProgressState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
+	Kind: "test.observers.progress", Version: 1, Initial: func() observersProgressState { return observersProgressState{Lines: []string{}} }, CheckpointWhen: func(observersProgressState, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeTask,
 })
 
 // observersWriter is a task that writes its progress document, waits for gate, then completes, which retires the document.

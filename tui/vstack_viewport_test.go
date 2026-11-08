@@ -11,10 +11,10 @@ func TestVStackGivesVisiblePredicatesAnUnboundedHeightAndTheClampedWidth(t *test
 	for _, tc := range []struct{ width, want int }{{20, 20}, {1, 1}, {0, 1}, {-5, 1}} {
 		var seen []LayoutViewport
 		child := &stubComponent{lines: []string{"x"}}
-		v := NewVStack([]StackEntry{{Component: child, StackEntryOptions: StackEntryOptions{Visible: func(viewport LayoutViewport) bool {
+		v := NewVStack([]StackEntry{{Component: child, Visible: func(viewport LayoutViewport) bool {
 			seen = append(seen, viewport)
 			return true
-		}}}}, StackOptions{})
+		}}}, StackOptions{})
 		v.Render(tc.width)
 		if len(seen) != 1 || seen[0] != (LayoutViewport{Width: tc.want, Height: numberMaxSafeInteger}) {
 			t.Fatalf("Render(%d): visible saw %v, want one viewport %v", tc.width, seen, LayoutViewport{Width: tc.want, Height: numberMaxSafeInteger})

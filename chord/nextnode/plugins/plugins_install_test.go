@@ -292,7 +292,7 @@ func TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATag
 	}, "v1", nil)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	options := InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}}
+	options := InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)}
 	names, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, options)
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/hello"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
@@ -315,7 +315,7 @@ func TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedTo
 	gitRepository(t, "bob-plugins", map[string]string{"later/package.json": manifestText(t, map[string]any{"name": "@bob/later"})}, "v2", &first)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Git: first.url, Ref: first.commit}, root, background, InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}})
+	names, err := InstallPlugin(PluginSource{Git: first.url, Ref: first.commit}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,7 +368,7 @@ func TestInstallPluginInstallsExactlyTheFoldersAPackagesChordPluginsLists(t *tes
 	}, "v1", nil)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}})
+	names, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/notes"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
 	}
@@ -417,7 +417,7 @@ func TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOt
 	repository := gitRepository(t, "hello", map[string]string{"package.json": manifestText(t, map[string]any{"name": "@bob/hello"})}, "v1", nil)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	options := InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}}
+	options := InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)}
 	var group sync.WaitGroup
 	errs := make([]error, 2)
 	for i := range errs {
@@ -443,7 +443,7 @@ func TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOt
 func TestInstallPluginRemovesTheScopeDirectoryItMadeWhenAScopedNpmInstallFailsOpusL2(t *testing.T) {
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	_, err := InstallPlugin(PluginSource{Npm: "@bob/notes", Version: "1.0.0"}, root, background, InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 1, false)}})
+	_, err := InstallPlugin(PluginSource{Npm: "@bob/notes", Version: "1.0.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 1, false)})
 	if err == nil || !strings.Contains(err.Error(), "pack @bob/notes@1.0.0 failed") {
 		t.Fatalf("error = %v", err)
 	}
@@ -465,7 +465,7 @@ func TestInstallPluginRemovesStagingDirectoriesAnInstallCrashedOutOfOnceAnHourOl
 		t.Fatal(err)
 	}
 	tools := tempRoot(t)
-	if _, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}}); err != nil {
+	if _, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)}); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := listing(t, root), []string{".chord-install-recent", "hello"}; !reflect.DeepEqual(got, want) {

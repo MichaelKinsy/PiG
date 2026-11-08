@@ -30,7 +30,7 @@ func TestDocTokensCarryTheirDefinitionAndValidateTheVersion(t *testing.T) {
 	}
 	var token DocToken[state] = DefineDoc(DocDefinition[state]{
 		CommonDocDefinition: common,
-		DocumentSemantics:   DocumentSemantics{Scope: ScopeConversation, History: HistoryRewindable, Fork: ForkAsOf},
+		Scope:               ScopeConversation, History: HistoryRewindable, Fork: ForkAsOf,
 	})
 	var scoped ConversationDocToken[state] = token // a scope-refined name is the same token (types.ts:105)
 	definition := scoped.AnyDefinition()
@@ -47,7 +47,7 @@ func TestDocTokensCarryTheirDefinitionAndValidateTheVersion(t *testing.T) {
 	}
 
 	family := DefineDocFamily(DocFamilyDefinition[state, int]{
-		Kind: "tok.family", Version: 1, Family: true, DocumentSemantics: DocumentSemantics{Scope: ScopeTask},
+		Kind: "tok.family", Version: 1, Family: true, Scope: ScopeTask,
 		Initial:        func(seed int) state { return state{N: seed} },
 		CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false },
 	})
@@ -64,7 +64,7 @@ func TestDocTokensCarryTheirDefinitionAndValidateTheVersion(t *testing.T) {
 					t.Errorf("version %d: recovered %q, want %q", version, message, want)
 				}
 			}()
-			DefineDoc(DocDefinition[state]{CommonDocDefinition: CommonDocDefinition[state]{Kind: "tok.bad", Version: version, Initial: func() state { return state{} }, CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false }}, DocumentSemantics: DocumentSemantics{Scope: ScopeSession}})
+			DefineDoc(DocDefinition[state]{Kind: "tok.bad", Version: version, Initial: func() state { return state{} }, CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false }, Scope: ScopeSession})
 		}()
 	}
 	func() {
@@ -73,6 +73,6 @@ func TestDocTokensCarryTheirDefinitionAndValidateTheVersion(t *testing.T) {
 				t.Errorf("family with version 0: recovered %q", message)
 			}
 		}()
-		DefineDocFamily(DocFamilyDefinition[state, int]{Kind: "tok.badfamily", Version: 0, Family: true, DocumentSemantics: DocumentSemantics{Scope: ScopeSession}, Initial: func(int) state { return state{} }, CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false }})
+		DefineDocFamily(DocFamilyDefinition[state, int]{Kind: "tok.badfamily", Version: 0, Family: true, Scope: ScopeSession, Initial: func(int) state { return state{} }, CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false }})
 	}()
 }

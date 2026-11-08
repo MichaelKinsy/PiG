@@ -40,7 +40,7 @@ func TestSessionOrderedToolResultImagesSurviveHooksEventsProviderAndReopen(t *te
 			original := slices.Clone(tc.content)
 			hookCalled := false
 			var providerContent []ai.ToolResultMessageContent
-			h := newRecoveryHarness(t, harnessOptions{tools: []agent.AgentTool{&orderedImageTool{fakeTool: fakeTool{name: "ordered"}, content: tc.content}}, extension: extension.Extension{Path: "ordered", Handlers: map[string][]extension.HandlerFn{"tool_result": {func(args ...any) (any, error) {
+			h := newRecoveryHarness(t, harnessOptions{tools: []agent.AgentTool{&orderedImageTool{name: "ordered", content: tc.content}}, extension: extension.Extension{Path: "ordered", Handlers: map[string][]extension.HandlerFn{"tool_result": {func(args ...any) (any, error) {
 				event := args[0].(extension.CustomToolResultEvent)
 				data, err := json.Marshal(event.Content)
 				if err != nil {

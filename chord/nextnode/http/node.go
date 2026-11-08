@@ -230,7 +230,7 @@ func nodeIncomingOf(r *nethttp.Request) (*nodeIncoming, *WireRefusal) {
 	if status != 0 {
 		return nil, &WireRefusal{Status: status}
 	}
-	return &nodeIncoming{webIncoming: webIncoming{request: r, url: href}}, nil
+	return &nodeIncoming{request: r, url: href}, nil
 }
 
 // NodeRequest is a request as an app mounting `Fetch` on its own server gets it: a request, or refused.

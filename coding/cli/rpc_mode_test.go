@@ -1026,10 +1026,10 @@ func TestRPCGetCommandsCategoryAndLoaderOrderWithoutBuiltins(t *testing.T) {
 	extensionA := RPCSourceInfo{Path: "/extensions/z", Source: "local", Scope: "user", Origin: "top-level", BaseDir: "/extensions"}
 	extensionB := RPCSourceInfo{Path: "/extensions/a", Source: "pkg:a", Scope: "project", Origin: "package", BaseDir: "/pkg"}
 	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{
-		{RegisteredCommand: extension.RegisteredCommand{Name: "z", Description: "first", SourceInfo: extensionA}, InvocationName: "z"},
-		{RegisteredCommand: extension.RegisteredCommand{Name: "dup", Description: "second", SourceInfo: extensionA}, InvocationName: "dup:1"},
-		{RegisteredCommand: extension.RegisteredCommand{Name: "dup", Description: "third", SourceInfo: extensionB}, InvocationName: "dup:2"},
-		{RegisteredCommand: extension.RegisteredCommand{Name: "a", Description: "fourth", SourceInfo: extensionB}, InvocationName: "a"},
+		{Name: "z", Description: "first", SourceInfo: extensionA, InvocationName: "z"},
+		{Name: "dup", Description: "second", SourceInfo: extensionA, InvocationName: "dup:1"},
+		{Name: "dup", Description: "third", SourceInfo: extensionB, InvocationName: "dup:2"},
+		{Name: "a", Description: "fourth", SourceInfo: extensionB, InvocationName: "a"},
 	}}
 	promptZ := codingagent.PromptTemplate{Name: "prompt-z", Description: "prompt first", FilePath: "/prompts/z.md"}
 	promptA := codingagent.PromptTemplate{Name: "prompt-a", Description: "prompt second", FilePath: "/prompts/a.md"}
@@ -1067,7 +1067,7 @@ func TestRPCGetCommandsCategoryAndLoaderOrderWithoutBuiltins(t *testing.T) {
 }
 
 func TestRPCPromptRoutingPriorityAndInvocationConsistency(t *testing.T) {
-	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{RegisteredCommand: extension.RegisteredCommand{Name: "skill:deploy"}, InvocationName: "skill:deploy"}}}
+	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{Name: "skill:deploy", InvocationName: "skill:deploy"}}}
 	template := codingagent.PromptTemplate{Name: "deploy", Content: "prompt $1"}
 	path := filepath.Join(t.TempDir(), "SKILL.md")
 	if err := os.WriteFile(path, []byte("skill body"), 0o600); err != nil {
@@ -1160,7 +1160,7 @@ func TestRPCResourceHandoffFlagsTrustExplicitAndPiglet(t *testing.T) {
 }
 
 func TestRPCGetCommandsConcurrentQueriesRemainJSONL(t *testing.T) {
-	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{RegisteredCommand: extension.RegisteredCommand{Name: "one", SourceInfo: RPCSourceInfo{Path: "/one", Source: "local", Scope: "user", Origin: "top-level"}}, InvocationName: "one"}}}
+	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{Name: "one", SourceInfo: RPCSourceInfo{Path: "/one", Source: "local", Scope: "user", Origin: "top-level"}, InvocationName: "one"}}}
 	catalog := headlessCommandCatalog{runner: runner}
 	var output bytes.Buffer
 	var outputMu sync.Mutex
@@ -1218,9 +1218,7 @@ func TestRPCExtensionConfigUsesResolvedProvenance(t *testing.T) {
 
 func TestRPCGetCommandsExactRecordResponseShape(t *testing.T) {
 	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{
-		RegisteredCommand: extension.RegisteredCommand{
-			Name: "deploy", Description: "Deploy", SourceInfo: RPCSourceInfo{Path: "/ext/deploy", Source: "local", Scope: "project", Origin: "top-level", BaseDir: "/ext"},
-		},
+		Name: "deploy", Description: "Deploy", SourceInfo: RPCSourceInfo{Path: "/ext/deploy", Source: "local", Scope: "project", Origin: "top-level", BaseDir: "/ext"},
 		InvocationName: "deploy",
 	}}}
 	var output bytes.Buffer
@@ -1232,7 +1230,7 @@ func TestRPCGetCommandsExactRecordResponseShape(t *testing.T) {
 }
 
 func TestRPCLegacyLeadingSlashExtensionNameIsAdvertisedAndInvokedOnce(t *testing.T) {
-	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{RegisteredCommand: extension.RegisteredCommand{Name: "/legacy", SourceInfo: RPCSourceInfo{Path: "builtin:legacy", Source: "builtin", Scope: "temporary", Origin: "top-level"}}, InvocationName: "/legacy"}}}
+	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{Name: "/legacy", SourceInfo: RPCSourceInfo{Path: "builtin:legacy", Source: "builtin", Scope: "temporary", Origin: "top-level"}, InvocationName: "/legacy"}}}
 	catalog := headlessCommandCatalog{runner: runner}
 	commands := catalog.commands()
 	if len(commands) != 1 || commands[0].Name != "legacy" {

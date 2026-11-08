@@ -128,8 +128,8 @@ func TestAuthProviderKeepsAClientStoredWhileTheRejectedRefreshRan(t *testing.T) 
 		state, _ := options.Store.Load(context.Background())
 		if state != nil {
 			next := state.Clone()
-			replacement := oauth.OAuthClientInformationMixed{ClientID: "client-new"}
-			replacement.RedirectURIs = []string{routeURL}
+			replacement := oauth.OAuthClientInformationMixed{ClientID: "client-new",
+				RedirectURIs: []string{routeURL}}
 			next.ClientInformation = &replacement
 			_ = options.Store.Save(context.Background(), next)
 		}

@@ -156,7 +156,7 @@ func tuiAltProbe(ctx sdk.Context, _ string) error {
 	}
 	add("flash=%t", flash)
 	ov := &tuiAltLines{render: func(int) []string { return []string{"OVER"} }}
-	h, err := screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8), Anchor: "center"}})
+	h, err := screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{Width: sdk.OverlayCells(8), Anchor: "center"})
 	must(err)
 	must(screen.RenderNow(false))
 	bounds, err := h.GetBounds()
@@ -171,7 +171,7 @@ func tuiAltProbe(ctx sdk.Context, _ string) error {
 	must(h.SetHidden(false))
 	must(screen.HideOverlay())
 	add("afterHide=%t/%t", val(screen.HasOverlay()), val(screen.HasOverlayEntries()))
-	foc := &tuiAltFocusable{tuiAltLines: tuiAltLines{render: func(int) []string { return []string{"foc"} }}}
+	foc := &tuiAltFocusable{render: func(int) []string { return []string{"foc"} }}
 	must(screen.SetFocus(foc))
 	focused, err := screen.GetFocusedComponent()
 	must(err)
@@ -275,7 +275,7 @@ func tuiAltFrameProbe(ctx sdk.Context, _ string) error {
 	f := []string{"frame1=" + seen[0], "frame2=" + seen[len(seen)-1]}
 	var widths []string
 	ov := &tuiAltCounting{invalidated: &ovInv, render: func(int) []string { return []string{"OVER"} }}
-	hOn, err := screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8)}, Visible: func(w, h int) bool {
+	hOn, err := screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{Width: sdk.OverlayCells(8), Visible: func(w, h int) bool {
 		widths = append(widths, fmt.Sprintf("%dx%d", w, h))
 		return w >= 20
 	}})
@@ -292,7 +292,7 @@ func tuiAltFrameProbe(ctx sdk.Context, _ string) error {
 	must(err)
 	f = append(f, fmt.Sprintf("visibleOff=%t/%t", val(screen.HasOverlay()), val(screen.HasOverlayEntries())))
 	must(hOff.Hide())
-	ov2, err := screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8)}})
+	ov2, err := screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{Width: sdk.OverlayCells(8)})
 	must(err)
 	docInv, ovInv = 0, 0
 	must(screen.Invalidate())
@@ -324,7 +324,7 @@ func tuiAltFrameProbe(ctx sdk.Context, _ string) error {
 		must(screen.SetFocus(target))
 		r = append(r, fmt.Sprintf("focus=%t", val(screen.GetFocusedComponent()) == sdk.Component(target)))
 		var first string
-		h, err := screen.ShowOverlay(popup, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8)}, Visible: func(int, int) bool {
+		h, err := screen.ShowOverlay(popup, &sdk.TuiOverlayOptions{Width: sdk.OverlayCells(8), Visible: func(int, int) bool {
 			if first == "" {
 				first = fmt.Sprintf("%t", val(screen.GetShowHardwareCursor()))
 			}

@@ -396,13 +396,11 @@ func TestSessionManager_SaveAndReload(t *testing.T) {
 	// Append an entry via AppendEntry. An assistant message makes the
 	// session flush to disk (upstream _persist _hasConversation gate).
 	entry := MessageEntry{
-		SessionEntryBase: SessionEntryBase{
-			Type:      "message",
-			ID:        "entry-001",
-			ParentID:  nil,
-			Timestamp: "2026-01-01T00:00:00Z",
-		},
-		Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant}},
+		Type:      "message",
+		ID:        "entry-001",
+		ParentID:  nil,
+		Timestamp: "2026-01-01T00:00:00Z",
+		Message:   agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant}},
 	}
 	if err := sess.AppendEntry(entry); err != nil {
 		t.Fatalf("AppendEntry: %v", err)

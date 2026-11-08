@@ -27,7 +27,7 @@ func TestNestedCallRowsTakeTheirStatusAndErrorTextFromTheResult(t *testing.T) {
 	diagnostics := func(list ...durable.ToolDiagnostic) []durable.ToolDiagnostic { return list }
 	add := func(name string, schema map[string]any, result durable.ToolExecutionResult) {
 		registration := durable.ToolRegistration{
-			ToolSchema:             ai.ToolSchema{Name: name, Description: name, Parameters: empty},
+			Name: name, Description: name, Parameters: empty,
 			StructuredOutputSchema: schema,
 			Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				return result, nil

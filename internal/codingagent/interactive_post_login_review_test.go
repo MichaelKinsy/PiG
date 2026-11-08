@@ -193,7 +193,7 @@ func TestPostLoginSelectionRechecksSessionMutationAndCompletion(t *testing.T) {
 		t.Run(map[bool]string{false: "before state mutation", true: "after state mutation"}[after], func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				m := newPostLoginTestMode(t)
-				h := &blockedPostLoginHandle{recordingCompactHandle: recordingCompactHandle{agent: m.agent, inner: NewSession("login-race", m.opts.AgentDir)}, started: make(chan struct{}), release: make(chan struct{}), afterMutation: after}
+				h := &blockedPostLoginHandle{agent: m.agent, inner: NewSession("login-race", m.opts.AgentDir), started: make(chan struct{}), release: make(chan struct{}), afterMutation: after}
 				m.opts.SessionHandle = h
 				if err := setPostLoginAPIKey(m, "openai", "test-key"); err != nil {
 					t.Fatal(err)

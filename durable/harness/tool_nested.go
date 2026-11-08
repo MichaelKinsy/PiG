@@ -40,11 +40,11 @@ const nestedCallKind = "pi.tool.nested-call"
 // finds the calls it already made, and the caller reads each result. Created with the nested task; the nested call's
 // terminal commit adds its result. One document per call, so no commit rewrites the others. It retires with the caller.
 var NestedCallDoc = durable.DefineDocFamily(durable.DocFamilyDefinition[NestedCallState, any]{
-	Kind:              nestedCallKind,
-	Version:           1,
-	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeTask},
-	Family:            true,
-	Initial:           func(any) NestedCallState { return NestedCallState{} },
+	Kind:    nestedCallKind,
+	Version: 1,
+	Scope:   durable.ScopeTask,
+	Family:  true,
+	Initial: func(any) NestedCallState { return NestedCallState{} },
 	// The document retires with its task.
 	CheckpointWhen: func(NestedCallState, []durable.Op, durable.CheckpointInfo) bool { return false },
 })

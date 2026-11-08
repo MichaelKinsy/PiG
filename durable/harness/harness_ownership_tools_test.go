@@ -24,8 +24,8 @@ import (
 // ownTool builds an executable tool with an object schema.
 func ownTool(name, description string, parameters map[string]any, execute func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error), edit ...func(*durable.ToolRegistration)) *durable.ToolRegistration {
 	tool := DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: name, Description: description, Parameters: parameters},
-		Execute:    execute,
+		Name: name, Description: description, Parameters: parameters,
+		Execute: execute,
 	})
 	for _, apply := range edit {
 		apply(tool)
@@ -656,8 +656,8 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 			Child *durable.ConversationId `json:"child,omitempty"`
 		}
 		children := durable.DefineDoc(durable.DocDefinition[childrenState]{
-			CommonDocDefinition: durable.CommonDocDefinition[childrenState]{Kind: "test.children", Version: 1, Initial: func() childrenState { return childrenState{} }, CheckpointWhen: func(childrenState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
+			Kind: "test.children", Version: 1, Initial: func() childrenState { return childrenState{} }, CheckpointWhen: func(childrenState, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial,
 		})
 		type supervisorInput struct {
 			Parent durable.ConversationId `json:"parent"`

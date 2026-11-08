@@ -213,54 +213,52 @@ type LiveState struct {
 // §8.2): no generation and no running tool slot. That bounds the delta chain to one generation or one round's tools,
 // and a slot holds output only while running, so every base is small.
 var LiveDoc = durable.DefineDoc(durable.DocDefinition[LiveState]{
-	CommonDocDefinition: durable.CommonDocDefinition[LiveState]{
-		Kind:    "pi.live",
-		Version: 3,
-		// Version 1 named a compaction's trigger `reason`, in `compactions` and `compactionFailure`. Versions 1 and 2 (as
-		// builds before `run.turns` stored it) may lack `run.turns`: a run in flight across the upgrade counts its turns
-		// from 0. Version 2 already names the trigger `trigger`, so renaming leaves it alone.
-		Migrate: func(value durable.JsonObject, _ int) (LiveState, error) {
-			live := value.Clone()
-			if run, ok := value.Get("run"); ok {
-				migrated := run.(durable.JsonObject).Clone()
-				if turns, _ := migrated.Get("turns"); !isJSONNumber(turns) {
-					migrated.Set("turns", float64(0))
-				}
-				live.Set("run", migrated)
+	Kind:    "pi.live",
+	Version: 3,
+	// Version 1 named a compaction's trigger `reason`, in `compactions` and `compactionFailure`. Versions 1 and 2 (as
+	// builds before `run.turns` stored it) may lack `run.turns`: a run in flight across the upgrade counts its turns
+	// from 0. Version 2 already names the trigger `trigger`, so renaming leaves it alone.
+	Migrate: func(value durable.JsonObject, _ int) (LiveState, error) {
+		live := value.Clone()
+		if run, ok := value.Get("run"); ok {
+			migrated := run.(durable.JsonObject).Clone()
+			if turns, _ := migrated.Get("turns"); !isJSONNumber(turns) {
+				migrated.Set("turns", float64(0))
 			}
-			if list, ok := value.Get("compactions"); ok {
-				statuses, _ := list.([]any)
-				renamed := make([]any, len(statuses))
-				for i, status := range statuses {
-					renamed[i] = renameReason(status.(durable.JsonObject))
-				}
-				live.Set("compactions", renamed)
+			live.Set("run", migrated)
+		}
+		if list, ok := value.Get("compactions"); ok {
+			statuses, _ := list.([]any)
+			renamed := make([]any, len(statuses))
+			for i, status := range statuses {
+				renamed[i] = renameReason(status.(durable.JsonObject))
 			}
-			if failure, ok := value.Get("compactionFailure"); ok {
-				live.Set("compactionFailure", renameReason(failure.(durable.JsonObject)))
-			}
-			return durable.FromJsonValue[LiveState](live)
-		},
-		CheckpointWhenRaw: func(value durable.JsonObject, _ []durable.Op, _ durable.CheckpointInfo) bool {
-			if generation, _ := value.Get("generation"); generation != nil {
-				return false
-			}
-			for _, key := range [...]string{"tools", "nestedTools"} {
-				list, _ := value.Get(key)
-				slots, _ := list.([]any)
-				for _, entry := range slots {
-					if slot, ok := entry.(*delta.JsonObject); ok {
-						if status, _ := slot.Get("status"); status == string(ToolSlotRunning) {
-							return false
-						}
+			live.Set("compactions", renamed)
+		}
+		if failure, ok := value.Get("compactionFailure"); ok {
+			live.Set("compactionFailure", renameReason(failure.(durable.JsonObject)))
+		}
+		return durable.FromJsonValue[LiveState](live)
+	},
+	CheckpointWhenRaw: func(value durable.JsonObject, _ []durable.Op, _ durable.CheckpointInfo) bool {
+		if generation, _ := value.Get("generation"); generation != nil {
+			return false
+		}
+		for _, key := range [...]string{"tools", "nestedTools"} {
+			list, _ := value.Get(key)
+			slots, _ := list.([]any)
+			for _, entry := range slots {
+				if slot, ok := entry.(*delta.JsonObject); ok {
+					if status, _ := slot.Get("status"); status == string(ToolSlotRunning) {
+						return false
 					}
 				}
 			}
-			return true
-		},
-
-		Initial: func() LiveState { return LiveState{} },
+		}
+		return true
 	},
+
+	Initial:           func() LiveState { return LiveState{} },
 	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 })
 

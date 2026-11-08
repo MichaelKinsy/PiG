@@ -184,7 +184,7 @@ func (c *customOverlay) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispat
 		return nil
 	}
 	dispatched := &tui.TuiMouseDispatchResult{
-		TuiMouseEventResult: tui.TuiMouseEventResult{Handled: true, Capture: result.Capture, Focus: result.Focus, Render: result.Render},
+		Handled: true, Capture: result.Capture, Focus: result.Focus, Render: result.Render,
 		Target: tui.TuiMouseDispatchTarget{
 			Component: c, OriginX: event.ScreenX - event.X, OriginY: event.ScreenY - event.Y,
 			Width: event.Width, Height: event.Height,

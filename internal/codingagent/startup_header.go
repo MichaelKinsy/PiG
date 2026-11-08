@@ -280,7 +280,7 @@ func (m *InteractiveMode) handleBuiltInHeaderMouse(event tui.TuiMouseEvent) *tui
 	}
 	left, top := event.ScreenX-event.X+area.column, event.ScreenY-event.Y+area.row
 	m.playPigLogoAnimation(left, top, area.columns, area.rows)
-	return &tui.TuiMouseDispatchResult{TuiMouseEventResult: tui.TuiMouseEventResult{Handled: true}}
+	return &tui.TuiMouseDispatchResult{Handled: true}
 }
 
 // pig additive (D91): builtInHeaderClickArea is the header's logo as a frontend session reports a click on it.

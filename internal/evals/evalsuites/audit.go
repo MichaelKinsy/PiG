@@ -21,26 +21,24 @@ const auditToolName = "submit_documentation_audit"
 
 func submitAudit() evals.CustomTool {
 	return evals.CustomTool{
-		Tool: bridge.Tool{
-			Name: auditToolName, Label: "Submit documentation audit",
-			Description:   "Submit the final verdict after completing the documentation investigation.",
-			PromptSnippet: "Submit the final documentation audit as validated structured data",
-			// TypeBox's Type.Object writes type, required, properties, then the options; Type.Union of Type.Literal writes anyOf of {type, const}.
-			Parameters: chordjson.ObjectOf(
-				"type", "object",
-				"required", []string{"verdict", "explanation"},
-				"properties", chordjson.ObjectOf(
-					"verdict", chordjson.ObjectOf("anyOf", []any{
-						chordjson.ObjectOf("type", "string", "const", "match"),
-						chordjson.ObjectOf("type", "string", "const", "mismatch"),
-						chordjson.ObjectOf("type", "string", "const", "inconclusive"),
-					}),
-					"explanation", chordjson.ObjectOf("type", "string", "minLength", 1, "maxLength", 2000),
-				),
-				"additionalProperties", false,
+		Name: auditToolName, Label: "Submit documentation audit",
+		Description:   "Submit the final verdict after completing the documentation investigation.",
+		PromptSnippet: "Submit the final documentation audit as validated structured data",
+		// TypeBox's Type.Object writes type, required, properties, then the options; Type.Union of Type.Literal writes anyOf of {type, const}.
+		Parameters: chordjson.ObjectOf(
+			"type", "object",
+			"required", []string{"verdict", "explanation"},
+			"properties", chordjson.ObjectOf(
+				"verdict", chordjson.ObjectOf("anyOf", []any{
+					chordjson.ObjectOf("type", "string", "const", "match"),
+					chordjson.ObjectOf("type", "string", "const", "mismatch"),
+					chordjson.ObjectOf("type", "string", "const", "inconclusive"),
+				}),
+				"explanation", chordjson.ObjectOf("type", "string", "minLength", 1, "maxLength", 2000),
 			),
-			ConstrainedSampling: &bridge.ConstrainedSampling{Type: "json_schema", Strict: "prefer"},
-		},
+			"additionalProperties", false,
+		),
+		ConstrainedSampling: &bridge.ConstrainedSampling{Type: "json_schema", Strict: "prefer"},
 		Execute: func(_ context.Context, _ string, params map[string]any) (evals.CustomToolResult, error) {
 			return evals.CustomToolResult{Content: "Documentation audit submitted.", Details: params, Terminate: true}, nil
 		},

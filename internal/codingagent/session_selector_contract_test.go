@@ -176,9 +176,9 @@ func runSessionContracts(t *testing.T, cases []sessionContractCase) []sessionCon
 			c.pending.Progress = []sessionProgress{}
 		}
 		probes[i] = sessionContractProbe{
-			sessionOracleProbe: sessionOracleProbe{Theme: theme, Width: width, Current: fx[0], All: fx[1], CurrentPath: c.currentPath, Rename: !c.noRename, Bindings: c.bindings, Keys: append([]string{}, c.keys...)},
-			GlobalBindings:     c.global,
-			Pending:            c.pending,
+			Theme: theme, Width: width, Current: fx[0], All: fx[1], CurrentPath: c.currentPath, Rename: !c.noRename, Bindings: c.bindings, Keys: append([]string{}, c.keys...),
+			GlobalBindings: c.global,
+			Pending:        c.pending,
 		}
 	}
 	input, err := json.Marshal(probes)

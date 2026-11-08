@@ -141,8 +141,7 @@ func protocolNames() map[string]bool {
 			return
 		}
 		seen[t] = true
-		for i := range t.NumField() {
-			field := t.Field(i)
+		for field := range t.Fields() {
 			name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 			if name != "" && name != "-" {
 				names[name] = true

@@ -134,8 +134,8 @@ func (p *kitProbe) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 		return nil
 	}
 	return &TuiMouseDispatchResult{
-		TuiMouseEventResult: TuiMouseEventResult{Handled: true},
-		Target:              TuiMouseDispatchTarget{Component: p, OriginX: event.ScreenX - event.X, OriginY: event.ScreenY - event.Y, Width: event.Width, Height: event.Height},
+		Handled: true,
+		Target:  TuiMouseDispatchTarget{Component: p, OriginX: event.ScreenX - event.X, OriginY: event.ScreenY - event.Y, Width: event.Width, Height: event.Height},
 	}
 }
 
@@ -312,8 +312,8 @@ func terminalClicks(t *testing.T, c mouseCase, pauses []time.Duration) (mouseLog
 		dock = []StackChild{{Component: NewText("footer")}}
 	}
 	h.tui.SetLayoutRoot(NewVStack([]StackChild{
-		{Component: NewScrollView(NewText("doc"), ScrollViewOptions{Follow: "end", Primary: true}), StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)}},
-		{Component: NewVStack(dock, StackOptions{}), StackEntryOptions: StackEntryOptions{Grow: new(0), Shrink: new(1), MinSize: new(1)}},
+		{Component: NewScrollView(NewText("doc"), ScrollViewOptions{Follow: "end", Primary: true}), Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)},
+		{Component: NewVStack(dock, StackOptions{}), Grow: new(0), Shrink: new(1), MinSize: new(1)},
 	}, StackOptions{}))
 	h.start()
 	if !c.dock {

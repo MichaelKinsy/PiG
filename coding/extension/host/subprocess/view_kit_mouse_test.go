@@ -18,7 +18,7 @@ func (*mouseRecorder) Invalidate()         {}
 
 func (m *mouseRecorder) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult {
 	m.events = append(m.events, event)
-	return &tui.TuiMouseDispatchResult{TuiMouseEventResult: tui.TuiMouseEventResult{Handled: true}}
+	return &tui.TuiMouseDispatchResult{Handled: true}
 }
 
 // tui-alt-screen.ts handleMouseEvent hands a component the TuiMouseEvent as the terminal parsed it: an extension's mouse event reaches a

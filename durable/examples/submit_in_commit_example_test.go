@@ -35,14 +35,14 @@ type visitors struct {
 func TestExample34SubmitInCommit(t *testing.T) {
 	// The host's own state: who may message this conversation, and what they sent.
 	visitorsDoc := durable.DefineDoc(durable.DocDefinition[visitors]{
-		CommonDocDefinition: durable.CommonDocDefinition[visitors]{Kind: "app.visitors", Version: 1, Initial: func() visitors { return visitors{Muted: []string{}, Sent: []visitorMessage{}} }, CheckpointWhen: func(visitors, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
+		Kind: "app.visitors", Version: 1, Initial: func() visitors { return visitors{Muted: []string{}, Sent: []visitorMessage{}} }, CheckpointWhen: func(visitors, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial,
 	})
 
 	// A tool that waits until released, so messages arrive while the run works.
 	release := make(chan struct{})
 	build := &durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "build", Description: "Build the project", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: "build", Description: "Build the project", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			<-release
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "built"}}}, nil
