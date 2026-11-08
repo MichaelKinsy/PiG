@@ -46,6 +46,7 @@ func toolWithoutResultUpstreamCases() []toolWithoutResultCase {
 		{"should filter out tool calls without corresponding tool results", "qwen-token-plan", "qwen3.7-max", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:276
 		{"should filter out tool calls without corresponding tool results", "qwen-token-plan-individual", "qwen3.8-max", "", false, ""},
+		{"should filter out tool calls without corresponding tool results", "qwen-token-plan-individual-cn", "qwen3.8-max", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:284
 		{"should filter out tool calls without corresponding tool results", "qwen-token-plan-cn", "qwen3.7-max", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:292

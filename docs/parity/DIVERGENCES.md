@@ -3495,7 +3495,7 @@ Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 
 ## D255 `pig mcp list` sends the provider's token
 
-What: PiG's `mcp` command ports Pi main 4d72d05bc (`fix(coding-agent): send provider tokens in pi mcp list`), which is not in Pi 1.5.0. For a server with `auth.provider` (Radius, for example) `pig mcp list` sends the provider's `/login` token, read from the agent directory's `auth.json` and refreshed when expired, so a signed-in provider's server is no longer reported as needing sign-in. A provider without credentials gives no token and the server's 401 reports the sign-in. For such a server the hint reads `sign in with: /login <provider> in pig`, `--json` carries `authProvider` after `transport`, and `pig mcp login` and `pig mcp logout` fail with `MCP server "<name>" uses the credentials of provider "<provider>". Run /login <provider> in pig.` (Pi 1.5.0: no token, the `pig mcp login` hint, and "does not use OAuth").
+What: PiG's `mcp` command ports Pi main 4d72d05bc (`fix(coding-agent): send provider tokens in pi mcp list`), which is not in Pi 1.5.0. For a server with `auth.provider` (Radius, for example) `pig mcp list` sends the provider's `/login` token, read from the agent directory's `auth.json` and refreshed when expired, so a signed-in provider's server is no longer reported as needing sign-in. A provider without credentials gives no token and the server's 401 reports the sign-in. For such a server the hint reads `sign in with: /login <provider> in pig`, `--json` carries `authProvider` after `transport`, and `pig mcp login` and `pig mcp logout` fail with `MCP server "<name>" uses the credentials of provider "<provider>". Run "pig auth login <provider>".` and `Run "pig auth logout <provider>".` (Pi `9b9cb30a` replaced the `/login <provider> in pig` wording with the `pi auth login` and `pi auth logout` commands; Pi 1.5.0: no token, the `pig mcp login` hint, and "does not use OAuth").
 
 Why: The shell command built its connections without a token, so a server that takes the provider's token always looked signed out.
 
@@ -3828,3 +3828,112 @@ Call-site markers: `internal/codingagent/interactive_tree.go` (`navigateTree`), 
 Evidence: `TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap` (red without the hold: the editor painted during the navigation), `TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose`, `TestTreeDialogsOfOtherContextsNeverStartTheHold`, `TestTreeNavigationPaintsAnExtensionDialog` and `TestTreeNavigationPaintsAnExtensionOverlay` (`internal/codingagent/interactive_tree_frames_test.go`); scenario `tree/15-tree-navigation-no-stale-frame` (fails 42 of 119 sampled panes with `holdFrames` a no-op).
 
 Parity allowance: scenario `tree/15-tree-navigation-no-stale-frame` runs a `session_before_tree` handler that awaits 600 ms. Both programs end on the same pane (`output_equal`). PiG's pane, sampled every 10 ms from the choice until "Navigated to selected point" shows, never shows the old leaf with the prompt gone (`pig_no_stale_frames`); Pi's samples are not asserted, because Pi shows that pane throughout the await.
+
+## D350 OpenCode Zen and Go Claude models send per-message effort
+
+What: PiG's catalog generator (`internal/modelgen/providers/opencode.go`) gives OpenCode Zen and Go Claude models per-message effort and `block_binding: drop_block`, as Pi main does. Pi 1.5.0 sends neither. Ports Pi main 9ee7586a9 (`fix(ai): send drop_block for OpenCode Zen and Go Claude models`, #10954), which is not in Pi 1.5.0.
+
+Why: OpenCode serves these Claude models over an Anthropic-messages endpoint that needs the per-message effort and the drop_block binding to keep thinking blocks coherent across turns.
+
+Pi bug: 1.5.0 omits both for OpenCode Claude models.
+
+Scope: the OpenCode Zen and Go Claude records in the generated catalog.
+
+Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-07; PiG carried the change since 9fcb1c0790).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 9ee7586a9. Then the call-site marker and this record go.
+
+Call-site markers: `internal/modelgen/providers/opencode.go`.
+
+Evidence: `TestOpencodeModelGeneration` (`cmd/gen-models/opencode_model_generation_test.go`) and `TestCatalogGenerationMatchesPi` (golden re-recorded with 9ee7586a9 applied).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+
+## D351 Anthropic non-strict tool schemas keep root $defs
+
+What: PiG keeps a tool schema's root `$defs` and `definitions` when it sends the schema to an Anthropic Messages endpoint without strict mode, as Pi main does. Pi 1.5.0 strips them, which leaves dangling `$ref`s. Ports Pi main 4a6a58eb (`fix(ai): keep root $defs in Anthropic non-strict tool schemas`), which is not in Pi 1.5.0.
+
+Why: A `$ref` into a removed `$defs` makes Anthropic reject the tool definition.
+
+Pi bug: 1.5.0 drops root `$defs` in non-strict mode.
+
+Scope: the Anthropic non-strict tool schema path (`ai/anthropic.go`, `ai/anthropic_stream.go`, `ai/direct_simple.go`).
+
+Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-07; PiG carried the change since d3f6c2b6ff).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 4a6a58eb. Then the call-site marker and this record go.
+
+Call-site markers: `ai/anthropic.go`.
+
+Evidence: `TestAnthropicStrictToolSchemas` and `TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema` (`ai/anthropic_strict_tool_schema_upstream_test.go`, Pi's `anthropic-strict-tool-schema.test.ts`).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+
+## D352 Anthropic message threads
+
+What: PiG ports Anthropic message threads (`ai/anthropic_threads.go`): with a session id and cache retention other than none, requests continue from the previous reply and send only new messages, a rejected continue is resent in full as a new thread, and an endpoint that rejects threads turns them off for the session. `compat.supportsMessageThreads` overrides the default (on for provider `anthropic` on api.anthropic.com), and `StreamOptions.DisableContinuation` keeps a request off thread state (the cache warmer sets it). Pi 1.5.0 has none of this. Ports Pi main a758f3ae4 (`feat(ai): Anthropic message threads`, #11545), which is not in Pi 1.5.0.
+
+Why: Smaller requests and cache continuity on long Anthropic sessions.
+
+Pi bug: Not a Pi bug: a feature ahead of the pin.
+
+Scope: the Anthropic Messages request path, `agent/proxy.go` options, `internal/codingagent/cache_warmer.go`, `schemas/models.schema.json`.
+
+Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-07; PiG carried the change since 559eb57d05).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.
+
+Call-site markers: `ai/anthropic_threads.go`.
+
+Evidence: `TestAnthropicMessageThreadsCreateThenContinue` and the other `TestAnthropicMessageThreads*` cases (`ai/anthropic_message_threads_test.go`, Pi's `anthropic-message-threads.test.ts`).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+## D310 `/reload` and a session switch remove every extension overlay
+
+What: PiG ports Pi main 80d4d3c86 (`fix(coding-agent): remove all extension overlays on /reload and session switch`, #11853), which is not in Pi 1.5.0. `/reload` and a session switch remove every overlay an extension opened with `ctx.ui.custom({ overlay: true })`, hidden ones included, newest first, and dispose their components; pi's own overlays stay open. The extension's pending `custom()` call stays pending, as for an inline dialog. Pi 1.5.0 removed only the topmost overlay, so the lower ones stayed on screen and kept focus and input after the extension that opened them was gone.
+
+Why: An extension with two overlays open left the lower one on screen, taking input, after its extension had been replaced.
+
+Pi bug: 1.5.0 hides only the topmost overlay of the extension UI on reset (#11853).
+
+Scope: `InteractiveMode.removeExtensionOverlays` and the open-overlay list (`internal/codingagent/ext_ui_dialog_stack.go`, `ext_ui_custom.go`, `ext_ui_context.go` `RunRemoteOverlay`), called from `resetExtensionUIForReplacement` (`interactive_runtime.go`). Not affected: inline custom components, which the dialog stack already resets.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 80d4d3c86. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/ext_ui_dialog_stack.go` (`removeExtensionOverlays`), `internal/codingagent/interactive_runtime.go` (`resetExtensionUIForReplacement`).
+
+Evidence: `TestResetRemovesEveryExtensionOverlayButKeepsPisOwn` (`internal/codingagent/ext_ui_dialog_stack_test.go`, ports Pi's `interactive-mode-status.test.ts` "resetExtensionUI removes every extension overlay but keeps pi's own overlays").
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
+
+## D311 `ctrl+o` applies to user bash output shown while the agent is working
+
+What: PiG ports Pi main acd059b72 (`fix(coding-agent): apply ctrl+o to user bash output shown while the agent is working`, #11886, fixing #11875), which is not in Pi 1.5.0. The output of `!` and `!!` commands run while the agent works starts in the current expand state, stays in the pending-message area when a steering or follow-up message is queued, and moves into the chat when the run settles instead of on the next submitted message. Pi 1.5.0 started it collapsed, dropped it from the pending area whenever the queue display was rebuilt, and left it there until the next prompt.
+
+Why: `ctrl+o` did not expand the pending output, queueing a message made it disappear, and it stayed out of the transcript after the run.
+
+Pi bug: 1.5.0 loses and mis-expands pending user bash output (#11875).
+
+Scope: `InteractiveMode` pending user bash blocks (`internal/codingagent/interactive_turn.go`, `interactive_transcript.go` `updatePendingMessagesDisplay`, `interactive_events.go` agent settled, `interactive_rebind.go`, `interactive_editor.go` `setAllToolsExpanded`).
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains acd059b72. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/interactive_turn.go` (`handleBashCommand` expand state, `flushPendingBashBlocks`), `internal/codingagent/interactive_transcript.go` (`updatePendingMessagesDisplay`), `internal/codingagent/interactive_events.go` (agent settled).
+
+Evidence: `TestCtrlOExpandsUserBashOutputInThePendingArea`, `TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea`, `TestNewUserBashOutputStartsInTheCurrentExpandState`, `TestSettlingTheRunMovesUserBashOutputToTheChat`, `TestInteractiveBashDuringRunStaysPendingUntilTheRunSettles` (`internal/codingagent/interactive_pending_bash_test.go`, port Pi's `interactive-mode-status.test.ts` "InteractiveMode pending user bash output").
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
