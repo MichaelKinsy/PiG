@@ -3942,6 +3942,24 @@ Evidence: `TestLiveQuery*` (`chord/next/host/host_live_query_test.go`), `TestQue
 
 Parity allowance: Go limits are int64: Pi's fractional and absent limits cannot be written.
 
+## D470 p2 is its own Go module and binary under apps/p2, outside Stock and Piglets
+
+What: Pi's `apps/p2` (a self-hosted Durable UI: a server, one worker process per session, a web UI and a terminal UI) is ported as `apps/p2`, its own Go module `github.com/MichaelKinsy/PiG/apps/p2` that is a member of `go.work`, with its own binary `p2` (`p2 server`, `p2 worker`, `p2 tui`, ...). It is not part of the Stock `pig` binary, of PiG Standard or of any Piglet, and the root module's `go.mod` does not require it. Pi has no such boundary: `apps/p2` is one more workspace package of the Pi monorepo.
+
+Why: p2 is product behavior (a server, a UI, a Discord bridge), so AGENTS.md "Product-extension boundary" class 3 keeps it out of Stock. A separate module keeps Stock's `go.mod` and supply-chain surface free of a Discord client and SSH/QEMU glue, keeps Stock binaries from linking p2 by accident, and keeps `make lint`, `divergence-guard` and `ci-contracts` scanning the Stock module only.
+
+Owner decision: PLAN.md section 6 (specs/p2), approved by owner Michael Kinsy on 2026-11-07.
+
+Call-site markers: none (a layout decision); `apps/p2/go.mod` and the `use ./apps/p2` line of `go.work`.
+
+Evidence: `cd apps/p2 && go test ./...` in the workspace runs p2's own tests; the root module's tests do not import it.
+
+Parity allowance: none needed, p2's behavior is Pi's; only where its code lives differs.
+
+Remove when: Pi moves p2 out of the monorepo, or the owner folds p2 into another product.
+
+SCRUTINIZED:approved
+
 ## D502 `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go facets, not JavaScript values handed to one in-process host
 
 What: Pi's `testPlugin(dir, { kind, modules, stubs, ... })` (`packages/chord/src/node/plugins/testing.ts`) builds the plugin, evaluates it in the test's own process with live JavaScript `modules`, loads it with live `stubs` (`PluginFacet[]`) on one new in-memory host and returns that host. PiG's `TestPlugin` (`chord/nextnode/plugins/plugins_testing.go`) builds with the same `BuildFacet` and options and the same discovery, but a plugin evaluates only in the Node subprocess (AGENTS.md: no embedded JavaScript runtime; `docs/plan/chord-plugins-node-evaluator.md`), so: `Modules` are files the subprocess imports (the app's API as modules on disk, as a production host's `HostPackages`), not instances; a stub is a Go facet on a Go host (`TestPluginOptions.Stubs`, bridged to the plugin's host as `BridgedFacet` is, so it serves local types without keyed members) or a JavaScript module (`TestPluginOptions.Core`, which may also serve or contribute to registries and serve remote types); the result holds two hosts, the plugin's `NodeHost` (`TestedPlugin.Host`, reached through `NodeHost.Get` and `NodeHost.Hold`, the Go forms of `host.get` and `host.hold` for a local type) and the stubs' Go host (`TestedPlugin.Stubs`).
@@ -3999,3 +4017,40 @@ Call-site markers: `chord/nextnode/plugins/plugins_watcher_identity_other.go`.
 Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` states the identity on the systems tested; the build of the file is checked by `GOOS=dragonfly go vet ./chord/nextnode/plugins` (and netbsd, openbsd for the files that read a birth time).
 
 Parity allowance: none needed; no Pi test depends on an inode reused with no birth time.
+
+## D611 The TUI launcher runs the plugins' TUI facets in its own process: no sandbox worker, no bundle, no version, no swap
+
+What: Pi's `p2 tui` fetches the server's TUI bundle (`/__p2_tui` = {version, bundle}), runs it in a permission-dropped Node worker (tui-sandbox.ts / tui-bootstrap.ts), swaps the worker when the version changes (`client.reload`) and kills it on memory/hang. PiG compiles every plugin's TUI facet into the p2 executable (D473) and tui/host.StartClient runs the TuiRuntime on the launcher's owner loop. `/__p2_tui` answers `{"compiledIn":true}` (admission only). The launcher still owns terminal, credentials, transport and every C/K action; the runtime reaches the machine only through `TuiRuntime.OnGrant` (named actions, local confirmation) and the filtered terminal output.
+
+Owner rule applied (every designed-out row gets its INTENTION written and ported where one exists in PiG):
+
+| Pi test | Intention | PiG |
+|---|---|---|
+| isolation "fails clearly below Node 26.5.1" | refuse to run when isolation primitives are missing | designed out: nothing server-supplied executes, no Node. |
+| worker `newerPeerProtocol` (tui-worker-runtime.ts, chord.ts) | a server on a newer link protocol means this build is outdated, and the visitor learns it instead of a silent reconnect loop | PORTED: `link.ProtocolMismatchError` (the handshake's typed error; same text as before) and `host.NewerPeerProtocol(HostError)`; `Client` reports `OutdatedBuildMessage` through OnFailure and exits. Pi reloads the server's bundle into a fresh worker, which cannot exist here. TestAServerOnANewerLinkProtocolIsReportedAsAnOutdatedBuildNotRetriedForever, chord/next/link channel_test "closes the link on another protocol version" (typed error) |
+| isolation "terminal output admits only bounded complete allowed sequences" | the runtime's bytes cannot inject terminal control | ported as is (host/isolation_test.go) |
+| isolation "permissions drop precedes module evaluation; all machine escape attempts fail" + launcher "denies unknown capabilities, hides cookies" (1st/2nd part) | a server cannot make the launcher touch the machine, fetch or run code, or learn credentials beyond its own origin | TestLauncherDeniesUnknownCapabilitiesHidesCookiesAndNeverFetchesOrRunsTheCodeAServerAdvertises (hostile fake server records every path; only /__p2_tui and /chord; unknown actions denied without effect; cookie never in the runtime snapshot) |
+| isolation "sandbox close before readiness..." + launcher 3rd part "closes a preparing worker" | closing before ready ends cleanly, concurrent closes wait for one cleanup, terminal restored once | TestClosingBeforeTheLinkIsReadyEndsCleanlyAndConcurrentClosesWaitForOneCleanup |
+| isolation "kills huge V8 allocations and watchdog kills external allocations" | a runaway runtime cannot hold the visitor's terminal or machine hostage | PORTED PARTS: TestAStuckRuntimeCannotHoldTheTerminalHostageCloseStillRestoresIt (Close bounded by closeGrace = 3 s, Pi's request limit; terminal cleaned), TestAServerFrameBeyondTheBoundDropsTheLinkNotTheLauncher (frame bound). DESIGNED OUT: a compiled-in facet's memory use is not bounded by the launcher (one process) |
+| isolation "a crash reports its sanitized stack" | a crash is reported once, sanitized, bounded, terminal restored | TestACrashReportsItsSanitizedStackAPanicWhileRenderingAndInAnInputHandler (Client.run recovers panics on the owner loop: crash.go) |
+| launcher "changed server facet bundle swaps worker after readiness; invalid reload keeps the old version" | (a) a new version goes live only when ready, no blank screen; (b) an invalid new version keeps the old; (c) raw worker stdout/stderr and OSC never reach the terminal | (c) covered by the output-filter and crash tests. (a) PORTED as its intention: TestAServerPluginReloadWhileATUIClientIsAttachedKeepsItsLinkScreenAndDraftAndTheConversationKeepsWorking (a server-side plugin Reload, with changed revisions, while a TUI client is attached keeps its link, screen, session and unsent draft, and the conversation keeps working). The attached client cannot follow a changed facet (compiled in); a server that changes its link protocol is reported as outdated (row above). (b) DESIGNED OUT: compiled code is never invalid at load |
+| launcher "server-shipped TUI drives create/send, queues, stop, worker replacement and reconnect" | the `client.reload()` step: the visitor's unsent draft survives a replaced runtime | the replacement is designed out (nothing to replace: no new code can arrive); the rest ported (TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect, with the draft asserted before and across the reconnect) |
+| launcher admission "TUI admission matches web" | the TUI's server surface is admitted exactly as the web's | TestTUIAdmissionMatchesWebStrangersRefusedAssociatedOwnersAndShareGuestsAdmitted (bundle/version assertions replaced by "no code, no version is ever served") |
+| theme "launcher posts capabilities, preferences and terminal colors as data before activation and on change" | the runtime starts with the visitor's capabilities/preferences, later changes follow, terminal replies are consumed by the launcher | TestLauncherPostsCapabilitiesPreferencesAndTerminalColorsAsDataBeforeActivationAndOnChange (first frame drawn with the capabilities; client.go now applies capabilities, then preferences, then starts the runtime) |
+
+
+Go-only fixes found while porting: a data race on the access scope/link swap in client.go (owner-loop ownership); savePrefs keeps a binding in the form it arrived in (Pi); Close bounded; the focus-owner click hook (`TuiAltScreenOptions.ResolveMouseFocusTarget`, Pi's RuntimeAltScreen.resolveMouseFocusTarget).
+
+Why: PiG compiles every plugin into one executable (D473), so the server never ships TUI code; a sandbox worker with a permission drop, a bundle fetch and a swap protect against code that cannot arrive. What each Pi test protects is kept by the PiG test named in its row.
+
+Owner decision: approved by owner Michael Kinsy 2026-11-08 on condition that the newer-link-protocol report with its test land (it did: the `newerPeerProtocol` row).
+
+Call-site markers: `apps/p2/tui/host/client.go` (`StartClient`), `apps/p2/tui/host/crash.go`.
+
+Evidence: the tests named in the table, in `apps/p2/tui/host` (launcher_isolation_test.go, launcher_flow_test.go, launcher_remote_test.go, appearance_test.go, isolation_test.go) and `chord/next/link/channel_test.go`.
+
+Parity allowance: none beyond the rows above; every other Pi behavior of the launcher is kept.
+
+Remove when: facets are loaded from the server as code again (not planned).
+
+SCRUTINIZED:approved 2026-11-08
