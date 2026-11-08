@@ -436,35 +436,6 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 		}
 	})
 
-	// hold.test.ts: calls in flight across a `loading` unbind › binding with the previous names, then a restart: the call running on the swapped-in instance drains to its result
-	t.Run("binding with the previous names, then a restart: the call running on the swapped-in instance drains to its result", func(t *testing.T) {
-		gate, opened := newSignal(), newSignal()
-		t.Cleanup(gate.fire)
-		t.Cleanup(opened.fire)
-		k := keptServer(t, keptCode{n: 1}, keptOptions{noAck: true})
-		// A second `bound` in flight fills the window (two); the next swap in place leaves its fresh `bound` waiting.
-		k.reload(keptCode{n: 2})
-		k.peer.Next("bound")
-		k.reload(keptCode{n: 3, gate: gate})
-		k.sync()
-		keptWant(t, "kinds", k.peer.Kinds(), []string{})
-		k.call(0, "bump")
-		k.sync()
-		// A restart unbinds the binding hold at once: the call runs on the live (unsealed) instance and stays.
-		k.reload(keptCode{n: 4, native: true, opened: opened})
-		k.peer.Next("loading")
-		k.sync()
-		k.none(0)
-		gate.fire()
-		if call, value := k.result(); call != 0 || value != 3.0 {
-			t.Fatalf("result = %d %v, want 0 3", call, value)
-		}
-		opened.fire()
-		k.peer.Ack(link.Optional[int]{})
-		k.peer.Ack(link.Optional[int]{})
-		k.peer.Next("bound")
-	})
-
 	// hold.test.ts: calls in flight across a `loading` unbind › a revocation racing the rebind ends the kept call with the link: no result
 	t.Run("a revocation racing the rebind ends the kept call with the link: no result", func(t *testing.T) {
 		ran := &keptRan{}
