@@ -261,8 +261,11 @@ func nodeBodyFailure(cause error) (message, code string) {
 
 // nodeConnectionFailure is the message and code of the cause undici attaches to "fetch failed" for a failed connection: Node's
 // `connect ECONNREFUSED 127.0.0.1:8080` for a refused or unreachable dial and `getaddrinfo ENOTFOUND host` for a name that does not
-// resolve, and `connect ECONNRESET 127.0.0.1:8080` for a peer that resets the connection this request opened. It is empty for a failure with no
-// such Node counterpart.
+// resolve, and the socket errors undici's connection reports before the response headers: `write ECONNRESET` and `write EPIPE` for a request
+// the peer reset while it was written, `read ECONNRESET` for a reset while the response was awaited, and SocketError `other side closed`
+// (UND_ERR_SOCKET) for a connection the peer closed. A peer that resets on accept reaches the dial, the write or the read by timing, in Node
+// (libuv reports `connect ECONNRESET` when the reset arrives before the connect completes) as in Go. It is empty for a failure with no such
+// Node counterpart.
 func nodeConnectionFailure(cause error) (message, code string) {
 	if errors.Is(cause, errFetchBadPort) {
 		return "bad port", ""
@@ -270,13 +273,20 @@ func nodeConnectionFailure(cause error) (message, code string) {
 	if dns, ok := errors.AsType[*net.DNSError](cause); ok && dns.IsNotFound {
 		return "getaddrinfo ENOTFOUND " + dns.Name, "ENOTFOUND"
 	}
-	if reset, ok := errors.AsType[*freshConnectionReset](cause); ok {
-		return "connect ECONNRESET " + reset.remote.String(), "ECONNRESET"
-	}
-	if op, ok := errors.AsType[*net.OpError](cause); ok && op.Op == "dial" && op.Addr != nil {
-		if code = nodeerrno.ErrorCode(op.Err); code != "" {
-			return "connect " + code + " " + op.Addr.String(), code
+	if op, ok := errors.AsType[*net.OpError](cause); ok {
+		switch {
+		case op.Op == "dial" && op.Addr != nil:
+			if code = nodeerrno.ErrorCode(op.Err); code != "" {
+				return "connect " + code + " " + op.Addr.String(), code
+			}
+		// Node's read and write errors name the syscall and the code, not an address.
+		case op.Op == "write" && (errors.Is(op.Err, syscall.ECONNRESET) || errors.Is(op.Err, syscall.EPIPE)), op.Op == "read" && errors.Is(op.Err, syscall.ECONNRESET):
+			code = nodeerrno.ErrorCode(op.Err)
+			return op.Op + " " + code, code
 		}
+	}
+	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || errors.Is(cause, net.ErrClosed) {
+		return "other side closed", "UND_ERR_SOCKET"
 	}
 	return "", ""
 }

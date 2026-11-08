@@ -49,9 +49,16 @@ func TestOpenAISDKTransportErrorConnectionReset(t *testing.T) {
 			provider := newMatrixProvider(t, &GeneratedModel{ID: "fixture", Provider: "fixture", API: api}, "http://"+listener.Addr().String(), false)
 			defer func() { _ = provider.Close() }()
 			err = openAISDKStreamError(t, provider, StreamOptions{MaxRetries: new(0)})
-			// Node reports a connection the peer resets on accept as `connect ECONNRESET <addr>` (oracle: pinned pi-ai, three APIs).
-			if want := "Connection error.: connect ECONNRESET " + listener.Addr().String(); err == nil || err.Error() != want {
-				t.Fatalf("error=%v, want %q", err, want)
+			// A peer that resets on accept reaches the dial (`connect ECONNRESET <addr>`), the request write or the response read, by timing: the
+			// pinned pi-ai gives each of those, with the same text, for a Node-hosted and a Go-hosted server alike.
+			message := ""
+			if err != nil {
+				message = err.Error()
+			}
+			switch message {
+			case "Connection error.: connect ECONNRESET " + listener.Addr().String(), "Connection error.: write ECONNRESET", "Connection error.: write EPIPE", "Connection error.: read ECONNRESET":
+			default:
+				t.Fatalf("error=%v, want Connection error. with the reset on the connect, the write or the read", err)
 			}
 		})
 	}
