@@ -20,6 +20,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next-node/http/http.ts. The HTTP component (slice 10 §2; decisions "The HTTP core is a fetch
@@ -43,7 +46,10 @@ type HttpOptions struct {
 	Links *LinksOptions
 	// CloseTimeout is how long `Close` waits for running requests and closing sockets: 30 s by default (0).
 	CloseTimeout time.Duration
-	OnError      func(HttpError)
+	// Telemetry is the telemetry adapter (the host's): each routed request is a `chord.http` root span, its scope's `ctx` under
+	// it; a W3C `traceparent` is extracted only from a request a contributed relay verified. Nil: none.
+	Telemetry telemetry.TelemetryContext
+	OnError   func(HttpError)
 }
 
 // LinksOptions is the links endpoint's path and what it gives each socket (`maxPayload` 1 MiB by default).
@@ -443,7 +449,11 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 	}
 	answered := make(chan Answer, 1)
 	scope := make(chan struct{})
+	span := c.span(request, match, admitted)
 	rootCtx := chordctx.WithAbortSignal(c.base, controller)
+	if span != nil {
+		rootCtx = chordctx.WithTelemetry(rootCtx, span.Span())
+	}
 	go func() {
 		defer close(scope)
 		_, err := c.host.Root(func(ctx host.Ctx) (any, error) {
@@ -465,7 +475,64 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 			}
 		}
 	}()
-	return served{answer: <-answered, scope: scope}
+	answer := <-answered
+	if span != nil {
+		span.Span().SetAttributes(telemetry.SpanAttributes{telemetry.Attr("status", float64(answer.Status))})
+		if answer.Status >= 500 {
+			chordtelemetry.SpanFailed(span.Span(), "http_failed", fmt.Sprintf("status %d", answer.Status))
+		}
+		go func() {
+			<-scope
+			span.End()
+		}()
+	}
+	return served{answer: answer, scope: scope}
+}
+
+// traceHeaders are the bounds of the W3C trace headers: the relay forwards what the browser sent unless it strips them, so
+// they are bounded as a link's carrier is (review L2).
+var traceHeaders = map[string]int{"traceparent": 256, "tracestate": 512}
+
+// traceHeader is a W3C trace header of request, when present, within its bound and printable; otherwise none (ignored).
+func traceHeader(request Incoming, name string) (string, bool) {
+	value, ok := request.Header(name)
+	if !ok || jsstring.Length(value) > traceHeaders[name] {
+		return "", false
+	}
+	for _, r := range value {
+		if r < 0x20 || r > 0x7e {
+			return "", false
+		}
+	}
+	return value, true
+}
+
+// span is a routed request's `chord.http` span (its method and route pattern; its path never: it may carry ids or secrets): a
+// root of the adapter, or the child of a W3C `traceparent` (and its `tracestate`) of a request a contributed relay verified,
+// never a browser's; nil without an adapter that records.
+func (c *HttpComponent) span(request Incoming, match *RouteMatch, admitted *Admitted) *chordtelemetry.OpenSpan {
+	adapter := c.options.Telemetry
+	if adapter == nil || chordtelemetry.Untraced(adapter) {
+		return nil
+	}
+	attributes := telemetry.SpanAttributes{
+		telemetry.Attr("chord.host", chordtelemetry.HostAttribute(c.host.Address())),
+		telemetry.Attr("method", request.Method()),
+		telemetry.Attr("route", match.Pattern),
+	}
+	var traceparent string
+	var ok bool
+	if admitted.Provenance.Kind == ProvenanceRelayed {
+		traceparent, ok = traceHeader(request, "traceparent")
+	}
+	if !ok {
+		return chordtelemetry.NewOpenSpan(adapter, "chord.http", attributes)
+	}
+	carrier := telemetry.TelemetryCarrier{"traceparent": traceparent}
+	if tracestate, has := traceHeader(request, "tracestate"); has {
+		carrier["tracestate"] = tracestate
+	}
+	return chordtelemetry.NewOpenSpan(chordtelemetry.ParentOf(carrier, adapter), "chord.http", attributes)
 }
 
 // run runs the wraps and the route in the request's scope ctx, and makes its answer (a failure: a reported 500).
