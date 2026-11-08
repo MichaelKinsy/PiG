@@ -32,8 +32,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// toolResults are the tool result messages of a conversation view.
-func toolResults(view delta.JsonValue) []*delta.JsonObject {
+// terminalToolResults are the tool result messages of a conversation view.
+func terminalToolResults(view delta.JsonValue) []*delta.JsonObject {
 	var out []*delta.JsonObject
 	for _, entry := range list(object(view).Value("entries")) {
 		for _, message := range list(object(entry).Value("model")) {
@@ -91,18 +91,18 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		count := len(toolResults(view))
+		count := len(terminalToolResults(view))
 		serial++
 		if _, err := target.Call("send", delta.JsonObjectOf("text", prompt, "requestId", "terminal-"+string(rune('a'+serial))), p2test.Background); err != nil {
 			t.Fatal(err)
 		}
 		view, err = p2test.Until(target.Member("view"), func(view delta.JsonValue) bool {
-			return view != nil && len(toolResults(view)) > count && !running(view)
+			return view != nil && len(terminalToolResults(view)) > count && !running(view)
 		}, 60*time.Second)
 		if err != nil {
 			t.Fatal(err)
 		}
-		results := toolResults(view)
+		results := terminalToolResults(view)
 		return results[len(results)-1]
 	}
 	tool := func(command string, args ...string) string {
