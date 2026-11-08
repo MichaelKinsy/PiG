@@ -109,14 +109,14 @@ func TestPortsToolDefaultsPrivateListsPublicEndpointsFencesGuestsAndClosesOnArch
 	call := func(query string, target *host.Reference) *delta.JsonObject {
 		t.Helper()
 		view := until(target.Member("view"), func(value delta.JsonValue) bool { return value != nil })
-		count := len(toolResults(view, "ports"))
+		count := len(messageToolResults(view, "ports"))
 		serial++
 		_, err := target.Call("send", delta.JsonObjectOf("text", "ports "+query, "requestId", "ports-"+strconv.Itoa(serial)), p2test.Background)
 		must(err)
 		view = until(target.Member("view"), func(value delta.JsonValue) bool {
-			return len(toolResults(value, "ports")) > count && !running(value)
+			return len(messageToolResults(value, "ports")) > count && !running(value)
 		})
-		return toolResults(view, "ports")[len(toolResults(view, "ports"))-1]
+		return messageToolResults(view, "ports")[len(messageToolResults(view, "ports"))-1]
 	}
 	isError := func(result *delta.JsonObject) bool { return result.Value("isError") == true }
 	opened := call(`{"action":"open","port":5173,"name":"web"}`, chat)

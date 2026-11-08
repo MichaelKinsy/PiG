@@ -432,8 +432,8 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 	}
 	// Its bash ran in the worktree.
 	sub := f.hold(agent.Value("conversationId").(float64))
-	childView := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "bash")) > 0 })
-	if got := resultText(toolResults(childView, "bash")[0]); !regexp.MustCompile(`/worktree\s*$`).MatchString(got) {
+	childView := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return len(messageToolResults(v, "bash")) > 0 })
+	if got := resultText(messageToolResults(childView, "bash")[0]); !regexp.MustCompile(`/worktree\s*$`).MatchString(got) {
 		t.Errorf("pwd = %q", got)
 	}
 	sub.Release()
@@ -534,8 +534,8 @@ func TestSubagentTeamMessaging(t *testing.T) {
 	f.quiet(statuses)
 	f.send("subagent " + marshal(t, map[string]any{"action": "send", "name": "asker", "message": `team {"action":"answer","name":"first"}`}))
 	askerChat := f.hold(asker.Value("conversationId").(float64))
-	answered := f.until(askerChat.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "team")) >= 3 })
-	teamResults := toolResults(answered, "team")
+	answered := f.until(askerChat.Member("view"), func(v delta.JsonValue) bool { return len(messageToolResults(v, "team")) >= 3 })
+	teamResults := messageToolResults(answered, "team")
 	if !strings.Contains(resultText(teamResults[len(teamResults)-1]), "Echo: ") {
 		t.Errorf("the sibling's latest answer: %q", resultText(teamResults[len(teamResults)-1]))
 	}
@@ -543,8 +543,8 @@ func TestSubagentTeamMessaging(t *testing.T) {
 
 	// The main agent is not offered the tool.
 	f.send(`team {"action":"list"}`)
-	refused := f.until(view, func(v delta.JsonValue) bool { return len(toolResults(v, "team")) > 0 })
-	if toolResults(refused, "team")[0].Value("isError") != true {
+	refused := f.until(view, func(v delta.JsonValue) bool { return len(messageToolResults(v, "team")) > 0 })
+	if messageToolResults(refused, "team")[0].Value("isError") != true {
 		t.Error("the main agent was offered the team tool")
 	}
 	sibling.Release()
@@ -570,13 +570,13 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 	// subagent sends `subagent <args>` and waits for that call's result.
 	subagent := func(args map[string]any) *delta.JsonObject {
 		t.Helper()
-		count := len(toolResults(view0(f, view), "subagent"))
+		count := len(messageToolResults(view0(f, view), "subagent"))
 		sent++
 		if _, err := f.Chat.Call("send", delta.JsonObjectOf("text", "subagent "+marshal(t, args), "requestId", "codemode-"+itoa(sent)), p2test.Background); err != nil {
 			t.Fatal(err)
 		}
-		done := f.until(view, func(v delta.JsonValue) bool { return len(toolResults(v, "subagent")) > count })
-		results := toolResults(done, "subagent")
+		done := f.until(view, func(v delta.JsonValue) bool { return len(messageToolResults(v, "subagent")) > count })
+		results := messageToolResults(done, "subagent")
 		return results[len(results)-1]
 	}
 	// reported waits until name's answer was reported and the main agent's turn on it ended, so it cannot race a later send.
@@ -647,8 +647,8 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 		listed := f.until(children.Member("children"), func(v delta.JsonValue) bool { return f.childNamed(v, "coder") != nil })
 		coder := f.childNamed(listed, "coder")
 		sub := f.hold(coder.Value("conversationId").(float64))
-		childView := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "codemode")) > 0 })
-		ran := toolResults(childView, "codemode")[0]
+		childView := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return len(messageToolResults(v, "codemode")) > 0 })
+		ran := messageToolResults(childView, "codemode")[0]
 		if ran.Value("isError") != false {
 			t.Fatal(resultText(ran))
 		}
