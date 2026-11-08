@@ -806,7 +806,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/table-handle.ts` | `chord/next/store/table_handle.go` | ✅ |
 | `packages/chord/src/store/engine.ts` | `chord/next/store/engine.go` | ✅ |
 | `packages/chord/src/store/outbox.ts` | `chord/next/store/outbox.go` | ✅ |
-| `packages/chord/src/store/store.ts` | `chord/next/store/store.go` | ✅ |
+| `packages/chord/src/store/store.ts` | `chord/next/store/store.go (group commit S18 as enlist/runGroup; Pi's d7704516e int() key typing is TypeScript typing: designed out)` | ✅ |
 | `packages/chord/src/store/applier.ts` | `chord/next/store/applier.go` | ✅ |
 | `packages/chord/src/store/apply-batch.ts` | `chord/next/store/apply_batch.go` | ✅ |
 | `packages/chord/src/store/index.ts` | `(export barrel: the Go package exports the names directly. Each exported name of the list exists in package store: ArchivePart (ArchiveManifest is ManifestPart), Backend/SqliteBackend, expression builders (Add And ColumnRef Condition Coalesce Concat Expression Eq Gt Gte InArray IsNull Lt Lte Max Min Ne Not Or Prefix ReplacePrefix SetOf Sub When), ImportStore, JsonColumnOptions/Json, DecodeJsonl/EncodeJsonl, Outbox/OutboxCommit, ColumnRefs/Query, OpenStore/Store/StoreOptions, DefineTable/TableDefinition/TableOptions, EvolveTable/TableEditor, Page/PageOptions, CompareText, StoreWrite. Type-level only, designed out by the other D3 agents: Columns PutRowOf RowOf KeyOf PatchOf AddedColumn TableTailEditor TableOf Table)` | n/a |
@@ -1025,14 +1025,14 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/surfaces/theme-choice.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/surfaces/themes.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/surfaces/translations.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/sync/batch.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/sync/client.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/sync/files.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/sync/filesystem.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/sync/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/sync/lines.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/sync/remote.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/sync/state.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/sync/batch.ts` | `chord/sync/batch.go (D432)` | ✅ |
+| `packages/chord/src/sync/client.ts` | `chord/sync/client.go, chord/sync/scheduler.go` | ✅ |
+| `packages/chord/src/sync/files.ts` | `chord/sync/files.go (errors, not FileResult; not-found is fs.ErrNotExist)` | ✅ |
+| `packages/chord/src/sync/filesystem.ts` | `chord/sync/filesystem.go` | ✅ |
+| `packages/chord/src/sync/index.ts` | `(barrel: Go imports the package)` | n/a |
+| `packages/chord/src/sync/lines.ts` | `chord/sync/lines.go` | ✅ |
+| `packages/chord/src/sync/remote.ts` | `chord/sync/remote.go` | ✅ |
+| `packages/chord/src/sync/state.ts` | `chord/sync/state.go` | ✅ |
 | `packages/chord/src/telemetry-ingest/batch.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/telemetry-ingest/facet.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/telemetry-ingest/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
