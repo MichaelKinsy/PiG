@@ -69,17 +69,21 @@ func workerView(principal p2runtime.WorkerPrincipal, manager *host.Reference, se
 			_, err := manager.Call("releaseLeases", delta.JsonObjectOf("session", session, "generation", float64(generation)), ctx)
 			return err
 		})
-	forward := func(method string) contracts.MethodFunction {
+	forward := func(method string, keys ...string) contracts.MethodFunction {
 		return func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			if err := current(ctx); err != nil {
 				return nil, err
 			}
+			// Pi builds the call from the worker's identity and the method's own arguments: args never name another lease.
+			in := objectArgs(args)
 			call := delta.NewJsonObject(0)
 			call.Set("session", session)
 			call.Set("generation", float64(generation))
 			call.Set("incarnation", p2runtime.CtxOf(ctx).Incarnation())
-			for key, value := range objectArgs(args).All() {
-				call.Set(key, value)
+			for _, key := range keys {
+				if value := in.Value(key); value != nil {
+					call.Set(key, value)
+				}
 			}
 			return manager.Call(method, call, ctx)
 		}
@@ -123,7 +127,7 @@ func workerView(principal p2runtime.WorkerPrincipal, manager *host.Reference, se
 				return out, nil
 			}),
 		},
-		Methods: map[string]contracts.MethodFunction{"setLocations": forward("setLocations"), "call": forward("call")},
+		Methods: map[string]contracts.MethodFunction{"setLocations": forward("setLocations", "locations", "projects"), "call": forward("call", "location", "server", "tool", "args")},
 	}}
 }
 

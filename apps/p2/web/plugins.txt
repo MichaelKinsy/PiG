@@ -1,12 +1,17 @@
 agent
 artifacts
 chat
+chat-mode
 codemode
 coding-tools
+conversations
 devices
+discord
 envs
+history
 login
 logs
+mcp
 ports
 powershell
 prompt
@@ -15,6 +20,7 @@ sessions
 sharing
 subagents
 terminals
+voice
 web-shell
 workspace
 mcp

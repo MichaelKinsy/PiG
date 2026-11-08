@@ -1,16 +1,22 @@
 {
-	"version": "770bc2d170e601b9d04af338dad0097dd269d68d9d3ecc7364cf74ad8e6766d9",
-	"script": "app-IJDTTJ2W.js",
-	"style": "app-UITIPPHR.css",
+	"version": "125f835d7eec629038ebe76f07b903f60da4c22b407a627055a9ee356f808ad0",
+	"script": "app-HGAPGHB4.js",
+	"style": "app-R2MCWDKW.css",
 	"plugins": [
 		"agent",
 		"artifacts",
 		"chat",
+		"chat-mode",
 		"codemode",
 		"coding-tools",
+		"conversations",
+		"devices",
+		"discord",
 		"envs",
+		"history",
 		"login",
 		"logs",
+		"mcp",
 		"ports",
 		"powershell",
 		"prompt",
@@ -19,6 +25,7 @@
 		"sharing",
 		"subagents",
 		"terminals",
+		"voice",
 		"web-shell",
 		"workspace"
 	],
@@ -54,28 +61,28 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-IJDTTJ2W.js",
+			"name": "app-HGAPGHB4.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1236293,
-			"sha256": "74b0ca4d2bd67537a0c45854bd262fcd4d41779ea0b84962536ad61005810e60"
+			"size": 1319326,
+			"sha256": "fc0e96b187e5982d2baca8599bdc4c51171d982258b5abe3711ca0b326a040ab"
 		},
 		{
-			"name": "app-IJDTTJ2W.js.map",
+			"name": "app-HGAPGHB4.js.map",
 			"type": "application/json",
-			"size": 5833037,
-			"sha256": "0caa8afdb48503ff6141fc326fe3d06683cc3347a21938899bcf75625a310568"
+			"size": 6179128,
+			"sha256": "fee0153de69a5272b0313a2f70969e9747933ab2c92ce0499bf200a0a7b3ac96"
 		},
 		{
-			"name": "app-UITIPPHR.css",
+			"name": "app-R2MCWDKW.css",
 			"type": "text/css; charset=utf-8",
-			"size": 343956,
-			"sha256": "3e26d35ef8dc8449c864d321f4d33a64a258f44c5aee8713aea20d32ff31aabc"
+			"size": 347480,
+			"sha256": "a27958872c5073d5fcb30d7de1afdc2ed04e078cd6d4bd0137292f8b90a85c91"
 		},
 		{
-			"name": "app-UITIPPHR.css.map",
+			"name": "app-R2MCWDKW.css.map",
 			"type": "application/json",
-			"size": 618713,
-			"sha256": "5f72dc0bd7ba40029198887a19bc432ba6f2bc57948a19595fe785ea3381808e"
+			"size": 627138,
+			"sha256": "5f6814c1b1ef9afbb2ace7de22045ecb2f4bb751e6fa2edbeb0765369f178199"
 		},
 		{
 			"name": "ghostty-vt-BNEKZYKQ.wasm",
@@ -90,7 +97,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "4be9cb98d64a31d97e716ab5ab883cd30d47d6769e3357733aae37ddd2cabeb1",
+		"upstreamVersion": "c3b1a91077128bb4b0a5df5d888f99ca2073e6e47c4fb6baf9b626824f466984",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",

@@ -1151,9 +1151,6 @@ func WorkerCore(init WorkerInit, session SessionInit, liveness *Liveness, locati
 			checks := objectSelf.Registry(RelocationChecks.Registry)
 			return contracts.Implementation{Variant: "server", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 				"prepare": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					// First use in this section; then the method waits for Durable, whose publications need the host's loop.
-					_, _ = harnessOf()
-					chordctx.Suspend(ctx)
 					frozen := liveness.Freeze()
 					// Pi's async handler runs up to its first await inside the section that admits the call: the freeze. The
 					// inspection waits for the Durable session's line, whose commits publish in sections of this host's loop,
@@ -1175,9 +1172,6 @@ func WorkerCore(init WorkerInit, session SessionInit, liveness *Liveness, locati
 					return nil, nil
 				},
 				"relocate": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					// First use in this section; then the method waits for Durable, whose publications need the host's loop.
-					_, _ = harnessOf()
-					chordctx.Suspend(ctx)
 					if !liveness.Relocating() {
 						return nil, errors.New("Relocation was not prepared")
 					}

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Ports apps/p2/plugins/radius/relay-access.ts.
@@ -118,7 +119,11 @@ func isLoopbackLocal(request *http.Request) bool {
 
 // EncodeRelayUser is the header value of a Radius user; the brain writes it, so it is plain ASCII whatever the name.
 func EncodeRelayUser(user p2runtime.RelayUser) string {
-	encoded, _ := json.Marshal(map[string]string{"id": user.ID, "email": user.Email})
+	// JSON.stringify({ id, email }): the members in this order, `<`, `>` and `&` not escaped.
+	encoded, _ := chordjson.Marshal(struct {
+		ID    string `json:"id"`
+		Email string `json:"email"`
+	}{user.ID, user.Email})
 	return base64.RawURLEncoding.EncodeToString(encoded)
 }
 

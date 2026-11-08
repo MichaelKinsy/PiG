@@ -1,0 +1,30 @@
+{
+	"engines": [
+		{
+			"id": "supertonic",
+			"name": "Supertonic",
+			"streaming": false,
+			"sampleRate": 16000,
+			"voices": [
+				{ "id": "supertonic-F1", "name": "F1" },
+				{ "id": "supertonic-F2", "name": "F2" }
+			],
+			"languages": [
+				{ "id": "en", "name": "English" },
+				{ "id": "fr", "name": "Français" },
+				{ "id": "de", "name": "Deutsch" }
+			],
+			"defaultLanguage": "en"
+		},
+		{
+			"id": "kokoro",
+			"name": "Kokoro",
+			"streaming": false,
+			"sampleRate": 24000,
+			"voices": [{ "id": "kokoro-af_heart", "name": "Heart" }],
+			"languages": [{ "id": "en", "name": "English" }],
+			"defaultLanguage": "en"
+		}
+	],
+	"default": { "engine": "supertonic", "voice": "supertonic-F1", "language": "en" }
+}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // pi: packages/chord/src/next/remote/path.ts
@@ -19,7 +20,8 @@ type recordingHolder struct {
 	names map[*hostLink]string
 }
 
-func (*recordingHolder) kind() string { return "recording" }
+func (*recordingHolder) kind() string                  { return "recording" }
+func (*recordingHolder) span() telemetry.TelemetrySpan { return nil }
 func (h *recordingHolder) attach(l *hostLink) {
 	*h.log = append(*h.log, h.name+"@"+h.names[l])
 }

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Ports packages/chord/src/next-node/http/incoming.ts. What the component reads of a request: one shape for a request an
+// Ports packages/chord/src/node/http/incoming.ts. What the component reads of a request: one shape for a request an
 // app's own server hands to Fetch and for Chord's own listener, so admission, routing and the baseline have one
 // implementation.
 //

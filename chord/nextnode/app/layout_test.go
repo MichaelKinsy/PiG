@@ -37,8 +37,16 @@ func TestTheDataDirectoryMakesTheLayoutsDirectoriesTheDataDirectoryWithMode0700(
 		names = append(names, entry.Name())
 	}
 	sort.Strings(names)
-	if strings.Join(names, ",") != "logs,plugins,server,workers" {
+	if strings.Join(names, ",") != "cache,logs,plugins,server,workers" {
 		t.Fatalf("entries = %v", names)
+	}
+	if layout.Cache != filepath.Join(dataDir, "cache") || layout.WorkerBases != filepath.Join(dataDir, "cache", "workers") {
+		t.Fatalf("cache = %s, worker bases = %s", layout.Cache, layout.WorkerBases)
+	}
+	for _, dir := range []string{"cache", "cache/workers"} {
+		if mode := modeOf(t, filepath.Join(dataDir, dir)); mode != 0o700 {
+			t.Fatalf("%s mode = %o", dir, mode)
+		}
 	}
 	if mode := modeOf(t, dataDir); mode != 0o700 {
 		t.Fatalf("mode = %o", mode)

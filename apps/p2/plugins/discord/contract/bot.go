@@ -440,6 +440,7 @@ func (b *Bot) Typing(_ context.Context, channelID string) error {
 	if err != nil {
 		return err
 	}
+	//portlint:allow golifetime the request ends with its own HTTP call (Pi's un-awaited sendTyping)
 	go func() { _ = session.ChannelTyping(channelID) }()
 	return nil
 }

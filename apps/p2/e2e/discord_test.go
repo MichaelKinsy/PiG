@@ -164,14 +164,14 @@ func (d *fakeDiscord) Reply(_ context.Context, _, replyTo, text string, files []
 	return nil
 }
 func (d *fakeDiscord) UploadLimit(_ context.Context, _ string) (float64, error) { return 10 << 20, nil }
-func (d *fakeDiscord) Typing(_ context.Context, _ string) error                { return nil }
+func (d *fakeDiscord) Typing(_ context.Context, _ string) error                 { return nil }
 
 // ingressSessions is the relay's session port over the session's real worker; the batch's text is the fake model's
 // `send-file` prompt (it acts on exact prompts, not on a batch).
 type ingressSessions struct{ r *discordRig }
 
 func (s ingressSessions) Usable(context.Context, string) (string, error) { return "", nil }
-func (s ingressSessions) Lock(string) *p2runtime.SessionLock       { return nil }
+func (s ingressSessions) Lock(string) *p2runtime.SessionLock             { return nil }
 func (s ingressSessions) Deliver(_ context.Context, _ string, input discordcontract.Delivery) (discordcontract.Delivered, error) {
 	out := s.r.must("deliver", s.r.input(input.RequestID, "send-file", 0, ""))
 	return discordcontract.Delivered{Conversation: int(out.Value("conversation").(float64)), SubmissionID: out.Value("submissionId").(float64)}, nil
@@ -194,7 +194,9 @@ func (s ingressSessions) Read(_ context.Context, _, id string, offset, length in
 	}
 	return value.([]byte), nil
 }
-func (s ingressSessions) Command(context.Context, string, *int, string) (string, error) { return "", nil }
+func (s ingressSessions) Command(context.Context, string, *int, string) (string, error) {
+	return "", nil
+}
 
 type memoryState struct {
 	mu    sync.Mutex
@@ -255,8 +257,13 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 		if want := []any{delta.JsonObjectOf("id", "discord:500:0", "name", "notes.txt")}; !jsonEqual(data.Value("attachments"), want) {
 			t.Fatalf("attachments = %v", data.Value("attachments"))
 		}
-		if !strings.Contains(fmt.Sprint(entry.Value("model")), "<attachments>") {
-			t.Fatalf("the model message lacks the attachments: %v", entry.Value("model"))
+		// `entry.model[0].content` is an array of parts, one of them the text with the `<attachments>` block.
+		content := list(object(list(entry.Value("model"))[0]).Value("content"))
+		if !slices.ContainsFunc(content, func(part any) bool {
+			text, _ := object(part).Value("text").(string)
+			return object(part).Value("type") == "text" && strings.Contains(text, "<attachments>")
+		}) {
+			t.Fatalf("the model message lacks the attachments: %s", jsonText(entry.Value("model")))
 		}
 		mirror, err := p2test.HoldIn(f.Owner, filescontract.FileSummaries, delta.NewJsonObject(0), "owner")
 		if err != nil {

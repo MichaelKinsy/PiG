@@ -443,7 +443,12 @@ func serveConversation(params *delta.JsonObject, self host.Self) (contracts.Impl
 				}
 				// The live compaction tasks of this conversation, as its view shows them.
 				aborted := 0
-				if current := objectOf(view.Value()); current != nil {
+				// The view is followed from Durable, whose publications apply in the loop: read it there.
+				var current *delta.JsonObject
+				if err := host.InSection(ctx, func() { current = objectOf(view.Value()) }); err != nil {
+					return nil, err
+				}
+				if current != nil {
 					running := objectOf(objectOf(current.Value("docs")).Value("pi.live"))
 					tasks, _ := running.Value("compactions").([]any)
 					for _, each := range tasks {

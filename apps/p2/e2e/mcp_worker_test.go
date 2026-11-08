@@ -56,7 +56,7 @@ func TestMcpToolsInASessionsWorkerCodeModeScriptsCallThemAndToolSearchLoadsThemW
 	p2test.NoLeakedGoroutines(t)
 	node, err := exec.LookPath("node")
 	if err != nil {
-		t.Skip("node is not installed: the MCP fixture server is a Node program")
+		t.Fatalf("node is not installed (the MCP fixture server is a Node program): %v", err)
 	}
 	script, err := filepath.Abs("../plugins/mcp/testdata/mcp-server.mjs")
 	if err != nil {

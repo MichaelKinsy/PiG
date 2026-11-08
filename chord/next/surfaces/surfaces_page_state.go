@@ -112,6 +112,7 @@ func sameValue(a, b any) bool {
 // uncomparable value (a slice) is no `===` of anything: not the same.
 func comparableEqual(a, b any) (same bool) {
 	defer func() {
+		// upstream: packages/chord/src/surfaces/page-state.ts (`===` of an uncomparable value is no throw in JS: not the same)
 		if recover() != nil {
 			same = false
 		}
