@@ -24,3 +24,4 @@ plugins/drafts/contract.ts
 plugins/files/contract.ts
 plugins/sessions/contract.ts
 plugins/status/contract.ts
+plugins/models/contract.ts
