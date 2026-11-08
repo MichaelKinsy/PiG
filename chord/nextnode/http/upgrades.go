@@ -226,7 +226,9 @@ func (u *Upgrades) Socket(w nethttp.ResponseWriter, r *nethttp.Request, admissio
 			return nil, nil
 		}
 		// The scope sealed (its socket closed, the host closing) is no failure of the handler.
-		go func() { _, _ = h.Root(run, scope, host.RootOptions{Principal: admission.Principal, Anonymous: admission.Principal == nil}) }()
+		go func() {
+			_, _ = h.Root(run, scope, host.RootOptions{Principal: admission.Principal, Anonymous: admission.Principal == nil})
+		}()
 		u.recheck(connection)
 	})
 }
