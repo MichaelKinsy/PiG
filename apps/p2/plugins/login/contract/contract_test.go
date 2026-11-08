@@ -4,24 +4,30 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/oracle"
-	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Contract fingerprints equal Pi's (see sessions/contract).
-func TestLoginContractsFingerprintAsPi(t *testing.T) {
+// Contract fingerprints: p2's browser client is Pi's TypeScript and binds by fingerprint, so the Go contract must hash as the
+// contract Pi's module declares, name and version included (a mismatch is "contract_mismatch" on the wire and the Providers sheet
+// stays empty).
+func TestProviderLoginFingerprintsAsPi(t *testing.T) {
 	const module = "plugins/login/contract.ts"
-	pi := oracle.Fingerprints(t, module)
-	for name, contract := range map[string]*contracts.Contract{
-		"ProviderLogin": ProviderLogin,
-		"LoginService":  LoginService,
-	} {
-		want, ok := pi[module+"#"+name]
-		if !ok {
-			t.Errorf("%s: Pi exports no such contract", name)
-			continue
-		}
-		if contract.Name != want.Name || contract.Version != want.Version || contract.Fingerprint != want.Fingerprint {
-			t.Errorf("%s = {%s v%d %s}, Pi has {%s v%d %s}", name, contract.Name, contract.Version, contract.Fingerprint, want.Name, want.Version, want.Fingerprint)
-		}
+	want, ok := oracle.Fingerprints(t, module)[module+"#ProviderLogin"]
+	if !ok {
+		t.Fatal("Pi exports no ProviderLogin")
+	}
+	if ProviderLogin.Name != want.Name || ProviderLogin.Version != want.Version || ProviderLogin.Fingerprint != want.Fingerprint {
+		t.Errorf("ProviderLogin = {%s v%d %s}, Pi has {%s v%d %s}", ProviderLogin.Name, ProviderLogin.Version, ProviderLogin.Fingerprint, want.Name, want.Version, want.Fingerprint)
+	}
+}
+
+// The host-internal service hashes as Pi's too (its version and shape are part of the pairing with the server's own facets).
+func TestLoginServiceFingerprintsAsPi(t *testing.T) {
+	const module = "plugins/login/contract.ts"
+	want, ok := oracle.Fingerprints(t, module)[module+"#LoginService"]
+	if !ok {
+		t.Fatal("Pi exports no LoginService")
+	}
+	if LoginService.Name != want.Name || LoginService.Version != want.Version || LoginService.Fingerprint != want.Fingerprint {
+		t.Errorf("LoginService = {%s v%d %s}, Pi has {%s v%d %s}", LoginService.Name, LoginService.Version, LoginService.Fingerprint, want.Name, want.Version, want.Fingerprint)
 	}
 }
