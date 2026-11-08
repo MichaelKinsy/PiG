@@ -6,6 +6,7 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -137,6 +138,13 @@ type HelloMessage struct {
 	Calls       int
 }
 
+// CARRIER bounds a trace carrier: the most keys it has (Keys) and the longest key or value (Length), in UTF-16 units.
+var CARRIER = struct{ Keys, Length int }{Keys: 8, Length: 256}
+
+// NAME_LENGTH is the longest name a message carries (a type's, a host kind's): a relay records them in its spans
+// unparsed, so a peer cannot hand it an unbounded string (slice 9 review M1).
+const NAME_LENGTH = 256
+
 // HoldMessage holds an object. Principal is whom the hold acts for and Incarnation the origin's, read only on a parent
 // link; Chain is the instance ids of the activations waiting for this hold (Q5), read only on a trusted link; Limit
 // is the decoded limit per part of the link the hold was admitted on (Q2), read only on a parent link. Address is
@@ -153,6 +161,9 @@ type HoldMessage struct {
 	Incarnation string
 	Chain       []string
 	Limit       Optional[int]
+	// Trace is the caller's trace carrier (R5, slice 9): an adapter's opaque string record, bounded by CARRIER, printable
+	// ASCII only. nil is no carrier; an empty one is a carrier without keys.
+	Trace map[string]string
 }
 
 // ReleaseMessage releases a hold.
@@ -171,6 +182,7 @@ type CallMessage struct {
 	Method   int
 	Args     Part
 	Segments [][]byte
+	Trace    map[string]string
 	Old      bool
 }
 
@@ -415,13 +427,14 @@ func conforms(message Message) bool {
 		return typed.Protocol >= 0 && isUUID(typed.Incarnation) && typed.Calls >= 1
 	case *HoldMessage:
 		return validOrigin(typed.Origin) && typed.Hold >= 0 && typed.Version >= 1 && isHex16(typed.Fingerprint) && typed.Params != nil &&
+			jsstring.Length(typed.Type) <= NAME_LENGTH && jsstring.Length(typed.Address.Kind) <= NAME_LENGTH && validCarrier(typed.Trace) &&
 			(typed.Principal == nil || isString(typed.Principal.Value("kind"))) &&
 			(typed.Incarnation == "" || isUUID(typed.Incarnation)) && validIDs(typed.Chain) &&
 			(!typed.Limit.Ok || typed.Limit.Value >= 0)
 	case *ReleaseMessage:
 		return validOrigin(typed.Origin) && typed.Hold >= 0
 	case *CallMessage:
-		return validOrigin(typed.Origin) && typed.Call >= 0 && typed.Hold >= 0 && typed.Method >= 0
+		return validOrigin(typed.Origin) && typed.Call >= 0 && typed.Hold >= 0 && typed.Method >= 0 && validCarrier(typed.Trace)
 	case *AbortMessage:
 		return validOrigin(typed.Origin) && typed.Call >= 0
 	case *RetryMessage:
@@ -483,6 +496,31 @@ func conforms(message Message) bool {
 }
 
 func validOrigin(origin Optional[int]) bool { return !origin.Ok || origin.Value >= 1 }
+
+// validCarrier is the message schema's trace carrier: at most CARRIER.Keys keys, keys and values at most CARRIER.Length
+// long, of printable ASCII only (keys without spaces), as W3C's headers and Chord's adapters are, so no control
+// character becomes a stored trace or span id (review M2).
+func validCarrier(carrier map[string]string) bool {
+	if len(carrier) > CARRIER.Keys {
+		return false
+	}
+	for key, value := range carrier {
+		if key == "" || len(key) > CARRIER.Length || len(value) > CARRIER.Length {
+			return false
+		}
+		for index := 0; index < len(key); index++ {
+			if key[index] < 0x21 || key[index] > 0x7e {
+				return false
+			}
+		}
+		for index := 0; index < len(value); index++ {
+			if value[index] < 0x20 || value[index] > 0x7e {
+				return false
+			}
+		}
+	}
+	return true
+}
 
 func validIDs(ids []string) bool {
 	if len(ids) > CHAIN {

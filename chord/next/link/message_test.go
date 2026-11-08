@@ -173,7 +173,7 @@ func TestMessages(t *testing.T) {
 		t.Run("refuse an empty message, an unknown kind and trailing bytes", func(t *testing.T) {
 			release := encode(t, codec, &link.ReleaseMessage{Hold: 1})
 			trailing := append(append([]byte{}, release...), 0)
-			unknown := []byte{99}
+			unknown := []byte{63}
 			if codec == link.TextCodec {
 				trailing = append(append([]byte{}, release...), 0x20, 0x31)
 				unknown = []byte(`["?"]`)
