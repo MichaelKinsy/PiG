@@ -119,7 +119,8 @@ const (
 	socketClosedStatus = 2
 )
 
-// StartTerminal starts a terminal client; it fails when it cannot sign in or download, or Node is too old for the sandbox.
+// StartTerminal starts a terminal client; it fails when it cannot sign in or download, or Node is too old for the sandbox. Cancelling
+// ctx ends the client too (as Stop does), whenever it happens.
 func StartTerminal(ctx context.Context, options TerminalOptions) (*RunningTerminal, error) {
 	if options.Node == "" {
 		options.Node = os.Getenv("CHORD_TUI_NODE")
@@ -151,7 +152,7 @@ func StartTerminal(ctx context.Context, options TerminalOptions) (*RunningTermin
 	if err != nil {
 		return nil, err
 	}
-	launcher := newLauncher(base, token, options)
+	launcher := newLauncher(ctx, base, token, options)
 	if err := launcher.start(ctx); err != nil {
 		return nil, err
 	}
@@ -212,8 +213,8 @@ type Launcher struct {
 	restoreSig func()
 }
 
-func newLauncher(base *url.URL, token string, options TerminalOptions) *Launcher {
-	ctx, cancel := context.WithCancel(context.Background())
+func newLauncher(parent context.Context, base *url.URL, token string, options TerminalOptions) *Launcher {
+	ctx, cancel := context.WithCancel(parent)
 	return &Launcher{
 		base: base, token: token, options: options, term: options.Terminal, output: options.Terminal.Output(), client: options.Client,
 		ctx: ctx, cancel: cancel, events: make(chan func(), eventQueue), loopDone: make(chan struct{}), exited: make(chan int, 1),
