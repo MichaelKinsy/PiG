@@ -303,8 +303,8 @@ pkg:chord/.#StoreSelf::property:on::call:0	chord	undecidable	chord/next/host/hos
 pkg:chord/.#StoreSelf::property:on::call:1	chord	signature-mismatch	chord/next/host/host_routines.go#RoutineDeclarations.On
 pkg:chord/.#StoreSelf::property:onLive	chord	not-exercised	chord/next/host/host_routines.go#RoutineDeclarations.OnLive
 pkg:chord/.#StoreSelf::property:onLive::call:0	chord	not-exercised	chord/next/host/host_routines.go#RoutineDeclarations.OnLive
-pkg:chord/.#StoreSelf::property:query	chord	member-missing	chord/next/host/host_attempt.go#StoreSelf
-pkg:chord/.#StoreSelf::property:query::call:0	chord	member-missing	chord/next/host/host_attempt.go#StoreSelf
+pkg:chord/.#StoreSelf::property:query	chord	not-exercised	chord/next/host/host_attempt.go#StoreSelf.Query
+pkg:chord/.#StoreSelf::property:query::call:0	chord	undecidable	chord/next/host/host_attempt.go#StoreSelf.Query
 pkg:chord/.#StoreSelf::property:registry	chord	not-exercised	chord/next/host/host_attempt.go#Self.Registry
 pkg:chord/.#StoreSelf::property:registry::call:0	chord	undecidable	chord/next/host/host_attempt.go#Self.Registry
 pkg:chord/.#StoreSelf::property:retryOn	chord	not-exercised	chord/next/host/host_attempt.go#Self.RetryOn
@@ -558,14 +558,9 @@ pkg:chord/app#AppTimeouts	chord	no-go-symbol
 pkg:chord/app#AppWorkerKind	chord	no-go-symbol	
 pkg:chord/app#ArchiveManifest	chord	no-go-symbol	
 pkg:chord/app#EphemeralUser	chord	no-go-symbol	
-pkg:chord/app#FileInfo	chord	no-go-symbol	
-pkg:chord/app#FileWrite	chord	no-go-symbol	
-pkg:chord/app#Files	chord	no-go-symbol	
-pkg:chord/app#FilesCaps	chord	no-go-symbol	
-pkg:chord/app#FilesFolder	chord	no-go-symbol	
-pkg:chord/app#FolderEntry	chord	no-go-symbol	
-pkg:chord/app#FolderInfo	chord	no-go-symbol	
-pkg:chord/app#FolderListing	chord	no-go-symbol	
+pkg:chord/app#FileInfo	chord	not-exercised	chord/nextnode/app/files_index.go#FileInfo
+pkg:chord/app#FileWrite	chord	not-exercised	chord/nextnode/app/files_index.go#FileWrite
+pkg:chord/app#FolderEntry	chord	type-mismatch	chord/nextnode/app/files_index.go#FolderEntry
 pkg:chord/app#SESSION_COOKIE	chord	no-go-symbol	
 pkg:chord/app#Server	chord	no-go-symbol	
 pkg:chord/app#Server::call:0	chord	child-gap	
@@ -575,41 +570,28 @@ pkg:chord/app#Sessions	chord	no-go-symbol
 pkg:chord/app#SpaceSummary	chord	no-go-symbol	
 pkg:chord/app#WorkerInfo	chord	no-go-symbol	
 pkg:chord/app#WorkerOptions	chord	no-go-symbol	
-pkg:chord/app#copyFiles	chord	no-go-symbol	
-pkg:chord/app#copyFiles::call:0	chord	child-gap	
 pkg:chord/app#defineUsers	chord	no-go-symbol	
 pkg:chord/app#defineUsers::call:0	chord	child-gap	
 pkg:chord/app#ephemeralLoginFacet	chord	no-go-symbol	
 pkg:chord/app#ephemeralLoginFacet::call:0	chord	child-gap	
-pkg:chord/app#filesFacet	chord	no-go-symbol	
-pkg:chord/app#filesFacet::call:0	chord	child-gap	
 pkg:chord/app#inviteFacet	chord	no-go-symbol	
 pkg:chord/app#inviteFacet::call:0	chord	child-gap	
-pkg:chord/app#privateDirectory	chord	no-go-symbol	
-pkg:chord/app#privateDirectory::call:0	chord	child-gap	
-pkg:chord/app#privateStore	chord	no-go-symbol	
-pkg:chord/app#privateStore::call:0	chord	child-gap	
+pkg:chord/app#privateDirectory	chord	not-exercised	chord/nextnode/app/layout.go#PrivateDirectory
+pkg:chord/app#privateDirectory::call:0	chord	not-exercised	chord/nextnode/app/layout.go#PrivateDirectory
+pkg:chord/app#privateStore	chord	not-exercised	chord/nextnode/app/layout.go#PrivateStore
+pkg:chord/app#privateStore::call:0	chord	not-exercised	chord/nextnode/app/layout.go#PrivateStore
 pkg:chord/app#startServer	chord	no-go-symbol	
 pkg:chord/app#startServer::call:0	chord	child-gap	
 pkg:chord/app#startWorker	chord	no-go-symbol	
 pkg:chord/app#startWorker::call:0	chord	child-gap	
-pkg:chord/app/files#FileInfo	chord	no-go-symbol	
-pkg:chord/app/files#FileWrite	chord	no-go-symbol	
-pkg:chord/app/files#Files	chord	no-go-symbol	
-pkg:chord/app/files#FilesCaps	chord	no-go-symbol	
-pkg:chord/app/files#FilesFolder	chord	no-go-symbol	
-pkg:chord/app/files#FolderEntry	chord	no-go-symbol	
-pkg:chord/app/files#FolderInfo	chord	no-go-symbol	
-pkg:chord/app/files#FolderListing	chord	no-go-symbol	
+pkg:chord/app/files#FileInfo	chord	not-exercised	chord/nextnode/app/files_index.go#FileInfo
+pkg:chord/app/files#FileWrite	chord	not-exercised	chord/nextnode/app/files_index.go#FileWrite
+pkg:chord/app/files#FolderEntry	chord	type-mismatch	chord/nextnode/app/files_index.go#FolderEntry
 pkg:chord/app/files#SpaceSummary	chord	no-go-symbol	
-pkg:chord/app/files#copyFiles	chord	no-go-symbol	
-pkg:chord/app/files#copyFiles::call:0	chord	child-gap	
-pkg:chord/app/files#filesFacet	chord	no-go-symbol	
-pkg:chord/app/files#filesFacet::call:0	chord	child-gap	
-pkg:chord/app/files#privateDirectory	chord	no-go-symbol	
-pkg:chord/app/files#privateDirectory::call:0	chord	child-gap	
-pkg:chord/app/files#privateStore	chord	no-go-symbol	
-pkg:chord/app/files#privateStore::call:0	chord	child-gap	
+pkg:chord/app/files#privateDirectory	chord	not-exercised	chord/nextnode/app/layout.go#PrivateDirectory
+pkg:chord/app/files#privateDirectory::call:0	chord	not-exercised	chord/nextnode/app/layout.go#PrivateDirectory
+pkg:chord/app/files#privateStore	chord	not-exercised	chord/nextnode/app/layout.go#PrivateStore
+pkg:chord/app/files#privateStore::call:0	chord	not-exercised	chord/nextnode/app/layout.go#PrivateStore
 pkg:chord/http#Authenticator	chord	child-gap	chord/nextnode/http/authenticate.go#Authenticator
 pkg:chord/http#Authenticator::call:0	chord	signature-mismatch	chord/nextnode/http/authenticate.go#Authenticator
 pkg:chord/http#CookieOptions	chord	type-mismatch	chord/nextnode/http/cookies.go#CookieOptions
@@ -793,181 +775,117 @@ pkg:chord/surfaces#tuiSurface	chord	no-go-symbol
 pkg:chord/surfaces#tuiSurface::call:0	chord	child-gap	
 pkg:chord/surfaces#webSurface	chord	no-go-symbol	
 pkg:chord/surfaces#webSurface::call:0	chord	child-gap	
-pkg:chord/sync#APPLY_BYTES	chord	no-go-symbol	
-pkg:chord/sync#BATCH_BYTES	chord	no-go-symbol	
-pkg:chord/sync#BatchInfo	chord	no-go-symbol	
+pkg:chord/sync#APPLY_BYTES	chord	not-exercised	chord/sync/client.go#ApplyBytes
+pkg:chord/sync#BATCH_BYTES	chord	not-exercised	chord/sync/client.go#BatchBytes
 pkg:chord/sync#FileResult	chord	no-go-symbol	
-pkg:chord/sync#FileSyncStateStore	chord	no-go-symbol	
-pkg:chord/sync#FileSyncStateStore::construct:0	chord	child-gap	
-pkg:chord/sync#FileSyncStateStore::property:delete	chord	child-gap	
-pkg:chord/sync#FileSyncStateStore::property:delete::call:0	chord	child-gap	
-pkg:chord/sync#FileSyncStateStore::property:get	chord	child-gap	
-pkg:chord/sync#FileSyncStateStore::property:get::call:0	chord	child-gap	
-pkg:chord/sync#FileSyncStateStore::property:set	chord	child-gap	
-pkg:chord/sync#FileSyncStateStore::property:set::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote	chord	no-go-symbol	
-pkg:chord/sync#FileSystemSyncRemote::construct:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:deleteSnapshots	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:deleteSnapshots::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:foldBatches	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:foldBatches::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:getBatch	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:getBatch::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:getMeta	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:getMeta::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:getSnapshot	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:getSnapshot::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:list	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:list::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:putBatch	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:putBatch::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:putMeta	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:putMeta::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:putSnapshot	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:putSnapshot::call:0	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:sessions	chord	child-gap	
-pkg:chord/sync#FileSystemSyncRemote::property:sessions::call:0	chord	child-gap	
-pkg:chord/sync#FlushScheduler	chord	no-go-symbol	
-pkg:chord/sync#FlushScheduler::construct:0	chord	child-gap	
-pkg:chord/sync#FlushScheduler::property:close	chord	child-gap	
-pkg:chord/sync#FlushScheduler::property:close::call:0	chord	child-gap	
-pkg:chord/sync#FlushScheduler::property:notify	chord	child-gap	
-pkg:chord/sync#FlushScheduler::property:notify::call:0	chord	child-gap	
-pkg:chord/sync#FlushSchedulerOptions	chord	no-go-symbol	
-pkg:chord/sync#HistoryUnavailableError	chord	no-go-symbol	
-pkg:chord/sync#HistoryUnavailableError::construct:0	chord	child-gap	
-pkg:chord/sync#HistoryUnavailableError::property:cause	chord	child-gap	
-pkg:chord/sync#HistoryUnavailableError::property:message	chord	child-gap	
-pkg:chord/sync#HistoryUnavailableError::property:name	chord	child-gap	
-pkg:chord/sync#HistoryUnavailableError::property:stack	chord	child-gap	
+pkg:chord/sync#FileSystemSyncRemote	chord	child-gap	chord/sync/filesystem.go#FileSystemSyncRemote
+pkg:chord/sync#FileSystemSyncRemote::property:deleteSnapshots	chord	not-exercised	chord/sync/filesystem.go#FileSystemSyncRemote.DeleteSnapshots
+pkg:chord/sync#FileSystemSyncRemote::property:deleteSnapshots::call:0	chord	not-exercised	chord/sync/filesystem.go#FileSystemSyncRemote.DeleteSnapshots
+pkg:chord/sync#FileSystemSyncRemote::property:foldBatches	chord	not-exercised	chord/sync/filesystem.go#FileSystemSyncRemote.FoldBatches
+pkg:chord/sync#FileSystemSyncRemote::property:foldBatches::call:0	chord	not-exercised	chord/sync/filesystem.go#FileSystemSyncRemote.FoldBatches
+pkg:chord/sync#FileSystemSyncRemote::property:getSnapshot	chord	not-exercised	chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot
+pkg:chord/sync#FileSystemSyncRemote::property:getSnapshot::call:0	chord	not-exercised	chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot
+pkg:chord/sync#FileSystemSyncRemote::property:putSnapshot	chord	not-exercised	chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot
+pkg:chord/sync#FileSystemSyncRemote::property:putSnapshot::call:0	chord	not-exercised	chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot
+pkg:chord/sync#FlushSchedulerOptions	chord	type-mismatch	chord/sync/scheduler.go#FlushSchedulerOptions
+pkg:chord/sync#HistoryUnavailableError	chord	child-gap	chord/sync/remote.go#HistoryUnavailableError
+pkg:chord/sync#HistoryUnavailableError::property:message	chord	not-exercised	chord/sync/remote.go#HistoryUnavailableError.Error
 pkg:chord/sync#JsonObject	chord	undecidable	chord/next/documents/definition.go#JsonObject
-pkg:chord/sync#LOG_START	chord	no-go-symbol	
-pkg:chord/sync#LOG_VERSION	chord	no-go-symbol	
-pkg:chord/sync#LocalCopy	chord	no-go-symbol	
-pkg:chord/sync#LogFormatError	chord	no-go-symbol	
-pkg:chord/sync#LogFormatError::construct:0	chord	child-gap	
-pkg:chord/sync#LogFormatError::property:cause	chord	child-gap	
-pkg:chord/sync#LogFormatError::property:message	chord	child-gap	
-pkg:chord/sync#LogFormatError::property:name	chord	child-gap	
-pkg:chord/sync#LogFormatError::property:stack	chord	child-gap	
-pkg:chord/sync#OutboxUnavailableError	chord	no-go-symbol	
-pkg:chord/sync#OutboxUnavailableError::construct:0	chord	child-gap	
-pkg:chord/sync#OutboxUnavailableError::property:cause	chord	child-gap	
-pkg:chord/sync#OutboxUnavailableError::property:message	chord	child-gap	
-pkg:chord/sync#OutboxUnavailableError::property:name	chord	child-gap	
-pkg:chord/sync#OutboxUnavailableError::property:stack	chord	child-gap	
-pkg:chord/sync#PutBatchResult	chord	no-go-symbol	
-pkg:chord/sync#RemoteHistory	chord	no-go-symbol	
-pkg:chord/sync#RemoteListing	chord	no-go-symbol	
-pkg:chord/sync#SessionChanges	chord	no-go-symbol	
-pkg:chord/sync#SessionSummary	chord	no-go-symbol	
-pkg:chord/sync#SessionSyncMaintenance	chord	no-go-symbol	
-pkg:chord/sync#SessionSyncMaintenance::property:deleteSnapshots	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:deleteSnapshots::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:foldBatches	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:foldBatches::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:getBatch	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:getBatch::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:getMeta	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:getMeta::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:getSnapshot	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:getSnapshot::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:list	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:list::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:putBatch	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:putBatch::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:putMeta	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:putMeta::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:putSnapshot	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:putSnapshot::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:sessions	chord	child-gap	
-pkg:chord/sync#SessionSyncMaintenance::property:sessions::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncStore	chord	no-go-symbol	
-pkg:chord/sync#SessionSyncStore::property:getBatch	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:getBatch::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:getMeta	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:getMeta::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:getSnapshot	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:getSnapshot::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:list	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:list::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:putBatch	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:putBatch::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:putMeta	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:putMeta::call:0	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:sessions	chord	child-gap	
-pkg:chord/sync#SessionSyncStore::property:sessions::call:0	chord	child-gap	
-pkg:chord/sync#SyncBody	chord	no-go-symbol	
-pkg:chord/sync#SyncFileInfo	chord	no-go-symbol	
-pkg:chord/sync#SyncFileReader	chord	no-go-symbol	
-pkg:chord/sync#SyncFileReader::property:close	chord	child-gap	
-pkg:chord/sync#SyncFileReader::property:close::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileReader::property:read	chord	child-gap	
-pkg:chord/sync#SyncFileReader::property:read::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem	chord	no-go-symbol	
-pkg:chord/sync#SyncFileSystem::property:appendFile	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:appendFile::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:createDir	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:createDir::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:joinPath	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:joinPath::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:listDir	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:listDir::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:openBinaryReader	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:openBinaryReader::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:readBinaryFile	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:readBinaryFile::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:readTextFile	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:readTextFile::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:remove	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:remove::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:renameFile	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:renameFile::call:0	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:writeFile	chord	child-gap	
-pkg:chord/sync#SyncFileSystem::property:writeFile::call:0	chord	child-gap	
-pkg:chord/sync#SyncState	chord	no-go-symbol	
-pkg:chord/sync#SyncStateStore	chord	no-go-symbol	
-pkg:chord/sync#SyncStateStore::property:get	chord	child-gap	
-pkg:chord/sync#SyncStateStore::property:get::call:0	chord	child-gap	
-pkg:chord/sync#SyncStateStore::property:set	chord	child-gap	
-pkg:chord/sync#SyncStateStore::property:set::call:0	chord	child-gap	
-pkg:chord/sync#UnsyncedCommitsError	chord	no-go-symbol	
-pkg:chord/sync#UnsyncedCommitsError::construct:0	chord	child-gap	
-pkg:chord/sync#UnsyncedCommitsError::property:cause	chord	child-gap	
-pkg:chord/sync#UnsyncedCommitsError::property:message	chord	child-gap	
-pkg:chord/sync#UnsyncedCommitsError::property:name	chord	child-gap	
-pkg:chord/sync#UnsyncedCommitsError::property:stack	chord	child-gap	
-pkg:chord/sync#UploadResult	chord	no-go-symbol	
-pkg:chord/sync#checkSessionId	chord	no-go-symbol	
-pkg:chord/sync#checkSessionId::call:0	chord	child-gap	
-pkg:chord/sync#decodeBatch	chord	no-go-symbol	
-pkg:chord/sync#decodeBatch::call:0	chord	child-gap	
-pkg:chord/sync#decodeBatchLines	chord	no-go-symbol	
-pkg:chord/sync#decodeBatchLines::call:0	chord	child-gap	
-pkg:chord/sync#decodeLogLine	chord	no-go-symbol	
-pkg:chord/sync#decodeLogLine::call:0	chord	child-gap	
-pkg:chord/sync#decodeSnapshot	chord	no-go-symbol	
-pkg:chord/sync#decodeSnapshot::call:0	chord	child-gap	
-pkg:chord/sync#encodeBatch	chord	no-go-symbol	
-pkg:chord/sync#encodeBatch::call:0	chord	child-gap	
-pkg:chord/sync#encodeLogLine	chord	no-go-symbol	
-pkg:chord/sync#encodeLogLine::call:0	chord	child-gap	
-pkg:chord/sync#encodeSnapshot	chord	no-go-symbol	
-pkg:chord/sync#encodeSnapshot::call:0	chord	child-gap	
-pkg:chord/sync#foldSession	chord	no-go-symbol	
-pkg:chord/sync#foldSession::call:0	chord	child-gap	
-pkg:chord/sync#pullSession	chord	no-go-symbol	
-pkg:chord/sync#pullSession::call:0	chord	child-gap	
-pkg:chord/sync#readOutbox	chord	no-go-symbol	
-pkg:chord/sync#readOutbox::call:0	chord	child-gap	
-pkg:chord/sync#remoteHead	chord	no-go-symbol	
-pkg:chord/sync#remoteHead::call:0	chord	child-gap	
-pkg:chord/sync#remoteHistory	chord	no-go-symbol	
-pkg:chord/sync#remoteHistory::call:0	chord	child-gap	
-pkg:chord/sync#storeHead	chord	no-go-symbol	
-pkg:chord/sync#storeHead::call:0	chord	child-gap	
-pkg:chord/sync#uploadSession	chord	no-go-symbol	
-pkg:chord/sync#uploadSession::call:0	chord	child-gap	
+pkg:chord/sync#LOG_VERSION	chord	not-exercised	chord/sync/lines.go#LogVersion
+pkg:chord/sync#LocalCopy	chord	type-mismatch	chord/sync/client.go#LocalCopy
+pkg:chord/sync#LogFormatError	chord	child-gap	chord/sync/lines.go#LogFormatError
+pkg:chord/sync#LogFormatError::construct:0	chord	no-go-symbol	chord/sync/lines.go#LogFormatError
+pkg:chord/sync#LogFormatError::property:cause	chord	not-exercised	chord/sync/lines.go#LogFormatError.Cause
+pkg:chord/sync#LogFormatError::property:message	chord	not-exercised	chord/sync/lines.go#LogFormatError.Message
+pkg:chord/sync#OutboxUnavailableError	chord	child-gap	chord/sync/client.go#OutboxUnavailableError
+pkg:chord/sync#OutboxUnavailableError::property:message	chord	not-exercised	chord/sync/client.go#OutboxUnavailableError.Message
+pkg:chord/sync#SessionSyncMaintenance	chord	child-gap	chord/sync/remote.go#SessionSyncMaintenance
+pkg:chord/sync#SessionSyncMaintenance::property:deleteSnapshots	chord	not-exercised	chord/sync/remote.go#SessionSyncMaintenance.DeleteSnapshots
+pkg:chord/sync#SessionSyncMaintenance::property:deleteSnapshots::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncMaintenance.DeleteSnapshots
+pkg:chord/sync#SessionSyncMaintenance::property:foldBatches	chord	not-exercised	chord/sync/remote.go#SessionSyncMaintenance.FoldBatches
+pkg:chord/sync#SessionSyncMaintenance::property:foldBatches::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncMaintenance.FoldBatches
+pkg:chord/sync#SessionSyncMaintenance::property:getBatch	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetBatch
+pkg:chord/sync#SessionSyncMaintenance::property:getBatch::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetBatch
+pkg:chord/sync#SessionSyncMaintenance::property:getMeta	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetMeta
+pkg:chord/sync#SessionSyncMaintenance::property:getMeta::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetMeta
+pkg:chord/sync#SessionSyncMaintenance::property:getSnapshot	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetSnapshot
+pkg:chord/sync#SessionSyncMaintenance::property:getSnapshot::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetSnapshot
+pkg:chord/sync#SessionSyncMaintenance::property:putBatch	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutBatch
+pkg:chord/sync#SessionSyncMaintenance::property:putBatch::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutBatch
+pkg:chord/sync#SessionSyncMaintenance::property:putMeta	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutMeta
+pkg:chord/sync#SessionSyncMaintenance::property:putMeta::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutMeta
+pkg:chord/sync#SessionSyncMaintenance::property:putSnapshot	chord	not-exercised	chord/sync/remote.go#SessionSyncMaintenance.PutSnapshot
+pkg:chord/sync#SessionSyncMaintenance::property:putSnapshot::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncMaintenance.PutSnapshot
+pkg:chord/sync#SessionSyncMaintenance::property:sessions	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.Sessions
+pkg:chord/sync#SessionSyncMaintenance::property:sessions::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.Sessions
+pkg:chord/sync#SessionSyncStore	chord	child-gap	chord/sync/remote.go#SessionSyncStore
+pkg:chord/sync#SessionSyncStore::property:getBatch	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetBatch
+pkg:chord/sync#SessionSyncStore::property:getBatch::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetBatch
+pkg:chord/sync#SessionSyncStore::property:getMeta	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetMeta
+pkg:chord/sync#SessionSyncStore::property:getMeta::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetMeta
+pkg:chord/sync#SessionSyncStore::property:getSnapshot	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetSnapshot
+pkg:chord/sync#SessionSyncStore::property:getSnapshot::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetSnapshot
+pkg:chord/sync#SessionSyncStore::property:putBatch	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutBatch
+pkg:chord/sync#SessionSyncStore::property:putBatch::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutBatch
+pkg:chord/sync#SessionSyncStore::property:putMeta	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutMeta
+pkg:chord/sync#SessionSyncStore::property:putMeta::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutMeta
+pkg:chord/sync#SessionSyncStore::property:sessions	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.Sessions
+pkg:chord/sync#SessionSyncStore::property:sessions::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.Sessions
+pkg:chord/sync#SyncBody	chord	undecidable	chord/sync/batch.go#SyncBody
+pkg:chord/sync#SyncFileInfo	chord	not-exercised	chord/sync/files.go#SyncFileInfo
+pkg:chord/sync#SyncFileReader	chord	not-exercised	chord/sync/files.go#SyncFileReader
+pkg:chord/sync#SyncFileReader::property:close	chord	not-exercised	chord/sync/files.go#SyncFileReader.Close
+pkg:chord/sync#SyncFileReader::property:close::call:0	chord	not-exercised	chord/sync/files.go#SyncFileReader.Close
+pkg:chord/sync#SyncFileReader::property:read	chord	not-exercised	chord/sync/files.go#SyncFileReader.Read
+pkg:chord/sync#SyncFileReader::property:read::call:0	chord	undecidable	chord/sync/files.go#SyncFileReader.Read
+pkg:chord/sync#SyncFileSystem	chord	not-exercised	chord/sync/files.go#SyncFileSystem
+pkg:chord/sync#SyncFileSystem::property:appendFile	chord	not-exercised	chord/sync/files.go#SyncFileSystem.AppendFile
+pkg:chord/sync#SyncFileSystem::property:appendFile::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.AppendFile
+pkg:chord/sync#SyncFileSystem::property:createDir	chord	not-exercised	chord/sync/files.go#SyncFileSystem.CreateDir
+pkg:chord/sync#SyncFileSystem::property:createDir::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.CreateDir
+pkg:chord/sync#SyncFileSystem::property:joinPath	chord	not-exercised	chord/sync/files.go#SyncFileSystem.JoinPath
+pkg:chord/sync#SyncFileSystem::property:joinPath::call:0	chord	undecidable	chord/sync/files.go#SyncFileSystem.JoinPath
+pkg:chord/sync#SyncFileSystem::property:listDir	chord	not-exercised	chord/sync/files.go#SyncFileSystem.ListDir
+pkg:chord/sync#SyncFileSystem::property:listDir::call:0	chord	undecidable	chord/sync/files.go#SyncFileSystem.ListDir
+pkg:chord/sync#SyncFileSystem::property:openBinaryReader	chord	not-exercised	chord/sync/files.go#SyncFileSystem.OpenBinaryReader
+pkg:chord/sync#SyncFileSystem::property:openBinaryReader::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.OpenBinaryReader
+pkg:chord/sync#SyncFileSystem::property:readBinaryFile	chord	not-exercised	chord/sync/files.go#SyncFileSystem.ReadBinaryFile
+pkg:chord/sync#SyncFileSystem::property:readBinaryFile::call:0	chord	undecidable	chord/sync/files.go#SyncFileSystem.ReadBinaryFile
+pkg:chord/sync#SyncFileSystem::property:readTextFile	chord	not-exercised	chord/sync/files.go#SyncFileSystem.ReadTextFile
+pkg:chord/sync#SyncFileSystem::property:readTextFile::call:0	chord	undecidable	chord/sync/files.go#SyncFileSystem.ReadTextFile
+pkg:chord/sync#SyncFileSystem::property:remove	chord	not-exercised	chord/sync/files.go#SyncFileSystem.Remove
+pkg:chord/sync#SyncFileSystem::property:remove::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.Remove
+pkg:chord/sync#SyncFileSystem::property:renameFile	chord	not-exercised	chord/sync/files.go#SyncFileSystem.RenameFile
+pkg:chord/sync#SyncFileSystem::property:renameFile::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.RenameFile
+pkg:chord/sync#SyncFileSystem::property:writeFile	chord	not-exercised	chord/sync/files.go#SyncFileSystem.WriteFile
+pkg:chord/sync#SyncFileSystem::property:writeFile::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.WriteFile
+pkg:chord/sync#SyncStateStore	chord	not-exercised	chord/sync/client.go#SyncStateStore
+pkg:chord/sync#SyncStateStore::property:get	chord	not-exercised	chord/sync/client.go#SyncStateStore.Get
+pkg:chord/sync#SyncStateStore::property:get::call:0	chord	not-exercised	chord/sync/client.go#SyncStateStore.Get
+pkg:chord/sync#SyncStateStore::property:set	chord	not-exercised	chord/sync/client.go#SyncStateStore.Set
+pkg:chord/sync#SyncStateStore::property:set::call:0	chord	not-exercised	chord/sync/client.go#SyncStateStore.Set
+pkg:chord/sync#UnsyncedCommitsError	chord	child-gap	chord/sync/client.go#UnsyncedCommitsError
+pkg:chord/sync#UnsyncedCommitsError::property:message	chord	not-exercised	chord/sync/client.go#UnsyncedCommitsError.Error
+pkg:chord/sync#checkSessionId	chord	not-exercised	chord/sync/filesystem.go#CheckSessionID
+pkg:chord/sync#checkSessionId::call:0	chord	not-exercised	chord/sync/filesystem.go#CheckSessionID
+pkg:chord/sync#decodeBatch	chord	child-gap	chord/sync/batch.go#DecodeBatch
+pkg:chord/sync#decodeBatch::call:0	chord	undecidable	chord/sync/batch.go#DecodeBatch
+pkg:chord/sync#decodeBatchLines	chord	child-gap	chord/sync/batch.go#DecodeBatchLines
+pkg:chord/sync#decodeBatchLines::call:0	chord	undecidable	chord/sync/batch.go#DecodeBatchLines
+pkg:chord/sync#decodeSnapshot	chord	child-gap	chord/sync/batch.go#DecodeSnapshot
+pkg:chord/sync#decodeSnapshot::call:0	chord	undecidable	chord/sync/batch.go#DecodeSnapshot
+pkg:chord/sync#encodeLogLine	chord	child-gap	chord/sync/lines.go#EncodeLogLine
+pkg:chord/sync#encodeLogLine::call:0	chord	signature-mismatch	chord/sync/lines.go#EncodeLogLine
+pkg:chord/sync#encodeSnapshot	chord	child-gap	chord/sync/batch.go#EncodeSnapshot
+pkg:chord/sync#encodeSnapshot::call:0	chord	undecidable	chord/sync/batch.go#EncodeSnapshot
+pkg:chord/sync#foldSession	chord	child-gap	chord/sync/client.go#FoldSession
+pkg:chord/sync#foldSession::call:0	chord	signature-mismatch	chord/sync/client.go#FoldSession
+pkg:chord/sync#pullSession	chord	child-gap	chord/sync/client.go#PullSession
+pkg:chord/sync#pullSession::call:0	chord	signature-mismatch	chord/sync/client.go#PullSession
+pkg:chord/sync#storeHead	chord	not-exercised	chord/sync/client.go#StoreHead
+pkg:chord/sync#storeHead::call:0	chord	not-exercised	chord/sync/client.go#StoreHead
+pkg:chord/sync#uploadSession	chord	child-gap	chord/sync/client.go#UploadSession
+pkg:chord/sync#uploadSession::call:0	chord	signature-mismatch	chord/sync/client.go#UploadSession
 pkg:chord/telemetry-sqlite#SqliteTelemetry	chord	child-gap	chord/telemetrysqlite/index.go#SqliteTelemetry
 pkg:chord/telemetry-sqlite#SqliteTelemetry::property:ingest	chord	member-missing	chord/telemetrysqlite/index.go#SqliteTelemetry
 pkg:chord/telemetry-sqlite#SqliteTelemetry::property:ingest::call:0	chord	member-missing	chord/telemetrysqlite/index.go#SqliteTelemetry
