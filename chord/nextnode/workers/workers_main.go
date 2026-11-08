@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next-node/workers/main.ts. The worker's side (slice 10 §3): `WorkerMain` reads the start
@@ -81,6 +82,9 @@ type WorkerLoad struct {
 	ReadyTimeout *time.Duration
 	// ReloadDrainTimeout is the NodeHost's `reloadDrainTimeout` (RuntimeLoad's). Nil: the host's default.
 	ReloadDrainTimeout *time.Duration
+	// Telemetry is the NodeHost's telemetry adapter (RuntimeLoad's): the worker's recorder, so the spans of the methods and
+	// routines the NodeHost runs are the worker's, as the spans of a Pi worker's host are. Nil: none.
+	Telemetry telemetry.TelemetryContext
 }
 
 // BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
@@ -385,6 +389,7 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
 		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout,
+		Telemetry: options.Telemetry,
 	}, ctx)
 	if err != nil {
 		// A *plugins.PluginError comes with the loaded host (Pi's `host` is the caller's to stop): the worker ends instead.
