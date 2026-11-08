@@ -116778,7 +116778,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/build/build_facet.go#BuildFacet"
+        "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAppsAPIChordItselfAndBuiltinsInASingleFilePlugin",
@@ -122251,7 +122251,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/build/build_facet.go#BuildFacet"
+        "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAppsAPIChordItselfAndBuiltinsInASingleFilePlugin",
@@ -122273,7 +122273,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/build/build_recorder.go#NewRecorder"
+        "call:chord/nextnode/app/app_bases.go#App.baseBuilds"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_baseinputs_test.go#TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem",
@@ -122569,7 +122569,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/build/build_facet.go#importRules.listedIn"
+        "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPackage"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
@@ -122829,7 +122829,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/build/build_facet.go#BuildFacet"
+        "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPackage"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
