@@ -217,6 +217,8 @@ type chordObject struct {
 	chain []string
 	// documents are its documents and line, across its attempts.
 	documents *documents.Documents
+	// liveQueries are its live queries by table, across its attempts; made by the first table it declares.
+	liveQueries *store.LiveQueries
 	// ctx is the context of every attempt: its creator's, without the creator's cancellation.
 	ctx context.Context
 	// jobs are its job runs by job name, across its attempts, in the order they were declared.
@@ -828,6 +830,14 @@ func (o *chordObject) checkJob(definition *JobDefinition) error {
 // claimTable claims table (its SQL name) in the host's store for this object, until its end (slice 6b claims); held by
 // another owner: `invalid/args`, which fails the declaring factory.
 func (o *chordObject) claimTable(table string) error { return o.host.store.Claims.Table(table, o) }
+
+// queries are its live queries by table (`self.query`), across its attempts: what its commits writing a table re-run.
+func (o *chordObject) queries() *store.LiveQueries {
+	if o.liveQueries == nil {
+		o.liveQueries = store.NewLiveQueries()
+	}
+	return o.liveQueries
+}
 
 // claimDocuments claims this object's documents in namespace of the host's store, as claimTable.
 func (o *chordObject) claimDocuments(namespace string) error {

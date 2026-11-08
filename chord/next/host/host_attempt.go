@@ -122,6 +122,12 @@ type StoreSelf interface {
 	Self
 	// Table is this object's table definition in the host's store, once per table name.
 	Table(definition *store.TableDefinition) *store.TableHandle
+	// Query is a live query (decision "Live queries over an object's own tables"): the rows of q (at most limit, in its
+	// order) over table, a table this factory declared, as a JSON watchable (a state member, a derive source). Run before
+	// the object goes live, and again in the commit step of every commit of this object that writes table (one query per
+	// such commit, bounded by limit; not for tables written hundreds of times a second). A limit is required
+	// (`invalid/args`).
+	Query(table *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue]
 	// Contribute contributes value to registry R from the moment this object is live until it ends, fails or restarts (R21:
 	// a host-lifetime object): a plain value, or a Chord watchable of one (followed: its change recomposes). At most one
 	// per registry.
@@ -296,6 +302,8 @@ type attempt struct {
 	// tables are the tables it declared, by name.
 	tables     []declaredTable
 	tableNames map[string]struct{}
+	// queries are its live queries, run at activation (after the tables are prepared), detached at its end.
+	queries []*store.LiveQuery
 	// references are those this attempt declared with `self.get`.
 	references []declaredReference
 	// dependencies are its dependencies (`self.get` references and `self.registry` values) in declaration order: the parked
@@ -411,12 +419,59 @@ func (o *attemptTableOwner) Label() string { return o.attempt.object.text }
 // Scope is the object's documents: a transaction of another object refuses the handle.
 func (o *attemptTableOwner) Scope() any { return o.attempt.object.documents }
 
-// AssertLive returns `released` once the object ended.
-func (o *attemptTableOwner) AssertLive() error { return o.attempt.object.documents.AssertLive() }
+// Queries are the object's live queries, across its attempts: what a commit writing a table re-runs.
+func (o *attemptTableOwner) Queries() *store.LiveQueries { return o.attempt.object.queries() }
+
+// AssertLive returns `released` once the object ended. Table reads call it from a handler's goroutine, outside the host's
+// sections, where the object's end (a section) may write the state it reads: it takes a section of its own (Go form of
+// Pi's single thread; Run is inline when the caller is in one).
+func (o *attemptTableOwner) AssertLive() error {
+	var err error
+	o.attempt.object.documents.Do(func() { err = o.attempt.object.documents.AssertLive() })
+	return err
+}
 
 // Fail fails the object `broken` with a row the code cannot read.
 func (o *attemptTableOwner) Fail(err *data.ChordError) {
 	o.attempt.object.failLive(o.attempt, liveFailure{kind: data.FailureBroken, err: err})
+}
+
+// attemptQueryOwner is the attempt's object as the owner of a live query: failures after its activation are reported.
+type attemptQueryOwner struct {
+	attempt *attempt
+	table   string
+}
+
+// Label names the object in messages.
+func (o *attemptQueryOwner) Label() string { return o.attempt.object.text }
+
+// Report reports a run's failure as `query_failed`.
+func (o *attemptQueryOwner) Report(err error) {
+	o.attempt.object.host.report(HostError{Kind: ErrQueryFailed, Object: o.attempt.object.text, Table: o.table, Error: err})
+}
+
+// Query implements StoreSelf: a live query is run before the object goes live (after its tables are prepared), again in
+// the commit step of every commit of the object that writes its table, and detached when its attempt ends.
+//
+// pig divergence (D431): Pi main 2439933cf, ahead of the v1.5.0 pin.
+func (a *attempt) Query(table *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
+	a.assertDeclaring("query")
+	object := a.object
+	// Plugin code may pass any table: only a handle this attempt declared is taken (its object's own table).
+	declared := false
+	for _, each := range a.tables {
+		declared = declared || each.handle == table
+	}
+	if !declared {
+		panic(declarationError("%s: self.query: the table is not one this factory declared", object.text))
+	}
+	if err := store.CheckLiveQuery(table.Definition, q, limit, object.text); err != nil {
+		panic(err)
+	}
+	live := store.NewLiveQuery(table, q, limit, &attemptQueryOwner{attempt: a, table: table.Definition.Name}, object.host.batch)
+	table.Owner.Queries().Add(live)
+	a.queries = append(a.queries, live)
+	return Expose(live)
 }
 
 // Derive implements Self.
@@ -1162,6 +1217,9 @@ func (a *attempt) detach() {
 	for _, derive := range a.derives {
 		derive.Detach(ended)
 	}
+	for _, query := range a.queries {
+		query.Detach(ended)
+	}
 	for _, follow := range a.follows {
 		follow.detach()
 	}
@@ -1287,7 +1345,13 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 				fail(err)
 				return
 			}
-			loadJobs()
+			a.loadQueries(0, func(err error) {
+				if err != nil {
+					fail(err)
+					return
+				}
+				loadJobs()
+			})
 		})
 	}
 	if err := setup(); err != nil {
@@ -1305,6 +1369,24 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 				return
 			}
 			afterDocuments()
+		})
+}
+
+// loadQueries runs the live queries once, before the object goes live (`for (const query of queries) await
+// query.load(opening)`): one after the other.
+func (a *attempt) loadQueries(index int, done func(err error)) {
+	if index == len(a.queries) {
+		done(nil)
+		return
+	}
+	each := a.queries[index]
+	awaitTask(a.object.host, func() (struct{}, error) { return struct{}{}, each.Load(a.opening) }).then(
+		func(_ struct{}, err error) {
+			if err != nil {
+				done(err)
+				return
+			}
+			a.loadQueries(index+1, done)
 		})
 }
 

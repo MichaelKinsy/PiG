@@ -393,10 +393,11 @@ func (*recordingDocuments) Fail(*data.ChordError) {}
 // inertTableOwner is the owner of a recording's table handles: never live, so every read and query returns errInert.
 type inertTableOwner struct{ label string }
 
-func (o inertTableOwner) Label() string         { return o.label }
-func (o inertTableOwner) Scope() any            { return nil }
-func (o inertTableOwner) AssertLive() error     { return errInert }
-func (o inertTableOwner) Fail(*data.ChordError) {}
+func (o inertTableOwner) Label() string               { return o.label }
+func (o inertTableOwner) Scope() any                  { return nil }
+func (o inertTableOwner) Queries() *store.LiveQueries { return nil }
+func (o inertTableOwner) AssertLive() error           { return errInert }
+func (o inertTableOwner) Fail(*data.ChordError)       {}
 
 // Table implements StoreSelf.
 func (r *recordingSelf) Table(definition *store.TableDefinition) *store.TableHandle {
@@ -413,6 +414,21 @@ func (r *recordingSelf) Table(definition *store.TableDefinition) *store.TableHan
 	r.tables.set(definition.Name, definition)
 	// A handle whose reads and queries return errInert (its owner is never live): nothing reaches the store.
 	return store.NewTableHandle(definition, sqlName, chordStore, inertTableOwner{label: object.text})
+}
+
+// Query implements StoreSelf: a live query over a table this factory declared (its handle is inert: the query names the
+// table), limited.
+func (r *recordingSelf) Query(_ *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
+	r.assertDeclaring("query")
+	label := r.object.text
+	table, declared := r.tables.get(q.Table.Name)
+	if !declared || table != q.Table {
+		panic(declarationError("%s: self.query: the table is not one this factory declared", label))
+	}
+	if err := store.CheckLiveQuery(table, q, limit, label); err != nil {
+		panic(err)
+	}
+	return state.ConstantOf[delta.JsonValue](nil)
 }
 
 // Derive implements Self.
