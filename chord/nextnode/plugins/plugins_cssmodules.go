@@ -48,18 +48,18 @@ var nonWordName = regexp.MustCompile(`[^A-Za-z0-9_-]`)
 // ScopeCSSModule scopes the CSS module file of the plugin plugin (its directory dir) with contents: every class renamed
 // `chord_<hash of plugin and path>_<file>_<class>`. It returns esbuild's failure (a syntax error) for the build to report.
 func ScopeCSSModule(plugin, dir, file, contents string, node NodeOptions, ctx context.Context) (ScopedCSS, error) {
-	evaluator := newMappingEvaluator(node, ctx)
+	evaluator := newMappingEvaluator(node)
 	defer evaluator.close()
-	return scopeCSSModule(plugin, dir, file, contents, evaluator)
+	return scopeCSSModule(plugin, dir, file, contents, evaluator, ctx)
 }
 
-// scopeCSSModule is ScopeCSSModule with the evaluator that reads the mapping: a build keeps one for its CSS modules.
-func scopeCSSModule(plugin, dir, file, contents string, evaluator *mappingEvaluator) (ScopedCSS, error) {
+// scopeCSSModule is ScopeCSSModule with the evaluator that reads the mapping: the component's builds share one.
+func scopeCSSModule(plugin, dir, file, contents string, evaluator *mappingEvaluator, ctx context.Context) (ScopedCSS, error) {
 	css, js, err := scopeBuild(plugin, dir, file, contents)
 	if err != nil {
 		return ScopedCSS{}, err
 	}
-	classes, err := evaluator.evaluate(js)
+	classes, err := evaluator.evaluate(ctx, js)
 	if err != nil {
 		return ScopedCSS{}, fmt.Errorf("css module %s: %w", file, err)
 	}

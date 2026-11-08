@@ -394,6 +394,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
+		Api: &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
 	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
@@ -468,7 +469,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err := PrivateStore(pluginsStore); err != nil {
 		return err
 	}
-	node, nodeReport, err := a.Plugins.Load(plugins.PluginsLoad{
+	node, _, err := a.Plugins.Load(plugins.PluginsLoad{
 		Kind: "server", Modules: modules, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), Telemetry: options.Telemetry,
 		Store: &plugins.StoreOptions{Path: pluginsStore},
@@ -477,12 +478,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},
 		},
 	}, ctx)
-	// A required root's failure returns the loaded host with the error: it is the app's to stop (Close).
+	// A required root's plugin failing returns the loaded host with the *PluginError: the app owns it and closes it.
 	a.Node = node
 	if err != nil {
-		return err
-	}
-	if err := failedPlugins(nodeReport); err != nil {
 		return err
 	}
 	if err := h.Accept(node.Link(), host.LinkOptions{Principal: options.Principal.Server, Trusted: true}, ctx); err != nil {

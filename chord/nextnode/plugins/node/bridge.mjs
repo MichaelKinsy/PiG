@@ -81,7 +81,8 @@ export function createBridge({ port, wireError, host }) {
 		const contract = contractOf(request.contract);
 		if (contract.kind !== "local") throw new Error(`${contract.name}: only a local type is held through the control channel`);
 		const options = request.readyTimeout === undefined ? undefined : { readyTimeout: request.readyTimeout };
-		const reference = await target.get(contract, request.params, context, options);
+		// `hold` (NodeHost.Hold) is a reference at once, `get` one once its object is live.
+		const reference = request.hold === true ? target.hold(contract, request.params, context, options) : await target.get(contract, request.params, context, options);
 		// The handle is the Go side's: it registered the reference before it sent this request.
 		const { handle } = request;
 		const held = { reference, members: request.contract.normal.members, state: undefined };
