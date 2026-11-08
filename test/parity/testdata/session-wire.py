@@ -296,11 +296,10 @@ SHUTDOWN_HANDLERS = {
 def tool_signal_probe(binary, root, sig, shutdown=None, mode="json"):
     """SIGTERM/SIGHUP while a bash tool runs: what stdout, stderr, the session file and the provider saw afterwards.
 
-    With shutdown, an extension's session_shutdown handler throws at once or waits 1.5 s on a timer. Pi runs the
-    signal's disposal on its one event loop (print-mode.ts:50-63): a handler that throws ends it within microtasks,
-    before the killed tool's exit is seen, so the run stops at the tool; a handler that waits on a timer lets the loop
-    turn, so the killed tool settles, the run makes its second request (answered with text) and text mode prints that
-    answer before the process exits."""
+    With shutdown, an extension's session_shutdown handler throws at once or waits 1.5 s on a timer. Pi's signal
+    disposal (print-mode.ts:50-63) awaits session.abort() before session_shutdown (agent-session-runtime.ts:409-417):
+    the killed tool settles and the aborted run ends with one request whatever the handler does. A handler that throws
+    reports its error before text mode prints the aborted result; a timer lets the result print while the handler waits."""
     tool_call = {"id": "c1", "object": "chat.completion.chunk", "created": 1, "model": "wire-model", "choices": [{"index": 0,
         "delta": {"role": "assistant", "content": None, "tool_calls": [{"index": 0, "id": "call_wire", "type": "function",
         "function": {"name": "bash", "arguments": json.dumps({"command": ": > tool-started; sleep 37.25"})}}]}, "finish_reason": None}]}
