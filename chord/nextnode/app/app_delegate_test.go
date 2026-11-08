@@ -40,7 +40,7 @@ export default defineFacet((host) => host.serve(Lang, (_params, _principal, self
 var languageContract = mustRemote("probe.lang", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{}, HostAddress: counterAddress("server"),
 	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		State:   []contracts.Property{contracts.Prop("pick", contracts.Str()), contracts.Prop("theme", contracts.Str())},
+		State: []contracts.Property{contracts.Prop("pick", contracts.Str()), contracts.Prop("theme", contracts.Str())},
 		Methods: []contracts.MethodEntry{contracts.Meth("choose", contracts.NewMethod(contracts.Union([]contracts.Schema{
 			contracts.Str(contracts.Max(35), contracts.Pattern("^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$")), contracts.Nul(),
 		})))},
