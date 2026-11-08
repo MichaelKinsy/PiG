@@ -204,7 +204,8 @@ func TestRollingCookiesRenewABrowsersCookieOnceItIsOlderThanADayWithAFreshSigned
 	if err != nil || seconds*1000 <= start+401*24*60*60_000 {
 		t.Fatalf("expires %v ms, want after %v", seconds*1000, start+401*24*60*60_000)
 	}
-	// 401 days on, the old cookie has expired and the renewed one still signs in.
+	// 401 days on, the old cookie has expired and the renewed one still signs in (the touch of `lastUsed` is awaited first).
+	sessionWrites.Wait()
 	mock.Set(start + 401*24*60*60_000)
 	if status := whoami().status; status != 401 {
 		t.Fatalf("the old cookie got %d", status)

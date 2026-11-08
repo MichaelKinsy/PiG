@@ -4,7 +4,9 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -114,6 +116,36 @@ func (s *kitServer) close() {
 	s.t.Helper()
 	s.component.Close(background)
 	s.kitHost.close()
+	s.t.Cleanup(func() { noKitGoroutines(s.t) })
+}
+
+// noKitGoroutines fails the test when a goroutine of the kit or the HTTP component outlives its server: a listener, a request
+// scope, a socket or a timer left running. It polls for a few seconds (goroutines wind down after their close returns).
+func noKitGoroutines(t *testing.T) {
+	t.Helper()
+	deadline := time.NewTimer(10 * time.Second)
+	defer deadline.Stop()
+	tick := time.NewTicker(10 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		buf := make([]byte, 1<<20)
+		buf = buf[:runtime.Stack(buf, true)]
+		var leaked []string
+		for _, stack := range strings.Split(string(buf), "\n\n") {
+			if (strings.Contains(stack, "chord/nextnode/app.") || strings.Contains(stack, "chord/nextnode/http.")) &&
+				!strings.Contains(stack, "testing.tRunner") && !strings.Contains(stack, "runtime.Stack") {
+				leaked = append(leaked, stack)
+			}
+		}
+		if len(leaked) == 0 {
+			return
+		}
+		select {
+		case <-deadline.C:
+			t.Fatalf("goroutines outlive the server:\n%s", strings.Join(leaked, "\n\n"))
+		case <-tick.C:
+		}
+	}
 }
 
 // reply is what a request got: its status, its headers and its body.
@@ -166,4 +198,6 @@ func (s *kitServer) issue(principal delta.JsonValue, label, kind string) (id, to
 	return result.Value("id").(string), result.Value("token").(string), result.Value("cookie").(string)
 }
 
-func bearer(token string) map[string]string { return map[string]string{"authorization": "Bearer " + token} }
+func bearer(token string) map[string]string {
+	return map[string]string{"authorization": "Bearer " + token}
+}

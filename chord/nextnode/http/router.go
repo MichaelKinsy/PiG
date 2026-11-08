@@ -170,10 +170,10 @@ var compositions atomic.Uint64
 
 // RouteMatch is a matched route: its pattern, plugin, params, handler, options and wraps (outermost first).
 type RouteMatch struct {
-	Pattern   string
-	Plugin    string
-	Params    map[string]string
-	Handler   HttpRoute
+	Pattern string
+	Plugin  string
+	Params  map[string]string
+	Handler HttpRoute
 	// Public: served without a principal (marked Public, or CrossSite: always anonymous).
 	Public    bool
 	Page      bool
