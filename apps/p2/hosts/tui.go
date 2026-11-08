@@ -19,6 +19,7 @@ import (
 	"syscall"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/host"
+	"github.com/MichaelKinsy/PiG/apps/p2/tui/prefs"
 	pitui "github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -120,7 +121,7 @@ func RunTUI(args []string) int {
 			Actions: host.LauncherActions(host.LauncherActionOptions{
 				URL: target, Credentials: admission.Credentials, Transport: transport, Role: admission.Role, Downloads: local.Downloads, Editor: host.EditorArgv(local.Editor),
 			}),
-			Preferences: &host.PreferenceSource{Current: preferences, Subscribe: func(listener func(next host.TuiLocalPreferences)) func() {
+			Preferences: &host.PreferenceSource{Current: preferences, Subscribe: func(listener func(next prefs.TuiLocalPreferences)) func() {
 				return host.WatchLocalPreferences(sources, listener, preferences)
 			}},
 			OnFailure: func(message string) { mu.Lock(); failures = append(failures, message); mu.Unlock() },
