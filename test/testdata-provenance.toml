@@ -135,6 +135,10 @@ paths = ["durable/core/probe/testdata/*.events", "durable/core/contracttest/bind
 [[input]]
 paths = ["coding/cli/testdata/session-replaced-2860.lisp"]
 
+# The yaml12 differential test reads piglet-corpus.json as its input documents (the Piglet test YAML it harvested); it rewrites only differences.txt.
+[[input]]
+paths = ["internal/yaml12/testdata/v3diff/piglet-corpus.json"]
+
 [[input]]
 paths = ["coding/cli/testdata/go.mod", "coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
 

@@ -598,3 +598,10 @@ path = "internal/sortx/zsortfunc.go"
 precedence = "override"
 SPDX-FileCopyrightText = "The Go Authors"
 SPDX-License-Identifier = "BSD-3-Clause"
+
+# internal/yaml12/testdata/v3diff/piglet-corpus.json holds Piglet YAML documents as JSON strings. Each embedded document starts with its own SPDX header, which REUSE must not read as the file's license: the annotation gives the file one and overrides the text.
+[[annotations]]
+path = "internal/yaml12/testdata/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright Michael Kinsy"
+SPDX-License-Identifier = "MIT"
