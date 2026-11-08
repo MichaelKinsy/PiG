@@ -144,6 +144,9 @@ func (c *Container) scanSettledLocked(width int, n *nestedRender) int {
 	return first
 }
 
+// trustKidHook, when set by a test, runs in trustKidLocked after the child was read clean and before the container claims it.
+var trustKidHook func(Component)
+
 // trustKidLocked reports that the container reads child i's invalidations from now on: the child is of a listed type, quiet, and
 // not read by another container. A child listed twice keeps the lower index, which an invalidation lowers settled to, and the scan
 // from there reaches the other. c.mu must be held.
@@ -152,7 +155,15 @@ func (c *Container) trustKidLocked(i int, ch Component) bool {
 	if inv == nil || !kidQuiet(ch) {
 		return false
 	}
+	if trustKidHook != nil {
+		trustKidHook(ch)
+	}
 	if inv.owner.Load() != c && !inv.owner.CompareAndSwap(nil, c) {
+		return false
+	}
+	// An Invalidate between the scan reading the child clean and the claim above saw no owner and told no one: the child is dirty
+	// behind settled, so it stays polled, which the next scan asks.
+	if inv.dirty.Load() {
 		return false
 	}
 	if s := inv.slot; s > i || s >= len(c.children) || kidInvalidation(c.children[s]) != inv {
