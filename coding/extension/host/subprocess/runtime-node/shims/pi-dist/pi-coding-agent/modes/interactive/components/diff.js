@@ -18,13 +18,19 @@ function replaceTabs(text) {
 }
 /**
  * Compute word-level diff and render with inverse on changed parts.
- * Uses diffWords which groups whitespace with adjacent words for cleaner highlighting.
- * Strips leading whitespace from inverse to avoid highlighting indentation.
+ * Separates common indentation before diffing so a leading insertion cannot consume it.
  */
 function renderIntraLineDiff(oldContent, newContent) {
-    const wordDiff = Diff.diffWords(oldContent, newContent);
-    let removedLine = "";
-    let addedLine = "";
+    let commonIndentLength = 0;
+    while (commonIndentLength < oldContent.length &&
+        oldContent[commonIndentLength] === newContent[commonIndentLength] &&
+        /\s/.test(oldContent[commonIndentLength])) {
+        commonIndentLength++;
+    }
+    const commonIndent = oldContent.slice(0, commonIndentLength);
+    const wordDiff = Diff.diffWords(oldContent.slice(commonIndentLength), newContent.slice(commonIndentLength));
+    let removedLine = commonIndent;
+    let addedLine = commonIndent;
     let isFirstRemoved = true;
     let isFirstAdded = true;
     for (const part of wordDiff) {
