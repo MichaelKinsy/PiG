@@ -362,6 +362,8 @@ Apply these rules to new work. Do not delete or weaken accepted tests to conform
 
 A production file is `ported` only when every upstream test file covering it is ported with the same inputs and expected results, or designed out with a numbered, reviewed reason. Record test locations and current upstream hashes in `test/parity/interfaces/test-mapping-v<version>.json`. A `partial` disposition enumerates the missing cases; file-name similarity, existing code, and a passing smoke test do not close them. Port the covering upstream tests in the same change whenever you port or change a production file. Preserve ordering, cancellation, errors, retained state, and caller effects, not only happy-path output.
 
+If an upstream case does not apply as written, test what it protects in PiG's own way: through the vendored Pi TypeScript, a PiG analogue, or a PiG example. Design it out only when that is impossible or worthless, and say why.
+
 No release may treat a pending or partial upstream test tagged `hot-path` as closed. `make ci-contracts` enforces the reviewed path tags in `test/parity/interfaces/test-porting-policy-v<version>.json` and rejects a decrease in the total ported-file count against the committed baseline. The owner-approved 0.3.x exception records explicit `deferred-0.3.x` rows without changing their partial/pending mappings, hot-path tags, assertions or baseline; [the release-policy procedure](test/parity/README.md#approved-03x-test-porting-gaps) defines the required approval, missing-case reference and follow-up. All unlisted pending/partial hot paths remain release blockers. Keep tag review and the ported baseline current in the same change; never remove a hot-path tag or lower the baseline to pass the gate. A credential or toolchain requirement is not a scope exclusion. Dispatch test-file ownership through `docs/parity/pending-tests-batches.md`; coordinate production files and shared evidence separately.
 
 ## Verification-driven development
@@ -490,7 +492,8 @@ A divergence is allowed only when it is user-visible or interop-relevant and can
 - `SCRUTINIZED:approved`;
 - remove-when condition;
 - `// pig divergence (D<N>): ...` at each call site;
-- parity coverage or an explicit parity allowance.
+- parity coverage or an explicit parity allowance;
+- for a divergence that a test-mapping entry names, the labeled paragraphs `Protects:`, `PiG-shaped test considered:` and `Why not:`.
 
 Each record is one file, `docs/parity/divergences/D<N>.md`: an active record is a `## D<N> <title>` section, a retired record is one `- D<N>: ...` line. Edit that file only. `make divergences` generates `docs/parity/DIVERGENCES.md` from the files, and a lane does not commit the generated ledger; the merger regenerates it (`TestDivergenceLedgerEqualsItsRecordFiles` fails when they differ).
 
