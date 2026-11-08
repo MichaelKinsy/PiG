@@ -3,6 +3,7 @@ package plugins
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -74,4 +75,63 @@ func TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName(t
 	}
 	write(t, file, "B")
 	f.baseIs(true)
+}
+
+// The identity of a directory is its inode and birth time, never a followed link: the one at a path is the same after the
+// directory is moved away and back or its attributes change, another when another directory is made at its path, and none when there is
+// no entry.
+func TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry(t *testing.T) {
+	top := realOf(t, tempRoot(t))
+	dir := filepath.Join(top, "d")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	first := identityOf(dir)
+	if !first.present || first.ino == 0 {
+		t.Fatalf("identity of an existing directory = %+v", first)
+	}
+	if got := identityOf(filepath.Join(top, "missing")); got != (dirIdentity{}) {
+		t.Fatalf("identity of no entry = %+v, want none", got)
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if got := identityOf(dir); got != first {
+		t.Errorf("identity after a change of attributes = %+v, was %+v", got, first)
+	}
+	moved := filepath.Join(top, "x")
+	if err := os.Rename(dir, moved); err != nil {
+		t.Fatal(err)
+	}
+	if got := identityOf(dir); got != (dirIdentity{}) {
+		t.Errorf("identity of the path the directory left = %+v, want none", got)
+	}
+	if got := identityOf(moved); got != first {
+		t.Errorf("identity at the new path = %+v, was %+v", got, first)
+	}
+	if err := os.Rename(moved, dir); err != nil {
+		t.Fatal(err)
+	}
+	if got := identityOf(dir); got != first {
+		t.Errorf("identity after moved away and back = %+v, was %+v", got, first)
+	}
+	// The old one stays, so the new one cannot have its inode.
+	if err := os.Rename(dir, filepath.Join(top, "old")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := identityOf(dir); got == first || !got.present {
+		t.Errorf("identity of another directory at the path = %+v, was %+v", got, first)
+	}
+	if runtime.GOOS != "windows" {
+		link := filepath.Join(top, "link")
+		if err := os.Symlink(dir, link); err != nil {
+			t.Fatal(err)
+		}
+		if got := identityOf(link); !got.present || got == identityOf(dir) {
+			t.Errorf("identity of a link = %+v, the target's is %+v: a link is not followed", got, identityOf(dir))
+		}
+	}
 }
