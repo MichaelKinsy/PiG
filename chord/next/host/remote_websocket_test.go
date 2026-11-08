@@ -139,7 +139,7 @@ func TestWebSocketLinksOverALoopbackServer(t *testing.T) {
 		case <-time.After(10 * time.Second):
 			t.Fatal("the connection was not closed")
 		}
-		requireChordError(t, callErr, data.CodeUnavailable, "")
+		_ = requireChordError(t, callErr, data.CodeUnavailable, "")
 		rhWaitFor(t, func() bool { return refStateKind(notes) == RefStateLoading })
 		must(t, tab.Close(background))
 	})
