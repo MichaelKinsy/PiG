@@ -18,5 +18,5 @@ func FuzzParseJSONNodeMatchesV1(f *testing.F) {
 }
 
 func BenchmarkParseJSONNode(b *testing.B) {
-	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { parseJSONNodeV1(d) }, func(d []byte) { parseJSONNode(d) })
+	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { _, _ = parseJSONNodeV1(d) }, func(d []byte) { _, _ = parseJSONNode(d) })
 }
