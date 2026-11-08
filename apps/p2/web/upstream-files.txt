@@ -524,3 +524,4 @@ plugins/powershell/tui.ts
 plugins/subagents/tui.ts
 plugins/proxy-marker/contract.ts
 plugins/proxy-marker/package.json
+plugins/radius/contract.ts
