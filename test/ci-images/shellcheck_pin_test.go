@@ -59,7 +59,7 @@ func TestShellcheckInstallerRefusesAnUnpinnedArchive(t *testing.T) {
 	}
 	dir := t.TempDir()
 	cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(repoRoot(t), "automation/ci/install-shellcheck.sh"))
-	cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "SHELLCHECK_INSTALL_DIR="+dir)
+	cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "SHELLCHECK_INSTALL_DIR="+dir, "FETCH_CACHE_DIR="+t.TempDir(), "FETCH_RETRY_DELAY=0")
 	output, err := cmd.CombinedOutput()
 	if err == nil || !strings.Contains(string(output), "pinned") {
 		t.Fatalf("installer accepted a wrong archive: %v\n%s", err, output)
