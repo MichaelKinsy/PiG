@@ -4,10 +4,12 @@ package codingagent
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -579,7 +581,14 @@ type indexProbe struct {
 // walkIndexProbe reads the indexProbe of a valid JSON line in one walk, decoding only the small members it names; ok is false, and the
 // caller decodes the line, for any line on which that could differ from json.Unmarshal into indexProbe: a value of another JSON type, a
 // member named twice or in another case, or a message that is not an object.
-func walkIndexProbe(line []byte) (probe indexProbe, ok bool) {
+//
+// No value is decoded into a field of probe: handing a field's address to the decoder would move the whole probe to the heap for every line,
+// so a decode that is not a scan lands in a variable of its own, declared in the member that needs it.
+func walkIndexProbe(line []byte) (probe indexProbe, ok bool) { return walkIndexProbeAfter(line, "") }
+
+// walkIndexProbeAfter is walkIndexProbe for a line whose parentId, when it is the id of the line before it, shares that line's id string
+// (previous) instead of holding a copy of its own.
+func walkIndexProbeAfter(line []byte, previous string) (probe indexProbe, ok bool) {
 	i := skipJSONSpace(line, 0)
 	if i >= len(line) || line[i] != '{' {
 		return indexProbe{}, false
@@ -592,17 +601,6 @@ func walkIndexProbe(line []byte) (probe indexProbe, ok bool) {
 		seen |= bit
 		return true
 	}
-	str := func(v []byte, out *string) bool {
-		if string(v) == "null" {
-			return true
-		}
-		if text, end, plain := scanPlainJSONString(v, 0); plain && end == len(v) && utf8.Valid(text) {
-			*out = string(text)
-			return true
-		}
-		return v[0] == '"' && json.Unmarshal(v, out) == nil
-	}
-	decode := func(v []byte, out any) bool { return json.Unmarshal(v, out) == nil }
 	message := &probe.Message
 	messageMember := func(name string, at int) (int, bool) {
 		end := skipJSONValue(line, at)
@@ -612,22 +610,51 @@ func walkIndexProbe(line []byte) (probe indexProbe, ok bool) {
 		v := line[at:end]
 		switch name {
 		case "role":
-			return end, once(1<<10) && str(v, &message.Role)
+			return end, once(1<<10) && probeString(v, &message.Role, internRole)
 		case "content":
 			return end, once(1<<11) && message.Content.UnmarshalJSON(v) == nil
 		case "usage":
-			return end, once(1<<12) && decode(v, &message.Usage)
+			if !once(1 << 12) {
+				return end, false
+			}
+			var usage *ai.Usage
+			if json.Unmarshal(v, &usage) != nil {
+				return end, false
+			}
+			message.Usage = usage
+			return end, true
 		case "provider":
-			return end, once(1<<13) && str(v, &message.Provider)
+			return end, once(1<<13) && probeString(v, &message.Provider, nil)
 		case "model":
-			return end, once(1<<14) && str(v, &message.ModelID)
+			return end, once(1<<14) && probeString(v, &message.ModelID, nil)
 		case "api":
 			message.API = v
 			return end, once(1 << 15)
 		case "responseModel":
-			return end, once(1<<16) && decode(v, &message.ResponseModel)
+			if !once(1 << 16) {
+				return end, false
+			}
+			var responseModel *string
+			if json.Unmarshal(v, &responseModel) != nil {
+				return end, false
+			}
+			message.ResponseModel = responseModel
+			return end, true
 		case "timestamp":
-			return end, once(1<<17) && decode(v, &message.Timestamp)
+			if !once(1 << 17) {
+				return end, false
+			}
+			// An integer is read in place; any other number is the decoder's.
+			if n, err := strconv.ParseInt(string(v), 10, 64); err == nil {
+				message.Timestamp = n
+				return end, true
+			}
+			var timestamp int64
+			if json.Unmarshal(v, &timestamp) != nil {
+				return end, false
+			}
+			message.Timestamp = timestamp
+			return end, true
 		}
 		return end, true
 	}
@@ -651,22 +678,35 @@ func walkIndexProbe(line []byte) (probe indexProbe, ok bool) {
 		v := line[at:end]
 		switch name {
 		case "type":
-			return end, once(1<<0) && str(v, &probe.Type)
+			return end, once(1<<0) && probeString(v, &probe.Type, internEntryType)
 		case "id":
-			return end, once(1<<1) && str(v, &probe.ID)
+			return end, once(1<<1) && probeString(v, &probe.ID, nil)
 		case "parentId":
-			return end, once(1<<2) && decode(v, &probe.ParentID)
+			if !once(1 << 2) {
+				return end, false
+			}
+			parent, ok := probeOptionalString(v, previous)
+			probe.ParentID = parent
+			return end, ok
 		case "timestamp":
 			probe.Timestamp = v
 			return end, once(1 << 3)
 		case "provider":
-			return end, once(1<<4) && str(v, &probe.Provider)
+			return end, once(1<<4) && probeString(v, &probe.Provider, nil)
 		case "model":
-			return end, once(1<<5) && str(v, &probe.Model)
+			return end, once(1<<5) && probeString(v, &probe.Model, nil)
 		case "usage":
-			return end, once(1<<6) && decode(v, &probe.Usage)
+			if !once(1 << 6) {
+				return end, false
+			}
+			var usage *ai.Usage
+			if json.Unmarshal(v, &usage) != nil {
+				return end, false
+			}
+			probe.Usage = usage
+			return end, true
 		case "kind":
-			return end, once(1<<7) && str(v, &probe.Kind)
+			return end, once(1<<7) && probeString(v, &probe.Kind, internEntryType)
 		}
 		return end, true
 	})
@@ -674,6 +714,116 @@ func walkIndexProbe(line []byte) (probe indexProbe, ok bool) {
 		return indexProbe{}, false
 	}
 	return probe, true
+}
+
+// probeString stores the string member v decodes to in out: null leaves out as it is, as the decoder does, and a value that is no string
+// does not decode. A plain string is read in place; known, when it is not nil, answers the strings the sessions repeat from constants
+// instead of allocating them.
+func probeString(v []byte, out *string, known func([]byte) (string, bool)) bool {
+	if string(v) == "null" {
+		return true
+	}
+	if text, end, plain := scanPlainJSONString(v, 0); plain && end == len(v) && utf8.Valid(text) {
+		if known != nil {
+			if s, ok := known(text); ok {
+				*out = s
+				return true
+			}
+		}
+		*out = string(text)
+		return true
+	}
+	if v[0] != '"' {
+		return false
+	}
+	var decoded string
+	if json.Unmarshal(v, &decoded) != nil {
+		return false
+	}
+	*out = decoded
+	return true
+}
+
+// probeOptionalString is the *string a member decodes to: null is nil, and a value that is no string does not decode. A string equal to
+// previous is previous itself.
+func probeOptionalString(v []byte, previous string) (*string, bool) {
+	if string(v) == "null" {
+		return nil, true
+	}
+	if text, end, plain := scanPlainJSONString(v, 0); plain && end == len(v) && string(text) == previous && previous != "" {
+		return &previous, true
+	}
+	var s string
+	if !probeString(v, &s, nil) {
+		return nil, false
+	}
+	return &s, true
+}
+
+// decodeJSONString is the string raw decodes to, "" and false for what json.Unmarshal into a string does not accept; null is "" and true.
+func decodeJSONString(raw []byte) (string, bool) {
+	if len(raw) == 0 {
+		return "", false
+	}
+	if string(raw) == "null" {
+		return "", true
+	}
+	if raw[0] == '"' {
+		if text, end, plain := scanPlainJSONString(raw, 0); plain && end == len(raw) && utf8.Valid(text) {
+			return string(text), true
+		}
+	}
+	var s string
+	if json.Unmarshal(raw, &s) != nil {
+		return "", false
+	}
+	return s, true
+}
+
+// internRole is the constant a message role's text is, for the roles every session holds.
+func internRole(text []byte) (string, bool) {
+	switch string(text) {
+	case "user":
+		return "user", true
+	case "assistant":
+		return "assistant", true
+	case "toolResult":
+		return "toolResult", true
+	case "bashExecution":
+		return "bashExecution", true
+	}
+	return "", false
+}
+
+// internEntryType is the constant an entry type's text is, for the types every session holds.
+func internEntryType(text []byte) (string, bool) {
+	switch string(text) {
+	case typeMessage:
+		return typeMessage, true
+	case typeCustomMessage:
+		return typeCustomMessage, true
+	case typeLabel:
+		return typeLabel, true
+	case "session":
+		return "session", true
+	case "compaction":
+		return "compaction", true
+	case "model_change":
+		return "model_change", true
+	case "thinking_level_change":
+		return "thinking_level_change", true
+	case "branch_summary":
+		return "branch_summary", true
+	case "custom":
+		return "custom", true
+	case "session_info":
+		return "session_info", true
+	case "usage":
+		return "usage", true
+	case "bash_execution":
+		return "bash_execution", true
+	}
+	return "", false
 }
 
 // jsPrefix is jsstring.Slice(text, 0, units). Text that is well-formed UTF-8 up to the cut, with the cut between two characters, is cut in
