@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/host/ctx.ts. The `ctx` a method handler gets (§8): its call's context, who called, the
@@ -44,6 +45,11 @@ type Ctx interface {
 	// Get takes a reference as the caller (Principal) sees it, released when the handler settles; afterwards Get returns
 	// `released`. It blocks until the reference is acquired.
 	Get(Type *contracts.Contract, params any, options GetOptions) (*Reference, error)
+	// Trace runs fn in a span named name (the host's `chord.host` and attributes), a child of the handler's, with a child
+	// ctx: the same principal, signal and references, its telemetry the span. A failure of fn marks the span failed
+	// (`trace_failed`; a cancel keeps it ok) and is returned; with nothing recorded fn gets this ctx itself. A panic of fn
+	// is its error.
+	Trace(name string, attributes telemetry.SpanAttributes, fn func(ctx Ctx) (any, error)) (any, error)
 }
 
 // caller is who makes a call: the principal it acts as and its host's incarnation.

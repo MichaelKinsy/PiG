@@ -29,10 +29,10 @@
 //   - A worker killed without its exit hooks leaves its lock's socket file on macOS and the BSDs. The component is the one
 //     clearer of its addresses' locks: before each start and after the exit of a child a signal ended, in the address's queue
 //     (decision "Stale lock files are cleared by the starter"); a taker still fails closed on one it finds.
-//   - Pi bundles the worker's Node entry once with the base code it imports (`base.ts`, `child.ts`: esbuild), so an edit after
-//     the component was created runs in no worker. A Go worker is this program's own compiled executable, which holds its
-//     code already: designed out (a numbered record is drafted in the lane's rows). `CreateWorkers` fails when `Entry` cannot be started, as Pi's rejects when the base
-//     does not build.
+//   - Pi bundles the worker's Node entry once with the base code it imports (`base.ts`, `child.ts`: esbuild) into a private
+//     file, so an edit after the component was created runs in no worker, and `close` removes the file. `CreateWorkers`
+//     likewise copies the `Entry` executable to a private file, forks that copy, and `Close` removes it. It fails when `Entry`
+//     cannot be started or copied, as Pi's rejects when the base does not build.
 //
 // # Async contract (AGENTS.md "TypeScript async/Promise parity")
 //

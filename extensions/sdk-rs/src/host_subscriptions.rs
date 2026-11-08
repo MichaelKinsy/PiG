@@ -7,7 +7,6 @@ use crate::theme::Theme;
 use serde_json::{Map, Value};
 use std::collections::VecDeque;
 use std::io;
-use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -112,7 +111,7 @@ impl<T: Clone + Send + 'static> Feed<T> {
             };
             for handler in handlers {
                 let value = value.clone();
-                let _ = catch_unwind(AssertUnwindSafe(|| handler(value)));
+                let _ = crate::diagnostic::recover(|| handler(value));
             }
         }
     }

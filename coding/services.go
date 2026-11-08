@@ -477,7 +477,7 @@ func (runtime *ModelRuntime) SetChangeListener(listener func()) func() {
 // Stream returns immediately. Context normalization happens before asynchronous setup. Setup failures are errors; provider cancellation is aborted, and an established stream owns its terminal event.
 func (runtime *ModelRuntime) Stream(ctx context.Context, model *ai.Model, request ai.Context, options ai.StreamOptions) *ai.AssistantMessageEventStream {
 	if err := assertChat(model); err != nil {
-		return runtime.failedStream(model, err)
+		return runtime.failedStream(ctx, model, err)
 	}
 	if model != nil && registryOwnsModelBackend(model.Provider) && runtime.services.Registry().GetProvider(model.ProviderMeta.ProviderID) != nil {
 		return runtime.services.Registry().NativeModels().Stream(ctx, model, request, options)
@@ -501,7 +501,7 @@ func (runtime *ModelRuntime) StreamSimple(ctx context.Context, model *ai.Model, 
 		selected = options[0]
 	}
 	if err := assertChat(model); err != nil {
-		return runtime.failedStream(model, err)
+		return runtime.failedStream(ctx, model, err)
 	}
 	if IsVirtualModel(model) {
 		return runtime.streamVirtual(ctx, model, request, selected)
@@ -529,24 +529,16 @@ func (runtime *ModelRuntime) start(ctx context.Context, model *ai.Model, transcr
 	}
 	preparedModel, provider, preparedOptions, err := runtime.prepare(ctx, model, options)
 	if err != nil {
-		failureCtx := ctx
-		if !extension.ModelStreamRequestFromContext(ctx).API {
-			failureCtx = context.WithoutCancel(ctx)
-		}
-		runtime.fail(failureCtx, outer, model, err)
+		// lazy.ts:83 (Pi f3a64af07, #8635): a setup that rejected while the request signal is aborted ends as "aborted", with the rejection's message.
+		runtime.fail(ctx, outer, model, err)
 		return
 	}
-	apiRequest := extension.ModelStreamRequestFromContext(ctx).API
-	if apiRequest {
+	if extension.ModelStreamRequestFromContext(ctx).API {
 		defer func() { _ = provider.Close() }()
 	}
 	if ctx.Err() != nil && runtime.knowsProvider(preparedModel, provider) {
-		// Pi races auth resolution with the request signal (resolve.ts raceWithAbortSignal) inside lazyStream's setup, so a request cancelled before its provider starts is a setup rejection: reason "error" with the signal's reason, as prepare failures are reported above.
-		failureCtx := ctx
-		if !apiRequest {
-			failureCtx = context.WithoutCancel(ctx)
-		}
-		runtime.fail(failureCtx, outer, preparedModel, ai.AbortReason(ctx))
+		// Pi races auth resolution with the request signal (resolve.ts raceWithAbortSignal) inside lazyStream's setup, so a request cancelled before its provider starts is a setup rejection with the signal's reason; lazy.ts:83 reports it as "aborted" (Pi f3a64af07).
+		runtime.fail(ctx, outer, preparedModel, ai.AbortReason(ctx))
 		return
 	}
 	leaf := provider

@@ -34,6 +34,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/terminals"
 )
 
 func TestMain(m *testing.M) {
