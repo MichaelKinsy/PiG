@@ -764,7 +764,8 @@ func forkedFrom(f *fleet) string {
 
 // TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith runs `it("a worker started after an
 // edit of the entry's imported source runs the code the base was built with")`. `inputs` (packages/chord/src/node/workers/workers.ts:256,
-// workers.test.ts:75) lists the files the base was built from: here the entry with its bytes' hash.
+// workers.test.ts:75) lists the files the base was built from, so that an edit of any of them is detected: here, with a Go worker's base
+// being one copy of its executable (D600), the entry with its bytes' hash.
 func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith(t *testing.T) {
 	entry := copiedEntry(t)
 	f := newFleet(t, fleetOptions{entry: entry, env: map[string]string{fixtureReportExecutable: "1"}})

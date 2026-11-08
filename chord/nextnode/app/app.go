@@ -389,7 +389,7 @@ func (a *App) report(kind AppErrorKind, err any) {
 	}
 }
 
-// serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`):
+// serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`, workers.NodeBaseInputs):
 // not one under the Go build cache (the analog of an entry under `node_modules`: a test runner, `go run`), and one that cannot be
 // read is reported as `server_scan` and left out.
 func (a *App) serverExecutable() (string, bool) {
@@ -402,17 +402,8 @@ func (a *App) serverExecutable() (string, bool) {
 		exe, err = filepath.Abs(exe)
 	}
 	if err == nil {
-		var info os.FileInfo
-		if info, err = os.Stat(exe); err == nil && !info.Mode().IsRegular() {
-			err = fmt.Errorf("%s is not a regular file", exe)
-		}
-	}
-	if err == nil {
 		// Readable now: the watcher hashes it, and its failure would come as a plugins error instead.
-		var file *os.File
-		if file, err = os.Open(exe); err == nil {
-			err = file.Close()
-		}
+		_, err = workers.NodeBaseInputs(exe, nil)
 	}
 	if err != nil {
 		a.reportLate(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err), "")
