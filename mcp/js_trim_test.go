@@ -43,10 +43,9 @@ const nelSyntaxError = "Unexpected token '\u0085', \"\u0085\" is not valid JSON"
 func TestStdioTransportSkipsOnlyLinesThatAreBlankToJavaScriptTrim(t *testing.T) {
 	transport := &StdioTransport{}
 	recorded := record(&transport.TransportEvents)
-	var lines lineSplitter
-	lines.write([]byte("\uFEFF\n \t\uFEFF\r\n\u0085\n{\"jsonrpc\":\"2.0\",\"method\":\"ping\"}\n"))
-	transport.drainLines(&lines, DefaultMaxMessageBytes)
-	rest := lines.pending()
+	lines := transport.lineReader()
+	lines.readStdout([]byte("\uFEFF\n \t\uFEFF\r\n\u0085\n{\"jsonrpc\":\"2.0\",\"method\":\"ping\"}\n"))
+	rest := lines.splitter.pending()
 	if len(rest) != 0 {
 		t.Fatalf("rest = %q", rest)
 	}
@@ -67,9 +66,10 @@ func TestStdioTransportReportsAnIncompleteMessageOnlyWhenTheRemainderIsNotBlankT
 		{"\u0085", true},
 		{"{\"jsonrpc\"", true},
 	} {
-		transport := &StdioTransport{stdoutRemainder: []byte(test.rest)}
+		transport := &StdioTransport{}
 		recorded := record(&transport.TransportEvents)
-		transport.finishStdout()
+		transport.lineReader().readStdout([]byte(test.rest))
+		transport.lineReader().end()
 		want := []string(nil)
 		if test.reported {
 			want = []string{"MCP stdio server closed with an incomplete JSON-RPC message"}
