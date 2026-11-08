@@ -15,12 +15,17 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 
 	// The plugins this executable ships (every directory of plugins/ with a plugin.go: plugins_test.go checks the list).
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/files"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/logs"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/send-file"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/web-shell"
