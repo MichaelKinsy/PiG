@@ -342,7 +342,7 @@ func oneLine(text string) string {
 }
 
 func init() {
-	worker := host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return p2runtime.Contribute(facet, "p2.agent-tool", func(self host.StoreSelf) error {
 			config := self.Registry(p2runtime.HarnessConfig.Registry)
 			extensionsSource := self.Registry(p2runtime.Extensions.Registry)
@@ -365,7 +365,7 @@ func init() {
 			return nil
 		})
 	})
-	hosts.RegisterPlugin(hosts.Plugin{Name: "agent", Worker: &worker})
+	hosts.RegisterPlugin(hosts.Plugin{Name: "agent", Worker: &workerFacet})
 }
 
 func parseJSON(text string) (any, error) {
@@ -384,3 +384,9 @@ func encodeJSON(value any) (string, error) {
 	encoded, err := json.Marshal(value)
 	return string(encoded), err
 }
+
+// workerFacet is the plugin's worker facet, set at init.
+var workerFacet host.Facet
+
+// Facet is the plugin's worker facet.
+func Facet() host.Facet { return workerFacet }

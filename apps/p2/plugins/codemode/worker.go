@@ -107,9 +107,20 @@ func serveRuntime(_ *delta.JsonObject, self host.Self) (contracts.Implementation
 
 func boolPointer(value bool) *bool { return &value }
 
-func init() {
-	worker := host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+// NewFacet is a new value of the plugin's worker facet (a reload with it replaces what the plugin contributed).
+func NewFacet() host.Facet {
+	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return facet.Serve(contract.CodemodeRuntime, host.LocalFactory(serveRuntime), host.ServeOptions{})
 	})
-	hosts.RegisterPlugin(hosts.Plugin{Name: "codemode", Worker: &worker})
 }
+
+func init() {
+	workerFacet = NewFacet()
+	hosts.RegisterPlugin(hosts.Plugin{Name: "codemode", Worker: &workerFacet})
+}
+
+// workerFacet is the plugin's worker facet, set at init.
+var workerFacet host.Facet
+
+// Facet is the plugin's worker facet.
+func Facet() host.Facet { return workerFacet }
