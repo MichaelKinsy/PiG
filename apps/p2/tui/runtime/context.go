@@ -175,8 +175,10 @@ type TuiContext interface {
 	Identity() TuiIdentity
 	// Navigate shows a screen; with a non-nil conversation, that conversation of the session (default: the main one on a switch).
 	Navigate(screen, session string, conversation *int)
-	// View is the live view toggles.
-	View() *TuiView
+	// View is the live view toggles; SetExpandedTools and SetShowThinking flip them (and redraw).
+	View() TuiView
+	SetExpandedTools(expanded bool)
+	SetShowThinking(show bool)
 	Commands() TuiCommandRunner
 	// Surface is a mounted surface by slot key (e.g. "chat"), nil when none; commands use it to reach their plugin's live instance.
 	Surface(name string) tui.Component
@@ -190,7 +192,7 @@ type TuiContext interface {
 	Scope() *chordtui.TuiScope
 	// Overlay shows an overlay on the tui stack. While it is focused, commands whose `when` names `overlay` or `overlay:<id>` run before the component
 	// (section 6.2 stage 3). Closed on navigation, reload and plugin replacement.
-	Overlay(id string, component tui.Component, options tui.OverlayOptions) TuiOverlayHandle
+	Overlay(id string, component tui.Component, options tui.OverlaySpec) TuiOverlayHandle
 	Panel() TuiPanel
 	Exit()
 	Reload()
