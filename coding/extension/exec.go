@@ -289,11 +289,6 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 	pipes.Wait(func() bool { return childGroupMayHoldOutput(cmd.Process) })
 	close(stopWatch)
 	<-watchDone
-	// Node runs an expired timer before the pipe and exit events of the same loop iteration, so a call that was off the CPU past its timeout (a stalled or
-	// loaded host) reports killed whichever of the two the watcher's select saw first.
-	if deadline, ok := ctx.Deadline(); ctx.Err() != nil || ok && !time.Now().Before(deadline) {
-		killProcess()
-	}
 	killMu.Lock()
 	if forceKill != nil {
 		forceKill.Stop()
