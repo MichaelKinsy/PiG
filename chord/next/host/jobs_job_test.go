@@ -374,7 +374,7 @@ func TestJobStartGivesAShortRunsHandleItsOutcomeHoweverLateTheCallerWaits(t *tes
 
 // job.test.ts › start › waits by id for unsettled runs only: settled and unknown ids reject gone
 //
-// Pi: packages/chord/test/next/jobs/job.test.ts:297 (waits by id for unsettled runs only: settled and unknown ids reject gone)
+// Pi: packages/chord/test/jobs/job.test.ts:299 (waits by id for unsettled runs only: settled and unknown ids reject gone)
 func TestJobStartWaitsByIDForUnsettledRunsOnlySettledAndUnknownIDsRejectGone(t *testing.T) {
 	g := newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: gated(g)}, jobHostOptions{})

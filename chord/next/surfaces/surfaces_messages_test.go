@@ -146,6 +146,19 @@ func TestRendersThePluginsOwnCatalogOfTheLanguageValuesAndFunctions(t *testing.T
 	}
 }
 
+// A message's value is a text or a function of its arguments (`MessageValue`, messages.ts:16): both kinds render.
+func TestAMessageValueIsATextOrAFunctionOfItsArgumentsBothRender(t *testing.T) {
+	var text MessageValue = "Neue Notiz"
+	var function MessageValue = count("Notizen", "1 Notiz")
+	kinds := mustMessages(t, "kinds", LocaleCatalog{"de", Catalog{"text": text, "function": function}})
+	if got := mustT(t, kinds.In(nil), "text"); got != "Neue Notiz" {
+		t.Errorf("text = %q", got)
+	}
+	if got := mustT(t, kinds.In(nil), "function", 1.0); got != "1 Notiz" {
+		t.Errorf("function = %q", got)
+	}
+}
+
 func TestPrefersTheHostsContributedCatalogFallingBackKeyByKeyDownTheChainReported(t *testing.T) {
 	var reports []MessagesReport
 	brazil := languageOf(t, "pt-BR", &reports, Translation{Namespace: "notes", Locale: "pt-BR", Messages: Catalog{"newNote": "Nova anotação"}})
