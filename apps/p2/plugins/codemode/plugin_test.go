@@ -8,6 +8,7 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -26,9 +27,9 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 			return p2test.StubMembers{State: map[string]any{"settings": settings}}
 		}}},
 	})
-	// A registry's value is read inside a section of the host's loop (`RegistryValue`): its contributions change there.
+	// A registry's value is read inside a section of the host's loop (its source does): its contributions change there.
 	extension := func() *p2runtime.P2Extension {
-		value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
+		value, err := registryCurrent(fixture.Host, p2runtime.Extensions.Registry)
 		if err != nil {
 			t.Logf("registry: %v", err)
 			return nil
@@ -42,7 +43,7 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 	}
 	switchIs := func(want bool) func() (bool, error) {
 		return func() (bool, error) {
-			value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
+			value, err := registryCurrent(fixture.Host, p2runtime.ExtensionSwitches.Registry)
 			if err != nil {
 				return false, nil
 			}
@@ -105,4 +106,13 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 		t.Fatal(err)
 	}
 	wait(func() (bool, error) { return extension() != nil, nil }, "the extension again")
+}
+
+// registryCurrent is a registry's value now, read as the host's section gives it (the source reads inside one).
+func registryCurrent(h host.Host, registry registries.Registry[any, any]) (any, error) {
+	source, err := h.Registry(p2test.Background, registry, host.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return source.Current()
 }
