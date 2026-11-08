@@ -437,7 +437,7 @@
   },
   "pkg:mcp/.#McpPipe::property:exited": {
     "go": "mcp/pipe.go#McpPipe.Exited",
-    "reason": "Pi pipe.ts:17 declares `readonly exited: Promise<unknown>`: it settles when the program has ended, whatever the reason, and also after close(); PipeTransport awaits it and treats a rejection that close() did not cause as the exit failure. Go has no promise property: McpPipe.Exited() (int, error) blocks until the program has ended and returns its exit code, or the error that ended it (Pi's rejection); it may be called any number of times and after Close, as a settled promise may be awaited again. TestMcpPipeWritesClosesStdinAndKillsAProgram and TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses assert both outcomes."
+    "reason": "Pi pipe.ts:17 declares `readonly exited: Promise<unknown>`: it settles when the program has ended, whatever the reason, and also after close(); PipeTransport awaits it and treats a rejection that close() did not cause as the exit failure. Go has no promise property: McpPipe.Exited() (int, error) blocks until the program has ended and returns its exit code, or the error that ended it (Pi's rejection); it may be called any number of times and after Close, as a settled promise may be awaited again. TestMcpPipeWritesClosesStdinAndKillsAProgram and TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses assert both outcomes, and env/process_mcp_pipe_test.go asserts them on the production pipe, env.RemoteProcess, behind a pi-env daemon."
   },
   "pkg:mcp/.#isMcpServerOverride::call:0": {
     "go": "mcp/config.go#IsMcpServerOverride",

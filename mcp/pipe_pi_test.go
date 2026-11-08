@@ -1,6 +1,7 @@
 package mcp_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -234,6 +235,17 @@ func TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses(t *testing.T) {
 	program.pipe.end(errors.New("connection lost"))
 	program.settle(t)
 	wantList(t, "errors", program.errorList(), []string{"connection lost"})
+}
+
+// Like Pi's pipe send, which takes no signal, Send writes the line even when its context has ended: a line is written at once.
+func TestPipeTransportSendWritesEvenWhenItsContextHasEnded(t *testing.T) {
+	program := startFake(t, mcp.PipeTransportOptions{})
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := program.transport.Send(ctx, ping(1)); err != nil {
+		t.Fatal(err)
+	}
+	wantList(t, "written", program.written(), []string{pingJSON("1") + "\n"})
 }
 
 // Pi packages/mcp/test/pipe.test.ts:158
