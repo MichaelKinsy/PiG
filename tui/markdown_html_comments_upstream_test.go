@@ -10,7 +10,7 @@ import (
 )
 
 // Ports the "HTML comments" tests of packages/tui/test/markdown.test.ts at Pi main 54280c4ff (fix(tui): hide HTML comments in
-// Markdown rendering, #11755, fixing #11710), which is after the pinned v1.5.0 (D265).
+// Markdown rendering, #11755, fixing #11710), which is after the pinned v1.5.0.
 
 // mdHTMLCommentPlain is renderPlain of the test: the rows at width 60 without styling and without trailing spaces.
 func mdHTMLCommentPlain(t *testing.T, text string) []string {
@@ -93,7 +93,7 @@ func markdownHTMLCommentDocs() []string {
 }
 
 // TestMarkdownHTMLCommentsMatchPiMain compares the rows of every document with Pi's markdown.ts with 54280c4ff applied to the pinned
-// dist (testdata/pi_markdown_overlay.mjs), at several widths and paddings with every style call tagged.
+// dist, at several widths and paddings with every style call tagged.
 // Pi source: packages/tui/src/components/markdown.ts
 func TestMarkdownHTMLCommentsMatchPiMain(t *testing.T) {
 	compareMarkdownWithPi(t, markdownHTMLCommentDocs())
@@ -135,42 +135,6 @@ func TestMarkdownHTMLCommentsStreamLikeAFreshRender(t *testing.T) {
 			reported++
 			t.Errorf("%q:\n streamed %q\n    fresh %q\n       Pi %q", text, got, fresh, want)
 		}
-	}
-}
-
-// TestMarkdownHTMLCommentsDifferFromPinnedPi pins both sides of D265. The pinned Pi (v1.5.0) renders an HTML comment as text; PiG
-// follows Pi main 54280c4ff and hides it. The test fails when the pinned Pi hides comments (the pin reached 54280c4ff: remove D265
-// and the overlay in testdata/pi_markdown_overlay.mjs) and when PiG shows them.
-//
-// pig divergence (D265): the expected PiG rows are Pi main's, not the pinned Pi's.
-// Pi source: packages/tui/src/components/markdown.ts
-func TestMarkdownHTMLCommentsDifferFromPinnedPi(t *testing.T) {
-	cases := []struct {
-		name, text string
-		pinned     []string
-		pig        []string
-	}{
-		{"a block comment", "<!-- c -->\n\ntext", []string{"<!-- c -->", "", "text"}, []string{"text"}},
-		{"an inline comment", "See <!-- c --> the docs.", []string{"See <!-- c --> the docs."}, []string{"See the docs."}},
-		{"an unclosed comment", "text\n\n<!-- streaming", []string{"text", "", "<!-- streaming"}, []string{"text"}},
-		{"other HTML", "with <tag> markers", []string{"with <tag> markers"}, []string{"with <tag> markers"}},
-	}
-	probes := make([]markdownRenderProbe, len(cases))
-	for i, c := range cases {
-		probes[i] = markdownRenderProbe{Text: c.text, Widths: []int{80}}
-	}
-	t.Setenv("PIG_PI_MARKDOWN", "pinned")
-	expected := piMarkdownRows(t, probes)
-	mdCaseSetup(t)
-	for i, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			if got := mdPlain(expected[i][0]); !reflect.DeepEqual(got, c.pinned) {
-				t.Errorf("pinned Pi rows = %q, want %q: Pi renders it differently now, so D265 may be removable", got, c.pinned)
-			}
-			if got := mdHTMLCommentPlain(t, c.text); !reflect.DeepEqual(got, c.pig) {
-				t.Errorf("PiG rows = %q, want %q", got, c.pig)
-			}
-		})
 	}
 }
 

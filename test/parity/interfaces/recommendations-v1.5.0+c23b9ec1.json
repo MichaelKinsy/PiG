@@ -45217,7 +45217,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -45228,7 +45228,6 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#CreateProvider",
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#createProvider",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateProvider"
       ],
       "missingClosure": [
@@ -103819,7 +103818,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -103830,7 +103829,6 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#CreateProvider",
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#createProvider",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateProvider"
       ],
       "missingClosure": [
@@ -115241,7 +115239,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -115252,7 +115250,6 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#CreateProvider",
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#createProvider",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateProvider"
       ],
       "missingClosure": [
@@ -128320,21 +128317,23 @@
     {
       "id": "pkg:ai/providers/qwen-token-plan-individual-cn#qwenTokenPlanIndividualCnProvider",
       "upstreamShapeHash": "sha256:4878dc4cc4c04cf21215fe95243c92d67900bc7520a4260082d69a653c06768f",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#QwenTokenPlanIndividualCnProvider"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -128375,21 +128374,23 @@
     {
       "id": "pkg:ai/providers/qwen-token-plan-individual-cn.models#QWEN_TOKEN_PLAN_INDIVIDUAL_CN_CLASSIFIER_MODELS",
       "upstreamShapeHash": "sha256:0495c609a2caf5011de8d57164677d9301209f760655faba0f98c8fbac347f9e",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#QwenTokenPlanIndividualCNClassifierModels"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -128402,21 +128403,23 @@
     {
       "id": "pkg:ai/providers/qwen-token-plan-individual-cn.models#QWEN_TOKEN_PLAN_INDIVIDUAL_CN_IMAGE_MODELS",
       "upstreamShapeHash": "sha256:e94f3ea9888a6d7185406d9164ef1f967ca2ca0051e993a8bdc3c0b6bb640579",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#QwenTokenPlanIndividualCNImageModels"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -128429,21 +128432,23 @@
     {
       "id": "pkg:ai/providers/qwen-token-plan-individual-cn.models#QWEN_TOKEN_PLAN_INDIVIDUAL_CN_MODELS",
       "upstreamShapeHash": "sha256:4b20a9fecbecf8526964dca64c3e61fc48284fe8671bbbf0dc78f63575a5ed90",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#QwenTokenPlanIndividualCNModels"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -132091,21 +132096,23 @@
     {
       "id": "pkg:ai/utils/error-body#withCauseDetail",
       "upstreamShapeHash": "sha256:e7958625cf3703e3b05d4a722bb1feaec94d00748bc9a1afbcce93ad20fcf75e",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#WithCauseDetail"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -169065,7 +169072,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "15 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -169084,6 +169091,7 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentSessionRuntime.apply",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#runSignal.apply",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.apply",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#RadiusMcpServerPlan.Apply",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#scopedModelsSelection.apply",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalInputPass.apply",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#themeSubmenu.apply",
@@ -356895,23 +356903,21 @@
     {
       "id": "pkg:mcp/.#AuthProvider",
       "upstreamShapeHash": "sha256:6af7880748c3383868163163312bc2e4e78bfbb1fbd1be7aac28e94286d60630",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProvider"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -359491,23 +359497,21 @@
     {
       "id": "pkg:mcp/.#MCP_OUTPUT_MAX_BYTES",
       "upstreamShapeHash": "sha256:d41f1cee0d391c69d9e17dc8486c3b781e0f879ebba40804968569226b0affeb",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOutputMaxBytes"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -362426,23 +362430,21 @@
     {
       "id": "pkg:mcp/.#McpOutputSaver",
       "upstreamShapeHash": "sha256:b5ad10703b80da90f5ed235eaf7b372a5fd7490270f0e72176649b23d89f87d5",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOutputSaver"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -368775,23 +368777,21 @@
     {
       "id": "pkg:mcp/.#createMcpToolName",
       "upstreamShapeHash": "sha256:e78ecb2dc466b33492c66a85e87c42d9b83177a6cb0c911b8ad25060d65132ec",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#CreateMcpToolName"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -369065,7 +369065,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#LimitMcpContent"
+        "go:github.com/MichaelKinsy/PiG/coding/mcpext#limitMcpContent"
       ],
       "missingClosure": [
         "shape-translation-review",
@@ -369122,7 +369122,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/extension#McpNamespace"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#mcpNamespace"
       ],
       "missingClosure": [
         "shape-translation-review",
@@ -369778,24 +369778,22 @@
     {
       "id": "pkg:mcp/oauth#McpAuthProvider",
       "upstreamShapeHash": "sha256:2541be856245fb72a472f3426ec6bac8e03158c7dd5f492372fe88661d15100a",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpAuthProvider",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#McpAuthProvider"
       ],
       "missingClosure": [
-        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -371538,24 +371536,22 @@
     {
       "id": "pkg:mcp/oauth#McpOAuthServerStore",
       "upstreamShapeHash": "sha256:7bd1a0aaf8b469b823dd4a063625156c1af4f0f4c2b9518fed1939d19d27add6",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOAuthServerStore",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#McpOAuthServerStore"
       ],
       "missingClosure": [
-        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -371737,23 +371733,21 @@
     {
       "id": "pkg:mcp/oauth#McpOAuthSettings",
       "upstreamShapeHash": "sha256:f10255b5b4c61def7444f705781f2bb4da66570d1fad789c8ec6e06ef77ec0f3",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOAuthSettings"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -372521,23 +372515,21 @@
     {
       "id": "pkg:mcp/oauth#McpSignInCancelledError",
       "upstreamShapeHash": "sha256:28c5350337012a41ece100b1a29137ce128be9fcf6e16aa670b00eb0348928df",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpSignInCancelledError"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -378142,23 +378134,21 @@
     {
       "id": "pkg:mcp/oauth#responseFromRedirectUrl",
       "upstreamShapeHash": "sha256:dbb12f1c1d5774158d496cd9dd26af122a07525af0a46393acf13318f00de41b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#responseFromRedirectURL"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -412695,7 +412685,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "7 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -412707,7 +412697,6 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#childParser.token",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#deltaParser.token",
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProvider.Token",
         "go:github.com/MichaelKinsy/PiG/coding/mcpext#providerTokenAuth.Token",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#McpAuthProvider.Token",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#Decoder.Token",

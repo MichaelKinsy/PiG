@@ -6438,6 +6438,52 @@
       ]
     },
     {
+      "id": "BF-2d3121b",
+      "title": "A connection failure with no status or body keeps its cause in the error message, for example `fetch failed…",
+      "symptom": "A connection failure with no status or body keeps its cause in the error message, for example `fetch failed: connect ECONNREFUSED 127.0.0.1:8080`, instead of only the generic text.",
+      "rootCause": "Ports earendil-works/pi (#11783) and 56634404 (#11885). A connection failure with no status or body appends the deepest cause (for a failed fetch, Node's connect ECONNREFUSED text) to its message; Anthropic errors do the same. The gateway wording \"cut short after the reply had begun\" is retryable.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A connection failure with no status or body keeps its cause in the error message, for example `fetch failed: connect ECONNREFUSED 127.0.0.1:8080`, instead of only the generic text.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2d3121b71c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/error_body_cause_upstream_test.go::TestConnectionErrorCauseDetailUpstream"
+      ]
+    },
+    {
+      "id": "BF-2d3121b-2",
+      "title": "A gateway's `cut short after the reply had begun` stream error is retried like other dropped streams",
+      "symptom": "A gateway's `cut short after the reply had begun` stream error is retried like other dropped streams.",
+      "rootCause": "Ports earendil-works/pi (#11783) and 56634404 (#11885). A connection failure with no status or body appends the deepest cause (for a failed fetch, Node's connect ECONNREFUSED text) to its message; Anthropic errors do the same. The gateway wording \"cut short after the reply had begun\" is retryable.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A gateway's `cut short after the reply had begun` stream error is retried like other dropped streams.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2d3121b71c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/error_body_cause_upstream_test.go::TestConnectionErrorCauseDetailUpstream"
+      ]
+    },
+    {
       "id": "BF-2d31c33",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -7592,24 +7638,17 @@
       "rootCauseSource": "commit",
       "userImpact": "Wrong display",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D265",
-      "removeWhen": "the pinned Pi release contains 54280c4ff. Then the call-site markers, `tui/markdown_html_comments.go`'s divergence note, `testdata/pi_markdown_overlay.mjs` and this record go; the overlay's anchors stop matching when the pin's `markdown.js` already holds the change.",
+      "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Markdown no longer shows HTML comments (`\u003c!-- ... --\u003e`) as text in Extension Updates, What's New, `/changelog` and messages. A comment-only block disappears with one of its blank lines, so no extra gap remains; an inline comment is skipped, so `See \u003c!-- c --\u003e the docs.` renders `See the docs.`; an unclosed comment stays hidden while it streams. Follows Pi main 54280c4ff ahead of the pin (D265).",
+      "releaseNote": "Markdown no longer shows HTML comments (`\u003c!-- ... --\u003e`) as text in Extension Updates, What's New, `/changelog` and messages. A comment-only block disappears with one of its blank lines, so no extra gap remains; an inline comment is skipped, so `See \u003c!-- c --\u003e the docs.` renders `See the docs.`; an unclosed comment stays hidden while it streams. Follows Pi main 54280c4ff.",
       "origin": "release note",
       "commits": [
         {
           "hash": "348a3a8859",
           "date": "2026-11-05"
-        },
-        {
-          "hash": "fe8b5e3ab8",
-          "date": "2026-11-05"
         }
       ],
       "tests": [
-        "tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsDifferFromPinnedPi",
         "tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsMatchPiMain",
         "tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsStreamLikeAFreshRender",
         "tui/markdown_html_comments_upstream_test.go::TestUpstreamMarkdownHTMLComments"
@@ -23003,6 +23042,29 @@
       ]
     },
     {
+      "id": "BF-7dd0dc1",
+      "title": "fix(ai): prompt cache key mode and no empty tools array on openai-completions",
+      "symptom": "fix(ai): prompt cache key mode and no empty tools array on openai-completions",
+      "rootCause": "Ports earendil-works/pi (#9442) and (#11891). compat.promptCacheKeyMode (auto, enabled, disabled) controls prompt_cache_key on openai-completions, openai-responses and Azure Responses; enabled sends it through compatible proxies whenever caching is active, disabled never sends it. openai-completions omits tools: [] for tool history unless compat.requiresToolsWithToolHistory is set.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7dd0dc1be1",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "ai/openai_prompt_cache_upstream_test.go::TestOpenAICompletionsPromptCacheUpstream",
+        "ai/openai_responses_prompt_cache_upstream_test.go::TestOpenAIResponsesPromptCacheKeyPolicyUpstream",
+        "ai/openai_test.go::TestOpenAICompletionsEmptyTools"
+      ]
+    },
+    {
       "id": "BF-7e09ec0",
       "title": "fix(codingagent): the idle collection runs one forced GC cycle (D172)",
       "symptom": "fix(codingagent): the idle collection runs one forced GC cycle (D172)",
@@ -25447,6 +25509,35 @@
       ]
     },
     {
+      "id": "BF-8c3339c",
+      "title": "Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection…",
+      "symptom": "Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection starts ends with `aborted` instead of waiting for the start, a sent request settles as `aborted` when the daemon does not answer its cancel within a second, `RemoteExecutionEnv.Exec` enforces its timeout locally, file operations stop waiting for the connection when cancelled, and `ssh` uses `ConnectTimeout=15`.",
+      "rootCause": "D304 is a draft, owner sign-off pending. Ports packages/env/test/remote-abort.test.ts.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Stop and timeouts end remote calls at once while the host is down: a request cancelled while the connection starts ends with `aborted` instead of waiting for the start, a sent request settles as `aborted` when the daemon does not answer its cancel within a second, `RemoteExecutionEnv.Exec` enforces its timeout locally, file operations stop waiting for the connection when cancelled, and `ssh` uses `ConnectTimeout=15`. Follows Pi main c96e368e2 ahead of the pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8c3339c527",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "env/connection_cancelled_request_test.go::TestRequestCancelledWhileTheDaemonStartsIsAbortedAtOnce",
+        "env/connection_cancelled_request_test.go::TestRequestWithACancelledContextIsNotSentAndIsAborted",
+        "env/main_test.go::TestMain",
+        "env/regressions_test.go::TestExecFailureOfATimeoutWithoutATimeout",
+        "env/remote_abort_test.go::TestConnectionAbortSettlesASentRequestTheDaemonDoesNotAnswer",
+        "env/remote_abort_test.go::TestConnectionAbortStopsWaitingForAStartThatDoesNotFinish",
+        "env/remote_abort_test.go::TestRemoteExecOnAHostThatDoesNotAnswer",
+        "env/remote_abort_test.go::TestRemoteFileOperationsStopWaitingForTheConnectionWhenAborted"
+      ]
+    },
+    {
       "id": "BF-8c3f5a1",
       "title": "fix(tui): a finished block's hidden thinking run keeps no streaming memos",
       "symptom": "fix(tui): a finished block's hidden thinking run keeps no streaming memos",
@@ -26444,6 +26535,70 @@
         "internal/codingagent/session_file_bytes_oracle_test.go::TestSessionFileBytesMatchPi",
         "internal/jsonparse/json_parse_oracle_test.go::TestValidateMatchesNodeJSONParse",
         "internal/sessionentry/entry_test.go::TestBranchSummaryEntryKeepsTheMemberOrderOfDetails"
+      ]
+    },
+    {
+      "id": "BF-91a0cfd",
+      "title": "A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its…",
+      "symptom": "A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its local `$ref`s: the `$id` was applied twice, so compiling failed with `Unresolved $ref` and tool arguments were rejected under `UnresolvedRefsReject`.",
+      "rootCause": "D302 and D303 are drafts, owner sign-off pending.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its local `$ref`s: the `$id` was applied twice, so compiling failed with `Unresolved $ref` and tool arguments were rejected under `UnresolvedRefsReject`. The same holds with `unevaluatedProperties` and `unevaluatedItems`, when explaining errors under nested resources and on the first coercion of a schema with `$dynamicRef`. Follows Pi main 2bd2c2d0a ahead of the pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "91a0cfd13d",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "schema/pi_main_follow_upstream_test.go::TestPiMainClosedObjectFindsPropertiesInAnyOrder",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainEqual",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainExplainsNestedResourcesWithARelativeID",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainLeafChecksAgreeWithTheStandaloneCheck",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveBuildsASchemaThatChecksEveryLevel",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveSchemasNestWithDistinctIDs",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRejectsNaNAndInfinityAsANumber",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRelativeRootIDAppliedOnce",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRelativeRootIDWithUnevaluatedKeywords",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainValidateChecksWithoutCoercing"
+      ]
+    },
+    {
+      "id": "BF-91a0cfd-2",
+      "title": "A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error…",
+      "symptom": "A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error names it (`expected number, got NaN`), as TypeBox does.",
+      "rootCause": "D302 and D303 are drafts, owner sign-off pending.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error names it (`expected number, got NaN`), as TypeBox does. Follows Pi main 55a5c6914 ahead of the pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "91a0cfd13d",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "schema/pi_main_follow_upstream_test.go::TestPiMainClosedObjectFindsPropertiesInAnyOrder",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainEqual",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainExplainsNestedResourcesWithARelativeID",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainLeafChecksAgreeWithTheStandaloneCheck",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveBuildsASchemaThatChecksEveryLevel",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveSchemasNestWithDistinctIDs",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRejectsNaNAndInfinityAsANumber",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRelativeRootIDAppliedOnce",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainRelativeRootIDWithUnevaluatedKeywords",
+        "schema/pi_main_follow_upstream_test.go::TestPiMainValidateChecksWithoutCoercing"
       ]
     },
     {
@@ -30942,6 +31097,148 @@
         "internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsAnExtensionOverlay",
         "internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap",
         "internal/codingagent/interactive_tree_frames_test.go::TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose"
+      ]
+    },
+    {
+      "id": "BF-D310",
+      "title": "`/reload` and a session switch remove every extension overlay",
+      "symptom": "1.5.0 hides only the topmost overlay of the extension UI on reset (#11853).",
+      "rootCause": "An extension with two overlays open left the lower one on screen, taking input, after its extension had been replaced.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D310",
+      "removeWhen": "the pinned Pi release contains 80d4d3c86. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "4934c8242a",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestResetRemovesEveryExtensionOverlayButKeepsPisOwn"
+      ]
+    },
+    {
+      "id": "BF-D311",
+      "title": "`ctrl+o` applies to user bash output shown while the agent is working",
+      "symptom": "1.5.0 loses and mis-expands pending user bash output (#11875).",
+      "rootCause": "`ctrl+o` did not expand the pending output, queueing a message made it disappear, and it stayed out of the transcript after the run.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D311",
+      "removeWhen": "the pinned Pi release contains acd059b72. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "4934c8242a",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_pending_bash_test.go::TestCtrlOExpandsUserBashOutputInThePendingArea",
+        "internal/codingagent/interactive_pending_bash_test.go::TestInteractiveBashDuringRunStaysPendingUntilTheRunSettles",
+        "internal/codingagent/interactive_pending_bash_test.go::TestNewUserBashOutputStartsInTheCurrentExpandState",
+        "internal/codingagent/interactive_pending_bash_test.go::TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea",
+        "internal/codingagent/interactive_pending_bash_test.go::TestSettlingTheRunMovesUserBashOutputToTheChat"
+      ]
+    },
+    {
+      "id": "BF-D312",
+      "title": "The model selectors keep the row the user browsed to when a catalog refresh lands",
+      "symptom": "1.5.0 discards the user's selection when the catalog refresh lands (#9109).",
+      "rootCause": "browsing the list during the refresh lost the user's place.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D312",
+      "removeWhen": "the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "b1333a0834",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D350",
+      "title": "OpenCode Zen and Go Claude models send per-message effort",
+      "symptom": "1.5.0 omits both for OpenCode Claude models.",
+      "rootCause": "OpenCode serves these Claude models over an Anthropic-messages endpoint that needs the per-message effort and the drop_block binding to keep thinking blocks coherent across turns.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D350",
+      "removeWhen": "the pinned Pi release contains 9ee7586a9. Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "c21b1370e5",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "cmd/gen-models/catalog_matches_pi_test.go::TestCatalogGenerationMatchesPi",
+        "cmd/gen-models/opencode_model_generation_test.go::TestOpencodeModelGeneration"
+      ]
+    },
+    {
+      "id": "BF-D351",
+      "title": "Anthropic non-strict tool schemas keep root $defs",
+      "symptom": "1.5.0 drops root `$defs` in non-strict mode.",
+      "rootCause": "A `$ref` into a removed `$defs` makes Anthropic reject the tool definition.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D351",
+      "removeWhen": "the pinned Pi release contains 4a6a58eb. Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "c21b1370e5",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema",
+        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas"
+      ]
+    },
+    {
+      "id": "BF-D352",
+      "title": "Anthropic message threads",
+      "symptom": "Not a Pi bug: a feature ahead of the pin.",
+      "rootCause": "Smaller requests and cache continuity on long Anthropic sessions.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D352",
+      "removeWhen": "the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "c21b1370e5",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_message_threads_test.go::TestAnthropicMessageThreadsCreateThenContinue"
       ]
     },
     {
@@ -36933,8 +37230,6 @@
         "chord/delta/tracker_state_upstream_test.go::TestTrackerOwnership",
         "chord/delta/tracker_state_upstream_test.go::TestTransactionalOverlayDrafts",
         "durable/env/node/watch_unavailable_test.go::TestNodeFileWatcherReportsOverflowWhenNoNativeWatchCanBeCreated",
-        "env/connection_cancelled_request_test.go::TestRequestCancelledWhileTheDaemonStartsWaitsForTheStart",
-        "env/connection_cancelled_request_test.go::TestRequestWithACancelledContextIsStillSentOnAStartedConnection",
         "env/daemon/watch_event_test.go::TestWatchEventsMatchTheRustDaemon"
       ]
     },
@@ -49601,6 +49896,60 @@
       "tests": []
     },
     {
+      "id": "BF-fb4d32e",
+      "title": "A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another…",
+      "symptom": "A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another visible or scrollback row, and a selection to the right of the caret no longer repeats the marker, so terminals that print the payload of an unknown APC sequence show no stray `pi:c` text.",
+      "rootCause": "Ports Pi main (#9441) and (#11890) with their tests, as drafts D300 and D301, owner sign-off pending.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A cursor marker no longer reaches the terminal when a line holds more than one or a marker sits on another visible or scrollback row, and a selection to the right of the caret no longer repeats the marker, so terminals that print the payload of an unknown APC sequence show no stray `pi:c` text. Follows Pi main 25490ea49 ahead of the pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fb4d32eb1c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "tui/render_regressions_upstream_test.go::TestUpstreamTabWidth",
+        "tui/tui_alt_screen_kitty_order_test.go::TestAltScreenClearsRowsBeforeKittyImages",
+        "tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret",
+        "tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover",
+        "tui/tui_alt_screen_kitty_order_test.go::TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows",
+        "tui/tui_render_upstream_test.go::TestUpstreamTUIBoundedRender"
+      ]
+    },
+    {
+      "id": "BF-fb4d32e-2",
+      "title": "Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm)",
+      "symptom": "Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm).",
+      "rootCause": "Ports Pi main (#9441) and (#11890) with their tests, as drafts D300 and D301, owner sign-off pending.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm). The alt screen now draws images after clearing and writing the rows they cover on every Kitty-protocol terminal, not only WezTerm. Follows Pi main 4622edb79 ahead of the pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fb4d32eb1c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "tui/render_regressions_upstream_test.go::TestUpstreamTabWidth",
+        "tui/tui_alt_screen_kitty_order_test.go::TestAltScreenClearsRowsBeforeKittyImages",
+        "tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret",
+        "tui/tui_alt_screen_kitty_order_test.go::TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover",
+        "tui/tui_alt_screen_kitty_order_test.go::TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows",
+        "tui/tui_render_upstream_test.go::TestUpstreamTUIBoundedRender"
+      ]
+    },
+    {
       "id": "BF-fba9b47",
       "title": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
       "symptom": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
@@ -50845,11 +51194,6 @@
       "entry": "BF-D262"
     },
     {
-      "id": "D265",
-      "title": "PiG follows Pi main 54280c4ff ahead of the v1.5.0 pin: Markdown hides HTML comments",
-      "entry": "BF-348a3a8"
-    },
-    {
       "id": "D266",
       "title": "An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the…",
       "entry": "BF-D266"
@@ -50873,6 +51217,36 @@
       "id": "D270",
       "title": "After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first",
       "entry": "BF-D270"
+    },
+    {
+      "id": "D310",
+      "title": "`/reload` and a session switch remove every extension overlay",
+      "entry": "BF-D310"
+    },
+    {
+      "id": "D311",
+      "title": "`ctrl+o` applies to user bash output shown while the agent is working",
+      "entry": "BF-D311"
+    },
+    {
+      "id": "D312",
+      "title": "The model selectors keep the row the user browsed to when a catalog refresh lands",
+      "entry": "BF-D312"
+    },
+    {
+      "id": "D350",
+      "title": "OpenCode Zen and Go Claude models send per-message effort",
+      "entry": "BF-D350"
+    },
+    {
+      "id": "D351",
+      "title": "Anthropic non-strict tool schemas keep root $defs",
+      "entry": "BF-D351"
+    },
+    {
+      "id": "D352",
+      "title": "Anthropic message threads",
+      "entry": "BF-D352"
     }
   ],
   "exemptCommits": {

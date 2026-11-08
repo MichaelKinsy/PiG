@@ -1,7 +1,7 @@
 package tui
 
 // Ports packages/tui/src/components/markdown.ts at Pi main 54280c4ff (stripHtmlComments, removeHtmlCommentBlocks and the
-// comment skip of renderInlineTokens), which hides HTML comments. pig divergence (D265): the pinned v1.5.0 renders a comment as
+// comment skip of renderInlineTokens), which hides HTML comments. the pinned v1.5.0 renders a comment as
 // text.
 
 import (
