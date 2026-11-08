@@ -23,6 +23,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/files"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/logs"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/mcp"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/send-file"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
