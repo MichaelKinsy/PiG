@@ -104,7 +104,7 @@ var hostDataModuleText string
 // to HostDataExport with token.
 func hostDataModule(server data.Principal, token string) string {
 	encoded, _ := chordjson.Marshal(server)
-	quoted, _ := json.Marshal(token)
+	quoted, _ := json.Marshal(token) //portlint:allow jsonescape the token is random hex, with no <, > or &
 	return strings.NewReplacer("__SERVER__", string(encoded), "__TOKEN__", string(quoted)).Replace(hostDataModuleText)
 }
 
