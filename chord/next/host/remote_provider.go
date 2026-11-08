@@ -34,8 +34,10 @@ type runningCall struct {
 	hold    providerEntry
 	served  *hold
 	relayed *relayedHold
-	bytes   bool
-	abort   func(cause error)
+	// span is its `chord.relay` span while its reply is awaited, when this host records (relayed calls).
+	span  *chordtelemetry.OpenSpan
+	bytes bool
+	abort func(cause error)
 }
 
 // relayState is a relaying origin: its number on upstream links, and the open upstream links it relayed holds to.
@@ -127,6 +129,8 @@ func (p *providerSide) closed() {
 	for _, call := range p.calls.values() {
 		if call.served != nil {
 			call.abort(closed)
+		} else if call.span != nil {
+			relayEnded(call.span, nil)
 		}
 	}
 	p.calls.clear()
@@ -300,6 +304,8 @@ func (p *providerSide) forget(entry providerEntry, err *data.ChordError) {
 		p.calls.delete(callID)
 		if call.served != nil {
 			call.abort(reason)
+		} else if call.span != nil {
+			relayEnded(call.span, nil)
 		}
 	}
 	if served, isServed := entry.(*hold); isServed {
@@ -339,6 +345,7 @@ func (p *providerSide) unbound(h *hold, err *data.ChordError) {
 // there. At most one extra message per answer, acknowledged before the call its answer frees a slot for (one direction keeps
 // its order): running calls and messages past the window stay within this side's N together.
 func (p *providerSide) reply(id int, reply link.OriginMessage) {
+	call, found := p.calls.get(id)
 	if !p.calls.delete(id) {
 		return
 	}
@@ -346,6 +353,9 @@ func (p *providerSide) reply(id int, reply link.OriginMessage) {
 		p.sendWaiting(p.link.context)
 	}
 	p.send(reply)
+	if found && call.span != nil {
+		relayEnded(call.span, reply)
+	}
 	p.settle()
 }
 
@@ -511,8 +521,9 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 				return nil, nil
 			}
 		}
-		p.calls.set(message.Call, &runningCall{hold: relayed, relayed: relayed})
-		relayed.call(message)
+		running := &runningCall{hold: relayed, relayed: relayed}
+		p.calls.set(message.Call, running)
+		running.span = relayed.call(message)
 		return nil, nil
 	}
 	served := entry.(*hold)
@@ -601,6 +612,9 @@ func (p *providerSide) abort(id int) {
 	p.calls.delete(id)
 	if call.relayed != nil {
 		call.relayed.abort(id)
+		if call.span != nil {
+			relayEnded(call.span, nil)
+		}
 		return
 	}
 	call.abort(data.NewChordError(data.ChordErrorInit{Code: data.CodeAborted, Message: fmt.Sprintf("call %d: aborted by its caller", id)}, nil))
