@@ -796,14 +796,14 @@ path = "packages/chord/src/node/app/files-copy.ts"
 disposition = "translated"
 contracts = ["awaited"]
 evidence = ["test:chord/nextnode/app/files_copy_test.go"]
-rationale = "Copying a host's files is a sequence of awaited steps (a running host's index copied through its own store, then its blobs); Go runs the same steps in the same order on the caller's goroutine."
+rationale = "The files index is the part of the source store's export that is Files' own, imported as the new directory's store, and each blob is linked or copied while the export holds the source's commit queue; Pi's async generator of parts is a store.PartSource and the awaits block on the caller's goroutine."
 
 [[files]]
 path = "packages/chord/src/node/app/files-index.ts"
 disposition = "translated"
 contracts = ["awaited"]
 evidence = ["test:chord/nextnode/app/files_index_test.go"]
-rationale = "The files index's rules are applied inside the store's commit step and its reads, awaited in turn; Go blocks on the same calls in the same order."
+rationale = "Every change of the index is one transaction computed by its caller's turn (the object runs one change at a time) and its reads are awaited in turn; Go blocks on the same calls in the same order."
 
 [[files]]
 path = "packages/chord/src/node/app/files.ts"
