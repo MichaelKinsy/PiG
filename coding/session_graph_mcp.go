@@ -410,7 +410,7 @@ func (c *graphMcpCredentials) call(ctx context.Context, args ...any) (json.RawMe
 }
 
 // ForServer implements mcpext.McpOAuthCredentials.
-func (c *graphMcpCredentials) ForServer(name, serverURL string) (mcpext.McpOAuthServerStore, error) {
+func (c *graphMcpCredentials) ForServer(name, serverURL string) (oauth.McpOAuthServerStore, error) {
 	//portlint:allow ctxbackground forServer is a synchronous function of Pi's credential store and carries no signal
 	raw, err := c.call(context.Background(), "forServer", name, serverURL)
 	if err != nil {
@@ -472,7 +472,7 @@ type graphMcpServerStore struct {
 	id          string
 }
 
-var _ mcpext.McpOAuthServerStore = (*graphMcpServerStore)(nil)
+var _ oauth.McpOAuthServerStore = (*graphMcpServerStore)(nil)
 
 // Load implements oauth.McpOAuthStateStore.
 func (s *graphMcpServerStore) Load(ctx context.Context) (*oauth.McpOAuthState, error) {
@@ -496,7 +496,7 @@ func (s *graphMcpServerStore) Save(ctx context.Context, state oauth.McpOAuthStat
 	return err
 }
 
-// WithRefreshLock implements mcpext.McpOAuthServerStore. The extension's withRefreshLock function holds its lock while fn runs here: `lock` answers when it entered, and `unlock` lets it return with fn's outcome.
+// WithRefreshLock implements oauth.McpOAuthServerStore. The extension's withRefreshLock function holds its lock while fn runs here: `lock` answers when it entered, and `unlock` lets it return with fn's outcome.
 func (s *graphMcpServerStore) WithRefreshLock(ctx context.Context, fn func(ctx context.Context) error) error {
 	raw, err := s.credentials.call(ctx, "lock", s.id)
 	if err != nil {
