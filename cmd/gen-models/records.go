@@ -1,12 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 // catalogRecordChunk is how many rows' records one compressed chunk holds. It matches ai.catalogRecordChunk.
@@ -17,7 +18,7 @@ func catalogRecordRef(row int) string {
 	return string([]byte{0, byte(row >> 8), byte(row)})
 }
 
-// writeCatalogRecordChunks stores the rows' records, one per line (compact JSON holds no newline), as one zstd frame per catalogRecordChunk rows in dir/NN.zst. A frame that already decodes to the chunk is kept, so an encoder upgrade does not rewrite committed files.
+// writeCatalogRecordChunks stores the rows' records, one per line (compact JSON holds no newline), as one gzip stream per catalogRecordChunk rows in dir/NN.gz (gzip, not zstd: a build with every strip tag links no zstd decoder, D92). A file that already inflates to the chunk is kept, so a compressor upgrade does not rewrite committed files.
 func writeCatalogRecordChunks(dir string, rows []modelRow) error {
 	if len(rows) > 1<<16 {
 		return fmt.Errorf("catalog records: %d rows do not fit a two-byte reference", len(rows))
@@ -35,20 +36,34 @@ func writeCatalogRecordChunks(dir string, rows []modelRow) error {
 			b.WriteString(rows[i].Record)
 			b.WriteByte('\n')
 		}
-		path := filepath.Join(dir, fmt.Sprintf("%02d.zst", c))
+		path := filepath.Join(dir, fmt.Sprintf("%02d.gz", c))
 		existing, _ := os.ReadFile(path)
-		if err := os.WriteFile(path, zstdblob.Reuse(existing, []byte(b.String())), 0o644); err != nil {
+		if err := os.WriteFile(path, reuseGzip(existing, []byte(b.String())), 0o644); err != nil {
 			return err
 		}
 	}
-	stale, _ := filepath.Glob(filepath.Join(dir, "*.zst"))
+	stale, _ := filepath.Glob(filepath.Join(dir, "*.gz"))
 	for _, path := range stale {
 		var n int
-		if _, err := fmt.Sscanf(filepath.Base(path), "%02d.zst", &n); err == nil && n >= chunks {
+		if _, err := fmt.Sscanf(filepath.Base(path), "%02d.gz", &n); err == nil && n >= chunks {
 			if err := os.Remove(path); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// reuseGzip returns existing when it already inflates to raw, and raw compressed at the best level otherwise.
+func reuseGzip(existing, raw []byte) []byte {
+	if reader, err := gzip.NewReader(bytes.NewReader(existing)); err == nil {
+		if got, err := io.ReadAll(reader); err == nil && bytes.Equal(got, raw) {
+			return existing
+		}
+	}
+	var out bytes.Buffer
+	writer, _ := gzip.NewWriterLevel(&out, gzip.BestCompression)
+	_, _ = writer.Write(raw)
+	_ = writer.Close()
+	return out.Bytes()
 }

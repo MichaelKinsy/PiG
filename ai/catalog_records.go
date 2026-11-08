@@ -1,20 +1,23 @@
 package ai
 
 import (
+	"bytes"
+	"compress/gzip"
 	"embed"
+	"encoding/binary"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"sync/atomic"
-
-	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
-// A built-in catalog row's Record is a three-byte reference (NUL, then the row index in two bytes, big endian), not the 600 bytes of JSON it stands for: the records of all 1,629 rows were 0.9 MB of the binary and compress to 55 KB. cmd/gen-models writes them to catalog_records/NN.zst, one zstd frame per catalogRecordChunk rows, one record per line. ResolveCatalogRecord returns the JSON and expands a chunk on its first use, so a start that reads no record expands none and a start that reads one expands 64.
+// A built-in catalog row's Record is a three-byte reference (NUL, then the row index in two bytes, big endian), not the 600 bytes of JSON it stands for: the records of all 1,629 rows were 0.9 MB of the binary and compress to 55 KB. cmd/gen-models writes them to catalog_records/NN.gz, one gzip stream per catalogRecordChunk rows, one record per line. ResolveCatalogRecord returns the JSON and expands a chunk on its first use, so a start that reads no record expands none and a start that reads one expands 64.
 //
 // Every read of a record's content (GeneratedModel.Record, Model.catalogRecord, codingagent.ModelEntry.CatalogRecord) goes through ResolveCatalogRecord. Comparisons of two references and tests for "" need not.
 
-//go:embed catalog_records/*.zst
+//go:embed catalog_records/*.gz
 var catalogRecordFiles embed.FS
 
 // catalogRecordChunk is the number of rows in one chunk; cmd/gen-models writes the chunks with the same constant.
@@ -52,12 +55,12 @@ func ResolveCatalogRecord(record string) string {
 	row := int(record[1])<<8 | int(record[2])
 	chunk := &recordChunks[row/catalogRecordChunk]
 	chunk.once.Do(func() {
-		name := fmt.Sprintf("catalog_records/%02d.zst", row/catalogRecordChunk)
+		name := fmt.Sprintf("catalog_records/%02d.gz", row/catalogRecordChunk)
 		frame, err := catalogRecordFiles.ReadFile(name)
 		if err != nil {
 			panic("ai: " + err.Error())
 		}
-		raw, err := zstdblob.Decode(frame)
+		raw, err := inflateCatalogChunk(frame)
 		if err != nil {
 			panic("ai: " + name + ": " + err.Error())
 		}
@@ -70,4 +73,24 @@ func ResolveCatalogRecord(record string) string {
 	}
 	id, name, _ := strings.Cut(record[4:], "\x00")
 	return rewriteRecordIdentity(base, id, name)
+}
+
+// inflateCatalogChunk reads the gzip stream of a chunk into one buffer sized from the stream's trailer and verifies the checksum at its end. The records are gzip, not zstd, so a build that strips every zstd frame (D92) still links no zstd decoder, and a chunk needs no decoder buffers beyond the 40 KB flate reader.
+func inflateCatalogChunk(data []byte) ([]byte, error) {
+	if len(data) < 4 {
+		return nil, io.ErrUnexpectedEOF
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	raw := make([]byte, binary.LittleEndian.Uint32(data[len(data)-4:]))
+	if _, err := io.ReadFull(reader, raw); err != nil {
+		return nil, err
+	}
+	var extra [1]byte
+	if count, err := reader.Read(extra[:]); count != 0 || !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("the stream does not end at the trailer's size %d: %v", len(raw), err)
+	}
+	return raw, nil
 }
