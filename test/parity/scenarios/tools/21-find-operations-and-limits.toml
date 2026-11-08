@@ -4,14 +4,11 @@
 # including a reached zero. The latter case runs real fd against one temp file.
 # Exact result text and SDK details are compared.
 #
-# D253 (Pi main 676af1d77, #11747, not in Pi 1.5.0) reads a limit below 1 as 1, floors a fraction, cuts a custom glob's results to the limit and prints the
-# limit notice only when more results than the limit exist. Pi 1.5.0 echoes the limit verbatim and shows every result. The three FIND_OPS lines below are the
-# whole difference: each rule matches one complete PiG line, exactly as D253 makes PiG print it, and replaces it with the complete line Pi 1.5.0 prints. The rules
-# alone would pass if the divergence vanished or if Pi started to print PiG's line, so raw pins carry the proof: pig_contains requires the three complete PiG lines
-# and pi_contains the three complete Pi 1.5.0 lines in every run's unreplaced output. The root line is compared unchanged.
-# normalize-rationale: D253 changes only the three FIND_OPS lines named by the rules (limit-0, limit-1.5, fd-zero); each rule matches PiG's complete line and writes Pi 1.5.0's complete line, so the text, details and every other line stay compared byte for byte, and the raw pig_contains and pi_contains pins of the same complete lines fail when either side drifts.
+# Pi main 676af1d77 (#11747, in the pin c23b9ec1; Pi 1.5.0 differed; the divergence record is retired) reads a limit below 1 as 1, floors a fraction, cuts a custom glob's results to the
+# limit and prints the limit notice only when more results than the limit exist. The probe asserts the pin's results (`limit-0` and `limit-1.5` keep one of the two globbed
+# entries and report limit 1; `fd-zero` runs real fd with limit 0 and lists the one file without a notice) and both_contain pins the three complete lines in both outputs.
 name = "21-find-operations-and-limits"
-description = "Custom find operations relativize roots; the zero and fractional result limits differ from Pi 1.5.0 only as D253 states"
+description = "Custom find operations relativize roots; zero and fractional result limits read as the pinned Pi reads them"
 covers = ["packages/coding-agent/src/core/tools/find.ts"]
 tags = ["hermetic", "fast"]
 driver = "cli-mode"
@@ -31,22 +28,5 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['FIND_OPS root ["home/user/project/\nhome/user/project/file.txt",null]']
-pig_contains = ['FIND_OPS limit-0 ["a\n\n[1 results limit reached]",{"resultLimitReached":1}]', 'FIND_OPS limit-1.5 ["a\n\n[1 results limit reached]",{"resultLimitReached":1}]', 'FIND_OPS fd-zero ["a.txt",null]']
-pi_contains = ['FIND_OPS limit-0 ["a\nb\n\n[0 results limit reached]",{"resultLimitReached":0}]', 'FIND_OPS limit-1.5 ["a\nb\n\n[1.5 results limit reached]",{"resultLimitReached":1.5}]', 'FIND_OPS fd-zero ["a.txt\n\n[0 results limit reached. Use limit=0 for more, or refine pattern]",{"resultLimitReached":0}]']
+both_contain = ['FIND_OPS root ["home/user/project/\nhome/user/project/file.txt",null]', 'FIND_OPS limit-0 ["a\n\n[1 results limit reached]",{"resultLimitReached":1}]', 'FIND_OPS limit-1.5 ["a\n\n[1 results limit reached]",{"resultLimitReached":1}]', 'FIND_OPS fd-zero ["a.txt",null]']
 runs = 3
-
-[[assert.normalize_replace]]
-pattern = '(?m)^\QFIND_OPS limit-0 ["a\n\n[1 results limit reached]",{"resultLimitReached":1}]\E$'
-with = 'FIND_OPS limit-0 ["a\nb\n\n[0 results limit reached]",{"resultLimitReached":0}]'
-reason = "D253: limit 0 is read as 1 and the custom glob's two results are cut to one; Pi 1.5.0 shows both and echoes limit 0. Match PiG's complete line only."
-
-[[assert.normalize_replace]]
-pattern = '(?m)^\QFIND_OPS limit-1.5 ["a\n\n[1 results limit reached]",{"resultLimitReached":1}]\E$'
-with = 'FIND_OPS limit-1.5 ["a\nb\n\n[1.5 results limit reached]",{"resultLimitReached":1.5}]'
-reason = "D253: limit 1.5 is floored to 1 and the custom glob's two results are cut to one; Pi 1.5.0 shows both and echoes limit 1.5. Match PiG's complete line only."
-
-[[assert.normalize_replace]]
-pattern = '(?m)^\QFIND_OPS fd-zero ["a.txt",null]\E$'
-with = 'FIND_OPS fd-zero ["a.txt\n\n[0 results limit reached. Use limit=0 for more, or refine pattern]",{"resultLimitReached":0}]'
-reason = "D253: limit 0 is read as 1 and the single fd match is no more than the limit, so PiG prints no notice and no details; Pi 1.5.0 reports limit 0 reached. Match PiG's complete line only."

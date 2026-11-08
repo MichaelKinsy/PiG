@@ -27,7 +27,7 @@ func TestTreeSelect_EmptyStateMatchesUpstreamTextShape(t *testing.T) {
 	}
 }
 
-// pi main 2cfab7c26 test/tree-selector.test.ts "search cursor" (#9157; D248).
+// pi main 2cfab7c26 test/tree-selector.test.ts "search cursor" (#9157).
 func TestTreeSelectSearchCursor(t *testing.T) {
 	cursorLines := func(lines []string) (found []string, index int) {
 		index = -1

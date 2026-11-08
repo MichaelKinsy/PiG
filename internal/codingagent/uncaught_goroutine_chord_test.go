@@ -1,18 +1,16 @@
 package codingagent
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
-	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// A replicated-state listener failure that no onError handles reaches the interactive uncaught handler, as Pi's
-// reportErrorAsync rethrow reaches interactive-mode.ts's uncaughtException handler (uncaughtCrash), after the change
-// that delivered it returned; removing the handler restores the previous receiver.
+// A failure no Chord error reporter handled reaches the interactive uncaught handler, as Pi's rethrow of such a failure
+// reaches interactive-mode.ts's uncaughtException handler (uncaughtCrash); removing the handler restores the previous
+// receiver. Chord's reporter is the receiver: the test reports through the one the handler installed.
 func TestChordUncaughtFailuresReachTheInteractiveUncaughtHandler(t *testing.T) {
 	failure := errors.New("listener failed")
 	outer := make(chan error, 1)
@@ -20,16 +18,10 @@ func TestChordUncaughtFailuresReachTheInteractiveUncaughtHandler(t *testing.T) {
 	t.Cleanup(func() { chord.SetUncaughtErrorReporter(original) })
 	got := make(chan any, 1)
 	restore := SetUncaughtGoroutineHandler(func(value any, _ []byte) { got <- value })
-	state := chord.NewReplicatedState(delta.JsonObjectOf("n", 0.0))
-	unsubscribe := state.Subscribe(func(value *delta.JsonObject, _ context.Context, delivery chord.ReplicatedStateDelivery) {
-		if delivery.Kind == chord.DeliveryUpdate {
-			panic(failure)
-		}
-	})
-	defer unsubscribe()
-	if err := state.Replace(context.Background(), delta.JsonObjectOf("n", 1.0)); err != nil {
-		t.Fatalf("the listener failure reached Replace: %v", err)
-	}
+	// installed is the reporter SetUncaughtGoroutineHandler put in place; swapping it out and back is how to call it.
+	installed := chord.SetUncaughtErrorReporter(func(error) {})
+	chord.SetUncaughtErrorReporter(installed)
+	installed(failure)
 	select {
 	case value := <-got:
 		if !errors.Is(value.(error), failure) {
@@ -39,9 +31,9 @@ func TestChordUncaughtFailuresReachTheInteractiveUncaughtHandler(t *testing.T) {
 		t.Fatal("the uncaught handler never ran")
 	}
 	restore()
-	if err := state.Replace(context.Background(), delta.JsonObjectOf("n", 2.0)); err != nil {
-		t.Fatal(err)
-	}
+	previous := chord.SetUncaughtErrorReporter(func(error) {})
+	chord.SetUncaughtErrorReporter(previous)
+	previous(failure)
 	select {
 	case err := <-outer:
 		if !errors.Is(err, failure) {

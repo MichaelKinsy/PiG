@@ -87,12 +87,12 @@
     },
     {
       "source": "test/parity/testdata/session-wire.py",
-      "sha256": "796ae00ad8c91c26e1adf50e15d2808633246eeecb9ba6e8a6ae7cceeaaf662f",
+      "sha256": "1dd7760ef58d24d9f8011eda25774e0c932bb0c889ff6a84551ff368c21a3841",
       "reason": "The Session query probe validates unique eight-hex generated IDs and exact millisecond ISO timestamps before injective substitution. Imported IDs/times remain unchanged; only reconstructed label identities are aliased after collision checks. Complete get_entries records are compared, not unrelated mutation events. Signal probes compare process wait status after real provider/command barriers, not terminal rendering. The session_shutdown signal cases replace the probe's temporary directory with <root> in stderr, because the extension path a handler's error names lives there; the rest of stderr, stdout, the session records and the request count are compared exactly."
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "60ee89b311cc0b0b3d5f036e60ce01f0429fcb0ac083e4ac781eb03a1036b9c7",
+      "sha256": "9f542ec08a60642b0ea56ad439080c7c4b531d9c42185fd8162ac79d8c8c4afd",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -2588,6 +2588,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/96-message-click-expansion.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[compaction]",
+            "capture_end": "details of second card"
+          },
+          "reason": "Owned visible surface: Left clicks expand the built-in compaction, skill and branch summaries and a custom renderer's card, and a second click collapses the card",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/97-entry-click-state-survives-rebuild.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "entry:first",
+            "capture_end": "details of second"
+          },
+          "reason": "Owned visible surface: A custom entry card expanded by a click stays expanded after the transcript is rebuilt from the session",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
@@ -4541,12 +4577,6 @@
       "scenario": "test/parity/scenarios/interactive-rendering/65-app-action-keys.toml",
       "transforms": [
         {
-          "kind": "normalize_replace",
-          "pattern": "(Type to search:\\x1b\\[39m) \\x1b\\[7m \\x1b\\[0m",
-          "with": "$1",
-          "reason": "D248: Pig draws the /tree search cursor cell that the pinned Pi does not; Pi main 2cfab7c26 draws it too."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Session Tree",
@@ -5906,7 +5936,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Select provider to configure:",
-            "capture_end": "(1/19)"
+            "capture_end": "(1/20)"
           },
           "reason": "Owned visible surface: Provider search includes authentication method metadata",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -6765,22 +6795,6 @@
             "/**/durationMs"
           ],
           "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
-        },
-        {
-          "kind": "json_pig_only_records",
-          "divergence": "D250",
-          "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[\"\"]}",
-          "count": 1,
-          "before_type": "message_start",
-          "reason": "D250: the empty prompt's message_start removes the queued empty steering entry, leaving the empty follow-up entry; Pi 1.5.0 keeps the entry and emits nothing."
-        },
-        {
-          "kind": "json_pig_only_records",
-          "divergence": "D250",
-          "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[]}",
-          "count": 1,
-          "before_type": "message_start",
-          "reason": "D250: the steer's message_start removes the queued empty follow-up entry, emptying the pending queue; Pi 1.5.0 keeps the entry and emits nothing."
         }
       ]
     },
@@ -7379,22 +7393,6 @@
             "/**/durationMs"
           ],
           "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
-        },
-        {
-          "kind": "json_pig_only_records",
-          "divergence": "D250",
-          "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[\"\"]}",
-          "count": 1,
-          "before_type": "message_start",
-          "reason": "D250: the empty prompt's message_start removes the queued empty steering entry, leaving the empty follow-up entry; Pi 1.5.0 keeps the entry and emits nothing."
-        },
-        {
-          "kind": "json_pig_only_records",
-          "divergence": "D250",
-          "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[]}",
-          "count": 1,
-          "before_type": "message_start",
-          "reason": "D250: the steer's message_start removes the queued empty follow-up entry, emptying the pending queue; Pi 1.5.0 keeps the entry and emits nothing."
         }
       ]
     },
@@ -8996,7 +8994,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Select provider to configure",
-            "capture_end": "(1/41)"
+            "capture_end": "(1/42)"
           },
           "reason": "Owned visible surface: /login API-key provider picker lists every API-key-provider catalog entry with upstream labels.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -10760,23 +10758,6 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/tools/15-builtin-tool-wire-details.toml",
-      "transforms": [
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?m)^\\QTOOL_WIRE {\"case\":\"ls fractional\",\"result\":{\"content\":[{\"text\":\"a.txt\\n\\n[1 entries limit reached. Use limit=2 for more]\",\"type\":\"text\"}],\"details\":{\"entryLimitReached\":1}}}\\E$",
-          "with": "TOOL_WIRE {\"case\":\"ls fractional\",\"result\":{\"content\":[{\"text\":\"a.txt\\nb.txt\\n\\n[1.5 entries limit reached. Use limit=3 for more]\",\"type\":\"text\"}],\"details\":{\"entryLimitReached\":1.5}}}",
-          "reason": "D253: ls limit 1.5 is floored to 1, so one entry and limit 1 in the notice and details; Pi 1.5.0 lists two entries and echoes 1.5. Match PiG's complete line only."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?m)^\\QTOOL_WIRE {\"case\":\"find limited\",\"result\":{\"content\":[{\"text\":\"a.txt\",\"type\":\"text\"}]}}\\E$",
-          "with": "TOOL_WIRE {\"case\":\"find limited\",\"result\":{\"content\":[{\"text\":\"a.txt\\n\\n[1 results limit reached. Use limit=2 for more, or refine pattern]\",\"type\":\"text\"}],\"details\":{\"resultLimitReached\":1}}}",
-          "reason": "D253: find limit 1 with exactly one match is not reported, so no notice and no details; Pi 1.5.0 reports the limit reached. Match PiG's complete line only."
-        }
-      ]
-    },
-    {
       "scenario": "test/parity/scenarios/tools/17-tool-rpc-error-and-bash-wire.toml",
       "transforms": [
         {
@@ -10832,29 +10813,6 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/tools/21-find-operations-and-limits.toml",
-      "transforms": [
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?m)^\\QFIND_OPS limit-0 [\"a\\n\\n[1 results limit reached]\",{\"resultLimitReached\":1}]\\E$",
-          "with": "FIND_OPS limit-0 [\"a\\nb\\n\\n[0 results limit reached]\",{\"resultLimitReached\":0}]",
-          "reason": "D253: limit 0 is read as 1 and the custom glob's two results are cut to one; Pi 1.5.0 shows both and echoes limit 0. Match PiG's complete line only."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?m)^\\QFIND_OPS limit-1.5 [\"a\\n\\n[1 results limit reached]\",{\"resultLimitReached\":1}]\\E$",
-          "with": "FIND_OPS limit-1.5 [\"a\\nb\\n\\n[1.5 results limit reached]\",{\"resultLimitReached\":1.5}]",
-          "reason": "D253: limit 1.5 is floored to 1 and the custom glob's two results are cut to one; Pi 1.5.0 shows both and echoes limit 1.5. Match PiG's complete line only."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "(?m)^\\QFIND_OPS fd-zero [\"a.txt\",null]\\E$",
-          "with": "FIND_OPS fd-zero [\"a.txt\\n\\n[0 results limit reached. Use limit=0 for more, or refine pattern]\",{\"resultLimitReached\":0}]",
-          "reason": "D253: limit 0 is read as 1 and the single fd match is no more than the limit, so PiG prints no notice and no details; Pi 1.5.0 reports limit 0 reached. Match PiG's complete line only."
-        }
-      ]
-    },
-    {
       "scenario": "test/parity/scenarios/tree/02-tree-empty-overlay.toml",
       "transforms": [
         {
@@ -10898,12 +10856,6 @@
     {
       "scenario": "test/parity/scenarios/tree/06-tree-header-spacing.toml",
       "transforms": [
-        {
-          "kind": "normalize_replace",
-          "pattern": "(Type to search:\\x1b\\[0m) \\x1b\\[7m \\x1b\\[0m",
-          "with": "$1",
-          "reason": "D248: Pig draws the /tree search cursor cell that the pinned Pi does not; Pi main 2cfab7c26 draws it too."
-        },
         {
           "kind": "terminal_crop",
           "configuration": {

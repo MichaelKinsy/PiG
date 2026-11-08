@@ -678,6 +678,8 @@ func (m *AgentMessage) decode(data []byte) (bool, error) {
 	if err := json.Unmarshal(data, &wire); err != nil && !numberOutsideIntegerField(err) {
 		return false, fmt.Errorf("AgentMessage: %w", err)
 	}
+	// data is valid JSON from here on (a type error comes after the syntax check), and so is every member cut from it: the decoders below take their
+	// slices without checking them again, which cost a transcript load one more scan of every message per level.
 	nullContent := len(wire.Content) == 0 || string(wire.Content) == "null"
 	if wire.Role == "" {
 		return false, fmt.Errorf("AgentMessage requires a non-empty string role")
@@ -723,12 +725,17 @@ func (m *AgentMessage) decode(data []byte) (bool, error) {
 		m.ToolResult.DetailsNull = wire.Details != nil && m.ToolResult.Details == nil
 	default:
 		var custom map[string]any
-		if err := json.Unmarshal(data, &custom); err != nil {
+		if err := json.UnmarshalTrusted(data, &custom); err != nil {
 			return false, err
 		}
-		// `details` is the opaque value an extension wrote; keep its member order.
+		// `details` and the blocks of `content` are the opaque values an extension wrote; keep their member order.
 		if _, present := custom["details"]; present {
 			custom["details"] = orderedjson.Value(wire.Details)
+		}
+		if _, present := custom["content"]; present {
+			if content := orderedjson.Value(wire.Content); content != nil {
+				custom["content"] = content
+			}
 		}
 		m.Custom = custom
 	}
@@ -885,7 +892,7 @@ func marshalAgentContentBlock(block ai.ContentBlock) (any, error) {
 func unmarshalUserContent(data []byte) (ai.UserContent, error) {
 	if len(data) > 0 && data[0] == '"' {
 		var text string
-		if err := json.Unmarshal(data, &text); err != nil {
+		if err := json.UnmarshalTrusted(data, &text); err != nil {
 			return nil, err
 		}
 		return ai.UserText(text), nil
@@ -943,13 +950,13 @@ func unmarshalAgentContent(data []byte) ([]ai.ContentBlock, error) {
 	}
 	if data[0] == '"' {
 		var text string
-		if err := json.Unmarshal(data, &text); err != nil {
+		if err := json.UnmarshalTrusted(data, &text); err != nil {
 			return nil, err
 		}
 		return []ai.ContentBlock{ai.TextContent{Text: text}}, nil
 	}
 	var raws []json.RawMessage
-	if err := json.Unmarshal(data, &raws); err != nil {
+	if err := json.UnmarshalTrusted(data, &raws); err != nil {
 		return nil, fmt.Errorf("AgentMessage content: %w", err)
 	}
 	content := make([]ai.ContentBlock, 0, len(raws))
@@ -957,14 +964,14 @@ func unmarshalAgentContent(data []byte) ([]ai.ContentBlock, error) {
 		var probe struct {
 			Type string `json:"type"`
 		}
-		if err := json.Unmarshal(raw, &probe); err != nil {
+		if err := json.UnmarshalTrusted(raw, &probe); err != nil {
 			return nil, fmt.Errorf("AgentMessage content[%d]: %w", i, err)
 		}
 		var block ai.ContentBlock
 		switch probe.Type {
 		case "text":
 			var value ai.TextContent
-			if err := json.Unmarshal(raw, &value); err != nil {
+			if err := json.UnmarshalTrusted(raw, &value); err != nil {
 				return nil, err
 			}
 			block = value
@@ -973,19 +980,19 @@ func unmarshalAgentContent(data []byte) ([]ai.ContentBlock, error) {
 				Data     string `json:"data"`
 				MIMEType string `json:"mimeType"`
 			}
-			if err := json.Unmarshal(raw, &value); err != nil {
+			if err := json.UnmarshalTrusted(raw, &value); err != nil {
 				return nil, err
 			}
 			block = ai.ImageContent{Data: value.Data, MimeType: value.MIMEType}
 		case "thinking":
 			var value ai.ThinkingContent
-			if err := json.Unmarshal(raw, &value); err != nil {
+			if err := json.UnmarshalTrusted(raw, &value); err != nil {
 				return nil, err
 			}
 			block = value
 		case "toolCall":
 			var value ai.ToolCall
-			if err := json.Unmarshal(raw, &value); err != nil {
+			if err := json.UnmarshalTrusted(raw, &value); err != nil {
 				return nil, err
 			}
 			block = value
@@ -998,7 +1005,7 @@ func unmarshalAgentContent(data []byte) ([]ai.ContentBlock, error) {
 				Input            ai.JsonObject `json:"input"`
 				ThoughtSignature string        `json:"thoughtSignature"`
 			}
-			if err := json.Unmarshal(raw, &value); err != nil {
+			if err := json.UnmarshalTrusted(raw, &value); err != nil {
 				return nil, err
 			}
 			block = ai.ToolCall{ID: value.ID, Name: value.Name, Arguments: value.Input, ThoughtSignature: value.ThoughtSignature}
@@ -1008,7 +1015,7 @@ func unmarshalAgentContent(data []byte) ([]ai.ContentBlock, error) {
 			var value struct {
 				Content string `json:"content"`
 			}
-			if err := json.Unmarshal(raw, &value); err != nil {
+			if err := json.UnmarshalTrusted(raw, &value); err != nil {
 				return nil, err
 			}
 			block = ai.TextContent{Text: value.Content}
@@ -1022,4 +1029,29 @@ func unmarshalAgentContent(data []byte) ([]ai.ContentBlock, error) {
 		content = append(content, block)
 	}
 	return content, nil
+}
+
+// ReplaceMessageInPlace overwrites target with replacement through the
+// pointers the agent's transcript, the event and persistence share
+// (agent-session.ts _replaceMessageInPlace). A replacement of another shape is
+// ignored.
+func ReplaceMessageInPlace(target, replacement AgentMessage) {
+	switch {
+	case target.System != nil && replacement.System != nil:
+		*target.System = *replacement.System
+	case target.User != nil && replacement.User != nil:
+		*target.User = *replacement.User
+	case target.Assistant != nil && replacement.Assistant != nil:
+		*target.Assistant = *replacement.Assistant
+	case target.ToolResult != nil && replacement.ToolResult != nil:
+		*target.ToolResult = *replacement.ToolResult
+	case target.Custom != nil && replacement.Custom != nil:
+		// A handler may return the event's own message: snapshot it first,
+		// as upstream returns early when target === replacement.
+		fields := maps.Clone(replacement.Custom)
+		clear(target.Custom)
+		maps.Copy(target.Custom, fields)
+		// The members follow the replacement's order, in every copy of the message.
+		target.AdoptMemberOrder(replacement)
+	}
 }

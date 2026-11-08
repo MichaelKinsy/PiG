@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"unicode/utf8"
 
 	"golang.org/x/term"
 
@@ -48,8 +47,8 @@ func CreateProcessLoginTerminal(onInterrupt func()) LoginTerminal {
 func (processLoginTerminal) Interactive() bool {
 	return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 }
-func (t processLoginTerminal) Write(line string) { fmt.Fprintln(t.output, line) }
-func (processLoginTerminal) Error(line string)   { fmt.Fprintln(os.Stderr, line) }
+func (t processLoginTerminal) Write(line string) { _, _ = fmt.Fprintln(t.output, line) }
+func (processLoginTerminal) Error(line string)   { _, _ = fmt.Fprintln(os.Stderr, line) }
 func (t processLoginTerminal) Question(ctx context.Context, message string) (string, error) {
 	return t.reader.Question(ctx, message, t.output, t.onInterrupt)
 }
@@ -67,6 +66,7 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 	if _, err := io.WriteString(output, message); err != nil {
 		return "", err
 	}
+	// A stop and continue interrupts the termios ioctl; MakeRaw retries it, as Pi's Node does.
 	state, err := tui.MakeRaw(fd)
 	if err != nil {
 		return "", err
@@ -86,15 +86,20 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 		buf := make([]byte, 4096)
 		for {
 			n, err := input.Read(buf)
+			// A read that was blocked when the context ended returns on the next typed byte, after the terminal is cooked again: the byte is not ours, so it is dropped
+			// and onInterrupt is not called. The goroutine itself stays until that read returns; input has no deadline.
+			select {
+			case <-stop:
+				return
+			default:
+			}
 			if n > 0 {
 				chunk := string(buf[:n])
 				// Ignore escape sequences such as arrow keys.
 				if chunk[0] == 0x1b {
 					continue
 				}
-				for len(chunk) > 0 {
-					char, size := utf8.DecodeRuneInString(chunk)
-					chunk = chunk[size:]
+				for _, char := range chunk {
 					switch {
 					case char == '\r' || char == '\n':
 						done <- result{value: string(value)}

@@ -106,6 +106,34 @@ func TestAC1SchemaIsPublishedAndClosed(t *testing.T) {
 	}
 }
 
+// TestValidateAgainstSchemaNamesTheRootAndNestedPaths pins the message of a schema failure: every problem starts with its JSON pointer, and a problem at the root of the document starts with "/", not with a bare colon.
+func TestValidateAgainstSchemaNamesTheRootAndNestedPaths(t *testing.T) {
+	const prefix = "piglet does not match its schema: "
+	cases := []struct {
+		name, yaml, want string
+	}{
+		{"root is a list", "- a\n", prefix + "/: "},
+		{"required name is missing", "description: x\n", prefix + "/name: "},
+		{"nested unknown field", "name: x\nmodel:\n  bogus: y\n", prefix + "/model"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateAgainstSchema([]byte(tc.yaml))
+			if err == nil {
+				t.Fatal("schema accepts the document")
+			}
+			if !strings.HasPrefix(err.Error(), tc.want) {
+				t.Fatalf("message %q does not start with %q", err, tc.want)
+			}
+			for problem := range strings.SplitSeq(strings.TrimPrefix(err.Error(), prefix), "; ") {
+				if !strings.HasPrefix(problem, "/") {
+					t.Errorf("problem %q does not start with a path", problem)
+				}
+			}
+		})
+	}
+}
+
 // TestPigletSchemaCommandPublishesValidJSON pins the `pig piglet schema`
 // publish surface: it prints the schema as valid JSON on stdout with a clean
 // stderr and a zero exit.

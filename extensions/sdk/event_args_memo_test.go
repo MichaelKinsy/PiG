@@ -74,8 +74,13 @@ func TestEventArgsMemoRepeatIsCheaperThanADecode(t *testing.T) {
 	_, release := m.decode(args)
 	defer release()
 	repeat := testing.AllocsPerRun(20, func() { _ = decodeReleased(m, args) })
-	if repeat >= decode/2 {
-		t.Fatalf("a repeated payload allocates %.0f, a decode %.0f: the memo must cost well under half a decode", repeat, decode)
+	var master map[string]any
+	_ = json.Unmarshal(args, &master)
+	clone := testing.AllocsPerRun(20, func() { _ = cloneStreamValue(master) })
+	// A repeat is a clone of the master and the memo's bookkeeping, never a decode: a decode adds the parse to the clone, and a decode of this payload
+	// (short keys and values shared through the decoder's name table, no boxed small numbers) now allocates only half as much again as a clone.
+	if repeat > clone+16 || repeat >= decode {
+		t.Fatalf("a repeated payload allocates %.0f, a clone of it %.0f, a decode %.0f: the memo must cost a clone, less than a decode", repeat, clone, decode)
 	}
 }
 

@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
+	"time"
+	"weak"
 )
 
 // upstream: packages/ai/test/streaming-tool-arguments.test.ts (#9265): every provider re-parsed the accumulated tool-call arguments on each delta and kept the raw text on the content block, where it reached partial messages, Durable commits and transcripts.
@@ -312,5 +315,64 @@ func TestFauxToolCallStreamsGrowingPartialArguments(t *testing.T) {
 	}
 	if call, ok := message.Content[0].(ToolCall); !ok || !equalArguments(call.Arguments, arguments) {
 		t.Fatalf("content = %#v", message.Content)
+	}
+}
+
+// collectedWithin runs the collector until alive reports nothing left or the deadline passes: a weak pointer clears once the collector has
+// seen its target unreachable, which takes more than one cycle.
+func collectedWithin(t testing.TB, deadline time.Duration, alive func() int) {
+	t.Helper()
+	end := time.Now().Add(deadline)
+	for alive() != 0 {
+		if time.Now().After(end) {
+			t.Fatalf("%d referenced values are still reachable after the caller dropped them", alive())
+		}
+		runtime.GC()
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// upstream "releases the stream, its partial messages and argument snapshots once the caller drops them" (WeakRef over the event stream and
+// every call.arguments seen on a toolcall_delta). Go has weak pointers for pointer targets: the stream and every partial message the
+// events carried. An argument snapshot is a map, which cannot be weakly referenced; it is reachable only through its partial message, so
+// the partials being collected releases it.
+func TestStreamingToolArgumentsReleaseTheStreamAndItsPartialMessagesOnceTheCallerDropsThem(t *testing.T) {
+	for _, path := range streamingArgumentsPaths {
+		t.Run(path.name, func(t *testing.T) {
+			var references []weak.Pointer[AssistantMessage]
+			var streams []weak.Pointer[AssistantMessageEventStream]
+			func() {
+				arguments, text := streamingWriteCall(t, 2_000)
+				server := sequentialToolCallServer(path.body(streamingDeltas(text, 16), arguments, text))
+				defer server.Close()
+				stream := sequentialToolCallStream(t, path.provider(server.URL))
+				streams = append(streams, weak.Make(stream))
+				for event := range stream.Events(context.Background()) {
+					if partial := eventPartial(event); partial != nil {
+						if reference := weak.Make(partial); len(references) == 0 || references[len(references)-1] != reference {
+							references = append(references, reference)
+						}
+					}
+				}
+				stream.Result()
+			}()
+			if len(references) == 0 {
+				t.Fatal("no event carried a partial message")
+			}
+			collectedWithin(t, 10*time.Second, func() int {
+				alive := 0
+				for _, reference := range references {
+					if reference.Value() != nil {
+						alive++
+					}
+				}
+				for _, reference := range streams {
+					if reference.Value() != nil {
+						alive++
+					}
+				}
+				return alive
+			})
+		})
 	}
 }

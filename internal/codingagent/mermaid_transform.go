@@ -84,7 +84,7 @@ func createMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme) e
 	return func(markdown string, context extension.MarkdownTransformContext) string {
 		mode := getMode()
 		if mode == "off" ||
-			context.MessageType == extension.MarkdownMessageAssistantThinking ||
+			(context.MessageType != extension.MarkdownMessageUser && context.MessageType != extension.MarkdownMessageAssistant && context.MessageType != extension.MarkdownMessageSummary) ||
 			(context.IsStreaming && mode != "streaming") {
 			return markdown
 		}
@@ -276,31 +276,38 @@ func backtickRuns(s string) []int {
 	return runs
 }
 
-// styleSpan applies the theme color associated with each Mermaid semantic span.
-func styleSpan(span mermaid.Span, theme *tui.Theme) string {
-	switch span.Cls {
-	case mermaid.ClsBorder:
-		return theme.Fg("borderMuted", span.Text)
-	case mermaid.ClsText:
-		return theme.Fg("text", span.Text)
-	case mermaid.ClsEdge:
-		return theme.Fg("accent", span.Text)
-	case mermaid.ClsEdgeLabel:
-		return theme.Fg("muted", span.Text)
-	case mermaid.ClsTitle:
-		return theme.Fg("accent", tui.ChalkBold(span.Text))
-	}
-	return span.Text
-}
-
+// themedLines styles the art through the Pi theme, as mermaid.ts themedLines does: each role's SGR parameters are the theme's own foreground
+// escape with its ESC[ and final m removed (slice(2, -1)), and the toAnsi pass applies author classDef styles over them. Only the node
+// text of a link carries the OSC 8 hyperlink, and only when the terminal supports hyperlinks.
 func themedLines(art mermaid.Art, theme *tui.Theme) []string {
-	out := make([]string, len(art.Styled))
-	for i, row := range art.Styled {
-		var b strings.Builder
-		for _, span := range row {
-			b.WriteString(styleSpan(span, theme))
+	foreground := func(color string) string {
+		ansi := theme.GetFgAnsi(color)
+		//portlint:allow utf16units theme escapes are ASCII (ESC [ ... m, plus ESC[2m for faint tokens), so byte offsets equal UTF-16 offsets
+		if len(ansi) < 3 {
+			return ""
 		}
-		out[i] = b.String()
+		//portlint:allow utf16units theme escapes are ASCII (ESC [ ... m, plus ESC[2m for faint tokens), so byte offsets equal UTF-16 offsets
+		return ansi[2 : len(ansi)-1]
 	}
-	return out
+	ansiTheme := mermaid.AnsiTheme{
+		mermaid.RoleBorder:    foreground("borderMuted"),
+		mermaid.RoleText:      foreground("text"),
+		mermaid.RoleEdge:      foreground("accent"),
+		mermaid.RoleEdgeLabel: foreground("text"),
+		mermaid.RoleTitle:     "1;" + foreground("accent"),
+	}
+	linkLabels := tui.GetCapabilities().Hyperlinks
+	displayArt := art
+	// Only osc 8 the text, not the whole box.
+	displayArt.Styled = make([][]mermaid.Span, len(art.Styled))
+	for i, row := range art.Styled {
+		displayArt.Styled[i] = make([]mermaid.Span, len(row))
+		for j, span := range row {
+			if span.Href != nil && !linkLabels || span.Role != mermaid.RoleText {
+				span.Href = nil
+			}
+			displayArt.Styled[i][j] = span
+		}
+	}
+	return mermaid.ToAnsi(displayArt, ansiTheme)
 }

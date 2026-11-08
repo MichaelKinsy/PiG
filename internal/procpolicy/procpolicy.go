@@ -60,6 +60,21 @@ func apply(ps int) {
 	capped.Store(true)
 }
 
+// Release ends the cap for a process that serves many sessions at once (a --listen server): it restores the runtime default width and resumes
+// the runtime's automatic updates, and later sections change nothing. The cap exists for one session's chain of hand-offs; many sessions starting
+// together do their server-side work on every P, and the cap made 100 sessions with extensions come up in 10 s instead of 2 s. A user's GOMAXPROCS
+// was never lowered, so Release leaves it alone. pig additive (D232).
+func Release() {
+	mu.Lock()
+	defer mu.Unlock()
+	if !capped.Load() {
+		return
+	}
+	runtime.SetDefaultGOMAXPROCS()
+	capped.Store(false)
+	sections, limit = 0, 0
+}
+
 // Widen opens a parallel section: when Apply capped GOMAXPROCS, the first open section restores the runtime default
 // (runtime.SetDefaultGOMAXPROCS, which recomputes it from the CPU count, affinity and cgroup limit and resumes the runtime's automatic
 // updates), so a worker count read from runtime.GOMAXPROCS(0) inside the section is the default width. It returns the function that closes

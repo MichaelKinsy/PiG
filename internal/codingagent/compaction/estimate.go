@@ -55,6 +55,22 @@ func contentBlocksChars[T any](blocks []T) int {
 // customContentChars sizes a decoded custom-message content value: a string or
 // an array of content-block objects.
 func customContentChars(content any) int {
+	if raw, ok := content.(json.RawMessage); ok {
+		// A content array an extension wrote is kept as its JSON text, which holds the members in the order it wrote them.
+		var text string
+		if json.Unmarshal(raw, &text) == nil {
+			return jsLength(text)
+		}
+		var blocks []json.RawMessage
+		if json.Unmarshal(raw, &blocks) != nil {
+			return 0
+		}
+		chars := 0
+		for _, block := range blocks {
+			chars += rawBlockChars(block)
+		}
+		return chars
+	}
 	switch content := content.(type) {
 	case string:
 		return jsLength(content)
@@ -71,6 +87,29 @@ func customContentChars(content any) int {
 			}
 		}
 		return chars
+	}
+	return 0
+}
+
+// rawBlockChars sizes one content block kept as JSON text: a text block by its text, an image block by the image estimate, anything else (or a block that does not decode) as 0.
+func rawBlockChars(block json.RawMessage) int {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(block, &fields) != nil {
+		return 0
+	}
+	var kind string
+	if json.Unmarshal(fields["type"], &kind) != nil {
+		return 0
+	}
+	switch kind {
+	case "text":
+		var text string
+		if json.Unmarshal(fields["text"], &text) != nil {
+			return 0
+		}
+		return jsLength(text)
+	case "image":
+		return estimatedImageChars
 	}
 	return 0
 }

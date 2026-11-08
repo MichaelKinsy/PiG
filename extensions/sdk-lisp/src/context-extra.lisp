@@ -197,17 +197,30 @@
            (char/= (char key 0) #\0) (<= (parse-integer key) 4294967294))))
 
 (defun core-js-ordered (value)
-  "VALUE with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order."
-  (cond ((hash-table-p value)
-         (let ((keys '()) (copy (make-hash-table :test 'equal)))
-           (maphash (lambda (k v) (declare (ignore v)) (push k keys)) value)
-           (setf keys (nreverse keys))
-           (let ((indexes (sort (remove-if-not #'core-array-index-p keys) #'< :key #'parse-integer)))
-             (dolist (k (append indexes (remove-if #'core-array-index-p keys)))
-               (setf (gethash k copy) (core-js-ordered (gethash k value)))))
-           copy))
-        ((and (vectorp value) (not (stringp value))) (map 'simple-vector #'core-js-ordered value))
-        (t value)))
+  "VALUE with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order.
+The containers are walked with a stack of the function's own: a value nested thousands of levels deep (the host sends up to 10000) does not depend on the thread's control stack."
+  (flet ((shell (v)
+           (cond ((hash-table-p v) (make-hash-table :test 'equal))
+                 ((and (vectorp v) (not (stringp v))) (make-array (length v)))
+                 (t v))))
+    (declare (inline shell))
+    (let* ((root (shell value)) (stack (if (eq root value) '() (list (cons value root)))))
+      (loop while stack
+            do (destructuring-bind (source . target) (pop stack)
+                 (if (hash-table-p source)
+                     (let ((keys '()))
+                       (maphash (lambda (k v) (declare (ignore v)) (push k keys)) source)
+                       (setf keys (nreverse keys))
+                       (let ((indexes (sort (remove-if-not #'core-array-index-p keys) #'< :key #'parse-integer)))
+                         (dolist (k (append indexes (remove-if #'core-array-index-p keys)))
+                           (let* ((v (gethash k source)) (child (shell v)))
+                             (setf (gethash k target) child)
+                             (unless (eq child v) (push (cons v child) stack))))))
+                     (dotimes (i (length source))
+                       (let* ((v (aref source i)) (child (shell v)))
+                         (setf (svref target i) child)
+                         (unless (eq child v) (push (cons v child) stack)))))))
+      root)))
 
 (defun ctx-tool-call-index (ctx)
   "The running tool call's position among the tool calls of the assistant message that issued it, or NIL (outside a tool handler,
@@ -225,11 +238,14 @@ and for a call no assistant message issued, such as a nested ctx-execute-tool ca
 ;;; ---------------------------------------------------------------- background work owned by the connection
 
 (defun core-spawn (ext name function)
-  "Run FUNCTION on a thread the connection owns: shutdown waits for it."
+  "Run FUNCTION on a thread the connection owns: shutdown waits for it. A condition FUNCTION leaves unhandled (a failing callback of its own) is reported
+on stderr: no thread but the one that signals it can handle it, and one that ends a thread ends the whole process, which a packed cell shares."
   (sb-thread:with-mutex ((extension-state-lock ext))
     (let ((thread (sb-thread:make-thread
                    (lambda ()
-                     (unwind-protect (funcall function)
+                     (unwind-protect (handler-case (funcall function)
+                                       (serious-condition (c)
+                                         (format *error-output* "~A: ~A failed: ~A~%" (extension-name ext) name (condition-message c))))
                        (sb-thread:with-mutex ((extension-state-lock ext))
                          (setf (extension-request-threads ext) (remove sb-thread:*current-thread* (extension-request-threads ext))))))
                    :name name)))

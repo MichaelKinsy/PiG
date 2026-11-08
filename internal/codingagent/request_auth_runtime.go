@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
@@ -552,6 +553,29 @@ func modelsJSONProviderOrder(path string) []string {
 	if err != nil {
 		return nil
 	}
+	// Startup asks for the order three times (the available models, the provider auth checks and the native provider data), each over the same
+	// file: 27 KB and about 145 allocations a call to strip the comments and tokenize it. The order is a function of the file's bytes, so the last
+	// answer serves a read of the same bytes, whatever the path or the time between the reads.
+	providerOrderCache.mu.Lock()
+	defer providerOrderCache.mu.Unlock()
+	if providerOrderCache.valid && providerOrderCache.data == string(data) {
+		return slices.Clone(providerOrderCache.order)
+	}
+	order := providerOrderOf(data)
+	providerOrderCache.data, providerOrderCache.order, providerOrderCache.valid = string(data), slices.Clone(order), true
+	return order
+}
+
+// providerOrderCache is the last file modelsJSONProviderOrder read and the order it found in it.
+var providerOrderCache struct {
+	mu    sync.Mutex
+	valid bool
+	data  string
+	order []string
+}
+
+// providerOrderOf is the order of the provider ids in models.json's bytes, nil for a file that does not parse.
+func providerOrderOf(data []byte) []string {
 	var top map[string]json.RawMessage
 	if json.Unmarshal([]byte(stripJSONComments(text.StripBom(string(data)))), &top) != nil {
 		return nil

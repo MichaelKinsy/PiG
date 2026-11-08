@@ -636,10 +636,12 @@ background: selectedBg customMessageBg."
 (defun kit-state (ext) (extension-extra ext :kit #'kit-make-state))
 
 (defun kit-spawn (ext name function)
-  "Run FUNCTION on a new thread that the connection's shutdown waits for."
+  "Run FUNCTION on a new thread that the connection's shutdown waits for. A condition FUNCTION leaves unhandled is reported on stderr, as core-spawn reports it."
   (let ((thread (sb-thread:make-thread
                  (lambda ()
-                   (unwind-protect (funcall function)
+                   (unwind-protect (handler-case (funcall function)
+                                     (serious-condition (c)
+                                       (format *error-output* "~A: ~A failed: ~A~%" (extension-name ext) name (condition-message c))))
                      (sb-thread:with-mutex ((extension-state-lock ext))
                        (setf (extension-request-threads ext) (remove sb-thread:*current-thread* (extension-request-threads ext))))))
                  :name name)))

@@ -37,7 +37,7 @@ func TestDispatchAgentLoopEventBuildsNoContextWithoutHandler(t *testing.T) {
 	noop := func(...any) (any, error) { return nil, nil }
 	runner := inproc.NewRunner([]extension.Extension{{Path: "/tmp/turns.ts", Handlers: map[string][]extension.HandlerFn{EventTurnStart: {noop}}}}, ".")
 	for _, ev := range scoped {
-		if allocs := testing.AllocsPerRun(50, func() { DispatchAgentLoopEvent(runner, ev, nil) }); allocs != 0 {
+		if allocs := testing.AllocsPerRun(50, func() { DispatchAgentLoopEvent(runner, ev, nil, nil) }); allocs != 0 {
 			t.Errorf("%s without a handler: %v allocations per dispatch, want 0", AgentLoopEventType(ev), allocs)
 		}
 	}

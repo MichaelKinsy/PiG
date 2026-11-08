@@ -37,7 +37,7 @@ func BenchmarkCommit(b *testing.B) {
 			return []StagedWrite{CreateDocument(address, storeBase, storeBaseText, nil)}
 		}
 		_, fence := recording()
-		fence.Adopt = func(int64, []int64) error { return nil }
+		fence.Adopt = func(int64, []int64, int) error { return nil }
 		b.Run(backend+"/serial", func(b *testing.B) {
 			store := open(b)
 			b.ReportAllocs()

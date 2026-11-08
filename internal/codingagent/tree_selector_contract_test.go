@@ -10,8 +10,11 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -238,8 +241,6 @@ func runTreeContracts(t *testing.T, cases []treeContractCase) []treeContractTrac
 			got := replayTreeContract(t, probe)
 			traces[i] = got
 			want := expected[i]
-			// pig divergence (D248): the search line draws a cursor Pi 1.5.0 does not; the rest of every frame is compared as it is.
-			normalizeTreeSearchLinesD248(got.Frames, want.Frames, probe.Width)
 			if !reflect.DeepEqual(got.Steps, want.Steps) || !reflect.DeepEqual(got.Frames, want.Frames) {
 				t.Fatalf("keys=%q differ from Pi:\nsteps = %q\nPi    = %q\n%s", probe.Keys, got.Steps, want.Steps, firstFrameDifference(got.Frames, want.Frames))
 			}
@@ -279,6 +280,15 @@ func replayTreeContract(t *testing.T, probe treeOracleProbe) treeContractTrace {
 		roots = append(roots, toSession(r))
 	}
 	var events []string
+	// tree-selector.ts's constructor arms setTimeout(onCancel, 100) for an empty tree. Pi's harness replays synchronously, so that callback runs on its
+	// event loop after the replay and no step of Pi's trace holds it. PiG's timer fires on its own goroutine, mid-replay once a slow -race run outlasts
+	// 100ms: only the goroutine that replays records an event, so the timer's cancel is neither in the trace nor a race with the replay's reads of it.
+	replayer := goroutineid.Current()
+	record := func(event string) {
+		if goroutineid.Current() == replayer {
+			events = append(events, event)
+		}
+	}
 	var leaf, initial *string
 	if probe.Leaf != "" {
 		leaf = &probe.Leaf
@@ -287,23 +297,26 @@ func replayTreeContract(t *testing.T, probe treeOracleProbe) treeContractTrace {
 		initial = &probe.InitialSelected
 	}
 	selector := NewTreeSelectorComponent(roots, leaf, probe.Height,
-		func(id string) { events = append(events, "select:"+id) },
-		func() { events = append(events, "cancel") },
+		func(id string) { record("select:" + id) },
+		func() { record("cancel") },
 		func(id string, label *string) {
 			text := ""
 			if label != nil {
 				text = *label
 			}
-			events = append(events, "label:"+id+":"+text)
+			record("label:" + id + ":" + text)
 		}, initial, probe.Filter)
 	selector.OnCopy = func(text *string) {
 		if text == nil {
-			events = append(events, "copy:")
+			record("copy:")
 		} else {
-			events = append(events, "copy:"+*text)
+			record("copy:" + *text)
 		}
 	}
 	selector.SetFocused(true)
+	if probe.afterBuild != nil {
+		probe.afterBuild()
+	}
 	got := treeContractTrace{Steps: [][]string{append([]string{}, events...)}, Frames: [][]string{piJSONLines(selector.Render(probe.Width))}}
 	for _, key := range probe.Keys {
 		selector.HandleInput(key)
@@ -311,6 +324,27 @@ func replayTreeContract(t *testing.T, probe treeOracleProbe) treeContractTrace {
 		got.Frames = append(got.Frames, piJSONLines(selector.Render(probe.Width)))
 	}
 	return got
+}
+
+// An empty tree's setTimeout(onCancel, 100) lands in no step of Pi's replay (Pi's harness returns first). The fake clock passes the 100ms while the replay
+// is between building the selector and its first key, as a slow -race run does; the timer's cancel must stay out of the trace, and recording it from the
+// timer's goroutine is what raced the replay's reads of the trace (TestTreeListHandleInputContractsMatchPi/down/moves-one-row on macOS).
+func TestTreeContractReplayLeavesTheEmptyTreeSelfCancelOutOfTheTrace(t *testing.T) {
+	previousTheme, previousCaps, previousKeys := tui.ActiveTheme(), tui.GetCapabilities(), tui.GetTUIKeybindings()
+	t.Cleanup(func() {
+		tui.SetCapabilities(previousCaps)
+		tui.SetTheme(previousTheme.Name)
+		tui.SetTUIKeybindings(previousKeys)
+	})
+	synctest.Test(t, func(t *testing.T) {
+		got := replayTreeContract(t, treeOracleProbe{Theme: "dark", Width: 100, Height: 40, Keys: []string{tkDown}, afterBuild: func() {
+			time.Sleep(150 * time.Millisecond)
+			synctest.Wait()
+		}})
+		if want := [][]string{{}, {}}; !reflect.DeepEqual(got.Steps, want) {
+			t.Fatalf("steps = %q, want %q: the empty tree's self-cancel timer reached the trace", got.Steps, want)
+		}
+	})
 }
 
 func wantPosition(want string) func(t *testing.T, tr treeContractTrace) {
@@ -390,9 +424,13 @@ func wantSearch(want string) func(t *testing.T, tr treeContractTrace) {
 	return func(t *testing.T, tr treeContractTrace) {
 		t.Helper()
 		got := treeSearchRow(tr.lastFrame())
-		// pig divergence (D248): an empty query's search row ends in a space Pi 1.5.0 does not draw; a query's own trailing space is compared as it is.
+		// tree-selector.ts SearchLine: an empty query's row ends in a space, and the row of the focused selector ends in the cursor cell (a reverse-video space; the
+		// cursor marker is invisible). The label input takes the cursor while a label is edited (`searchLine.focused = value && labelInput === null`).
 		if want == "  Type to search:" {
-			got = strings.TrimSuffix(got, " ")
+			want += " "
+		}
+		if !strings.Contains(treeFrameText(tr.lastFrame()), "Label (empty to remove):") {
+			want += " "
 		}
 		if got != want {
 			t.Errorf("search row = %q, want %q", got, want)

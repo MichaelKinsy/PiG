@@ -23,7 +23,7 @@ import (
 
 func TestAppLaysOutTheDataDirectoryServesAppInfoAndTheServersPluginsAndClosesEverything(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, nil)
-	if got := dirEntries(t, s.dataDir); !slices.Equal(got, []string{"logs", "owner-token", "plugins", "server", "workers"}) {
+	if got := dirEntries(t, s.dataDir); !slices.Equal(got, []string{"cache", "logs", "owner-token", "plugins", "server", "workers"}) {
 		t.Fatalf("data directory = %v", got)
 	}
 	server := dirEntries(t, filepath.Join(s.dataDir, "server"))
@@ -93,7 +93,7 @@ func TestAppRefusesASecondServerOnTheSameDataDirectoryWhileTheFirstRuns(t *testi
 func TestAppRefusesASecondServerOnTheSameDataDirectoryThroughASymbolicLink(t *testing.T) {
 	first := startTestApp(t, nil, nil)
 	link := filepath.Join(t.TempDir(), "link")
-	testenv.Symlink(t, first.dataDir, link)
+	testenv.RequireDirectoryLink(t, first.dataDir, link)
 	_, err := StartServer(optionsFor(t, link, first.root), background)
 	if err == nil || !strings.Contains(err.Error(), "another server runs on") {
 		t.Fatalf("second start: %v", err)
@@ -119,8 +119,8 @@ func TestAppMakesTheDataDirectoryPrivateAtEveryStartAlsoWhenItExistedLooser(t *t
 		}
 		return info.Mode().Perm()
 	}
-	paths := []string{".", "server", "workers", "plugins", "logs", "server/store.sqlite", "server/cookie-secret", "owner-token"}
-	want := []os.FileMode{0o700, 0o700, 0o700, 0o700, 0o700, 0o600, 0o600, 0o600}
+	paths := []string{".", "server", "workers", "plugins", "logs", "cache", "cache/workers", "server/store.sqlite", "server/cookie-secret", "owner-token"}
+	want := []os.FileMode{0o700, 0o700, 0o700, 0o700, 0o700, 0o700, 0o700, 0o600, 0o600, 0o600}
 	for i, path := range paths {
 		if got := mode(path); got != want[i] {
 			t.Fatalf("%s mode = %o, want %o", path, got, want[i])
@@ -162,7 +162,7 @@ func TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThr
 		t.Fatalf("root: %v", err)
 	}
 	link := filepath.Join(t.TempDir(), "home-link")
-	testenv.Symlink(t, home, link)
+	testenv.RequireDirectoryLink(t, home, link)
 	if err := start(link); err == nil || !strings.Contains(err.Error(), "is the home directory") {
 		t.Fatalf("link to home: %v", err)
 	}
@@ -190,6 +190,10 @@ func TestAppNamesTheAddressListenedOnInTheOwnerLink(t *testing.T) {
 }
 
 func TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed(t *testing.T) {
+	// Registered first, so it runs after the starts: nothing of the app, its HTTP component, its workers or its plugins is left.
+	t.Cleanup(func() {
+		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
+	})
 	options, _ := testOptions(t, nil)
 	writePlugin(t, options.Root, "broken", "@test/broken", map[string]string{"server.ts": "export default {"})
 	_, err := StartServer(options, background)
@@ -218,7 +222,14 @@ func TestAppRefusesAnOwnerThatIsNotStrictJSONOrIsTheServersPrincipalBeforeItOpen
 	}
 }
 
-func TestAppRefusesWorkerKindsWithoutAWorkerPrincipal(t *testing.T) {
+func TestAppStartsWithoutWorkerKindsAndWithoutAWorkerPrincipalWorkerKindsNeedIt(t *testing.T) {
+	s := startTestApp(t, nil, func(o *AppOptions) { o.Principal.Worker = nil })
+	if len(s.app.Workers) != 0 {
+		t.Fatalf("workers = %d, want 0", len(s.app.Workers))
+	}
+	if err := s.app.Close(background); err != nil {
+		t.Fatal(err)
+	}
 	options, _ := testOptions(t, nil)
 	options.Principal.Worker = nil
 	options.Workers = []AppWorkerKind{testWorker(t, project, "")}

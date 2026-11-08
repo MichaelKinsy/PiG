@@ -36,6 +36,7 @@ Options:
   --no-builtin-tools, -nbt       Disable built-in tools by default but keep extension/custom tools enabled
   --tools, -t <tools>            Comma-separated allowlist of tool names or patterns (*) to enable
                                  Keeps MCP tools unless an entry starts with mcp__
+                                 Only +name/-name entries add to or remove from the defaults
   --exclude-tools, -xt <tools>   Comma-separated denylist of tool names or patterns (*) to disable
                                  Applies to all tools, MCP tools included
   --thinking <level>             Set thinking level: off, minimal, low, medium, high, xhigh, max
@@ -117,6 +118,9 @@ Examples:
 
   # Read-only mode (no file modifications possible)
   pig --tools read,grep,find,ls -p "Review the code in src/"
+
+  # Add codemode to the default tools
+  pig --tools +codemode
 
   # Codemode with only the tools of one MCP server
   pig --tools read,bash,codemode,'mcp__radius__*'

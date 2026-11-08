@@ -22,6 +22,8 @@ regexes = [
   '''^AAAAC3NzaC1lZDI1NTE5AAAAI(?:One|Two)$''',
   # env's fixed test session token, a counting pattern.
   '''^0123456789abcdef0123456789abcdef$''',
+  # The SHA-256 of the rendered /hotkeys rows on Linux, the golden hash in internal/codingagent/interactive_whole_markdown_test.go (a digest of output, not a key).
+  '''^6c6e446dd091ddae67cc390a41ffa268a9c7418088c7a9c5274abd08eb345e76$''',
   # The documented example Piglet signing key ID in docs/site/docs/cli-examples.md (a public key fingerprint).
   '''^c74cf1a77b670764e896cfbf2800bb28$''',
   # A header-name constant in the vendored AWS SDK (third_party/awssdk stays verbatim; see its FORK.md).

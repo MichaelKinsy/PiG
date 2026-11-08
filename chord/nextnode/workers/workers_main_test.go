@@ -132,7 +132,9 @@ func TestTheWorkersSideSendsStartedWhenTheAppConnectsThenReadyWithItsLoadReportA
 	if !ready.Idle || ready.Report == nil || len(ready.Report.Plugins.Added) != 0 || len(ready.Report.Failed) != 0 {
 		t.Fatalf("ready = %+v report=%+v, want idle with no plugin added and none failed", ready, ready.Report)
 	}
-	worker.child.Kill()
+	// Shut down, not killed: a SIGKILL would leave its lock's socket file on macOS and the BSDs.
+	worker.child.Send(ToWorker{Kind: ToWorkerShutdown})
+	<-worker.child.Exited()
 }
 
 func TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegisteredSoFarInReverseOrderExits0(t *testing.T) {
@@ -247,5 +249,40 @@ func TestTheWorkersIdleStateReadsTheNodeHostsActivityThroughItsReports(t *testin
 	w.mu.Unlock()
 	if idle {
 		t.Fatalf("idle with a reference held (the last report: %+v)", w.activity)
+	}
+}
+
+// A worker whose plugins are not shipped through WorkerPlugins.Load (an app with compiled-in plugins) applies a server's
+// reload through WorkerMainOptions.Reload: it answers `reloaded` with the hook's report, set after set.
+func TestTheWorkersSideAppliesAReloadThroughTheReloadHookWhenNoPluginRuntimeWasLoaded(t *testing.T) {
+	log := filepath.Join(t.TempDir(), "log")
+	worker := started(t, workerBehaviour{Log: log, GoReload: true})
+	until(t, func() bool { return worker.has(FromWorkerReady) })
+	script := func(digest string) plugins.PluginScript {
+		return plugins.PluginScript{Plugin: plugins.Plugin{Name: "@test/a"}, Built: plugins.BuiltFacet{Kind: plugins.BuiltFacetScript, Digest: digest}}
+	}
+	for _, digest := range []string{"d1", "d2"} {
+		worker.child.Send(ToWorker{Kind: ToWorkerReload, Scripts: []plugins.PluginScript{script(digest)}})
+	}
+	until(t, func() bool {
+		count := 0
+		for _, kind := range worker.controlKinds() {
+			if kind == FromWorkerReloaded {
+				count++
+			}
+		}
+		return count == 2
+	})
+	for _, message := range worker.messages() {
+		if message.Kind == FromWorkerReloaded && (message.Report == nil || !reflect.DeepEqual(message.Report.Plugins.Changed, []string{"@test/a"})) {
+			t.Fatalf("reloaded = %+v, want the hook's report", message)
+		}
+	}
+	text, err := os.ReadFile(log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(text) != "reload @test/a@d1\nreload @test/a@d2\n" {
+		t.Fatalf("the hook saw %q", text)
 	}
 }

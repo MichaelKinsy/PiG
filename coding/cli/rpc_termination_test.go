@@ -48,7 +48,7 @@ func newTerminationHarness() *terminationHarness {
 	return h
 }
 
-// A signal claims the shutdown when it is recorded (D234), and only the termination hook runs it. The mode registers the hook before the record and clears it after, but a signal can still be recorded while the hook is gone, at the teardown; the mode's finish then disposes, once, so session_shutdown still runs.
+// A signal claims the shutdown when it is recorded, and only the termination hook runs it. The mode registers the hook before the record and clears it after, but a signal can still be recorded while the hook is gone, at the teardown; the mode's finish then disposes, once, so session_shutdown still runs.
 func TestRPCFinishRunsADisposeASignalClaimedButNeverRan(t *testing.T) {
 	h := newTerminationHarness()
 	if !h.term.record(syscall.SIGTERM) {
@@ -116,7 +116,7 @@ func TestRPCIgnoredSignalIsNotRecordedByTheModeWhenAnExitOwnsTheEnd(t *testing.T
 	}
 }
 
-// The mode can return at the instant the first signal is recorded: finish then runs the dispose the signal claimed, and the signal's own run loses that race. Its exit must wait for the dispose that is running, or the process ends with the signal's status under the session_shutdown handlers (D234). finish itself does not wait for a dispose that is running.
+// The mode can return at the instant the first signal is recorded: finish then runs the dispose the signal claimed, and the signal's own run loses that race. Its exit must wait for the dispose that is running, or the process ends with the signal's status under the session_shutdown handlers. finish itself does not wait for a dispose that is running.
 func TestRPCSignalWaitsForTheDisposeFinishStarted(t *testing.T) {
 	h := newTerminationHarness()
 	disposeStarted := make(chan struct{})

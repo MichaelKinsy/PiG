@@ -294,8 +294,8 @@ func TestFlushCompactionQueueFirstPromptKeepsItsModeWhileTheRunSettles(t *testin
 	})
 }
 
-// Pi's flush calls session.prompt, not the editor's submit handler, so the commands run during a run stay pending: only a prompt the user submits moves
-// them into the chat.
+// Pi's flush calls session.prompt, not the editor's submit handler, so the commands run during a run stay pending through the flush: the user's submit
+// and the settled run (agent_settled) are what move them into the chat.
 func TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m, _ := newFlushQueueMode(t)
@@ -304,9 +304,14 @@ func TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea(t *testing.
 		m.pendingMessagesContainer.Add(block)
 		m.compactionQueue = []compactionQueuedMessage{{text: "after compaction", mode: compactionQueueSteer}}
 		m.flushCompactionQueue(t.Context(), false)
-		settleSubmissions(m)
+		// interactive-mode.ts flushCompactionQueue never calls flushPendingBashComponents: the block stays in the pending area while the flush hands over its messages.
 		if len(m.pendingBashBlocks) != 1 || strings.Contains(flushedChat(m), "echo pending") {
 			t.Fatalf("the flush moved the pending bash block into the chat (pending=%d, chat %q)", len(m.pendingBashBlocks), flushedChat(m))
+		}
+		// Only the run the flush starts moves it, when it settles (agent_settled calls flushPendingBashComponents).
+		settleSubmissions(m)
+		if len(m.pendingBashBlocks) != 0 || !strings.Contains(flushedChat(m), "echo pending") {
+			t.Fatalf("the settled run left the pending bash block in the pending area (pending=%d, chat %q)", len(m.pendingBashBlocks), flushedChat(m))
 		}
 	})
 }

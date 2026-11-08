@@ -18,7 +18,7 @@ func TestChangedBuiltinModelEncodesAsItsDecodedRecord(t *testing.T) {
 		"cleared input": func(m *Model) { m.Input = nil },
 	}
 	for i := 0; i < len(GeneratedModels); i += 7 {
-		record := GeneratedModels[i].Record
+		record := ResolveCatalogRecord(GeneratedModels[i].Record)
 		for name, change := range changes {
 			built := GeneratedModels[i].ToModel()
 			change(built)

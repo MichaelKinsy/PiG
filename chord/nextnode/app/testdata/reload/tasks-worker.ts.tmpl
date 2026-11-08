@@ -1,0 +1,37 @@
+// The tasks' worker facet, code [[.Code]].
+import { arr, defineFacet, defineJob, defineState, int, local, method, obj, str } from "@test/app/v1";
+import { Tasks } from "./contract.ts";
+[[.Latch]]
+const Entries = defineState("reload.entries", { schema: obj({ list: arr(str()) }), version: 1, initial: () => ({ list: [] }), persist: true, checkpointWhen: () => false });
+const Task = defineJob("reload.task", { version: 1, args: obj({ name: str() }), result: str() });
+const Runner = local("reload.runner", { version: 1, params: {}, members: { entries: arr(str()), running: int(), start: method(str(), str()) } });
+export default defineFacet((host) => {
+	host.serve(Runner, (_params, self) => {
+		[[if .Native]]self.open(async () => [[.CodeJSON]], () => {});[[end]]
+		const entries = self.state(Entries);
+		const task = self.job(Task, {
+			run: async ({ name }, ctx) => {
+				const held = latch(name);
+				held.entered.resolve();
+				await new Promise<void>((resolve, reject) => {
+					void held.open.promise.then(resolve);
+					ctx.abortSignal?.addEventListener("abort", () => reject(new Error("aborted")));
+				});
+				return `run-[[.Code]]:${name}`;
+			},
+			finish: async (outcome, tx) => {
+				const what = outcome.kind === "done" ? "done:" + outcome.result : outcome.error.kind === "aborted" ? "aborted:" + outcome.error.reason : outcome.error.kind;
+				(await tx.draft(entries)).list.push(`[[.Code]]-finish(${what})`);
+			},
+		});
+		return {
+			entries: self.derive([entries], ([value]) => value.list),
+			running: self.derive([task.running], ([running]) => running.length),
+			start: async (name, ctx) => (await task.start({ name }, ctx)).id,
+		};
+	});
+	host.serve(Tasks, (_params, _principal, self) => {
+		const runner = self.get(Runner, {});
+		return { variant: "main", members: { entries: runner.entries, running: runner.running, start: (name, ctx) => runner.start(name, ctx) } };
+	});
+});

@@ -95,7 +95,7 @@ func generatedModelJSON(model GeneratedModel) map[string]any {
 	var record struct {
 		Free *bool `json:"free"`
 	}
-	if err := json.Unmarshal([]byte(model.Record), &record); err == nil {
+	if err := json.Unmarshal([]byte(ResolveCatalogRecord(model.Record)), &record); err == nil {
 		set("free", record.Free != nil, record.Free)
 	}
 	return out
