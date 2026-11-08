@@ -122,12 +122,17 @@ func (b *Batch) ReportListener(err error) {
 // batch.
 func (b *Batch) Running() bool { return b.running }
 
-// AssertOutside returns invalid/reentrant inside the batch: operation may not run during adoptions or derive computes.
+// AssertOutside returns invalid/reentrant inside the batch: operation may not run during adoptions or derive computes. The
+// flag is the host loop's: the check is a section of the host (inline when the caller is in one), so a caller's goroutine
+// that asks while a commit runs on the loop waits for it to end, as Pi's single thread has it.
 func (b *Batch) AssertOutside(operation string) error {
-	if b.running {
-		return data.Invalid(data.ReasonReentrant, operation+" inside a commit or a derive compute")
-	}
-	return nil
+	var err error
+	b.Section(func() {
+		if b.running {
+			err = data.Invalid(data.ReasonReentrant, operation+" inside a commit or a derive compute")
+		}
+	})
+	return err
 }
 
 // AssertNotComputing returns invalid/reentrant inside a pure compute (a derive's, a registry's compose): operation would
