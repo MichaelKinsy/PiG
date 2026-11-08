@@ -1478,7 +1478,7 @@ func (h *chordHost) startTicking() {
 			return
 		}
 		now := h.events.Now()
-		// Pi keeps the fraction of the pause (performance.now()); the host clock is whole milliseconds.
+		// Pi's pause is `Date.now()` time (host.ts:1611); the host clock is whole milliseconds.
 		// A tick a whole interval late is time this process did not run (a sleeping laptop, a blocked event loop).
 		late := float64(now-last) - float64(interval)/float64(time.Millisecond)
 		var paused int64
