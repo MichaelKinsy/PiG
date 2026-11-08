@@ -55,8 +55,8 @@ func TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds(t *
 	cards := &clickCards{}
 	ext := extension.Extension{MessageRenderers: map[string]extension.MessageRenderer{"card": cards.render}}
 	m := &InteractiveMode{newRunner: inproc.NewRunner([]extension.Extension{ext}, t.TempDir()), chatContainer: tui.NewContainer()}
-	m.appendCustomMessage(CustomMessageEntry{CustomType: "card", Content: "first", Display: true})
-	m.appendCustomMessage(CustomMessageEntry{CustomType: "card", Content: "second", Display: true})
+	m.appendCustomMessage(CustomMessageEntry{CustomType: "card", Content: "first", Display: true}, messageMeta{})
+	m.appendCustomMessage(CustomMessageEntry{CustomType: "card", Content: "second", Display: true}, messageMeta{})
 
 	rows := func() []string {
 		var out []string
