@@ -7,6 +7,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"

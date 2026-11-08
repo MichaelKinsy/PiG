@@ -326,7 +326,7 @@ func (a *App) promptBar(c *ui.Context, p promptBar) {
 				} else {
 					colour := t.Text
 					if !ready {
-						colour = t.TextMuted.Alpha(0.7)
+						colour = t.TextMuted
 					}
 					b := ui.Row(c).Size(40, 40).Focusable().Label("Send").Tooltip("Send").Disabled(!ready).Children(func() {
 						ui.Icon(c, iconSend).Size(20, 20).TextColor(colour)
@@ -348,28 +348,37 @@ func (a *App) promptBar(c *ui.Context, p promptBar) {
 			ui.Row(c).Height(24).AlignItems(ui.Center).Gap(12).Children(func() {
 				label := p.Model
 				if label == "" {
-					label = "No model"
+					label = "Choose model"
 				}
 				if p.Thinking != "" && p.Thinking != "off" {
 					label += " · " + p.Thinking
 				}
 				ui.Text(c, label).FontSize(11).TextColor(t.TextMuted).Underline().SingleLine()
 				ui.Spacer(c)
-				ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
-					ui.Icon(c, iconUsers).Size(13, 13).TextColor(t.TextMuted)
-					ui.Text(c, fmt.Sprint(int(p.Clients))).FontSize(11).Font("monospace").TextColor(t.TextMuted)
-					ui.Text(c, "·").FontSize(11).Font("monospace").TextColor(t.TextMuted)
-					hit := "chr —"
-					if p.HasHit {
-						hit = fmt.Sprintf("chr %d%%", int(p.Hit*100+0.5))
-					}
-					ui.Text(c, hit).FontSize(11).Font("monospace").TextColor(t.TextMuted)
-					if p.HasCost {
+				if p.Clients > 0 || p.HasHit || p.HasCost {
+					ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
+						ui.Icon(c, iconUsers).Size(13, 13).TextColor(t.TextMuted)
+						ui.Text(c, fmt.Sprint(int(p.Clients))).FontSize(11).Font("monospace").TextColor(t.TextMuted)
 						ui.Text(c, "·").FontSize(11).Font("monospace").TextColor(t.TextMuted)
-						ui.Text(c, cost(p.Cost)).FontSize(11).Font("monospace").TextColor(t.TextMuted)
-					}
-				})
+						hit := "chr —"
+						if p.HasHit {
+							hit = fmt.Sprintf("chr %d%%", int(p.Hit*100+0.5))
+						}
+						ui.Text(c, hit).FontSize(11).Font("monospace").TextColor(t.TextMuted)
+						if p.HasCost {
+							ui.Text(c, "·").FontSize(11).Font("monospace").TextColor(t.TextMuted)
+							ui.Text(c, cost(p.Cost)).FontSize(11).Font("monospace").TextColor(t.TextMuted)
+						}
+					})
+				}
 			})
+			if p.Window <= 0 {
+				// The web keeps the bar's space with a skeleton until the model's window is known.
+				ui.Row(c).Height(16).AlignItems(ui.Center).Gap(8).Children(func() {
+					ui.Progress(c, 0).Height(2).Grow(1)
+					ui.Text(c, "00%/000k").FontSize(11).Font("monospace").TextColor(ui.Color{})
+				})
+			}
 			if p.Window > 0 {
 				pct := int(p.Tokens/p.Window*100 + 0.5)
 				ui.Row(c).Height(16).AlignItems(ui.Center).Gap(8).Children(func() {

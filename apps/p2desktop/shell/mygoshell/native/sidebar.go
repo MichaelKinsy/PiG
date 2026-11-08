@@ -148,6 +148,9 @@ func (a *App) footer(c *ui.Context, h *surfacehost.Host) {
 			ui.Icon(c, iconChevronU).Size(12, 12).TextColor(t.TextMuted)
 		})
 		more.Menu(func(m *ui.Menu) {
+			if a.providers != nil && m.Item("Providers…").Chosen() {
+				a.pickProvider = true
+			}
 			if m.Item("Sprite…").Chosen() {
 				a.pickSprite = true
 			}
