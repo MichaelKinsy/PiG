@@ -1188,7 +1188,6 @@ func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
 	return transformers
 }
 
-// pig divergence (D313): Pi eebd5d90 filters a transformer by the message types of its registration in getMarkdownTransformers; Pi 1.5.0 runs it on every type.
 // restrictMarkdownTransformer wraps transformer so it runs only on the listed message types; a nil list is the default types.
 func restrictMarkdownTransformer(transformer extension.MarkdownTransformer, types []extension.MarkdownMessageType) extension.MarkdownTransformer {
 	if types == nil {

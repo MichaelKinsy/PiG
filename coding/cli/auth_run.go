@@ -123,7 +123,7 @@ func runAuthLoginCommand(args []string, env authRunEnv) int {
 		env.printError(err.Error())
 		return 1
 	}
-	createCtx, cancelCreate := context.WithTimeout(context.Background(), credentialPrintTimeout)
+	createCtx, cancelCreate := context.WithTimeout(context.Background(), credentialPrintTimeout) //portlint:allow ctxbackground CLI entry point owns the command
 	modelRuntime, err := coding.CreateModelRuntime(createCtx, coding.CreateModelRuntimeOptions{AuthPath: authJSONPath(env.agentDir), AllowModelNetwork: false})
 	cancelCreate()
 	if err != nil {
@@ -132,7 +132,7 @@ func runAuthLoginCommand(args []string, env authRunEnv) int {
 	}
 	defer modelRuntime.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background()) //portlint:allow ctxbackground CLI entry point owns the command
 	defer cancel()
 	interrupts := make(chan os.Signal, 1)
 	signal.Notify(interrupts, os.Interrupt)
@@ -155,7 +155,7 @@ func runAuthLoginCommand(args []string, env authRunEnv) int {
 
 // runAuthLogoutCommand ports main.ts runAuthLogoutCommand: it removes the stored credentials of one provider and returns the exit code.
 func runAuthLogoutCommand(args []string, env authRunEnv) int {
-	ctx, cancel := context.WithTimeout(context.Background(), credentialPrintTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), credentialPrintTimeout) //portlint:allow ctxbackground CLI entry point owns the command
 	defer cancel()
 	modelRuntime, err := coding.CreateModelRuntime(ctx, coding.CreateModelRuntimeOptions{AuthPath: authJSONPath(env.agentDir), AllowModelNetwork: false})
 	if err != nil {

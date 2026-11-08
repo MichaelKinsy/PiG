@@ -230,7 +230,6 @@ func (m *InteractiveMode) markdownTransformers() []extension.MarkdownTransformer
 	return transformers
 }
 
-// pig divergence (D313): Pi eebd5d90 runs the Markdown transformers on custom messages, skill blocks, summaries and the changelog notices; Pi 1.5.0 runs them on the transcript only.
 // surfaceMarkdownTransform is the display-only transform, and the state it reads for the render cache key, of a Markdown surface that is not a
 // transcript message: custom messages and skill blocks ("custom"), branch and compaction summaries ("summary"), the changelog notices
 // ("changelog"). It is Pi's createMarkdownTransform(messageType, () => false, getMarkdownTransformers(), messageId, timestamp); meta is the zero

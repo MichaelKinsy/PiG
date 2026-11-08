@@ -1,4 +1,4 @@
-package mcp
+package mcpshared
 
 import (
 	"crypto/sha256"
