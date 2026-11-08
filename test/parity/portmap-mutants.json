@@ -1185,8 +1185,8 @@
  "packages/chord/src/next-node/plugins/install.ts": [
   {
    "file": "chord/nextnode/plugins/plugins_install.go",
-   "old": "install failed (exit",
-   "new": "install did not succeed (exit"
+   "old": "%s failed (exit",
+   "new": "%s did not succeed (exit"
   }
  ],
  "packages/chord/src/next-node/plugins/plugins.ts": [
@@ -1199,8 +1199,8 @@
  "packages/chord/src/next-node/plugins/runtime.ts": [
   {
    "file": "chord/nextnode/plugins/plugins_runtime.go",
-   "old": "return host.LoadReport{Failed: failures(wire.Failed)}, nil",
-   "new": "return host.LoadReport{}, nil"
+   "old": "return host.LoadReport{Failed: failures(wire.Failed)}, failures(wire.Required), nil",
+   "new": "return host.LoadReport{}, failures(wire.Required), nil"
   }
  ],
  "packages/chord/src/next-node/plugins/stack.ts": [

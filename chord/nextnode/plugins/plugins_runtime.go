@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -19,7 +20,8 @@ import (
 // itself runs, unchanged, in the Node subprocess of the host that loads the plugins (docs/plan/chord-plugins-node-evaluator.md):
 // per host it keeps the facet loaded for every plugin and passes the host its complete set at each reload (unchanged plugins,
 // the same digest, as the same facets; removed ones left out; a plugin whose build or evaluation failed keeps its loaded
-// facet, left out at startup, and is reported with the host's report), and one reload runs after another per host. This
+// facet, left out at startup, and is reported with the host's report; at startup one of a required root rejects the load, as
+// *PluginError, once the host's load settled), and one reload runs after another per host. This
 // file is what the Go side keeps of it: starting that host, shipping scripts to it as data and reading its reports.
 // Upstream turns V8's compilation cache off in createPluginRuntime: that runs in the subprocess.
 
@@ -30,7 +32,7 @@ type PluginScript struct {
 }
 
 // HostPackages are the host packages a script's imports are answered with, by specifier: the file of the module (an absolute
-// path) the subprocess imports once, and shares between the scripts of its host. `@earendil-works/chord/next` is always
+// path) the subprocess imports once, and shares between the scripts of its host. `@earendil-works/chord` is always
 // Pi's own, the subprocess's; naming it here replaces nothing.
 type HostPackages map[string]string
 
@@ -105,6 +107,32 @@ type RuntimeLoad struct {
 	Bridged []BridgedFacet
 }
 
+// PluginError is Load's error when a required root did not deliver its plugins: some failed (their build, evaluation or
+// setup), or discovery reported problems in it (a missing root, an invalid `package.json`, a name another root has). The
+// host's load settled (the others are loaded) and the host is returned with it; the app decides what follows (stopping,
+// mostly). Failed is the whole report's list.
+type PluginError struct {
+	// Required are the required plugins that failed, and why.
+	Required []host.PluginFailure
+	// Failed is every plugin the load left out, required or not.
+	Failed []host.PluginFailure
+	// Problems is what discovery reported in required roots.
+	Problems []DiscoveryProblem
+}
+
+// Error is `required plugin failed at load: ` and the required plugins that failed, `"name": message`, and the problems,
+// `path: error`, each joined by `; `.
+func (e *PluginError) Error() string {
+	named := make([]string, 0, len(e.Required)+len(e.Problems))
+	for _, failure := range e.Required {
+		named = append(named, `"`+failure.Plugin+`": `+failure.Error.Error())
+	}
+	for _, problem := range e.Problems {
+		named = append(named, problem.Path+": "+problem.Error)
+	}
+	return "required plugin failed at load: " + strings.Join(named, "; ")
+}
+
 // PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
 // scripts. It is Pi's `createPluginRuntime()`.
 type PluginRuntime struct {
@@ -163,6 +191,9 @@ type scriptWire struct {
 type pluginWire struct {
 	Name         string            `json:"name"`
 	Dir          string            `json:"dir"`
+	Root         string            `json:"root"`
+	Required     bool              `json:"required"`
+	Layout       PluginLayout      `json:"layout"`
 	Facets       map[string]string `json:"facets"`
 	Dependencies []string          `json:"dependencies"`
 	External     []string          `json:"external"`
@@ -177,6 +208,13 @@ type builtWire struct {
 	Source string    `json:"source,omitempty"`
 	Digest string    `json:"digest,omitempty"`
 	Errors []string  `json:"errors,omitzero"`
+	Api    *apiWire  `json:"api,omitempty"`
+}
+
+// apiWire is a BuiltApi: the version is there when the script uses one (upstream's `undefined` is no key).
+type apiWire struct {
+	Name    string `json:"name"`
+	Version string `json:"version,omitempty"`
 }
 
 func scriptsWire(scripts []PluginScript) []scriptWire {
@@ -185,13 +223,16 @@ func scriptsWire(scripts []PluginScript) []scriptWire {
 		plugin := script.Plugin
 		wire[i] = scriptWire{
 			Plugin: pluginWire{
-				Name: plugin.Name, Dir: plugin.Dir, Facets: plugin.Facets,
+				Name: plugin.Name, Dir: plugin.Dir, Root: plugin.Root, Required: plugin.Required, Layout: plugin.Layout, Facets: plugin.Facets,
 				Dependencies: nonNil(plugin.Dependencies), External: nonNil(plugin.External),
 			},
 			Built: builtWire{
 				Kind: script.Built.Kind, Plugin: script.Built.Plugin, Facet: script.Built.Facet,
 				Source: script.Built.Source, Digest: script.Built.Digest, Errors: script.Built.Errors,
 			},
+		}
+		if api := script.Built.Api; api != nil {
+			wire[i].Built.Api = &apiWire{Name: api.Name, Version: api.Version}
 		}
 		if script.Built.Kind == BuiltFacetFailed {
 			wire[i].Built.Errors = nonNil(script.Built.Errors)
@@ -210,7 +251,9 @@ func nonNil(list []string) []string {
 // Load starts a Node subprocess whose host evaluates options.Scripts (the complete set of options.Kind) with options.Modules
 // and loads them with options.Core. A plugin whose build or evaluation failed is left out and reported with the host's
 // report (the failures of the scripts first), each error a *NodeError whose Stack names the plugin's files and lines. It
-// returns the host's error as it is: the subprocess is stopped then.
+// returns the host's error as it is: the subprocess is stopped then. When plugins of a required root (Plugin.Required) are
+// among the failed it returns the host, the report and a *PluginError once the host's load settled: the host is loaded, and
+// the caller owns it (stops it, mostly).
 //
 // The host is the child of the Go side, as a forked worker is of its server (next-node/workers/main.ts): it connects the
 // link to its parent when the Go side first uses the other end. The app attaches that end, NodeHost.Link, to a Go host as
@@ -286,8 +329,14 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 		var reply nodeReply
 		if reply, err = h.await(call, ctx); err == nil {
 			var report host.LoadReport
-			if report, err = loadReport(reply.Result); err == nil {
+			var required []host.PluginFailure
+			if report, required, err = loadReport(reply.Result); err == nil {
 				h.link.delivered(ctx)
+				if len(required) > 0 {
+					// The host's load settled (the others are loaded): the host is the caller's, as upstream's `host` is, to
+					// stop or keep.
+					return h, report, &PluginError{Required: required, Failed: report.Failed}
+				}
 				return h, report, nil
 			}
 		}
@@ -355,14 +404,17 @@ func failures(wire []failureWire) []host.PluginFailure {
 	return out
 }
 
-func loadReport(result json.RawMessage) (host.LoadReport, error) {
+// loadReport is the host's report of a load and, when plugins of a required root failed (the vendored runtime threw its
+// PluginError after the host's load settled), those failures.
+func loadReport(result json.RawMessage) (host.LoadReport, []host.PluginFailure, error) {
 	var wire struct {
-		Failed []failureWire `json:"failed"`
+		Failed   []failureWire `json:"failed"`
+		Required []failureWire `json:"required"`
 	}
 	if err := json.Unmarshal(result, &wire); err != nil {
-		return host.LoadReport{}, err
+		return host.LoadReport{}, nil, err
 	}
-	return host.LoadReport{Failed: failures(wire.Failed)}, nil
+	return host.LoadReport{Failed: failures(wire.Failed)}, failures(wire.Required), nil
 }
 
 func reloadReport(result json.RawMessage) (host.ReloadReport, error) {

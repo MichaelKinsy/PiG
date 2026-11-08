@@ -22,9 +22,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Ports packages/chord/test/next-node/plugins/watcher.test.ts. Tests of the watcher (slice 7c §5): dirty marks from the
-// files facets used and from plugin directories, `install`, `set`, `base`, a change during a build keeping its mark,
-// `node_modules` and `.git` ignored, real file events, and the marks as a JSON watchable.
+// Ports packages/chord/test/next-node/plugins/watcher.test.ts. Tests of the watcher (slice 7c §5, slice 12 §4): dirty marks
+// from the files facets used and from plugin directories, `install`, `set`, `base`, a change during a build keeping its mark,
+// `node_modules` and `.git` ignored, real file events, the marks as a JSON watchable, and single-file plugins' files.
 
 // watcherFixture is what `watched()` returns: a root with plugins and a base directory, their watcher, and the host loop
 // its batch runs on (the sections of the watcher's methods and of its file events).
@@ -123,7 +123,7 @@ func watched(t *testing.T) *watcherFixture {
 	writePlugin(t, root, "a", "@test/a", map[string]string{"worker.ts": "", "own.ts": ""}, nil)
 	writePlugin(t, root, "b", "@test/b", map[string]string{"server.ts": ""}, nil)
 	f := watcherOn(t, root, base)
-	discovery, err := DiscoverPlugins([]string{root}, DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := DiscoverPlugins([]PluginRoot{{Path: root}}, DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func (f *watcherFixture) mark(path string) { f.run(func() { f.watcher.mark(path)
 // know has the watcher learn a new discovery of the root, as the component does after discovering again.
 func (f *watcherFixture) know(seen DiscoverySnapshot) {
 	f.t.Helper()
-	discovery, err := DiscoverPlugins([]string{f.root}, DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := DiscoverPlugins([]PluginRoot{{Path: f.root}}, DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -382,6 +382,36 @@ func TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch(t *testing
 	if got := f.withoutStamps(stateOf(t, object), want).Dirty; !reflect.DeepEqual(got, want.Dirty) {
 		t.Fatalf("last frame's dirty = %v, want [@test/a]", got)
 	}
+	f.close()
+}
+
+// watcher.test.ts › the watcher and single-file plugins (slice 12 §4) › dirties a single-file plugin for a change of its file; a
+// file appearing or disappearing at a root's top sets set.
+func TestTheWatcherAndSingleFilePluginsDirtiesASingleFilePluginForAChangeOfItsFileAFileAppearingOrDisappearingAtARootsTopSetsSet(t *testing.T) {
+	f := watched(t)
+	writeFiles(t, f.root, map[string]string{"hello.server.ts": ""})
+	f.settle()
+	f.mark(filepath.Join(f.root, "hello.server.ts"))
+	expectMarks(t, f.marks(), PluginsState{Dirty: list(), Install: list(), Set: true})
+	seen := f.discoverySnapshot()
+	f.know(seen)
+	expectMarks(t, f.marks(), PluginsState{Dirty: list(), Install: list()})
+	// Its own file: only it is dirty (not every plugin of the root its directory is).
+	f.mark(filepath.Join(f.root, "hello.server.ts"))
+	expectMarks(t, f.marks(), PluginsState{Dirty: list("hello"), Install: list()})
+	writeFiles(t, f.root, map[string]string{"hello.web.tsx": ""})
+	f.settle()
+	f.mark(filepath.Join(f.root, "hello.web.tsx"))
+	if marks := f.marks(); !marks.Set {
+		t.Fatalf("marks = %+v, want set", marks)
+	}
+	f.know(f.discoverySnapshot())
+	if err := os.Remove(filepath.Join(f.root, "hello.server.ts")); err != nil {
+		t.Fatal(err)
+	}
+	f.settle()
+	f.mark(filepath.Join(f.root, "hello.server.ts"))
+	expectMarks(t, f.marks(), PluginsState{Dirty: list("hello"), Install: list(), Set: true})
 	f.close()
 }
 

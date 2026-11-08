@@ -11,7 +11,7 @@
 // frames arrive in order, a failure of the Go object fails this object `transient`) and its methods call the Go object. A
 // keyed member is a document handle of its object and cannot be forwarded: the Go side refuses such a contract before it
 // ships it.
-import { defineFacet } from "@earendil-works/chord/next";
+import { defineFacet } from "@earendil-works/chord";
 import { contractOf } from "./contracts.mjs";
 import { decodeValue, encodeValue } from "./wire.mjs";
 
