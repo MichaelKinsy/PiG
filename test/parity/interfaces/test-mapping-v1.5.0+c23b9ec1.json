@@ -1992,13 +1992,25 @@
     },
     {
       "path": "packages/chord/test/contracts/evolve.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0157519b735afb2a3bb9472986578e79c0b88bd1cf6401d5a49eb0c480883dc9"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:0157519b735afb2a3bb9472986578e79c0b88bd1cf6401d5a49eb0c480883dc9",
+      "evidence": [
+        "chord/next/contracts/evolve_test.go",
+        "chord/next/contracts/derived_runtime_test.go"
+      ],
+      "rationale": "17 of 18 upstream cases are ported; the 1 missing cases have no Go test carrying the Pi case title (file identical to v1.5.0 modulo import paths after the root move, Pi e9c0ff4d8); they are listed in missingCases.",
+      "missingCases": [
+        "long histories › count versions beyond 9 and 99, at runtime and in the types"
+      ]
     },
     {
       "path": "packages/chord/test/contracts/fingerprint.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ba9581e830968ec447bb7143627165ca596f6937e3941b822e5ba21425d6f1ed"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ba9581e830968ec447bb7143627165ca596f6937e3941b822e5ba21425d6f1ed",
+      "evidence": [
+        "chord/next/contracts/fingerprint_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files (every Pi case title appears in a Go test; file identical to v1.5.0 modulo import paths after the root move, Pi e9c0ff4d8)."
     },
     {
       "path": "packages/chord/test/contracts/history.test.ts",
@@ -2025,13 +2037,30 @@
     },
     {
       "path": "packages/chord/test/contracts/schema.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:73bb6fd4ffc79261823d042c75a4f5abfc03861b73455ef1ff9b2cfee5efec29"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:73bb6fd4ffc79261823d042c75a4f5abfc03861b73455ef1ff9b2cfee5efec29",
+      "evidence": [
+        "chord/next/contracts/schema_test.go"
+      ],
+      "rationale": "7 of 8 upstream cases are ported; the 1 missing cases have no Go test carrying the Pi case title (file identical to v1.5.0 modulo import paths after the root move, Pi e9c0ff4d8); they are listed in missingCases.",
+      "missingCases": [
+        "bytes › checks instanceof Uint8Array and the length bounds"
+      ]
     },
     {
       "path": "packages/chord/test/contracts/snapshot.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a708093d51b16658f44fe0993b4d3d83b65857b3d87ca348d817da8d00cc3e38"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:a708093d51b16658f44fe0993b4d3d83b65857b3d87ca348d817da8d00cc3e38",
+      "evidence": [
+        "chord/next/contracts/snapshot_test.go",
+        "chord/next/host/jobs_job_runs_test.go",
+        "chord/next/host/host_retry_on_test.go"
+      ],
+      "rationale": "13 of 15 upstream cases are ported; the 2 missing cases have no Go test carrying the Pi case title (file identical to v1.5.0 modulo import paths after the root move, Pi e9c0ff4d8); they are listed in missingCases.",
+      "missingCases": [
+        "vocabulary › refuses symbol keys, accessors and cycles, naming the path",
+        "closed arguments › accepts a raw closed object schema and records"
+      ]
     },
     {
       "path": "packages/chord/test/data/args.test.ts",
@@ -2064,8 +2093,12 @@
     },
     {
       "path": "packages/chord/test/data/params.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a5bcca7e5757cb669cfcaaa8e80db84512db0838e558e4634ae58c020d97ad3e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a5bcca7e5757cb669cfcaaa8e80db84512db0838e558e4634ae58c020d97ad3e",
+      "evidence": [
+        "chord/next/data/params_test.go"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files (every Pi case title appears in a Go test; file identical to v1.5.0 modulo import paths after the root move, Pi e9c0ff4d8)."
     },
     {
       "path": "packages/chord/test/data/principal.test.ts",
@@ -2074,8 +2107,15 @@
     },
     {
       "path": "packages/chord/test/data/validator.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c9a9eaec6bd94fd0214f92896cbfc22b9a15fd19f82ef17a193acea5d59a754b"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:c9a9eaec6bd94fd0214f92896cbfc22b9a15fd19f82ef17a193acea5d59a754b",
+      "evidence": [
+        "chord/next/data/validator_test.go"
+      ],
+      "rationale": "8 of 9 upstream cases are ported; the 1 missing cases have no Go test carrying the Pi case title (file identical to v1.5.0 modulo import paths after the root move, Pi e9c0ff4d8); they are listed in missingCases.",
+      "missingCases": [
+        "failed checks › check bytes by instanceof and length"
+      ]
     },
     {
       "path": "packages/chord/test/delta-append-text.test.ts",
@@ -2134,7 +2174,7 @@
       "evidence": [
         "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps"
       ],
-      "rationale": "The test measures V8 heap use after the tracker, diffRevisions and applyImmutable produce append ops from a long, growing string: V8 represents a long slice as a view of its source, so the ops kept every revision of the text alive until ownedSlice copied them. Go ops hold the substring they were cut from (the same text) and the strings the tracker keeps are whole copies; AppendText clones the text it is given (TestAppendTextOwnsTheTextItKeeps), and no Go behavior depends on how a slice is represented."
+      "rationale": "The test measures V8 heap use after the tracker, diffRevisions and applyImmutable produce append ops from a long, growing string: V8 represents a long slice as a view of its source, so the ops kept every revision of the text alive until ownedSlice copied them. Go ops hold the substring they were cut from (the same text) and the strings the tracker keeps are whole copies; AppendText clones the text it is given (TestAppendTextOwnsTheTextItKeeps), and no Go behavior depends on how a slice is represented. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/delta-op-text-retention.test.ts, identical modulo import paths."
     },
     {
       "path": "packages/chord/test/delta-pending.test.ts",
@@ -2430,7 +2470,7 @@
       "evidence": [
         "chord/next/host/host_parked_test.go"
       ],
-      "rationale": "10 of 11 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "10 of 11 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/host/parked.test.ts, identical modulo import paths.",
       "missingCases": [
         "calls on a loading local reference › stop being sent when one's handler releases the reference: the rest reject released (race 15)"
       ]
@@ -2460,8 +2500,12 @@
     },
     {
       "path": "packages/chord/test/host/reference-keys.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0816583233b1104806cd4f36b1fa27bfbdb2a149d64f784d4837885c10189cea"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0816583233b1104806cd4f36b1fa27bfbdb2a149d64f784d4837885c10189cea",
+      "evidence": [
+        "chord/next/host/host_reference_keys_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files. Upstream change since v1.5.0 is a comment or an import/path string only (Pi root move e9c0ff4d8), no case or assertion changed."
     },
     {
       "path": "packages/chord/test/host/reference-source.test.ts",
@@ -2583,8 +2627,14 @@
     },
     {
       "path": "packages/chord/test/json.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:59f61ff559a3fe70f9796bf7ee375ca59b74c98c09b7f2321d19ad39f0bbff93"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:59f61ff559a3fe70f9796bf7ee375ca59b74c98c09b7f2321d19ad39f0bbff93",
+      "evidence": [
+        "internal/chord/chordjson/chordjson_upstream_test.go#TestCopy",
+        "internal/chord/chordjson/chordjson_upstream_test.go#TestIsValue",
+        "internal/chord/chordjson/chordjson_upstream_test.go#TestOmitsUnsetObjectEntriesWithoutNormalizingArrays"
+      ],
+      "rationale": "All cases. The omitUndefinedProperties case is a Go equivalence test (owner direction): Go has no undefined, so an unset object entry is a nil pointer or omitempty field; Copy rejects it as copyJson does without the option, and Stored omits it at every depth as copyJson does with the option, while array elements, nil array elements and null object values stay, with Pi 1.0.0 output pinned for the same inputs. The invalid JavaScript container shapes (sparse array, array subclass, accessor, hidden or symbol property, Uint8Array, null prototype) are replaced by the invalid Go shapes (typed slice and map, struct, pointer, function, channel, non-finite number, cycle, nil object). Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/json.test.ts, identical modulo import paths."
     },
     {
       "path": "packages/chord/test/link/channel.test.ts",
@@ -2616,7 +2666,7 @@
       "evidence": [
         "chord/next/link/link_test.go"
       ],
-      "rationale": "5 of 6 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "5 of 6 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/link/link.test.ts, identical modulo import paths.",
       "missingCases": [
         "a closed memory link › keeps no listener set after its close: accepting it keeps no host"
       ]
@@ -2647,7 +2697,7 @@
       "evidence": [
         "chord/next/link/websocket_test.go"
       ],
-      "rationale": "4 of 6 upstream cases are ported; the 2 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "4 of 6 upstream cases are ported; the 2 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/link/websocket.test.ts, identical modulo import paths.",
       "missingCases": [
         "WebSocket links over a loopback ws server › carry a live reference both ways; the client's hello waits for open",
         "WebSocket links over a loopback ws server › close the connection on a frame above maxPayload (1009): references go loading (race 28)"
@@ -3154,8 +3204,14 @@
     },
     {
       "path": "packages/chord/test/sqlite/cloudflare.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1d932cb85f3b27c56b06fe7f158c7dda7220eb49b305577f02d61d28f326e174"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1d932cb85f3b27c56b06fe7f158c7dda7220eb49b305577f02d61d28f326e174",
+      "evidence": [
+        "chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
+        "chord/sqlite/cloudflare/transaction_outcome_test.go#TestDurableObjectSqliteTransactionOutcome",
+        "chord/sqlite/cloudflare/store_check_test.go#TestStoreOnDurableObjectTellsCheckByMessage"
+      ],
+      "rationale": "Pi c268154c moved the Durable Object driver cases of durable/test/sqlite-cloudflare.test.ts here. The eight cases (BLOB bytes, the cursor's first row for get, the safe-integer bigint bound, close after a transaction, an uncontended statement run before returning, rollback and handle rejection, another adapter's operations outside the rollback, direct underlying calls inside a transaction) are subtests of TestDurableObjectSqliteDriver over the native-connection stand-in. Delta at Pi 8025c414: the new case 'reports the rows a statement changed, without index writes' is a subtest of TestDurableObjectSqliteDriver over sqlitetest.RunChanges (the port of helpers.ts runChanges and RUN_CHANGES) and a RunCounted inside a transaction. Pi 14b4c56e adds the transaction-outcome case (ported) and \"a store on it tells a CHECK refusal by its message\", which needs chord/next/store; at Pi v1.5.0 the case is 'a store on it tells a CHECK refusal by its message, its error having no extended code' and chord/next/store is ported: the Go subtest of that name in TestStoreOnDurableObjectTellsCheckByMessage opens a store over a message-only storage, refuses an insert violating a CHECK, and expects refusal kind check and a working store afterwards. Upstream change since v1.5.0 is a comment or an import/path string only (Pi root move e9c0ff4d8), no case or assertion changed."
     },
     {
       "path": "packages/chord/test/sqlite/migrations.test.ts",
@@ -3218,7 +3274,7 @@
         "chord/next/state/batch_own_test.go",
         "chord/next/state/batch_test.go"
       ],
-      "rationale": "1 of 5 upstream cases are ported; the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "1 of 5 upstream cases are ported; the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/state/batch.test.ts, identical modulo import paths.",
       "missingCases": [
         "reentrancy › refuses watch (ref.state too), release, get, load, close and a transaction in a commit's derive computes",
         "reentrancy › refuses them in a lazy compute outside a commit",
@@ -3235,7 +3291,7 @@
         "chord/next/state/derive_sources_own_test.go",
         "chord/next/state/derive_test.go"
       ],
-      "rationale": "3 of 18 upstream cases are ported; the 15 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "3 of 18 upstream cases are ported; the 15 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/state/derive.test.ts, identical modulo import paths.",
       "missingCases": [
         "derives across objects › update in the batch of the commit that changed their source's object",
         "the pull model › computes a diamond's derives once each per batch",
@@ -3256,8 +3312,19 @@
     },
     {
       "path": "packages/chord/test/state/native-source.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8142e0a96067cb50197e6d65d15ebe12720a2f3c4eaa4d1d9b0ca5be90b7af0f"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:8142e0a96067cb50197e6d65d15ebe12720a2f3c4eaa4d1d9b0ca5be90b7af0f",
+      "evidence": [
+        "chord/next/state/native_own_test.go",
+        "chord/next/state/derive_sources_own_test.go",
+        "chord/next/state/watchable_own_test.go"
+      ],
+      "rationale": "3 of 6 upstream cases are ported; the 3 missing cases have no Go test carrying the Pi case title (file identical to v1.5.0 modulo import paths after the root move, Pi e9c0ff4d8); they are listed in missingCases.",
+      "missingCases": [
+        "native sources as derive sources › `ref.state` is a derive source: a state member can show a dependency's reachability",
+        "native sources as derive sources › refuses a native source as a state member (Q14)",
+        "watching a native source that fails › an `on` routine started while its source is failed waits for its next good value, never calls with the stale one"
+      ]
     },
     {
       "path": "packages/chord/test/state/watchable.test.ts",
@@ -3267,7 +3334,7 @@
         "chord/next/state/watchable_own_test.go",
         "chord/next/state/watchable_test.go"
       ],
-      "rationale": "1 of 6 upstream cases are ported; the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "1 of 6 upstream cases are ported; the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/state/watchable.test.ts, identical modulo import paths.",
       "missingCases": [
         "watches › start from the value at acquisition; a listener that keeps up gets each commit",
         "watches › give a busy listener one call with the newest value and the folded ops",
@@ -3278,8 +3345,20 @@
     },
     {
       "path": "packages/chord/test/state/writable.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5af6ce5d280b3620c41c1e59a6644a264193a433c79e5f7ecb4e5c020a7ecf6b"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:5af6ce5d280b3620c41c1e59a6644a264193a433c79e5f7ecb4e5c020a7ecf6b",
+      "evidence": [
+        "chord/next/state/writable_own_test.go"
+      ],
+      "rationale": "3 of 9 upstream cases are ported; the 6 missing cases have no Go test carrying the Pi case title (file identical to v1.5.0 modulo import paths after the root move, Pi e9c0ff4d8); they are listed in missingCases.",
+      "missingCases": [
+        "writable › refuses a set inside a derive compute or a compose (`invalid/reentrant`)",
+        "writable › is the attempt's: `set` after its end throws `released`, its watches end `ended`, its value stays readable",
+        "writable › is a contribution, a derive source and an `on` source",
+        "writable › a set of the same value after its attempt ended throws `released` too (Sol, Astra)",
+        "writable › a writable an app keeps after `host.close` keeps no closed host; its observers' abort listeners go (Sol)",
+        "writable › a late callback's set after the host closed throws `released`"
+      ]
     },
     {
       "path": "packages/chord/test/store/allocator.test.ts",
@@ -3334,7 +3413,7 @@
       "evidence": [
         "chord/next/store/claims_test.go"
       ],
-      "rationale": "2 of 3 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "2 of 3 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/store/claims.test.ts, identical modulo import paths.",
       "missingCases": [
         "claims › an object claims its tables and documents when it declares them, and releases them at its end"
       ]
@@ -3446,7 +3525,7 @@
         "chord/next/store/refusal_check_code_test.go",
         "chord/next/store/refusal_test.go"
       ],
-      "rationale": "1 of 2 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "1 of 2 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/store/refusal.test.ts, identical modulo import paths.",
       "missingCases": [
         "Chord's owners › an int out of range fails only its transaction; the object stays live"
       ]
@@ -3512,8 +3591,14 @@
     },
     {
       "path": "packages/chord/test/store/table-migration.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8c450eed99c1381a2339ecf9c7807800be6b4f5e4d2a5169855c9ba9a4d37807"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8c450eed99c1381a2339ecf9c7807800be6b4f5e4d2a5169855c9ba9a4d37807",
+      "evidence": [
+        "chord/next/store/table_migration_test.go",
+        "chord/next/store/evidence_storeB_test.go#TestMigrationYieldsBetweenChunksOfAThreeChunkMigration",
+        "chord/next/store/evidence_storeB_test.go#TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files; the two \"the chunk yield\" cases (JS timer mechanics) are ported as deterministic tests through an unexported yield seam (prepareTables(..., yield); PrepareTables passes runtime.Gosched), red with the yield removed. The owner rejected a timer-mechanics design-out (2026-10-30). Upstream change since v1.5.0 is a comment or an import/path string only (Pi root move e9c0ff4d8), no case or assertion changed."
     },
     {
       "path": "packages/chord/test/store/table-writes.test.ts",
