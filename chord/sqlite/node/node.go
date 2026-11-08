@@ -123,7 +123,7 @@ func (database *DatabaseSync) Prepare(sqlText string) (*StatementSync, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &StatementSync{database: database, statement: statement}, nil
+	return &StatementSync{database: database, sqlText: sqlText, statement: statement}, nil
 }
 
 // Close closes the connection; later operations fail.
@@ -139,31 +139,89 @@ func (database *DatabaseSync) Close() error {
 }
 
 // StatementSync is one prepared statement of a DatabaseSync.
+//
+// Since SQLite 3.54 a statement whose plan can depend on a bound integer (a "col = ?" term) is planned again when that
+// parameter changes between the integers 0 and 1 and any other value, though the plan is the same. Pi's fork-depth head
+// lookup binds the root conversation (id 1) at the end of each walk and a deeper one at the start of the next, so one
+// statement would re-plan on every step. A statement therefore keeps one compiled copy per pattern of 0/1 parameters
+// it is run with (smallIntegerMask): the first pattern uses statement, others compile lazily from sqlText. Copies are
+// never shared across patterns, so no execution changes a parameter across the 0/1 boundary.
 type StatementSync struct {
 	database  *DatabaseSync
+	sqlText   string
 	statement *sql.Stmt
+	// statementMask is the smallIntegerMask statement is bound with; statementUsed reports whether it was decided.
+	statementMask uint32
+	statementUsed bool
+	variants      map[uint32]*sql.Stmt
 }
 
-func (statement *StatementSync) open() error {
-	_, err := statement.database.connection()
-	return err
+// smallIntegerMask has bit i set when params[i] (i < 31) is a bool or an integer equal to 0 or 1.
+func smallIntegerMask(params []any) (mask uint32) {
+	for index, param := range params {
+		if index >= 31 {
+			break
+		}
+		switch value := param.(type) {
+		case int64:
+			if uint64(value) <= 1 {
+				mask |= 1 << index
+			}
+		case int:
+			if uint(value) <= 1 {
+				mask |= 1 << index
+			}
+		case bool:
+			mask |= 1 << index
+		}
+	}
+	return mask
+}
+
+// open returns the compiled copy of the statement to run with params.
+func (statement *StatementSync) open(params []any) (*sql.Stmt, error) {
+	conn, err := statement.database.connection()
+	if err != nil {
+		return nil, err
+	}
+	mask := smallIntegerMask(params)
+	if !statement.statementUsed {
+		statement.statementMask, statement.statementUsed = mask, true
+	}
+	if mask == statement.statementMask {
+		return statement.statement, nil
+	}
+	if variant := statement.variants[mask]; variant != nil {
+		return variant, nil
+	}
+	variant, err := conn.PrepareContext(context.Background(), statement.sqlText) //portlint:allow ctxbackground the same synchronous prepare as DatabaseSync.Prepare: node:sqlite takes no signal
+	if err != nil {
+		return nil, err
+	}
+	if statement.variants == nil {
+		statement.variants = map[uint32]*sql.Stmt{}
+	}
+	statement.variants[mask] = variant
+	return variant, nil
 }
 
 // Run executes the statement with positional bindings.
 func (statement *StatementSync) Run(params ...any) error {
-	if err := statement.open(); err != nil {
+	prepared, err := statement.open(params)
+	if err != nil {
 		return err
 	}
-	_, err := statement.statement.ExecContext(context.Background(), params...)
+	_, err = prepared.ExecContext(context.Background(), params...)
 	return err
 }
 
 // RunCounted executes the statement and returns the rows it changed.
 func (statement *StatementSync) RunCounted(params ...any) (int64, error) {
-	if err := statement.open(); err != nil {
+	prepared, err := statement.open(params)
+	if err != nil {
 		return 0, err
 	}
-	result, err := statement.statement.ExecContext(context.Background(), params...) //portlint:allow ctxbackground node:sqlite StatementSync.run (node.ts:102) is synchronous and takes no signal; no caller context exists, as in Run
+	result, err := prepared.ExecContext(context.Background(), params...) //portlint:allow ctxbackground node:sqlite StatementSync.run (node.ts:102) is synchronous and takes no signal; no caller context exists, as in Run
 	if err != nil {
 		return 0, err
 	}
@@ -172,10 +230,11 @@ func (statement *StatementSync) RunCounted(params ...any) (int64, error) {
 
 // EachText passes the first column of every result row to fn as it is read; the bytes are valid until fn returns.
 func (statement *StatementSync) EachText(params []any, fn func(text []byte) error) (err error) {
-	if err := statement.open(); err != nil {
+	prepared, err := statement.open(params)
+	if err != nil {
 		return err
 	}
-	rows, err := statement.statement.QueryContext(context.Background(), params...)
+	rows, err := prepared.QueryContext(context.Background(), params...)
 	if err != nil {
 		return err
 	}
@@ -207,10 +266,11 @@ func (statement *StatementSync) All(params ...any) ([]map[string]any, error) {
 }
 
 func (statement *StatementSync) query(params []any, limit int) (result []map[string]any, err error) {
-	if err := statement.open(); err != nil {
+	prepared, err := statement.open(params)
+	if err != nil {
 		return nil, err
 	}
-	rows, err := statement.statement.QueryContext(context.Background(), params...)
+	rows, err := prepared.QueryContext(context.Background(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +298,13 @@ func (statement *StatementSync) query(params []any, limit int) (result []map[str
 	return result, rows.Err()
 }
 
-func (statement *StatementSync) close() error { return statement.statement.Close() }
+func (statement *StatementSync) close() error {
+	err := statement.statement.Close()
+	for _, variant := range statement.variants {
+		err = errors.Join(err, variant.Close())
+	}
+	return err
+}
 
 // connection is the native connection surface NodeSqliteDatabase drives; *DatabaseSync is its one production implementation.
 type connection interface {
