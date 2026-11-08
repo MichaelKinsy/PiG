@@ -527,6 +527,12 @@ func (w *pluginWatcher) readEvents(watcher *fsnotify.Watcher) {
 			if !ok {
 				return
 			}
+			if errors.Is(err, fs.ErrPermission) || errors.Is(err, fs.ErrNotExist) {
+				// kqueue puts a watch on each entry that appears in a watched directory, and one it cannot (a protected entry
+				// the system makes in a directory above, one gone already) is only that entry unwatched: the watches of the
+				// others stand, as when a watch is put on a directory that does not exist or cannot be read.
+				continue
+			}
 			w.Batch().Section(func() {
 				if w.fs == watcher {
 					w.failed(err)
@@ -934,9 +940,10 @@ func (w *pluginWatcher) baseEvent(path string, op fsnotify.Op) {
 	w.keepWatches(path)
 }
 
-// keepWatches puts back the base watches at and under path that the watcher no longer holds, for the directory there is the one
-// they watched, moved away and back: libuv's watch follows it (inotify) or its path (FSEvents), and some of fsnotify's end with
-// the move (kqueue removes the watch of a directory that is renamed). Nothing is compared: as Pi, it renewed nothing.
+// keepWatches puts back the watches at and under path that the watcher no longer holds, those alone and those of a base
+// directory's tree, for the directory there is the one they watched, moved away and back: libuv's watch follows it (inotify) or
+// its path (FSEvents), and some of fsnotify's end with the move (kqueue removes the watch of a directory that is renamed).
+// Nothing is compared: as Pi, it renewed nothing.
 func (w *pluginWatcher) keepWatches(path string) {
 	if w.fs == nil {
 		return
@@ -951,6 +958,18 @@ func (w *pluginWatcher) keepWatches(path string) {
 	for _, dir := range lost {
 		delete(w.baseWatched, dir)
 		w.watchAlone(dir)
+	}
+	var lostTree []string
+	for dir := range w.watched {
+		if (dir == path || under(path, dir)) && !slices.Contains(held, dir) {
+			lostTree = append(lostTree, dir)
+		}
+	}
+	for _, dir := range lostTree {
+		delete(w.watched, dir)
+	}
+	for _, dir := range lostTree {
+		w.watchDirs(dir)
 	}
 }
 
