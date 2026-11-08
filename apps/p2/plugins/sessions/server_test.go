@@ -309,7 +309,7 @@ func TestRejectsAMoveToAMissingDirectoryAtOnceAndRunsNothing(t *testing.T) {
 	owner := f.ownerSessions(t)
 	id := f.create(t, owner, "model", f.modelArg()).Value("id")
 	_, err := owner.Call("relocate", delta.JsonObjectOf("id", id, "cwd", filepath.Join(t.TempDir(), "missing"), "env", nil), p2test.Background)
-	if err == nil || !strings.Contains(err.Error(), "no such file or directory") {
+	if err == nil || !strings.Contains(err.Error(), "ENOENT: no such file or directory") {
 		t.Fatalf("relocate error = %v", err)
 	}
 	if list, _ := owner.Member("operations").Value(); len(list.([]any)) != 0 {

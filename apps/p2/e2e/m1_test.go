@@ -1,9 +1,5 @@
-//go:build p2_pending_chat
-
-// Ports test/p2/smoke.test.ts and test/p2/m1.test.ts (Pi main c23b9ec1). They need the Chat and Models contracts and the
-// sessions, chat, models and status plugins' facets (lane B's, and lane A's models plugin): until those land this file
-// does not compile, which is its recorded red state (docs/parity/gap-p2.md, "p2 lane A wave 1"). Drop the build tag when
-// plugins/chat/contract and plugins/models/contract exist and the plugins register with hosts.RegisterPlugin.
+// Ports test/p2/smoke.test.ts and test/p2/m1.test.ts (Pi main c23b9ec1): the Chat, Models, Sessions and status contracts
+// against the compiled-in plugins.
 //
 // D473: Pi's "keeps streaming through a compatible reload of the chat plugin" reloads the chat plugin's code in the running
 // server and worker; compiled-in plugins cannot, so that case asserts the restart-required form (P2Server.Reload).
@@ -24,6 +20,15 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+
+	// The plugins M1 runs with: the server and each session worker (this test binary) load what registered.
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
 )
 
 func TestMain(m *testing.M) { p2test.Main(m) }
@@ -95,6 +100,7 @@ func busyHas(entry *delta.JsonObject, conversation float64) bool {
 }
 
 func TestSmokeCreatesASessionAndGetsAnAnswer(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{})
 	browser := fixture.Browser()
 	sessions, err := p2test.HoldIn(browser, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
@@ -120,6 +126,7 @@ func TestSmokeCreatesASessionAndGetsAnAnswer(t *testing.T) {
 // TestM1WorkingChat is M1's acceptance with the fake provider: create a session, stream an answer, stop, restart-required
 // plugin reload, reopen after the worker stopped idle, archive and restore. The cases run in order, as the TypeScript's.
 func TestM1WorkingChat(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{Idle: 1500 * time.Millisecond})
 	browser := fixture.Browser()
 	sessions, err := p2test.HoldIn(browser, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")

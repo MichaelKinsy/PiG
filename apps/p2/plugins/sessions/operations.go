@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"os"
 	"path/filepath"
 	"strings"
@@ -655,7 +656,7 @@ func serveOperations(facet host.FacetHost) error {
 			}
 			info, err := os.Stat(local)
 			if err != nil {
-				return location{}, err
+				return location{}, nodeerrno.FromPathError(err)
 			}
 			if !info.IsDir() {
 				return location{}, errors.New("Working directory is not a directory")
@@ -672,7 +673,7 @@ func serveOperations(facet host.FacetHost) error {
 		// copyOf is a copy's catalog entry: the source's place, model and level under a marked title.
 		copyOf := func(ctx context.Context, source contract.Session, id, mark string) error {
 			title := cleanTitle(source.Title + " (" + mark + ")")
-			title = title[:utf16Prefix(title, contract.MaxTitle)]
+			title = utf16Slice(title, contract.MaxTitle)
 			args := delta.JsonObjectOf("id", id, "cwd", source.Cwd, "env", location{Env: source.Env}.json().Value("env"), "title", title,
 				"titleEdited", true, "model", delta.JsonObjectOf("provider", source.Model.Provider, "modelId", source.Model.ModelId),
 				"thinkingLevel", source.ThinkingLevel)

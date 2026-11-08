@@ -303,17 +303,16 @@ func (c *CatalogDB) Update(ctx context.Context, id string, change Change) (contr
 // start) replaces the title unless it was edited.
 func (c *CatalogDB) Activity(ctx context.Context, id string, timestamp int64, firstUserText string) error {
 	title := strings.NewReplacer("\r", " ", "\n", " ").Replace(firstUserText)
-	if units := utf16Prefix(title, autoTitle); units < len(title) {
-		title = title[:units]
-	}
+	title = utf16Slice(title, autoTitle)
 	_, err := c.db.ExecContext(ctx, `UPDATE sessions SET updatedAt=max(updatedAt,?),
 		title=CASE WHEN titleEdited=0 AND ?<>'' THEN ? ELSE title END WHERE id=?`, timestamp, title, title, id)
 	return err
 }
 
-// utf16Prefix is the byte length of the longest prefix of s of at most n UTF-16 code units (JavaScript's `slice(0,
-// n)`, never inside a character here: a character cut in two is dropped).
-func utf16Prefix(s string, n int) int {
+// utf16Slice is JavaScript's `slice(0, n)` of s as the catalog stores it: at most n UTF-16 code units. A surrogate pair
+// the limit falls inside is cut in two, and SQLite stores the lone surrogate as U+FFFD (UTF-8 has no form for it), so the
+// character becomes U+FFFD.
+func utf16Slice(s string, n int) string {
 	units := 0
 	for i, r := range s {
 		width := 1
@@ -321,9 +320,12 @@ func utf16Prefix(s string, n int) int {
 			width = 2
 		}
 		if units+width > n {
-			return i
+			if units < n {
+				return s[:i] + "\uFFFD"
+			}
+			return s[:i]
 		}
 		units += width
 	}
-	return len(s)
+	return s
 }
