@@ -698,8 +698,12 @@ func (w *pluginWatcher) recordOwn(base []string) {
 
 // recordBase adds the record of a running base artifact (a base bundle's inputs): `base` is set while one of its files differs
 // from it. Each file's directory is watched alone (not its tree), then every file is compared once (an edit since the build
-// has no later event); files under ignored directories are skipped.
+// has no later event); files under ignored directories are skipped. A record arriving after the close (a scan that ended
+// late) watches nothing (Pi 284e63d9 watcher.ts `recordBase`).
 func (w *pluginWatcher) recordBase(inputs BaseInputs) {
+	if w.closed {
+		return
+	}
 	record := make(BaseInputs, len(inputs))
 	for file, hash := range inputs {
 		path := realPaths([]string{file})[0]
