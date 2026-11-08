@@ -3147,9 +3147,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/surfaces/language.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_active_language_test.go", "test:chord/next/surfaces/surfaces_language_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/surfaces/loaded.ts"
