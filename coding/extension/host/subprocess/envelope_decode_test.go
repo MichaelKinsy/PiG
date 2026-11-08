@@ -33,6 +33,42 @@ func envelopeFrames() []string {
 		`{"type":"response","id":5}`, `{"type":5}`, `{"type":"x","ready":"no"}`, `{"type":"call","call":{"method":"m","timer":"yes"}}`,
 		`{"type":"request","request":{"method":"m","handler_id":1.5}}`, `{"type":"request","request":{"handler_id":99999999999999999999}}`,
 		`{}`, `null`, `[]`, `5`, ``, `{"type":"x"`, `{"type":"x"}}`, `{"type":"x",}`, `{"id":"` + "\x01" + `"}`,
+		// An escaped backslash before "ud800" is text, and a real lone surrogate escape after it is not: each member the decoder fills as a string
+		// keeps the unit under the sdk decoder.
+		`{"type":"\\ud800\udc00"}`, `{"type":"notify","notify":{"method":"\\ud83d\udc00"}}`, `{"type":"x","id":"\\\\ud800\udc00"}`,
+		`{"type":"x","id":"a\\ud800\udfff"}`, `{"type":"x","id":"\\ud800"}`, `{"type":"ready","ready":{"cwd":"\\ud800\udc00","width":1}}`,
+		`{"type":"ready","ready":{"cwd":"/","width":1,"state":{"model":"\\udbff\udfff\udc00"}}}`,
+		`{"type":"ready","ready":{"cwd":"/","width":1,"state":{"model":["\\ud800\udc00"]}}}`,
+		`{"type":"widget_push","widget_push":{"key":"k","lines":["\\ud800\udc00","b"],"width":80}}`,
+		// The three-byte form of a surrogate, and other invalid UTF-8, in a string the decoder fills.
+		"{\"type\":\"notify\",\"notify\":{\"method\":\"\xed\xa0\x80\"}}", "{\"type\":\"x\",\"id\":\"a\xed\xbf\xbfb\"}",
+		"{\"type\":\"a\xffb\"}", "{\"type\":\"x\",\"id\":\"\xc0\xaf\xf8\x88\x80\x80\x80\"}",
+		"{\"type\":\"ready\",\"ready\":{\"cwd\":\"\xed\xa0\x80\",\"width\":1}}",
+		"{\"type\":\"ready\",\"ready\":{\"cwd\":\"/\",\"width\":1,\"state\":{\"model\":\"\xed\xb0\x80\"}}}",
+		// Integer forms, floats, -0 and big numbers, and duplicate members mixing null and values.
+		`{"type":"request","request":{"method":"m","handler_id":1e2}}`, `{"type":"request","request":{"method":"m","handler_id":1.0}}`,
+		`{"type":"request","request":{"method":"m","handler_id":-0}}`, `{"type":"request","request":{"method":"m","handler_id":-0.0}}`,
+		`{"type":"request","request":{"method":"m","handler_id":9223372036854775807}}`, `{"type":"request","request":{"method":"m","handler_id":9223372036854775808}}`,
+		`{"type":"request","request":{"method":"m","handler_id":-9223372036854775808}}`, `{"type":"request","request":{"method":"m","handler_id":"1"}}`,
+		`{"type":"ready","ready":{"cwd":"/","width":1,"state":{"model":-0}}}`, `{"type":"ready","ready":{"cwd":"/","width":1,"state":{"model":12345678901234567890123}}}`,
+		`{"type":"ready","ready":{"cwd":"/","width":1,"state":{"model":1e400}}}`, `{"type":"ready","ready":{"cwd":"/","width":1,"state":{"model":{"a":1,"a":{"b":2}}}}}`,
+		`{"type":"ready","ready":{"cwd":"/","width":1,"state":{"model":"\u2028\u2029<&>"}}}`,
+		`{"type":"notify","type":null}`, `{"type":"notify","notify":{"method":"a"},"notify":null}`, `{"type":"notify","notify":null,"notify":{"method":"a"}}`,
+		`{"type":"notify","notify":{"method":"a","args":[1]},"notify":{"args":null}}`,
+		" \t\r\n{\"type\":\"x\"}\r\n ", "\ufeff{\"type\":\"x\"}", `{"type":"x"} {"type":"y"}`, `{"type":"x"}` + "\x00",
+		`{"\u0074ype":"x"}`, `{"typ\u0065":"x","\u0069d":"7"}`,
+	}
+}
+
+func nested(open, close string, n int) string {
+	return strings.Repeat(open, n) + strings.Repeat(close, n)
+}
+
+// A frame nested around the depth limit of the decoders is accepted or rejected as the sdk decoder does.
+func TestDecodeEnvelopeNestingMatchesTheSDKDecoder(t *testing.T) {
+	for _, n := range []int{9990, 9996, 9997, 9998, 9999, 10000, 10001, 10060, 10070} {
+		sameDecode(t, []byte(`{"type":"notify","notify":{"method":"m","args":`+nested("[", "]", n)+`}}`))
+		sameDecode(t, []byte(`{"type":"ready","ready":{"cwd":"/","width":1,"state":{"model":`+nested("[", "]", n)+`}}}`))
 	}
 }
 
