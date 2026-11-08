@@ -365,4 +365,3 @@ var reporter = durable.DefineTask(durable.TaskDefinition[reporterInput, reporter
 		})
 	},
 })
-
