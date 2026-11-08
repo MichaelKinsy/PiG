@@ -430,8 +430,8 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 		value, _ = resolveExposureAliases(value, mustObjectMap(value))
 	}
 	result := mcpshared.ValidateMcpServerConfig(name, value, mcpshared.McpServerConfigOptions{
-		CheckMetadataDocumentCallback: func(callbackURL string, _ bool) string {
-			if IsClientMetadataDocumentCallback(callbackURL) {
+		CheckMetadataDocumentCallback: func(callbackURL *string) string {
+			if callbackURL == nil || IsClientMetadataDocumentCallback(*callbackURL) {
 				return ""
 			}
 			return `oauth.clientRegistration "cimd" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback`
