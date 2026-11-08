@@ -1,18 +1,23 @@
 {
-	"version": "eceaa3bfaf21f0ca61521dc5331b7f19a41c71989f77c8a0457657426994f502",
-	"script": "app-DL4NOGAK.js",
+	"version": "dcb8e67b7e52bb183c95e3f90f19e2a031afb8fb2f7a4b8d30be236c55ebfdfc",
+	"script": "app-4JDFA3NY.js",
 	"style": "app-GU4EA2M4.css",
 	"plugins": [
+		"agent",
 		"artifacts",
 		"chat",
 		"chat-mode",
+		"codemode",
 		"coding-tools",
 		"conversations",
 		"envs",
 		"history",
 		"login",
 		"logs",
+		"mcp",
 		"ports",
+		"powershell",
+		"prompt",
 		"send-file",
 		"sessions",
 		"sharing",
@@ -53,16 +58,16 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-DL4NOGAK.js",
+			"name": "app-4JDFA3NY.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1240093,
-			"sha256": "b6451bfa6b972e614d95f6cb122d015cac2d22acc592a270d2d4cbe57c1196fa"
+			"size": 1251106,
+			"sha256": "bd71d61961383e0e7ebb43e78f78b525d213e0727bb33a46aebcb951126de3ff"
 		},
 		{
-			"name": "app-DL4NOGAK.js.map",
+			"name": "app-4JDFA3NY.js.map",
 			"type": "application/json",
-			"size": 5848450,
-			"sha256": "809de4f1adb51b49bd67101db60eec519fd55fcbed50b48903dc685d45f51ba7"
+			"size": 5897673,
+			"sha256": "b17c5241bf738a0f8c40f5da4abee015bc5988d836c8f4a85da27afc1c79f78e"
 		},
 		{
 			"name": "app-GU4EA2M4.css",
@@ -89,7 +94,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "ba634347a9c21eb3988d987c926a71c0e41ee5e7629be8c78d8512a8f38a2c7d",
+		"upstreamVersion": "330fb6af6bb592b25a5f471f0c15607cc5ae45a2f1daea87539161311b336793",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",
