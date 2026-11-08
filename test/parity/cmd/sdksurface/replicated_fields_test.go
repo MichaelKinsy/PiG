@@ -33,6 +33,7 @@ var replicatedReadyOnly = map[string]string{
 	"loadedDone":      "closes when the OnLoaded handlers returned, not host state",
 	"themeFeed":       "delivers a theme change to the OnThemeChange handlers; the theme itself is assigned by setUITheme",
 	"expandedFeed":    "delivers a tool-expansion change to the OnToolsExpandedChange handlers; the state itself is assigned by setToolsExpanded",
+	"branchFeed":      "delivers a Git branch change to the FooterData.OnBranchChange handlers; notifyFooterData publishes it when a footer update reports a branch change, and no snapshot field backs it",
 }
 
 func readRepoFile(t *testing.T, rel string) string {
