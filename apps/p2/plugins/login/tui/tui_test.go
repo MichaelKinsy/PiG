@@ -33,8 +33,15 @@ type setup struct {
 	pasted  *[]string
 	mu      *sync.Mutex
 	grants  *[][2]any
+	grantMu *sync.Mutex
 	watcher *host.Reference
 	server  *p2test.Fixture
+}
+
+func (s *setup) grantList() [][2]any {
+	s.grantMu.Lock()
+	defer s.grantMu.Unlock()
+	return append([][2]any(nil), *s.grants...)
 }
 
 func (s *setup) pastedCodes() []string {
@@ -113,7 +120,7 @@ func start(t *testing.T) *setup {
 		t.Fatal(err)
 	}
 	t.Cleanup(watcher.Release)
-	return &setup{Fixture: f, pasted: pasted, mu: &mu, grants: grants, watcher: watcher, server: server}
+	return &setup{Fixture: f, pasted: pasted, mu: &mu, grants: grants, grantMu: &grantsMu, watcher: watcher, server: server}
 }
 
 func (s *setup) screenHas(text string) bool { return strings.Contains(s.Screen(), text) }
@@ -208,13 +215,13 @@ func TestLoginOAuthRemotelyTheLauncherOpensAndCopiesTheAddressTheManualCodeCompl
 	s.waitFor("Paste code or final redirect URL")
 	s.Send("\x0f")
 	s.Send("\x18")
-	tuitest.Poll(t, func() bool { return len(*s.grants) == 2 })
+	tuitest.Poll(t, func() bool { return len(s.grantList()) == 2 })
 	want := [][2]any{
 		{"openUrl", map[string]any{"kind": "external", "url": "https://example.test/login?state=x"}},
 		{"copy", map[string]any{"text": "https://example.test/login?state=x", "label": "the sign-in address"}},
 	}
-	if fmt.Sprint(*s.grants) != fmt.Sprint(want) {
-		t.Fatalf("grants = %v, want %v", *s.grants, want)
+	if got := s.grantList(); fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("grants = %v, want %v", got, want)
 	}
 	for _, char := range code {
 		s.Send(string(char))
