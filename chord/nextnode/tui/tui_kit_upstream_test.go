@@ -101,6 +101,10 @@ func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScr
 		if err != nil {
 			t.Fatal(err)
 		}
+		entries, _ := os.ReadDir(filepath.Join(s.root, "lines"))
+		for _, entry := range entries {
+			t.Logf("file %s", entry.Name())
+		}
 		t.Fatalf("the set has no plugin script; the build: %+v; discovery: %+v", built.Facets, s.app.Plugins.Discovery())
 	}
 	entry := set.Plugins[0]
