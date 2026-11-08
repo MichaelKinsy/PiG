@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/jobs/run.test.ts: one run's record: its `running` entry per phase, and its handle's
+// Ports packages/chord/test/jobs/run.test.ts: one run's record: its `running` entry per phase, and its handle's
 // wait for the outcome.
 //
 // pi: packages/chord/src/next/jobs/run.ts
