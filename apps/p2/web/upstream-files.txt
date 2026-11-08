@@ -19,3 +19,5 @@ src/runtime/session-lock.ts
 src/runtime/session-worker.ts
 src/runtime/shell.ts
 src/runtime/tool-calls.ts
+plugins/sessions/contract.ts
+plugins/status/contract.ts
