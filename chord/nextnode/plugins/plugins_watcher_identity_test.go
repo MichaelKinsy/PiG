@@ -3,6 +3,7 @@ package plugins
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -28,9 +29,44 @@ func TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsThe
 	}
 	write(t, filepath.Join(top, "g.ts"), "B")
 	f.settled()
+	if runtime.GOOS != "linux" {
+		// kqueue (Pi on macOS gives `[true, true]`) sees an edit through a hardlink as a change of the watched file: the base
+		// is set at once, and the rest of this case has nothing left to show (the next test shows it without the link).
+		if !f.marks().Base {
+			t.Fatal("base not set by an edit through a hardlink, which the watch of the file sees where it is kqueue")
+		}
+		return
+	}
 	if f.marks().Base {
 		t.Fatal("base set by an edit through a hardlink, which no watch of the directory sees")
 	}
+	f.run(func() {
+		if err := os.Rename(dir, filepath.Join(top, "x")); err != nil {
+			t.Error(err)
+		}
+		if err := os.Rename(filepath.Join(top, "x"), dir); err != nil {
+			t.Error(err)
+		}
+	})
+	f.settled()
+	if f.marks().Base {
+		t.Fatal("base set: the directory moved away and back, the same one, was renewed and its files compared")
+	}
+	write(t, file, "C")
+	f.baseIs(true)
+}
+
+// The same without the link, on every platform: the directory moved away and back is the one watched, so its watches go on
+// (kqueue drops the watch of a renamed directory, `keepWatches` puts it back) and a write in place is seen, with no base set
+// by the move itself.
+func TestTheBaseMarkIsNotSetByADirectoryMovedAwayAndBackAndItsWatchesGoOn(t *testing.T) {
+	_, f := based(t, nil)
+	top := realOf(t, tempRoot(t))
+	dir := filepath.Join(top, "d")
+	file := filepath.Join(dir, "entry.ts")
+	writeFiles(t, dir, map[string]string{"entry.ts": "A"})
+	f.recordBase(BaseInputs{file: hashOf("A")})
+	f.settled()
 	f.run(func() {
 		if err := os.Rename(dir, filepath.Join(top, "x")); err != nil {
 			t.Error(err)
