@@ -83,6 +83,10 @@ func TestResolveConfigValueErrors(t *testing.T) {
 
 // Ports the case "resolved provider keys and custom auth-header commands are registered before logging" of logs.test.ts.
 func TestResolvedProviderKeysAndCustomAuthHeaderCommandsAreRegisteredBeforeLogging(t *testing.T) {
+	// The process logs' secrets are the process's: other tests of the package (and this one's earlier runs) added theirs.
+	previous := p2runtime.ProcessLogs.Redactor
+	p2runtime.ProcessLogs.Redactor = p2runtime.NewLogRedactor()
+	t.Cleanup(func() { p2runtime.ProcessLogs.Redactor = previous })
 	if got, ok := ResolveConfigValueUncached("$CUSTOM", map[string]string{"CUSTOM": "fixture-custom-value"}); !ok || got != "fixture-custom-value" {
 		t.Fatalf("$CUSTOM = %q, %v", got, ok)
 	}
