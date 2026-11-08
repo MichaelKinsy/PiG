@@ -400,7 +400,12 @@ func (storage *SqliteStorage) Commit(
 	if err := storage.assertOpen(); err != nil {
 		return durable.CommitResult{}, err
 	}
-	if slices.ContainsFunc(batches, hasEntryWrite) {
+	// Pointer-form writes are normalized once, so every check below reads the value forms.
+	values := make([][]durable.StorageWrite, len(batches))
+	for i, batch := range batches {
+		values[i] = writes.Values(batch)
+	}
+	if slices.ContainsFunc(values, hasEntryWrite) {
 		storage.retained.mu.Lock()
 		defer storage.retained.mu.Unlock()
 	}
@@ -419,13 +424,12 @@ func (storage *SqliteStorage) Commit(
 		}
 		next := nextSeq
 		// A failure of the database fails the call and rolls back the batches before it with the transaction.
-		state, err := storage.readCommitState(transaction, batches)
+		state, err := storage.readCommitState(transaction, values)
 		if err != nil {
 			return err
 		}
 		pending := &pendingWrites{}
-		for _, batch := range batches {
-			batch = writes.Values(batch)
+		for _, batch := range values {
 			actions, refusal, err := storage.checkBatch(transaction, state, pending, batch)
 			if err != nil {
 				return err
