@@ -32,6 +32,13 @@ var reviewedAmbiguousTypes = map[string]string{
 	"TuiMode":            "pkg:tui/.#TuiMode",
 }
 
+// notInventoried names a type that Theme's declarations mention but that is not the same-named exported type in
+// another package. coding-agent declares its own non-exported `TerminalTheme = "dark" | "light"` (theme.ts) and
+// reaches it through the ThemeAppearance alias; Chord's tui TerminalTheme class is unrelated and not reachable.
+var notInventoried = map[string]string{
+	"TerminalTheme": "coding-agent's own non-exported \"dark\" | \"light\" union, not Chord's tui TerminalTheme",
+}
+
 var exportedTypeReference = regexp.MustCompile(`\b[A-Z][A-Za-z0-9_]*\b`)
 
 type inventory struct {
@@ -315,7 +322,7 @@ func sourceDerivedRoots(items []inventoryItem, byID map[string]inventoryItem) ([
 			}
 			for _, name := range exportedTypeReference.FindAllString(string(item.Shape), -1) {
 				candidates := byName[name]
-				if len(candidates) == 0 {
+				if _, skip := notInventoried[name]; skip || len(candidates) == 0 {
 					continue
 				}
 				resolved := ""

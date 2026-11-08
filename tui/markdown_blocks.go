@@ -18,7 +18,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 	src := state.blockRunes(content)
 	tokens := state.blockLexer().lexRunes(src, content)
 	trimPartialClosingFences(tokens)
-	// pig divergence (D265): Pi main 54280c4ff hides HTML comments; the pinned v1.5.0 renders them as text. Only a source that holds "<!--" has a comment.
+	// Pi main 54280c4ff hides HTML comments; the pinned v1.5.0 renders them as text. Only a source that holds "<!--" has a comment.
 	if strings.Contains(content, "<!--") {
 		tokens = removeHTMLCommentBlocks(tokens)
 	}
@@ -150,7 +150,7 @@ func (m *Markdown) renderToken(out []string, token *markedBlock, width int, next
 			out = append(out, "")
 		}
 	case "html":
-		// pig divergence (D265): HTML renders as plain text without its comments, as in Pi main 54280c4ff.
+		// HTML renders as plain text without its comments, as in Pi main 54280c4ff.
 		out = append(out, m.applyDefaultStyle(widthx.JSTrim(stripHTMLComments(token.raw))))
 	case "space":
 		// Space tokens represent blank lines in markdown.

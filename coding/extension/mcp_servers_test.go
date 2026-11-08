@@ -4,6 +4,7 @@ package extension
 
 import (
 	"encoding/json"
+	"github.com/MichaelKinsy/PiG/mcp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -123,8 +124,8 @@ func TestIsLoopbackRedirectURI(t *testing.T) {
 		"http://127.1:8080/cb": true, "http://0x7F.0.0.1/cb": true, "http://127.0.0.1./cb": true,
 		"http://[0:0::1]:8080/cb": true, "http://localhost./cb": false,
 	} {
-		if got := IsLoopbackRedirectURI(uri); got != want {
-			t.Errorf("IsLoopbackRedirectURI(%q) = %v, want %v", uri, got, want)
+		if got := isLoopbackRedirectURI(uri); got != want {
+			t.Errorf("isLoopbackRedirectURI(%q) = %v, want %v", uri, got, want)
 		}
 	}
 }
@@ -226,12 +227,20 @@ func TestValidateMcpServerConfigParsesTheURLAsTheWHATWGParserDoes(t *testing.T) 
 		"http://%6cocalhost:8080/cb": true, "http://%6cocalhost/cb?x=1": false, "http:localhost/cb": true,
 		"https://%6cocalhost/cb": false, "http://exa%20mple.com/": false,
 	} {
-		if got := IsLoopbackRedirectURI(uri); got != want {
-			t.Errorf("IsLoopbackRedirectURI(%q) = %v, want %v", uri, got, want)
+		if got := isLoopbackRedirectURI(uri); got != want {
+			t.Errorf("isLoopbackRedirectURI(%q) = %v, want %v", uri, got, want)
 		}
 	}
 	config := json.RawMessage(`{"url":"https://x.example","oauth":{"callbackUrl":"http://%6cocalhost:9000/cb","callbackPort":9001}}`)
 	if _, message := ValidateMcpServerConfig("s", config); message != `server "s": oauth.callbackUrl and oauth.callbackPort name different ports` {
 		t.Errorf("callbackUrl port message = %q", message)
 	}
+}
+
+// isLoopbackRedirectURI is Pi's isLoopbackRedirectUri of packages/mcp/src/config.ts (not exported since 76c040a2a), observed through the
+// `oauth.callbackUrl` check of the validation: whether a redirect URI can be served by the loopback callback server.
+func isLoopbackRedirectURI(uri string) bool {
+	quoted, _ := json.Marshal(uri)
+	result := mcp.ValidateMcpServerConfig("s", json.RawMessage(`{"url":"https://x.example","oauth":{"callbackUrl":`+string(quoted)+`}}`), mcp.McpServerConfigOptions{})
+	return !strings.Contains(result.Error, "oauth.callbackUrl must be an http URI")
 }
