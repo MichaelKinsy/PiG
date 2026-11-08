@@ -67,7 +67,7 @@ func TestFileAuthStorageBackendReplacesTheFileInsteadOfRewritingIt(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer old.Close()
+	defer func() { _ = old.Close() }()
 	write(`{"a":2}`)
 	data, err := io.ReadAll(old)
 	if err != nil || string(data) != `{"a":1}` {

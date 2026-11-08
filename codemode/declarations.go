@@ -516,6 +516,7 @@ func (s *refScanner) number() {
 }
 
 func (s *refScanner) literal(word string) {
+	//portlint:allow utf16units the scanner reads UTF-8 bytes and compares ASCII literals; no JS length is ported
 	if len(s.text)-s.pos < len(word) || string(s.text[s.pos:s.pos+len(word)]) != word {
 		s.bad = true
 		return
@@ -546,6 +547,7 @@ func (s *refScanner) value() {
 				if depth > len(objects)*64 {
 					objects = append(objects, 0)
 				}
+				//portlint:allow numbers depth is a non-negative int used as a bit index into a []uint64; no JS division is ported
 				word, bit := (depth-1)/64, uint64(1)<<((depth-1)%64)
 				if c == '{' {
 					objects[word] |= bit
@@ -598,6 +600,7 @@ func (s *refScanner) value() {
 			if s.bad {
 				return
 			}
+			//portlint:allow numbers depth is a non-negative int used as a bit index into a []uint64; no JS division is ported
 			object := objects[(depth-1)/64]&(1<<((depth-1)%64)) != 0
 			switch {
 			case c == ',':
