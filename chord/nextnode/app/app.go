@@ -333,8 +333,10 @@ type App struct {
 	closed  error
 	// closing is set when the close starts: what runs after the start (the bases' builds, the scan) stops reporting there.
 	closing atomic.Bool
-	// basesBuilt and baseWatched are BasesBuilt's and BaseWatched's channels (made after the listen).
+	// basesBuilt and baseWatched are BasesBuilt's and BaseWatched's channels, closed by the build after the listen (startBases).
 	basesBuilt, baseWatched chan struct{}
+	// ended is closed when the close starts.
+	ended chan struct{}
 }
 
 // OwnerLink is the owner link of this start (single use, 10 minutes): `http://127.0.0.1:<port>/_chord/owner#<token>`.
@@ -361,7 +363,7 @@ func StartServer(options AppOptions, ctx context.Context) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	app := &App{Workers: map[string]*workers.Workers{}, DataDir: opened.layout.DataDir, OwnerTokenFile: opened.layout.OwnerToken, store: opened.store, lock: opened.lock, options: options}
+	app := &App{basesBuilt: make(chan struct{}), baseWatched: make(chan struct{}), ended: make(chan struct{}), Workers: map[string]*workers.Workers{}, DataDir: opened.layout.DataDir, OwnerTokenFile: opened.layout.OwnerToken, store: opened.store, lock: opened.lock, options: options}
 	if err := app.start(opened, ctx); err != nil {
 		return nil, errors.Join(err, app.Close(ctx))
 	}
@@ -445,7 +447,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	a.HTTP = chordhttp.CreateHttp(h, chordhttp.HttpOptions{
 		Listen: listen,
-		Links: &chordhttp.LinksOptions{Path: "/chord", Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
+		Links: &chordhttp.LinksOptions{Path: "/chord", OptionsFunc: a.linksAfterTheBases, Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
 			return sessions.Opened(request), nil
 		}},
 		OnError: func(err chordhttp.HttpError) { a.report(AppErrorHTTP, err) },
@@ -911,7 +913,9 @@ func (a *App) workerLock(address contracts.Address, ctx context.Context) (*worke
 // Close closes the HTTP component, the workers, the host, the store, the plugins' watcher and the data directory's lock: in that
 // order (HTTP first: it drains requests the host's close would seal).
 func (a *App) Close(ctx context.Context) error {
-	a.closing.Store(true)
+	if !a.closing.Swap(true) {
+		close(a.ended)
+	}
 	a.close.Do(func() {
 		var errs []error
 		if a.HTTP != nil {
