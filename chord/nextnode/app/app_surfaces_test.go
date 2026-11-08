@@ -24,7 +24,8 @@ import (
 // Ports packages/chord/test/node/surfaces/web.test.ts (Pi main c23b9ec1: the web surface's server side through the app kit) and
 // tests the kit's surface steps (app_surfaces.go, Pi's `surfacesOf` and the `web`/`tui` options of app.ts): the surfaces' base
 // hashes, their order in the rollout (the server's step, the workers', then the web's and the terminal's), the base marks their
-// bundles' inputs give, and a start that fails when a base bundle does not build.
+// bundles' inputs give. A base bundle that does not build after the listen is reported and the server runs on (Pi 284e63d9: the
+// test of a start that fails is `TestAppReportsABaseThatFailsAfterTheListenAndRunsOn...` in app_bases_test.go).
 //
 // Forced differences: none beyond the app kit's (D601: the client tree is vendored; the Go app serves it through the same
 // routes). The tests' page template is Pi's, the HTTP requests go through net/http, and the dirty mark is awaited through the
@@ -171,7 +172,7 @@ func TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFi
 		t.Fatalf("no script nonce in the CSP %q", csp)
 	}
 	nonce := found[1]
-	base := s.app.Web.Base
+	base := s.app.Web.Base()
 	if want := `<script nonce="` + nonce + `">globalThis.chordPage={"base":"` + base + `"`; !strings.Contains(html, want) {
 		t.Fatalf("the page has no bootstrap %q: %s", want, html)
 	}
@@ -209,13 +210,13 @@ func TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFi
 func TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession(t *testing.T) {
 	s := startTestApp(t, nil, withWeb(webEntry(t, webStarted), false))
 	base := surfaceGet(t, s.port, "/_chord/web/base", nil)
-	if base.status != 200 || string(base.body) != `"`+s.app.Web.Base+`"` || base.headers.Get("Cache-Control") != "no-store" {
+	if base.status != 200 || string(base.body) != `"`+s.app.Web.Base()+`"` || base.headers.Get("Cache-Control") != "no-store" {
 		t.Fatalf("base = %d %s (cache-control %q)", base.status, base.body, base.headers.Get("Cache-Control"))
 	}
 	if status := surfaceGet(t, s.port, "/", nil).status; status != 401 {
 		t.Fatalf("page without a session = %d, want 401", status)
 	}
-	if status := surfaceGet(t, s.port, "/_chord/web/base."+s.app.Web.Base+".js", nil).status; status != 401 {
+	if status := surfaceGet(t, s.port, "/_chord/web/base."+s.app.Web.Base()+".js", nil).status; status != 401 {
 		t.Fatalf("base script without a session = %d, want 401", status)
 	}
 	// One app at a time: the leak check of each app's cleanup would see the other's goroutines.
@@ -231,7 +232,7 @@ func TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToA
 func TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOtherCodeAnother(t *testing.T) {
 	main := webEntry(t, webStarted)
 	first := startTestApp(t, nil, withWeb(main, false))
-	hash := first.app.Web.Base
+	hash := first.app.Web.Base()
 	if err := first.app.Close(background); err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +241,7 @@ func TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOt
 			withWeb(main, false)(o)
 			o.DataDir, o.Root = first.dataDir, first.root
 		})
-		hash := again.app.Web.Base
+		hash := again.app.Web.Base()
 		if err := again.app.Close(background); err != nil {
 			t.Fatal(err)
 		}
@@ -263,8 +264,8 @@ func TestWebSurfaceServesEachWebFacetAsAScriptThatRegistersItselfAndTheSetAsOneC
 	current, release := webScripts(t, s.app)
 	defer release()
 	set := current()
-	if set.Base != s.app.Web.Base || len(set.Plugins) != 1 {
-		t.Fatalf("set = %+v, want the base %s and one plugin", set, s.app.Web.Base)
+	if set.Base != s.app.Web.Base() || len(set.Plugins) != 1 {
+		t.Fatalf("set = %+v, want the base %s and one plugin", set, s.app.Web.Base())
 	}
 	entry := set.Plugins[0]
 	if entry.Name != "@test/notes" || !regexp.MustCompile(`^[0-9a-f]+$`).MatchString(entry.Digest) ||
@@ -387,13 +388,13 @@ func surfaceApp(t testing.TB) started {
 
 func TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles(t *testing.T) {
 	s := surfaceApp(t)
-	if s.app.Web == nil || s.app.Tui == nil || s.app.Web.Base == "" || s.app.Tui.Base == "" || s.app.Web.Base == s.app.Tui.Base {
+	if s.app.Web == nil || s.app.Tui == nil || s.app.Web.Base() == "" || s.app.Tui.Base() == "" || s.app.Web.Base() == s.app.Tui.Base() {
 		t.Fatalf("surfaces: web %+v, tui %+v", s.app.Web, s.app.Tui)
 	}
-	if got := surfaceGet(t, s.port, "/_chord/web/base", nil); string(got.body) != `"`+s.app.Web.Base+`"` {
+	if got := surfaceGet(t, s.port, "/_chord/web/base", nil); string(got.body) != `"`+s.app.Web.Base()+`"` {
 		t.Fatalf("web base = %s", got.body)
 	}
-	if got := surfaceGet(t, s.port, "/_chord/tui/base", nil); string(got.body) != `"`+s.app.Tui.Base+`"` {
+	if got := surfaceGet(t, s.port, "/_chord/tui/base", nil); string(got.body) != `"`+s.app.Tui.Base()+`"` {
 		t.Fatalf("tui base = %s", got.body)
 	}
 	if err := s.app.Close(background); err != nil {
@@ -461,13 +462,4 @@ func TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs(t *testing.T) {
 			untilBase(t, s.app)
 		})
 	}
-}
-
-func TestAppFailsToStartWhenASurfacesBaseBundleDoesNotBuildWithEverythingClosed(t *testing.T) {
-	broken := webEntry(t, "export default {")
-	options, _ := testOptions(t, withWeb(broken, false))
-	if _, err := StartServer(options, background); err == nil || !strings.Contains(err.Error(), "main.ts") {
-		t.Fatalf("StartServer = %v, want esbuild's error naming main.ts", err)
-	}
-	noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
 }

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -42,9 +42,9 @@ import (
 // and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460). `Files` and
 // `FilesFolder` are not bridged: `Files` has a keyed member (`summary`) and the bridge refuses keyed members, so a TS plugin cannot
 // get a host's files; Go code gets them directly (D461). The server's host and the plugins' NodeHost are two hosts with a store each
-// (D462). The server's own code is its executable, compared at start beside `AppOptions.Base` where Pi compares the static import graph
-// of its start script; one under the Go build cache (`go run`, `go test`) is never compared, as Pi skips an entry under `node_modules`;
-// one that cannot be read is reported as `server_scan` and the start goes on. A start script's lazy optional imports have no Go form
+// (D462). The server's own code is its executable, recorded after the listen (`BaseWatched`) where Pi compares the static import graph
+// of its start script; one changed since the process started is marked as a base change until a restart (`editedSinceStart`); one under the Go build cache (`go run`, `go test`) is never compared, as Pi skips an entry under `node_modules`;
+// one that cannot be read is reported as `server_scan` and the server runs on. A start script's lazy optional imports have no Go form
 // (D603).
 // `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
 // worker kinds.
@@ -106,13 +106,19 @@ const (
 	AppErrorWorkers    AppErrorKind = "workers"
 	AppErrorPlugins    AppErrorKind = "plugins"
 	AppErrorServerScan AppErrorKind = "server_scan"
+	// AppErrorBaseBuild is a base that did not build after the start (AppError.Base is `web`, `tui` or the worker kind's name): the
+	// server runs on, the page answers 503, the kind's workers fail their start.
+	AppErrorBaseBuild AppErrorKind = "base_build"
 )
 
 // AppError is what the kit reports: from its host (host.HostError), its HTTP component (chordhttp.HttpError), its workers
-// (workers.WorkersError) or its plugins (plugins.PluginsError), or a failed scan of the server's own code.
+// (workers.WorkersError) or its plugins (plugins.PluginsError), a base that did not build after the start (`base_build`: Base names
+// it; the server runs on), or a failed scan of the server's own code (`server_scan`: the server runs on, that code is not compared).
 type AppError struct {
 	Kind  AppErrorKind
 	Error any
+	// Base is the base that did not build, for `base_build`.
+	Base string
 }
 
 // AppPrincipals are the server's principal, each worker's (stamped on its link; only with worker kinds) and the owner's: whom the owner
@@ -204,6 +210,8 @@ type AppOptions struct {
 
 	// executable is the server's own code: os.Executable unless a test names another.
 	executable func() (string, error)
+	// processStart is when the process started, for the executable's edit since then: the program's start unless a test names another.
+	processStart func() time.Time
 }
 
 // KitStart is what StartWorker reads from its start data besides the app's: the kit's part.
@@ -301,9 +309,9 @@ type App struct {
 	Node *plugins.NodeHost
 	// DataDir is the data directory.
 	DataDir string
-	// Web is the web surface's base bundle hash, when the app has one.
+	// Web is the web surface, when the app has one: its base bundle's hash once built (BasesBuilt).
 	Web *AppSurface
-	// Tui is the terminal surface's base bundle hash, when the app has one.
+	// Tui is the terminal surface, when the app has one: its base bundle's hash once built.
 	Tui *AppSurface
 	// OwnerTokenFile is the owner token file's path (a device session of the owner, mode 0600).
 	OwnerTokenFile string
@@ -323,6 +331,10 @@ type App struct {
 	applyMu sync.Mutex
 	close   sync.Once
 	closed  error
+	// closing is set when the close starts: what runs after the start (the bases' builds, the scan) stops reporting there.
+	closing atomic.Bool
+	// basesBuilt and baseWatched are BasesBuilt's and BaseWatched's channels (made after the listen).
+	basesBuilt, baseWatched chan struct{}
 }
 
 // OwnerLink is the owner link of this start (single use, 10 minutes): `http://127.0.0.1:<port>/_chord/owner#<token>`.
@@ -388,7 +400,7 @@ func (a *App) serverExecutable() (string, bool) {
 		}
 	}
 	if err != nil {
-		a.report(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err))
+		a.reportLate(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err), "")
 		return "", false
 	}
 	if inGoBuildCache(exe) {
@@ -458,10 +470,6 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	// The web surface serves a browser build's assets under its prefix (Pi's `publicPath: ${WEB_PREFIX}assets/`).
 	assetsPath := nodesurfaces.WebPrefix + "assets/"
-	// The server's own code, its executable: compared like every base bundle's. Best effort: one that cannot be read stops nothing.
-	if exe, ok := a.serverExecutable(); ok && !slices.Contains(base, exe) {
-		base = append(base, exe)
-	}
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
 		Api:        &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
@@ -513,19 +521,14 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		}
 		a.Workers[kind.Kind.Kind] = created
 	}
-	made, err := surfacesOf(h, options, a.Plugins, ctx)
-	if err != nil {
-		return err
-	}
-	for _, each := range made {
+	for _, each := range surfacesOf(h, options, a.Plugins) {
 		a.surfaces = append(a.surfaces, each)
 		core = append(core, each.facets...)
-		a.Plugins.WatchBase(each.inputs)
 		switch each.name {
 		case "web":
-			a.Web = &AppSurface{Base: each.base}
+			a.Web = &AppSurface{built: each.built}
 		case "tui":
-			a.Tui = &AppSurface{Base: each.base}
+			a.Tui = &AppSurface{built: each.built}
 		}
 	}
 	report, err := h.Load(core, ctx)
@@ -580,6 +583,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		return err
 	}
 	a.link = "http://" + linkHost(listening.Host, listening.Port) + OwnerPath + "#" + link.Renew()
+	a.startBases(a.baseBuilds())
 	return nil
 }
 
@@ -907,6 +911,7 @@ func (a *App) workerLock(address contracts.Address, ctx context.Context) (*worke
 // Close closes the HTTP component, the workers, the host, the store, the plugins' watcher and the data directory's lock: in that
 // order (HTTP first: it drains requests the host's close would seal).
 func (a *App) Close(ctx context.Context) error {
+	a.closing.Store(true)
 	a.close.Do(func() {
 		var errs []error
 		if a.HTTP != nil {

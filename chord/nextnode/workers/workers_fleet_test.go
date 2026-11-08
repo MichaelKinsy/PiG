@@ -41,6 +41,8 @@ type fleetOptions struct {
 	onAuthorize func(address contracts.Address)
 	// env is added to the workers' environment.
 	env map[string]string
+	// entry is the workers' program: the fixture's by default.
+	entry string
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -126,9 +128,13 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	if options.idleMs != 0 {
 		idle = options.idleMs
 	}
+	entry := options.entry
+	if entry == "" {
+		entry = fixtureEntry(t)
+	}
 	workers, err := CreateWorkers(server, fixtureSession, WorkersOptions{
 		Kind:  "worker",
-		Entry: fixtureEntry(t),
+		Entry: entry,
 		Env:   withEnv(fixtureEnvironment("worker"), options.env),
 		Authorize: func(_ data.Principal, address contracts.Address) (bool, error) {
 			if options.onAuthorize != nil {

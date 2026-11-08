@@ -29,6 +29,9 @@ func ContentHash(data []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// HashFile is the hash of the bytes of the file at path as ContentHash gives it, streamed; ok is false when it cannot be read.
+func HashFile(path string) (text string, ok bool) { return hashFile(path) }
+
 // hashFile is the hash of the bytes of the file at path as ContentHash gives it, streamed (a base file is never held whole
 // for it); ok is false when it cannot be read (gone, a directory, no access).
 func hashFile(path string) (text string, ok bool) {
