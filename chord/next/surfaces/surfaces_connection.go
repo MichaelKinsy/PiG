@@ -121,7 +121,8 @@ type attemptEvents struct {
 func (e attemptEvents) Opened() {
 	e.loop.box.run(func() {
 		l := e.loop
-		if l.current != e.at {
+		// A stale open: the loop stopped (its link's close is queued behind this open) or the attempt ended.
+		if l.stopped || l.current != e.at {
 			return
 		}
 		e.at.opened = true

@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,16 +39,19 @@ import (
 // (the start-data object, sessions, the owner link, pairing, files), and gives the app the controls it needs: the owner link,
 // `ApplyChanges`, export and import per address.
 //
-// Forced Go differences (D460, D461, D462). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
+// Forced Go differences (D460, D461, D462, D603). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
 // facets are Go core facets on the server's Go host, the server's plugins' host is the NodeHost the server host delegates to (D605: the remote types placed on the server that no Go facet serves go over its link),
 // and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460). `Files` and
 // `FilesFolder` are not bridged: `Files` has a keyed member (`summary`) and the bridge refuses keyed members, so a TS plugin cannot
 // get a host's files; Go code gets them directly (D461). The server's host and the plugins' NodeHost are two hosts with a store each
-// (D462). `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
+// (D462). The server's own code is its executable, compared at start beside `AppOptions.Base` where Pi compares the static import graph
+// of its start script; one under the Go build cache (`go run`, `go test`) is never compared, as Pi skips an entry under `node_modules`;
+// one that cannot be read is reported as `server_scan` and the start goes on. A start script's lazy optional imports have no Go form
+// (D603).
+// `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
 // worker kinds.
 //
-// Not ported yet (pending, no divergence): `plugins.install` (Pi's `installPlugin`: T9, the plugins component has none, so App.Plugins
-// has no Install); the `principalAttributes` hook (T6 host spans: the Go host has none).
+// Not ported yet (pending, no divergence): the `principalAttributes` hook (T6 host spans: the Go host has none).
 
 // pig divergence (D606): the reload suite (reload_*_test.go) drives a Go tab host on the links endpoint where Pi's drives a Chromium page.
 
@@ -184,6 +189,11 @@ type AppOptions struct {
 	Limits AppLimits
 	// Install is how installs run npm.
 	Install plugins.InstallOptions
+	// Facets are facets the server host loads beside the kit's own (D456): the Go form of what Pi's app does with a facet that has
+	// settings (`ephemeralLoginFacet()`, `inviteFacet()`, `defineUsers(...)`), which it re-exports through its API's server module
+	// and loads with a one-line plugin. A plugin directory is TypeScript the Node plugin host evaluates and cannot import a Go
+	// facet. Each is named; its name must not be one of the kit's (`chord.…`).
+	Facets []host.HostFacet
 	// Telemetry is the app's telemetry store; nil: none.
 	Telemetry AppTelemetry
 	// Web is the web surface (slice 11): the app's web entry, its page template, the paths serving the page; the `web` facet kind.
@@ -198,6 +208,9 @@ type AppOptions struct {
 	// Node is how the Node subprocesses that host the plugins are started.
 	Node    plugins.NodeOptions
 	OnError func(AppError)
+
+	// executable is the server's own code: os.Executable unless a test names another.
+	executable func() (string, error)
 }
 
 // KitStart is what StartWorker reads from its start data besides the app's: the kit's part.
@@ -315,6 +328,11 @@ type App struct {
 	// surfaces are the client surfaces, filled before the server's load.
 	surfaces []surface
 
+	// build and rollout are the plugins component's Build and Rollout, the two steps ApplyChanges runs (Pi's tests replace the
+	// component's `build` and `rollout` to hold one: a test here replaces these two, before it applies anything).
+	build   func(names []string, ctx context.Context) (*plugins.Built, error)
+	rollout func(steps []plugins.RolloutStep, built *plugins.Built, ctx context.Context) (plugins.RolloutResult, error)
+
 	applyMu sync.Mutex
 	close   sync.Once
 	closed  error
@@ -355,6 +373,44 @@ func (a *App) report(kind AppErrorKind, err any) {
 	if a.options.OnError != nil {
 		a.options.OnError(AppError{Kind: kind, Error: err})
 	}
+}
+
+// serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`):
+// not one under the Go build cache (the analog of an entry under `node_modules`: a test runner, `go run`), and one that cannot be
+// read is reported as `server_scan` and left out.
+func (a *App) serverExecutable() (string, bool) {
+	lookup := a.options.executable
+	if lookup == nil {
+		lookup = os.Executable
+	}
+	exe, err := lookup()
+	if err == nil {
+		exe, err = filepath.Abs(exe)
+	}
+	if err == nil {
+		var info os.FileInfo
+		if info, err = os.Stat(exe); err == nil && !info.Mode().IsRegular() {
+			err = fmt.Errorf("%s is not a regular file", exe)
+		}
+	}
+	if err != nil {
+		a.report(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err))
+		return "", false
+	}
+	if inGoBuildCache(exe) {
+		return "", false
+	}
+	return exe, true
+}
+
+// inGoBuildCache is whether path lies under a `go-build` work directory, where `go run` and `go test` put the programs they build.
+func inGoBuildCache(path string) bool {
+	for element := range strings.SplitSeq(filepath.ToSlash(path), "/") {
+		if strings.HasPrefix(element, "go-build") {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *App) start(opened openedServer, ctx context.Context) error {
@@ -407,11 +463,16 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	// The web surface serves a browser build's assets under its prefix (Pi's `publicPath: ${WEB_PREFIX}assets/`).
 	assetsPath := nodesurfaces.WebPrefix + "assets/"
+	// The server's own code, its executable: compared like every base bundle's. Best effort: one that cannot be read stops nothing.
+	if exe, ok := a.serverExecutable(); ok && !slices.Contains(base, exe) {
+		base = append(base, exe)
+	}
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
 		Api: &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions}, PublicPath: &assetsPath,
 		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
+	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
 	workerHosts := &workerHosts{keys: map[string]string{}}
 	link := &OwnerLink{}
 	owner := options.Principal.Owner
@@ -448,6 +509,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			PrincipalAttributes: func(data.Principal) telemetry.SpanAttributes { return nil },
 		})})
 	}
+	core = append(core, options.Facets...)
 	for _, kind := range options.Workers {
 		created, err := a.workersOf(kind, opened.layout.DataDir, workerHosts, ctx)
 		if err != nil {
@@ -706,12 +768,18 @@ func linkHost(listened string, port int) string {
 	return name + ":" + strconv.Itoa(port)
 }
 
+// InstallPlugin installs plugins from git or npm into the user's root and returns their names (Pi's `app.plugins.install`, which binds
+// the user's root where Plugins.InstallPlugin takes any root); applying changes loads them.
+func (a *App) InstallPlugin(source plugins.PluginSource, ctx context.Context) ([]string, error) {
+	return a.Plugins.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
+}
+
 // ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind, then the web and terminal surfaces;
 // never by itself. Calls run one after another (a later one builds after the earlier one rolled out).
 func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	a.applyMu.Lock()
 	defer a.applyMu.Unlock()
-	built, err := a.Plugins.Build(a.Plugins.Marks().Dirty, ctx)
+	built, err := a.build(a.Plugins.Marks().Dirty, ctx)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
@@ -726,7 +794,7 @@ func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	for _, each := range a.surfaces {
 		steps = append(steps, each.step(each.name))
 	}
-	return a.Plugins.Rollout(steps, built, ctx)
+	return a.rollout(steps, built, ctx)
 }
 
 func (a *App) workersFor(address contracts.Address) (*workers.Workers, error) {
