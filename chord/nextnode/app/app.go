@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -441,13 +442,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		}
 	}
 	modules := plugins.HostPackages{}
-	for name, path := range options.API.Modules {
-		modules[name] = path
-	}
+	maps.Copy(modules, options.API.Modules)
 	if serverKind != nil {
-		for name, path := range serverKind.Packages {
-			modules[name] = path
-		}
+		maps.Copy(modules, serverKind.Packages)
 	}
 	// The server host's own store is the kit's; the plugins' is another file (two chord stores cannot share one).
 	pluginsStore := filepath.Join(opened.layout.Server, "plugins.sqlite")
