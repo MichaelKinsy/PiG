@@ -102,7 +102,7 @@ func OwnerLink(ctx context.Context, args []string, env func(string) string) (str
 		return "", errors.New("Invalid owner-token response")
 	}
 	token, _ := value.Token.(string)
-	if !ownerFragment.MatchString("#"+token) {
+	if !ownerFragment.MatchString("#" + token) {
 		return "", errors.New("Invalid owner-token response")
 	}
 	return origin.Origin() + "/owner#" + token, nil
