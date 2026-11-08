@@ -38,6 +38,8 @@ type sessionRunState struct {
 	abortRequested atomic.Bool
 	// userRunsPending counts the runs an extension's sendUserMessage prepared or is preparing whose agent_start has not been emitted.
 	userRunsPending atomic.Int32
+	// promptPreflight counts the prompts in their input hooks and auth checks, which tree navigation must not interleave with (#9154).
+	promptPreflight atomic.Int32
 
 	mu              sync.Mutex
 	generation      uint64

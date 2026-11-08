@@ -1,4 +1,5 @@
 import random
+import struct
 
 import pytest
 
@@ -47,3 +48,51 @@ def test_utf16_length_is_the_sum_of_the_utf16_lengths_of_the_characters():
         assert _utf16_length(text) == want, repr(text)
     assert _utf16_length(1) == 0
     assert [_utf16_length(text) for text in ("", "abcdefgh", "abcdefg\U0001F600", "\ud800")] == [0, 8, 9, 1]
+
+
+# Strings with the numbers Pi 1.5.0's own estimateTokens gives them (run by node): (name, UTF-16 units of the text, tokens of the user message of the text four
+# times, which is the string's JavaScript length, tokens of the user message of the text once, tokens of an assistant tool call named "" with the arguments
+# {"k": text}, which counts JSON.stringify's length: an unpaired surrogate is its six-character escape). A Python string holds an unpaired surrogate as a code
+# point of its own, as the JSON decoder gives it.
+PI_ESTIMATE_CASES = [
+        ("empty", [], 0, 0, 2),
+        ("ascii", [0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68], 8, 2, 4),
+        ("lone high surrogate", [0xd800], 1, 1, 4),
+        ("lone low surrogate", [0xdc00], 1, 1, 4),
+        ("eight lone high surrogates", [0xd800, 0xd800, 0xd800, 0xd800, 0xd800, 0xd800, 0xd800, 0xd800], 8, 2, 14),
+        ("low then high", [0xdc00, 0xd800], 2, 1, 5),
+        ("lone high between ASCII", [0x61, 0xd83d, 0x62], 3, 1, 4),
+        ("astral", [0xd83d, 0xde00], 2, 1, 3),
+        ("eight astral", [0xd83d, 0xde00, 0xd83d, 0xde00, 0xd83d, 0xde00, 0xd83d, 0xde00, 0xd83d, 0xde00, 0xd83d, 0xde00, 0xd83d, 0xde00, 0xd83d, 0xde00], 16, 4, 6),
+        ("high half of a pair", [0xd83d], 1, 1, 4),
+        ("low half of a pair", [0xde00], 1, 1, 4),
+        ("combining acute", [0x65, 0x301], 2, 1, 3),
+        ("combining run", [0x61, 0x300, 0x301, 0x302, 0x303], 5, 2, 4),
+        ("zwj sequence", [0xd83d, 0xdc68, 0x200d, 0xd83d, 0xdc69, 0x200d, 0xd83d, 0xdc67], 8, 2, 4),
+        ("regional indicators", [0xd83c, 0xddfa, 0xd83c, 0xddf8], 4, 1, 3),
+        ("hangul jamo", [0x1100, 0x1161, 0x11a8], 3, 1, 3),
+        ("bmp edges", [0xd7ff, 0xe000, 0xffff], 3, 1, 3),
+        ("noncharacters", [0xfdd0, 0xfffe], 2, 1, 3),
+        ("bom", [0xfeff], 1, 1, 3),
+        ("line separators", [0x2028, 0x2029], 2, 1, 3),
+        ("nul", [0x0], 1, 1, 4),
+        ("ascii then lone high", [0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0xd800], 9, 3, 6),
+        ("two highs then a pair", [0xd83d, 0xd83d, 0xd83d, 0xde00], 4, 1, 6),
+        ("lone surrogates beside multibyte", [0xe9, 0xd800, 0x65e5, 0xdfff, 0xd83d, 0xde00], 6, 2, 6),
+        ("control characters", [0x1, 0x1f, 0x7f], 3, 1, 6),
+]
+
+
+def _from_units(units):
+    # A pair of units is one character, an unpaired surrogate stays a code point of its own.
+    return struct.pack(f"<{len(units)}H", *units).decode("utf-16-le", "surrogatepass")
+
+
+@pytest.mark.parametrize("name,units,length,tokens,call_tokens", PI_ESTIMATE_CASES)
+def test_estimate_tokens_matches_pi_on_lone_surrogates_astral_and_combining_marks(name, units, length, tokens, call_tokens):
+    text = _from_units(units)
+    assert _utf16_length(text) == len(units)
+    assert pig_sdk.estimate_tokens({"role": "user", "content": text * 4}) == length
+    assert pig_sdk.estimate_tokens({"role": "user", "content": text}) == tokens
+    call = {"role": "assistant", "content": [{"type": "toolCall", "id": "c", "name": "", "arguments": {"k": text}}]}
+    assert pig_sdk.estimate_tokens(call) == call_tokens

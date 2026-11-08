@@ -69,7 +69,7 @@ EVENTS-EMIT while the host waits for its answer; its error fails only that deliv
             (when sent
               ;; EventEmitter.off never throws: a failed off is reported
               (handler-case (event-bus-call bus "events.off" (obj "handlerId" (event-sub-id sub)))
-                (error (e) (format *error-output* "extension: pi.events unsubscribe ~S: ~A~%" channel e))))))
+                (error (e) (diagnose "extension: pi.events unsubscribe ~S: ~A~%" channel e))))))
         nil))))
 
 (defun events-emit (bus channel &optional data)

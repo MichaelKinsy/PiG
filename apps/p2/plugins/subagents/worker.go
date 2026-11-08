@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -265,28 +266,22 @@ func toolsContribution(shared *reports) func(self host.StoreSelf) error {
 				})
 				return err
 			}))
+		// Only the sidebar orders by activity, and it lists no one-shot agents: their entries do not report. The set is also
+		// what refuses steering them: the check runs on the host's loop, where a read of the session would wait for a
+		// publication that loop has to deliver, so it never reads the Durable registry.
+		var oneShotsMu sync.Mutex
+		oneShots := map[durable.ConversationId]bool{}
 		// A one-shot agent belongs to the script waiting for its answer: it can be read and stopped, not steered.
 		p2runtime.ContributeKeyed(self, p2runtime.ReadOnlyConversations, p2runtime.Entry[p2runtime.ReadOnlyCheck]("subagents",
-			func(ctx host.Ctx, conversation int) (string, error) {
-				opened, err := session()
-				if err != nil {
-					return "", err
-				}
-				registry, err := contract.Registry(ctx, opened)
-				if err != nil {
-					return "", err
-				}
-				for _, agent := range registry.OneShots {
-					if int(agent.ConversationId) == conversation {
-						return readOnly, nil
-					}
+			func(_ host.Ctx, conversation int) (string, error) {
+				oneShotsMu.Lock()
+				defer oneShotsMu.Unlock()
+				if oneShots[durable.ConversationId(conversation)] {
+					return readOnly, nil
 				}
 				return "", nil
 			}))
 
-		// Only the sidebar orders by activity, and it lists no one-shot agents: their entries do not report.
-		var oneShotsMu sync.Mutex
-		oneShots := map[durable.ConversationId]bool{}
 		commits := self.Open(
 			func(context.Context) (any, error) {
 				opened, err := session()
@@ -409,11 +404,16 @@ func serveControl(shared *reports) func(*delta.JsonObject, data.Principal, host.
 		}
 		harnessOf := cached(p2runtime.HarnessOf(self))
 		worker := cached(p2runtime.WorkerOf(self))
+		// First use in this section: the method runs off the loop and takes the kept natives.
+		_, _ = harnessOf()
+		_, _ = worker()
 		return contracts.Implementation{Variant: "participant", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 			"archive": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				in, _ := args.(*delta.JsonObject)
 				conversation, _ := in.Value("conversation").(float64)
 				archived, _ := in.Value("archived").(bool)
+				// The method waits for Durable, whose publications need the host's loop.
+				chordctx.Suspend(ctx)
 				parts, err := worker()
 				if err != nil {
 					return nil, err

@@ -65,8 +65,16 @@ func wrapSingleLine(line string, width int) []string {
 	currentVisible := 0
 
 	for _, token := range tokens {
-		tokenWidth := VisibleWidth(token)
-		isWhitespace := isWhitespaceToken(token)
+		// A token of printable ASCII holds no code: its width is its length, a token of spaces starts with one and the tracker has
+		// nothing to read in it.
+		plain := isPrintableASCII(token)
+		var tokenWidth int
+		var isWhitespace bool
+		if plain {
+			tokenWidth, isWhitespace = len(token), token[0] == ' '
+		} else {
+			tokenWidth, isWhitespace = VisibleWidth(token), isWhitespaceToken(token)
+		}
 
 		// Token alone is longer than width: break by graphemes.
 		if tokenWidth > width && !isWhitespace {
@@ -119,7 +127,9 @@ func wrapSingleLine(line string, width int) []string {
 			currentVisible += tokenWidth
 		}
 
-		tr.UpdateFromText(token)
+		if !plain {
+			tr.UpdateFromText(token)
+		}
 	}
 
 	if len(current) > 0 {
@@ -138,69 +148,129 @@ func wrapSingleLine(line string, width int) []string {
 // splitIntoTokensWithAnsi splits text into whitespace/non-whitespace tokens
 // while keeping ANSI codes attached to the next visible character.
 //
-// Operates byte-by-byte for ASCII space detection (the only character we
-// split on), but accumulates whole bytes via byte slicing: never via
-// `string(byte)` which would mangle multi-byte UTF-8 by reinterpreting
-// each byte as a code point.
+// A token is always a contiguous slice of text: the codes that precede a
+// visible character are the bytes just before it, so the tokens partition text
+// and need no copy. A cut falls where the kind (space or not) changes, around
+// each CJK break character, and the codes that end text join the token before
+// them. A run of printable ASCII between two escape sequences is split byte by
+// byte (every such byte is its own grapheme); any other run goes through the
+// grapheme iterator, which cannot see across an escape sequence either.
 func splitIntoTokensWithAnsi(text string) []string {
-	var tokens []string
-	var current strings.Builder
-	pendingAnsi := ""
+	tokens := make([]string, 0, len(text)/6+1)
+	const none = -1
+	tokenStart, tokenEnd := none, 0 // the token under construction
+	lastStart := none               // where the last appended token starts
+	pendingStart := none            // the codes seen since the last visible character
 	currentKind := byte(0)
+	emit := func(start, end int) {
+		tokens = append(tokens, text[start:end])
+		lastStart = start
+	}
 	flushCurrent := func() {
-		if current.Len() == 0 {
+		if tokenStart == none {
 			return
 		}
-		tokens = append(tokens, current.String())
-		current.Reset()
+		emit(tokenStart, tokenEnd)
+		tokenStart = none
 		currentKind = 0
+	}
+	// visible takes the grapheme text[p:p+n] of the given kind.
+	visible := func(p, n int, kind byte) {
+		if tokenStart != none && currentKind != kind {
+			flushCurrent()
+		}
+		if tokenStart == none {
+			tokenStart = p
+			if pendingStart != none {
+				tokenStart = pendingStart
+			}
+		}
+		pendingStart = none
+		currentKind = kind
+		tokenEnd = p + n
 	}
 
 	for i := 0; i < len(text); {
 		if n := ExtractAnsi(text, i); n > 0 {
-			pendingAnsi += text[i : i+n]
+			if pendingStart == none {
+				pendingStart = i
+			}
 			i += n
 			continue
 		}
 
-		end := i
-		for end < len(text) && ExtractAnsi(text, end) == 0 {
+		end, ascii := i, true
+		for end < len(text) {
+			c := text[end]
+			if c == 0x1B && ExtractAnsi(text, end) > 0 {
+				break
+			}
+			if c < 0x20 || c > 0x7E {
+				ascii = false
+			}
 			end++
 		}
-		graphemes := newGraphemeIter(text[i:end])
-		for graphemes.Next() {
-			segment := graphemes.Str()
-			isSpace := segment == " "
-			if !isSpace && isCJKBreak(segment) {
-				flushCurrent()
-				tokens = append(tokens, pendingAnsi+segment)
-				pendingAnsi = ""
-				continue
+		if ascii {
+			// A stretch of spaces, or of other bytes, is one token's worth of one-byte graphemes.
+			for p := i; p < end; {
+				kind := byte(2)
+				if text[p] == ' ' {
+					kind = 1
+				}
+				q := p + 1
+				for q < end && (text[q] == ' ') == (kind == 1) {
+					q++
+				}
+				// visible(p, 1, kind), spelled out: this is the loop of every plain word.
+				if tokenStart != none && currentKind != kind {
+					tokens = append(tokens, text[tokenStart:tokenEnd])
+					lastStart = tokenStart
+					tokenStart = none
+				}
+				if tokenStart == none {
+					tokenStart = p
+					if pendingStart != none {
+						tokenStart = pendingStart
+					}
+				}
+				pendingStart = none
+				currentKind = kind
+				tokenEnd = q
+				p = q
 			}
-			kind := byte(2)
-			if isSpace {
-				kind = 1
+		} else {
+			graphemes := newGraphemeIter(text[i:end])
+			for p := i; graphemes.Next(); {
+				segment := graphemes.Str()
+				n := len(segment)
+				isSpace := segment == " "
+				switch {
+				case !isSpace && isCJKBreak(segment):
+					flushCurrent()
+					start := p
+					if pendingStart != none {
+						start = pendingStart
+						pendingStart = none
+					}
+					emit(start, p+n)
+				case isSpace:
+					visible(p, n, 1)
+				default:
+					visible(p, n, 2)
+				}
+				p += n
 			}
-			if current.Len() > 0 && currentKind != kind {
-				flushCurrent()
-			}
-			if pendingAnsi != "" {
-				current.WriteString(pendingAnsi)
-				pendingAnsi = ""
-			}
-			currentKind = kind
-			current.WriteString(segment)
 		}
 		i = end
 	}
-	if pendingAnsi != "" {
+	if pendingStart != none {
 		switch {
-		case current.Len() > 0:
-			current.WriteString(pendingAnsi)
+		case tokenStart != none:
+			tokenEnd = len(text)
 		case len(tokens) > 0:
-			tokens[len(tokens)-1] += pendingAnsi
+			tokens[len(tokens)-1] = text[lastStart:]
 		default:
-			current.WriteString(pendingAnsi)
+			emit(pendingStart, len(text))
 		}
 	}
 	flushCurrent()

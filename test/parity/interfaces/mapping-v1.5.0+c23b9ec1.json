@@ -35252,9 +35252,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -35274,9 +35274,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -81551,9 +81551,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -81573,9 +81573,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -102924,9 +102924,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -102946,9 +102946,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -103619,7 +103619,7 @@
       "evidence": [
         "test:chord/next/store/group_commit_test.go#TestGroupCommit",
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost"
       ]
     },
     {
@@ -103641,7 +103641,7 @@
       "evidence": [
         "test:chord/next/store/group_commit_test.go#TestGroupCommit",
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost"
       ]
     },
     {
@@ -103841,8 +103841,8 @@
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit",
-        "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan"
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost",
+        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit"
       ]
     },
     {
@@ -103863,8 +103863,8 @@
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit",
-        "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan"
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost",
+        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit"
       ]
     },
     {
@@ -161301,8 +161301,9 @@
         "call:internal/codingagent/tools/find.go#formatFindResults"
       ],
       "evidence": [
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingGivesTheSameOutputAsTheWholeFileAlgorithm",
         "test:internal/codingagent/tools/truncate_head_test.go#TestTruncationOptionsDefaultsApplyOnlyToOmittedLimits",
-        "test:internal/codingagent/tools/read_text_window_test.go#TestReadTextResultMatchesWholeFileDecode"
+        "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingDecodesChunkSplitCharactersAndInvalidUTF8LikeBufferToString"
       ]
     },
     {
@@ -161319,7 +161320,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/truncate.go#TruncationOptions.limits"
+        "call:internal/codingagent/tools/read_stream.go#selectLinesFromStream"
       ],
       "evidence": [
         "test:internal/codingagent/tools/truncate_head_test.go#TestTruncationOptionsDefaultsApplyOnlyToOmittedLimits"
@@ -161885,7 +161886,7 @@
       "evidence": [
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
+        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
       ]
     },
     {
@@ -161907,7 +161908,7 @@
       "evidence": [
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
+        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
       ]
     },
     {
@@ -162942,7 +162943,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestEditAbortAfterAccessDoesNotRead",
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream",
-        "test:internal/codingagent/tools/mutation_queue_alias_test.go#TestEditPreservesParallelAliasChanges"
+        "test:internal/codingagent/tools/edit_window_test.go#TestEditToolComputesTheDiffBeforeWritingSoADiffFailureLeavesTheFileUnchanged"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -162965,7 +162966,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestEditAbortAfterAccessDoesNotRead",
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationToolsUpstream",
-        "test:internal/codingagent/tools/mutation_queue_alias_test.go#TestEditPreservesParallelAliasChanges"
+        "test:internal/codingagent/tools/edit_window_test.go#TestEditToolComputesTheDiffBeforeWritingSoADiffFailureLeavesTheFileUnchanged"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -190736,7 +190737,7 @@
       "evidence": [
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
+        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
       ]
     },
     {
@@ -190758,7 +190759,7 @@
       "evidence": [
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
+        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
       ]
     },
     {
@@ -194184,8 +194185,8 @@
       ],
       "evidence": [
         "test:tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi",
-        "test:tui/diff_render_test.go#TestRenderDiffDrawsALineSeparatorRowAsContext",
-        "test:tui/diff_render_test.go#TestRenderDiffIgnoresItsOptions"
+        "test:tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion",
+        "test:tui/diff_render_test.go#TestRenderDiffDrawsALineSeparatorRowAsContext"
       ]
     },
     {
@@ -194206,8 +194207,8 @@
       ],
       "evidence": [
         "test:tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi",
-        "test:tui/diff_render_test.go#TestRenderDiffDrawsALineSeparatorRowAsContext",
-        "test:tui/diff_render_test.go#TestRenderDiffIgnoresItsOptions"
+        "test:tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion",
+        "test:tui/diff_render_test.go#TestRenderDiffDrawsALineSeparatorRowAsContext"
       ]
     },
     {
@@ -219072,19 +219073,21 @@
       "id": "pkg:coding-agent/.#truncateLine",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:49f8f913e86a250b449605f868984402add70b29b20a25fa6b097ad6865db603",
-      "rationale": "tools/truncate.ts truncateLine(line, maxChars?) returns {text, wasTruncated}; Go TruncateLine(line, maxChars) returns (string, bool), the caller passing GrepMaxLineLengthUpstream for an absent maxChars.",
+      "rationale": "Derived by the interface gap detector: truncateLine is Go internal/codingagent/tools/truncate.go#TruncateLine (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "internal/codingagent/tools/truncate.go#TruncateLine"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/grep.go#grepFormatter.truncate"
+        "call:internal/codingagent/tools/truncate.go#TruncateLine"
       ],
       "evidence": [
+        "test:internal/codingagent/tools/truncate_oracle_test.go#TestTruncateMatchesPi",
+        "test:internal/codingagent/tools/grep_head_test.go#TestTruncatedLineBytesEqualsTruncateLine",
         "test:internal/codingagent/tools/grep_test.go#TestTruncateLine"
       ]
     },
@@ -219092,19 +219095,21 @@
       "id": "pkg:coding-agent/.#truncateLine::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:bf8f82765ef421d7ae38fabb4ff1ed5e231e0b3f3da9c3d908aacddb6304ab54",
-      "rationale": "tools/truncate.ts truncateLine(line, maxChars?) returns {text, wasTruncated}; Go TruncateLine(line, maxChars) returns (string, bool), the caller passing GrepMaxLineLengthUpstream for an absent maxChars.",
+      "rationale": "Derived by the interface gap detector: truncateLine::call:0 is Go internal/codingagent/tools/truncate.go#TruncateLine (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "internal/codingagent/tools/truncate.go#TruncateLine"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/grep.go#grepFormatter.truncate"
+        "call:internal/codingagent/tools/truncate.go#TruncateLine"
       ],
       "evidence": [
+        "test:internal/codingagent/tools/truncate_oracle_test.go#TestTruncateMatchesPi",
+        "test:internal/codingagent/tools/grep_head_test.go#TestTruncatedLineBytesEqualsTruncateLine",
         "test:internal/codingagent/tools/grep_test.go#TestTruncateLine"
       ]
     },
@@ -249605,7 +249610,8 @@
         "call:durable/storage/store/storage.go#StoreStorage.Publishing"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch",
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost"
       ]
     },
     {
@@ -249625,7 +249631,8 @@
         "call:durable/storage/store/storage.go#StoreStorage.Publishing"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch",
+        "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost"
       ]
     },
     {
@@ -258678,7 +258685,7 @@
       "id": "pkg:mcp/.#AudioContent::property:_meta",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:14517786ae9846499cf051b7eea5b021d41397e4489753e1f3a088e5fd374f68",
-      "rationale": "Derived by the interface gap detector: AudioContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: AudioContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "mcp/content.go#ContentBlock.Meta"
       ],
@@ -258691,7 +258698,7 @@
         "call:mcp/content.go#ContentBlock.MarshalJSON"
       ],
       "evidence": [
-        "reach:mcp/content.go#ContentBlock.MarshalJSON"
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsACallResultNested12000LevelsDeep"
       ]
     },
     {
@@ -259076,7 +259083,8 @@
         "call:mcp/content.go#CallToolResult.UnmarshalJSON"
       ],
       "evidence": [
-        "test:mcp/content_test.go#TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks"
+        "test:mcp/content_test.go#TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks",
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsACallResultNested12000LevelsDeep"
       ]
     },
     {
@@ -259417,7 +259425,7 @@
       "id": "pkg:mcp/.#EmbeddedResourceContent::property:_meta",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:14517786ae9846499cf051b7eea5b021d41397e4489753e1f3a088e5fd374f68",
-      "rationale": "Derived by the interface gap detector: EmbeddedResourceContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: EmbeddedResourceContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "mcp/content.go#ContentBlock.Meta"
       ],
@@ -259430,7 +259438,7 @@
         "call:mcp/content.go#ContentBlock.MarshalJSON"
       ],
       "evidence": [
-        "reach:mcp/content.go#ContentBlock.MarshalJSON"
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsACallResultNested12000LevelsDeep"
       ]
     },
     {
@@ -259521,7 +259529,7 @@
       "id": "pkg:mcp/.#ImageContent::property:_meta",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:14517786ae9846499cf051b7eea5b021d41397e4489753e1f3a088e5fd374f68",
-      "rationale": "Derived by the interface gap detector: ImageContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ImageContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "mcp/content.go#ContentBlock.Meta"
       ],
@@ -259534,7 +259542,7 @@
         "call:mcp/content.go#ContentBlock.MarshalJSON"
       ],
       "evidence": [
-        "reach:mcp/content.go#ContentBlock.MarshalJSON"
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsACallResultNested12000LevelsDeep"
       ]
     },
     {
@@ -262891,9 +262899,9 @@
         "public-api:mcp/pipe.go#McpPipeHandlers"
       ],
       "evidence": [
+        "test:mcp/pipe_pi_test.go#TestPipeTransportCloseFailsWhenTheProgramDoesNotExitAfterTheKill",
         "test:mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportRejectsStartWhenOpenFails",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall"
+        "test:mcp/pipe_pi_test.go#TestPipeTransportRejectsStartWhenOpenFails"
       ]
     },
     {
@@ -263091,7 +263099,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:mcp/config.go#ValidateMcpServerConfig"
+        "call:coding/extension/mcp_servers.go#ValidateMcpServerConfig"
       ],
       "evidence": [
         "test:mcp/config_pi_test.go#TestValidateMcpServerConfigAcceptsStdioAndHTTPEntriesAndKeepsThemAsGiven",
@@ -263966,9 +263974,9 @@
         "public-api:mcp/pipe.go#NewPipeTransport"
       ],
       "evidence": [
+        "test:mcp/pipe_pi_test.go#TestPipeTransportCloseFailsWhenTheProgramDoesNotExitAfterTheKill",
         "test:mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportRejectsStartWhenOpenFails",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall"
+        "test:mcp/pipe_pi_test.go#TestPipeTransportRejectsStartWhenOpenFails"
       ]
     },
     {
@@ -263988,9 +263996,9 @@
         "call:mcp/oauth/client_settings.go#cancelOnClose.Close"
       ],
       "evidence": [
+        "test:mcp/pipe_pi_test.go#TestPipeTransportCloseFailsWhenTheProgramDoesNotExitAfterTheKill",
         "test:mcp/pipe_pi_test.go#TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramThatFinishedStartingAfterClose"
+        "test:mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -264011,9 +264019,9 @@
         "call:mcp/oauth/client_settings.go#cancelOnClose.Close"
       ],
       "evidence": [
+        "test:mcp/pipe_pi_test.go#TestPipeTransportCloseFailsWhenTheProgramDoesNotExitAfterTheKill",
         "test:mcp/pipe_pi_test.go#TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramThatFinishedStartingAfterClose"
+        "test:mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -264633,7 +264641,7 @@
       "id": "pkg:mcp/.#ResourceLinkContent::property:_meta",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:14517786ae9846499cf051b7eea5b021d41397e4489753e1f3a088e5fd374f68",
-      "rationale": "Derived by the interface gap detector: ResourceLinkContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ResourceLinkContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "mcp/content.go#ContentBlock.Meta"
       ],
@@ -264646,7 +264654,7 @@
         "call:mcp/content.go#ContentBlock.MarshalJSON"
       ],
       "evidence": [
-        "reach:mcp/content.go#ContentBlock.MarshalJSON"
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsACallResultNested12000LevelsDeep"
       ]
     },
     {
@@ -266470,7 +266478,7 @@
       "id": "pkg:mcp/.#TextContent::property:_meta",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:14517786ae9846499cf051b7eea5b021d41397e4489753e1f3a088e5fd374f68",
-      "rationale": "Derived by the interface gap detector: TextContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TextContent::property:_meta is Go mcp/content.go#ContentBlock.Meta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "mcp/content.go#ContentBlock.Meta"
       ],
@@ -266483,7 +266491,7 @@
         "call:mcp/content.go#ContentBlock.MarshalJSON"
       ],
       "evidence": [
-        "reach:mcp/content.go#ContentBlock.MarshalJSON"
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsACallResultNested12000LevelsDeep"
       ]
     },
     {
@@ -266524,7 +266532,8 @@
       ],
       "evidence": [
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsExpandsTildeInTheCommandArgumentsAndCwdOfStdioServers",
-        "test:mcp/content_test.go#TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks"
+        "test:mcp/content_test.go#TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks",
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsACallResultNested12000LevelsDeep"
       ]
     },
     {
@@ -266714,8 +266723,8 @@
       ],
       "evidence": [
         "test:mcp/tool_execution_upstream_test.go#TestListToolsKeepsEachToolExecutionTaskSupport",
-        "test:coding/mcpext/callorder_internal_test.go#TestMcpToolCallsToOneServerReachTheClientInReservedOrder",
-        "test:coding/mcpext/callorder_internal_test.go#TestMcpToolWithoutALaneReservesNoCallOrder"
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",
+        "test:coding/mcpext/callorder_internal_test.go#TestMcpToolCallsToOneServerReachTheClientInReservedOrder"
       ]
     },
     {
@@ -266900,9 +266909,9 @@
         "call:coding/mcpext/tools.go#CreateMcpToolDefinition"
       ],
       "evidence": [
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",
         "test:mcp/wire_types_test.go#TestListToolsResultKeepsEveryToolMember",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -266982,6 +266991,7 @@
         "call:mcp/types.go#ToolAnnotations.MarshalJSON"
       ],
       "evidence": [
+        "test:mcp/deepjson_test.go#TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",
         "test:mcp/wire_types_test.go#TestListToolsResultKeepsEveryToolMember"
       ]
     },
@@ -267189,11 +267199,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "complete",
+        "production": "public-api-tested",
         "shape": "complete"
       },
       "production": [
-        "call:mcp/config.go#ValidateMcpServerConfig"
+        "public-api:mcp/config.go#ValidateMcpServerConfig"
       ],
       "evidence": [
         "test:mcp/config_pi_test.go#TestValidateMcpServerConfigAcceptsStdioAndHTTPEntriesAndKeepsThemAsGiven",
@@ -267211,11 +267221,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "complete",
+        "production": "public-api-tested",
         "shape": "complete"
       },
       "production": [
-        "call:mcp/config.go#ValidateMcpServerConfig"
+        "public-api:mcp/config.go#ValidateMcpServerConfig"
       ],
       "evidence": [
         "test:mcp/config_pi_test.go#TestValidateMcpServerConfigAcceptsStdioAndHTTPEntriesAndKeepsThemAsGiven",
@@ -268495,7 +268505,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -268518,7 +268528,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ]
     },
     {
@@ -268874,8 +268884,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored",
-        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderInvalidatesOnlyTheNamedCredentialKind"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -268897,8 +268907,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored",
-        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderInvalidatesOnlyTheNamedCredentialKind"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -269101,7 +269111,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -269122,9 +269132,9 @@
         "call:mcp/oauth/client_settings.go#CreateOAuthClientProvider"
       ],
       "evidence": [
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
         "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
-        "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite",
-        "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderConfiguredClientWinsAndIgnoresSavedRegistrations"
+        "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
       ]
     },
     {
@@ -269146,7 +269156,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ]
     },
     {
@@ -269208,7 +269218,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -269231,7 +269241,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -269254,7 +269264,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ]
     },
     {
@@ -269276,7 +269286,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ]
     },
     {
@@ -269298,7 +269308,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_expire_at_test.go#TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull",
         "test:mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ]
     },
     {
@@ -270446,8 +270456,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInCompletesThroughTheLoopbackCallbackServer",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
-        "test:mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
+        "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate"
       ]
     },
     {
@@ -270762,7 +270772,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_callback_page_internal_test.go#TestOAuthCallbackPageEscapesRequestValues",
         "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerNamesTheRedirectMixUpAndReturnsTheContextCause",
-        "test:mcp/oauth/behavior_test.go#TestOAuthCallbackServerAnswersEachAuthorizationResponseLikeCallbackTS"
+        "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -270785,7 +270795,7 @@
       "evidence": [
         "test:coding/mcpext/oauth_callback_page_internal_test.go#TestOAuthCallbackPageEscapesRequestValues",
         "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerNamesTheRedirectMixUpAndReturnsTheContextCause",
-        "test:mcp/oauth/behavior_test.go#TestOAuthCallbackServerAnswersEachAuthorizationResponseLikeCallbackTS"
+        "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -274527,7 +274537,8 @@
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf",
-        "test:schema/coerce_upstream_test.go#TestCoerceUpstream"
+        "test:schema/coerce_upstream_test.go#TestCoerceUpstream",
+        "test:schema/pi_main_bigint_upstream_test.go#TestCoerceToABigIntOrUndefinedThroughUnionsAndTypeArrays"
       ]
     },
     {
@@ -275045,6 +275056,7 @@
         "public-api:schema/checks.go#Equal"
       ],
       "evidence": [
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainEqualOfUndefined",
         "test:schema/pi_main_follow_upstream_test.go#TestPiMainEqual"
       ]
     },
@@ -275065,6 +275077,7 @@
         "public-api:schema/checks.go#Equal"
       ],
       "evidence": [
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainEqualOfUndefined",
         "test:schema/pi_main_follow_upstream_test.go#TestPiMainEqual"
       ]
     },
@@ -275267,7 +275280,8 @@
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
-        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf",
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainChecksTypeBoxBigIntWithItsBounds"
       ]
     },
     {
@@ -275298,7 +275312,7 @@
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf",
         "test:schema/coerce_upstream_test.go#TestCoerceUpstream",
-        "test:schema/pi_main_follow_upstream_test.go#TestPiMainRecursiveSchemasNestWithDistinctIDs"
+        "test:schema/pi_main_bigint_upstream_test.go#TestCoerceToABigIntOrUndefinedThroughUnionsAndTypeArrays"
       ]
     },
     {
@@ -275693,7 +275707,8 @@
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
-        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions"
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainChecksTypeBoxBigIntWithItsBounds"
       ]
     },
     {
@@ -275736,13 +275751,43 @@
     },
     {
       "id": "pkg:schema/.#unsafe",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b6ff4ddacb4da667f3254006d9cff2929dbbba296fe8f33950ce2f14fbbeb3f4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b6ff4ddacb4da667f3254006d9cff2929dbbba296fe8f33950ce2f14fbbeb3f4",
+      "rationale": "Derived by the interface gap detector: unsafe is Go schema/builders.go#Unsafe (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Unsafe"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Unsafe"
+      ],
+      "evidence": [
+        "test:schema/pi_main_unsafe_upstream_test.go#TestPiMainTypesASchemaAsGivenWithUnsafe"
+      ]
     },
     {
       "id": "pkg:schema/.#unsafe::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:55304ddf309c8202a254aab95e5db8fb6f31a21d9bedd5639beec9dd390bf3cc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:55304ddf309c8202a254aab95e5db8fb6f31a21d9bedd5639beec9dd390bf3cc",
+      "rationale": "Derived by the interface gap detector: unsafe::call:0 is Go schema/builders.go#Unsafe (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Unsafe"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Unsafe"
+      ],
+      "evidence": [
+        "test:schema/pi_main_unsafe_upstream_test.go#TestPiMainTypesASchemaAsGivenWithUnsafe"
+      ]
     },
     {
       "id": "pkg:schema/.#ValidationError",

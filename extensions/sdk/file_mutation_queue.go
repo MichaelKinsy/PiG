@@ -55,18 +55,72 @@ func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, err
 	if entered.Ticket == "" {
 		return result, fmt.Errorf("%s returned no ticket", callFileMutationEnter)
 	}
-	defer func() {
-		args := map[string]string{"ticket": entered.Ticket}
-		// The turn belongs to the process (the host's ticket registry is per process for a packed cell), not to the connection it was taken on: when that connection
-		// is gone, because its extension was replaced or stopped while this task ran, another extension's connection of the process gives the turn back.
-		if _, err := c.call(callFileMutationExit, args); err != nil {
-			for _, other := range runningConnectionsExcept(c) {
-				if _, err := other.call(callFileMutationExit, args); err == nil {
-					break
-				}
+	defer releaseFileMutationTurn(c, entered.Ticket)
+	return fn()
+}
+
+// releaseFileMutationTurn gives the turn back. The turn belongs to the process (the host's ticket registry is per process for a packed cell), not to the connection it was taken on: when that connection
+// is gone, because its extension was replaced or stopped while the task ran, another extension's connection of the process gives the turn back.
+func releaseFileMutationTurn(c *conn, ticket string) {
+	args := map[string]string{"ticket": ticket}
+	if _, err := c.call(callFileMutationExit, args); err != nil {
+		for _, other := range runningConnectionsExcept(c) {
+			if _, err := other.call(callFileMutationExit, args); err == nil {
+				break
 			}
 		}
-		// With no connection of the process left the host has released the turn already (it does when the last connection closes).
-	}()
+	}
+	// With no connection of the process left the host has released the turn already (it does when the last connection closes).
+}
+
+// fileMutationEnterArgs is the argument of fileMutation.enter (coding/extension/host/subprocess FileMutationEnterArgs).
+type fileMutationEnterArgs struct {
+	Path string `json:"path"`
+	// Request is the tool_call request the enter serves; empty for the free function, and for a Context that serves no tool call.
+	Request string `json:"request,omitempty"`
+}
+
+// WithFileMutationQueue is [WithFileMutationQueue] for a handler that has its Context: it runs fn in the host's file mutation queue for filePath, in the place Pi gives a
+// tool call of a parallel batch, and returns fn's error. A tool that takes the queue through its Context registers in the order Pi's single thread runs the batch's
+// tools: Pi starts every call of the batch in source order and each runs to its first await, and withFileMutationQueue registers in the order it is called
+// (core/tools/file-mutation-queue.ts: registrationQueue), so two tools that reach the queue after the same number of awaits register in call order, and one that awaited
+// real work first registers after the one that did not. A native handler runs on a thread of its own, so the free function registers in the order the calls reach the
+// host, which is the order the threads got there. The Context form names its tool call, and the host registers it only after the start windows of the extension tools
+// before it in the batch closed: a tool's window is open until its first host call that returns a Promise in Pi (an exec, a dialog, a model call, this one), its answer or
+// its end, so a tool that makes only getter calls before it takes the queue still registers before the tool behind it, however many round trips its getters took. The
+// price is the one docs/extension-api-parity.md names for the edit and write calls behind a native tool: a tool that does work of its own, with no host call, before it
+// takes the queue holds the queue registrations of the tools behind it (D187).
+//
+// A Context that serves no tool call (a command, an event, a retained Context) registers as the free function does. Like the free function it waits for the file with no
+// regard for the request's cancellation, as Pi's queue does.
+func (c Context) WithFileMutationQueue(filePath string, fn func() error) error {
+	resolved, err := filepath.Abs(filePath)
+	if err != nil {
+		return err
+	}
+	if c.hostConnection() == nil {
+		return errBusNotConnected
+	}
+	request := c.requestID
+	if c.parent != nil {
+		request = c.parent.id
+	}
+	if c.toolCallID == "" {
+		request = ""
+	}
+	reply, err := c.callHostAfterBegin(callFileMutationEnter, fileMutationEnterArgs{Path: resolved, Request: request}, true, nil)
+	if err := callResultError(reply, err); err != nil {
+		return err
+	}
+	var entered struct {
+		Ticket string `json:"ticket"`
+	}
+	if err := json.Unmarshal(reply.Result, &entered); err != nil {
+		return fmt.Errorf("decode %s: %w", callFileMutationEnter, err)
+	}
+	if entered.Ticket == "" {
+		return fmt.Errorf("%s returned no ticket", callFileMutationEnter)
+	}
+	defer releaseFileMutationTurn(c.hostConnection(), entered.Ticket)
 	return fn()
 }

@@ -38,6 +38,8 @@ func Main(m *testing.M) {
 		hosts.RunWorker()
 		return
 	}
+	// The programs plugins run as the test binary (the terminal host, `p2 terminals-host`).
+	hosts.RunSubcommand(os.Args)
 	os.Exit(m.Run())
 }
 
