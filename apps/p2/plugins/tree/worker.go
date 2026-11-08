@@ -94,8 +94,13 @@ func serveBranches(self host.StoreSelf) error {
 			return notCurrent, nil
 		})))
 	self.OnLive(func(ctx host.Ctx) *host.Handled {
+		// The registry's value is read inside the loop section, then used outside it.
+		held, heldErr := parts()
 		return host.AwaitingCtx(ctx, func() error {
-			opened, err := openDurable(parts)
+			if heldErr != nil {
+				return heldErr
+			}
+			opened, err := held.Durable()
 			if err != nil {
 				return err
 			}
