@@ -32,8 +32,9 @@ func zoomContract(t testing.TB) (*contracts.Contract, contracts.Schema) {
 	return zoom, pick
 }
 
-// serverWith is a server keeping picks in the store at path, with facet loaded, and a client held by each of users.
-func serverWith(t testing.TB, path string, facet host.Facet, users ...string) (clients []host.Host, closeAll func()) {
+// serverAndClients is a server keeping picks in the store at path, with facet loaded under name, and a client held by
+// each of users.
+func serverAndClients(t testing.TB, path string, facet host.Facet, name string, users ...string) (clients []host.Host, server host.Host, closeAll func()) {
 	t.Helper()
 	database, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})
 	if err != nil {
@@ -44,37 +45,50 @@ func serverWith(t testing.TB, path string, facet host.Facet, users ...string) (c
 		t.Fatal(err)
 	}
 	address := serverKind.Address(nil)
-	server, err := host.CreateHost(host.HostOptions{Address: &address, Principal: delta.JsonObjectOf("kind", "server"), Store: opened, OnError: func(host.HostError) {}})
+	server, err = host.CreateHost(host.HostOptions{Address: &address, Principal: delta.JsonObjectOf("kind", "server"), Store: opened, OnError: func(host.HostError) {}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report, err := server.Load([]host.HostFacet{{Name: "test.preference", Facet: facet}}, bg); err != nil || len(report.Failed) != 0 {
+	if report, err := server.Load([]host.HostFacet{{Name: name, Facet: facet}}, bg); err != nil || len(report.Failed) != 0 {
 		t.Fatalf("load: %v %v", err, report.Failed)
 	}
 	for _, id := range users {
-		client, err := host.CreateHost(host.HostOptions{OnError: func(host.HostError) {}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := client.Load(nil, bg); err != nil {
-			t.Fatal(err)
-		}
-		mine, theirs := link.MemoryLinkPair()
-		if err := server.Accept(theirs, host.LinkOptions{Principal: delta.JsonObjectOf("kind", "user", "id", id), Codec: link.BinaryCodec}, bg); err != nil {
-			t.Fatal(err)
-		}
-		if err := client.Connect(mine, host.LinkOptions{Principal: delta.JsonObjectOf("kind", "server"), Codec: link.BinaryCodec}, bg); err != nil {
-			t.Fatal(err)
-		}
-		clients = append(clients, client)
+		clients = append(clients, connectUser(t, server, id))
 	}
-	return clients, func() {
+	return clients, server, func() {
 		for _, client := range clients {
 			client.Close(bg)
 		}
 		server.Close(bg)
 		opened.Close(bg)
 	}
+}
+
+// connectUser is a client of server for the principal user id.
+func connectUser(t testing.TB, server host.Host, id string) host.Host {
+	t.Helper()
+	client, err := host.CreateHost(host.HostOptions{OnError: func(host.HostError) {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Load(nil, bg); err != nil {
+		t.Fatal(err)
+	}
+	mine, theirs := link.MemoryLinkPair()
+	if err := server.Accept(theirs, host.LinkOptions{Principal: delta.JsonObjectOf("kind", "user", "id", id), Codec: link.BinaryCodec}, bg); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.Connect(mine, host.LinkOptions{Principal: delta.JsonObjectOf("kind", "server"), Codec: link.BinaryCodec}, bg); err != nil {
+		t.Fatal(err)
+	}
+	return client
+}
+
+// serverWith is serverAndClients under the name "test.preference".
+func serverWith(t testing.TB, path string, facet host.Facet, users ...string) ([]host.Host, func()) {
+	t.Helper()
+	clients, _, closeAll := serverAndClients(t, path, facet, "test.preference", users...)
+	return clients, closeAll
 }
 
 func until(t testing.TB, check func() bool) {
