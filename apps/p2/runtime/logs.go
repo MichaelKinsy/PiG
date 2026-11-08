@@ -724,3 +724,71 @@ func PersistLogSource(source, path string, store *LogStore) (stop func() error) 
 }
 
 var _ io.Writer = (*LogWriter)(nil)
+
+// PublishedLogs is a detached host's bounded log publication (`capturePublishedLogs`): the terminal host or the dev
+// supervisor publishes `<directory>/<source>.logs.json`, private and redacted.
+type PublishedLogs struct {
+	source, directory, path string
+	stopCapture             func()
+	persist                 func() error
+	once                    sync.Once
+}
+
+// CapturePublishedLogs starts the publication of source ("terminals" or "dev") under directory. In tests it publishes
+// nothing unless inTests (Pi's NODE_TEST_CONTEXT / `--test` check). Go forced difference: Node's
+// `uncaughtExceptionMonitor` and `exit` hooks have no Go counterpart (a panic's own report is written by the runtime to the
+// file descriptor, past os.Stderr), so the host reports its fatal error through Fatal, which writes the last snapshot
+// synchronously, as Pi's exit hook does.
+func CapturePublishedLogs(source, directory string, inTests bool) *PublishedLogs {
+	if !inTests && testing.Testing() {
+		return &PublishedLogs{}
+	}
+	ProcessLogs.Redactor.AddDirectory(directory)
+	path := filepath.Join(directory, source+".logs.json")
+	return &PublishedLogs{
+		source: source, directory: directory, path: path,
+		persist:     PersistLogSource(source, path, ProcessLogs),
+		stopCapture: CaptureProcessLogs(source, inTests),
+	}
+}
+
+// Fatal records a fatal error of the host (an error's text, or a panic's value with its stack) and writes the final
+// snapshot at once: the host exits right after.
+func (p *PublishedLogs) Fatal(value any, stack []byte) {
+	if p == nil || p.persist == nil {
+		return
+	}
+	text := fmt.Sprint(value)
+	if err, ok := value.(error); ok {
+		text = err.Error()
+	}
+	if len(stack) > 0 {
+		text += "\n" + string(stack)
+	}
+	ProcessLogs.Append(p.source, LogError, text)
+	p.once.Do(func() {
+		p.stopCapture()
+		// Diagnostics must not change process termination.
+		if os.MkdirAll(p.directory, 0o700) != nil {
+			return
+		}
+		content, _ := json.Marshal(LogSnapshot{Source: p.source, Lines: ProcessLogs.Lines(p.source)})
+		temporary := fmt.Sprintf("%s.%d.exit.tmp", p.path, os.Getpid())
+		if os.WriteFile(temporary, content, 0o600) == nil {
+			_ = os.Rename(temporary, p.path)
+		}
+	})
+}
+
+// Stop ends the publication and writes the last snapshot.
+func (p *PublishedLogs) Stop() error {
+	if p == nil || p.persist == nil {
+		return nil
+	}
+	var err error
+	p.once.Do(func() {
+		p.stopCapture()
+		err = p.persist()
+	})
+	return err
+}

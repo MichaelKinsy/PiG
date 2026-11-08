@@ -215,6 +215,7 @@ func (a *App) startNative(server *hosts.P2Server, route string) {
 	native := a.cfg.Native
 	h, err := surfacehost.Open(surfacehost.Options{
 		Server:    server.Host,
+		Origin:    a.Origin(),
 		Plugins:   builtinPlugins,
 		Modules:   builtinModules,
 		Preferred: preferredLanguages(),

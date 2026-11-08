@@ -38,6 +38,8 @@ func Main(m *testing.M) {
 		hosts.RunWorker()
 		return
 	}
+	// The programs plugins run as the test binary (the terminal host, `p2 terminals-host`).
+	hosts.RunSubcommand(os.Args)
 	os.Exit(m.Run())
 }
 
@@ -63,6 +65,15 @@ func reportTo(record func(host.HostError)) func(host.HostError) {
 	}
 }
 
+// closedSockets are the connections whose reader ended (the peer closed them, or they were closed here).
+var closedSockets sync.Map
+
+// SocketClosed is whether conn (a Fixture.Client's) is closed: Pi's `socket.readyState === 3`.
+func SocketClosed(conn *websocket.Conn) bool {
+	_, closed := closedSockets.Load(conn)
+	return closed
+}
+
 // socket is a gorilla WebSocket as link.WebSocketLike: binary frames, one message per frame.
 type socket struct {
 	conn      *websocket.Conn
@@ -82,6 +93,7 @@ func (s *socket) read() {
 			s.mu.Lock()
 			s.closed = true
 			s.mu.Unlock()
+			closedSockets.Store(s.conn, struct{}{})
 			s.emit(link.WebSocketClose, nil)
 			return
 		}

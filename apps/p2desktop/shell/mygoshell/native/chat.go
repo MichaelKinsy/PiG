@@ -27,6 +27,7 @@ func (a *App) chatOf(h *surfacehost.Host, id string, conversation int) *screens.
 	if a.chat != nil && a.chat.Session() == id && a.chat.Conversation() == conversation {
 		return a.chat
 	}
+	a.attached, a.uploadErr = nil, ""
 	if a.chatScope != nil {
 		a.chatScope.Dispose()
 		a.chat, a.chatScope = nil, nil
@@ -253,7 +254,7 @@ func (a *App) composer(c *ui.Context, chat *screens.Chat, row *screens.Row, tr *
 	a.promptBar(c, promptBar{
 		Busy: tr != nil && tr.Busy, Model: modelName, Thinking: row.ThinkingLevel, Tokens: stats.ContextTokens, Window: window,
 		Clients: m.Clients, Cost: m.Cost, HasCost: m.HasCost, Hit: hit, HasHit: hasHit,
-		Send: func(text string) { go func() { _ = chat.Send(text) }() },
+		Send: func(text string, ids []string) { go func() { _ = chat.Send(text, ids...) }() },
 		Stop: func() { go func() { _ = chat.Stop() }() },
 	})
 }
@@ -270,7 +271,7 @@ type promptBar struct {
 	HasCost  bool
 	Hit      float64
 	HasHit   bool
-	Send     func(string)
+	Send     func(string, []string)
 	Stop     func()
 }
 
@@ -285,36 +286,82 @@ func cost(v float64) string {
 	return fmt.Sprintf("$%.4f", v)
 }
 
-// pickFiles opens the system's file dialog for the composer's +; the chosen files go into the message as @path mentions (the
-// agent reads them with its tools, as with the web's @ completion), added at the next frame.
+// pickFiles opens the system's file dialog for the composer's +; each chosen file is uploaded to the open session (the web's
+// upload route) and goes with the next message as an attachment.
 func (a *App) pickFiles() {
+	a.mu.Lock()
+	chat, host := a.chat, a.host
+	a.mu.Unlock()
+	if chat == nil || host == nil {
+		return
+	}
+	session, origin := chat.Session(), host.Origin()
 	go func() {
 		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Title: "Attach files", Multiple: true})
 		if err != nil || len(paths) == 0 {
 			return
 		}
-		a.mu.Lock()
-		a.picked = append(a.picked, paths...)
-		a.mu.Unlock()
-		a.Invalidate()
+		for _, path := range paths {
+			a.mu.Lock()
+			a.uploading++
+			a.uploadErr = ""
+			a.mu.Unlock()
+			a.Invalidate()
+			uploaded, err := screens.UploadFile(host.Context(), origin, session, path)
+			a.mu.Lock()
+			a.uploading--
+			switch {
+			case err != nil:
+				a.uploadErr = err.Error()
+			case a.chat != nil && a.chat.Session() == session && len(a.attached) < maxAttachments:
+				a.attached = append(a.attached, uploaded)
+			}
+			a.mu.Unlock()
+			a.Invalidate()
+		}
 	}()
+}
+
+// maxAttachments is the most attachments of one message (p2runtime.MaxAttachments).
+const maxAttachments = 10
+
+// attachmentChips lists the files waiting for the next message, each removable, and the upload's progress or failure.
+func (a *App) attachmentChips(c *ui.Context) {
+	t := c.Theme()
+	a.mu.Lock()
+	attached, uploading, failure := append([]screens.Upload(nil), a.attached...), a.uploading, a.uploadErr
+	a.mu.Unlock()
+	if len(attached) == 0 && uploading == 0 && failure == "" {
+		return
+	}
+	ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Padding(0, 0, 6).Children(func() {
+		for i, f := range attached {
+			ui.Row(c.Key("attached-" + f.ID)).Gap(4).AlignItems(ui.Center).Padding(2, 6).Background(t.Surface).Radius(6).Children(func() {
+				ui.Text(c, f.Name).FontSize(12).SingleLine()
+				if iconButton(c, iconClose, "Remove "+f.Name).Clicked() {
+					a.mu.Lock()
+					if i < len(a.attached) && a.attached[i].ID == f.ID {
+						a.attached = append(a.attached[:i:i], a.attached[i+1:]...)
+					}
+					a.mu.Unlock()
+				}
+			})
+		}
+		if uploading > 0 {
+			ui.Spinner(c)
+			ui.Text(c, "Uploading…").FontSize(12).TextColor(t.TextMuted)
+		}
+		if failure != "" {
+			ui.Text(c, failure).FontSize(12).TextColor(t.Danger)
+		}
+	})
 }
 
 func (a *App) promptBar(c *ui.Context, p promptBar) {
 	t := c.Theme()
-	a.mu.Lock()
-	picked := a.picked
-	a.picked = nil
-	a.mu.Unlock()
-	for _, path := range picked {
-		sep := ""
-		if a.draftText != "" && !strings.HasSuffix(a.draftText, " ") && !strings.HasSuffix(a.draftText, "\n") {
-			sep = " "
-		}
-		a.draftText += sep + "@" + path + " "
-	}
 	ui.Column(c).AlignItems(ui.Center).Children(func() {
 		ui.Column(c).MaxWidth(832).FillWidth().Padding(8, 16, 0).BorderWidth(1, 0, 1, 0).BorderColor(t.Border).Children(func() {
+			a.attachmentChips(c)
 			input := ui.TextAreaBase(c.Key("prompt"), &a.draftText).Placeholder("Message PiG…").Label("Message PiG").
 				FontSize(16).LineHeight(1.5).Lines(1, 8).AutoFocus()
 			send := input.Shortcut(0, ui.KeyEnter)
@@ -326,7 +373,7 @@ func (a *App) promptBar(c *ui.Context, p promptBar) {
 					a.pickFiles()
 				}
 				ui.Spacer(c)
-				ready := strings.TrimSpace(a.draftText) != ""
+				ready := strings.TrimSpace(a.draftText) != "" || a.hasAttached()
 				if p.Busy && !ready {
 					b := ui.Row(c).Size(40, 40).Focusable().Label("Stop").Tooltip("Stop").Children(func() {
 						ui.Icon(c, iconStop).Size(20, 20).TextColor(t.Text)
@@ -349,9 +396,19 @@ func (a *App) promptBar(c *ui.Context, p promptBar) {
 			})
 			if send {
 				text := strings.TrimSpace(a.draftText)
-				a.draftText = ""
-				if text != "" {
-					p.Send(text)
+				a.mu.Lock()
+				ids := make([]string, len(a.attached))
+				for i, f := range a.attached {
+					ids[i] = f.ID
+				}
+				busy := a.uploading > 0
+				if !busy {
+					a.attached = nil
+				}
+				a.mu.Unlock()
+				if !busy && (text != "" || len(ids) > 0) {
+					a.draftText = ""
+					p.Send(text, ids)
 				}
 			}
 		})
@@ -411,3 +468,5 @@ func tokensLabel(n float64) string {
 	}
 	return fmt.Sprint(int(n))
 }
+
+func (a *App) hasAttached() bool { a.mu.Lock(); defer a.mu.Unlock(); return len(a.attached) > 0 }

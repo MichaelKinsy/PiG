@@ -18,11 +18,7 @@ var ComposerExpanders = NewKeyedRegistry[ComposerExpander]("p2.web-composer-expa
 
 // ExpandComposerText is text as the first expander (in key order) that changes it gives it, else unchanged.
 func ExpandComposerText(ctx context.Context, h host.Host, session string, conversation int, text string) (string, error) {
-	source, err := h.Registry(ctx, ComposerExpanders.Registry, host.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-	table, err := ComposerExpanders.Table(source)
+	table, err := ComposerExpanders.Load(ctx, h)
 	if err != nil {
 		return "", err
 	}

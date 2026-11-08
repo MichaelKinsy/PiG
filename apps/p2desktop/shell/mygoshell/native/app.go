@@ -88,7 +88,11 @@ type App struct {
 	actFor       *transcript.Item
 	actLen       int
 	actWorking   bool
-	picked       []string // files chosen with the composer's +, by path, until the next frame
+	// attached are the files the composer's + uploaded to the open session, to go with the next message (guarded by mu);
+	// uploading counts the uploads under way and uploadErr is why the last one failed.
+	attached  []screens.Upload
+	uploading int
+	uploadErr string
 	md           markdown.Options
 	firstText    string
 	firstFor     string
