@@ -312,6 +312,16 @@ func TestIdleWaitersByScope(t *testing.T) {
 				return false
 			}
 		}
+		// A wait that must have settled is waited for: the goroutines it ends on may not have run when awaitQuiescent returns under -race, so a
+		// poll of done after the barrier misses a settlement that is still on its way. awaitQuiescent stays for the checks that a wait did not settle.
+		mustSettle := func(result *waitResult) bool {
+			select {
+			case <-result.done:
+				return true
+			case <-time.After(quiescenceTimeout):
+				return false
+			}
+		}
 		waitC, waitRoot, waitAll := start(idleC), start(idleRoot), start(idleAll)
 		// The owners A and B hold for D: live, though their handlers returned.
 		env.gates.gate("a").resolve()
@@ -322,7 +332,7 @@ func TestIdleWaitersByScope(t *testing.T) {
 		}
 		// D ends: C is idle (G is background); A and B finalize; P still holds the root.
 		env.gates.gate("d").resolve()
-		if !isSettled(waitC) {
+		if !mustSettle(waitC) {
 			t.Fatal("the wait on C did not settle when D ended")
 		}
 		if _, err := env.harness.WaitForTask(testContext, built.b); err != nil {
@@ -332,7 +342,7 @@ func TestIdleWaitersByScope(t *testing.T) {
 			t.Fatal("a wait on the root settled while P is live")
 		}
 		env.gates.gate("p").resolve()
-		if !isSettled(waitRoot) || !isSettled(waitAll) {
+		if !mustSettle(waitRoot) || !mustSettle(waitAll) {
 			t.Fatal("the root and the Harness did not settle when P ended")
 		}
 		if status := tkTaskRecord(t, env.harness, built.g).State.Status; status == durable.TaskTerminal {
