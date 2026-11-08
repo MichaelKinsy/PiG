@@ -82,7 +82,7 @@ func expectPrinted(t *testing.T, want block, printed string) {
 	t.Helper()
 	lines := strings.Split(printed, "\n")
 	at := 0
-	for _, line := range strings.Split(want.text, "\n") {
+	for line := range strings.SplitSeq(want.text, "\n") {
 		found := -1
 		for i := at; i < len(lines); i++ {
 			if strings.TrimRight(lines[i], " \t") == strings.TrimRight(line, " \t") {

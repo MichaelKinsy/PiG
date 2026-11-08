@@ -149,7 +149,7 @@ func (s *session) printTelemetry(text string) {
 	text = durations.ReplaceAllString(text, "duration=<ms>")
 	text = spent.ReplaceAllString(text, " <ms>")
 	text = counts.ReplaceAllString(text, "<n> bytes in <n> messages")
-	for _, line := range strings.Split(strings.TrimSpace(text), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(text), "\n") {
 		_, _ = fmt.Fprintln(s.out, "  ", line)
 	}
 }

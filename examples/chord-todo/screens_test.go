@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -253,12 +254,7 @@ func screenshots(t *testing.T, out string, printed *bytes.Buffer) {
 }
 
 func containsDirty(dirty []string, name string) bool {
-	for _, d := range dirty {
-		if d == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(dirty, name)
 }
 
 // pngSize is the size of the PNG file at path.
