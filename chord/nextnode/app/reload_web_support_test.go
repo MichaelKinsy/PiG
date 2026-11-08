@@ -186,7 +186,8 @@ func evalAs[T any](r *reloadTab, expression string) T {
 func (r *reloadTab) signIn(s started, views ...string) {
 	r.t.Helper()
 	r.browser.Open(s.app.OwnerLink())
-	r.browser.Wait(`globalThis.page?.connection === "connected"`)
+	// Connected, and rendered (the probe holds the page's host from the render on).
+	r.browser.Wait(`globalThis.page?.connection === "connected" && globalThis.reload?.host !== undefined`)
 	for _, view := range views {
 		r.browser.Wait(`document.querySelector('[data-view="` + view + `"]')`)
 	}
@@ -214,7 +215,7 @@ func (r *reloadTab) signInAgain(s started, views ...string) {
 		r.t.Fatal(err)
 	}
 	r.browser.Open(url)
-	r.browser.Wait(`globalThis.page?.connection === "connected"`)
+	r.browser.Wait(`globalThis.page?.connection === "connected" && globalThis.reload?.host !== undefined`)
 	for _, view := range views {
 		r.browser.Wait(`document.querySelector('[data-view="` + view + `"]')`)
 		r.browser.Wait(`globalThis.reload.refs[` + quoted(view) + `] !== undefined`)
