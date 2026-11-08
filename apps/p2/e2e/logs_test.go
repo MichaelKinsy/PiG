@@ -25,6 +25,7 @@ import (
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/logs"
@@ -181,25 +182,25 @@ func TestOwnerOnlyLogsExposeLivePerSourceStateAndImportBoundedDetachedSnapshots(
 		t.Fatal(err)
 	}
 	// Refused: a guest, and a worker, never see logs, notices or the worker control.
-	for name, principal := range map[string]p2runtime.Principal{
+	for _, principal := range map[string]p2runtime.Principal{
 		"guest":  p2runtime.GuestPrincipal{ID: "g", Name: "Guest", Home: "s", Sessions: map[string]p2runtime.GuestMode{"s": "full"}, Revision: 1},
 		"worker": p2runtime.WorkerPrincipal{Session: "s", Generation: 1},
 	} {
 		client := fixture.As(principal)
-		denied, err := p2test.HoldIn(client, logscontract.Logs, delta.JsonObjectOf("source", source), "owner")
-		if err == nil {
-			_, err = denied.Member("sources").Value()
+		denied, err := client.Hold(p2test.Background, logscontract.Logs, delta.JsonObjectOf("source", source), host.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
 		}
-		if err == nil || !strings.Contains(err.Error(), "forbidden") {
-			t.Fatalf("%s: Logs = %v, want forbidden", name, err)
+		p2test.ExpectChord(t, p2runtime.WhenLive(p2test.Background, denied), data.CodeForbidden)
+		denied.Release()
+		deniedNotices, err := client.Hold(p2test.Background, p2runtime.LogNotices, delta.NewJsonObject(0), host.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
 		}
-		deniedNotices, err := p2test.HoldIn(client, p2runtime.LogNotices, delta.NewJsonObject(0), "owner")
-		if err == nil {
-			_, err = deniedNotices.Call("dismiss", delta.JsonObjectOf("id", notice.Value("id")), p2test.Background)
-		}
-		if err == nil || !strings.Contains(err.Error(), "forbidden") {
-			t.Fatalf("%s: LogNotices = %v, want forbidden", name, err)
-		}
+		p2test.ExpectChord(t, p2runtime.WhenLive(p2test.Background, deniedNotices), data.CodeForbidden)
+		_, err = deniedNotices.Call("dismiss", delta.JsonObjectOf("id", notice.Value("id")), p2test.Background)
+		p2test.ExpectChord(t, err, data.CodeForbidden)
+		deniedNotices.Release()
 	}
 }
 
