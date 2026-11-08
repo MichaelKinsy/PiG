@@ -616,10 +616,12 @@ func TestSessionRelocationFakeProvider(t *testing.T) {
 		if cancelled {
 			t.Fatal("the update succeeded: nothing to cancel")
 		}
-		after := r.worker(s.session)
-		if !after.running || after.generation <= s.before.generation {
-			t.Fatalf("worker = %+v, want a new running one (was %+v)", after, s.before)
-		}
+		// The restart's worker shows as running once its start finished (the relocation answers when the start began).
+		r.until(r.workers.Member("workers"), func(v delta.JsonValue) bool {
+			state := object(object(v).Value(s.session))
+			generation, _ := state.Value("generation").(float64)
+			return state != nil && state.Value("running") == true && generation > s.before.generation
+		})
 		gone() // a restart: the old worker's objects end
 		s.chat.Release()
 		current := s.chatOf(s.owner)
@@ -944,7 +946,10 @@ func TestSessionRelocationFakeProvider(t *testing.T) {
 				t.Fatal(err)
 			}
 			// The dismissal is on the watched list before the next refusal is read from it.
-			r.until(sessions.Member("operations"), func(v delta.JsonValue) bool { return failed(v) == nil })
+			if _, err := p2test.Until(sessions.Member("operations"), func(v delta.JsonValue) bool { return failed(v) == nil }, 5*time.Second); err != nil {
+				value, _ := sessions.Member("operations").Value()
+				t.Fatalf("after dismissing %v: %s", failure.Value("id"), jsonText(t, value))
+			}
 		}
 		refused("Stop the current run")
 		// The refusal left no fence: input is admitted, and the session stayed where it was.
