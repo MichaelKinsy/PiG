@@ -1112,6 +1112,9 @@ type Tx interface {
 	// LatestEntryId returns the ID of the newest entry visible from the conversation; nil when it has none.
 	LatestEntryId(conversationId ConversationId) (*EntryId, error)
 	ScanTasks(query TaskQuery, limit int, cursor Cursor) (Page[TaskRecord[JsonValue, JsonValue, JsonValue], Cursor], error)
+	// Submission returns the committed submission record, such as one of pi.live.run.inputs; a placed input's Entry is its
+	// transcript entry. Nil when absent.
+	Submission(id SubmissionId) (*SubmissionRecord, error)
 	// SubmissionByRequest returns the committed submission with a conversation-scoped request ID; nil when absent.
 	SubmissionByRequest(conversationId ConversationId, requestId string) (*SubmissionRecord, error)
 

@@ -75,6 +75,7 @@ export class TxProxy {
   latestHeadMarker(conversationId: number) { return this.forward("latestHeadMarker", { conversationId }) }
   latestEntryId(conversationId: number) { return this.forward("latestEntryId", { conversationId }) }
   scanTasks(query: unknown, limit: number, cursor?: unknown) { return this.forward("scanTasks", { query, limit, cursor }) }
+  submission(id: number) { return this.forward("submission", { id }) }
   submissionByRequest(conversationId: number, requestId: string) { return this.forward("submissionByRequest", { conversationId, requestId }) }
 
   // Table writes.

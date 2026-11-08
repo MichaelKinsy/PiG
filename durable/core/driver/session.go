@@ -941,6 +941,9 @@ func (s *coreSession) agentJSON(agent durable.Agent) map[string]any {
 	if agent.MaxTurns != nil {
 		out["maxTurns"] = *agent.MaxTurns
 	}
+	if agent.Compaction != nil {
+		out["compaction"] = agent.Compaction
+	}
 	return out
 }
 

@@ -91,11 +91,23 @@ func (r *run) classify(req requestInfo, message *jv.Object) {
 func (r *run) classifyFailure(req requestInfo, message *jv.Object, settings Settings) {
 	stop := str(message, "stopReason")
 	overflow := stop == "error" && IsContextOverflow(message)
-	compaction := settings.CompactionFor(req.model)
-	if !overflow || req.compacted != 0 || !compaction.Enabled {
+	if !overflow || req.compacted != 0 {
 		r.retryOrFail(req, message, settings, stop, overflow)
 		return
 	}
+	// generation.ts classify reads the agent only for an overflow nothing was compacted for yet.
+	r.agent(func(agent *Agent) {
+		compaction := settings.CompactionFor(req.model, agent.Compaction)
+		if !compaction.Enabled {
+			r.retryOrFail(req, message, settings, stop, overflow)
+			return
+		}
+		r.compactOnOverflow(req, message, settings, stop, overflow, compaction)
+	})
+}
+
+// compactOnOverflow starts the overflow compaction when the policy keeps a cut, else the failure is retried or ended as any.
+func (r *run) compactOnOverflow(req requestInfo, message *jv.Object, settings Settings, stop string, overflow bool, compaction history.Policy) {
 	r.context(req.cutoff, func(view *history.View) {
 		if _, ok := view.SelectCut(compaction.KeepRecentTokens); ok {
 			text := "Context overflow"

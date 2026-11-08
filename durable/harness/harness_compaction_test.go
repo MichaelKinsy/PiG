@@ -3194,6 +3194,125 @@ func TestPerModelCompactionOverrides(t *testing.T) {
 	})
 }
 
+// harness-compaction.test.ts "per-conversation compaction settings" (Pi 922c3ff2, #11771).
+func TestPerConversationCompactionSettings(t *testing.T) {
+	configure := func(t *testing.T, chat *compactionChat, change durable.CompactionSettings) {
+		t.Helper()
+		must0(t, chat.root.Configure(testContext, AgentChange{Compaction: SetTo(change)}))
+	}
+	t.Run("resolves model-specific over general, and the conversation over the harness at the same level", func(t *testing.T) {
+		// The summary's maxTokens is 0.8 * the resolved reserveTokens, below the model's 900.
+		overrides := func(reserve int) map[string]durable.CompactionPolicyOverride {
+			return map[string]durable.CompactionPolicyOverride{"faux/faux-1": {ReserveTokens: new(reserve)}}
+		}
+		cases := []struct {
+			harness      map[string]durable.CompactionPolicyOverride
+			conversation durable.CompactionSettings
+			maxTokens    int
+		}{
+			{nil, durable.CompactionSettings{ReserveTokens: new(500)}, 400},
+			{overrides(250), durable.CompactionSettings{ReserveTokens: new(500)}, 200},
+			{overrides(250), durable.CompactionSettings{ReserveTokens: new(500), ModelOverrides: overrides(125)}, 100},
+			{nil, durable.CompactionSettings{ReserveTokens: new(500), ModelOverrides: map[string]durable.CompactionPolicyOverride{"faux/other": {ReserveTokens: new(125)}}}, 400},
+		}
+		for _, c := range cases {
+			chat := openCompaction(t)
+			chat.history(t)
+			policy := manualPolicy()
+			policy.ModelOverrides = c.harness
+			chat.setPolicy(policy)
+			configure(t, chat, c.conversation)
+			chat.faux.pushSummary(scriptSummary())
+			if outcome := chat.outcome(t, chat.compact(t, nil)); outcome.Status != durable.OutcomeCompleted {
+				t.Fatalf("outcome %s", jsonText(t, outcome))
+			}
+			if got := chat.faux.summaryRequestsCopy()[0].options.MaxTokens; got != c.maxTokens {
+				t.Fatalf("summary maxTokens %d, want %d", got, c.maxTokens)
+			}
+			chat.close(t)
+		}
+	})
+
+	t.Run("lets the conversation's enabled: false beat the harness's model override, and its own model override beat that", func(t *testing.T) {
+		cases := []struct {
+			conversation *durable.CompactionSettings
+			summaries    int
+		}{
+			{nil, 1},
+			{&durable.CompactionSettings{Enabled: new(false)}, 0},
+			{&durable.CompactionSettings{Enabled: new(false), ModelOverrides: map[string]durable.CompactionPolicyOverride{"faux/faux-1": {Enabled: new(true)}}}, 1},
+		}
+		for _, c := range cases {
+			chat := openCompaction(t, compactionOptions{contextWindow: 1000})
+			chat.history(t)
+			policy := blockingPolicy()
+			policy.ReserveTokens = new(0)
+			policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{"faux/faux-1": {Enabled: new(true), ReserveTokens: new(300)}}
+			chat.setPolicy(policy)
+			if c.conversation == nil {
+				must0(t, chat.root.Configure(testContext, AgentChange{Compaction: Cleared[durable.CompactionSettings]()}))
+			} else {
+				configure(t, chat, *c.conversation)
+			}
+			chat.faux.pushSummary(scriptSummary())
+			chat.turn(t, sized("u4", 200), "a4")
+			if got := len(chat.faux.summaryRequestsCopy()); got != c.summaries {
+				t.Fatalf("%d summary requests, want %d", got, c.summaries)
+			}
+			chat.close(t)
+		}
+	})
+
+	t.Run("skips overflow compaction when the conversation turns compaction off", func(t *testing.T) {
+		chat := openCompaction(t)
+		chat.history(t)
+		policy := manualPolicy()
+		policy.Enabled = new(true)
+		chat.setPolicy(policy)
+		configure(t, chat, durable.CompactionSettings{Enabled: new(false)})
+		chat.faux.pushAgent(scriptFailure(overflowText))
+		expectSettled(t, must(submitInput(t, chat.root, sized("u4", 100)).Wait(testContext)), durable.SubmissionUnanswered, "")
+		if got := len(chat.faux.summaryRequestsCopy()); got != 0 {
+			t.Fatalf("%d summary requests, want 0", got)
+		}
+		chat.close(t)
+	})
+
+	t.Run("drops undefined fields, rejects token counts that are not integers 0 or more, and clears on null", func(t *testing.T) {
+		chat := openCompaction(t)
+		settings := durable.CompactionSettings{KeepRecentTokens: new(0), ModelOverrides: map[string]durable.CompactionPolicyOverride{"faux/faux-1": {ReserveTokens: new(10)}}}
+		configure(t, chat, settings)
+		stored := func() string {
+			state := must(durable.Snapshot(testContext, chat.harness, AgentDoc, chat.root.Id()))
+			if state == nil || state.Compaction == nil {
+				return "undefined"
+			}
+			return encodedJSON(t, state.Compaction)
+		}
+		expected := `{"keepRecentTokens":0,"modelOverrides":{"faux/faux-1":{"reserveTokens":10}}}`
+		if got := stored(); got != expected {
+			t.Fatalf("stored = %s, want %s", got, expected)
+		}
+		for _, bad := range []durable.CompactionSettings{
+			{ReserveTokens: new(-1)},
+			{ModelOverrides: map[string]durable.CompactionPolicyOverride{"faux/faux-1": {BackgroundTokens: new(-1)}}},
+		} {
+			if err := chat.root.Configure(testContext, AgentChange{Compaction: SetTo(bad)}); err == nil {
+				t.Fatalf("configure accepted %+v", bad)
+			}
+		}
+		// A rejected change leaves the stored settings as they were.
+		if got := stored(); got != expected {
+			t.Fatalf("stored after rejection = %s, want %s", got, expected)
+		}
+		must0(t, chat.root.Configure(testContext, AgentChange{Compaction: Cleared[durable.CompactionSettings]()}))
+		if got := stored(); got != "undefined" {
+			t.Fatalf("stored after null = %s, want undefined", got)
+		}
+		chat.close(t)
+	})
+}
+
 // liveV1 is pi.live as version 1 wrote it: a compaction's trigger was its `reason`.
 type liveV1 struct {
 	Run               *liveV2Run         `json:"run,omitempty"`
