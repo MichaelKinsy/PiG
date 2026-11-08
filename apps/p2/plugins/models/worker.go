@@ -42,7 +42,13 @@ func serveWorkerModels(_ *delta.JsonObject, self host.Self) (contracts.Implement
 	})
 	settings := p2runtime.FollowNative(self,
 		func(changed func()) func() { return resourcesNative(opened).Subscribe(changed) },
-		func() (delta.JsonValue, error) { return resourcesNative(opened).Settings(), nil },
+		func() (delta.JsonValue, error) {
+			value, err := opened.Value()
+			if err != nil {
+				return nil, err
+			}
+			return value.(*Resources).Settings(), nil
+		},
 	)
 	return contracts.Implementation{Members: contracts.VariantImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{"settings": settings},
