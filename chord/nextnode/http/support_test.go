@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
+	pitelemetry "github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Test support for the HTTP component (slice 10 §2; Pi's test/next-node/http/support.ts): a server host with the component,
@@ -134,8 +135,10 @@ type servedOptions struct {
 	// noLoad: the host is made, not loaded.
 	noLoad       bool
 	readyTimeout time.Duration
-	address      *contracts.Address
-	after        afterFunc
+	// telemetry is the HTTP component's adapter.
+	telemetry pitelemetry.TelemetryContext
+	address   *contracts.Address
+	after     afterFunc
 	// revokeHook sees each router the follower revokes connections against.
 	revokeHook func(*Router)
 }
@@ -156,7 +159,7 @@ func serving(t *testing.T, plugins []plugin, options servedOptions) *testServer 
 		t.Fatal(err)
 	}
 	counting := &countingHost{Host: inner}
-	httpOptions := HttpOptions{Links: options.links, CloseTimeout: options.closeTimeout, OnError: errs.add}
+	httpOptions := HttpOptions{Links: options.links, CloseTimeout: options.closeTimeout, Telemetry: options.telemetry, OnError: errs.add}
 	if !options.noListen {
 		httpOptions.Listen = &ListenAddress{Host: "127.0.0.1", Port: 0}
 	}
