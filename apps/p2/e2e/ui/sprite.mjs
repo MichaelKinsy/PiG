@@ -54,12 +54,12 @@ const state = (page) =>
 			heading: document.querySelector(".hero h2")?.textContent,
 		};
 	});
-const check = (label, current) => {
+const check = (label, current, theme) => {
 	const problems = [];
 	if (!current.key) problems.push("no sprite info");
 	if (current.mark !== "IMG" || !current.markSrc?.includes(`/__p2_brand/sprite.svg?v=${current.key}`)) problems.push("the mark is not the sprite");
 	if (!current.icon?.includes(`/__p2_brand/sprite.svg?v=${current.key}`)) problems.push("the favicon is not the sprite");
-	if (!current.banner?.includes(`/__p2_brand/login.svg?v=${current.key}`) || !current.bannerLoaded) problems.push("the banner is not the sprite's");
+	if (!current.banner?.includes(`/__p2_brand/login.svg?v=${current.key}&theme=${theme}`) || !current.bannerLoaded) problems.push(`the banner is not the sprite's for the ${theme} page`);
 	if (current.taglineShown !== current.tagline) problems.push("the tagline is not the sprite's");
 	if (current.heading !== "What should PiG do?") problems.push(`heading ${current.heading}`);
 	if (!Number.isInteger(current.bannerScale)) problems.push(`the banner is at ${current.bannerScale}x, not a whole multiple`);
@@ -79,7 +79,7 @@ for (;;) {
 	let shown;
 	for (const view of views) {
 		const current = await state(view.page);
-		check(`${label}/${view.name}`, current);
+		check(`${label}/${view.name}`, current, view.theme);
 		shown ??= current;
 		await view.page.screenshot({ path: join(out, `${label}-${view.name}.png`) });
 	}
