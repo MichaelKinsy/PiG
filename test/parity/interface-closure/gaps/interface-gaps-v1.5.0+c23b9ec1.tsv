@@ -1,42 +1,5 @@
 pkg:agent/.#ProxyStreamOptions	agent	child-gap	agent/proxy.go#ProxyStreamOptions
 pkg:agent/.#ProxyStreamOptions::property:disableContinuation	agent	not-exercised	agent/proxy.go#ProxyStreamOptions.DisableContinuation
-pkg:chord/.#AddedColumn	chord	no-go-symbol	
-pkg:chord/.#BooleanSchema	chord	no-go-symbol	
-pkg:chord/.#BooleanSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
-pkg:chord/.#BooleanSchema::property:type	chord	child-gap	
-pkg:chord/.#Bounds	chord	no-go-symbol	
-pkg:chord/.#CatalogShape	chord	no-go-symbol	
-pkg:chord/.#ChordError::construct:0	chord	child-gap	chord/next/data/errors.go#ChordError
-pkg:chord/.#ChordSpanName	chord	no-go-symbol	
-pkg:chord/.#Claimant	chord	type-mismatch	chord/next/store/claims.go#Claimant
-pkg:chord/.#ClientError	chord	type-mismatch	chord/next/surfaces/surfaces_client.go#ClientError
-pkg:chord/.#ColumnRef	chord	child-gap	chord/next/store/expression.go#ColumnRef
-pkg:chord/.#ColumnRef::property:column	chord	member-missing	chord/next/store/expression.go#ColumnRef
-pkg:chord/.#ColumnRef::property:~type	chord	member-missing	chord/next/store/expression.go#ColumnRef
-pkg:chord/.#ColumnRef::property:~value	chord	member-missing	chord/next/store/expression.go#ColumnRef
-pkg:chord/.#Columns	chord	no-go-symbol	
-pkg:chord/.#Contract	chord	child-gap	chord/next/contracts/contract.go#Contract
-pkg:chord/.#Contract::property:~shape	chord	member-missing	chord/next/contracts/contract.go#Contract
-pkg:chord/.#Contribution	chord	undecidable	chord/nextnode/plugins/plugins_testing.go#Contribution
-pkg:chord/.#Ctx	chord	child-gap	chord/next/host/host_ctx.go#Ctx
-pkg:chord/.#Ctx::property:telemetry	chord	member-missing	chord/next/host/host_ctx.go#Ctx
-pkg:chord/.#Ctx::property:toString	chord	member-missing	chord/next/host/host_ctx.go#Ctx
-pkg:chord/.#Ctx::property:toString::call:0	chord	member-missing	chord/next/host/host_ctx.go#Ctx
-pkg:chord/.#Ctx::property:value	chord	child-gap	../../../usr/local/go/src/context/context.go#Context.Value
-pkg:chord/.#Ctx::property:value::call:0	chord	undecidable	../../../usr/local/go/src/context/context.go#Context.Value
-pkg:chord/.#DataKeys	chord	no-go-symbol	
-pkg:chord/.#Defaulted	chord	no-go-symbol	
-pkg:chord/.#EncodedRow	chord	type-mismatch	chord/next/store/rows.go#EncodedRow
-pkg:chord/.#Expression	chord	child-gap	chord/next/store/expression.go#Expression
-pkg:chord/.#Expression::property:~type	chord	member-missing	chord/next/store/expression.go#Expression
-pkg:chord/.#Expression::property:~value	chord	member-missing	chord/next/store/expression.go#Expression
-pkg:chord/.#Facet	chord	type-mismatch	chord/next/host/host_facet.go#Facet
-pkg:chord/.#FacetFunction	chord	child-gap	chord/next/surfaces/surfaces_registered.go#FacetFunction
-pkg:chord/.#FacetFunction::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_registered.go#FacetFunction
-pkg:chord/.#FacetHost	chord	child-gap	chord/next/host/host_facet.go#FacetHost
-pkg:chord/.#FacetHost::property:serve	chord	child-gap	chord/next/host/host_facet.go#FacetHost.Serve
-pkg:chord/.#FacetHost::property:serve::call:1	chord	signature-mismatch	chord/next/host/host_facet.go#FacetHost.Serve
-pkg:chord/.#HostError	chord	type-mismatch	chord/next/host/host_error.go#HostError
 pkg:chord/.#Schema	chord	type-mismatch	chord/next/contracts/schema.go#Schema
 pkg:chord/.#ScriptsContract	chord	no-go-symbol	
 pkg:chord/.#Self	chord	child-gap	chord/next/host/host_attempt.go#Self
@@ -155,21 +118,6 @@ pkg:chord/.#Tx::property:update::call:0	chord	undecidable	chord/next/documents/t
 pkg:chord/.#Tx::property:updateWhere	chord	child-gap	chord/next/documents/transaction.go#Tx.UpdateWhere
 pkg:chord/.#Tx::property:updateWhere::call:0	chord	undecidable	chord/next/documents/transaction.go#Tx.UpdateWhere
 pkg:chord/.#WhereNode	chord	type-mismatch	chord/next/store/expression.go#WhereNode
-pkg:chord/.#arr	chord	child-gap	chord/next/contracts/schema.go#Arr
-pkg:chord/.#arr::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Arr
-pkg:chord/.#bool	chord	child-gap	chord/next/store/columns.go#Bool
-pkg:chord/.#bool::call:0	chord	signature-mismatch	chord/next/store/columns.go#Bool
-pkg:chord/.#bool::call:1	chord	signature-mismatch	chord/next/store/columns.go#Bool
-pkg:chord/.#bytes	chord	child-gap	chord/next/contracts/schema.go#Bytes
-pkg:chord/.#bytes::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Bytes
-pkg:chord/.#defineMessages	chord	child-gap	chord/next/surfaces/surfaces_messages.go#DefineMessages
-pkg:chord/.#defineMessages::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_messages.go#DefineMessages
-pkg:chord/.#formatNumber	chord	child-gap	chord/next/surfaces/surfaces_format.go#FormatNumber
-pkg:chord/.#formatNumber::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_format.go#FormatNumber
-pkg:chord/.#formatTime	chord	child-gap	chord/next/surfaces/intl_time.go#FormatTime
-pkg:chord/.#formatTime::call:0	chord	signature-mismatch	chord/next/surfaces/intl_time.go#FormatTime
-pkg:chord/.#hostKind	chord	child-gap	chord/next/contracts/host_kind.go#NewHostKind
-pkg:chord/.#hostKind::call:0	chord	undecidable	chord/next/contracts/host_kind.go#NewHostKind
 pkg:chord/.#startClient	chord	child-gap	chord/next/surfaces/surfaces_client.go#StartClient
 pkg:chord/.#startClient::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_client.go#StartClient
 pkg:chord/.#str	chord	child-gap	chord/next/store/columns.go#Str

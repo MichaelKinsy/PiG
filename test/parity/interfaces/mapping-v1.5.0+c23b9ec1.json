@@ -103367,8 +103367,25 @@
     },
     {
       "id": "pkg:chord/.#arr",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dcbdb1f8606b095a786bd1c50d3b00dd93ff15d2ca9bb627d2cfcbcedf6ccd93"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dcbdb1f8606b095a786bd1c50d3b00dd93ff15d2ca9bb627d2cfcbcedf6ccd93",
+      "rationale": "Derived by the interface gap detector: arr is Go chord/next/contracts/schema.go#Arr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Arr"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Arr"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsStateMappings",
+        "test:chord/next/contracts/declare_test.go#TestDeclarationChecks",
+        "test:chord/next/contracts/declare_test.go#TestDeclarationMembersAcrossVariants"
+      ]
     },
     {
       "id": "pkg:chord/.#arr::call:0",
@@ -103527,8 +103544,25 @@
     },
     {
       "id": "pkg:chord/.#bool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:152b2ab6c2e8a8fa8265fbaf5d5d783adba93248e01fdec983a52ec1abf898ea"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:152b2ab6c2e8a8fa8265fbaf5d5d783adba93248e01fdec983a52ec1abf898ea",
+      "rationale": "Derived by the interface gap detector: bool is Go chord/next/store/columns.go#Bool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/columns.go#Bool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/columns.go#Bool"
+      ],
+      "evidence": [
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
+        "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
+        "test:chord/next/store/columns_test.go#TestColumnDescriptors"
+      ]
     },
     {
       "id": "pkg:chord/.#bool::call:0",
@@ -103630,8 +103664,25 @@
     },
     {
       "id": "pkg:chord/.#bytes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:914e1b1db7bbe9c75304421e6e56f163e2d3a9c2acd5490834827f267325872b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:914e1b1db7bbe9c75304421e6e56f163e2d3a9c2acd5490834827f267325872b",
+      "rationale": "Derived by the interface gap detector: bytes is Go chord/next/contracts/schema.go#Bytes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Bytes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Bytes"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes",
+        "test:chord/next/contracts/params_test.go#TestParamsPolicy",
+        "test:chord/next/contracts/schema_test.go#TestSchemaBytes"
+      ]
     },
     {
       "id": "pkg:chord/.#bytes::call:0",
@@ -104991,8 +105042,25 @@
     },
     {
       "id": "pkg:chord/.#ColumnRef",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b2e45238d28ff5c16a6948a6fb3a095cdca8ec21b02409fe6d9ca8303a6c59b6"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b2e45238d28ff5c16a6948a6fb3a095cdca8ec21b02409fe6d9ca8303a6c59b6",
+      "rationale": "Derived by the interface gap detector: ColumnRef is Go chord/next/store/expression.go#ColumnRef (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/expression.go#ColumnRef"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/expression.go#Eq"
+      ],
+      "evidence": [
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
+        "test:chord/next/host/host_refusal_test.go#TestRefusalAnIntOutOfRangeFailsOnlyItsTransactionAndTheObjectStaysLive",
+        "test:chord/next/host/host_example_20_test.go#TestExample20Tables"
+      ]
     },
     {
       "id": "pkg:chord/.#ColumnRef::construct:0",
@@ -105519,8 +105587,25 @@
     },
     {
       "id": "pkg:chord/.#Contract",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:61968afe87dcce040720c5fa9ba0d4bfb279fba7ab94ff73a82e9f70bb0ede1f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:61968afe87dcce040720c5fa9ba0d4bfb279fba7ab94ff73a82e9f70bb0ede1f",
+      "rationale": "Derived by the interface gap detector: Contract is Go chord/next/contracts/contract.go#Contract (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/contract.go#Contract"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/accepts.go#CheckAccepts"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsMethodMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsStateMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsVersions"
+      ]
     },
     {
       "id": "pkg:chord/.#Contract::property:~shape",
@@ -105718,8 +105803,26 @@
     },
     {
       "id": "pkg:chord/.#Ctx",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1c85e25cddc00cc7e8a0c8e713c4b8f30f1ca43e35697f8de7f2d72295f0a4fd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1c85e25cddc00cc7e8a0c8e713c4b8f30f1ca43e35697f8de7f2d72295f0a4fd",
+      "rationale": "Derived by the interface gap detector: Ctx is Go chord/next/host/host_ctx.go#Ctx (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_ctx.go#Ctx"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_attempt.go#attempt.call"
+      ],
+      "evidence": [
+        "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi",
+        "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
+        "test:agent/agent_upstream_test.go#TestAgent_AssignedPrepareNextTurnRunsFromTheNextRun"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Ctx::property:abortSignal",
@@ -106093,8 +106196,25 @@
     },
     {
       "id": "pkg:chord/.#defineMessages",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:eca75c918ac1f244b5cbd4137f75ff8120ffa8336446babbfb8d64484831ef40"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:eca75c918ac1f244b5cbd4137f75ff8120ffa8336446babbfb8d64484831ef40",
+      "rationale": "Derived by the interface gap detector: defineMessages is Go chord/next/surfaces/surfaces_messages.go#DefineMessages (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_messages.go#DefineMessages"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/surfaces/surfaces_messages.go#DefineMessages"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesACatalogThatDoesNotMatchTheFirst",
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesANamespaceThatIsNoNameAndACatalogKeyThatIsNoLanguageTag",
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestComposeKeysCatalogsByCanonicalLocaleLeavesInvalidOnesOutAndListsTheLocalesOffered"
+      ]
     },
     {
       "id": "pkg:chord/.#defineMessages::call:0",
@@ -106685,8 +106805,23 @@
     },
     {
       "id": "pkg:chord/.#Expression",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4354d6dd4002f71e01cdfdb6912542704ac334a977e2ccc809f4a3844226105b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4354d6dd4002f71e01cdfdb6912542704ac334a977e2ccc809f4a3844226105b",
+      "rationale": "Derived by the interface gap detector: Expression is Go chord/next/store/expression.go#Expression (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/expression.go#Expression"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/expression.go#Add"
+      ],
+      "evidence": [
+        "reach:chord/next/store/expression.go#Add"
+      ]
     },
     {
       "id": "pkg:chord/.#Expression::construct:0",
@@ -106777,8 +106912,24 @@
     },
     {
       "id": "pkg:chord/.#FacetFunction",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e76d5632d24aca8ccfafb5b833fb62adc48bc47e736b90dddba56de276865d36"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e76d5632d24aca8ccfafb5b833fb62adc48bc47e736b90dddba56de276865d36",
+      "rationale": "Derived by the interface gap detector: FacetFunction is Go chord/next/surfaces/surfaces_registered.go#FacetFunction (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_registered.go#FacetFunction"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_registered.go#FacetFunction"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsAnswerOnlyTheClientsModulesNamingThePlugin",
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall"
+      ]
     },
     {
       "id": "pkg:chord/.#FacetFunction::call:0",
@@ -106791,8 +106942,25 @@
     },
     {
       "id": "pkg:chord/.#FacetHost",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b0b7a1609c0659b9fe87ce3898634d370b28842951ecadbb356e3730b54f8a73"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b0b7a1609c0659b9fe87ce3898634d370b28842951ecadbb356e3730b54f8a73",
+      "rationale": "Derived by the interface gap detector: FacetHost is Go chord/next/host/host_facet.go#FacetHost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_facet.go#FacetHost"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_facet.go#DefineFacet"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
+        "test:chord/next/host/host_activity_test.go#TestHostActivityGivesASlowWatcherTheNewestCountsOnceItIsFree",
+        "test:chord/next/host/host_activity_test.go#TestHostActivityLingeringCountsLiveObjectsKeptByTheirTypesLinger"
+      ]
     },
     {
       "id": "pkg:chord/.#FacetHost::property:references",
@@ -106836,8 +107004,25 @@
     },
     {
       "id": "pkg:chord/.#FacetHost::property:serve",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:532d618f617dcf1b2787a0d3a12d5bc6695cdb5926cfffa374a166702b18e5be"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:532d618f617dcf1b2787a0d3a12d5bc6695cdb5926cfffa374a166702b18e5be",
+      "rationale": "Derived by the interface gap detector: FacetHost::property:serve is Go chord/next/host/host_facet.go#FacetHost.Serve (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_facet.go#FacetHost.Serve"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/surfaces/surfaces_preference.go#PreferenceFacet"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_activity_test.go#TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch",
+        "test:chord/next/host/host_activity_test.go#TestHostActivityGivesASlowWatcherTheNewestCountsOnceItIsFree",
+        "test:chord/next/host/host_activity_test.go#TestHostActivityLingeringCountsLiveObjectsKeptByTheirTypesLinger"
+      ]
     },
     {
       "id": "pkg:chord/.#FacetHost::property:serve::call:0",
@@ -107311,8 +107496,25 @@
     },
     {
       "id": "pkg:chord/.#formatNumber",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40",
+      "rationale": "Derived by the interface gap detector: formatNumber is Go chord/next/surfaces/surfaces_format.go#FormatNumber (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_format.go#FormatNumber"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/surfaces/surfaces_format.go#FormatNumber"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode",
+        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData",
+        "test:chord/next/surfaces/intl_root_test.go#TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup"
+      ]
     },
     {
       "id": "pkg:chord/.#formatNumber::call:0",
@@ -107325,8 +107527,25 @@
     },
     {
       "id": "pkg:chord/.#formatTime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271",
+      "rationale": "Derived by the interface gap detector: formatTime is Go chord/next/surfaces/intl_time.go#FormatTime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/intl_time.go#FormatTime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/surfaces/intl_time.go#FormatTime"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode",
+        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData",
+        "test:chord/next/surfaces/intl_root_test.go#TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup"
+      ]
     },
     {
       "id": "pkg:chord/.#formatTime::call:0",
@@ -108144,8 +108363,25 @@
     },
     {
       "id": "pkg:chord/.#hostKind",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0d5231865a773f05c7efffd51c29a360975d797111fce10c318b337190515156"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0d5231865a773f05c7efffd51c29a360975d797111fce10c318b337190515156",
+      "rationale": "Derived by the interface gap detector: hostKind is Go chord/next/contracts/host_kind.go#NewHostKind (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/host_kind.go#NewHostKind"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/host_kind.go#NewHostKind"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/host_kind_test.go#TestHostKinds",
+        "test:chord/next/host/host_destination_test.go#TestSameAddressNamesTheHostWithTheSameKindAndTheSameValueForEachParam",
+        "test:chord/next/host/host_route_test.go#TestDeclaringRoutesIsDoneBeforeLoadOncePerKind"
+      ]
     },
     {
       "id": "pkg:chord/.#HostKind",
