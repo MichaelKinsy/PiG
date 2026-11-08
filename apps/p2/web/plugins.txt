@@ -1,4 +1,5 @@
 chat
+devices
 envs
 login
 sessions
