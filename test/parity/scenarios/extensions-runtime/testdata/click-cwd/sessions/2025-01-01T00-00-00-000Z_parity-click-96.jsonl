@@ -1,0 +1,7 @@
+{"type":"session","version":3,"id":"parity-click-96","timestamp":"2025-01-01T00:00:00.000Z","cwd":"/tmp"}
+{"type":"message","id":"e1","parentId":null,"timestamp":"2025-01-01T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"<skill name=\"testskill\" location=\"/tmp/skills/testskill\">\nReferences are relative to /tmp/skills/testskill.\n\nThis is the test skill body content.\n</skill>\n\nRun the test"}]}}
+{"type":"message","id":"e2","parentId":"e1","timestamp":"2025-01-01T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Done."}],"usage":{"input":10,"output":8,"cacheRead":0,"cacheWrite":0,"totalTokens":18,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop"}}
+{"type":"branch_summary","id":"e3","parentId":"e2","timestamp":"2025-01-01T00:00:03.000Z","fromId":"e1","summary":"The user explored a different conversation branch about error handling."}
+{"type":"compaction","id":"e4","parentId":"e3","timestamp":"2025-01-01T00:00:04.000Z","summary":"The user greeted the assistant and received a friendly response.","firstKeptEntryId":"e1","tokensBefore":87432}
+{"type":"custom_message","id":"e5","parentId":"e4","timestamp":"2025-01-01T00:00:05.000Z","customType":"click-card","content":"first card","display":true}
+{"type":"custom_message","id":"e6","parentId":"e5","timestamp":"2025-01-01T00:00:06.000Z","customType":"click-card","content":"second card","display":true}

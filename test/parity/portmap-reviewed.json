@@ -270,5 +270,25 @@
    "pkg:coding-agent/.#SlashCommandInfo::property:source": "internal/codingagent/extension_host_info.go#SlashCommandInfo",
    "pkg:coding-agent/.#SlashCommandInfo::property:sourceInfo": "internal/codingagent/extension_host_info.go#SlashCommandInfo"
   }
+ },
+ "packages/ai/src/utils/provider-env.ts": {
+  "reason": "ai/provider_kit.go#GetProviderEnvValue only exports getProviderEnvValue to the Bedrock package (ai/providers/bedrock reads its region and endpoint variables through it); the port of provider-env.ts's getProviderEnvValue is the unexported function in ai/provider_env.go, which the exported one calls and which the evidence tests run.",
+  "members": {
+   "pkg:ai/utils/provider-env#getProviderEnvValue": "ai/provider_env.go#getProviderEnvValue",
+   "pkg:ai/utils/provider-env#getProviderEnvValue::call:0": "ai/provider_env.go#getProviderEnvValue"
+  }
+ },
+ "packages/ai/src/api/constrained-sampling.ts": {
+  "reason": "ai/provider_kit.go exports four functions of constrained_sampling.go to the Bedrock package (GetJSONSchemaToolParameters, PrefersJSONSchemaStrictSampling, ResolveJSONSchemaStrictSampling, IsStrictToolLimitErrorMessage) and adds no behavior; the port of each is the unexported function in ai/constrained_sampling.go, which the evidence tests of package ai run.",
+  "members": {
+   "pkg:ai/api/constrained-sampling#getJsonSchemaToolParameters": "ai/constrained_sampling.go#getJSONSchemaToolParameters",
+   "pkg:ai/api/constrained-sampling#getJsonSchemaToolParameters::call:0": "ai/constrained_sampling.go#getJSONSchemaToolParameters",
+   "pkg:ai/api/constrained-sampling#prefersJsonSchemaStrictSampling": "ai/constrained_sampling.go#prefersJSONSchemaStrictSampling",
+   "pkg:ai/api/constrained-sampling#prefersJsonSchemaStrictSampling::call:0": "ai/constrained_sampling.go#prefersJSONSchemaStrictSampling",
+   "pkg:ai/api/constrained-sampling#resolveJsonSchemaStrictSampling": "ai/constrained_sampling.go#resolveJSONSchemaStrictSampling",
+   "pkg:ai/api/constrained-sampling#resolveJsonSchemaStrictSampling::call:0": "ai/constrained_sampling.go#resolveJSONSchemaStrictSampling",
+   "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage": "ai/constrained_sampling.go#isStrictToolLimitErrorMessage",
+   "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage::call:0": "ai/constrained_sampling.go#isStrictToolLimitErrorMessage"
+  }
  }
 }

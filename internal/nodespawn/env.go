@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // caseInsensitiveEnv reports that environment names ignore case, as on
@@ -108,7 +109,7 @@ func SetEnv(cmd *exec.Cmd, env []string) {
 func SetEnvProperties(cmd *exec.Cmd, env []EnvProperty) {
 	properties := appendCoverageEnv(objectProperties(env))
 	if caseInsensitiveEnv {
-		slices.SortStableFunc(properties, func(a, b EnvProperty) int {
+		sortx.Stable(properties, func(a, b EnvProperty) int {
 			return compareUTF16(a.Name, b.Name)
 		})
 		seen := make(map[string]bool, len(properties))

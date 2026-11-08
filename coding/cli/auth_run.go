@@ -26,6 +26,8 @@ const credentialPrintTimeout = 15 * time.Second // upstream: coding-agent/src/ma
 
 // authRunEnv is the process state runAuthCommand reads.
 type authRunEnv struct {
+	// ctx is the process lifetime the commands derive from; the entry point supplies it.
+	ctx            context.Context
 	stdout, stderr io.Writer
 	agentDir       string
 	color          bool
@@ -41,6 +43,7 @@ func runAuthCommand(args []string) int {
 		return -1
 	}
 	return runAuthCommandWith(args, authRunEnv{
+		ctx:      context.Background(), //portlint:allow ctxbackground `pig auth` is a process entry point with no caller context; Pi's main.ts runs these commands with no AbortSignal of its own
 		stdout:   os.Stdout,
 		stderr:   os.Stderr,
 		agentDir: agentDirForModel(),
@@ -123,7 +126,7 @@ func runAuthLoginCommand(args []string, env authRunEnv) int {
 		env.printError(err.Error())
 		return 1
 	}
-	createCtx, cancelCreate := context.WithTimeout(context.Background(), credentialPrintTimeout)
+	createCtx, cancelCreate := context.WithTimeout(env.ctx, credentialPrintTimeout)
 	modelRuntime, err := coding.CreateModelRuntime(createCtx, coding.CreateModelRuntimeOptions{AuthPath: authJSONPath(env.agentDir), AllowModelNetwork: false})
 	cancelCreate()
 	if err != nil {
@@ -132,7 +135,7 @@ func runAuthLoginCommand(args []string, env authRunEnv) int {
 	}
 	defer modelRuntime.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(env.ctx)
 	defer cancel()
 	interrupts := make(chan os.Signal, 1)
 	signal.Notify(interrupts, os.Interrupt)
@@ -155,7 +158,7 @@ func runAuthLoginCommand(args []string, env authRunEnv) int {
 
 // runAuthLogoutCommand ports main.ts runAuthLogoutCommand: it removes the stored credentials of one provider and returns the exit code.
 func runAuthLogoutCommand(args []string, env authRunEnv) int {
-	ctx, cancel := context.WithTimeout(context.Background(), credentialPrintTimeout)
+	ctx, cancel := context.WithTimeout(env.ctx, credentialPrintTimeout)
 	defer cancel()
 	modelRuntime, err := coding.CreateModelRuntime(ctx, coding.CreateModelRuntimeOptions{AuthPath: authJSONPath(env.agentDir), AllowModelNetwork: false})
 	if err != nil {
@@ -181,7 +184,7 @@ func runParsedAuthCommand(command *AuthCommand, flags Args, env authRunEnv) (int
 		return 0, &AuthCommandError{Message: strings.Join(messages, "\n")}
 	}
 	if command.Kind != AuthCommandCheck {
-		ctx, cancel := context.WithTimeout(context.Background(), credentialPrintTimeout)
+		ctx, cancel := context.WithTimeout(env.ctx, credentialPrintTimeout)
 		defer cancel()
 		runtime, err := createCredentialPrintRuntime(ctx, env.agentDir)
 		if err != nil {

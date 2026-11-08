@@ -121,3 +121,64 @@ func TestDivergenceQualityRejectsNodeOnlyParityProse(t *testing.T) {
 		})
 	}
 }
+
+// A divergence that a test-mapping entry names is test-level and must carry the intention check: Protects, PiG-shaped test considered and Why not.
+func TestDivergenceQualityRequiresIntentionOnTestLevelRecords(t *testing.T) {
+	repoRoot := testenv.ModuleRoot(t)
+	script := filepath.Join(repoRoot, "automation", "ci", "check-divergence-quality.py")
+	const tail = "Remove when: fixed.\nEvidence: test.\nSCRUTINIZED:approved\n"
+	labels := map[string]string{
+		"Protects":                   "Protects: the user-agent string format.\n",
+		"PiG-shaped test considered": "PiG-shaped test considered: a Go test of the bug report environment.\n",
+		"Why not":                    "Why not: the Go test exists and asserts the divergent form.\n",
+	}
+	complete := ""
+	for _, label := range []string{"Protects", "PiG-shaped test considered", "Why not"} {
+		complete += labels[label]
+	}
+	run := func(t *testing.T, body string, mapped bool) (string, error) {
+		root := t.TempDir()
+		for _, dir := range []string{"docs/parity", "internal/coding/pigversion", "test/parity/interfaces"} {
+			if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(dir)), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		entries := `{"entries":[{"path":"a.test.ts","disposition":"ported"}]}`
+		if mapped {
+			entries = `{"entries":[{"path":"a.test.ts","disposition":"divergence","divergence":"D1"}]}`
+		}
+		files := map[string]string{
+			"internal/coding/pigversion/pigversion.go":         "package pigversion\nconst UpstreamPackageVersion = \"0.84.0\"\n",
+			"test/parity/interfaces/test-mapping-v0.84.0.json": entries,
+			"docs/parity/DIVERGENCES.md":                       "## D1 first\n\n" + body + tail,
+			"docs/additive-features.md":                        "## D2 additive\n\nStock disposition: inert capability.\n" + tail,
+		}
+		for name, data := range files {
+			if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(name)), []byte(data), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		output, err := exec.Command("python3", script, "--root", root).CombinedOutput()
+		return string(output), err
+	}
+	if output, err := run(t, complete, true); err != nil {
+		t.Fatalf("complete test-level record rejected:\n%s", output)
+	}
+	if output, err := run(t, "", false); err != nil {
+		t.Fatalf("product record needs no intention check:\n%s", output)
+	}
+	for label := range labels {
+		t.Run("missing "+label, func(t *testing.T) {
+			body := strings.Replace(complete, labels[label], "", 1)
+			if output, err := run(t, body, true); err == nil || !strings.Contains(output, "missing non-empty '"+label+":'") {
+				t.Fatalf("record without %q passed:\n%s", label, output)
+			}
+		})
+		t.Run("blank "+label, func(t *testing.T) {
+			body := strings.Replace(complete, labels[label], label+":\n", 1)
+			if output, err := run(t, body, true); err == nil || !strings.Contains(output, "missing non-empty '"+label+":'") {
+				t.Fatalf("record with blank %q passed:\n%s", label, output)
+			}
+		})
+	}
+}

@@ -10,10 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/text"
@@ -51,13 +53,13 @@ func PlanRadiusMcpServer(providerID, agentDir, cwd string) (*RadiusMcpServerPlan
 	} else {
 		namespaces := make(map[string]bool, len(servers))
 		for _, server := range servers {
-			namespaces[mcpNamespace(server.Name)] = true
+			namespaces[mcpshared.McpNamespace(server.Name)] = true
 		}
-		for suffix := 1; namespaces[mcpNamespace(name)]; suffix++ {
+		for suffix := 1; namespaces[mcpshared.McpNamespace(name)]; suffix++ {
 			if suffix == 1 {
 				name = "radius-mcp"
 			} else {
-				name = fmt.Sprintf("radius-mcp-%d", suffix)
+				name = "radius-mcp-" + strconv.Itoa(suffix)
 			}
 		}
 	}
@@ -74,16 +76,13 @@ func (plan *RadiusMcpServerPlan) Apply() (bool, error) {
 	return mcpext.AddMcpServerConfigJSON(plan.McpPath, plan.Name, plan.Config)
 }
 
-// mcpNamespace is packages/mcp/src/naming.ts mcpNamespace: `mcp__<server>` with `-` replaced by `_`.
-func mcpNamespace(server string) string {
-	return "mcp__" + strings.ReplaceAll(server, "-", "_")
-}
-
 // radiusMcpServerConfig is the server entry that uses the Radius login: an existing entry keeps its members in order
 // with `auth` set, as Pi's `{ ...existing.config, auth }` does, and a new one is the Radius MCP URL. `auth` replaces the
 // MCP OAuth sign-in, so `oauth` is removed.
 func radiusMcpServerConfig(mcpPath, name string, existing bool, providerID string) (json.RawMessage, error) {
-	auth, err := json.Marshal(map[string]string{"provider": providerID})
+	auth, err := json.Marshal(struct {
+		Provider string `json:"provider"`
+	}{providerID})
 	if err != nil {
 		return nil, err
 	}

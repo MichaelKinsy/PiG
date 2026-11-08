@@ -83,7 +83,7 @@ func TestLoopbackSignInCompletesThroughTheLoopbackCallbackServer(t *testing.T) {
 	if got.err != nil {
 		t.Fatal(got.err)
 	}
-	if err := oauth.CompleteMcpSignIn(t.Context(), options, authorization, got.response); err != nil {
+	if err := oauth.CompleteMcpSignIn(t.Context(), oauth.McpCompleteSignInOptions{McpSignInOptions: options, Authorization: authorization, Response: got.response}); err != nil {
 		t.Fatal(err)
 	}
 	state, _ := store.Load(t.Context())

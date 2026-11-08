@@ -73,7 +73,7 @@ precedence = "closest"
 SPDX-FileCopyrightText = "Copyright Michael Kinsy"
 SPDX-License-Identifier = "MIT"
 
-# The Mermaid renderer is a Go port of grok-mermaid 0.2.2. Files with more
+# The Mermaid renderer is a Go port of lovely-mermaid 0.3.3. Files with more
 # exact in-file declarations, including unicode-width data, take precedence.
 [[annotations]]
 path = "internal/mermaid/**"
@@ -549,6 +549,16 @@ precedence = "closest"
 SPDX-FileCopyrightText = "Copyright (C) 2014-2019 Matt Butcher and Matt Farina"
 SPDX-License-Identifier = "MIT"
 
+# PiG fork of the root-locale part of golang.org/x/text v0.43.0 collate (third_party/collate/FORK.md).
+[[annotations]]
+path = "third_party/collate/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Michael Kinsy",
+  "Copyright 2009 The Go Authors",
+]
+SPDX-License-Identifier = "MIT AND BSD-3-Clause"
+
 
 # Test bitmaps of the image-rs repository (tests/images/bmp, v0.24.9), several of them files of Jason Summers' BMP Suite (public domain),
 # which the Photon BMP decoder corpus reads (internal/photonimage/testdata/bmp-real).
@@ -591,3 +601,17 @@ path = "internal/photonimage/testdata/png-real/go/*.png"
 precedence = "closest"
 SPDX-FileCopyrightText = "The Go Authors"
 SPDX-License-Identifier = "BSD-3-Clause"
+
+# internal/sortx/zsortfunc.go is Go 1.27.3's src/sort/zsortfunc.go with the helper declarations it needs, under the Go Authors' license.
+[[annotations]]
+path = "internal/sortx/zsortfunc.go"
+precedence = "override"
+SPDX-FileCopyrightText = "The Go Authors"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+# internal/yaml12/testdata/v3diff/piglet-corpus.json holds Piglet YAML documents as JSON strings. Each embedded document starts with its own SPDX header, which REUSE must not read as the file's license: the annotation gives the file one and overrides the text.
+[[annotations]]
+path = "internal/yaml12/testdata/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright Michael Kinsy"
+SPDX-License-Identifier = "MIT"

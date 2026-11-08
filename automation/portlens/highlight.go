@@ -14,7 +14,7 @@ import (
 	"github.com/alecthomas/chroma/v2"
 	chtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/dlclark/regexp2"
+	"github.com/dlclark/regexp2/v2"
 )
 
 var (

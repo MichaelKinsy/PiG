@@ -37,7 +37,7 @@ func (m *GeneratedModel) OpenRouterVariant(variant string) GeneratedModel {
 	derived.ID = m.ID + ":" + variant
 	derived.DisplayName = m.DisplayName + " (" + variant + ")"
 	if m.Record != "" {
-		derived.Record = rewriteRecordIdentity(m.Record, derived.ID, derived.DisplayName)
+		derived.Record = deriveCatalogRecord(m.Record, derived.ID, derived.DisplayName)
 	}
 	return derived
 }
@@ -159,7 +159,7 @@ func (m *Model) openRouterVariant(variant string) *Model {
 	derived.ID = m.ID + ":" + variant
 	derived.DisplayName = m.DisplayName + " (" + variant + ")"
 	if m.catalogRecord != "" {
-		derived.catalogRecord = rewriteRecordIdentity(m.catalogRecord, derived.ID, derived.DisplayName)
+		derived.catalogRecord = deriveCatalogRecord(m.catalogRecord, derived.ID, derived.DisplayName)
 	}
 	return &derived
 }

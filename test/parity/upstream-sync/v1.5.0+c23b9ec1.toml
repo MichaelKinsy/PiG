@@ -4,9 +4,9 @@ to = "1.5.0+c23b9ec1"
 [[files]]
 path = "packages/agent/src/proxy.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:agent/proxy_test.go#TestProxyRequestPreservesOptionPresence"]
+rationale = "Pi a758f3ae1 (#11545, Anthropic message threads) adds disableContinuation to the serializable proxy stream options and copies it in buildProxyRequestOptions. ProxyStreamOptions.DisableContinuation is sent as `disableContinuation: true` and omitted when false; the new `disable continuation` case of the option-presence test pins the request body."
 
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
@@ -32,9 +32,9 @@ rationale = "da95cd79c and 5c6ce2b32 change the lazy Bedrock loader for code-spl
 [[files]]
 path = "packages/ai/src/api/lazy.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/anthropic_missing_key_abort_pi_test.go#TestAnthropicMessagesAPIMissingKeyIsAbortAwareForStreamAndASetupFailureForStreamSimple", "test:ai/api_streams_aliases_pi_test.go#TestLegacyAPIAliasesKeepTheAuthenticationTimingOfTheirMethodUpstream", "test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal", "test:ai/lazy_setup_error_order_test.go#TestLazySetupRejectionIsAbortedWhenTheRequestSignalIsAborted"]
+rationale = "f3a64af07 (#8635) gives lazyStream a signal parameter: a setup that rejects ends as \"aborted\" when the signal is aborted, whatever the cause, and as \"error\" otherwise (lazy.ts:83). ai.LazyStream takes the request context and pushModelsSetupError (ai/models_runtime_stream.go) reads its cancellation for the reason; lazyApi passes options.signal, which the API streams in ai/api_streams.go pass as the call context. Dynamic module loading stays designed out (static linking)."
 
 [[files]]
 path = "packages/ai/src/api/openai-codex-responses.ts"
@@ -102,9 +102,9 @@ rationale = "The generated catalog follows the pin (make model-catalogs; Qwen To
 [[files]]
 path = "packages/ai/src/models.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal", "test:coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled", "test:coding/model_runtime_typed_review_test.go#TestModelRuntimeNonChatRejectionIsAbortedUnderCancellation", "test:ai/lazy_setup_error_order_test.go#TestLazySetupRejectionIsAbortedWhenTheRequestSignalIsAborted", "test:ai/models_dispatch_abort_test.go#TestModelsDispatchSetupErrorsAreAbortedWhenTheRequestSignalIsAborted"]
+rationale = "f3a64af07 (#8635) passes options.signal to lazyStream at all five sites of models.ts (stream :907, streamSimple :932, streamDeferred :957, the provider dispatch without an API implementation :1118, fetchDeferred :1176). The Go Models runtime and ai.CreateProvider pass the request context to the same setup-error path, and the three tests cover stream/streamSimple rejection through the model runtime and the two provider-level rejections (no API implementation, no deferred support) with a cancelled and a live context."
 
 [[files]]
 path = "packages/ai/src/providers/all.ts"
@@ -3477,156 +3477,156 @@ rationale = "Pi deletes the v1 chord layer (src/wire.ts is the pre-next root fil
 [[files]]
 path = "packages/codemode/src/declarations.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:codemode/declarations_test.go#TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments", "test:codemode/declarations_test.go#TestResolveSchemaRefReturnsNothingForRemoteMissingAndMalformedReferences"]
+rationale = "Pi 6d3e342b2 (#11803): resolveSchemaRef is exported and a malformed percent escape names nothing (codemode.ResolveSchemaRef)."
 
 [[files]]
 path = "packages/codemode/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:codemode/declarations_test.go#TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments"]
+rationale = "The package index exports resolveSchemaRef; Go exports codemode.ResolveSchemaRef and ResolveSchemaRefJSON."
 
 [[files]]
 path = "packages/coding-agent/src/cli/args.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/args_test.go#TestHelpTextDescribesAuthLoginLogoutAndStatus"]
+rationale = "Pi: the help line for the auth command reads 'Log in or out, print credentials, or check provider readiness'; the help text test asserts the line."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-command.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_command_oracle_test.go#TestAuthCommandMatchesPi"]
+rationale = "coding/cli/auth_command.go: the auth command's help, arguments and errors match Pi's (oracle)."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-login.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_login_test.go#TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive", "test:coding/cli/auth_login_test.go#TestAuthLoginReportsCancellation"]
+rationale = "coding/cli/auth_login.go: a login that fails with the message \"Login cancelled\" or whose signal aborted reports \"Login cancelled.\" (auth-login.ts:78), including the ai providers' own errors."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-logout.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_logout_test.go#TestAuthLogoutRemovesAStoredAccountLogin", "test:coding/cli/auth_logout_test.go#TestAuthLogoutReportsCommittedCredentialRemovalSeparatelyFromAFailedLogout"]
+rationale = "coding/cli/auth_logout.go ports auth-logout.ts."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-terminal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_terminal_test.go#TestAuthTerminalCancelsTheLoginWhenStdinClosesBeforeAnAnswer", "test:coding/cli/auth_terminal_test.go#TestAuthTerminalPromptCancellationDoesNotCancelTheWholeLogin"]
+rationale = "coding/cli/auth_terminal.go ports auth-terminal.ts (secret prompt in raw mode, cancellation by context)."
 
 [[files]]
 path = "packages/coding-agent/src/cli/config-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/config_theme_test.go#TestConfigSelectorUIUsesTheUsersKeybindings"]
+rationale = "Pi b0c64f33c: selectConfig installs the user's keybindings before the UI runs (coding/cli config selector)."
 
 [[files]]
 path = "packages/coding-agent/src/core/agent-session-runtime.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved", "test:coding/runtime_dispose_settlement_test.go#TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"]
+rationale = "Pi (#11692): disposing the runtime aborts the session and waits for credential writes in progress, so a rotated single-use refresh token is saved before exit; both orderings are asserted."
 
 [[files]]
 path = "packages/coding-agent/src/core/agent-session.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/session_queue_images_test.go#TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages", "test:coding/session_tree_prompt_overlap_test.go#TestThinkingLevelIsRecordedOnTheNewBranchBeforeTheNextPrompt", "test:coding/session_tree_prompt_overlap_test.go#TestNavigationIsRejectedDuringAnAwaitedInputHook", "test:coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream", "test:coding/session_reload_busy_test.go#TestSessionReloadRejectedWhileRunningOrCompacting"]
+rationale = "Pi: queued messages' images are resized at delivery (#11738), prompt preflight reserves the context so tree navigation cannot start meanwhile (#9154), the thinking level is recorded on the new branch (#11451), model cycling from outside the list picks the first/last/only entry (#11806), and reload is refused while streaming or compacting; each has a Go test."
 
 [[files]]
 path = "packages/coding-agent/src/core/auth-storage.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/pilock/symlink_alias_test.go#TestAuthLocksShareOneLockAcrossSymlinkedPaths"]
+rationale = "Pi (#11655): the auth.json lock is taken on the resolved file, so a symlinked alias waits for a lock held on the real file in both the cancellable and the synchronous loops."
 
 [[files]]
 path = "packages/coding-agent/src/core/bash-executor.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/compaction/bash_discarded_output_test.go#TestBashExecutionToTextNamesTheLogOfDiscardedOutput", "test:internal/codingagent/tools/bash_executor_truncation_test.go#TestExecuteBashWithOperationsReportsDiscardedChunks10164"]
+rationale = "Pi 66c655677: a bash result whose head the output window dropped reports truncated (D244)."
 
 [[files]]
 path = "packages/coding-agent/src/core/cache-warmer.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions", "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"]
+rationale = "Pi: the warm request sets disableContinuation so it does not replace thread state (asserted on the recorded warm options), and formatCacheWarmingUsage takes the total cost and note (asserted by the usage-format test)."
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/utils.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/compaction/serialization_oracle_test.go#TestSerializeConversationDropsASurrogatePairAtTheCut"]
+rationale = "Pi: truncateForSummary slices with sliceHead so a tool result cut inside a surrogate pair keeps the pair whole; the marker still counts the full units."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:test/extension-conformance/markdown_contexts_test.go#TestMarkdownContextsAcrossSDKs"]
+rationale = "Pi eebd5d90 exports MarkdownMessageType, MarkdownTransformerOptions and MarkdownTransformerRegistration; Go has no barrel exports, the names are coding/extension (MarkdownMessageType, DefaultMarkdownMessageTypes, Extension.MarkdownMessageTypes)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/loader.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:extensions/sdk/markdown_message_types_test.go#TestMarkdownTransformerMessageTypesOnTheRegisterFrame", "test:coding/extension/host/subprocess/markdown_message_types_test.go#TestRegisteredMarkdownMessageTypesReachTheBuiltExtension", "test:coding/extension/host/subprocess/node_runtime_markdown_types_test.go#TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes"]
+rationale = "Pi eebd5d90 registerMarkdownTransformer(transformer, options): the SDKs and the host carry messageTypes on the register frame (markdown_message_types)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/runner.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder", "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"]
+rationale = "Pi eebd5d90 getMarkdownTransformers filters each transformer to its message types (coding/extension/host/inproc/runner.go restrictMarkdownTransformer)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/types.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:test/extension-conformance/markdown_contexts_test.go#TestMarkdownContextsAcrossSDKs"]
+rationale = "Pi eebd5d90 MarkdownMessageType gains custom, summary and changelog; MarkdownTransformerOptions.messageTypes (extensions/sdk, sdk-rs, sdk-py, sdk-lisp, runtime-node, sdk-ts typecheck)."
 
 [[files]]
 path = "packages/coding-agent/src/core/keybindings.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/keybindings_platform_test.go#TestKeybindingDefinitionsApplyPlatformDefaults"]
+rationale = "Pi: app.clipboard.pasteImage defaults to alt+v and ctrl+v where Windows defaults apply; internal/codingagent matches it."
 
 [[files]]
 path = "packages/coding-agent/src/core/mcp-servers.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/mcp_servers_test.go#TestMcpServerRegistryKeepsOwnershipOrderAndCopies", "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi"]
+rationale = "coding/extension/mcp_servers.go ports mcp-servers.ts; validation lives in internal/mcpshared (Pi 76c040a2a)."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-resolver.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/model_resolver_defaults_upstream_test.go"]
+rationale = "Pi: default models track current catalogs (minimax MiniMax-M3, vercel-ai-gateway zai/glm-5.3, anthropic claude-opus-5-5, qwen token plan qwen3.8-max); the Go defaults test asserts each provider default."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-runtime.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled", "test:coding/model_runtime_setup_abort_upstream_test.go#TestRequestCancelledBeforeItsProviderStartsIsAnAbortedPiSetupError", "test:coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved"]
+rationale = "Pi: every model-runtime lazyStream passes the request signal, so a setup rejected after abort ends as aborted (#8635), and settleCredentialWrites waits for credential writes in progress (#11692); both are asserted."
 
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
@@ -3645,37 +3645,37 @@ rationale = "Pi 96667f342 (#11873) keeps an apostrophe inside a word in prompt t
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/model_runtime_setup_abort_upstream_test.go#TestRequestCancelledBeforeItsProviderStartsIsAnAbortedPiSetupError"]
+rationale = "Pi: composed provider streams pass the request signal to lazyStream; a registered stream provider and a built-in provider both end an already-aborted request as aborted without running the provider."
 
 [[files]]
 path = "packages/coding-agent/src/core/provider-matching.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/provider_matching_test.go#TestProviderReferenceMatching"]
+rationale = "Pi: findMatchingProviders matches IDs and display names case-insensitively, keeps all matches in input order, never fuzzy-matches and never matches an empty reference."
 
 [[files]]
 path = "packages/coding-agent/src/core/radius-mcp.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/radius_login_mcp_offer_upstream_test.go#TestRadiusMcpServerConfig", "test:internal/codingagent/radius_login_mcp_offer_upstream_test.go#TestRadiusLoginOffersTheRadiusMCPServerUpstream"]
+rationale = "internal/codingagent/radius_mcp.go ports radius-mcp.ts; the namespace check uses internal/mcpshared."
 
 [[files]]
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/runtime_close_credential_writes_test.go#TestRuntimeSettleCredentialWritesReturnsTheCancellationCause", "test:coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved", "test:ai/runtime_credentials_settled_test.go#TestRuntimeCredentialsSettledResolvesAfterAPendingModificationFails"]
+rationale = "Pi b2cb62923 (#11692): pending credential modifications are tracked and settled before exit."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/bash.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go#TestBashTimeoutAfterShellExit11613"]
+rationale = "Pi (#11613): a timeout after the shell exited kills background process groups and reports the command result and the still-writing background processes."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit-diff.ts"
@@ -3694,9 +3694,9 @@ rationale = "Pi d448c51e2 (#11751): the edit tool computes its diff before writi
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_ls_limit_test.go#TestFindLimitEdgeCases7121"]
+rationale = "Pi 676af1d77 (#7121): a find limit below 1 means 1 and the limit notice needs one more result (D253)."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
@@ -3708,9 +3708,9 @@ rationale = "Pi 8da141c2a (#11705, #9276, #11423) takes the context lines from r
 [[files]]
 path = "packages/coding-agent/src/core/tools/ls.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_ls_limit_test.go#TestLsLimitEdgeCases7121"]
+rationale = "Pi 676af1d77 (#7121): an ls limit of 0 means 1 (D253)."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/read.ts"
@@ -3729,121 +3729,121 @@ rationale = "Pi 9e870f6f0 keeps a surrogate pair whole when truncateLine, sliceH
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/execute.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/execute_oracle_test.go#TestTruncateTextCutsAtCodeUnits", "test:coding/extension/builtin/codemode/execute_oracle_test.go#TestTruncateOutputKeepsSurrogatePairsWhole"]
+rationale = "Pi 9e870f6f0 (D252): output truncation uses sliceHead and sliceTail, which never split a surrogate pair."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/tool.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/tool_refs_pi_test.go#TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences", "test:coding/extension/builtin/codemode/description_helpers_test.go#TestMalformedRefInAToolSchemaRendersAsUnknownInTheDescription"]
+rationale = "Pi (#11803) makes describeFields and describeUnionFields follow local $refs into the output schema's root via resolveSchemaRef. The Go description renders the fields behind a local $ref (the first test) and keeps a malformed reference as unknown (the second)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/client.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/client_test.go#TestClientRequestErrorsMirrorFetch", "test:internal/codingagent/llama/client_test.go#TestWatchNamesTheServerAndTheCauseWhenTheSSEConnectionFails"]
+rationale = "Pi ea0f49a36 (#11745) routes the client's fetches, the models/sse stream included, through fetchServer, which names the server and the network-level cause: `Could not reach llama.cpp server at <url>: <cause>`. The Go client returns that message with its cause (D256); the test checks the text for a closed port (Go's dial error stands in for Node's ECONNREFUSED detail) and the original error."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands"]
+rationale = "internal/codingagent/llama/ui.go: a Hugging Face search keeps the row the user browsed to (Pi df0d88aac)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/cli.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/cli_oracle_test.go#TestMcpCommandMatchesPi"]
+rationale = "coding/mcpext ports the mcp command; the oracle compares it with Pi's."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/config.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/config_pi_test.go#TestIsMcpServerOverrideIsTrueForEntriesWithoutCommandURLOrType"]
+rationale = "Pi 76c040a2 moves the override check (an entry without command, url or type) into pi-mcp as isMcpServerOverride and mcpNamespace; coding/mcpext/config.go calls mcp.IsMcpServerOverride for the project-override check and updateMcpServerConfig's keepDefaults."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/truncate_slice_test.go#TestTruncateDropsASplitSurrogatePair"]
+rationale = "Pi 9e870f6f0 (D252): the MCP description truncation uses sliceHead; createMcpToolName and mcpNamespace now come from pi-mcp (mcp package)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInCancelsWhileAnotherProcessHoldsTheRefreshLock", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed", "test:coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDAcceptsTheAuthorizationResponseOnlyOnTheServerSpecificRedirectURI", "test:mcp/oauth/sign_in_pi_test.go#TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong"]
+rationale = "Pi bb266bf3 moves MCP OAuth sign-in into pi-mcp in two halves and 797e122c refreshes with the app's redirect URI and ends the wait for the refresh lock when the sign-in is cancelled; only a McpRefreshLockBusyError falls back to the browser step. coding/mcpext/oauth.go keeps the credential store, the lock (a held lock reports McpRefreshLockBusyError) and the browser prompt; the tests cover the lock-wait cancellation (ported from mcp-oauth-refresh.test.ts with this change), the redirect-URI refresh and the route-specific redirect."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/resources.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/output_limit_pi_test.go#TestLimitMcpContentCutsTheMiddleOfLongerTextSavesTheFullTextAndKeepsImages"]
+rationale = "Pi 76c040a2 moves limitMcpContent to pi-mcp and resources.ts passes its saveToTempFile saver; coding/mcpext/resources.go calls limitMcpContent (the model-content wrapper of mcp.LimitMcpContent) with SaveToTempFile, and the mcp test pins the cut, the saved full text and the kept images."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/runtime.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/truncate_slice_test.go#TestStderrTailDropsASplitSurrogatePair", "test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthRefreshWaitsForARunningRefreshToSaveTheNewTokens"]
+rationale = "Pi 9e870f6f0 (D252) takes the stderr tail with sliceTail so no surrogate pair is split (jsstring.SliceTail), and 76c040a2 moves McpAuthProvider and the OAuth types to pi-mcp, which the connection's provider uses."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/tools.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing", "test:mcp/output_limit_pi_test.go#TestLimitMcpContentCutsMultiByteTextOnlyAtCharacterBoundaries", "test:mcp/naming_pi_test.go#TestCreateMcpToolNameShortensNamesOver64CharactersWithAHashOfServerAndTool"]
+rationale = "Pi 76c040a2 moves createMcpToolName, limitMcpContent and the input-schema normalisation to pi-mcp; coding/mcpext/tools.go calls mcp.NormalizeMcpInputSchema and mcp.LimitMcpContent. The mcp tests pin each moved helper, including the multi-byte cut Pi's mcp-extension test dropped when the helper moved."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/tool-search/tool.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/toolsearch/tool_test.go#TestToolSearchAcceptsALimitBeyondTheIntRange", "test:coding/extension/builtin/toolsearch/tool_test.go#TestToolSearchRejectsAnEmptyQueryAndANonPositiveOrFractionalLimit"]
+rationale = "coding/extension/builtin/toolsearch ports tool.ts, schema refs through internal/schemaref (Pi 6d3e342b2)."
 
 [[files]]
 path = "packages/coding-agent/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent"]
+rationale = "Pi eebd5d90 exports MarkdownMessageType, MarkdownTransformerOptions and MarkdownTransformerRegistration from the package root; Go has no barrel exports, the names live in coding/extension."
 
 [[files]]
 path = "packages/coding-agent/src/main.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/main_test.go#TestVersionFlagsPrintPisVersionWhileVersionCommandNamesBoth"]
+rationale = "coding/cli/main.go ports main.ts at c23b9ec1."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader"]
+rationale = "tui/branch_summary.go: the expanded body runs the transformers of the summary type on the summary without Pi's header, with the entry's messageId and timestamp (tui.MarkdownSurface)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader"]
+rationale = "tui/compaction_summary.go: as the branch summary."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/custom-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent", "test:internal/codingagent/markdown_surface_async_test.go#TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop"]
+rationale = "tui/custom_message.go: the default body runs the custom transformers; a renderer's component stays and is not called again. pig additive (D19): the chain runs off the render loop."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
@@ -3855,72 +3855,72 @@ rationale = "Pi dca1f5552 (#9274) separates the whitespace both changed lines st
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/extension-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/extension_selector_test.go#TestExtensionSelectorWindowsLongOptionListsAroundTheSelection", "test:tui/extension_selector_test.go#TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator"]
+rationale = "Pi (#6688): the selector draws a window of 10 options centered on the selection with a muted '(n/total)' row; the tests assert the windows at 1, 8 and 15 of 15 options and no indicator for short and empty lists."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/login_dialog_device_code_test.go#TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs"]
+rationale = "Pi: the login dialog uses the web-url helper; control characters of non-web URLs are replaced."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/mermaid.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/mermaid_upstream_test.go#TestMermaidRenderingUpstream", "test:internal/codingagent/mermaid_transform_test.go#TestMermaidTransformMatchesUpstream", "test:internal/codingagent/mermaid_transform_test.go#TestMermaidThemedTransformMatchesUpstream", "test:internal/mermaid/render_test.go#TestRenderMatchesUpstream", "test:internal/mermaid/parse_mutation_test.go#TestRenderMatchesUpstreamOnMutatedSources"]
+rationale = "Pi aceb1bd1 (#8158) replaces grok-mermaid with lovely-mermaid 0.3.3: the theme maps through getFgAnsi and toAnsi, classDef styles apply over it, and a link opens only on node text on terminals with hyperlinks. internal/mermaid is ported from lovely-mermaid 0.3.3 and matches its render() and toAnsi() byte for byte over the corpus and 32k extra mutated sources; themedLines does the mermaid.ts mapping, and the transformer renders only on user, assistant and summary messages (eebd5d90c, #11756), so thinking, custom and changelog Markdown stays raw."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/model_select_refresh_test.go#TestModelSelectorUpdateModels", "test:tui/model_select_refresh_test.go#TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive"]
+rationale = "Pi (#9109): a catalog refresh keeps the browsed model selected, follows it when rows shift, and falls back to the current model when it disappears, also under an active query."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader"]
+rationale = "tui/skill_invocation.go: the expanded skill block runs the custom transformers on the skill content without the header."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/tree_select_empty_state_test.go#TestTreeSelectSearchCursor"]
+rationale = "Pi: the search line draws the cursor marker plus a reverse-video cell only while the selector is focused, and focus moves to the label input and back; asserted for focus, label input and a 10-column width."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/live_message_meta_test.go#TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity", "test:internal/codingagent/live_message_meta_test.go#TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity", "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity", "test:internal/codingagent/markdown_surface_async_test.go#TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop"]
+rationale = "internal/codingagent ports the interactive-mode.ts changes of c23b9ec1: Markdown transformer surfaces with messageMeta only from restored entries (renderSessionEntries), live custom messages and boundary summaries without it."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/highlight_test.go#TestLanguageFromPath"]
+rationale = "Pi: dart, nix, groovy and gradle extensions map to their eagerly loaded languages; TestLanguageFromPath asserts dart, nix, groovy, gradle and kotlin paths."
 
 [[files]]
 path = "packages/coding-agent/src/modes/print-mode.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/print_final_disposal_signal_test.go#TestPrintModeSignalDuringFinalDisposalWaitsForIt"]
+rationale = "Pi (#11752): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal and a repeated one exits at once with 143."
 
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand", "test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownFromSessionStartExits", "test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown", "test:coding/cli/rpc_repeated_signal_test.go#TestRPCRepeatedSignalDuringShutdownExitsAtOnce"]
+rationale = "Pi: an extension shutdown request on an idle session exits without another command; a repeated signal skips cleanup."
 
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"
@@ -3932,9 +3932,9 @@ rationale = "Pi 342514bdf (#11707) and 806cdd68e (#11711): pig update lists the 
 [[files]]
 path = "packages/coding-agent/src/utils/changelog.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/changelog_test.go#TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes"]
+rationale = "Pi 9a1953961 (#11703): getNewEntries reads only the leading major.minor.patch of the recorded version (D245)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize.ts"
@@ -3946,16 +3946,16 @@ rationale = "Pi 1f7c685b (#10695) resolves a resize only after its worker thread
 [[files]]
 path = "packages/coding-agent/src/utils/terminal-question.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/terminalquestion/terminalquestion_test.go#TestCtrlCFailsTheQuestionAndReportsAnInterrupt", "test:internal/terminalquestion/terminalquestion_test.go#TestCallerCancellationDoesNotReportAnInterruptAndKeepsTheLaterAnswer"]
+rationale = "internal/terminalquestion ports terminal-question.ts."
 
 [[files]]
 path = "packages/coding-agent/src/utils/web-url.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginOpensOnlyWebURLs", "test:tui/login_dialog_device_code_test.go#TestLoginURLsOpenOnlyHTTPSignInURLs"]
+rationale = "Pi: only http(s) sign-in URLs are opened (tui LoginBrowserTarget)."
 
 [[files]]
 path = "packages/durable/src/codemode/codemode.ts"
@@ -4618,23 +4618,23 @@ rationale = "Pi af79b0c3d: validate is Validator.Validate, and Parse reuses it."
 [[files]]
 path = "packages/telemetry/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:telemetry/telemetry_now_test.go#TestTelemetryNowCountsSubMillisecondStepsOfTheMonotonicClockWhileTheWallClockStaysInItsMillisecond"]
+rationale = "Pi 378d45a0: the span snapshot documents microsecond times and index.ts exports telemetryNow; telemetry.TelemetryNow (memory_now.go) is exported and tested against Pi's two cases."
 
 [[files]]
 path = "packages/telemetry/src/memory.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:telemetry/telemetry_now_test.go#TestInMemoryStampsStartsWithTelemetryNowToTheMicrosecondInTheirOrder", "test:telemetry/telemetry_now_test.go#TestTelemetryNowFollowsAStepOfTheWallClockPast10ms", "test:telemetry/telemetry_now_test.go#TestInMemoryRoundsEventAndEndTimesToTheMicrosecond"]
+rationale = "Pi 378d45a0: span starts use telemetryNow and event and end times round to the microsecond (telemetry/memory.go, memory_now.go), tested with a mocked Date.now and performance.now as Pi does."
 
 [[files]]
 path = "packages/telemetry/src/render.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:telemetry/render_upstream_test.go#TestRenderTraceRendersLengthsOfTimeToTheMicrosecond", "test:telemetry/render_upstream_test.go#TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessages"]
+rationale = "Pi 378d45a0: lengths of time render to the microsecond and control characters of ids, names, attribute keys and error messages are escaped (telemetry/render.go)."
 
 [[files]]
 path = "packages/tui/src/components/markdown.ts"

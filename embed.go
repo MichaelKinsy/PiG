@@ -10,34 +10,41 @@
 package pig
 
 import (
-	"bytes"
-	"compress/gzip"
 	_ "embed"
 	"io"
+	"unsafe"
+
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
-// The binary carries the changelog gzip-compressed; CHANGELOG.md is the same text uncompressed, the file
-// authors edit. TestBundledChangelogGzipMatchesSource fails when the two differ.
+// The binary carries the changelog as one zstd frame; CHANGELOG.md is the same text uncompressed, the file
+// authors edit. TestBundledChangelogFrameMatchesSource fails when the two differ.
 //
-//go:generate sh -c "gzip -9nc CHANGELOG.md > CHANGELOG.md.gz"
-//go:embed CHANGELOG.md.gz
-var changelogGzip []byte
+//go:generate go run ./automation/gen/zstdfile CHANGELOG.md CHANGELOG.md.zst
+//go:embed CHANGELOG.md.zst
+var changelogFrame []byte
 
-// inflateChangelog decodes the embedded changelog. It is not cached: the caller (the startup What's New check
-// and /changelog) parses it and drops the text, so the ~616 KB string never stays on the live heap of an idle
-// session (TestTmuxIdleMemoryGate). Each call costs a few milliseconds and happens at most once per action.
-func inflateChangelog() string {
-	reader, err := gzip.NewReader(bytes.NewReader(changelogGzip))
+// decodeChangelog decodes the embedded changelog. It is not cached: the caller (the startup What's New check
+// and /changelog) parses it and drops the text, so the ~1 MB string never stays on the live heap of an idle
+// session (TestTmuxIdleMemoryGate). Each call costs about two milliseconds and happens at most once per action.
+func decodeChangelog() string {
+	text, err := zstdblob.Decode(changelogFrame)
 	if err != nil {
-		panic("pig: embedded CHANGELOG.md.gz: " + err.Error())
+		panic("pig: embedded CHANGELOG.md.zst: " + err.Error())
 	}
-	text, err := io.ReadAll(reader)
-	if err != nil {
-		panic("pig: embedded CHANGELOG.md.gz: " + err.Error())
-	}
-	return string(text)
+	// The decoded buffer is this call's own and is never written again, so the string takes it without a second copy of the whole changelog.
+	return unsafe.String(unsafe.SliceData(text), len(text)) //nolint:gosec // G103: text is this call's own buffer and is never written again, so the string aliases it without a second 1 MB copy; nothing else holds the slice
 }
 
-// Changelog returns the bundled CHANGELOG.md, inflated on each call and not cached. Read by internal/codingagent's
+// ChangelogReader streams the embedded changelog's decoded text, for a caller that needs only its head: it decodes no further than it is read.
+func ChangelogReader() io.Reader {
+	reader, err := zstdblob.NewReader(changelogFrame)
+	if err != nil {
+		panic("pig: embedded CHANGELOG.md.zst: " + err.Error())
+	}
+	return reader
+}
+
+// Changelog returns the bundled CHANGELOG.md, decoded on each call and not cached. Read by internal/codingagent's
 // `/changelog` slash handler and the startup What's New.
-func Changelog() string { return inflateChangelog() }
+func Changelog() string { return decodeChangelog() }

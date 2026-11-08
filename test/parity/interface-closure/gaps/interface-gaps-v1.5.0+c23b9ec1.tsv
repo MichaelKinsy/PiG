@@ -12,12 +12,6 @@ pkg:coding-agent/.#CustomMessageComponent	coding-agent	child-gap	tui/custom_mess
 pkg:coding-agent/.#CustomMessageComponent::construct:0	coding-agent	signature-mismatch	tui/custom_message.go#NewCustomMessageComponent
 pkg:coding-agent/.#Extension	coding-agent	child-gap	coding/extension/extension.go#Extension
 pkg:coding-agent/.#Extension::property:markdownTransformer	coding-agent	undecidable	coding/extension/extension.go#Extension.MarkdownTransformer
-pkg:coding-agent/.#ExtensionAPI	coding-agent	child-gap	coding/extension/api.go#API
-pkg:coding-agent/.#ExtensionAPI::property:registerMarkdownTransformer	coding-agent	child-gap	coding/extension/api.go#API.RegisterMarkdownTransformer
-pkg:coding-agent/.#ExtensionAPI::property:registerMarkdownTransformer::call:0	coding-agent	signature-mismatch	coding/extension/api.go#API.RegisterMarkdownTransformer
-pkg:coding-agent/.#MarkdownMessageType	coding-agent	type-mismatch	coding/extension/renderer.go#MarkdownMessageType
-pkg:coding-agent/.#MarkdownTransformerOptions	coding-agent	no-go-symbol	
-pkg:coding-agent/.#MarkdownTransformerOptions::property:messageTypes	coding-agent	child-gap	
 pkg:coding-agent/.#MarkdownTransformerRegistration	coding-agent	no-go-symbol	
 pkg:coding-agent/.#MarkdownTransformerRegistration::property:messageTypes	coding-agent	child-gap	
 pkg:coding-agent/.#MarkdownTransformerRegistration::property:transformer	coding-agent	child-gap	
@@ -38,63 +32,6 @@ pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-ga
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
 pkg:durable/storage/sqlite/node#NodeSqliteDatabase	durable	child-gap	durable/storage/sqlite/node/node.go#NodeSqliteDatabase
 pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0	durable	signature-mismatch	durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase
-pkg:mcp/.#McpHttpServerConfig	mcp	no-go-symbol	
-pkg:mcp/.#McpHttpServerConfig::property:description	mcp	child-gap	
-pkg:mcp/.#McpHttpServerConfig::property:enabled	mcp	child-gap	
-pkg:mcp/.#McpHttpServerConfig::property:headers	mcp	child-gap	
-pkg:mcp/.#McpHttpServerConfig::property:oauth	mcp	child-gap	
-pkg:mcp/.#McpHttpServerConfig::property:timeout	mcp	child-gap	
-pkg:mcp/.#McpHttpServerConfig::property:type	mcp	child-gap	
-pkg:mcp/.#McpHttpServerConfig::property:url	mcp	child-gap	
-pkg:mcp/.#McpOAuthConfig	mcp	no-go-symbol	
-pkg:mcp/.#McpOAuthConfig::property:authServerMetadataUrl	mcp	child-gap	
-pkg:mcp/.#McpOAuthConfig::property:callbackPort	mcp	child-gap	
-pkg:mcp/.#McpOAuthConfig::property:callbackUrl	mcp	child-gap	
-pkg:mcp/.#McpOAuthConfig::property:clientId	mcp	child-gap	
-pkg:mcp/.#McpOAuthConfig::property:clientName	mcp	child-gap	
-pkg:mcp/.#McpOAuthConfig::property:clientRegistration	mcp	child-gap	
-pkg:mcp/.#McpOAuthConfig::property:clientSecret	mcp	child-gap	
-pkg:mcp/.#McpOAuthConfig::property:scope	mcp	child-gap	
-pkg:mcp/.#McpOutputSaver	mcp	child-gap	mcp/output_limit.go#McpOutputSaver
-pkg:mcp/.#McpOutputSaver::call:0	mcp	undecidable	mcp/output_limit.go#McpOutputSaver
-pkg:mcp/.#McpPipe	mcp	child-gap	mcp/pipe.go#McpPipe
-pkg:mcp/.#McpPipe::property:close	mcp	not-exercised	mcp/pipe.go#McpPipe.Close
-pkg:mcp/.#McpPipe::property:close::call:0	mcp	not-exercised	mcp/pipe.go#McpPipe.Close
-pkg:mcp/.#McpPipe::property:closeStdin	mcp	not-exercised	mcp/pipe.go#McpPipe.CloseStdin
-pkg:mcp/.#McpPipe::property:closeStdin::call:0	mcp	not-exercised	mcp/pipe.go#McpPipe.CloseStdin
-pkg:mcp/.#McpPipe::property:exited	mcp	undecidable	mcp/pipe.go#McpPipe.Exited
-pkg:mcp/.#McpPipe::property:write	mcp	not-exercised	mcp/pipe.go#McpPipe.Write
-pkg:mcp/.#McpPipe::property:write::call:0	mcp	not-exercised	mcp/pipe.go#McpPipe.Write
-pkg:mcp/.#McpServerConfig	mcp	no-go-symbol	
-pkg:mcp/.#McpServerConfigOptions	mcp	child-gap	mcp/config.go#McpServerConfigOptions
-pkg:mcp/.#McpServerConfigOptions::property:checkMetadataDocumentCallback	mcp	signature-mismatch	internal/mcpshared/config.go#McpServerConfigOptions.CheckMetadataDocumentCallback
-pkg:mcp/.#McpStdioServerConfig	mcp	no-go-symbol	
-pkg:mcp/.#McpStdioServerConfig::property:args	mcp	child-gap	
-pkg:mcp/.#McpStdioServerConfig::property:command	mcp	child-gap	
-pkg:mcp/.#McpStdioServerConfig::property:cwd	mcp	child-gap	
-pkg:mcp/.#McpStdioServerConfig::property:description	mcp	child-gap	
-pkg:mcp/.#McpStdioServerConfig::property:enabled	mcp	child-gap	
-pkg:mcp/.#McpStdioServerConfig::property:env	mcp	child-gap	
-pkg:mcp/.#McpStdioServerConfig::property:timeout	mcp	child-gap	
-pkg:mcp/.#McpStdioServerConfig::property:type	mcp	child-gap	
-pkg:mcp/.#PipeTransport	mcp	child-gap	mcp/pipe.go#PipeTransport
-pkg:mcp/.#PipeTransport::property:options	mcp	not-exercised	mcp/pipe.go#PipeTransport.Options
-pkg:mcp/.#PipeTransport::property:send	mcp	not-exercised	mcp/pipe.go#PipeTransport.Send
-pkg:mcp/.#PipeTransport::property:send::call:0	mcp	not-exercised	mcp/pipe.go#PipeTransport.Send
-pkg:mcp/.#PipeTransport::property:start	mcp	not-exercised	mcp/pipe.go#PipeTransport.Start
-pkg:mcp/.#PipeTransport::property:start::call:0	mcp	not-exercised	mcp/pipe.go#PipeTransport.Start
-pkg:mcp/.#PipeTransportOptions	mcp	child-gap	mcp/pipe.go#PipeTransportOptions
-pkg:mcp/.#PipeTransportOptions::property:closeTimeoutMs	mcp	not-exercised	mcp/pipe.go#PipeTransportOptions.CloseTimeoutMs
-pkg:mcp/.#PipeTransportOptions::property:maxMessageBytes	mcp	not-exercised	mcp/pipe.go#PipeTransportOptions.MaxMessageBytes
-pkg:mcp/.#PipeTransportOptions::property:maxStderrBytes	mcp	not-exercised	mcp/pipe.go#PipeTransportOptions.MaxStderrBytes
-pkg:mcp/.#PipeTransportOptions::property:onStderr	mcp	not-exercised	mcp/pipe.go#PipeTransportOptions.OnStderr
-pkg:mcp/.#isMcpServerOverride	mcp	child-gap	mcp/config.go#IsMcpServerOverride
-pkg:mcp/.#isMcpServerOverride::call:0	mcp	undecidable	mcp/config.go#IsMcpServerOverride
-pkg:mcp/oauth#McpSignInRedirect	mcp	child-gap	mcp/oauth/sign_in.go#McpSignInRedirect
-pkg:mcp/oauth#McpSignInRedirect::property:kind	mcp	member-missing	mcp/oauth/sign_in.go#McpSignInRedirect
-pkg:mcp/oauth#McpSignInStart	mcp	type-mismatch	mcp/oauth/sign_in.go#McpSignInStart
-pkg:mcp/oauth#completeMcpSignIn	mcp	child-gap	mcp/oauth/sign_in.go#CompleteMcpSignIn
-pkg:mcp/oauth#completeMcpSignIn::call:0	mcp	signature-mismatch	mcp/oauth/sign_in.go#CompleteMcpSignIn
 pkg:schema/.#BigintBounds	schema	no-go-symbol	
 pkg:schema/.#BigintBounds::property:exclusiveMaximum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:exclusiveMinimum	schema	child-gap	

@@ -162,7 +162,7 @@ func (m *InteractiveMode) showStartupChangelog(newEntries []ChangelogEntry, exte
 				return tui.ChalkBold(tui.ActiveTheme().Fg("accent", "What's New"))
 			}, 1, 0))
 			m.chatContainer.Add(tui.NewSpacer(1))
-			m.chatContainer.Add(tui.NewMarkdownWithOptions(jsstring.Trim(changelog), 1, 0, m.markdownThemeWithSettings(), nil, nil))
+			m.chatContainer.Add(m.newChangelogMarkdown(jsstring.Trim(changelog), 1, 0, nil))
 			m.chatContainer.Add(tui.NewSpacer(1))
 		}
 	}
@@ -185,7 +185,7 @@ func (m *InteractiveMode) showStartupChangelog(newEntries []ChangelogEntry, exte
 			for i, update := range extensionUpdates {
 				markdowns[i] = update.Markdown
 			}
-			m.chatContainer.Add(tui.NewMarkdownWithOptions(strings.Join(markdowns, "\n\n"), 1, 0, m.markdownThemeWithSettings(), nil, nil))
+			m.chatContainer.Add(m.newChangelogMarkdown(strings.Join(markdowns, "\n\n"), 1, 0, nil))
 			m.chatContainer.Add(tui.NewSpacer(1))
 		}
 	}
@@ -196,7 +196,7 @@ func (m *InteractiveMode) showStartupChangelog(newEntries []ChangelogEntry, exte
 // handleChangelogCommand appends every released entry oldest-first, with a separate title and borders. CollapseChangelog controls startup notices only.
 func (m *InteractiveMode) handleChangelogCommand() {
 	body := tui.NewPaddedBox(1, 1, nil)
-	changelogBody := tui.NewMarkdownWithOptions(changelogMarkdown(ParseChangelog(bundledChangelog())), 0, 0, m.markdownThemeWithSettings(), nil, nil)
+	changelogBody := m.newChangelogMarkdown(changelogMarkdown(ParseChangelog(bundledChangelog())), 0, 0, nil)
 	changelogBody.FinishStreaming()
 	body.AddChild(changelogBody)
 	m.chatContainer.Add(tui.NewSpacer(1))

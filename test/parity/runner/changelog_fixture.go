@@ -3,8 +3,6 @@
 package runner
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,9 +12,11 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
-// prepareChangelogFixture changes data only: Go embeds the pinned document, gzipped, through a build overlay,
+// prepareChangelogFixture changes data only: Go embeds the pinned document, as a zstd frame, through a build overlay,
 // while Pi reads a private package view through its own PI_PACKAGE_DIR override (config.ts:389-394,455-456).
 // Builds finish before terminal timing starts. Neither checkout nor installed Pi files are modified.
 func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pig, pi BinaryRef) (BinaryRef, BinaryRef, error) {
@@ -33,20 +33,12 @@ func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pi
 		return pig, pi, err
 	}
 	tmp := t.TempDir()
-	// The binary embeds CHANGELOG.md.gz (embed.go), so the overlay replaces that file with the gzipped fixture.
-	var compressed bytes.Buffer
-	zw := gzip.NewWriter(&compressed)
-	if _, err := zw.Write(data); err != nil {
+	// The binary embeds CHANGELOG.md.zst (embed.go), so the overlay replaces that file with the fixture's frame.
+	fixture := filepath.Join(tmp, "CHANGELOG.md.zst")
+	if err := os.WriteFile(fixture, zstdblob.EncodeLibrary(data), 0o600); err != nil {
 		return pig, pi, err
 	}
-	if err := zw.Close(); err != nil {
-		return pig, pi, err
-	}
-	fixture := filepath.Join(tmp, "CHANGELOG.md.gz")
-	if err := os.WriteFile(fixture, compressed.Bytes(), 0o600); err != nil {
-		return pig, pi, err
-	}
-	overlay, err := json.Marshal(map[string]any{"Replace": map[string]string{filepath.Join(root, "CHANGELOG.md.gz"): fixture}})
+	overlay, err := json.Marshal(map[string]any{"Replace": map[string]string{filepath.Join(root, "CHANGELOG.md.zst"): fixture}})
 	if err != nil {
 		return pig, pi, err
 	}

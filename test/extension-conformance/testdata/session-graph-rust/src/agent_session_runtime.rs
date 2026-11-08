@@ -341,7 +341,25 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
 
     // A direct refresh of the live session (the runtime's own after a setup is the one the report shows); Pi's run reads nothing from it, so it adds nothing to the report.
     runtime.session().refresh_context()?;
-    runtime.dispose()?;
+    // dispose settles a run in flight before it emits session_shutdown; the model never ends this run, so only the abort can end it.
+    let observe_file = Path::new(cwd).join("observe-run");
+    std::fs::write(&observe_file, "")?;
+    let hung = runtime.session();
+    let disposed = std::thread::scope(|scope| -> io::Result<()> {
+        let running = scope.spawn(|| hung.prompt("hang-forever"));
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        while !std::fs::read_to_string(&log_file)?.contains("agent_start") {
+            if std::time::Instant::now() > deadline {
+                return Err(io::Error::other("the run never started"));
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        let disposed = runtime.dispose();
+        let _ = running.join();
+        disposed
+    });
+    disposed?;
+    std::fs::remove_file(&observe_file)?;
     let reasons: Vec<String> = calls
         .lock()
         .unwrap()

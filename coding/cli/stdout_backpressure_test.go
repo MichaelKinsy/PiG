@@ -11,11 +11,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 const rpcUsageProbeDir = "testdata/d82-w7"
@@ -228,11 +230,18 @@ func TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame(t *testing.T) {
 	}
 	dir := t.TempDir()
 	cli := filepath.Join(dir, "cli.js")
-	if err := os.WriteFile(cli, []byte("process.exit(0)\n"), 0o600); err != nil {
+	if err := os.WriteFile(cli, []byte("require('node:fs').closeSync(0)\nconsole.log('up')\nsetTimeout(() => process.exit(0), 300)\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	out := filepath.Join(dir, "rpc-usage.json")
-	output, err := exec.CommandContext(t.Context(), node, filepath.Join(rpcUsageProbeDir, "rpc-usage-probe.mjs"), node, cli, out).CombinedOutput()
+	deferWritePath, err := filepath.Abs(filepath.Join(rpcUsageProbeDir, "defer-stdin-write.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// --import takes a module specifier, not a path: Node reads D:\... as a URL with scheme "d:" and refuses it, so it needs a file:// URL.
+	deferWrite := nodeurl.PathToFileURL(deferWritePath, runtime.GOOS == "windows")
+	// This CLI closes stdin and then writes a line; the preload holds the probe's prompt until that line, so the write fails with EPIPE; the probe must still report that the CLI wrote no frame.
+	output, err := exec.CommandContext(t.Context(), node, "--import", deferWrite, filepath.Join(rpcUsageProbeDir, "rpc-usage-probe.mjs"), node, cli, out).CombinedOutput()
 	if err == nil {
 		t.Fatalf("the probe succeeded for a CLI that wrote no frame; output:\n%s", output)
 	}

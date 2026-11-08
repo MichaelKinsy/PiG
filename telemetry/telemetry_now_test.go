@@ -94,3 +94,32 @@ func TestInMemoryStampsStartsWithTelemetryNowToTheMicrosecondInTheirOrder(t *tes
 		t.Fatalf("spans = %v, want %v", got, want)
 	}
 }
+
+// Pi 378d45a0 rounds the event time and the end time of a span to the microsecond too (`microseconds(...)` in memory.ts), not only the start.
+// The steps below are not binary fractions, so an unrounded value differs from the rounded one.
+func TestInMemoryRoundsEventAndEndTimesToTheMicrosecond(t *testing.T) {
+	_, restoreDate := jsclock.MockDateNow(1000)
+	defer restoreDate()
+	clock, restoreClock := jsclock.MockPerformanceNow(100)
+	defer restoreClock()
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	if err := recorder.StartSpan(telemetry.SpanOptions{Name: "rounded"}, func(span telemetry.TelemetrySpan) error {
+		clock.Set(100.1234567)
+		span.AddEvent("tick", nil)
+		clock.Set(100.9876543)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	found, err := recorder.FindTraces(telemetry.TraceQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	span := found.Traces[0].Spans[0]
+	if len(span.Events) != 1 || span.Events[0].TimeMs != 0.123 {
+		t.Errorf("event = %+v, want TimeMs 0.123", span.Events)
+	}
+	if span.EndedMs != 1000.988 {
+		t.Errorf("EndedMs = %v, want 1000.988", span.EndedMs)
+	}
+}

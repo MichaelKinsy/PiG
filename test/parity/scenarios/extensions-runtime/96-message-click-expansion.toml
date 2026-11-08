@@ -1,0 +1,95 @@
+# Behavior family: extensions-runtime
+# Upstream evidence: real Pi 1.5.0 (extensions/sdk-ts/node_modules) run side by side with PiG in tmux at 100x60 over the same session fixture, three pairs, byte-equal captures; the base PiG binary fails the first wait step (a click on the custom card does nothing).
+# Surface: a left click on a transcript message toggles that message's expansion (Pi: `MouseRegion` in the compaction, branch-summary and skill
+# components, and in a custom message renderer's own component, whose state the extension keeps in a `WeakMap` keyed by the message object).
+#
+# click-card.mjs registers a message renderer written as Pi's are: the card's expansion lives in a WeakMap keyed by the message (Pi hands the renderer
+# the same object on every rebuild), a MouseRegion over the card flips it on a left click, and a new global expansion resets it. The session fixture
+# (testdata/click-cwd) holds a compaction summary, a skill block, a branch summary and two `click-card` messages, all collapsed on resume.
+#
+# The first click is on the second card's padding, outside its MouseRegion (the card sits in a padded Box), which Pi leaves unhandled. The rest go bottom to top so an expansion never moves a row still to be clicked (height 60: nothing scrolls; both hosts lay the transcript out from row 3 with
+# the quiet startup header): the second card, the first card, the
+# branch summary, the skill block, the compaction summary, then the first card again, which the expansions above it moved to row 33 (it collapses; the second stays open). The crop starts at the
+# compaction heading and ends with the second card's details.
+#
+# Before the click-renderer slice a click on a custom card did nothing under PiG (the renderer had no identity and its component no mouse); the
+# built-in cards already toggled.
+
+name = "96-message-click-expansion"
+description = "Left clicks expand the built-in compaction, skill and branch summaries and a custom renderer's card, and a second click collapses the card"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "packages/tui/src/components/mouse-region.ts",
+]
+tags = ["hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/quiet-pig-home", "COLORTERM="]
+pi = ["PI_CODING_AGENT_DIR=testdata/quiet-pi-agent", "PI_SKIP_VERSION_CHECK=1", "COLORTERM="]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+pig_extensions = ["testdata/ext/renderer-click.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/renderer-click.mjs",
+]
+
+[tmux]
+width = 100
+height = 60
+cwd = "testdata/click-cwd"
+ready_pattern_pig = "card:second card:closed"
+ready_pattern_pi = "card:second card:closed"
+ready_timeout_seconds = 30
+capture_start = "[compaction]"
+capture_end = "details of second card"
+
+# A click on the card's padding (column 2) is outside its MouseRegion: Pi leaves it unhandled and it falls through to text selection, so the card
+# stays closed and the next click on the region opens it.
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 32 3b 32 36 4d 1b 5b 3c 30 3b 32 3b 32 36 6d"]
+wait_visible_contains = ["card:second card:closed"]
+wait_stable_milliseconds = 400
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 35 3b 32 36 4d 1b 5b 3c 30 3b 35 3b 32 36 6d"]
+wait_visible_contains = ["details of second card"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 35 3b 32 34 4d 1b 5b 3c 30 3b 35 3b 32 34 6d"]
+wait_visible_contains = ["details of first card"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 35 3b 32 31 4d 1b 5b 3c 30 3b 35 3b 32 31 6d"]
+wait_visible_contains = ["Branch Summary"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 35 3b 39 4d 1b 5b 3c 30 3b 35 3b 39 6d"]
+wait_visible_contains = ["This is the test skill body content."]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 35 3b 35 4d 1b 5b 3c 30 3b 35 3b 35 6d"]
+wait_visible_contains = ["Compacted from 87,432 tokens"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 35 3b 33 33 4d 1b 5b 3c 30 3b 35 3b 33 33 6d"]
+wait_visible_contains = ["card:first card:closed"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["details of second card", "card:first card:closed", "Branch Summary", "This is the test skill body content."]
+both_not_contain = ["panic:", "goroutine ", "card:second card:closed"]
+output_equal = true
+runs = 3

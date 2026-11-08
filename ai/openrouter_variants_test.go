@@ -64,10 +64,10 @@ func TestOpenRouterRoutingVariantsMirrorTheirBaseEntries(t *testing.T) {
 			if !reflect.DeepEqual(derived, original) {
 				t.Errorf("%s differs from %s beyond its id, name and record", got.ID, base.ID)
 			}
-			wantRecord := decodedRecord(t, base.Record)
+			wantRecord := decodedRecord(t, ResolveCatalogRecord(base.Record))
 			wantRecord["id"], wantRecord["name"] = got.ID, got.DisplayName
-			if !reflect.DeepEqual(decodedRecord(t, got.Record), wantRecord) {
-				t.Errorf("%s: record %s is not the base record with its id and name replaced", got.ID, got.Record)
+			if !reflect.DeepEqual(decodedRecord(t, ResolveCatalogRecord(got.Record)), wantRecord) {
+				t.Errorf("%s: record %s is not the base record with its id and name replaced", got.ID, ResolveCatalogRecord(got.Record))
 			}
 		}
 	}

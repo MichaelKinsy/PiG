@@ -715,6 +715,7 @@
                         (pig:obj "messages" (pig:jget started "messages")
                                  "forced" (pig:obj "startsWithBase" (b-yes (b-starts-with "base" forced)) "endsWithA" (b-yes (b-ends-with "[A]" forced)))
                                  "customPrompt" (pig:jget options "customPrompt"))))
+                (pig:runner-emit runner (pig:obj "type" "message_start" "message" (pig:obj "role" "user" "content" "hi" "timestamp" 1)))
                 (put "messageEnd" (pig:runner-emit-message-end runner (pig:obj "type" "message_end" "message" (pig:obj "role" "user" "content" "hi" "timestamp" 1))))
                 (setf (gethash "providerRequest" emits) (pig:runner-emit-before-provider-request runner (pig:obj "model" "m"))
                       (gethash "providerHeaders" emits) (pig:runner-emit-before-provider-headers runner (pig:obj "x-del" "d" "x-keep" "k")))

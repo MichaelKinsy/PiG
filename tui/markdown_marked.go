@@ -250,6 +250,11 @@ func (l *markedInlineState) release() {
 		size += cap(frame.tokens)*tokenSize + cap(frame.masked)*runeSize
 	}
 	size += len(l.block.slabs) * markedSlabSize * int(unsafe.Sizeof(markedBlock{}))
+	size += len(l.block.lists) * markedListSlabSize * int(unsafe.Sizeof((*markedBlock)(nil)))
+	for _, buf := range l.block.runeBufs {
+		size += cap(buf) * runeSize
+	}
+	size += cap(l.block.listRawBuf) + cap(l.block.itemRawBuf) + cap(l.block.itemTextBuf)
 	if size > maxPooledMarkedBytes {
 		return
 	}
@@ -265,6 +270,10 @@ func (l *markedInlineState) release() {
 		clear(slab)
 	}
 	clear(l.block.topTokens[:cap(l.block.topTokens)])
+	for _, list := range l.block.lists {
+		clear(list)
+	}
+	l.block.chunk = strings.Builder{}
 	markedInlineStates.Put(l)
 }
 

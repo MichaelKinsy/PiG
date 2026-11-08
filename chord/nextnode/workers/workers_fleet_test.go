@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -275,6 +276,25 @@ func errorKind(err WorkersError) string {
 	default:
 		return fmt.Sprintf("%T", err)
 	}
+}
+
+// reportedErrors is every error the workers reported so far, with the private cause and the stderr tail of a failed worker,
+// for a test whose wait timed out to say why.
+func (f *fleet) reportedErrors() string {
+	var text strings.Builder
+	for _, each := range f.errors.all() {
+		switch failed := each.(type) {
+		case WorkerFailedError:
+			tail := failed.StderrTail
+			if len(tail) > 600 {
+				tail = tail[len(tail)-600:]
+			}
+			fmt.Fprintf(&text, "[worker_failed %s: %v; stderr %q] ", failed.Address, failed.Error, tail)
+		default:
+			fmt.Fprintf(&text, "[%T %+v] ", each, each)
+		}
+	}
+	return text.String()
 }
 
 // firstFailure is the first `worker_failed` the workers reported.

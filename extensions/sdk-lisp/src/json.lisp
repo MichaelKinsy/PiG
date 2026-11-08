@@ -13,10 +13,12 @@
 (deftype octets () '(simple-array (unsigned-byte 8) (*)))
 
 (defconstant +max-safe-integer+ 9007199254740992)
+(defconstant +recursive-depth+ 256
+  "The nesting up to which the reader and the writer recurse; a value nested deeper is walked with a stack of their own, which does not depend on the thread's control stack.")
 #| pig divergence (D268): Pi fails a call at a V8-stack-dependent depth (about 4400 levels); the SDK reads every frame the host can send. |#
 (defparameter *max-json-depth* 10016
   "The deepest nesting the reader takes. The host's own JSON marshal refuses a value nested past 10000 levels, so no frame the host sends nests deeper (its envelope
-adds a few levels); a value past the bound is answered with Pi's RangeError (see READ-FRAME). The 64 MB control stack of the image holds the recursion.")
+adds a few levels); a value past the bound is answered with Pi's RangeError (see READ-FRAME). The reader and the writer keep the containers on a stack of their own.")
 
 (defun json-fail (message &optional offset)
   (error 'json-error :message message :offset offset))
@@ -114,8 +116,18 @@ adds a few levels); a value past the bound is answered with Pi's RangeError (see
               do (setf (schar s (- j start)) (code-char (aref buf j))))
         (setf (jr-pos r) (1+ i))
         (return-from jr-string s)))
-    ;; slow path
-    (let ((out (make-array (max 16 (- end start)) :element-type 'character :fill-pointer 0 :adjustable t)))
+    ;; slow path. The string holds no more characters than it has bytes up to its closing quote (an escape is two bytes or more for one character, a UTF-8 sequence
+    ;; two or more); without a closing quote the string is malformed and the loop below fails with the position the first pass reports.
+    (let ((out (make-array (max 16 (- (let ((j i))
+                                        (declare (type fixnum j))
+                                        (loop
+                                          (when (>= j end) (return end))
+                                          (let ((b (aref buf j)))
+                                            (cond ((= b 34) (return j))
+                                                  ((= b 92) (incf j 2))
+                                                  (t (incf j))))))
+                                      start))
+                           :element-type 'character :fill-pointer 0 :adjustable t)))
       (setf i start)
       (loop
         (when (>= i end) (json-fail "unterminated string" (jr-pos r)))
@@ -234,6 +246,83 @@ which JSON.stringify writes as null)."
                     (floating-point-overflow () :null)
                     (floating-point-underflow () 0d0)))))))))
 
+(defstruct (jframe (:conc-name jf-))
+  "A container the reader is inside: an array's items so far (newest first), or an object's table and the key whose value is being read."
+  (object nil)
+  (table nil)
+  (items '())
+  (count 0 :type fixnum)
+  (key nil))
+
+(defun jr-key (r frame)
+  "Read the \"key\" and colon of the next member of the object FRAME."
+  (jr-skip-ws r)
+  (unless (= (jr-peek r) 34) (json-fail "expected a string key" (jr-pos r)))
+  (setf (jf-key frame) (jr-string r))
+  (jr-skip-ws r)
+  (unless (= (jr-peek r) 58) (json-fail "expected : after key" (jr-pos r)))
+  (incf (jr-pos r)))
+
+(defun jf-close (frame)
+  "The value of the finished container FRAME."
+  (if (jf-object frame)
+      (jf-table frame)
+      (let ((vector (make-array (jf-count frame))))
+        (loop for i from (1- (jf-count frame)) downto 0 for item in (jf-items frame) do (setf (svref vector i) item))
+        vector)))
+
+(defun jr-scalar (r b)
+  (case b
+    (-1 (json-fail "unexpected end of input" (jr-pos r)))
+    (34 (jr-string r))
+    (116 (jr-expect-literal r "true" t))
+    (102 (jr-expect-literal r "false" :false))
+    (110 (jr-expect-literal r "null" :null))
+    (t (if (or (= b 45) (<= 48 b 57))
+           (jr-number r)
+           (json-fail "unexpected character" (jr-pos r))))))
+
+(defun jr-value-deep (r)
+  "Read the value at R with the containers on a stack of their own, not the control stack: what the recursive reader hands a value nested past +RECURSIVE-DEPTH+ levels, so the nesting the reader takes does not depend on the thread's stack."
+  (let ((stack '()))
+    (loop
+      (jr-skip-ws r)
+      (let ((b (jr-peek r)) (value nil) (opened nil))
+        (cond
+          ((or (= b 123) (= b 91))
+           (when (> (incf (jr-depth r)) *max-json-depth*) (json-fail "nesting too deep" (jr-pos r)))
+           (incf (jr-pos r))
+           (jr-skip-ws r)
+           (let ((object (= b 123)))
+             (cond ((= (jr-peek r) (if object 125 93))
+                    (incf (jr-pos r))
+                    (decf (jr-depth r))
+                    (setf value (if object (make-hash-table :test 'equal) (make-array 0))))
+                   (t (let ((frame (make-jframe :object object :table (and object (make-hash-table :test 'equal)))))
+                        (when object (jr-key r frame))
+                        (push frame stack)
+                        (setf opened t))))))
+          (t (setf value (jr-scalar r b))))
+        (unless opened
+          (loop
+            (when (null stack) (return-from jr-value-deep value))
+            (let ((frame (car stack)))
+              (if (jf-object frame)
+                  (setf (gethash (jf-key frame) (jf-table frame)) value)
+                  (progn (push value (jf-items frame)) (incf (jf-count frame))))
+              (jr-skip-ws r)
+              (let ((c (jr-peek r)))
+                (cond ((= c 44)
+                       (incf (jr-pos r))
+                       (when (jf-object frame) (jr-key r frame))
+                       (return))
+                      ((= c (if (jf-object frame) 125 93))
+                       (incf (jr-pos r))
+                       (decf (jr-depth r))
+                       (pop stack)
+                       (setf value (jf-close frame)))
+                      (t (json-fail (if (jf-object frame) "expected , or } in object" "expected , or ] in array") (jr-pos r))))))))))))
+
 (defun jr-array (r)
   (when (> (incf (jr-depth r)) *max-json-depth*) (json-fail "nesting too deep" (jr-pos r)))
   (incf (jr-pos r))
@@ -282,8 +371,8 @@ which JSON.stringify writes as null)."
   (let ((b (jr-peek r)))
     (case b
       (-1 (json-fail "unexpected end of input" (jr-pos r)))
-      (123 (jr-object r))
-      (91 (jr-array r))
+      (123 (if (< (jr-depth r) +recursive-depth+) (jr-object r) (jr-value-deep r)))
+      (91 (if (< (jr-depth r) +recursive-depth+) (jr-array r) (jr-value-deep r)))
       (34 (jr-string r))
       (116 (jr-expect-literal r "true" t))
       (102 (jr-expect-literal r "false" :false))
@@ -417,14 +506,84 @@ SBCL's FLONUM-TO-DIGITS is shortest for normal doubles; for denormals it is not,
              (t (obuf-ascii b (js-number-string d))))))
     (t (write-json-number b (coerce x 'double-float)))))
 
-(defun write-json-value (b value)
+(defstruct (wframe (:conc-name wf-))
+  "A container the writer is inside: the members still to write (an object's as key, value pairs in a simple-vector; a list's as the rest of the list)."
+  (kind nil :type symbol)
+  (data nil)
+  (index 0 :type fixnum))
+
+(defun open-wframe (b value)
+  "Write the opening bracket of the container VALUE and return its frame."
   (cond
-    ((lazy-value-p value) (write-json-value b (force-lazy value)))
+    ((hash-table-p value)
+     (obuf-byte b 123)
+     (let ((pairs (make-array (* 2 (hash-table-count value)))) (i 0))
+       (declare (type fixnum i))
+       (maphash (lambda (key member)
+                  (unless (stringp key) (json-fail (format nil "object key ~S is not a string" key)))
+                  (setf (svref pairs i) key (svref pairs (1+ i)) member)
+                  (incf i 2))
+                value)
+       (make-wframe :kind :object :data pairs)))
+    ((vectorp value) (obuf-byte b 91) (make-wframe :kind :vector :data value))
+    (t (obuf-byte b 91) (make-wframe :kind :list :data value))))
+
+(defun next-member (b frame)
+  "Write the separator (and an object's key) before the next member of FRAME and return it with T; at the end write the closing bracket and return NIL."
+  (let ((i (wf-index frame)) (data (wf-data frame)))
+    (ecase (wf-kind frame)
+      (:object
+       (cond ((< i (length data))
+              (when (plusp i) (obuf-byte b 44))
+              (write-json-string b (svref data i))
+              (obuf-byte b 58)
+              (setf (wf-index frame) (+ i 2))
+              (values (svref data (1+ i)) t))
+             (t (obuf-byte b 125) (values nil nil))))
+      (:vector
+       (cond ((< i (length data))
+              (when (plusp i) (obuf-byte b 44))
+              (setf (wf-index frame) (1+ i))
+              (values (aref data i) t))
+             (t (obuf-byte b 93) (values nil nil))))
+      (:list
+       (cond ((consp data)
+              (when (plusp i) (obuf-byte b 44))
+              (setf (wf-index frame) (1+ i) (wf-data frame) (cdr data))
+              (unless (listp (cdr data)) (json-fail "improper list cannot be written as an array"))
+              (values (car data) t))
+             (t (obuf-byte b 93) (values nil nil)))))))
+
+(defun write-json-deep (b value)
+  "Write VALUE with the containers on a stack of their own, not the control stack: what the recursive writer hands a value nested past +RECURSIVE-DEPTH+ levels."
+  (let ((stack '()))
+    (loop
+      (loop while (lazy-value-p value) do (setf value (force-lazy value)))
+      (cond
+        ((eq value t) (obuf-ascii b "true"))
+        ((eq value :false) (obuf-ascii b "false"))
+        ((or (null value) (eq value :null)) (obuf-ascii b "null"))
+        ((stringp value) (write-json-string b value))
+        ((realp value) (write-json-number b value))
+        ((or (hash-table-p value) (vectorp value) (consp value))
+         (push (open-wframe b value) stack))
+        (t (json-fail (format nil "cannot write ~S as JSON" value))))
+      (loop
+        (when (null stack) (return-from write-json-deep nil))
+        (multiple-value-bind (member present) (next-member b (car stack))
+          (cond (present (setf value member) (return))
+                (t (pop stack))))))))
+
+(defun write-json-value (b value &optional (depth 0))
+  (declare (type fixnum depth))
+  (cond
+    ((lazy-value-p value) (write-json-value b (force-lazy value) depth))
     ((eq value t) (obuf-ascii b "true"))
     ((eq value :false) (obuf-ascii b "false"))
     ((or (null value) (eq value :null)) (obuf-ascii b "null"))
     ((stringp value) (write-json-string b value))
     ((realp value) (write-json-number b value))
+    ((and (>= depth +recursive-depth+) (or (hash-table-p value) (vectorp value) (consp value))) (write-json-deep b value))
     ((hash-table-p value)
      (obuf-byte b 123)
      (let ((first t))
@@ -433,20 +592,20 @@ SBCL's FLONUM-TO-DIGITS is shortest for normal doubles; for denormals it is not,
                   (if first (setf first nil) (obuf-byte b 44))
                   (write-json-string b key)
                   (obuf-byte b 58)
-                  (write-json-value b member))
+                  (write-json-value b member (1+ depth)))
                 value))
      (obuf-byte b 125))
     ((vectorp value)
      (obuf-byte b 91)
      (dotimes (i (length value))
        (when (plusp i) (obuf-byte b 44))
-       (write-json-value b (aref value i)))
+       (write-json-value b (aref value i) (1+ depth)))
      (obuf-byte b 93))
     ((consp value)
      (obuf-byte b 91)
      (loop for rest on value for first = t then nil
            do (unless first (obuf-byte b 44))
-              (write-json-value b (car rest))
+              (write-json-value b (car rest) (1+ depth))
               (unless (listp (cdr rest)) (json-fail "improper list cannot be written as an array")))
      (obuf-byte b 93))
     (t (json-fail (format nil "cannot write ~S as JSON" value)))))

@@ -1,9 +1,12 @@
 package cellpack
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -71,6 +74,54 @@ func TestEmbeddedDefaultManifestIsEmpty(t *testing.T) {
 	}
 	if len(m.Cells) != 0 {
 		t.Errorf("committed default manifest must be empty, got %d cells", len(m.Cells))
+	}
+}
+
+// The manifest stock pig embeds is the one every start reads: it must come back as the decoder would give it, without the decoder.
+func TestStockManifestFastPathEqualsTheDecoder(t *testing.T) {
+	got, err := loadManifest(cells)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(`{"cells": []}`)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, decoded) {
+		t.Errorf("stock manifest = %#v, decoder gives %#v", got, decoded)
+	}
+	if raw, err := fs.ReadFile(cells, "cells/manifest.json"); err != nil || string(bytes.TrimSpace(raw)) != stockManifest {
+		t.Errorf("cells/manifest.json = %q, %v; stockManifest names %q", raw, err, stockManifest)
+	}
+}
+
+// Reading the stock manifest is two allocations (the file's bytes, the embedded copy's); through the decoder it was nine.
+func TestLoadManifestOfTheStockManifestDoesNotDecode(t *testing.T) {
+	if got := testing.AllocsPerRun(20, func() {
+		if _, err := loadManifest(cells); err != nil {
+			t.Fatal(err)
+		}
+	}); got > 3 {
+		t.Errorf("loadManifest of the stock manifest allocates %v times, want at most 3", got)
+	}
+}
+
+// Only the whitespace JSON allows may surround the stock manifest on the fast path: a form feed, a vertical tab, NEL or a no-break space before it is not
+// JSON whitespace, and the decoder rejects it as it always did. After it the decoder, which reads one value and ignores the rest, accepts it, and so does
+// the fallback.
+func TestStockManifestFastPathTakesOnlyJSONWhitespace(t *testing.T) {
+	for _, padding := range []string{"", " ", "\t", "\r\n", " \t\r\n "} {
+		if _, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(padding + stockManifest + padding)}}); err != nil {
+			t.Errorf("%q around the stock manifest: %v", padding, err)
+		}
+	}
+	for _, padding := range []string{"\f", "\v", "\u0085", "\u00a0"} {
+		if _, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(padding + stockManifest)}}); err == nil {
+			t.Errorf("manifest %q loaded; the decoder rejects it", padding+stockManifest)
+		}
+		if _, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(stockManifest + padding)}}); err != nil {
+			t.Errorf("manifest %q: %v; the decoder accepts it", stockManifest+padding, err)
+		}
 	}
 }
 

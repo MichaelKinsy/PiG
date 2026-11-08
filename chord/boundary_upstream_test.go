@@ -35,6 +35,7 @@ var chordHelpers = []string{
 	"internal/linkerexec", // starts Node for the plugins worker and checks its version (chord/nextnode/plugins)
 	"internal/nodepath",
 	"internal/nodeurl",
+	"internal/sortx",            // sorts short slices with one shared copy of the sort algorithm: a stdlib-only leaf, read by internal/jsstring, schema/internal/ecmaregex and chord/delta
 	"internal/watchentered",     // tells a watch delivery that its listener went on to a wait of the host (chord/watch_impl.go)
 	"schema",                    // pi-schema, the schema builders and validators of contracts and frames
 	"schema/internal/ecmaregex", // pi-schema's ECMAScript regular expressions

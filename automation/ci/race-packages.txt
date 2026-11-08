@@ -18,6 +18,7 @@ host  ./coding/extension
 host  ./coding/extension/host/inproc
 host  ./coding/extension/host/runtimecell
 host  ./coding/extension/host/cellpack
+host  ./coding/extension/host/tsruntime
 host  ./coding/mcpext
 host  ./coding/rpcclient
 host  ./internal/packagemanager
@@ -46,6 +47,8 @@ libs  ./chord/nextnode/plugins
 libs  ./chord/nextnode/surfaces
 libs  ./chord/nextnode/tui
 libs  ./chord/nextnode/workers
+libs  ./chord/nextnode/surfaces
+libs  ./chord/nextnode/tui
 libs  ./codemode
 libs  ./coding/extension/builtin/codemode
 libs  ./durable
@@ -74,7 +77,7 @@ libs  ./internal/requestvalidity
 libs  ./internal/terminalquestion
 libs  ./internal/testenv
 libs  ./mcp/mcptest
-libs  ./piglets/aot
+libs  ./piglets/pig-bolt
 libs  ./piglets/porter/extensions/pig-porter
 libs  ./piglets/standard
 libs  ./durable/images

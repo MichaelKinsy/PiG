@@ -155,12 +155,11 @@
         (error 'host-call-error :message (format nil "frame too large: ~D" size)))
       (let ((body (make-array size :element-type '(unsigned-byte 8))))
         (when (< (conn-read-exact conn body) size) (return-from read-frame :eof))
-        ;; A value nested past the bound (or past the control stack) is Pi's RangeError, not the end of the connection: the request it came in is answered with that
+        ;; A value nested past the bound is Pi's RangeError, not the end of the connection: the request it came in is answered with that
         ;; error, and the connection keeps serving.
         (handler-case (decode-json body)
           (json-error (e)
-            (if (equal (json-error-message e) "nesting too deep") (too-deep-envelope body) (error e)))
-          (sb-kernel::control-stack-exhausted () (too-deep-envelope body)))))))
+            (if (equal (json-error-message e) "nesting too deep") (too-deep-envelope body) (error e))))))))
 
 (defun skip-json-value (r)
   "Move R past the value it stands at without recursing: the brackets are counted and the strings read whole."

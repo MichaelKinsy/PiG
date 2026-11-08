@@ -353,6 +353,24 @@ class ProjectTrustResult(TypedDict):
 ProjectTrustHandler: TypeAlias = Callable[["Context", dict[str, Any]], ProjectTrustResult]
 ShortcutHandler: TypeAlias = Callable[["Context"], None]
 RendererHandler: TypeAlias = Callable[["Context", dict[str, Any], dict[str, Any], int], list[str]]
+# An event handler of a message view renderer's view: (ctx, message, options, event); see Extension.message_view_event.
+MessageViewEventHandler: TypeAlias = Callable[["Context", dict[str, Any], "MessageRenderOptions", kit.Event], Any]
+# An event handler of an entry view renderer's view: (ctx, entry, options, event); see Extension.entry_view_event.
+EntryViewEventHandler: TypeAlias = Callable[["Context", dict[str, Any], "EntryRenderOptions", kit.Event], Any]
+
+
+class _RenderCard:
+    """The renderer state of one displayed message or entry, which the host names with a key. Requests for one card run
+    one at a time, as Pi draws a message on one thread. ``subject`` is the message or entry as its first request decoded
+    it: every request for the card receives that one object, as Pi's renderer receives one message object."""
+
+    __slots__ = ("lock", "state", "subject")
+
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.state: dict[str, Any] = {}
+        self.subject: dict[str, Any] | None = None
+
 
 
 # Upstream 0.99.1 extension API additions (types.ts:509-607, 1708-1855, 2161-2169).
@@ -458,7 +476,16 @@ class ToolRenderContext:
 
 class MessageRenderOptions(dict[str, Any]):
     """The options a custom-message renderer receives: the host's ``{"expanded", "outputPad"}`` mapping plus the host's
-    keybinding hints (Pi 9376c8d1 #4748)."""
+    keybinding hints (Pi 9376c8d1 #4748).
+
+    ``state`` is the renderer state of the displayed message, the dict a Pi renderer keeps in a WeakMap keyed by the
+    message: every request for one message (the host names it with a key) receives the same dict, so a click handler
+    registered with :meth:`Extension.message_view_event` and the renderer share it. A request without a key gets a
+    fresh dict. It is an attribute, not a key of the mapping."""
+
+    def __init__(self, wire: Any = (), state: dict[str, Any] | None = None) -> None:
+        super().__init__(wire)
+        self.state: dict[str, Any] = {} if state is None else state
 
     def key_text(self, keybinding: str) -> str:
         """``KeybindingHints.keyText``: the keys of a keybinding as the host's configured keybindings show them, empty when it has none."""
@@ -471,7 +498,7 @@ class MessageRenderOptions(dict[str, Any]):
 
 class EntryRenderOptions(MessageRenderOptions):
     """The options a custom-entry renderer receives: the host's ``{"expanded"}`` mapping plus the host's keybinding hints
-    (Pi 9376c8d1 #4748)."""
+    (Pi 9376c8d1 #4748) and the displayed entry's ``state`` (see :class:`MessageRenderOptions`)."""
 
 
 # A call renderer: (ctx, args, render context, width) -> lines.
@@ -1312,6 +1339,14 @@ def _json_text(value: Any) -> str:
         return json.dumps(value)
     except RecursionError:
         return _dumps_deep(value)
+
+
+def _json_loads(text: str) -> Any:
+    """json.loads of ``text``, read with a stack of its own when it nests past the interpreter's limit (the host's values nest up to 10000 levels). A value nested past MAX_FRAME_DEPTH raises RecursionError; malformed JSON raises ValueError."""
+    try:
+        return json.loads(text)
+    except RecursionError:
+        return _loads_deep(text.encode("utf-8", "surrogatepass"))
 
 
 def _ensure_jsonable(value: Any, what: str) -> None:
@@ -2705,12 +2740,12 @@ class _SystemPrompt:
     def __init__(self, ctx: "Context", options: dict[str, Any], prompt: Any) -> None:
         self._ctx = ctx
         self._options = options
-        self._key = json.dumps(options)
+        self._key = _json_text(options)
         self._prompt = prompt if isinstance(prompt, str) else ""
         self._lock = threading.Lock()
 
     def get(self) -> str:
-        key = json.dumps(self._options)
+        key = _json_text(self._options)
         with self._lock:
             if key != self._key:
                 self._prompt = self._ctx._reply_field("renderSystemPrompt", "prompt", {"options": self._options})
@@ -4522,6 +4557,7 @@ class Extension:
         self._renderers: list[dict[str, Any]] = []
         self._entry_renderers: list[dict[str, Any]] = []
         self._markdown_transformer: Callable[[str, dict[str, Any]], Any] | None = None
+        self._markdown_message_types: list[str] | None = None
         self._owns_thinking_runs = False
         self._tool_renderer_resolvers: list[ToolRendererResolver] = []
         self._resolved_tool_renderers: dict[str, ToolRenderers] = {}
@@ -4545,6 +4581,11 @@ class Extension:
         self._entry_renderer_handlers: dict[str, RendererHandler] = {}
         self._message_view_renderers: dict[str, Callable[..., kit.View]] = {}
         self._entry_view_renderers: dict[str, Callable[..., kit.View]] = {}
+        self._message_view_event_handlers: dict[str, MessageViewEventHandler] = {}
+        self._entry_view_event_handlers: dict[str, EntryViewEventHandler] = {}
+        # One card per displayed message or entry the host names with a key; renders of one card run one at a time.
+        self._render_cards: dict[str, _RenderCard] = {}
+        self._render_cards_lock = threading.Lock()
         self._tool_call_renderers: dict[str, ToolRenderCallHandler] = {}
         self._tool_result_renderers: dict[str, ToolRenderResultHandler] = {}
         self._tool_call_view_renderers: dict[str, ToolRenderCallViewHandler] = {}
@@ -5272,16 +5313,83 @@ class Extension:
             self._entry_view_renderers[custom_type] = handler
             self._publish_declaration({"entry_renderers": [declaration]})
 
-    def markdown_transformer(self, transformer: Callable[[str, dict[str, Any]], Any]) -> None:
+    def message_view_event(self, custom_type: str, handler: "MessageViewEventHandler") -> None:
+        """Register the handler of the events of ``custom_type``'s :meth:`message_view_renderer` views, as the closure of a
+        Pi component that the renderer returned handles the pointer: a click on a :class:`kit.MouseRegion` of the view
+        arrives as a ``kit.MOUSE`` event of that node, with coordinates local to the region. The handler changes
+        ``options.state``; the render that follows (every event the host took is applied first) sees it. ``message`` and
+        ``options`` are the ones of the message's last render. A later registration replaces an earlier one; an event
+        without a handler is ignored. Local to the extension: nothing is declared to the host."""
+        # pig additive (D276)
+        with self._tool_registration_lock:
+            self._message_view_event_handlers[custom_type] = handler
+
+    def entry_view_event(self, custom_type: str, handler: "EntryViewEventHandler") -> None:
+        """Register the handler of the events of ``custom_type``'s :meth:`entry_view_renderer` views; see
+        :meth:`message_view_event`."""
+        # pig additive (D276)
+        with self._tool_registration_lock:
+            self._entry_view_event_handlers[custom_type] = handler
+
+    def _render_card(self, key: str) -> "_RenderCard":
+        """The card of ``key``, created on first use. An empty key gets a card of its own that nothing keeps."""
+        if not key:
+            return _RenderCard()
+        with self._render_cards_lock:
+            card = self._render_cards.get(key)
+            if card is None:
+                card = self._render_cards[key] = _RenderCard()
+            return card
+
+    def _render_transcript(
+        self,
+        args: dict[str, Any],
+        subject_key: str,
+        options_type: type[MessageRenderOptions],
+        handle: "Callable[[Any, MessageRenderOptions, kit.Event], Any] | None",
+        render: "Callable[[Any, MessageRenderOptions], Any]",
+    ) -> Any:
+        """Answer a render_message or render_entry request: the events the host's view took go to ``handle`` in order,
+        then ``render`` draws the subject. The subject is the message or entry as the key's first request decoded it:
+        every request for the key receives that one object. A handler error does not stop the later events or the
+        render; the first one is raised after the render, unless the render fails first."""
+        card = self._render_card(str(args.get("key") or ""))
+        wire_options = args.get("options") or {}
+        with card.lock:
+            if card.subject is None:
+                card.subject = args.get(subject_key) or {}
+            failure: Exception | None = None
+            for wire in args.get("events") or []:
+                decoded = kit.Event._from_wire(wire) if isinstance(wire, dict) else None
+                if decoded is None or handle is None:
+                    continue
+                try:
+                    handle(card.subject, options_type(wire_options, card.state), decoded[1])
+                except Exception as exc:  # noqa: BLE001 - the render still runs; the first error answers the request.
+                    if failure is None:
+                        failure = exc
+            value = render(card.subject, options_type(wire_options, card.state))
+            if failure is not None:
+                raise failure
+            return value
+
+    def markdown_transformer(self, transformer: Callable[[str, dict[str, Any]], Any], message_types: list[str] | None = None) -> None:
         """Register the extension's display-only Markdown transform (Pi's
-        pi.registerMarkdownTransformer). The host applies it to user and
-        assistant Markdown in the interactive transcript, after its own
-        transformers; a later registration replaces an earlier one. It receives
+        pi.registerMarkdownTransformer). The host applies it to user, assistant
+        and thinking Markdown in the interactive transcript, after its own
+        transformers, or to the surfaces message_types lists (Pi's
+        options.messageTypes): "user", "assistant", "assistant-thinking",
+        "custom" (custom messages without a message renderer, expanded skill
+        blocks), "summary" (expanded branch and compaction summaries) and
+        "changelog" (What's New, /changelog, Extension Updates, the Update
+        Available note). None selects the first three; an empty list runs the
+        transformer nowhere. A later registration replaces an earlier one. It receives
         the Markdown and Pi's MarkdownTransformContext (messageType,
         isStreaming, availableWidth, and messageId and timestamp when rendering a
         persisted session entry); anything but a str return, or a raise,
         keeps the input."""
         self._markdown_transformer = transformer
+        self._markdown_message_types = None if message_types is None else list(message_types)
 
     # pig additive (D214)
     def own_thinking_runs(self, enabled: bool = True) -> None:
@@ -5378,7 +5486,7 @@ class Extension:
 
         self._bus.register_pending()
         with self._tool_registration_lock:
-            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {}), **({"owns_thinking_runs": True} if self._owns_thinking_runs else {}), **({"tool_renderers": len(self._tool_renderer_resolvers)} if self._tool_renderer_resolvers else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
+            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True, "markdown_message_types": ["user", "assistant", "assistant-thinking"] if self._markdown_message_types is None else self._markdown_message_types} if self._markdown_transformer is not None else {}), **({"owns_thinking_runs": True} if self._owns_thinking_runs else {}), **({"tool_renderers": len(self._tool_renderer_resolvers)} if self._tool_renderer_resolvers else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
             if self._shutdown_noted or host_helpers.take_shutdown(self._served_socket):
                 raise _ShutdownBeforeReady()
             ready = self._read_during_load()
@@ -5621,6 +5729,10 @@ class Extension:
         if method == "autocomplete.release":
             self._autocomplete.release(args.get("id"))
             return
+        if method == "render_release":
+            with self._render_cards_lock:
+                self._render_cards.pop(str(args.get("key") or ""), None)
+            return
         if method == "tool_render_release":
             with self._tool_render_lock:
                 self._tool_render_cards.pop(str(args.get("card") or ""), None)
@@ -5731,8 +5843,8 @@ class Extension:
                 palette = notify.get("args")
                 if isinstance(palette, str):
                     try:
-                        palette = json.loads(palette)
-                    except ValueError:
+                        palette = _json_loads(palette)
+                    except (ValueError, RecursionError):
                         palette = {}
                 self._set_theme_palette(palette if isinstance(palette, dict) and palette else {})
                 _tui_state.set_host_theme(palette)
@@ -5844,7 +5956,7 @@ class Extension:
 
     def _set_theme_palette(self, palette: dict[str, Any]) -> None:
         """Install the host's palette and deliver a snapshot of the theme to the on_theme_change handlers when it differs from the one before. The caller holds the state lock."""
-        changed = self._theme_known and self._theme_palette != palette
+        changed = self._theme_known and not _tui_state.json_equal(self._theme_palette, palette)
         self._theme._set_palette(palette)
         self._theme_palette = palette
         self._theme_known = True
@@ -6068,7 +6180,7 @@ class Extension:
                 # runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
                 if ctx._request_start is not None:
                     ctx._request_start.begin()
-                self._command_handlers[name](ctx, args if isinstance(args, str) else json.dumps(args))
+                self._command_handlers[name](ctx, args if isinstance(args, str) else _json_text(args))
                 self._respond(req_id, None, None)
             elif method == "command_argument_completions":
                 name = req.get("tool", "")
@@ -6190,7 +6302,13 @@ class Extension:
                 args = req.get("args") or {}
                 view_handler = self._message_view_renderers.get(custom_type)
                 handler = view_handler or self._renderer_handlers[custom_type]
-                value = handler(ctx, args.get("message") or {}, MessageRenderOptions(args.get("options") or {}), int(args.get("width") or 0))
+                width = int(args.get("width") or 0)
+                event_handler = self._message_view_event_handlers.get(custom_type)
+                value = self._render_transcript(
+                    args, "message", MessageRenderOptions,
+                    None if event_handler is None else lambda subject, options, event: event_handler(ctx, subject, options, event),
+                    lambda subject, options: handler(ctx, subject, options, width),
+                )
                 self._respond(req_id, self._views.result(value, view_handler is not None), None)
             elif method == "render_tool":
                 value, is_view = self._render_tool(ctx, req.get("tool", ""), req.get("args") or {})
@@ -6212,7 +6330,13 @@ class Extension:
                 args = req.get("args") or {}
                 view_handler = self._entry_view_renderers.get(custom_type)
                 handler = view_handler or self._entry_renderer_handlers[custom_type]
-                value = handler(ctx, args.get("entry") or {}, EntryRenderOptions(args.get("options") or {}), int(args.get("width") or 0))
+                width = int(args.get("width") or 0)
+                event_handler = self._entry_view_event_handlers.get(custom_type)
+                value = self._render_transcript(
+                    args, "entry", EntryRenderOptions,
+                    None if event_handler is None else lambda subject, options, event: event_handler(ctx, subject, options, event),
+                    lambda subject, options: handler(ctx, subject, options, width),
+                )
                 self._respond(req_id, self._views.result(value, view_handler is not None), None)
             elif method in _OAUTH_METHODS:
                 self._dispatch_oauth(req_id, req)
@@ -6295,10 +6419,10 @@ class Extension:
                 for line in session_file:
                     if len(line.encode("utf-8")) > MAX_FRAME_SIZE:
                         return []
-                    entry = json.loads(line)
+                    entry = _json_loads(line)
                     if entry.get("type") != "session":
                         entries.append(entry)
-        except (OSError, ValueError, TypeError):
+        except (OSError, ValueError, TypeError, RecursionError):
             return []
         return entries
 

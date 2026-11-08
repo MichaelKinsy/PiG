@@ -1,17 +1,8 @@
+# Compatibility alias, approved by the owner on 2026-11-06 for 0.7.1: the Piglet was named pig-aot in 0.5.0 and 0.7.0. This one-file Piglet keeps
+# `pig --piglet pig-aot` and `pig piglet add` of that name working by extending pig-bolt. It adds nothing else and has no release block, so it is
+# not a shipped Piglet of its own. Remove it when no 0.5 or 0.7 install can still name pig-aot.
 name: pig-aot
-description: "Experimental: compiles a session's TypeScript extensions into one executable in the background and runs it from the next start."
+description: "Renamed: pig-aot is now pig-bolt. This name still works; use pig --piglet pig-bolt."
 
-release:
-  version: 0.5.0-dev
-
-build:
-  extensionRealization: fused
-
-extensions:
-  - name: aotruntime
-    origins:
-      - local:extensions/aotruntime
-
-discovery:
-  extensions: []
-  skills: []
+extends:
+  source: local:pig-bolt.yaml

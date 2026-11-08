@@ -972,6 +972,62 @@ reason = "A test-helper expectation for the isolated home: Go telemetry is switc
 [[entry]]
 path = "coding/cli/rpc_shutdown_test.go"
 commit = "5b8189f98ae763aca14843a8feefe94bc5752c59"
-class = "DIVERGENCE"
-cite = "D234"
-reason = "PiG follows Pi main ace560c30 ahead of the v1.5.0 pin (D234, owner-approved). Pi main keeps the signal handlers until exit and counts signals (rpc-mode.ts signalCount, shutdown() returns when shuttingDown): once a shutdown has started, a stdin end, a ctx.shutdown() request or a single SIGTERM does nothing and the dispose finishes, and only a repeated signal exits at once with 128+signum. TestRPCShutdownTriggers therefore expects a single signal and a stdin end during a started dispose not to interrupt it (the dispose then exits with the first trigger's status), a shutdown request during a stdin-end dispose to do nothing, and a repeated signal to exit 143 at once. Pi 1.5.0 takes the default signal action and exits 0 at once. Pi's own cases are rpc-prompt-response-semantics.test.ts:594, 613 and 631 at ace560c30."
+class = "CITE"
+cite = "packages/coding-agent/src/modes/rpc/rpc-mode.ts:383"
+reason = "The pin contains Pi main ace560c30. Pi keeps the signal handlers until exit and counts signals (rpc-mode.ts signalCount, shutdown() returns when shuttingDown): once a shutdown has started, a stdin end, a ctx.shutdown() request or a single SIGTERM does nothing and the dispose finishes, and only a repeated signal exits at once with 128+signum. TestRPCShutdownTriggers therefore expects a single signal and a stdin end during a started dispose not to interrupt it (the dispose then exits with the first trigger's status), a shutdown request during a stdin-end dispose to do nothing, and a repeated signal to exit 143 at once. Pi 1.5.0 takes the default signal action and exits 0 at once. Pi's own cases are rpc-prompt-response-semantics.test.ts:594, 613 and 631 at ace560c30."
+
+[[entry]]
+path = "coding/extension/pigsdk/pigsdk_hash_test.go"
+commit = "6a7c950562738c73f58e9df89b7e35d487e4a888"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit stores each embedded SDK as one zstd frame with its staging hash generated beside it; the test now compares the carried hash with the digest of the files the frame holds, written out independently, where it compared the streamed digest of the embedded files with a whole-file digest."
+
+[[entry]]
+path = "extensions/sdk-lisp/bundle_test.go"
+commit = "6a7c950562738c73f58e9df89b7e35d487e4a888"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit stores the Lisp SDK as a zstd frame instead of a gzip tar and moves the decoding to coding/extension/pigsdk; the test asserts the list of bundled files and the one embedded frame, and the decoded contents and the staging hash are asserted in TestEmbeddedBundlesHoldTheirSources."
+
+[[entry]]
+path = "extensions/sdk-py/bundle_test.go"
+commit = "6a7c950562738c73f58e9df89b7e35d487e4a888"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit stores the Python SDK as one zstd frame instead of a gzip per file, so the embedded names are the staged names and the list is asserted against the source tree; the decoded contents are asserted in TestEmbeddedBundlesHoldTheirSources."
+
+[[entry]]
+path = "extensions/sdk-rs/bundle_test.go"
+commit = "6a7c950562738c73f58e9df89b7e35d487e4a888"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit stores the Rust SDK as one zstd frame instead of a gzip per file, so the embedded names are the staged names; the decoded contents are asserted in TestEmbeddedBundlesHoldTheirSources."
+
+[[entry]]
+path = "extensions/sdk/bundle_test.go"
+commit = "6a7c950562738c73f58e9df89b7e35d487e4a888"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit stores the Go SDK as one zstd frame instead of a gzip per file, so the embedded names are the staged names and BundledFiles is asserted against the module's files; the decoded contents are asserted in TestEmbeddedBundlesHoldTheirSources, because this module has no dependency to decode the frame with."
+
+[[entry]]
+path = "extensions/sdk/bundle_test.go"
+commit = "015966dd6e8e9ac4e41a467e0e478514dfe7a200"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit puts the Go SDK module back to the gzip-per-file bundle it was published with, so the test asserts the names the module embeds (.gz/<name>.gz) again, where the previous commit asserted the staged names of a zstd frame that now lives in internal/gosdkbundle (TestBundledFilesCoverTheModule there)."
+
+[[entry]]
+path = "coding/cli/rpc_listen_test.go"
+commit = "edae8e70d714f24858560b47c9b12f1ca889e7f3"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The --listen server tests are PiG-original (D232): Pi serves one RPC session per process and has no counterpart, so no Pi line governs them. The commit's review round made the concurrency test count agent_end per connection across its whole traffic and prove overlap with an RPC bash sleep, and narrowed the cross-session text check to the message text; the behavior it tests is the D232 server's own."
+
+[[entry]]
+path = "coding/extension/host/subprocess/node_cell_shared_test.go"
+commit = "f34cb22f47198d92a4f67c2b89301045cadeb067"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The shared-cell Node tests are PiG-original (D232): Pi runs one extension process per session and has no counterpart, so no Pi line governs them. The commit's review round replaced the sleep-based drain observation with the runtime-level drain test and asserted equal non-zero pids for the two Hosts' members; the behavior it tests is the D232 cell registry's own."
