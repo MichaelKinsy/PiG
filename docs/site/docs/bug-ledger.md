@@ -26,7 +26,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | 0.5.2 |
 | [BF-00d9a1f](#bf-00d9a1f) | fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an… | PiG's own defect | All platforms | Unreleased |
 | [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-01a63b9](#bf-01a63b9) | The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248) | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-01a63b9](#bf-01a63b9) | The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248) | PiG's own defect | All platforms | Unreleased |
 | [BF-02114ff](#bf-02114ff) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
 | [BF-0225926](#bf-0225926) | fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor… | PiG's own defect | All platforms | Unreleased |
 | [BF-0225a43](#bf-0225a43) | A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -90,6 +90,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0b85f55](#bf-0b85f55) | The Rust SDK keeps every session entry when one entry of the session file holds an unpaired surrogate (it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0bbe365](#bf-0bbe365) | fix(codingagent): footer context usage refreshes on a context_edit entry (Pi getContextUsage) | PiG's own defect | All platforms | Unreleased |
 | [BF-0bc05bf](#bf-0bc05bf) | Fixed `!` and RPC `bash` output keeping fragments of color codes, such as a stray `m`, when a code was split… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0c44f84](#bf-0c44f84) | fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check | PiG's own defect | All platforms | Unreleased |
 | [BF-0c7d23f](#bf-0c7d23f) | A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi… | PiG's own defect | Windows | Unreleased |
 | [BF-0cced6a](#bf-0cced6a) | RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-0cd1934](#bf-0cd1934) | fix(env): a native watch ignores the nameless event kqueue sends after a watched directory is removed | PiG's own defect | All platforms | Unreleased |
@@ -588,6 +589,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5c9d23f](#bf-5c9d23f) | A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5cbecb0](#bf-5cbecb0) | In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-5cc630e](#bf-5cc630e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-5d04c3c](#bf-5d04c3c) | fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's | PiG's own defect | All platforms | Unreleased |
 | [BF-5d36a58](#bf-5d36a58) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
 | [BF-5d4c432](#bf-5d4c432) | A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-5d6bb25](#bf-5d6bb25) | The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or… | PiG's own defect | All platforms | 0.5.0 |
@@ -811,6 +813,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6b97207](#bf-6b97207) | An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6c26be3](#bf-6c26be3) | A submission's `Wait` no longer fails with "Harness is closed" when a close begins before the wait wakes: a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6c31af7](#bf-6c31af7) | A custom message's `message_start` event keeps the members it started with, in their order, when a… | PiG's own defect | All platforms | Unreleased |
+| [BF-6c74cb8](#bf-6c74cb8) | fix(chord): a late kill of a finished evaluation never lands on the next one | PiG's own defect | All platforms | Unreleased |
 | [BF-6c7b377](#bf-6c7b377) | fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the… | PiG's own defect | All platforms | Unreleased |
 | [BF-6cb29f0](#bf-6cb29f0) | Started from a directory reached through a symlink, `pig install`/`remove`/`list`/`update` resolve local… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6cb29f0-2](#bf-6cb29f0-2) | Started from a directory reached through a symlink, `/export <file>.jsonl` and `/bug` now write and name… | PiG's own defect | All platforms | 0.5.0 |
@@ -834,6 +837,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6f74b70](#bf-6f74b70) | The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a… | PiG's own defect | All platforms | Unreleased |
 | [BF-6fb1307](#bf-6fb1307) | openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6fdf59f](#bf-6fdf59f) | On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot… | PiG's own defect | macOS | Unreleased |
+| [BF-6fdf59f-2](#bf-6fdf59f-2) | fix(chord): kqueue watches of a base directory moved away and back are put back, and an entry that cannot be… | PiG's own defect | All platforms | Unreleased |
 | [BF-7008884](#bf-7008884) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-7056d2d](#bf-7056d2d) | Images in steering and follow-up messages queued while the agent is busy (`steer`, `followUp`, a prompt sent… | PiG's own defect | All platforms | Unreleased |
 | [BF-7087527](#bf-7087527) | fix(extensions): the handler wait quantum applies to input handlers only, not to every event whose caller… | PiG's own defect | All platforms | Unreleased |
@@ -1300,6 +1304,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ad0c167](#bf-ad0c167) | Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ad6d659](#bf-ad6d659) | The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ad88391](#bf-ad88391) | The watcher of the plugins component closes the system watcher outside the host's lock, so a failure to watch… | PiG's own defect | All platforms | Unreleased |
+| [BF-ad88391-2](#bf-ad88391-2) | fix(chord): the watcher closes the system watcher outside the host's lock | PiG's own defect | All platforms | Unreleased |
 | [BF-ad9ed64](#bf-ad9ed64) | Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ad9ed64-2](#bf-ad9ed64-2) | A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ada7018](#bf-ada7018) | `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack | PiG's own defect | All platforms | Unreleased |
@@ -1311,6 +1316,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aeaaf97](#bf-aeaaf97) | Model requests reuse their HTTP connection | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aeabf18](#bf-aeabf18) | Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped… | PiG's own defect | Windows | Unreleased |
 | [BF-aec0042](#bf-aec0042) | The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-aec5a31](#bf-aec5a31) | fix(chord): a chmod of a recorded base file is compared like a write | PiG's own defect | All platforms | Unreleased |
 | [BF-af1fe1a](#bf-af1fe1a) | Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af36fe8](#bf-af36fe8) | A streamed tool call whose arguments are valid JSON but not an object (`[]`, `null`, `5`, `"s"`) keeps them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af56fab](#bf-af56fab) | A task list item whose text starts with emphasis, a code span or a link (`- [ ] **bold** text`) no longer… | PiG's own defect | All platforms | Unreleased |
@@ -1347,6 +1353,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b4c6569](#bf-b4c6569) | `~/dir/` expands to the home directory with the trailing separator kept (`$HOME/dir/`), as Node's `path.join`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b4e83db](#bf-b4e83db) | Anthropic tools list `eager_input_streaming` and `strict` before `input_schema`, and the input schema and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b4f1d4a](#bf-b4f1d4a) | Pasting a large text that arrives in many terminal reads no longer stalls input: the paste is joined once… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b50a5ab](#bf-b50a5ab) | A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that… | PiG's own defect | All platforms | Unreleased |
 | [BF-b54f9aa](#bf-b54f9aa) | The tree selector label time of a session entry whose timestamp is not a valid date prints "aN/NaN/NaN… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b59b9db](#bf-b59b9db) | fix(durable/core): a Session-mode read that stored held changes answers when the Storage settles the commit… | PiG's own defect | All platforms | Unreleased |
 | [BF-b5b7b43](#bf-b5b7b43) | Frontmatter YAML parsing matches the `yaml` library on text outside ASCII and on unterminated quotes: an… | PiG's own defect | All platforms | 0.5.0 |
@@ -1535,6 +1542,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d4ddb14](#bf-d4ddb14) | The `/scoped-models` search input stays editable after a submit key reaches it (LF under the Kitty keyboard… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d4e641b](#bf-d4e641b) | An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-d4e641b-2](#bf-d4e641b-2) | An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-d4ef260](#bf-d4ef260) | fix(chord): a CSS module is decoded as UTF-8 like TextDecoder before it is scoped | PiG's own defect | All platforms | Unreleased |
 | [BF-d50ec25](#bf-d50ec25) | The TypeScript extension runtime no longer depends on Node-only behaviour: its entry modules do not await the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d50faf0](#bf-d50faf0) | Replacing the editor component with `ctx.ui.setEditorComponent()` while an extension dialog is open no longer… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d514b3d](#bf-d514b3d) | In a Node extension's `before_agent_start` handler, `event.systemPrompt` and `ctx.getSystemPrompt()` now… | PiG's own defect | All platforms | 0.5.0 |
@@ -1997,16 +2005,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248)**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D248)
+- **Source:** PiG's own defect
 - **Symptom:** The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).
 - **Root cause:** Not recorded.
 - **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing 2cfab7c26.
-- **Fix commits:** `00d787634a` (2026-11-05), `01a63b933a` (2026-11-05), `5b637b1097` (2026-11-05)
-- **Tests:** `internal/codingagent/selector_focus_test.go::TestEditorSlotTreeSelectorTakesAndReturnsFocus`, `internal/codingagent/tree_selector_contract_test.go::TestTreeListHandleInputContractsMatchPi`, `internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi`, `internal/codingagent/tree_selector_render_contract_test.go::TestTreeLabelInputRenderMatchesPi`, `tui/tree_select_empty_state_test.go::TestTreeSelectSearchCursor`
+- **Fix commits:** `01a63b933a` (2026-11-05)
+- **Tests:** `internal/codingagent/selector_focus_test.go::TestEditorSlotTreeSelectorTakesAndReturnsFocus`, `tui/tree_select_empty_state_test.go::TestTreeSelectSearchCursor`
 - **Release note:** The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).
 
 ### BF-02114ff
@@ -2879,6 +2885,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0bc05bf8de` (2026-10-07)
 - **Tests:** `coding/session_bash_persistence_upstream_test.go::TestUpstreamBashEscapeSequencesSplitAcrossChunks`, `internal/codingagent/tools/sanitize_split_ansi_test.go::TestExecuteBashWithOperationsFlushesPendingANSIAtExit`
 - **Release note:** Fixed `!` and RPC `bash` output keeping fragments of color codes, such as a stray `m`, when a code was split across output chunks.
+
+### BF-0c44f84
+
+**fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check
+- **Root cause:** Pi renews the watches under an entry on the way to base code only when its identity (inode and birth time) differs from the one it had when watched. PiG renewed on every create, remove or rename, so a directory moved away and back was compared again and an edit made through a hardlink, which no watch sees, was found; and a create event of a directory that arrived after the watcher had anchored it renewed it. identityOf is statx (ino, btime) on Linux, lstat (ino, birthtimespec) on darwin and freebsd, the file index and creation time on Windows. Where a system has no birth time Go's syscall package gives (other unixes) the inode alone. A watch that fsnotify drops with the move (kqueue) is put…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0c44f84f21` (2026-11-07)
+- **Tests:** `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry`
 
 ### BF-0c7d23f
 
@@ -9752,6 +9771,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `144341e42a` (2026-10-27), `5cc630eba0` (2026-10-27)
 - **Tests:** `tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs`, `tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs`
 
+### BF-5d04c3c
+
+**fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's
+- **Root cause:** Pi runs esbuild's mapping module in a vm context and spreads its default export. PiG read esbuild's object literal with a parser of its own, which failed on a template literal, kept a __proto__ class, kept esbuild's order of integer-like keys, and escaped U+2028 and U+2029. The module (CommonJS, as Pi builds it) now runs in a Node subprocess of the Node that hosts the plugins, the same Script, spread and JSON.stringify, and the facet's module embeds that text. One process per facet build with a CSS module, ended with the build; its reads are bounded by ctx and NodeOptions.ReadyTimeout, and a ctx that ends it aborts the build. ScopeCSSModule takes the Node options and ctx; ScopedCSS.Classes…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5d04c3c06c` (2026-11-07)
+- **Tests:** `chord/nextnode/plugins/plugins_cssmodules_node_test.go::FuzzScopeCSSModuleMatchesNode`, `chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorKillsAProcessThatDoesNotAnswer`, `chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorReportsAModuleThatDoesNotEvaluateAndGoesOn`, `chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestScopeCSSModuleGivesWhatNodeGivesForEsbuildsMappingModuleOverGeneratedCases`, `chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase`, `chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleStartsANodeOfItsOwnForTheOneModule`
+
 ### BF-5d36a58
 
 **fix(agent): end the tool flow at custom user messages and hold system messages mid-flow**
@@ -12857,6 +12889,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/message_custom_order_test.go::TestStartEventMessageOfACustomMessageIsRaceFreeWithAReplacement`, `agent/message_custom_order_test.go::TestStartEventMessageOfACustomMessageKeepsItsMembersAndOrderAcrossAReplacement`
 - **Release note:** A custom message's `message_start` event keeps the members it started with, in their order, when a `message_end` handler replaces the message; the replacement no longer reaches the start event a listener may still be reading.
 
+### BF-6c74cb8
+
+**fix(chord): a late kill of a finished evaluation never lands on the next one**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): a late kill of a finished evaluation never lands on the next one
+- **Root cause:** A kill now counts only while its ask is live (a guard taken by the kill and by the end of the ask); a process killed during the ask is ended before ask returns, so the next evaluation starts another.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6c74cb8a4c` (2026-11-07)
+- **Tests:** `chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne`
+
 ### BF-6c7b377
 
 **fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the…**
@@ -13173,6 +13218,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `018a05add9` (2026-11-07), `0c44f84f21` (2026-11-07), `6fdf59fc08` (2026-11-07)
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsTheSameOne`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName`
 - **Release note:** On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot be put on one entry (a protected or vanished one in a watched directory) no longer stops every watch.
+
+### BF-6fdf59f-2
+
+**fix(chord): kqueue watches of a base directory moved away and back are put back, and an entry that cannot be…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): kqueue watches of a base directory moved away and back are put back, and an entry that cannot be watched no longer fails the watcher
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6fdf59fc08` (2026-11-07)
+- **Tests:** None recorded.
 
 ### BF-7008884
 
@@ -19675,6 +19733,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `chord/next/host/host_registry_record_test.go::TestRegistriesWithoutAProviderListsARegistryWithContributionsAndNoProviderWithTheNewestVersionContributed`, `chord/next/host/host_unbound_test.go::TestWhatWaitsUnservedListsTheIndexsNamesSortedAndTheHostTheNamesNoPluginServes`, `chord/nextnode/plugins/plugins_baseinputs_test.go::TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem`, `chord/nextnode/plugins/plugins_baseinputs_test.go::TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEachOnesBytes`, `chord/nextnode/plugins/plugins_baseinputs_test.go::TestHashFilesGivesEachFilesHashInOrderAndNothingForAnUnreadableOne`, `chord/nextnode/plugins/plugins_build_test.go::TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures`, `chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAllowsAFileOfTheFacetsOwnKindRefusesOneOfAnotherKindNamingTheChainThatReachedIt`, `chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAllowsHostPackagesOnlyRefusingOtherFilesPackagesAndBuiltinsWithAPointerToADirectory` and 99 more in docs/bug-ledger.json
 - **Release note:** The watcher of the plugins component closes the system watcher outside the host's lock, so a failure to watch no longer holds the host while the system (kqueue: one watch per entry) is slow to close; `Plugins.Close` still waits for it.
 
+### BF-ad88391-2
+
+**fix(chord): the watcher closes the system watcher outside the host's lock**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): the watcher closes the system watcher outside the host's lock
+- **Root cause:** Not recorded.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ad883911f0` (2026-11-08)
+- **Tests:** `chord/nextnode/plugins/plugins_watcher_test.go::TestTheWatcherClosesTheSystemWatcherOutsideTheHostsLockAndJoinWaitsForIt`
+
 ### BF-ad9ed64
 
 **Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an…**
@@ -19826,6 +19897,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `aec0042260` (2026-10-24)
 - **Tests:** `durable/env/node/rename_directory_pi_test.go::TestRenameFileReportsTheErrorOfRename2ForADirectoryDestination`, `env/daemon_wire_exec_oracle_test.go::TestDaemonExecMatchesPisDaemon`, `env/daemon_wire_exec_oracle_test.go::TestDaemonWatchMatchesPisDaemon`
 - **Release note:** The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon does, instead of refusing it; the clients still refuse such a timeout, as Pi's do.
+
+### BF-aec5a31
+
+**fix(chord): a chmod of a recorded base file is compared like a write**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): a chmod of a recorded base file is compared like a write
+- **Root cause:** Pi passes every event of a recorded file to mark, so a file made unreadable differs and one readable again with its bytes clears. baseEvent returned on a Chmod before it looked at the file. A Chmod still renews nothing on the way to base code (the Create, Remove and Rename mask).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `aec5a318db` (2026-11-07)
+- **Tests:** None recorded.
 
 ### BF-af1fe1a
 
@@ -20323,6 +20407,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b4f1d4a41a` (2026-10-10)
 - **Tests:** `tui/complexity_scaling_norace_test.go::TestScalingBracketedPaste`, `tui/stdin_buffer_paste_chunks_test.go::TestPasteOverManyReadsEqualsOnePasteBuffer`
 - **Release note:** Pasting a large text that arrives in many terminal reads no longer stalls input: the paste is joined once instead of being copied and searched again on every read.
+
+### BF-b50a5ab
+
+**A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that still pointed into the whole message, so a 4 MB error body stayed in memory for as long as the recorded span did.
+- **Root cause:** ai: the telemetry span status kept a 500-character cut of the provider's error message that still pointed into the whole message (the hazard Pi #9265 fixed); the cut is cloned now, and a runtime.MemStats test fails without it. ai: the streaming-json and streaming-tool-arguments release cases run on weak pointers. telemetry: the no-op instruments and span are asserted to hold no state (Go form of Object.isFrozen), and the span shares the no-op metrics and propagation. codemode: the worker host's path and missing-file cases run against SandboxOptions.Wasm, PiG's analogue of the worker file. configschema: RenderReferences ports generate-references.ts; docs/site/docs/models-configuration.md is…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b50a5abb5c` (2026-11-08)
+- **Tests:** `ai/streaming_json_parser_cost_test.go::TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt`, `ai/streaming_tool_arguments_upstream_test.go::TestStreamingToolArgumentsReleaseTheStreamAndItsPartialMessagesOnceTheCallerDropsThem`, `ai/telemetry_upstream_test.go::TestAITelemetryKeepsABoundedErrorMessageThatDoesNotHoldTheProvidersWholeMessageAliveUpstream`, `codemode/sandbox_test.go::TestWorkerHostAcceptsAModuleFromAFilePath`, `codemode/sandbox_test.go::TestWorkerHostReportsAMissingModuleFileAsASandboxError`, `internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesTheCommittedPage`, `internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesThePinnedPiPage`, `internal/codingagent/configschema/references_test.go::TestReferencesRenderTheModelsConfigurationPageOnly` and 2 more in docs/bug-ledger.json
+- **Release note:** A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that still pointed into the whole message, so a 4 MB error body stayed in memory for as long as the recorded span did. The cut is copied now.
 
 ### BF-b54f9aa
 
@@ -22930,6 +23028,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d4e641bde3` (2026-11-03)
 - **Tests:** `mcp/review_regression_test.go::TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody`
 - **Release note:** An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept excerpt is 8192 bytes, not 8192 UTF-16 units (Pi main #11749, D233).
+
+### BF-d4ef260
+
+**fix(chord): a CSS module is decoded as UTF-8 like TextDecoder before it is scoped**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): a CSS module is decoded as UTF-8 like TextDecoder before it is scoped
+- **Root cause:** build.ts hands scopeCssModule new TextDecoder().decode(contents): a byte that is not UTF-8 is U+FFFD, one per maximal subpart, and a leading byte order mark goes. decodeUTF8 is that decoder; checked against Node's over every byte string of up to three bytes from 26 telling bytes and 3000 random ones.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d4ef260d38` (2026-11-07)
+- **Tests:** `chord/nextnode/plugins/plugins_cssmodules_decode_test.go::TestDecodeUTF8GivesTheWHATWGDecodersMaximalSubpartReplacements`, `chord/nextnode/plugins/plugins_cssmodules_decode_test.go::TestDecodeUTF8GivesWhatNodesTextDecoderGivesForEveryShortSequenceAndRandomOnes`
 
 ### BF-d50ec25
 
@@ -28001,7 +28112,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D243 | A bash or PowerShell timeout after the shell already exited reports the shell's exit code | [BF-3fe717a](#bf-3fe717a) |
 | D244 | A user bash result whose earlier output was discarded is reported as truncated | [BF-2544a44](#bf-2544a44) |
 | D245 | The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and… | [BF-3b696c8](#bf-3b696c8) |
-| D248 | The /tree search line draws a cursor while the selector is focused | [BF-01a63b9](#bf-01a63b9) |
 | D249 | Images in queued steering and follow-up messages are resized when the message is delivered | [BF-D249](#bf-d249) |
 | D250 | A delivered image-only queued message leaves the pending queue | [BF-D250](#bf-d250) |
 | D251 | A draft moved out of and back into the editor keeps its collapsed paste content | [BF-f43fb00](#bf-f43fb00) |

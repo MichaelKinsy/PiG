@@ -3,6 +3,7 @@ package configschema
 import (
 	"bytes"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -136,12 +137,7 @@ func referenceType(schema *Schema) string {
 }
 
 func contains(list []string, text string) bool {
-	for _, item := range list {
-		if item == text {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, text)
 }
 
 func jsonText(v any) string {

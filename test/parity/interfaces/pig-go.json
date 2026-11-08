@@ -309558,6 +309558,17 @@
       "shapeHash": "sha256:85b7a9cb76af224a912e703674404e5d443dabe176e1118e6fb666c8f1f3a7d7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#ModelsConfigurationReferencePath",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "ModelsConfigurationReferencePath",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Null",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
       "name": "Null",
@@ -309732,6 +309743,17 @@
         "type": "func(keybindings Artifact) (map[string]string, error)"
       },
       "shapeHash": "sha256:e787471af1ec9d567ddf8a6685c053dda4b7b7331fb30a8305ac74b68539d15e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#RenderReferences",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "RenderReferences",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() map[string]string"
+      },
+      "shapeHash": "sha256:22f41c934ea78ede7d40353ffae8120c47cfb3814041833b80a2d310cbdb0241"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Schema",
@@ -310075,6 +310097,17 @@
       "shapeHash": "sha256:814c2616ca2c729ef7fefae0c1e05bde50b0f474b5b0e6193ec9180bcd6e05ba"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#contains",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "contains",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(list []string, text string) bool"
+      },
+      "shapeHash": "sha256:9ae64ee7af479556113fe6b622c8fa40aab7760bf8e02bbd55a0dc2e0a1d7bfc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#definitionName",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
       "name": "definitionName",
@@ -310095,6 +310128,39 @@
         "type": "func() *github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
       },
       "shapeHash": "sha256:869f3e300cef76c317f980b0e28ac9b9657df34c07708a111ec7dcd287273496"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#documentedObject",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "documentedObject",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(schema *Schema) (suffix string, object *Schema)"
+      },
+      "shapeHash": "sha256:9f886330cfd6a14fe9ad7e9eac62beb619c17535624f825b98a7d71d0bcadd32"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#escapeTableText",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "escapeTableText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string) string"
+      },
+      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#formatList",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "formatList",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(items []string) string"
+      },
+      "shapeHash": "sha256:a0a7dfd1f54cb39b1fec27e5899d80e68b6e66623fd9dba955cb3af510fa35ce"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#formatSchemaPath",
@@ -310227,6 +310293,17 @@
         "type": "jsonKind"
       },
       "shapeHash": "sha256:325613ec2af6d5634b568d6c53bb8d804e6cf3658cdff0263fd845fc47195632"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#jsonText",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "jsonText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(v any) string"
+      },
+      "shapeHash": "sha256:191a15d930e24f72e35908f3f1785b2665762f179266a58f642f739ad4375487"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#literals",
@@ -310416,6 +310493,17 @@
       "shapeHash": "sha256:2c9321a04b3df2a8890a2ceea611bdee351b35a6fa7065baccc9f345465b54df"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelsConfigurationSections",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "modelsConfigurationSections",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []referenceSection"
+      },
+      "shapeHash": "sha256:e3f9de9aa55af7d1936df6e5df5ef1bb43ead37ce20f6b51fd7ad43164c764b1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#newModelSchemaParts",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
       "name": "newModelSchemaParts",
@@ -310581,6 +310669,50 @@
       "shapeHash": "sha256:a8895240fc9e1eabe7201726399cb018b869debda0c23c2896cf781bea6bdaa3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#referenceRows",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "referenceRows",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(schema *Schema, section referenceSection, prefix string) []string"
+      },
+      "shapeHash": "sha256:63aea07998e55793b79b449f912d7d7d0857848e0a7d671c72680a60453d7d36"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#referenceSection",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "referenceSection",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "referenceSection"
+      },
+      "shapeHash": "sha256:c0f78671e2a3b92e81205c0ec2ca3af8b6d0723aa1fe2b741fdcfe697bda5870"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#referenceType",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "referenceType",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(schema *Schema) string"
+      },
+      "shapeHash": "sha256:00563252867413f18268da7fd5f7ffb7a9e0ac3f896eef47790c0a1e7ca65ba4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#referencesGeneratedComment",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "referencesGeneratedComment",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#samplingParams",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
       "name": "samplingParams",
@@ -310700,6 +310832,17 @@
         "type": "func(shape []Opt) string"
       },
       "shapeHash": "sha256:189fed621d02bb5e4ed730584b495ee7ab113996820b63cfe746f12ad2a57207"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#simpleTypeName",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "simpleTypeName",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*regexp.Regexp"
+      },
+      "shapeHash": "sha256:71d5e3591899cd0c396770073cb9dff2078549477cfe54a8adbee9e0bbd77653"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#splitAnnotations",
