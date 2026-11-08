@@ -5,12 +5,9 @@
 // (cursor visibility and movement calls are spelled as ProcessTerminal writes them) and the lines each component returned.
 import { pathToFileURL } from "node:url";
 import { runRequestedFrame } from "./frame-clock.mjs";
-import { piTuiIndex } from "./pi_main_tui_overlay.mjs";
-// Pi's frames with the Pi main commits PiG follows (D300, D301) applied; PIG_PI_TUI=pinned runs the pinned pi-tui unchanged.
-const distIndex = piTuiIndex(process.argv[2]);
-const tui = await import(distIndex);
+const tui = await import(pathToFileURL(process.argv[2]).href);
 const { TuiMainScreen, truncateToWidth, CURSOR_MARKER, Container, setCapabilities, resetCapabilitiesCache } = tui;
-const { isImageLine } = await import(new URL("./terminal-image.js", distIndex).href);
+const { isImageLine } = await import(new URL("./terminal-image.js", pathToFileURL(process.argv[2])).href);
 
 let seed = 0x7a11e5c1;
 const random = () => {

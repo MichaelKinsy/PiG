@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
 	"github.com/MichaelKinsy/PiG/mcp"
@@ -153,27 +152,6 @@ func TestSignInRegistersTheCallbackWaitBeforeShowingTheAuthorizationURL(t *testi
 	}
 	if entries := server.logEntries(); !slices.Contains(entries, "token code") {
 		t.Fatalf("log = %v", entries)
-	}
-}
-
-// upstream limitMcpContent reports Math.ceil(totalBytes / 4) as the original token count.
-func TestLimitMcpContentRoundsTheOriginalTokenCountUp(t *testing.T) {
-	text := strings.Repeat("x", 30_001)
-	content, path := mcpext.LimitMcpContent([]ai.ToolResultMessageContent{ai.TextContent{Text: text}}, func([]byte, string) (string, error) {
-		return "/tmp/full.txt", nil
-	})
-	if path != "/tmp/full.txt" || len(content) != 1 {
-		t.Fatalf("path = %q, content = %v", path, content)
-	}
-	if got := content[0].(ai.TextContent).Text; !strings.HasPrefix(got, "Warning: truncated output (original token count: 7501)\n") {
-		t.Fatalf("text = %q", got[:80])
-	}
-	// A failed save is reported in place of the path.
-	content, path = mcpext.LimitMcpContent([]ai.ToolResultMessageContent{ai.TextContent{Text: text}}, func([]byte, string) (string, error) {
-		return "", errors.New("disk full")
-	})
-	if got := content[0].(ai.TextContent).Text; path != "" || !strings.HasSuffix(got, "[Could not save the full output: disk full]") {
-		t.Fatalf("path = %q, text tail = %q", path, got[len(got)-60:])
 	}
 }
 

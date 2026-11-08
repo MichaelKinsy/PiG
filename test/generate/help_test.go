@@ -24,10 +24,13 @@ func TestHelpGeneratorIsolatesAgentAndPreservesOutputOnFailure(t *testing.T) {
 		name   string
 		repeat int
 		fail   bool
+		// readOnly makes the pinned package read-only the way a Pi build cache is; cp -R keeps those modes.
+		readOnly bool
 	}{
 		{name: "isolated success"},
 		{name: "complete output before immediate exit", repeat: 40000},
 		{name: "failed generation preserves committed output", fail: true},
+		{name: "read-only pinned package leaves no scratch copy", readOnly: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fail := tc.fail
@@ -59,16 +62,45 @@ console.log("pig fixture help");
 			}
 			put(pkg+"dist/cli.js", cli)
 			put("coding/cli/help_upstream.txt", "previous help\n")
+			if tc.readOnly {
+				pinned := filepath.Join(root, pkg)
+				walk := func(mode func(d os.DirEntry) os.FileMode) {
+					_ = filepath.WalkDir(pinned, func(path string, d os.DirEntry, err error) error {
+						if err != nil {
+							return nil
+						}
+						return os.Chmod(path, mode(d))
+					})
+				}
+				lock := func(d os.DirEntry) os.FileMode {
+					if d.IsDir() {
+						return 0o555
+					}
+					return 0o444
+				}
+				unlock := func(d os.DirEntry) os.FileMode {
+					if d.IsDir() {
+						return 0o700
+					}
+					return 0o600
+				}
+				walk(lock)
+				t.Cleanup(func() { walk(unlock) })
+			}
+			scratch := t.TempDir()
 			// On Windows a bare "bash" can resolve to the WSL launcher in System32; testenv.Bash is Git for Windows bash.
 			cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/gen/gen-help.sh"))
 			cmd.Dir = root
-			cmd.Env = append(os.Environ(), "PATH="+filepath.Dir(strings.TrimSpace(string(node)))+string(os.PathListSeparator)+os.Getenv("PATH"), "PIG_CODING_AGENT_DIR="+root, "PI_CODING_AGENT_DIR="+root, "POISON_AGENT_DIR="+root, "FORCE_COLOR=1")
+			cmd.Env = append(os.Environ(), "PATH="+filepath.Dir(strings.TrimSpace(string(node)))+string(os.PathListSeparator)+os.Getenv("PATH"), "PIG_CODING_AGENT_DIR="+root, "PI_CODING_AGENT_DIR="+root, "POISON_AGENT_DIR="+root, "FORCE_COLOR=1", "TMPDIR="+scratch)
 			output, runErr := cmd.CombinedOutput()
 			if fail && runErr == nil {
 				t.Fatal("failed generator returned success")
 			}
 			if !fail && runErr != nil {
 				t.Fatalf("generate: %v\n%s", runErr, output)
+			}
+			if left, err := os.ReadDir(scratch); err != nil || len(left) != 0 {
+				t.Fatalf("scratch directory not cleaned up: %v %v", left, err)
 			}
 			want := "pig fixture help\n" + strings.Repeat("help line\n", tc.repeat)
 			if fail {
