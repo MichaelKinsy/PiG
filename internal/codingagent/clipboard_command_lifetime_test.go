@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -349,6 +350,8 @@ func BenchmarkClipboardImageCommand(b *testing.B) {
 	}
 	const size = 1024 * 1024
 	testenv.PathOnlyEnvironment(b, "node")
+	// Each spawn reads the machine's binfmt_misc handlers (about 14 allocations each): 82 allocs/op with the one handler of the development host, 153 with the nightly runner's.
+	defer nodespawn.UseBinfmtMiscDir(b.TempDir())()
 	b.SetBytes(size)
 	b.ReportAllocs()
 	for b.Loop() {
