@@ -316,7 +316,7 @@ func TestM1WorkingChat(t *testing.T) {
 				t.Fatalf("reload %d: the server's report = %+v", round, result.Server)
 			}
 			if len(result.Workers) != 1 || result.Workers[0].Kind != plugins.RolloutReported || !slices.Contains(result.Workers[0].Report.Plugins.Changed, "chat") || len(result.Workers[0].Report.Failed) != 0 {
-				t.Fatalf("reload %d: the workers' reports = %+v", round, result.Workers)
+				t.Fatalf("reload %d: the workers' reports = %+v\n%s", round, result.Workers, processLogText())
 			}
 		}
 		// The stream continues after the reload: partials grow, then the full answer commits.
@@ -403,4 +403,15 @@ func TestM1WorkingChat(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+}
+
+// processLogText is every log source's lines (what the server kept of its workers' output), for a failure's message.
+func processLogText() string {
+	var text strings.Builder
+	for _, source := range p2runtime.ProcessLogs.Sources() {
+		for _, line := range p2runtime.ProcessLogs.Lines(source.ID) {
+			text.WriteString(source.ID + ": " + line.Text + "\n")
+		}
+	}
+	return text.String()
 }
