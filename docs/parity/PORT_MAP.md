@@ -964,25 +964,25 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/unbound-clock.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/app.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/archive.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/blobs.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/ephemeral-sessions.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/ephemeral.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/files-copy.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/files-entry.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/files-index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/files.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/folder-views.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/files-copy.ts` | `chord/nextnode/app/files_copy.go` | ✅ |
+| `packages/chord/src/node/app/files-entry.ts` | `(barrel: Go imports the package; the files-entry exports are FilesFacet, Files, FilesFolder, CopyFiles, PrivateDirectory, PrivateStore and the types)` | ✅ |
+| `packages/chord/src/node/app/files-index.ts` | `chord/nextnode/app/files_index.go` | ✅ |
+| `packages/chord/src/node/app/files.ts` | `chord/nextnode/app/files.go (handlers suspend before their first wait and `turn` is a mutex, D430)` | ✅ |
+| `packages/chord/src/node/app/folder-views.ts` | `chord/nextnode/app/folder_views.go` | ✅ |
 | `packages/chord/src/node/app/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/info.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/invite.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/layout.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/layout.ts` | `chord/nextnode/app/layout.go` | ✅ |
 | `packages/chord/src/node/app/owner.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/pairing.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/secrets.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/secrets.ts` | `chord/nextnode/app/secrets.go` | ✅ |
 | `packages/chord/src/node/app/sessions.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/tar.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/uploads.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/uploads.ts` | `chord/nextnode/app/uploads.go (Accept is the synchronous half of Pi's append, D430)` | ✅ |
 | `packages/chord/src/node/app/users.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/worker.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/plugins/base-inputs.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
