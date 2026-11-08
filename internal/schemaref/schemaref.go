@@ -5,12 +5,9 @@
 package schemaref
 
 import (
-	"encoding/json"
 	"net/url"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // Segments are the members a local `$ref` (`#`, `#/$defs/Item`) walks through, URI-decoded and JSON Pointer unescaped (`~1` is `/`, `~0` is `~`). It
@@ -57,29 +54,6 @@ func Resolve(ref string, root any) (any, bool) {
 	}
 	switch current.(type) {
 	case bool, map[string]any:
-		return current, true
-	}
-	return nil, false
-}
-
-// ResolveJSON is [Resolve] on schema text: it returns the text of the subschema a local `$ref` names in root, with its members in the order root has them.
-func ResolveJSON(ref string, root json.RawMessage) (json.RawMessage, bool) {
-	segments, ok := Segments(ref)
-	if !ok {
-		return nil, false
-	}
-	current := root
-	for _, key := range segments {
-		members, err := orderedjson.Parse(current)
-		if err != nil {
-			return nil, false
-		}
-		if current, ok = members.Get(key); !ok {
-			return nil, false
-		}
-	}
-	switch trimmed := strings.TrimLeft(string(current), " \t\r\n"); {
-	case strings.HasPrefix(trimmed, "{"), strings.HasPrefix(trimmed, "true"), strings.HasPrefix(trimmed, "false"):
 		return current, true
 	}
 	return nil, false

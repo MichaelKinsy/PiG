@@ -3,6 +3,7 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"regexp"
 	"slices"
 	"strings"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
-	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
@@ -411,7 +411,7 @@ func checkExposures(fields map[string]json.RawMessage) string {
 			v := overrides[tool]
 			var s string
 			if !isString(v) || json.Unmarshal(v, &s) != nil || !isExposure(s) {
-				return fmt.Sprintf(`toolExposure "%s" must be one of %s`, tool, exposures)
+				return `toolExposure "` + tool + `" must be one of ` + exposures
 			}
 		}
 	}

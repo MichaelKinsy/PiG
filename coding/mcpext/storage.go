@@ -59,9 +59,42 @@ func (b *FileAuthStorageBackend) WithLock(fn func(current string, exists bool) (
 		return err
 	}
 	if next != nil {
-		return os.WriteFile(b.path, []byte(*next), 0o600)
+		return writeFileAtomic(b.path, []byte(*next))
 	}
 	return nil
+}
+
+// writeFileAtomic replaces path with data through a temporary file in the same directory (fsynced, then renamed), so a crash or a full disk
+// never leaves a torn credential file. Pi's writeFileSync keeps the mode of a file that exists and creates a new one private (0600); so does this.
+func writeFileAtomic(path string, data []byte) (err error) {
+	mode := os.FileMode(0o600)
+	//perf:ok one stat per credential write, which already syncs a file
+	if info, statErr := os.Stat(path); statErr == nil {
+		mode = info.Mode().Perm()
+	}
+	temp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = temp.Close()
+			_ = os.Remove(temp.Name())
+		}
+	}()
+	if err = temp.Chmod(mode); err != nil {
+		return err
+	}
+	if _, err = temp.Write(data); err != nil {
+		return err
+	}
+	if err = temp.Sync(); err != nil {
+		return err
+	}
+	if err = temp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(temp.Name(), path)
 }
 
 // InMemoryAuthStorageBackend keeps the document in memory.

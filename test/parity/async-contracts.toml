@@ -2963,45 +2963,45 @@ rationale = "request() returns a Promise that settles on the response, an abort,
 
 [[files]]
 path = "packages/mcp/src/oauth/auth-provider.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable"]
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderRefreshesARejectedToken", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderLeavesAPendingSignInUsableWhenTheRefreshFails"]
+rationale = "createMcpAuthProvider shares one in-flight refresh between concurrent 401s under the store lock (an awaited promise joined by every caller); Go AuthProvider.Token and OnUnauthorized (mcp/oauth/auth_provider.go) block with a context, and the refresh lock wait honours it."
 
 [[files]]
 path = "packages/mcp/src/oauth/callback.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPlainTextByDefault", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPagesThroughRenderPage", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne"]
+rationale = "waitForCallback returns a promise settled by the redirect, the timeout or close(); WaitForCallback blocks on a channel with the caller context (a wait that ends with its context frees its state, a wait after Close fails at once: D370). The server goroutine is owned by the server and ends in Close, which also drops connections that never sent a request."
 
 [[files]]
 path = "packages/mcp/src/oauth/client-settings.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Pure computation of client settings and metadata documents; the only awaits in the upstream file are over the caller store, which Go passes through as blocking calls with a context (mcp/oauth/client_settings.go)."
 
 [[files]]
 path = "packages/mcp/src/oauth/discovery.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataTriesThePathAwareURLThenTheRoot", "test:mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataUsesAnExplicitURLWithoutFallingBack"]
+rationale = "Discovery fetches are awaited in sequence; Go does the same with blocking calls that carry the caller context (mcp/oauth/discovery.go)."
 
 [[files]]
 path = "packages/mcp/src/oauth/flow.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401", "test:mcp/oauth/oauth_test.go#TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext"]
+rationale = "authorizeMcp awaits discovery, registration and the token request in order; Go blocks in the same order and every request carries the context, so a cancelled sign-in stops without falling back to a redirect (mcp/oauth/flow.go)."
 
 [[files]]
 path = "packages/mcp/src/oauth/loopback.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "ui-handoff", "concurrent-joined"]
+evidence = ["test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInCompletesThroughTheLoopbackCallbackServer", "test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInRejectsAResponseOnAnotherRedirectPath", "test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInTakesAPastedRedirectURLWhileWaitingForTheCallback", "test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInCancelsTheWaitAndAnEmptyPasteCancelsToo"]
+rationale = "waitForLoopbackSignIn races the callback server against a pasted redirect URL and the abort signal; Go waits on one goroutine per source and returns the first result, cancelling the rest and closing the server (mcp/oauth/loopback.go). OnRegistered hands the pending state to the UI after the wait is registered."
 
 [[files]]
 path = "packages/mcp/src/oauth/provider.ts"
@@ -3012,17 +3012,17 @@ rationale = "McpOAuthProvider chains every store write on one promise (this.writ
 
 [[files]]
 path = "packages/mcp/src/oauth/sign-in.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:mcp/oauth/sign_in_pi_test.go#TestSignInRefreshesUnderTheStoresRefreshLock", "test:mcp/oauth/sign_in_pi_test.go#TestCancellationCancelsAStartWhoseRequestDoesNotAnswer", "test:mcp/oauth/sign_in_pi_test.go#TestCancellationCancelsACompletionWhoseTokenRequestDoesNotAnswer"]
+rationale = "startMcpSignIn and completeMcpSignIn await discovery, registration, the code exchange and the store lock in order; Go calls block in that order with the context, and cancellation during the lock wait cancels the sign-in (mcp/oauth/sign_in.go)."
 
 [[files]]
 path = "packages/mcp/src/output-limit.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:mcp/output_limit_pi_test.go#TestLimitMcpContentCutsTheMiddleOfLongerTextSavesTheFullTextAndKeepsImages", "test:mcp/output_limit_pi_test.go#TestLimitMcpContentReportsAFailedSaveAndNamesNoFileWithoutASaver"]
+rationale = "limitMcpContent awaits the caller saveOutput once for text over the limit; the Go saver is a blocking call (mcp/output_limit.go)."
 
 [[files]]
 path = "packages/mcp/src/transports/in-memory.ts"
@@ -3033,24 +3033,24 @@ rationale = "send() resolves after the peer's message listeners ran, and close()
 
 [[files]]
 path = "packages/mcp/src/transports/pipe.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:mcp/pipe_pi_test.go#TestPipeTransportReportsAnIncompleteMessageWhenTheProgramExitsThenCloses", "test:mcp/pipe_pi_test.go#TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses", "test:mcp/pipe_pi_test.go#TestPipeTransportRejectsSendAfterCloseAndAfterTheProgramEnded", "test:mcp/pipe_pi_test.go#TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime"]
+rationale = "start() awaits open(); close() closes stdin, races exited against closeTimeoutMs then kills, and exited is observed once for the exit event. Go: Start blocks on Open, Close waits on the program exit with a timer (and a second bounded wait after the kill), one goroutine reads exit and emits error then close in Pi order; writes are serialised so send order equals write order (mcp/pipe.go)."
 
 [[files]]
 path = "packages/mcp/src/transports/stdio.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:mcp/stdio_splitter_test.go#TestStdioTransportDeliversALargeMessageSpanningManyReads", "test:mcp/stdio_splitter_test.go#TestStdioSplitterLargeMessageScalesLinearly"]
+rationale = "The stdio transport frames output through the line reader; spawning, exit and shutdown ordering are unchanged from the earlier pin (mcp/stdio.go, lines.go)."
 
 [[files]]
 path = "packages/mcp/src/transports/streamable-http.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:mcp/sse_cr_pi_test.go#TestConsumeSSEStreamRecognizesCRLFAndCRLineEndingsIncludingCRLFSplitAcrossChunks", "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses"]
+rationale = "A failed SSE response body is cancelled before the error is thrown (f40984747); Go closes the body before returning the error, with the request context (mcp/streamable_http.go)."
 
 [[files]]
 path = "packages/mcp/src/transports/transport.ts"

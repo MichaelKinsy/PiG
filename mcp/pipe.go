@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -116,6 +117,8 @@ func (t *PipeTransport) Start() error {
 	}
 	t.pipe = pipe
 	t.mu.Unlock()
+	//portlint:allow asyncorder the exit watcher is the one place Pi awaits `exited` (pipe.ts start): it reports the exit once, and Close joins it through the same Exited call
+	//portlint:allow golifetime the goroutine ends when the program exits, which Close forces by closing stdin and then killing the program after CloseTimeoutMs
 	go func() {
 		_, failure := pipe.Exited()
 		t.exit(failure)
@@ -186,8 +189,15 @@ func (t *PipeTransport) Close() error {
 	case <-timer.C:
 	}
 	pipe.Close()
-	<-exited
-	return nil
+	// Pi awaits `exited` after the kill; Go bounds the wait by the same time, so a pipe that never reports the exit cannot hold Close forever.
+	kill := time.NewTimer(timeout)
+	defer kill.Stop()
+	select {
+	case <-exited:
+		return nil
+	case <-kill.C:
+		return fmt.Errorf("MCP program did not exit within %v after it was killed", timeout)
+	}
 }
 
 // exit is the program ended: an error unless Close caused it, then the unfinished message, then the close.
