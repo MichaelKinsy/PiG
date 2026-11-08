@@ -6,4 +6,4 @@
 
 ### Added
 
-- Chord's app kit: device pairing (`/_chord/pair`) in `chord/nextnode/app`, and `HttpRequest.RemoteAddress` in `chord/nextnode/http`.
+- Chord's app kit: device pairing (`/_chord/pair`) and data archives (`PackData`, `PackStore`, `UnpackData`) in `chord/nextnode/app`, and `HttpRequest.RemoteAddress` in `chord/nextnode/http`.
