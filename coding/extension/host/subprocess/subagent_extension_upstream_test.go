@@ -128,10 +128,10 @@ func newSubagentRig(t *testing.T, cwd string, interactive, trusted bool) *subage
 	launcher := filepath.Join(dir, "pi-fixture.sh")
 	// The pi the example starts is the fixture. The harness entry (argv[1] of the extension) sits between them, and killing it with SIGKILL leaves its
 	// child running, which Pi's direct child would not survive; for the one scenario that waits for that kill the launcher therefore ends its fixture
-	// when it is itself killed, and forwards SIGTERM as the harness entry does. Every other scenario execs the fixture, so its exit status reaches the entry.
+	// when the entry that started it is killed, and forwards SIGTERM as the harness entry does. Every other scenario execs the fixture, so its exit status reaches the entry.
 	write(t, launcher, "#!/bin/sh\ncase \"$*\" in\n*'Task: ignore-sigterm:'*) ;;\n*) exec "+shellQuote(node)+" "+shellQuote(fixture)+" \"$@\" ;;\nesac\n"+
 		shellQuote(node)+" "+shellQuote(fixture)+" \"$@\" &\nchild=$!\ntrap 'kill -TERM $child 2>/dev/null' TERM INT HUP\n"+
-		"( while kill -0 $$ 2>/dev/null; do sleep 0.05; done; kill -KILL $child 2>/dev/null ) &\n"+
+		"parent=$PPID\n( while kill -0 $parent 2>/dev/null; do sleep 0.05; done; kill -KILL $child 2>/dev/null ) &\n"+
 		"while kill -0 $child 2>/dev/null; do wait $child; done\n")
 	if err := os.Chmod(launcher, 0o755); err != nil {
 		t.Fatal(err)
