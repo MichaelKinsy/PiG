@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"sync"
 	"testing"
@@ -1360,6 +1361,41 @@ func TestRelayForwardsAWorkersResultAfterTheStateTheRelaysOwnObjectsKeepWaitingF
 		flushRelay(rel, workers, a, b)
 		if states := countKind(tab, "state"); states != 4 {
 			t.Fatalf("tab states = %d, want 4", states)
+		}
+	})
+}
+
+// A relay passes the carrier on as it arrived when it records nothing (relay.ts #holdTrace, and the call's trace): the keys
+// keep the order the tab wrote them in, which a Go map cannot, so the message carries it (TraceOrder).
+var unsortedCarrier = map[string]string{"zeta": "1", "alpha": "2", "mid": "3"}
+var unsortedCarrierOrder = []string{"zeta", "alpha", "mid"}
+
+func TestRelayHoldKeepsTheArrivedCarriersKeyOrderWhenItRecordsNothing(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		r := rawRelay(t, rawRelayOptions{})
+		hold := placedHold(t, 0, "S1")
+		hold.Trace, hold.TraceOrder = unsortedCarrier, unsortedCarrierOrder
+		r.Raw.Send(hold)
+		worker := r.Workers.At(t, 0)
+		forwarded := worker.Next("hold").(*link.HoldMessage)
+		if !maps.Equal(forwarded.Trace, unsortedCarrier) || !slices.Equal(forwarded.TraceOrder, unsortedCarrierOrder) {
+			t.Fatalf("forwarded hold carrier = %v in order %v, want %v in order %v", forwarded.Trace, forwarded.TraceOrder, unsortedCarrier, unsortedCarrierOrder)
+		}
+	})
+}
+
+func TestRelayCallKeepsTheArrivedCarriersKeyOrderWhenItRecordsNothing(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		wait := editorWire(t).Methods["wait"]
+		r := rawRelay(t, rawRelayOptions{})
+		holdPlaced(t, r.Raw, 0)
+		worker := r.Workers.At(t, 0)
+		bindEditor(t, worker, nextHeld(worker))
+		r.Raw.Next("bound")
+		r.Raw.Send(&link.CallMessage{Call: 0, Hold: 0, Method: wait, Trace: unsortedCarrier, TraceOrder: unsortedCarrierOrder})
+		forwarded := worker.Next("call").(*link.CallMessage)
+		if !maps.Equal(forwarded.Trace, unsortedCarrier) || !slices.Equal(forwarded.TraceOrder, unsortedCarrierOrder) {
+			t.Fatalf("forwarded call carrier = %v in order %v, want %v in order %v", forwarded.Trace, forwarded.TraceOrder, unsortedCarrier, unsortedCarrierOrder)
 		}
 	})
 }

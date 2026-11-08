@@ -103309,7 +103309,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/jobs_job.go#job.finishRun"
+        "call:chord/next/host/jobs_job.go#job.finishTries"
       ],
       "evidence": [
         "test:chord/next/host/jobs_run_test.go#TestARunHasAnEntryPerPhaseArgsAndStateWhileRunningOrFinishingNeitherWhenBlockedWithItsReason"
@@ -105038,12 +105038,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/host_host.go#chordHost.Root"
+        "call:chord/next/host/host_ctx_trace.go#callContext.Trace"
       ],
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences",
-        "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone"
+        "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot",
+        "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -105071,12 +105071,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/telemetryingest/facet.go#IngestFacet"
+        "call:chord/next/host/host_ctx_trace.go#spanCtx.Incarnation"
       ],
       "evidence": [
         "test:chord/next/host/host_example_09_test.go#TestExample09Calls",
         "test:chord/next/host/host_root_test.go#TestHostRootGivesFnACallContext",
-        "test:chord/next/host/remote_provider_test.go#TestProviderCallsArrivingOnALink"
+        "test:chord/next/host/host_spans_test.go#TestCtxTraceRunsFnInAChildSpanOfTheHandlersWithAChildCtxTheSamePrincipalSignalAndReferences"
       ]
     },
     {
@@ -105093,7 +105093,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/invite.go#InviteFacet"
+        "call:chord/next/host/host_ctx_trace.go#spanCtx.Principal"
       ],
       "evidence": [
         "test:chord/next/host/host_example_09_test.go#TestExample09Calls",
@@ -105447,7 +105447,7 @@
       "evidence": [
         "test:chord/next/link/message_test.go#TestDescribeMessage",
         "test:chord/next/link/message_test.go#TestMessages",
-        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"
+        "test:chord/next/link/message_trace_test.go#TestMessagesCarryATraceCarrier"
       ]
     },
     {
@@ -105469,7 +105469,7 @@
       "evidence": [
         "test:chord/next/link/message_test.go#TestDescribeMessage",
         "test:chord/next/link/message_test.go#TestMessages",
-        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"
+        "test:chord/next/link/message_trace_test.go#TestMessagesCarryATraceCarrier"
       ]
     },
     {
@@ -106752,8 +106752,25 @@
     },
     {
       "id": "pkg:chord/.#HostOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:762fc02ebb1bb0bafaeab42266b9ffb10a2ebee96d03e484c143bc96b87f08c1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:762fc02ebb1bb0bafaeab42266b9ffb10a2ebee96d03e484c143bc96b87f08c1",
+      "rationale": "Derived by the interface gap detector: HostOptions is Go chord/next/host/host_host.go#HostOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_host.go#HostOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_host.go#CreateHost"
+      ],
+      "evidence": [
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchCallsTheHookOncePerSpanItStampsCachingNothingItself",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers"
+      ]
     },
     {
       "id": "pkg:chord/.#Implementation",
@@ -108093,8 +108110,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_14_test.go#TestExample14FlowControl",
-        "test:chord/next/link/channel_test.go#TestInOrderHandling",
-        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
+        "test:chord/next/host/host_telemetry_test.go#TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt",
+        "test:chord/next/link/channel_test.go#TestInOrderHandling"
       ]
     },
     {
@@ -108114,9 +108131,9 @@
         "call:chord/next/link/channel.go#Channel.Close"
       ],
       "evidence": [
+        "test:chord/next/host/host_telemetry_test.go#TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt",
         "test:chord/next/link/channel_test.go#TestInOrderHandling",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
       ]
     },
     {
@@ -108136,9 +108153,9 @@
         "call:chord/next/link/channel.go#Channel.Close"
       ],
       "evidence": [
+        "test:chord/next/host/host_telemetry_test.go#TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt",
         "test:chord/next/link/channel_test.go#TestInOrderHandling",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
       ]
     },
     {
@@ -108892,9 +108909,9 @@
         "call:chord/next/host/host_attempt.go#attempt.Open"
       ],
       "evidence": [
+        "test:chord/next/host/host_attempt_test.go#TestActivationSpansATransientFailureAndItsRetryIsARootOfTheHostsAdapterLinkedToItsFirstTriggerARetrysLinksToTheAttemptBefore",
         "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTheOpenersContextAbortedWhatOpenedClosed",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptWaitingForItsPreviousInstancesTeardownIsBoundedByReadyTimeoutTooAbandonedTransientWithoutRunningItsFactoryRetriedAfterIt",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptAnOpenThatThrowsFailsTransientReportedTheGetWaitsThroughRetries"
+        "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptWaitingForItsPreviousInstancesTeardownIsBoundedByReadyTimeoutTooAbandonedTransientWithoutRunningItsFactoryRetriedAfterIt"
       ]
     },
     {
@@ -110881,7 +110898,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/host_host.go#chordHost.reloadReport"
+        "call:chord/next/host/host_host.go#chordHost.Reload"
       ],
       "evidence": [
         "test:chord/next/host/host_example_33_test.go#TestExample33Reload",
@@ -111045,8 +111062,25 @@
     },
     {
       "id": "pkg:chord/.#RootOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8a9b1658d621182423590f024fff4143f3bfc9eea4344158a1debe8dead12f36"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8a9b1658d621182423590f024fff4143f3bfc9eea4344158a1debe8dead12f36",
+      "rationale": "Derived by the interface gap detector: RootOptions is Go chord/next/host/host_root.go#RootOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_root.go#RootOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/host_host.go#chordHost.Root"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
+        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
+        "test:chord/next/host/host_example_30_test.go#TestExample30HostRoot"
+      ]
     },
     {
       "id": "pkg:chord/.#RouteHandle",
@@ -111155,8 +111189,25 @@
     },
     {
       "id": "pkg:chord/.#Run::property:id",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e982ef726feef24c9da5a2aa83c1faec2a968923326e9b02a4b07b29b96d9892"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e982ef726feef24c9da5a2aa83c1faec2a968923326e9b02a4b07b29b96d9892",
+      "rationale": "Derived by the interface gap detector: Run::property:id is Go chord/next/documents/job.go#Run.ID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/job.go#Run.ID"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/host/jobs_job.go#job.Start"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_example_19_test.go#TestExample19Jobs",
+        "test:chord/next/host/host_example_28_test.go#TestExample28PersistedJobs",
+        "test:chord/next/host/host_example_34_test.go#TestExample34Versions"
+      ]
     },
     {
       "id": "pkg:chord/.#Run::property:outcome",
@@ -116673,7 +116724,7 @@
       "evidence": [
         "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
         "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric",
-        "test:durable/harness/harness_continue_test.go#TestContinue"
+        "test:chord/next/host/host_telemetry_test.go#TestAcrossHostsStartsANewRootForAWellFormedCarrierTheServersAdapterDoesNotKnow"
       ]
     },
     {
@@ -116695,7 +116746,7 @@
       "evidence": [
         "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
         "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric",
-        "test:durable/harness/harness_continue_test.go#TestContinue"
+        "test:chord/next/host/host_telemetry_test.go#TestAcrossHostsStartsANewRootForAWellFormedCarrierTheServersAdapterDoesNotKnow"
       ]
     },
     {
@@ -276317,7 +276368,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/telemetryingest/recorder.go#copyLink"
+        "call:chord/next/host/host_attempt_trace.go#attempt.startActivation"
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -277171,7 +277222,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/jobs_records.go#jobRecords.stage"
+        "call:chord/next/telemetry/telemetry.go#CarrierOf"
       ],
       "evidence": [
         "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities",
@@ -277243,7 +277294,7 @@
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsOfNoAdapterAllocateNothingPerUse"
       ]
     },
     {
@@ -277265,7 +277316,7 @@
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsOfNoAdapterAllocateNothingPerUse"
       ]
     },
     {
@@ -277287,7 +277338,7 @@
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsOfNoAdapterAllocateNothingPerUse"
       ]
     },
     {
@@ -277393,9 +277444,9 @@
         "call:telemetry/context.go#noopTelemetryMetrics.Histogram"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsOfNoAdapterAllocateNothingPerUse",
         "test:telemetry/conformance_capability_cases_test.go#TestConformanceCapabilityCasesCheckTheirRules",
-        "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms"
       ]
     },
     {
@@ -277415,9 +277466,9 @@
         "call:ai/telemetry.go#modelRequestObservation.onEvent"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsOfNoAdapterAllocateNothingPerUse",
         "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestAggregatesCanonicalSeriesByIntervalAndWritesPartialIntervalsOnlyOnClose"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
       ]
     },
     {
@@ -277437,9 +277488,9 @@
         "call:ai/telemetry.go#modelRequestObservation.onEvent"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsOfNoAdapterAllocateNothingPerUse",
         "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestAggregatesCanonicalSeriesByIntervalAndWritesPartialIntervalsOnlyOnClose"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
       ]
     },
     {
@@ -277773,7 +277824,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/jobs_records.go#jobRecords.stage"
+        "call:chord/next/telemetry/telemetry.go#CarrierOf"
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -277794,7 +277845,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/jobs_records.go#jobRecords.stage"
+        "call:chord/next/telemetry/telemetry.go#CarrierOf"
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -278020,7 +278071,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_node_telemetry.go#nodeTelemetry.update"
+        "call:chord/next/host/host_host.go#chordHost.bind"
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -278042,7 +278093,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_node_telemetry.go#nodeTelemetry.update"
+        "call:chord/next/host/host_host.go#chordHost.bind"
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -278086,7 +278137,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/jobs_records.go#jobRecords.stage"
+        "call:chord/next/telemetry/telemetry.go#CarrierOf"
       ],
       "evidence": [
         "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities",
@@ -278569,7 +278620,7 @@
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsOfNoAdapterAllocateNothingPerUse"
       ]
     },
     {
@@ -278591,7 +278642,7 @@
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsOfNoAdapterAllocateNothingPerUse"
       ]
     },
     {
@@ -278613,7 +278664,7 @@
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsOfNoAdapterAllocateNothingPerUse"
       ]
     },
     {

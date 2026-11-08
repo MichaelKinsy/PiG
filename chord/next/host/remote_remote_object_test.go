@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"runtime"
 	"slices"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // pi: packages/chord/src/next/remote/remote-object.ts
@@ -1247,5 +1249,108 @@ func TestRemoteObjectGCAcrossADrop(t *testing.T) {
 			nexttest.ExpectCollected(t, closedPeer)
 			rhWaitState(t, notes, RefStateLive)
 		})
+	})
+}
+
+// --- consumer spans (slice 9) -------------------------------------------------------------------------------------------
+
+// remote-object.test.ts › consumer spans (slice 9) › holds in a `chord.hold` span until bound, its carrier on the hold; a
+// call in a `chord.call` span, its carrier on the call
+func TestConsumerSpansHoldInAChordHoldSpanUntilBoundItsCarrierOnTheHoldACallInAChordCallSpanItsCarrierOnTheCall(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		recorder := telemetry.NewInMemoryTelemetryContext()
+		p := rawProvider(t, rawLinkedOptions{Telemetry: recorder})
+		defer closeHosts(t, p.Client)
+		tracedUnder(t, recorder, "view", func(ctx context.Context) {
+			got := make(chan *Reference, 1)
+			go func() {
+				notes, err := p.Client.Get(ctx, Notes, jsonObject("session", "S1"), GetOptions{})
+				must(t, err)
+				got <- notes
+			}()
+			held := p.Peer.Next("hold").(*link.HoldMessage)
+			bindHold(t, p.Peer, held.Hold)
+			notes := <-got
+			calling := startCall(t, notes, "add", jsonObject("text", "a"), ctx)
+			call := p.Peer.Next("call").(*link.CallMessage)
+			p.Peer.Send(&link.ErrorMessage{Call: call.Call, Error: rhWireError(data.NewPluginError("quota", "full"))})
+			if _, err := calling.wait(background); err == nil {
+				t.Error("the call resolved, want a rejection")
+			}
+			hold := spanWhere(t, recorder, "chord.hold", nil)
+			chordCall := spanWhere(t, recorder, "chord.call", nil)
+			if !maps.Equal(held.Trace, hold.Context) {
+				t.Errorf("hold carrier = %v, want %v", held.Trace, hold.Context)
+			}
+			if !maps.Equal(call.Trace, chordCall.Context) {
+				t.Errorf("call carrier = %v, want %v", call.Trace, chordCall.Context)
+			}
+			spanAttributesAre(t, hold, telemetry.SpanAttributes{
+				telemetry.Attr("chord.host", "client"), telemetry.Attr("type", "app.notes"),
+				telemetry.Attr("object", "app.notes(S1)"), telemetry.Attr("address.kind", "server"), telemetry.Attr("outcome", "bound"),
+			})
+			attributesWant(t, chordCall, map[string]any{"member": "add", "outcome": "error"})
+			if chordCall.Status.Status != telemetry.SpanStatusCodeError || chordCall.Status.Error == nil ||
+				chordCall.Status.Error.Name != "call_failed" || chordCall.Status.Error.Message != "full" {
+				t.Errorf("call status = %+v %+v, want error call_failed: full", chordCall.Status, chordCall.Status.Error)
+			}
+		})
+	})
+}
+
+// remote-object.test.ts › consumer spans (slice 9) › keeps a call its caller cancelled ok, outcome `aborted` (a thrown cancel
+// is no error)
+func TestConsumerSpansKeepACallItsCallerCancelledOkOutcomeAbortedAThrownCancelIsNoError(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		recorder := telemetry.NewInMemoryTelemetryContext()
+		p := rawProvider(t, rawLinkedOptions{Telemetry: recorder})
+		defer closeHosts(t, p.Client)
+		got := make(chan *Reference, 1)
+		go func() {
+			notes, err := p.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
+			must(t, err)
+			got <- notes
+		}()
+		bindHold(t, p.Peer, p.Peer.Next("hold").(*link.HoldMessage).Hold)
+		notes := <-got
+		cancellable, cancel := chordctx.WithCancel(background)
+		tracedUnder(t, recorder, "view", func(ctx context.Context) {
+			traced := chordctx.WithTelemetry(cancellable, chordctx.Telemetry(ctx))
+			calling := startCall(t, notes, "add", jsonObject("text", "a"), traced)
+			p.Peer.Next("call")
+			cancel(errors.New("cancelled"))
+			if _, err := calling.wait(background); err == nil {
+				t.Error("the call resolved, want a rejection")
+			}
+		})
+		call := spanWhere(t, recorder, "chord.call", nil)
+		if outcome, _ := call.Attributes.Get("outcome"); outcome != "aborted" || call.Status.Status != telemetry.SpanStatusCodeOK {
+			t.Errorf("call = %v %+v, want aborted ok", outcome, call.Status)
+		}
+	})
+}
+
+// remote-object.test.ts › consumer spans (slice 9) › ends a hold's span failed when its first answer is a failure
+func TestConsumerSpansEndAHoldsSpanFailedWhenItsFirstAnswerIsAFailure(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		recorder := telemetry.NewInMemoryTelemetryContext()
+		p := rawProvider(t, rawLinkedOptions{Telemetry: recorder})
+		defer closeHosts(t, p.Client)
+		tracedUnder(t, recorder, "view", func(ctx context.Context) {
+			_, err := p.Client.Hold(ctx, Notes, jsonObject("session", "S1"), GetOptions{})
+			must(t, err)
+			hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
+			failure := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "not served"}, nil)
+			p.Peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{Kind: "waiting", Error: rhWireError(failure)}})
+			rhSync(t, p.Peer)
+		})
+		hold := spanWhere(t, recorder, "chord.hold", nil)
+		if outcome, _ := hold.Attributes.Get("outcome"); outcome != "failed" {
+			t.Errorf("hold outcome = %v, want failed", outcome)
+		}
+		if hold.Status.Status != telemetry.SpanStatusCodeError || hold.Status.Error == nil ||
+			hold.Status.Error.Name != "hold_failed" || hold.Status.Error.Message != "not served" {
+			t.Errorf("hold status = %+v %+v, want error hold_failed: not served", hold.Status, hold.Status.Error)
+		}
 	})
 }

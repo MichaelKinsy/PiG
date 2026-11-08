@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/remote/consumer.ts. The consumer side of a link (§7, §22, W1): the holds this host's own
@@ -28,6 +31,8 @@ type outgoingCall struct {
 	result   *parkedCallResult
 	// old is whether the caller is old work of a reload here (`call.old`: the provider routes it to open old attempts).
 	old bool
+	// trace is the caller's carrier, sent with the call.
+	trace telemetry.TelemetryCarrier
 	// id is the call's id once it got its slot; hasID tells it has one.
 	id    int
 	hasID bool
@@ -74,7 +79,7 @@ func newConsumerSide(l *hostLink) *consumerSide { return &consumerSide{link: l} 
 
 // attach holds holder on this link and returns its new id: its first hold, or a re-hold on a new link; chain is the
 // activation chain it is held for, if any (Q5).
-func (c *consumerSide) attach(holder *remoteObject, chain []string) int {
+func (c *consumerSide) attach(holder *remoteObject, chain []string, trace telemetry.TelemetryCarrier) int {
 	id := c.nextHold
 	c.nextHold++
 	c.entries.set(id, holder)
@@ -94,6 +99,7 @@ func (c *consumerSide) attach(holder *remoteObject, chain []string) int {
 		Limit:       request.Limit,
 		Principal:   principal,
 		Incarnation: incarnation,
+		Trace:       trace,
 	})
 	return id
 }
@@ -124,7 +130,7 @@ func (c *consumerSide) call(hold int, method int, methodData *contracts.MethodDa
 			part = c.link.part(payload.Json, ctx)
 		}
 	}
-	call := &outgoingCall{side: c, hold: hold, method: method, args: part, segments: payload.Segments, result: result, old: c.link.host.oldWork.of(ctx)}
+	call := &outgoingCall{side: c, hold: hold, method: method, args: part, segments: payload.Segments, result: result, old: c.link.host.oldWork.of(ctx), trace: chordtelemetry.CarrierOf(chordctx.Telemetry(ctx))}
 	if ctx.Done() != nil {
 		loop := c.link.host.loop()
 		call.done = context.AfterFunc(ctx, func() {
@@ -209,7 +215,7 @@ func (c *consumerSide) send(call *outgoingCall) {
 	c.nextCall++
 	call.id, call.hasID = id, true
 	c.calls.set(id, call)
-	c.link.send(&link.CallMessage{Call: id, Hold: call.hold, Method: call.method, Args: call.args, Segments: call.segments, Old: call.old})
+	c.link.send(&link.CallMessage{Call: id, Hold: call.hold, Method: call.method, Args: call.args, Segments: call.segments, Trace: call.trace, Old: call.old})
 }
 
 // cancel cancels call: a waiting one leaves the window and nothing is sent; one in flight sends `abort` and frees its
