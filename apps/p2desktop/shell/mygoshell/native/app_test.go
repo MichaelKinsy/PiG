@@ -74,7 +74,7 @@ func TestSessionsScreenOverTheRealServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	until(t, tt, "the session in the list and its sheet", func() bool {
-		return tt.HasText("hello native") && tt.HasText("Model") && !tt.HasText("No sessions yet.")
+		return tt.HasText("hello native") && tt.HasText("Say something to start.") && !tt.HasText("No sessions yet.")
 	})
 	// The footer's Archived switches to the archive, which has nothing yet; a second click comes back.
 	if err := tt.Click("Show archived sessions"); err != nil {
@@ -106,5 +106,30 @@ func TestViewBeforeTheHostStartsShowsTheStartPage(t *testing.T) {
 	tt.Frame()
 	if !tt.HasText("Starting PiG…") {
 		t.Fatalf("texts %q", tt.Texts())
+	}
+}
+
+// TestChatRoundTrip types in the prompt bar of a session and reads the faux provider's answer in the transcript.
+func TestChatRoundTrip(t *testing.T) {
+	app, tt := startApp(t)
+	until(t, tt, "the empty list", func() bool { return tt.HasText("No sessions yet.") })
+	id, err := app.sessions.Create(t.TempDir(), "chat session")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.setSel(id)
+	until(t, tt, "the chat", func() bool { return tt.HasText("Say something to start.") })
+	app.draftText = "hello from the test"
+	tt.Frame()
+	if err := tt.Click("Send"); err != nil {
+		t.Fatal(err)
+	}
+	worked := false
+	until(t, tt, "the message and an answer after the run", func() bool {
+		worked = worked || tt.HasText("Working…") || tt.HasText("Stop")
+		return worked && tt.HasText("hello from the test") && !tt.HasText("Working…") && !tt.HasText("Stop") && !tt.HasText("Say something to start.")
+	})
+	if chat, ok := app.chat.Transcript(); !ok || len(chat.Items) < 2 {
+		t.Fatalf("the transcript holds %d items, want the message and the answer", len(chat.Items))
 	}
 }

@@ -24,4 +24,9 @@ var (
 	iconPin      = icon(`<path d="M12 17v5M9 3h6l-1 6 4 3v2H6v-2l4-3z"/>`)
 )
 
+var (
+	iconSend = icon(`<path d="M12 19V5M5 12l7-7 7 7"/>`)
+	iconStop = icon(`<rect x="6" y="6" width="12" height="12" rx="2"/>`)
+)
+
 var iconSearch = icon(`<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>`)
