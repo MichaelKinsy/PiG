@@ -29,13 +29,17 @@ import (
 // has a telemetry store, the host records in memory and sends its spans and metrics to the server every second (decision "The
 // server is the one place telemetry is stored").
 //
-// Go forced differences. `workerMain` returns at once in Node; StartWorker blocks (workers.WorkerMain does not return). The
-// worker's plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md), so the worker's own host is a relay without
-// an address: the kit's Go facets load on it and the local types plugins use (WorkerInfo) reach them through
-// plugins.BridgedFacet; the NodeHost serves the worker's address. `Files` and `FilesFolder` are not bridged (the keyed member `summary` cannot be forwarded), so a TS plugin cannot get the worker's files. `principalAttributes` has no Go host hook yet (T6 host spans), so
-// WorkerOptions has none. `reloadDrainTimeout` is not a Go host option. `chord.translations` is not loaded on a worker: the Node host
-// the plugins run in carries no translations registry (Pi's `translationsFacet` is not in the vendored Pi next) and the Go
-// registry is the worker host's own, which no plugin contributes to (D-record in rows/chord-ui.md).
+// Go forced differences (D460, D461, D462). `workerMain` returns at once in Node; StartWorker blocks (workers.WorkerMain does not
+// return). The worker's plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md), so the worker's own host is a
+// relay without an address: the kit's Go facets load on it and the local types plugins use (WorkerInfo) reach them through
+// plugins.BridgedFacet; the NodeHost serves the worker's address (D460). `Files` and `FilesFolder` are not bridged (the keyed member
+// `summary` cannot be forwarded), so a TS plugin cannot get the worker's files (D461). The relay and the NodeHost have a store each
+// (D462).
+//
+// Not ported yet (pending, no divergence): `principalAttributes` (T6 host spans: the Go host has no hook, so WorkerOptions has none);
+// `reloadDrainTimeout` (not a Go host option); `chord.translations` is not loaded on a worker: the Node host the plugins run in
+// carries no translations registry (Pi's `translationsFacet` is not in the vendored Pi next) and the Go registry is the worker host's
+// own, which no plugin contributes to.
 
 // WorkerOptions is what StartWorker takes: the app's API and kinds as the server's StartServer has them, this process's modules.
 type WorkerOptions struct {

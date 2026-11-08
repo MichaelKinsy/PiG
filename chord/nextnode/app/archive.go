@@ -104,7 +104,8 @@ func openKitStore(ctx context.Context, dir string) (store.Store, func() error, e
 
 // PackStore packs the open store, the kit's store beside it (nil: none) and the files directory files into the archive at path (mode 0600, staged beside it and renamed):
 // manifest, the store's export (one consistent point, written while the host runs on) and the finished files (uploads under way
-// left out).
+// left out). The kit's store is a second entry, `kit.archive`, and a running worker's plugins' store is opened on its file and read at
+// one point rather than held through the commit queue (D462).
 func PackStore(ctx context.Context, opened, kit store.Store, files string, manifest ArchiveManifest, path string) (err error) {
 	staging, err := os.MkdirTemp(filepath.Dir(path), ".chord-export-")
 	if err != nil {

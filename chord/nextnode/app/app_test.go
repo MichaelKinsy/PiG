@@ -16,9 +16,9 @@ import (
 
 // Ports packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1): `StartServer`: the layout and the start-data object, start and
 // close, a second server on one data directory, the private modes, an owner refused, a plugin of the root failing, and the owner link.
-// Workers, export and import are in app_workers_test.go. Not ported: the `@ts-expect-error` type test (a nil `Principal.Worker` with
-// worker kinds is refused at start instead), the base-code tests (the plugins component's `Base` marks have their own tests),
-// installs (`installPlugin` is not in the Go plugins component) and the web and terminal surfaces (T11).
+// Workers, export and import are in app_workers_test.go; applying changes and the base marks in app_changes_test.go. Not ported: the
+// `@ts-expect-error` type test (a nil `Principal.Worker` with worker kinds is refused at start instead), installs (`installPlugin` is
+// not in the Go plugins component yet: T9) and the web and terminal surfaces (T11).
 
 func TestAppLaysOutTheDataDirectoryServesAppInfoAndTheServersPluginsAndClosesEverything(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, nil)
