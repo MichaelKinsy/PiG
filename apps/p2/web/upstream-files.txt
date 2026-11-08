@@ -1,3 +1,48 @@
+src/api/v1/index.ts
+src/runtime/access.ts
+src/runtime/chord.ts
+src/runtime/composer.ts
+src/runtime/contribute.ts
+src/runtime/dev-protocol.ts
+src/runtime/entries.ts
+src/runtime/file-index.ts
+src/runtime/files.ts
+src/runtime/input.ts
+src/runtime/location.ts
+src/runtime/notices.ts
+src/runtime/principals.ts
+src/runtime/refs.ts
+src/runtime/schema.ts
+src/runtime/schemas.ts
+src/runtime/sender.ts
+src/runtime/session-lock.ts
+src/runtime/session-worker.ts
+src/runtime/shell.ts
+src/runtime/tool-calls.ts
+plugins/chat/contract.ts
+plugins/drafts/contract.ts
+plugins/files/contract.ts
+plugins/sessions/contract.ts
+plugins/status/contract.ts
+plugins/models/contract.ts
+src/runtime/server.ts
+plugins/envs/contract.ts
+plugins/envs/schema.ts
+plugins/subagents/contract.ts
+plugins/sharing/contract.ts
+src/runtime/worker.ts
+plugins/chat/shell.ts
+plugins/sessions/lock-worker.ts
+plugins/logs/contract.ts
+plugins/logs/web.tsx
+plugins/logs/style.css
+plugins/sharing/web.tsx
+plugins/artifacts/contract.ts
+plugins/send-file/contract.ts
+plugins/artifacts/store.ts
+plugins/artifacts/tool.ts
+plugins/send-file/tool.ts
+plugins/send-file/worker.ts
 ../../packages/ai/package.json
 ../../packages/ai/src/utils/estimate.ts
 ../../packages/ai/src/utils/identity.ts
@@ -535,7 +580,6 @@ plugins/radius/contract.ts
 <<<<<<<<< Temporary merge branch 1
 <<<<<<<<<<< Temporary merge branch 1
 ||||||||||| 61a9fb49714
-===========
 =======
 ||||||| merged common ancestors
 =========
