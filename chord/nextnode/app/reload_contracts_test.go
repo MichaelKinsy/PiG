@@ -15,8 +15,8 @@ import (
 // old page) while the counter on the worker moves; "the page's code updates" is the page holding the contract at v2 (the web
 // plugin's remount is the browser row).
 
-// parkMs is the page's short reference's `readyTimeout`: a call failing at once answers well before it.
-const parkMs = 1500 * time.Millisecond
+// park is the page's short reference's `readyTimeout`: a call failing at once answers well before it.
+const park = 1500 * time.Millisecond
 
 // oldPage is the app with the counter at v1 on worker `p1`, the page showing it (`alpha`) with a count of 2.
 func oldPage(t *testing.T) (started, *reloadPage) {
@@ -95,7 +95,7 @@ func TestAReloadChangingAContractFailsACallAtOnceWithTheCauseWhile(t *testing.T)
 	} {
 		t.Run(change.name, func(t *testing.T) {
 			s, page := oldPage(t)
-			page.hold("short", counterContract(t, "worker", "v1"), "p1", parkMs, "label")
+			page.hold("short", counterContract(t, "worker", "v1"), "p1", park, "label")
 			page.waitState("short", "live")
 			if change.name == "the type is removed" {
 				s.removeAndApply(t, "counter")
@@ -109,8 +109,8 @@ func TestAReloadChangingAContractFailsACallAtOnceWithTheCauseWhile(t *testing.T)
 				t.Fatalf("the call = %+v, want an error %s", failed, change.code)
 			}
 			// Not parked: well before the reference's `readyTimeout`.
-			if elapsed := time.Since(started); elapsed >= parkMs {
-				t.Fatalf("the call failed after %v, want before %v", elapsed, parkMs)
+			if elapsed := time.Since(started); elapsed >= park {
+				t.Fatalf("the call failed after %v, want before %v", elapsed, park)
 			}
 		})
 	}
