@@ -195,7 +195,7 @@ func serveDevices(facet host.FacetHost) error {
 		access := contract.DeviceAccessesOf(self)
 		local := owner.Access == p2runtime.AccessLocal
 		return contracts.Implementation{Variant: "owner", Members: contracts.VariantImplementation{
-			State: map[string]chord.Watchable[delta.JsonValue]{"canMint": host.Expose(state.NewConstant[delta.JsonValue](local))},
+			State: map[string]chord.Watchable[delta.JsonValue]{"canMint": host.Expose(state.NewConstant(delta.JsonValue(local)))},
 			Methods: map[string]contracts.MethodFunction{
 				"token": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 					if !local {
