@@ -6605,7 +6605,7 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
         }));
     }
     if case["ops"].as_str() == Some("globlimit") {
-        // Pi main 676af1d77 (pig divergence (D253)): the tool asks glob for one result past its limit.
+        // Pi main 676af1d77 (#11747): the tool asks glob for one result past its limit.
         let glob_log = log.clone();
         options.find.operations = Some(pig_sdk::FindOperations {
             exists: path_op(log, "exists", |_| Ok(true)),

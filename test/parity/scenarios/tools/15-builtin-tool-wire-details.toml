@@ -2,13 +2,9 @@
 # Only the random bash full-output filename is replaced with OUTPUT_FILE, after checking that the file exists; both probes remove their own file.
 # Object keys are sorted recursively. No result field, string whitespace, empty object, null or omission is removed.
 #
-# D253 (Pi main 676af1d77, #11747, not in Pi 1.5.0) reads a limit below 1 as 1, floors a fraction and prints a find limit notice only when more results than the
-# limit exist. Pi 1.5.0 echoes the limit verbatim, lists entries up to it (two for `ls` limit 1.5) and reports a find limit reached by exactly that many results.
-# Two lines are the whole difference, `ls fractional` and `find limited`: each rule matches one complete PiG line, exactly as D253 makes PiG print it, and
-# replaces it with the complete line Pi 1.5.0 prints. The rules alone would pass if the divergence vanished (the rule would simply not match) or if Pi started to
-# print PiG's line (the rule would rewrite Pi's output), so raw pins carry the proof: pig_contains requires the two complete PiG lines and pi_contains the two
-# complete Pi 1.5.0 lines in every run's unreplaced output, and a vanished divergence or a changed Pi fails there. `ls limited` (limit 1) and every other line compare unchanged.
-# normalize-rationale: D253 changes only the TOOL_WIRE lines `ls fractional` and `find limited`; each rule matches PiG's complete line and writes Pi 1.5.0's complete line, so the text, details and every other line stay compared byte for byte, and the raw pig_contains and pi_contains pins of the same complete lines fail when either side drifts.
+# Pi main 676af1d77 (#11747, in the pin c23b9ec1; Pi 1.5.0 differed, D253 is retired) reads a limit below 1 as 1, floors a fraction and prints a find limit notice only when
+# more results than the limit exist. `ls fractional` (limit 1.5 lists one entry and reports limit 1) and `find limited` (limit 1 with exactly one match prints no notice) are
+# compared against the pin's Pi like every other line; both_contain pins the two complete lines in both outputs so neither engine can drift back to Pi 1.5.0's text.
 name = "15-builtin-tool-wire-details"
 description = "Built-in tool results expose exactly Pi's content and sparse details"
 covers = ["packages/coding-agent/src/core/tools/read.ts", "packages/coding-agent/src/core/tools/write.ts", "packages/coding-agent/src/core/tools/edit.ts", "packages/coding-agent/src/core/tools/bash.ts", "packages/coding-agent/src/core/tools/grep.ts", "packages/coding-agent/src/core/tools/find.ts", "packages/coding-agent/src/core/tools/ls.ts"]
@@ -30,17 +26,6 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['TOOL_WIRE {"case":"read",', 'TOOL_WIRE {"case":"bash truncated",']
-pig_contains = ['TOOL_WIRE {"case":"ls fractional","result":{"content":[{"text":"a.txt\n\n[1 entries limit reached. Use limit=2 for more]","type":"text"}],"details":{"entryLimitReached":1}}}', 'TOOL_WIRE {"case":"find limited","result":{"content":[{"text":"a.txt","type":"text"}]}}']
-pi_contains = ['TOOL_WIRE {"case":"ls fractional","result":{"content":[{"text":"a.txt\nb.txt\n\n[1.5 entries limit reached. Use limit=3 for more]","type":"text"}],"details":{"entryLimitReached":1.5}}}', 'TOOL_WIRE {"case":"find limited","result":{"content":[{"text":"a.txt\n\n[1 results limit reached. Use limit=2 for more, or refine pattern]","type":"text"}],"details":{"resultLimitReached":1}}}']
+both_contain = ['TOOL_WIRE {"case":"read",', 'TOOL_WIRE {"case":"bash truncated",', 'TOOL_WIRE {"case":"ls fractional","result":{"content":[{"text":"a.txt\n\n[1 entries limit reached. Use limit=2 for more]","type":"text"}],"details":{"entryLimitReached":1}}}', 'TOOL_WIRE {"case":"find limited","result":{"content":[{"text":"a.txt","type":"text"}]}}']
 runs = 3
 
-[[assert.normalize_replace]]
-pattern = '(?m)^\QTOOL_WIRE {"case":"ls fractional","result":{"content":[{"text":"a.txt\n\n[1 entries limit reached. Use limit=2 for more]","type":"text"}],"details":{"entryLimitReached":1}}}\E$'
-with = 'TOOL_WIRE {"case":"ls fractional","result":{"content":[{"text":"a.txt\nb.txt\n\n[1.5 entries limit reached. Use limit=3 for more]","type":"text"}],"details":{"entryLimitReached":1.5}}}'
-reason = "D253: ls limit 1.5 is floored to 1, so one entry and limit 1 in the notice and details; Pi 1.5.0 lists two entries and echoes 1.5. Match PiG's complete line only."
-
-[[assert.normalize_replace]]
-pattern = '(?m)^\QTOOL_WIRE {"case":"find limited","result":{"content":[{"text":"a.txt","type":"text"}]}}\E$'
-with = 'TOOL_WIRE {"case":"find limited","result":{"content":[{"text":"a.txt\n\n[1 results limit reached. Use limit=2 for more, or refine pattern]","type":"text"}],"details":{"resultLimitReached":1}}}'
-reason = "D253: find limit 1 with exactly one match is not reported, so no notice and no details; Pi 1.5.0 reports the limit reached. Match PiG's complete line only."
