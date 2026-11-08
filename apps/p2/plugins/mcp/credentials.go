@@ -152,16 +152,6 @@ func (s *serverStore) WithRefreshLock(ctx context.Context, fn func(ctx context.C
 	return fn(ctx)
 }
 
-// SignedIn is whether tokens are stored for server name at url.
-func (c *McpCredentials) SignedIn(ctx context.Context, name, url string) (bool, error) {
-	store, err := c.ForServer(name, url)
-	if err != nil {
-		return false, err
-	}
-	state, err := store.Load(ctx)
-	return state != nil && state.Tokens != nil, err
-}
-
 // Remove forgets server name at url: its client, tokens and pending sign-in.
 func (c *McpCredentials) Remove(ctx context.Context, name, url string) error {
 	key, err := keyOf(name, url)

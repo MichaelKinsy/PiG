@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	envsplugin "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
@@ -365,7 +366,7 @@ func stdioSpec(who stdioPlaced, runsOn RunOn, config extension.McpServerConfig, 
 	revisionText := ""
 	if envConfig != nil {
 		// An edited environment (or a sandbox's edited host) is another connection: its instances start again on it.
-		revisionText = connectionRevision(envs, runsOn.Env)
+		revisionText = envsplugin.ConnectionRevision(envs, runsOn.Env)
 		revision = revisionText
 	}
 	spec.ID = idOf([]any{"stdio", who.source, who.server, owner, runsOnJSON, revision, hash})

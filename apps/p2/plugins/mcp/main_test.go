@@ -19,7 +19,7 @@ func fixture(t testing.TB) (node, script string) {
 	t.Helper()
 	node, err := exec.LookPath("node")
 	if err != nil {
-		t.Skip("node is not installed: the MCP fixture server is a Node program")
+		t.Fatalf("node is not installed (the MCP fixture server is a Node program): %v", err)
 	}
 	script, err = filepath.Abs("testdata/mcp-server.mjs")
 	if err != nil {

@@ -43,6 +43,9 @@ func TestAProjectAddsStdioServersAndSetsEnabledOfTheOwnersHostVariablesStayAsWri
 	}
 	lint := config.Servers[0]
 	token, _ := lint.Config.Env.Get("TOKEN")
+	if !reflect.DeepEqual(lint.Config.Env.Keys(), []string{"TOKEN"}) {
+		t.Fatalf("env %v", lint.Config.Env.Keys())
+	}
 	if lint.Name != "lint" || lint.Config.Command != "lint-server" || !reflect.DeepEqual(lint.Config.Args, []string{"--fix"}) || token != "${SECRET}" {
 		t.Fatalf("lint %+v", lint)
 	}

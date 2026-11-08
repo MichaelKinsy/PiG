@@ -388,7 +388,9 @@ func TestAnInvalidMcpJSONKeepsTheLastValidServersAlsoAcrossAReload(t *testing.T)
 	noError(t, h.f.ReloadFacets([]nexthost.Facet{ServerFacet(lingerTest, noEnvironmentsConnector)}))
 	after := s1.until("servers", func(v delta.JsonValue) bool { return isUp("files")(v) && len(h.starts()) == 2 })
 	expectEqual(t, instanceList(after)[0].Value("id"), instance.Value("id"))
-	exited(t, pid)
+	if alive(pid) {
+		t.Fatalf("process %d is still alive", pid)
+	}
 	// The restarted reader reads the half-saved file once more before it reports it.
 	owner.until("errors", func(v delta.JsonValue) bool {
 		return regexp.MustCompile(`Invalid mcp.json syntax; keeping the last valid servers`).MatchString(strings.Join(errorsText(v), "\n"))
@@ -748,3 +750,55 @@ func TestGuestsGetNoMCPServers(t *testing.T) {
 }
 
 var _ = time.Second
+
+func TestAToolCallInTheManagerDoesNotHoldTheHostsLoopAndLeaseChangesRacingTheHostsEndReadItsStateInASection(t *testing.T) {
+	t.Run("a tool call that waits for its server lets another call through", func(t *testing.T) {
+		h := newMcpHost(t, func(log string) map[string]any { return map[string]any{"files": stdioEntry(t, log, nil)} })
+		one := h.at("one")
+		s1 := h.worker("s1", 1)
+		noError(t, s1.setLocations(one))
+		s1.until("servers", isUp("files"))
+		gate := filepath.Join(t.TempDir(), "gate")
+		release := sync.OnceFunc(func() { noError(t, os.WriteFile(gate, nil, 0o644)) })
+		defer release()
+		slow := make(chan error, 1)
+		go func() {
+			_, err := s1.callTool(one, "files", "gated", delta.JsonObjectOf("gate", gate))
+			slow <- err
+		}()
+		if err := p2test.Poll(func() (bool, error) { _, err := os.Stat(gate + ".entered"); return err == nil, nil }, 10*time.Second, "the server to hold the call"); err != nil {
+			t.Fatal(err)
+		}
+		fast := make(chan error, 1)
+		go func() {
+			text, err := s1.callTool(one, "files", "echo", delta.JsonObjectOf("text", "hi"))
+			if err == nil && text != "echo: hi" {
+				err = fmt.Errorf("echo answered %q", text)
+			}
+			fast <- err
+		}()
+		select {
+		case err := <-fast:
+			noError(t, err)
+		case <-time.After(10 * time.Second):
+			t.Fatal("a call waits for a tool of another call: the manager's loop is held")
+		}
+		release()
+		noError(t, <-slow)
+	})
+	t.Run("setLocations and releaseLeases answered while the host closes", func(t *testing.T) {
+		for round := 0; round < 25; round++ {
+			h := newMcpHost(t, func(log string) map[string]any { return map[string]any{"files": stdioEntry(t, log, nil)} })
+			one := h.at("one")
+			s1 := h.worker("s1", 1)
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				_ = s1.setLocations(one)
+				_, _ = h.manager.Call("releaseLeases", delta.JsonObjectOf("session", "s1", "generation", float64(1)), p2test.Background)
+			}()
+			h.shutdown()
+			<-done
+		}
+	})
+}

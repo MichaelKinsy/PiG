@@ -1,8 +1,8 @@
 // A stdio MCP server for p2's MCP tests, in the style of pi-mcp's test/fixtures/stdio-server.mjs. Tools: `echo`
 // ({ text }), `whoami` (its pid, its parent's, cwd, the client's roots and its `MCP_FIXTURE_*` variables), `crash`
-// (answers, then exits), `grow` (adds the tool `extra` and announces the change). `MCP_FIXTURE_LOG`: a file every start
+// (answers, then exits), `grow` (adds the tool `extra` and announces the change), `gated` (unlisted: waits for a file). `MCP_FIXTURE_LOG`: a file every start
 // appends its pid to; `MCP_FIXTURE_HANG`: never answers `initialize`.
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 
 if (process.env.MCP_FIXTURE_LOG) appendFileSync(process.env.MCP_FIXTURE_LOG, `${process.pid}\n`);
@@ -45,7 +45,15 @@ for await (const line of lines) {
 		const { name, arguments: args } = message.params;
 		if (name === "echo")
 			send({ id: message.id, result: { content: [{ type: "text", text: `echo: ${args?.text}` }] } });
-		else if (name === "whoami") {
+		else if (name === "gated") {
+			// Not listed: answers once the file `args.gate` exists, after writing `args.gate`.entered.
+			writeFileSync(`${args.gate}.entered`, "");
+			const wait = setInterval(() => {
+				if (!existsSync(args.gate)) return;
+				clearInterval(wait);
+				send({ id: message.id, result: { content: [{ type: "text", text: "opened" }] } });
+			}, 10);
+		} else if (name === "whoami") {
 			const vars = Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith("MCP_FIXTURE_")));
 			const text = JSON.stringify({ pid: process.pid, ppid: process.ppid, cwd: process.cwd(), roots, vars });
 			send({ id: message.id, result: { content: [{ type: "text", text }] } });
