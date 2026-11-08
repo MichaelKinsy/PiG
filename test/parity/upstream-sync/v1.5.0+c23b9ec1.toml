@@ -103,8 +103,8 @@ rationale = ""
 path = "packages/ai/src/models.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:ai/lazy_setup_error_order_test.go#TestLazySetupRejectionIsAbortedWhenTheRequestSignalIsAborted", "test:coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled"]
-rationale = "Pi (#8635): the Models stream, streamSimple, fetchDeferred and dispatch setup failures pass the request signal to lazyStream, so an aborted request ends as aborted; asserted for the lazy setup and the model runtime preparation."
+evidence = ["test:ai/lazy_setup_error_order_test.go#TestLazySetupRejectionIsAbortedWhenTheRequestSignalIsAborted", "test:coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled", "test:ai/models_dispatch_abort_test.go#TestModelsDispatchSetupErrorsAreAbortedWhenTheRequestSignalIsAborted"]
+rationale = "Pi (#8635): the Models stream, streamSimple, fetchDeferred and dispatch setup failures pass the request signal to lazyStream, so an aborted request ends as aborted; asserted for the lazy setup, the model runtime preparation and the Models dispatch and fetchDeferred paths with no implementation."
 
 [[files]]
 path = "packages/ai/src/providers/all.ts"
