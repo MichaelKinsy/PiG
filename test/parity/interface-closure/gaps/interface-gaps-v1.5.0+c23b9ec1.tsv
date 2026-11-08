@@ -28,9 +28,6 @@ pkg:chord/.#ChordError::construct:0	chord	child-gap	chord/next/data/errors.go#Ch
 pkg:chord/.#ChordErrorCode	chord	undecidable	chord/next/data/errors.go#ChordErrorCode
 pkg:chord/.#ChordErrorReason	chord	undecidable	chord/next/data/errors.go#ChordErrorReason
 pkg:chord/.#ChordSpanName	chord	no-go-symbol	
-pkg:chord/.#ChordStore	chord	child-gap	chord/next/store/store.go#ChordStore
-pkg:chord/.#ChordStore::property:export	chord	child-gap	chord/next/store/store.go#ChordStore.Export
-pkg:chord/.#ChordStore::property:export::call:0	chord	undecidable	chord/next/store/store.go#ChordStore.Export
 pkg:chord/.#Claimant	chord	type-mismatch	chord/next/store/claims.go#Claimant
 pkg:chord/.#ClientError	chord	type-mismatch	chord/next/surfaces/surfaces_client.go#ClientError
 pkg:chord/.#ClientOptions	chord	undecidable	chord/next/surfaces/surfaces_client.go#ClientOptions
@@ -208,9 +205,6 @@ pkg:chord/.#StagedWrite	chord	undecidable	chord/next/store/step.go#StagedWrite
 pkg:chord/.#StateDefinition	chord	child-gap	chord/next/documents/definition.go#StateDefinition
 pkg:chord/.#StateDefinition::construct:0	chord	no-go-symbol	chord/next/documents/definition.go#StateDefinition
 pkg:chord/.#Static	chord	no-go-symbol	
-pkg:chord/.#Store	chord	child-gap	chord/next/store/store.go#Store
-pkg:chord/.#Store::property:export	chord	child-gap	chord/next/store/store.go#Store.Export
-pkg:chord/.#Store::property:export::call:0	chord	undecidable	chord/next/store/store.go#Store.Export
 pkg:chord/.#StoreSelf	chord	child-gap	chord/next/host/host_attempt.go#StoreSelf
 pkg:chord/.#StoreSelf::property:contribute	chord	child-gap	chord/next/host/host_attempt.go#StoreSelf.Contribute
 pkg:chord/.#StoreSelf::property:contribute::call:0	chord	undecidable	chord/next/host/host_attempt.go#StoreSelf.Contribute
@@ -316,12 +310,8 @@ pkg:chord/.#concat	chord	child-gap	chord/next/store/expression.go#Concat
 pkg:chord/.#concat::call:0	chord	undecidable	chord/next/store/expression.go#Concat
 pkg:chord/.#constant	chord	child-gap	chord/nextnode/app/info.go#constant
 pkg:chord/.#constant::call:0	chord	signature-mismatch	chord/nextnode/app/info.go#constant
-pkg:chord/.#decodeJsonl	chord	child-gap	chord/next/store/jsonl.go#DecodeJsonl
-pkg:chord/.#decodeJsonl::call:0	chord	undecidable	chord/next/store/jsonl.go#DecodeJsonl
 pkg:chord/.#defineMessages	chord	child-gap	chord/next/surfaces/surfaces_messages.go#DefineMessages
 pkg:chord/.#defineMessages::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_messages.go#DefineMessages
-pkg:chord/.#encodeJsonl	chord	child-gap	chord/next/store/jsonl.go#EncodeJsonl
-pkg:chord/.#encodeJsonl::call:0	chord	undecidable	chord/next/store/jsonl.go#EncodeJsonl
 pkg:chord/.#findDocument	chord	child-gap	chord/next/store/engine.go#FindDocument
 pkg:chord/.#findDocument::call:0	chord	undecidable	chord/next/store/engine.go#FindDocument
 pkg:chord/.#findDocumentEntry	chord	child-gap	chord/next/store/engine.go#FindDocumentEntry
@@ -430,10 +420,6 @@ pkg:chord/http#NodeRequest	chord	type-mismatch	chord/nextnode/http/node.go#NodeR
 pkg:chord/http#Router	chord	type-mismatch	chord/nextnode/http/router.go#Router
 pkg:chord/http#nodeRequest	chord	no-go-symbol	
 pkg:chord/http#nodeRequest::call:0	chord	child-gap	
-pkg:chord/json#CopyJsonOptions	chord	no-go-symbol	
-pkg:chord/json#JsonRepresentation	chord	no-go-symbol	
-pkg:chord/json#copyJson	chord	child-gap	durable/json.go#CopyJson
-pkg:chord/json#copyJson::call:0	chord	signature-mismatch	durable/json.go#CopyJson
 pkg:chord/plugins#AppApi	chord	undecidable	chord/nextnode/plugins/plugins_build.go#AppApi
 pkg:chord/plugins#BuiltScript	chord	no-go-symbol	
 pkg:chord/plugins#EvaluateOptions	chord	no-go-symbol	
@@ -521,67 +507,6 @@ pkg:chord/surfaces#tuiSurface	chord	no-go-symbol
 pkg:chord/surfaces#tuiSurface::call:0	chord	child-gap	
 pkg:chord/surfaces#webSurface	chord	no-go-symbol	
 pkg:chord/surfaces#webSurface::call:0	chord	child-gap	
-pkg:chord/sync#FileResult	chord	no-go-symbol	
-pkg:chord/sync#FlushSchedulerOptions	chord	type-mismatch	chord/sync/scheduler.go#FlushSchedulerOptions
-pkg:chord/sync#JsonObject	chord	undecidable	chord/next/documents/definition.go#JsonObject
-pkg:chord/sync#LocalCopy	chord	type-mismatch	chord/sync/client.go#LocalCopy
-pkg:chord/sync#LogFormatError	chord	child-gap	chord/sync/lines.go#LogFormatError
-pkg:chord/sync#LogFormatError::construct:0	chord	no-go-symbol	chord/sync/lines.go#LogFormatError
-pkg:chord/sync#SessionSyncMaintenance	chord	child-gap	chord/sync/remote.go#SessionSyncMaintenance
-pkg:chord/sync#SessionSyncMaintenance::property:getMeta	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetMeta
-pkg:chord/sync#SessionSyncMaintenance::property:getMeta::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetMeta
-pkg:chord/sync#SessionSyncMaintenance::property:putMeta	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutMeta
-pkg:chord/sync#SessionSyncMaintenance::property:putMeta::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutMeta
-pkg:chord/sync#SessionSyncMaintenance::property:sessions	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.Sessions
-pkg:chord/sync#SessionSyncMaintenance::property:sessions::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.Sessions
-pkg:chord/sync#SessionSyncStore	chord	child-gap	chord/sync/remote.go#SessionSyncStore
-pkg:chord/sync#SessionSyncStore::property:getMeta	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetMeta
-pkg:chord/sync#SessionSyncStore::property:getMeta::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.GetMeta
-pkg:chord/sync#SessionSyncStore::property:putMeta	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutMeta
-pkg:chord/sync#SessionSyncStore::property:putMeta::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.PutMeta
-pkg:chord/sync#SessionSyncStore::property:sessions	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.Sessions
-pkg:chord/sync#SessionSyncStore::property:sessions::call:0	chord	not-exercised	chord/sync/remote.go#SessionSyncStore.Sessions
-pkg:chord/sync#SyncBody	chord	undecidable	chord/sync/batch.go#SyncBody
-pkg:chord/sync#SyncFileReader	chord	child-gap	chord/sync/files.go#SyncFileReader
-pkg:chord/sync#SyncFileReader::property:read	chord	child-gap	chord/sync/files.go#SyncFileReader.Read
-pkg:chord/sync#SyncFileReader::property:read::call:0	chord	undecidable	chord/sync/files.go#SyncFileReader.Read
-pkg:chord/sync#SyncFileSystem	chord	child-gap	chord/sync/files.go#SyncFileSystem
-pkg:chord/sync#SyncFileSystem::property:appendFile	chord	child-gap	chord/sync/files.go#SyncFileSystem.AppendFile
-pkg:chord/sync#SyncFileSystem::property:appendFile::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.AppendFile
-pkg:chord/sync#SyncFileSystem::property:createDir	chord	child-gap	chord/sync/files.go#SyncFileSystem.CreateDir
-pkg:chord/sync#SyncFileSystem::property:createDir::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.CreateDir
-pkg:chord/sync#SyncFileSystem::property:joinPath	chord	child-gap	chord/sync/files.go#SyncFileSystem.JoinPath
-pkg:chord/sync#SyncFileSystem::property:joinPath::call:0	chord	undecidable	chord/sync/files.go#SyncFileSystem.JoinPath
-pkg:chord/sync#SyncFileSystem::property:listDir	chord	child-gap	chord/sync/files.go#SyncFileSystem.ListDir
-pkg:chord/sync#SyncFileSystem::property:listDir::call:0	chord	undecidable	chord/sync/files.go#SyncFileSystem.ListDir
-pkg:chord/sync#SyncFileSystem::property:openBinaryReader	chord	child-gap	chord/sync/files.go#SyncFileSystem.OpenBinaryReader
-pkg:chord/sync#SyncFileSystem::property:openBinaryReader::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.OpenBinaryReader
-pkg:chord/sync#SyncFileSystem::property:readBinaryFile	chord	child-gap	chord/sync/files.go#SyncFileSystem.ReadBinaryFile
-pkg:chord/sync#SyncFileSystem::property:readBinaryFile::call:0	chord	undecidable	chord/sync/files.go#SyncFileSystem.ReadBinaryFile
-pkg:chord/sync#SyncFileSystem::property:readTextFile	chord	child-gap	chord/sync/files.go#SyncFileSystem.ReadTextFile
-pkg:chord/sync#SyncFileSystem::property:readTextFile::call:0	chord	undecidable	chord/sync/files.go#SyncFileSystem.ReadTextFile
-pkg:chord/sync#SyncFileSystem::property:remove	chord	child-gap	chord/sync/files.go#SyncFileSystem.Remove
-pkg:chord/sync#SyncFileSystem::property:remove::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.Remove
-pkg:chord/sync#SyncFileSystem::property:renameFile	chord	child-gap	chord/sync/files.go#SyncFileSystem.RenameFile
-pkg:chord/sync#SyncFileSystem::property:renameFile::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.RenameFile
-pkg:chord/sync#SyncFileSystem::property:writeFile	chord	child-gap	chord/sync/files.go#SyncFileSystem.WriteFile
-pkg:chord/sync#SyncFileSystem::property:writeFile::call:0	chord	signature-mismatch	chord/sync/files.go#SyncFileSystem.WriteFile
-pkg:chord/sync#decodeBatch	chord	child-gap	chord/sync/batch.go#DecodeBatch
-pkg:chord/sync#decodeBatch::call:0	chord	undecidable	chord/sync/batch.go#DecodeBatch
-pkg:chord/sync#decodeBatchLines	chord	child-gap	chord/sync/batch.go#DecodeBatchLines
-pkg:chord/sync#decodeBatchLines::call:0	chord	undecidable	chord/sync/batch.go#DecodeBatchLines
-pkg:chord/sync#decodeSnapshot	chord	child-gap	chord/sync/batch.go#DecodeSnapshot
-pkg:chord/sync#decodeSnapshot::call:0	chord	undecidable	chord/sync/batch.go#DecodeSnapshot
-pkg:chord/sync#encodeLogLine	chord	child-gap	chord/sync/lines.go#EncodeLogLine
-pkg:chord/sync#encodeLogLine::call:0	chord	signature-mismatch	chord/sync/lines.go#EncodeLogLine
-pkg:chord/sync#encodeSnapshot	chord	child-gap	chord/sync/batch.go#EncodeSnapshot
-pkg:chord/sync#encodeSnapshot::call:0	chord	undecidable	chord/sync/batch.go#EncodeSnapshot
-pkg:chord/sync#foldSession	chord	child-gap	chord/sync/client.go#FoldSession
-pkg:chord/sync#foldSession::call:0	chord	signature-mismatch	chord/sync/client.go#FoldSession
-pkg:chord/sync#pullSession	chord	child-gap	chord/sync/client.go#PullSession
-pkg:chord/sync#pullSession::call:0	chord	signature-mismatch	chord/sync/client.go#PullSession
-pkg:chord/sync#uploadSession	chord	child-gap	chord/sync/client.go#UploadSession
-pkg:chord/sync#uploadSession::call:0	chord	signature-mismatch	chord/sync/client.go#UploadSession
 pkg:chord/telemetry-sqlite#TelemetryBatch	chord	no-go-symbol	
 pkg:chord/tui#AttachedFile	chord	no-go-symbol	
 pkg:chord/tui#Bridge	chord	no-go-symbol	
@@ -635,12 +560,6 @@ pkg:chord/tui/launcher#startTerminal	chord	no-go-symbol
 pkg:chord/tui/launcher#startTerminal::call:0	chord	child-gap	
 pkg:chord/tui/launcher#terminalFile	chord	no-go-symbol	
 pkg:chord/tui/launcher#terminalFile::call:0	chord	child-gap	
-pkg:chord/watch#NativeWatch	chord	child-gap	chord/watch_impl.go#NativeWatch
-pkg:chord/watch#NativeWatch::property:end	chord	child-gap	chord/watch_impl.go#watchLifecycle.End
-pkg:chord/watch#NativeWatch::property:end::call:0	chord	signature-mismatch	chord/watch_impl.go#watchLifecycle.End
-pkg:chord/watch#Watch	chord	child-gap	chord/watch_impl.go#Watch
-pkg:chord/watch#Watch::property:end	chord	child-gap	chord/watch_impl.go#watchLifecycle.End
-pkg:chord/watch#Watch::property:end::call:0	chord	signature-mismatch	chord/watch_impl.go#watchLifecycle.End
 pkg:chord/web#PageOptions	chord	undecidable	chord/next/store/table_handle.go#PageOptions
 pkg:chord/web#followLanguage	chord	no-go-symbol	
 pkg:chord/web#followLanguage::call:0	chord	child-gap	
