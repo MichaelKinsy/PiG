@@ -103,6 +103,7 @@ func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.
 	return func() (current T, ok bool) {
 		defer func() {
 			// Nothing throws in a redraw: a source that cannot give its value reads as none.
+			// upstream: packages/chord/src/tui/scope.ts:TuiScope.watch (the reader's try/catch returns undefined)
 			if recover() != nil {
 				var zero T
 				current, ok = zero, false
