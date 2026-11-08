@@ -146,6 +146,12 @@ func (database *DatabaseSync) Close() error {
 // statement would re-plan on every step. A statement therefore keeps one compiled copy per pattern of 0/1 parameters
 // it is run with (smallIntegerMask): the first pattern uses statement, others compile lazily from sqlText. Copies are
 // never shared across patterns, so no execution changes a parameter across the 0/1 boundary.
+//
+// A StatementSync is used by one goroutine at a time: its executor runs every operation through the database's serial
+// queue (or an active transaction handle), and the statement cache lock covers only the lookup. statementMask,
+// statementUsed and variants take no lock of their own. A parameter at index 31 or later is not tracked (the 0/1
+// patterns are at most 31 bits), so a statement that flips such a parameter across 0/1 is planned again as before;
+// the variants are closed with the statement when the cache evicts it or the database closes.
 type StatementSync struct {
 	database  *DatabaseSync
 	sqlText   string
