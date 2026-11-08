@@ -96,6 +96,8 @@ type jobRun struct {
 	blocked  *BlockedReason
 	// trace is the start's trace carrier, when the adapter propagates (stored, slice 9 uses it).
 	trace map[string]string
+	// traceOrder is trace's keys in the order they were stored (Pi's insertion order); empty: sorted.
+	traceOrder []string
 	// outcome is what it ended with, once recorded (finishing and blocked).
 	outcome *AnyOutcome
 	// entry is its entry in `running`, while its record exists; replaced when its record or state document changes.

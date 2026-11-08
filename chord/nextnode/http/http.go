@@ -21,7 +21,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
-	pitelemetry "github.com/MichaelKinsy/PiG/telemetry"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/node/http/http.ts. The HTTP component (slice 10 §2; decisions "The HTTP core is a fetch
@@ -45,9 +46,9 @@ type HttpOptions struct {
 	Links *LinksOptions
 	// CloseTimeout is how long `Close` waits for running requests and closing sockets: 30 s by default (0).
 	CloseTimeout time.Duration
-	// Telemetry is the telemetry adapter (the host's): each routed request is a `chord.http` root span, its scope's ctx under
-	// it; a W3C `traceparent` is extracted only from a request a contributed relay verified. None: the no-op one.
-	Telemetry pitelemetry.TelemetryContext
+	// Telemetry is the telemetry adapter (the host's): each routed request is a `chord.http` root span, its scope's `ctx` under
+	// it; a W3C `traceparent` is extracted only from a request a contributed relay verified. Nil: none.
+	Telemetry telemetry.TelemetryContext
 	OnError   func(HttpError)
 }
 
@@ -479,11 +480,10 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 	}()
 	answer := <-answered
 	if span != nil {
-		span.Span().SetAttributes(pitelemetry.SpanAttributes{pitelemetry.Attr("status", answer.Status)})
+		span.Span().SetAttributes(telemetry.SpanAttributes{telemetry.Attr("status", float64(answer.Status))})
 		if answer.Status >= 500 {
 			chordtelemetry.SpanFailed(span.Span(), "http_failed", fmt.Sprintf("status %d", answer.Status))
 		}
-		//portlint:allow golifetime ends with the request's scope, which `close` seals
 		go func() {
 			<-scope
 			span.End()
@@ -492,44 +492,50 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 	return served{answer: answer, scope: scope}
 }
 
+// traceHeaders are the bounds of the W3C trace headers: the relay forwards what the browser sent unless it strips them, so
+// they are bounded as a link's carrier is (review L2).
+var traceHeaders = map[string]int{"traceparent": 256, "tracestate": 512}
+
+// traceHeader is a W3C trace header of request, when present, within its bound and printable; otherwise none (ignored).
+func traceHeader(request Incoming, name string) (string, bool) {
+	value, ok := request.Header(name)
+	if !ok || jsstring.Length(value) > traceHeaders[name] {
+		return "", false
+	}
+	for _, r := range value {
+		if r < 0x20 || r > 0x7e {
+			return "", false
+		}
+	}
+	return value, true
+}
+
 // span is a routed request's `chord.http` span (its method and route pattern; its path never: it may carry ids or secrets): a
 // root of the adapter, or the child of a W3C `traceparent` (and its `tracestate`) of a request a contributed relay verified,
-// never a browser's; none without an adapter that records.
+// never a browser's; nil without an adapter that records.
 func (c *HttpComponent) span(request Incoming, match *RouteMatch, admitted *Admitted) *chordtelemetry.OpenSpan {
 	adapter := c.options.Telemetry
 	if adapter == nil || chordtelemetry.Untraced(adapter) {
 		return nil
 	}
-	attributes := pitelemetry.SpanAttributes{pitelemetry.Attr("chord.host", c.spanHost), pitelemetry.Attr("method", request.Method()), pitelemetry.Attr("route", match.Pattern)}
-	traceparent := ""
-	if admitted.Provenance.Kind == ProvenanceRelayed {
-		traceparent = traceHeader(request, "traceparent", 256)
+	attributes := telemetry.SpanAttributes{
+		telemetry.Attr("chord.host", chordtelemetry.HostAttribute(c.host.Address())),
+		telemetry.Attr("method", request.Method()),
+		telemetry.Attr("route", match.Pattern),
 	}
-	if traceparent == "" {
+	var traceparent string
+	var ok bool
+	if admitted.Provenance.Kind == ProvenanceRelayed {
+		traceparent, ok = traceHeader(request, "traceparent")
+	}
+	if !ok {
 		return chordtelemetry.NewOpenSpan(adapter, "chord.http", attributes)
 	}
-	carrier := pitelemetry.TelemetryCarrier{"traceparent": traceparent}
-	if tracestate := traceHeader(request, "tracestate", 512); tracestate != "" {
+	carrier := telemetry.TelemetryCarrier{"traceparent": traceparent}
+	if tracestate, has := traceHeader(request, "tracestate"); has {
 		carrier["tracestate"] = tracestate
 	}
 	return chordtelemetry.NewOpenSpan(chordtelemetry.ParentOf(carrier, adapter), "chord.http", attributes)
-}
-
-// traceHeader is a W3C trace header of request, when present, within its bound (in UTF-16 units, as `length`) and printable
-// ASCII (as a link's carrier); otherwise none ("": ignored). The longest taken from a relayed request: `traceparent` is 55
-// characters, `tracestate` at most 512; the relay forwards what the browser sent unless it strips them, so they are bounded
-// (review L2).
-func traceHeader(request Incoming, name string, bound int) string {
-	value, ok := request.Header(name)
-	if !ok || len(value) > bound {
-		return ""
-	}
-	for i := 0; i < len(value); i++ {
-		if value[i] < 0x20 || value[i] > 0x7e {
-			return ""
-		}
-	}
-	return value
 }
 
 // run runs the wraps and the route in the request's scope ctx, and makes its answer (a failure: a reported 500).

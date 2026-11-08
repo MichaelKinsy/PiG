@@ -9,6 +9,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/host/root.ts. Root scopes (slice 8 §4, D3, design §8): `host.root(fn, context,
@@ -30,6 +31,16 @@ type RootOptions struct {
 	// Anonymous runs the scope with no principal (`ctx.Principal()` nil), Pi's explicit `principal: undefined`; Principal is
 	// ignored then.
 	Anonymous bool
+	// Trace runs fn in a new root span of this host's adapter (a click, a command: a trace of its own), `ctx` telemetry
+	// that span, with its host's `chord.host` and Attributes; a failure marks it failed (`trace_failed`, a cancel keeps it
+	// ok). Without an adapter that records, nothing is started.
+	Trace *RootTrace
+}
+
+// RootTrace is the span a root scope runs in.
+type RootTrace struct {
+	Name       string
+	Attributes telemetry.SpanAttributes
 }
 
 // openScope is an open root scope: its seal, and the rejection its caller gets when the host closes.
