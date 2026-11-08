@@ -4084,3 +4084,71 @@ Call-site markers: `ai/anthropic_threads.go`.
 Evidence: `TestAnthropicMessageThreadsCreateThenContinue` and the other `TestAnthropicMessageThreads*` cases (`ai/anthropic_message_threads_test.go`, Pi's `anthropic-message-threads.test.ts`).
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+
+## D430 Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking remainder from outside the host package (AwaitingCtx)
+
+What: Pi's `ref.method(args)` starts the call at once and returns a Promise. A caller may start several calls before awaiting any (Files v2's pipelined `append`s, which the call window allows) and the host accepts them in the order they were started. A blocking Go `Reference.Call` cannot express that, so `Reference.Start(method, args, ctx)` is the synchronous half (the call is admitted and its handler's synchronous part has run when it returns) and `PendingCall.Wait(ctx)` the awaiting half. `host.AwaitingCtx(ctx, work)` is `Awaiting` for a caller outside the package, which cannot name the host's loop: the blocking remainder of an `onLive` or `on` handler (the awaits of Pi's async function).
+
+Why: AGENTS.md "TypeScript async/Promise parity": an awaited Promise is a blocking call, but a Promise started and awaited later is two Go operations. Without Start the pipelined-append behaviour could not be tested or used through a reference; without AwaitingCtx a package outside `chord/next/host` (the app kit) could not declare an `onLive` routine.
+
+Pi bug: none.
+
+Scope: additive Go API of `chord/next/host`; no Pi behaviour changes.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: never; it is the Go form of an un-awaited Promise and of a handler's async remainder.
+
+Call-site markers: `chord/next/host/host_pending.go`, `chord/nextnode/app/files.go` (`FilesFacet`), `chord/nextnode/app/files_support_test.go`.
+
+Evidence: `TestChunkedUploadsWriteAppendsSentWithoutWaitingAtTheirOwnOffsetsByteForByte` and `TestChunkedUploadsFinishAnUploadOnlyOnceTheAppendsSentBeforeItLanded` (`chord/nextnode/app/files_test.go`), `TestChunkedUploadsDropTheUploadsAPreviousRunLeft` (the `onLive` routine).
+
+Parity allowance: none.
+
+## D431 PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)
+
+What: PiG ports Pi main `2439933cf` (`self.query(table, q, limit)`), which is not in Pi 1.5.0: a watchable of up to `limit` rows over a table of the object itself, run at activation and in the commit step of every commit that writes the table, publishing the diff in that commit's batch; `query_failed` reports a failing run once per failure episode.
+
+Why: owner decision of 2026-11-07 23:33Z, port all of Pi main.
+
+Pi bug: none.
+
+Scope: `chord/next/store` (`live_query.go`), `chord/next/documents` (`Transaction` stages the refresh), `chord/next/host` (`StoreSelf.Query`, `HostError.Table`). A reload reports the object `swapped` until Pi a5d209afd (restart model) is ported, where Pi main says `restarted`.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 2439933cf. Then this record goes.
+
+Call-site markers: `chord/next/store/live_query.go`, `chord/next/host/host_attempt.go` (`Query`).
+
+Evidence: `TestLiveQuery*` (`chord/next/host/host_live_query_test.go`), `TestQueryRefreshAdoptsItsLastApplicationsRunsOnly...` (`chord/next/store/live_query_test.go`).
+
+Parity allowance: Go limits are int64: Pi's fractional and absent limits cannot be written.
+
+## D432 Sync decodes no log line longer than 32 MiB
+
+What: `chord/sync` bounds one line of a batch body when it is decoded: `MaxLineBytes` (32 MiB). A body with a longer line fails with a `LogFormatError` ("Log line N is longer than ...") before the line is held. Pi's `decodeBatchLines` holds a line up to what its runtime's string can hold, so it fails too, but far later (below).
+
+Why: the sync client's contract is bounded memory (an upload ends a batch at 8 MiB, a pull applies about 4 MiB at a time), and a remote's body is untrusted input: without a bound a single line grows the buffer until the body ends. A line this long cannot come from `EncodeLogLine` of a store that fits its documents in memory; the largest commit Pi writes is a batch of its own (8 MiB), so the bound is four times that.
+
+Pi's own limit (measured 2026-11-08, Node v24.19.0, Pi's `lines()` from `packages/chord/src/sync/batch.ts` at c23b9ec1 copied verbatim and fed one 64 KiB chunk at a time): a 100 MiB line decodes (peak RSS 559 MiB; Bun 1.3.11, 1173 MiB); a 600 MiB line throws `RangeError: Invalid string length` out of the `rest += decode(chunk)` (V8's `MAX_STRING_LENGTH` is 536870888 characters), after the process grew to 3.6 GiB RSS. The failure is a `RangeError` where this port returns a `LogFormatError`, and it starts about 16 times later, so the bound is not the same failure: lines between 32 MiB and about 512 MiB decode in Pi and are refused here.
+
+Pi bug: a body line has no bound but the string limit of the runtime; a remote's body can make a sync hold about 0.5 GiB for one line before it fails with a bare `RangeError`.
+
+Scope: `chord/sync` (`batch.go`: `batchLines.Next`, `emit`).
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: Pi bounds a log line or the owner prefers the unbounded form.
+
+Call-site markers: `chord/sync/batch.go`.
+
+Evidence: `TestBatchBodies` "refuse a line past the bound a body holds" (`chord/sync/lines_test.go`).
+
+Parity allowance: none.
