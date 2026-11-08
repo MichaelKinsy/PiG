@@ -3829,6 +3829,196 @@ Evidence: `TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap` (red wit
 
 Parity allowance: scenario `tree/15-tree-navigation-no-stale-frame` runs a `session_before_tree` handler that awaits 600 ms. Both programs end on the same pane (`output_equal`). PiG's pane, sampled every 10 ms from the choice until "Navigated to selected point" shows, never shows the old leaf with the prompt gone (`pig_no_stale_frames`); Pi's samples are not asserted, because Pi shows that pane throughout the await.
 
+## D300 PiG follows Pi main 25490ea49 ahead of the v1.5.0 pin: cursor markers never reach the terminal
+
+What: PiG ports Pi main 25490ea49 (`fix(tui): prevent cursor marker leaks`, Pi #9441, closing #9257 and #9332), which is not in Pi 1.5.0. A line that holds more than one cursor marker (the APC `CURSOR_MARKER`) no longer leaks the others:
+
+- Cursor extraction strips every marker from the selected line; the first one still gives the hardware cursor position.
+- The line resets strip every marker from each non-image line before it is normalized, so a marker on a scrollback or other visible row never reaches the terminal.
+- Slicing a line by columns (selection highlight, overlays) no longer carries an APC code from before the range into the slice as if it were styling, so a marker left of a selection is not repeated in each slice.
+
+Why: Pi 1.5.0 wrote a marker it did not extract to the terminal; terminals that print the payload of an unknown APC sequence showed `pi:c` text, and a selection after the caret duplicated markers.
+
+Pi bug: Pi 1.5.0 (`packages/tui/src/tui.ts` `extractCursorPosition` and `applyLineResets`, `utils.ts` `sliceWithWidth`), fixed by Pi main 25490ea49 ([#9257](https://github.com/earendil-works/pi/issues/9257), [#9332](https://github.com/earendil-works/pi/issues/9332)).
+
+Scope: `tui.TuiMainScreen` and `tui.TuiAltScreen` rendering, `widthx.SliceWithWidth`, `widthx.ApplyLineReset` and `widthx.ExtractCursorPosition`. A frame without a stray second marker is byte for byte what Pi 1.5.0 writes. The Node SDK runs Pi's own code and keeps Pi 1.5.0's behavior until the pin moves.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 25490ea49. Then the call-site markers and this record go.
+
+Call-site markers: `tui/tui.go` (`findCursorPosition`, `doRender`), `tui/widthx/cursor_marker.go` (`ExtractCursorPosition`), `tui/widthx/line_resets.go` (`ApplyLineReset`), `tui/widthx/slice.go` (`SliceWithWidth`).
+
+Evidence: Pi's five tests, ported: `TestUpstreamTabWidth` ("does not carry cursor markers into later slices", "continues to carry persistent styling into later slices", `tui/render_regressions_upstream_test.go`), `TestUpstreamTUIBoundedRender` ("does not write duplicate cursor markers to the terminal", "does not write cursor markers from other visible or scrollback lines", `tui/tui_render_upstream_test.go`) and `TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret` (`tui/tui_alt_screen_kitty_order_test.go`).
+
+Parity allowance: the pinned-Pi oracles render one cursor marker per frame, which Pi 1.5.0 also extracts; only a second marker on a line differs, and no oracle emits one.
+
+## D301 PiG follows Pi main 4622edb79 ahead of the v1.5.0 pin: fullscreen Kitty images are drawn after the rows they cover on every terminal
+
+What: PiG ports Pi main 4622edb79 (`fix(tui): draw fullscreen Kitty images after the rows they cover on every terminal`, Pi #11890, closing #11835), which is not in Pi 1.5.0. The alt screen drew Kitty images after clearing and writing the rows they cover, and redrew them when a covered row changed, only inside WezTerm (`WEZTERM_PANE` or `TERM_PROGRAM=wezterm`). It now does both for every terminal that uses the Kitty image protocol; text-only frames keep their interleaved output.
+
+Why: Terminals that store an image in the cells it covers (WezTerm, xterm.js's image addon in Orca) lose the rows that a later clear or write touches, so a fullscreen image showed only its first row. Terminals that keep images on a separate layer (Kitty, Ghostty) render the same result.
+
+Pi bug: Pi 1.5.0 (`packages/tui/src/tui-alt-screen.ts` `isWezTerm` in `imageCellsNeedRedraw` and `drawKittyImagesLast`), fixed by Pi main 4622edb79 ([#11835](https://github.com/earendil-works/pi/issues/11835)).
+
+Scope: `tui.TuiAltScreen` frames that hold a Kitty image line. The bytes written for such a frame differ from Pi 1.5.0 outside WezTerm: rows are cleared first, then written without a per-row clear, then the images are placed. Regular (main screen) rendering is unchanged. The Node SDK runs Pi's own code and keeps Pi 1.5.0's behavior until the pin moves.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 4622edb79. Then the call-site markers and this record go.
+
+Call-site markers: `tui/tui_alt_screen.go` (the `imageCellsNeedRedraw` scan and `drawKittyImagesLast` in the frame builder).
+
+Evidence: Pi's two tests, ported: `TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows` and `TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover` (`tui/tui_alt_screen_kitty_order_test.go`), and `TestAltScreenClearsRowsBeforeKittyImages`, which runs the same Kitty frame under four terminal environments and expects one output.
+
+Parity allowance: the pinned-Pi alt-screen oracles set no WezTerm environment, so a Kitty image frame differs from Pi 1.5.0 by design; see the oracle changes in the commit that ports this record.
+
+## D302 PiG follows Pi main 2bd2c2d0a ahead of the v1.5.0 pin: a relative root $id is applied once when resolving references
+
+What: PiG ports Pi main 2bd2c2d0a (`fix(schema): apply a relative root $id only once when resolving references`, Pi #11726, fixing #11697), which is not in Pi 1.5.0. A schema whose root `$id` is a relative path with a directory part, such as `schemas/tool.json`, resolves its local `$ref`s against `https://json-schema.invalid/schemas/tool.json`. With the commit:
+
+- The resolver's root base is the default base, and each walker (compiler, error explainer, coercer) applies the root's own `$id` through `baseFor`, once; `baseFor` indexes the schema before it applies an `$id`, so a caller whose base already includes the `$id` cannot apply it again (`unevaluatedProperties` and `unevaluatedItems` included).
+- The coercer reads the base of an object the index never reached through `baseFor`, so the first `Parse` or `Coerce` of a schema with `$dynamicRef` and a relative external `$ref` still converts.
+- The explainer drops `$id` from the copy it makes for the unevaluated keywords, and resolves the `$ref` of an `anyOf` or `oneOf` branch against the branch's own base.
+
+Why: Pi 1.5.0 applied the `$id` twice (`https://json-schema.invalid/schemas/schemas/tool.json`), so `Compile` failed with `Unresolved $ref #/$defs/count`, and with `UnresolvedRefsReject`, the mode tool arguments are validated in, valid arguments were rejected and the tool never ran. An absolute `$id` or a bare name such as `tool.json` was not affected.
+
+Pi bug: Pi 1.5.0 (`packages/schema/src/resolver.ts` constructor and `baseFor`, `coerce.ts` `baseOf`, `explain.ts` `declaredKeys`, `tagOf` and `walkUnevaluated`), fixed by Pi main 2bd2c2d0a ([#11697](https://github.com/earendil-works/pi/issues/11697)).
+
+Scope: `schema.Compile`, `schema.CompileCoercing` and the validators' `Errors`, so tool-argument validation (`ai/validate.go`), Durable's structured output check and every package that compiles a schema. Only a schema with a relative `$id` that has a directory part differs from Pi 1.5.0; every other schema resolves as before. The Node SDK runs Pi's own code and keeps Pi 1.5.0's behavior until the pin moves.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 2bd2c2d0a. Then the call-site markers and this record go.
+
+Call-site markers: `schema/resolver.go` (`baseFor`), `schema/explain.go` (`declaredKeys`, `tagOf`, `walkUnevaluated`), `schema/coerce.go` (`nodeInfo.baseOr`).
+
+Evidence: Pi's four tests, ported in `schema/pi_main_follow_upstream_test.go`: `TestPiMainRelativeRootIDAppliedOnce`, `TestPiMainRelativeRootIDWithUnevaluatedKeywords`, `TestPiMainExplainsNestedResourcesWithARelativeID` and `TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef`.
+
+Parity allowance: the differential tests against the pinned Pi (`TestErrorsMatchPi`, `TestCoerceMatchesPi`, the conformance suite) use no relative root `$id` with a directory part, so they still agree with Pi 1.5.0.
+
+## D303 PiG follows Pi main 55a5c6914 ahead of the v1.5.0 pin: a number is finite
+
+What: PiG ports Pi main 55a5c6914 (`fix(schema): num no longer takes nan and infinity`), which is not in Pi 1.5.0. A `type: "number"` or `type: "integer"` check, a type list holding them, an `anyOf` branch of them and the number keywords on a number reject NaN and the infinities, as TypeBox does. The coercer's `number` type test is finite too, and an explanation names such a value `NaN`, `Infinity` or `-Infinity` (`expected number, got NaN`).
+
+Why: Pi 1.5.0 accepted any `typeof value === "number"`, so a NaN or an infinity built in code passed a `num()` schema, unlike TypeBox, which Pi's builders stand in for. JSON has no NaN or Infinity, so only a value built in code is affected.
+
+Pi bug: Pi 1.5.0 (`packages/schema/src/checks.ts` `IS_NUMBER`, `leafOk`, `typeBits`, `numberCheck`; `coerce.ts` `matchesType`; `explain.ts` `typeName`), fixed by Pi main 55a5c6914.
+
+Scope: `schema.Compile`, `schema.CompileCoercing` and the validators' `Errors`, for a Go value that is a NaN or an infinity. Every JSON-decoded value is finite and compares as before. The Node SDK runs Pi's own code and keeps Pi 1.5.0's behavior until the pin moves.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 55a5c6914. Then the call-site markers and this record go.
+
+Call-site markers: `schema/checks.go` (`isNumber`, `numberCheck`), `schema/coerce.go` (`matchesType`), `schema/explain.go` (`typeName`).
+
+Evidence: `TestPiMainRejectsNaNAndInfinityAsANumber` (`schema/pi_main_follow_upstream_test.go`), Pi's test of the six schemas and the NaN explanation.
+
+Parity allowance: the differential tests against the pinned Pi decode JSON, which has no NaN or infinity, so they still agree with Pi 1.5.0.
+
+## D304 PiG follows Pi main c96e368e2 ahead of the v1.5.0 pin: Stop and timeouts end remote calls at once while the host is down
+
+What: PiG ports Pi main c96e368e2 (`fix(env): Stop and timeouts end remote calls at once while the host is down`), which is not in Pi 1.5.0. For a remote environment (`env.Connection`, `env.RemoteExecutionEnv`):
+
+- Cancelling the context of a request while the connection starts ends the call at once with code `aborted`; the start goes on for other requests. `Connection.Info` takes the same cancellation. A request whose context is already cancelled is never sent. Pi 1.5.0 (and PiG until now) waited for the start, then sent the request and cancelled it.
+- A request that was sent and cancelled settles with the daemon's result or error, or with code `aborted` if the daemon does not answer its `cancel` within one second.
+- `RemoteExecutionEnv.Exec` enforces its timeout locally from the call (a `timeout` error), also while the connection starts or the daemon has stopped answering; the working directory is resolved under that deadline.
+- File operations stop waiting for the connection when their context is cancelled (code `aborted`).
+- `ssh` runs with `ConnectTimeout=15`, so a host that is down fails a start within 15 s, not after the system's TCP timeout.
+
+Why: Reported on p2's bash tool while a remote host rebooted: Stop and a command's timeout did nothing until the connection gave up (a minute or more), because the request waited for the start and an unanswered `cancel` held it.
+
+Pi bug: Pi 1.5.0 (`packages/env/src/connection.ts` `request`, `info` and `#send`, `remote-env.ts` `exec` and `#resolve`, `list-files.ts`, `ssh.ts` `sshArguments`), fixed by Pi main c96e368e2.
+
+Scope: every user of a remote environment: Durable workers on an SSH or container environment and the Node, Python, Rust and Lisp SDKs that reach it through PiG. The ssh argument list gains `-o ConnectTimeout=15`. Local environments and a live daemon are unchanged: a daemon that answers a cancel settles the call with its own result, as before. The Node SDK runs Pi's own code and keeps Pi 1.5.0's behavior until the pin moves.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing c96e368e2. Then the call-site markers and this record go.
+
+Call-site markers: `env/connection.go` (`abortGrace`, `connect`, `send`), `env/remote_env.go` (`Exec`), `env/ssh.go` (`SshArguments`).
+
+Evidence: Pi's five tests, ported in `env/remote_abort_test.go` (`TestConnectionAbortStopsWaitingForAStartThatDoesNotFinish`, `TestConnectionAbortSettlesASentRequestTheDaemonDoesNotAnswer`, `TestRemoteExecOnAHostThatDoesNotAnswer`, `TestRemoteFileOperationsStopWaitingForTheConnectionWhenAborted`); `TestRequestWithACancelledContextIsNotSentAndIsAborted` and `TestRequestCancelledWhileTheDaemonStartsIsAbortedAtOnce` replace the two tests that pinned the 1.5.0 behavior; `TestSshArgumentsMatchPi` compares with Pi's recorded arguments plus `ConnectTimeout=15`.
+
+Parity allowance: the oracle tests that run Pi's own client against the PiG daemon, and the daemon wire oracles, do not cancel a request during a start and do not set a timeout that the daemon would not meet, so they still agree with Pi 1.5.0; the recorded ssh arguments are compared with the one added option.
+
+## D310 `/reload` and a session switch remove every extension overlay
+
+What: PiG ports Pi main 80d4d3c86 (`fix(coding-agent): remove all extension overlays on /reload and session switch`, #11853), which is not in Pi 1.5.0. `/reload` and a session switch remove every overlay an extension opened with `ctx.ui.custom({ overlay: true })`, hidden ones included, newest first, and dispose their components; pi's own overlays stay open. The extension's pending `custom()` call stays pending, as for an inline dialog. Pi 1.5.0 removed only the topmost overlay, so the lower ones stayed on screen and kept focus and input after the extension that opened them was gone.
+
+Why: An extension with two overlays open left the lower one on screen, taking input, after its extension had been replaced.
+
+Pi bug: 1.5.0 hides only the topmost overlay of the extension UI on reset (#11853).
+
+Scope: `InteractiveMode.removeExtensionOverlays` and the open-overlay list (`internal/codingagent/ext_ui_dialog_stack.go`, `ext_ui_custom.go`, `ext_ui_context.go` `RunRemoteOverlay`), called from `resetExtensionUIForReplacement` (`interactive_runtime.go`). Not affected: inline custom components, which the dialog stack already resets.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 80d4d3c86. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/ext_ui_dialog_stack.go` (`removeExtensionOverlays`), `internal/codingagent/interactive_runtime.go` (`resetExtensionUIForReplacement`).
+
+Evidence: `TestResetRemovesEveryExtensionOverlayButKeepsPisOwn` (`internal/codingagent/ext_ui_dialog_stack_test.go`, ports Pi's `interactive-mode-status.test.ts` "resetExtensionUI removes every extension overlay but keeps pi's own overlays").
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
+
+## D311 `ctrl+o` applies to user bash output shown while the agent is working
+
+What: PiG ports Pi main acd059b72 (`fix(coding-agent): apply ctrl+o to user bash output shown while the agent is working`, #11886, fixing #11875), which is not in Pi 1.5.0. The output of `!` and `!!` commands run while the agent works starts in the current expand state, stays in the pending-message area when a steering or follow-up message is queued, and moves into the chat when the run settles instead of on the next submitted message. Pi 1.5.0 started it collapsed, dropped it from the pending area whenever the queue display was rebuilt, and left it there until the next prompt.
+
+Why: `ctrl+o` did not expand the pending output, queueing a message made it disappear, and it stayed out of the transcript after the run.
+
+Pi bug: 1.5.0 loses and mis-expands pending user bash output (#11875).
+
+Scope: `InteractiveMode` pending user bash blocks (`internal/codingagent/interactive_turn.go`, `interactive_transcript.go` `updatePendingMessagesDisplay`, `interactive_events.go` agent settled, `interactive_rebind.go`, `interactive_editor.go` `setAllToolsExpanded`).
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains acd059b72. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/interactive_turn.go` (`handleBashCommand` expand state, `flushPendingBashBlocks`), `internal/codingagent/interactive_transcript.go` (`updatePendingMessagesDisplay`), `internal/codingagent/interactive_events.go` (agent settled).
+
+Evidence: `TestCtrlOExpandsUserBashOutputInThePendingArea`, `TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea`, `TestNewUserBashOutputStartsInTheCurrentExpandState`, `TestSettlingTheRunMovesUserBashOutputToTheChat`, `TestInteractiveBashDuringRunStaysPendingUntilTheRunSettles` (`internal/codingagent/interactive_pending_bash_test.go`, port Pi's `interactive-mode-status.test.ts` "InteractiveMode pending user bash output").
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
+
+## D312 The model selectors keep the row the user browsed to when a catalog refresh lands
+
+What: PiG ports Pi main df0d88aac (`fix(coding-agent): keep model selector selection when the catalog refresh lands`, #11810, closing #9109), which is not in Pi 1.5.0. Opening the model selector or the llama model search starts a background refresh. When the refresh finished, Pi 1.5.0 moved the selection back to the current model, or to the top row when a search query was typed, discarding any browsing done meanwhile. The selectors now pass the selected model into the filter so the refresh keeps it selected by provider and ID; when it is gone the earlier fallback applies, and the list is rebuilt once.
+
+Why: browsing the list during the refresh lost the user's place.
+
+Pi bug: 1.5.0 discards the user's selection when the catalog refresh lands (#9109).
+
+Scope: the model selector (`tui/model_select.go` `applyFilterPreferring`) and the llama model search (`internal/codingagent/llama/ui.go`).
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.
+
+Call-site markers: `tui/model_select.go` (`applyFilterPreferring`), `internal/codingagent/llama/ui.go` (search results).
+
+Evidence: the ported `model-selector.test.ts` and `llama-ui.test.ts` cases of Pi df0d88aac.
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
+
 ## D350 OpenCode Zen and Go Claude models send per-message effort
 
 What: PiG's catalog generator (`internal/modelgen/providers/opencode.go`) gives OpenCode Zen and Go Claude models per-message effort and `block_binding: drop_block`, as Pi main does. Pi 1.5.0 sends neither. Ports Pi main 9ee7586a9 (`fix(ai): send drop_block for OpenCode Zen and Go Claude models`, #10954), which is not in Pi 1.5.0.
@@ -3894,46 +4084,3 @@ Call-site markers: `ai/anthropic_threads.go`.
 Evidence: `TestAnthropicMessageThreadsCreateThenContinue` and the other `TestAnthropicMessageThreads*` cases (`ai/anthropic_message_threads_test.go`, Pi's `anthropic-message-threads.test.ts`).
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
-## D310 `/reload` and a session switch remove every extension overlay
-
-What: PiG ports Pi main 80d4d3c86 (`fix(coding-agent): remove all extension overlays on /reload and session switch`, #11853), which is not in Pi 1.5.0. `/reload` and a session switch remove every overlay an extension opened with `ctx.ui.custom({ overlay: true })`, hidden ones included, newest first, and dispose their components; pi's own overlays stay open. The extension's pending `custom()` call stays pending, as for an inline dialog. Pi 1.5.0 removed only the topmost overlay, so the lower ones stayed on screen and kept focus and input after the extension that opened them was gone.
-
-Why: An extension with two overlays open left the lower one on screen, taking input, after its extension had been replaced.
-
-Pi bug: 1.5.0 hides only the topmost overlay of the extension UI on reset (#11853).
-
-Scope: `InteractiveMode.removeExtensionOverlays` and the open-overlay list (`internal/codingagent/ext_ui_dialog_stack.go`, `ext_ui_custom.go`, `ext_ui_context.go` `RunRemoteOverlay`), called from `resetExtensionUIForReplacement` (`interactive_runtime.go`). Not affected: inline custom components, which the dialog stack already resets.
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains 80d4d3c86. Then the call-site markers and this record go.
-
-Call-site markers: `internal/codingagent/ext_ui_dialog_stack.go` (`removeExtensionOverlays`), `internal/codingagent/interactive_runtime.go` (`resetExtensionUIForReplacement`).
-
-Evidence: `TestResetRemovesEveryExtensionOverlayButKeepsPisOwn` (`internal/codingagent/ext_ui_dialog_stack_test.go`, ports Pi's `interactive-mode-status.test.ts` "resetExtensionUI removes every extension overlay but keeps pi's own overlays").
-
-Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
-
-## D311 `ctrl+o` applies to user bash output shown while the agent is working
-
-What: PiG ports Pi main acd059b72 (`fix(coding-agent): apply ctrl+o to user bash output shown while the agent is working`, #11886, fixing #11875), which is not in Pi 1.5.0. The output of `!` and `!!` commands run while the agent works starts in the current expand state, stays in the pending-message area when a steering or follow-up message is queued, and moves into the chat when the run settles instead of on the next submitted message. Pi 1.5.0 started it collapsed, dropped it from the pending area whenever the queue display was rebuilt, and left it there until the next prompt.
-
-Why: `ctrl+o` did not expand the pending output, queueing a message made it disappear, and it stayed out of the transcript after the run.
-
-Pi bug: 1.5.0 loses and mis-expands pending user bash output (#11875).
-
-Scope: `InteractiveMode` pending user bash blocks (`internal/codingagent/interactive_turn.go`, `interactive_transcript.go` `updatePendingMessagesDisplay`, `interactive_events.go` agent settled, `interactive_rebind.go`, `interactive_editor.go` `setAllToolsExpanded`).
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains acd059b72. Then the call-site markers and this record go.
-
-Call-site markers: `internal/codingagent/interactive_turn.go` (`handleBashCommand` expand state, `flushPendingBashBlocks`), `internal/codingagent/interactive_transcript.go` (`updatePendingMessagesDisplay`), `internal/codingagent/interactive_events.go` (agent settled).
-
-Evidence: `TestCtrlOExpandsUserBashOutputInThePendingArea`, `TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea`, `TestNewUserBashOutputStartsInTheCurrentExpandState`, `TestSettlingTheRunMovesUserBashOutputToTheChat`, `TestInteractiveBashDuringRunStaysPendingUntilTheRunSettles` (`internal/codingagent/interactive_pending_bash_test.go`, port Pi's `interactive-mode-status.test.ts` "InteractiveMode pending user bash output").
-
-Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
