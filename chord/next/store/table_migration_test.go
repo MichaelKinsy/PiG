@@ -361,7 +361,7 @@ func TestMigrationResumption(t *testing.T) {
 				admitted--
 				return open
 			},
-			Adopt: func(int64, []int64) error { return nil },
+			Adopt: func(int64, []int64, int) error { return nil },
 		}
 		err := PrepareTables([]DeclaredTable{{Definition: versions.v2, Table: migrationTable}}, store, fence, "app.store", background)
 		_ = rejected(t, err, data.CodeReleased, "")
