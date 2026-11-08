@@ -47,7 +47,7 @@ func scriptOutput(t *testing.T, text string) string {
 }
 
 func codemodeResult(view delta.JsonValue) *delta.JsonObject {
-	results := toolResults(view, "codemode")
+	results := messageToolResults(view, "codemode")
 	if len(results) == 0 {
 		return nil
 	}
