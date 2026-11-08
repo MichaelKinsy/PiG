@@ -73,7 +73,7 @@
         "ai/identity_test.go#TestFormatUserAgentForms",
         "ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi"
       ],
-      "rationale": "Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (\u003cplatform\u003e \u003crelease\u003e; \u003carch\u003e)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format. The Anthropic OAuth cases, where the Claude Code identity replaces the client identity, are compared with the pinned Pi in TestProviderIdentityHeadersMatchPi."
+      "rationale": "Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (<platform> <release>; <arch>)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format. The Anthropic OAuth cases, where the Claude Code identity replaces the client identity, are compared with the pinned Pi in TestProviderIdentityHeadersMatchPi."
     },
     {
       "path": "packages/ai/test/anthropic-cache-write-1h-cost.test.ts",
@@ -264,7 +264,7 @@
         "ai/port_wave_13_anthropic_thinking_disable_test.go#TestPortWave13AnthropicThinkingDisablePayload",
         "ai/anthropic_thinking_disable_live_test.go#TestPortWave13AnthropicThinkingDisableE2E"
       ],
-      "rationale": "All 8 upstream cases are present. The seven catalog-model payload cases run offline and assert the full serialized thinking/output_config omission or equality, aborting before transport. The eighth (math/pong, temperature 0, maxTokens=160, 30-second deadline, no thinking events, \u003e=35 pongs) resolves ANTHROPIC_API_KEY through testenv.RequireLiveEnv and skips without it. Simple-caller lowering is covered by coding/thinking_disable_upstream_test.go. Live generation is unverified."
+      "rationale": "All 8 upstream cases are present. The seven catalog-model payload cases run offline and assert the full serialized thinking/output_config omission or equality, aborting before transport. The eighth (math/pong, temperature 0, maxTokens=160, 30-second deadline, no thinking events, >=35 pongs) resolves ANTHROPIC_API_KEY through testenv.RequireLiveEnv and skips without it. Simple-caller lowering is covered by coding/thinking_disable_upstream_test.go. Live generation is unverified."
     },
     {
       "path": "packages/ai/test/anthropic-tool-name-normalization.test.ts",
@@ -287,7 +287,7 @@
         "ai/provider_stream_events_upstream_test.go#TestProviderStreamEventsUpstream",
         "ai/identity_test.go#TestFormatUserAgentForms"
       ],
-      "rationale": "All 17 cases; the 0.99.1 provider stream events case (:233) is TestProviderStreamEventsUpstream/azure-openai-responses_forwards_parsed_events_in_order_before_normalizing_the_response. The other 16 stay in TestAzureUpstreamBaseURL/Payload/ToolChoice/UserAgent. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (\u003cplatform\u003e \u003crelease\u003e; \u003carch\u003e)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format."
+      "rationale": "All 17 cases; the 0.99.1 provider stream events case (:233) is TestProviderStreamEventsUpstream/azure-openai-responses_forwards_parsed_events_in_order_before_normalizing_the_response. The other 16 stay in TestAzureUpstreamBaseURL/Payload/ToolChoice/UserAgent. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (<platform> <release>; <arch>)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format."
     },
     {
       "path": "packages/ai/test/azure-openai-completions.test.ts",
@@ -413,7 +413,7 @@
         "ai/providers/bedrock/bedrock_reasoning_upstream_test.go#TestBedrockUpstreamRawStopReason",
         "ai/providers/bedrock/bedrock_contract_0861_test.go#TestBedrockStreamPreservesSequenceUsageAndRawStopReason"
       ],
-      "rationale": "All 4 cases. The two raw stop reason cases are TestBedrockUpstreamRawStopReason; 'forwards SDK stream items in order before normalizing them' (:73) is TestBedrockProviderStreamEventsUpstream/forwards_SDK_stream_items_in_order_before_normalizing_them. 'forwards SDK error items before reporting them' (:91) is TestBedrockProviderStreamEventsUpstream/forwards_SDK_error_items_before_reporting_them/\u003ckind\u003e for all five exception members of the ConverseStream union, through the real AWS event-stream wire: an event frame whose :event-type is the exception member is yielded as that item, so Pi forwards it to onProviderStreamEvent (bedrock-converse-stream.ts:297) and then throws it (:318-327). PiG hands the observer the Go SDK's *types.UnknownUnionMember for the member (the Go union has no exception members) and reports the formatted modeled exception. The expected messages are the real SDK's ('Internal server error: bedrock stream failed' and siblings): the upstream mock throws a plain Error, so its expected message has no prefix. docs/plan/evidence/bedrock-exception-event-probe.mjs runs the pinned pi-ai 0.99.2 streamBedrock against the same frames and records the five item pairs and messages, and that an unmodeled event type is dropped. A frame whose :message-type is exception is thrown by the SDK before the loop (docs/plan/evidence/bedrock-exception-frame-probe.md); the exception-frame subtest asserts that. TestBedrockSDKStreamForwardsExceptionMembersAndDropsUnknownEvents covers the SDK-reader path."
+      "rationale": "All 4 cases. The two raw stop reason cases are TestBedrockUpstreamRawStopReason; 'forwards SDK stream items in order before normalizing them' (:73) is TestBedrockProviderStreamEventsUpstream/forwards_SDK_stream_items_in_order_before_normalizing_them. 'forwards SDK error items before reporting them' (:91) is TestBedrockProviderStreamEventsUpstream/forwards_SDK_error_items_before_reporting_them/<kind> for all five exception members of the ConverseStream union, through the real AWS event-stream wire: an event frame whose :event-type is the exception member is yielded as that item, so Pi forwards it to onProviderStreamEvent (bedrock-converse-stream.ts:297) and then throws it (:318-327). PiG hands the observer the Go SDK's *types.UnknownUnionMember for the member (the Go union has no exception members) and reports the formatted modeled exception. The expected messages are the real SDK's ('Internal server error: bedrock stream failed' and siblings): the upstream mock throws a plain Error, so its expected message has no prefix. docs/plan/evidence/bedrock-exception-event-probe.mjs runs the pinned pi-ai 0.99.2 streamBedrock against the same frames and records the five item pairs and messages, and that an unmodeled event type is dropped. A frame whose :message-type is exception is thrown by the SDK before the loop (docs/plan/evidence/bedrock-exception-frame-probe.md); the exception-frame subtest asserts that. TestBedrockSDKStreamForwardsExceptionMembersAndDropsUnknownEvents covers the SDK-reader path."
     },
     {
       "path": "packages/ai/test/bedrock-redacted-reasoning.test.ts",
@@ -454,7 +454,7 @@
         "ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage",
         "ai/strict_tool_limit_upstream_test.go#TestPrefersJSONSchemaStrictSampling"
       ],
-      "rationale": "New in Pi 842c7317 (#11416). All 4 cases are ported as subtests of TestBedrockPreferredStrictToolFallbackUpstream with Pi's titles, inputs and expected results: a strict tool limit ValidationException (the union-parameter message observed from live Bedrock) is retried with the preferred tool non-strict and its original schema while the required and ordinary tools stay byte-identical, onPayload runs for both requests and its requestMetadata reaches the second, and the result carries one bedrock_strict_tools_fallback diagnostic with the message and reason strict_tool_limits_exceeded; no preferred strict tool means one request and the error text 'Validation error: \u003cmessage\u003e'; another ValidationException is not retried; a rejection that repeats is retried only once. Upstream mocks the AWS SDK client and clones each command input; the port serves the same replies from an httptest Bedrock endpoint (a 400 with x-amzn-errortype ValidationException, then an event stream) and decodes each serialized request body, so the assertions are on the wire shape of toolConfig. TestBedrockConvertToolsPreferredStrictTools checks the converter's hasPreferredStrictTools and disablePreferredStrictTools, and the strict_tool_limit tests the two shared helpers. Red: before the port the first case ends with stopReason error and 'retries only once' sees 1 request, want 2."
+      "rationale": "New in Pi 842c7317 (#11416). All 4 cases are ported as subtests of TestBedrockPreferredStrictToolFallbackUpstream with Pi's titles, inputs and expected results: a strict tool limit ValidationException (the union-parameter message observed from live Bedrock) is retried with the preferred tool non-strict and its original schema while the required and ordinary tools stay byte-identical, onPayload runs for both requests and its requestMetadata reaches the second, and the result carries one bedrock_strict_tools_fallback diagnostic with the message and reason strict_tool_limits_exceeded; no preferred strict tool means one request and the error text 'Validation error: <message>'; another ValidationException is not retried; a rejection that repeats is retried only once. Upstream mocks the AWS SDK client and clones each command input; the port serves the same replies from an httptest Bedrock endpoint (a 400 with x-amzn-errortype ValidationException, then an event stream) and decodes each serialized request body, so the assertions are on the wire shape of toolConfig. TestBedrockConvertToolsPreferredStrictTools checks the converter's hasPreferredStrictTools and disablePreferredStrictTools, and the strict_tool_limit tests the two shared helpers. Red: before the port the first case ends with stopReason error and 'retries only once' sees 1 request, want 2."
     },
     {
       "path": "packages/ai/test/bedrock-thinking-payload.test.ts",
@@ -467,7 +467,7 @@
         "ai/providers/bedrock/bedrock_max_tokens_live_test.go#TestPortWave13BedrockClaudeMaxTokensE2E",
         "ai/providers/bedrock/bedrock_openai_reasoning_test.go#TestBedrockOpenAIReasoningPayload"
       ],
-      "rationale": "All 13 upstream cases are present. Twelve payload/profile cases run offline (adaptive thinking by model name, xhigh effort, GovCloud display omission, fixed-budget fallback, cache points) and abort before transport. The 5200-alpha generation with a 6000-token model cap, no explicit maxTokens, output\u003e4096 and the 180-second deadline requires AWS credentials through requireBedrockLiveCredentials (testenv.RequireLiveEnv) and skips without them. The payload test file is untagged; only the live case (ai/providers/bedrock/bedrock_max_tokens_live_test.go) is behind the live build tag. No AWS call was made. 1.1.0 adds block_binding and the binding beta for adaptive Claude (#10324), their omission for the 4.6 models, and the Bedrock OpenAI reasoning payload cases; TestPortWave13BedrockThinkingPayload and TestBedrockOpenAIReasoningPayload assert the exact payloads."
+      "rationale": "All 13 upstream cases are present. Twelve payload/profile cases run offline (adaptive thinking by model name, xhigh effort, GovCloud display omission, fixed-budget fallback, cache points) and abort before transport. The 5200-alpha generation with a 6000-token model cap, no explicit maxTokens, output>4096 and the 180-second deadline requires AWS credentials through requireBedrockLiveCredentials (testenv.RequireLiveEnv) and skips without them. The payload test file is untagged; only the live case (ai/providers/bedrock/bedrock_max_tokens_live_test.go) is behind the live build tag. No AWS call was made. 1.1.0 adds block_binding and the binding beta for adaptive Claude (#10324), their omission for the 4.6 models, and the Bedrock OpenAI reasoning payload cases; TestPortWave13BedrockThinkingPayload and TestBedrockOpenAIReasoningPayload assert the exact payloads."
     },
     {
       "path": "packages/ai/test/cache-retention.test.ts",
@@ -479,7 +479,7 @@
         "ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
         "test/parity/scenarios/providers-faux-streaming/11-cache-retention-request-policy.toml"
       ],
-      "rationale": "All 19 cases; the 0.99.1 changes (apiKey sk-fake-key at :309-419, opencode-go/kimi-k2.6 dropped from the five-row OpenAI Completions list at :507-513) are in TestCacheRetentionCompletionsUpstream 'should omit long cache retention for \u003cprovider/id\u003e' (ai/cache_retention_upstream_test.go:138-140)."
+      "rationale": "All 19 cases; the 0.99.1 changes (apiKey sk-fake-key at :309-419, opencode-go/kimi-k2.6 dropped from the five-row OpenAI Completions list at :507-513) are in TestCacheRetentionCompletionsUpstream 'should omit long cache retention for <provider/id>' (ai/cache_retention_upstream_test.go:138-140)."
     },
     {
       "path": "packages/ai/test/clamp-max-tokens.test.ts",
@@ -511,7 +511,7 @@
         "coding/extension/host/subprocess/testdata/port-wave-12/cloudflare-ai-binding.mjs",
         "ai/port_wave_12_helpers_test.go#TestPortWave12ProviderFetchTransport"
       ],
-      "rationale": "All 3 upstream cases (:26 passes requests untouched, :64 rejects missing fetch at construction, :70 strips placeholder auth with null headers) pass in isolated and packed Node cells. Exact URL/query/method/headers/body, response identity and streamed bytes, eager error, stopReason=error, one dispatch, and absent authorization/x-api-key are asserted. The shipped adapter runs through Services -\u003e Session -\u003e ModelRuntime -\u003e OpenAI with a connection-owned fetch carrier and a rejecting local proxy. Supplemental response-observer ordering, 128 KiB streaming, cancellation and per-request fetch replacement tests pass across OpenAI Completions, Responses and Anthropic. Verified with Go 1.27.1 and Node 26.7.0 on Linux amd64 using TestPortWave12CloudflareAIBinding and TestPortWave12ProviderFetchTransport, -count=1. No upstream case is designed out; the existing PORT_MAP exclusion of a Go-native Worker binding does not exclude the shipped Node adapter tests."
+      "rationale": "All 3 upstream cases (:26 passes requests untouched, :64 rejects missing fetch at construction, :70 strips placeholder auth with null headers) pass in isolated and packed Node cells. Exact URL/query/method/headers/body, response identity and streamed bytes, eager error, stopReason=error, one dispatch, and absent authorization/x-api-key are asserted. The shipped adapter runs through Services -> Session -> ModelRuntime -> OpenAI with a connection-owned fetch carrier and a rejecting local proxy. Supplemental response-observer ordering, 128 KiB streaming, cancellation and per-request fetch replacement tests pass across OpenAI Completions, Responses and Anthropic. Verified with Go 1.27.1 and Node 26.7.0 on Linux amd64 using TestPortWave12CloudflareAIBinding and TestPortWave12ProviderFetchTransport, -count=1. No upstream case is designed out; the existing PORT_MAP exclusion of a Go-native Worker binding does not exclude the shipped Node adapter tests."
     },
     {
       "path": "packages/ai/test/cloudflare-stream.test.ts",
@@ -551,7 +551,7 @@
         "internal/codingagent/configschema/compat_schema_upstream_test.go#TestCompatSchemasPreserveAPISpecificDefaults",
         "internal/codingagent/configschema/compat_schema_upstream_test.go#TestProviderCompatSchemaAssignsNoAPISpecificDefaults"
       ],
-      "rationale": "The two default cases are ported over the Go compat schema trees (Pi's defaults() helper reads each property's default annotation, which is the default keyword of the Go tree). The type-level case is designed out: SCRUTINIZED:approved by the lead ruling LEAD-RULINGS 13:05Z 2026-10-09 (compat-schema: only the type-level cases are designed out): the case asserts TypeScript Static\u003c\u003e property types with expectTypeOf, which has no runtime behavior; the Go compat structs are typed and the compiler checks their property types.",
+      "rationale": "The two default cases are ported over the Go compat schema trees (Pi's defaults() helper reads each property's default annotation, which is the default keyword of the Go tree). The type-level case is designed out: SCRUTINIZED:approved by the lead ruling LEAD-RULINGS 13:05Z 2026-10-09 (compat-schema: only the type-level cases are designed out): the case asserts TypeScript Static<> property types with expectTypeOf, which has no runtime behavior; the Go compat structs are typed and the compiler checks their property types.",
       "designedOutCases": [
         "compatibility schemas › preserves property types in the provider superset"
       ]
@@ -708,7 +708,7 @@
         "ai/identity_test.go#TestFormatUserAgentForms",
         "ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi"
       ],
-      "rationale": "All 7 cases: raw finish reasons for Generative AI and Vertex errors, MAX_TOKENS with a tool call, STOP with a tool call (TestGoogleRawStopReasonUpstream, per adapter), User-Agent default/override, and the 0.99.1 'forwards each SDK chunk in order' case for both adapters (:220, TestProviderStreamEventsUpstream/google_forwards_each_SDK_chunk_in_order_before_normalizing_it_for_*). Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (\u003cplatform\u003e \u003crelease\u003e; \u003carch\u003e)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format."
+      "rationale": "All 7 cases: raw finish reasons for Generative AI and Vertex errors, MAX_TOKENS with a tool call, STOP with a tool call (TestGoogleRawStopReasonUpstream, per adapter), User-Agent default/override, and the 0.99.1 'forwards each SDK chunk in order' case for both adapters (:220, TestProviderStreamEventsUpstream/google_forwards_each_SDK_chunk_in_order_before_normalizing_it_for_*). Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (<platform> <release>; <arch>)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format."
     },
     {
       "path": "packages/ai/test/google-shared-convert-tools.test.ts",
@@ -803,7 +803,7 @@
         "ai/identity_test.go#TestFormatUserAgentForms",
         "ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi"
       ],
-      "rationale": "All nine cases ported through captured Vertex requests: placeholder markers select ADC, real keys select express mode, generated URL placeholders are ignored, custom collection URLs gain only needed version/publisher segments, and explicit User-Agent wins. Red tests catch marker leakage and wrong URLs. Additional hermetic official-ADC-library tests prove scoped credentials, bearer auth, failure-before-model-request and cancellation. Exact Pi SDK URL/auth probes and compiling marker/URL mutations prove behavior. Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (\u003cplatform\u003e \u003crelease\u003e; \u003carch\u003e)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format."
+      "rationale": "All nine cases ported through captured Vertex requests: placeholder markers select ADC, real keys select express mode, generated URL placeholders are ignored, custom collection URLs gain only needed version/publisher segments, and explicit User-Agent wins. Red tests catch marker leakage and wrong URLs. Additional hermetic official-ADC-library tests prove scoped credentials, bearer auth, failure-before-model-request and cancellation. Exact Pi SDK URL/auth probes and compiling marker/URL mutations prove behavior. Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (<platform> <release>; <arch>)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format."
     },
     {
       "path": "packages/ai/test/identity.test.ts",
@@ -939,7 +939,7 @@
         "ai/message_types_upstream_test.go#TestToolResultMessagePreservesJSONCompatibleDetailTypes",
         "ai/message_types_upstream_test.go#TestToolResultMessageRejectsNonJSONDetailTypes"
       ],
-      "rationale": "Both cases have a Go form over ToolResultMessage.Details (any) and NormalizeContext. The first is ported with the same five detail values (object, array, tuple, string, null): they survive normalization into a Message and a Context, compared as decoded JSON because normalization rebuilds a struct as an object (toEqual ignores key order). The second asserts at compile time, through expectTypeOf on a generic parameter, that ToolResultMessage\u003cD\u003e is never for non-JSON D; Go's message type is not generic, so no compile-time rejection exists. Its runtime counterpart is ported instead: NormalizeContext rejects details JSON cannot carry (a function, a channel, NaN, Infinity) and exposes no messages. A mutation that skips the details validation turned the second test red."
+      "rationale": "Both cases have a Go form over ToolResultMessage.Details (any) and NormalizeContext. The first is ported with the same five detail values (object, array, tuple, string, null): they survive normalization into a Message and a Context, compared as decoded JSON because normalization rebuilds a struct as an object (toEqual ignores key order). The second asserts at compile time, through expectTypeOf on a generic parameter, that ToolResultMessage<D> is never for non-JSON D; Go's message type is not generic, so no compile-time rejection exists. Its runtime counterpart is ported instead: NormalizeContext rejects details JSON cannot carry (a function, a channel, NaN, Infinity) and exposes no messages. A mutation that skips the details validation turned the second test red."
     },
     {
       "path": "packages/ai/test/meta-oauth.test.ts",
@@ -961,7 +961,7 @@
         "ai/identity_test.go#TestFormatUserAgentForms",
         "ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi"
       ],
-      "rationale": "Reviewed against the 1.1.0 -\u003e 42a3497d delta: 42a3497d replaces the SSE-chunk timeout case with 'applies the request timeout while waiting for response headers' and adds the #10609 'does not abort an active stream that lasts longer than the request timeout' case; both are ported in TestMistralHTTPTransportUpstream (red before the change in ai/mistral.go), the abort case is kept, and the removed body-timeout mode of TestMistralRequestLifetimeClosesBodyOnce follows. Earlier evidence is retained. Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (\u003cplatform\u003e \u003crelease\u003e; \u003carch\u003e)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format."
+      "rationale": "Reviewed against the 1.1.0 -> 42a3497d delta: 42a3497d replaces the SSE-chunk timeout case with 'applies the request timeout while waiting for response headers' and adds the #10609 'does not abort an active stream that lasts longer than the request timeout' case; both are ported in TestMistralHTTPTransportUpstream (red before the change in ai/mistral.go), the abort case is kept, and the removed body-timeout mode of TestMistralRequestLifetimeClosesBodyOnce follows. Earlier evidence is retained. Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (<platform> <release>; <arch>)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format."
     },
     {
       "path": "packages/ai/test/mistral-raw-stop-reason.test.ts",
@@ -1801,7 +1801,7 @@
         "agent/transform_test.go#TestNormalizeMessages_ThinkingNormalization",
         "agent/transform_toolcall_signature_test.go#TestNormalizeMessages_StripsCrossModelToolCallSignature"
       ],
-      "rationale": "Ported generically at the shared NormalizeMessages layer rather than as a Copilot-specific test: the \"different provider -\u003e text\" case in TestNormalizeMessages_ThinkingNormalization covers converting thinking to plain text on a model switch, TestNormalizeMessages_StripsCrossModelToolCallSignature covers dropping a cross-model thoughtSignature, and agent/transform_test.go's orphaned-tool-call/result tests cover synthesizing results for trailing orphaned tool calls. Pi 91130942 (#11000) deleted \"converts thinking blocks to plain text when source model differs\" (another model's thinking is dropped now, not converted), so the Go row is removed; the \"different provider dropped\" and \"cross-model ... dropped\" cases of TestNormalizeMessages_ThinkingNormalization and TestTransformMessagesCrossModelThinking cover the new rule."
+      "rationale": "Ported generically at the shared NormalizeMessages layer rather than as a Copilot-specific test: the \"different provider -> text\" case in TestNormalizeMessages_ThinkingNormalization covers converting thinking to plain text on a model switch, TestNormalizeMessages_StripsCrossModelToolCallSignature covers dropping a cross-model thoughtSignature, and agent/transform_test.go's orphaned-tool-call/result tests cover synthesizing results for trailing orphaned tool calls. Pi 91130942 (#11000) deleted \"converts thinking blocks to plain text when source model differs\" (another model's thinking is dropped now, not converted), so the Go row is removed; the \"different provider dropped\" and \"cross-model ... dropped\" cases of TestNormalizeMessages_ThinkingNormalization and TestTransformMessagesCrossModelThinking cover the new rule."
     },
     {
       "path": "packages/ai/test/transform-messages-cross-model-thinking.test.ts",
@@ -1819,7 +1819,7 @@
       "evidence": [
         "ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
       ],
-      "rationale": "All 15 cases are subtests of TestTypesafeSystemOneUpstream with the upstream titles. Pi 7f225f25 renames 'rejects image input before sending' to 'rejects image input for text-only models before sending' (:123, the message now names the model: '\u003cAPI\u003e does not support image input for jev-latest', for System One and Cloudflare) and adds 'sends images to TypeSafe as assets with the opt-in header' (:136), 'rejects image formats TypeSafe does not accept before sending' (:176), 'sends images to OpenRouter as image_url parts in the state' (:189), the table 'sends OpenRouter's image form to %s' (:222) and 'lets compat override detected image settings per field' (:258). The Go subtests assert the exact wire bodies (assets, image_url state parts), the typesafe-danger-zone-images header present only with images, the pre-send rejections with no request, and the per-field compat override."
+      "rationale": "All 15 cases are subtests of TestTypesafeSystemOneUpstream with the upstream titles. Pi 7f225f25 renames 'rejects image input before sending' to 'rejects image input for text-only models before sending' (:123, the message now names the model: '<API> does not support image input for jev-latest', for System One and Cloudflare) and adds 'sends images to TypeSafe as assets with the opt-in header' (:136), 'rejects image formats TypeSafe does not accept before sending' (:176), 'sends images to OpenRouter as image_url parts in the state' (:189), the table 'sends OpenRouter's image form to %s' (:222) and 'lets compat override detected image settings per field' (:258). The Go subtests assert the exact wire bodies (assets, image_url state parts), the typesafe-danger-zone-images header present only with images, the pre-send rejections with no request, and the per-field compat override."
     },
     {
       "path": "packages/ai/test/unicode-surrogate.test.ts",
@@ -1900,7 +1900,7 @@
         "ai/catalog_options_upstream_test.go#TestXiaomiModels",
         "ai/xiaomi_models_upstream_test.go#TestXiaomiReasoningModelsAreAnOffOnToggleUpstream"
       ],
-      "rationale": "Both table cases are ported for all four providers (eight expanded cases), asserting every deprecated and replacement model ID. Pi 3daa2028→b06c1f2c: Pi 6374c2ba (#10818) adds 'models \u003cprovider\u003e reasoning as an off/on toggle'; ported in TestXiaomiReasoningModelsAreAnOffOnToggleUpstream. Pi 99fe1489: the replacement models are mimo-v2.6-flash and mimo-v2.6-pro; catalog_options_upstream_test.go TestXiaomiModels checks them (71023aec→8efd314f)."
+      "rationale": "Both table cases are ported for all four providers (eight expanded cases), asserting every deprecated and replacement model ID. Pi 3daa2028→b06c1f2c: Pi 6374c2ba (#10818) adds 'models <provider> reasoning as an off/on toggle'; ported in TestXiaomiReasoningModelsAreAnOffOnToggleUpstream. Pi 99fe1489: the replacement models are mimo-v2.6-flash and mimo-v2.6-pro; catalog_options_upstream_test.go TestXiaomiModels checks them (71023aec→8efd314f)."
     },
     {
       "path": "packages/ai/test/xiaomi-token-plan-ams-anthropic-empty-signature-smoke.test.ts",
@@ -1959,18 +1959,36 @@
     },
     {
       "path": "packages/chord/test/contracts/accepts.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8c2441b7f54f0e44c07edb67b72b29bc70b654ed8cd8f918fb53ae6302d67baf"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8c2441b7f54f0e44c07edb67b72b29bc70b654ed8cd8f918fb53ae6302d67baf",
+      "evidence": [
+        "chord/next/contracts/accepts_test.go"
+      ],
+      "rationale": "All 16 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/contracts/contract.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d9a04b63f3e80861aa7d973df83da66075b509e7108e09367c305eadc940a887"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d9a04b63f3e80861aa7d973df83da66075b509e7108e09367c305eadc940a887",
+      "evidence": [
+        "chord/next/contracts/contract_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/contracts/declare.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:179bf56414a9a95212c04b6e137f7b778532a97bda8f956364dada4915253df1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:179bf56414a9a95212c04b6e137f7b778532a97bda8f956364dada4915253df1",
+      "evidence": [
+        "chord/next/contracts/declare_test.go#TestDeclarationChecks",
+        "chord/next/contracts/declare_test.go#TestDeclarationMembersAcrossVariants",
+        "chord/next/contracts/declare_test.go#TestReservedMemberNames",
+        "chord/next/contracts/declare_test.go#TestKeyedMembers"
+      ],
+      "rationale": "Eleven of the 12 upstream cases run in declare_test.go; the twelfth, the keyed member refused in a remote contract, is designed out under the owner class approval recorded in the release policy (the compiler refuses it: *KeyedMember is no Schema). 'refuse a remote declaration without a host address at the type level' runs as the 'a missing host address' row, because upstream asserts the runtime throw. Inside the three it.each tables every row a typed Go declaration can hold is ported; the rows whose input a Go declaration cannot hold are not: remote 'name not a string', 'unknown declaration key', 'a host address that is no function', 'unknown variant key', 'a method under state' and 'a schema under methods' (its Go form is a nil *Method, ported as 'a nil method under methods'), local 'unknown key' and 'a host address' (LocalDeclaration has no such fields).",
+      "designedOutCases": [
+        "keyed members (slice 6a §12) › refuse a keyed member in a remote contract, at the type level and at declaration"
+      ]
     },
     {
       "path": "packages/chord/test/contracts/evolve.test.ts",
@@ -1984,13 +2002,21 @@
     },
     {
       "path": "packages/chord/test/contracts/history.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bc4d85db829570df8dc8830a67ba1f811c3f6ea69de4e7b54c734dd896fa26dc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bc4d85db829570df8dc8830a67ba1f811c3f6ea69de4e7b54c734dd896fa26dc",
+      "evidence": [
+        "chord/next/contracts/history_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/contracts/host-kind.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b603dda0ba6034c3e9900a190509c2c91f28d7effbc2f3134e69f039cdd21a79"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b603dda0ba6034c3e9900a190509c2c91f28d7effbc2f3134e69f039cdd21a79",
+      "evidence": [
+        "chord/next/contracts/host_kind_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/contracts/params.test.ts",
@@ -2009,8 +2035,18 @@
     },
     {
       "path": "packages/chord/test/data/args.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f980f2518c939d6a6c611d58c4bf3d12441cf8f8e38d2ac91b0cdad21ee2400d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f980f2518c939d6a6c611d58c4bf3d12441cf8f8e38d2ac91b0cdad21ee2400d",
+      "evidence": [
+        "chord/next/data/args_test.go#TestBindProvider",
+        "chord/next/data/args_test.go#TestCheckArgs",
+        "chord/next/data/args_test.go#TestMemory",
+        "chord/next/data/typelevel_test.go#TestCallReplacementArgumentsAreValues"
+      ],
+      "rationale": "Thirteen of the 14 upstream cases run in args_test.go; the fourteenth, \"types a call replacement's arguments as values\", is designed out under the owner class approval recorded in the release policy: CheckedArgs.Call is the contracts.CallFunc field, so a call with other argument types does not compile, and TestCallReplacementArgumentsAreValues pins the field type by reflection. Two assertions inside ported cases have no Go form and are not ported: the expectTypeOf lines of \"returns current-version arguments as passed\" (CheckedArgs and ArgsOf are Value in Go), and the WeakRef of the mapping function in \"memory\" (a Go func value has no weak reference; the test holds the contract, the provider and a value the mapping closure captures through weak pointers and requires all three collected).",
+      "designedOutCases": [
+        "checkArgs › types a call replacement's arguments as values"
+      ]
     },
     {
       "path": "packages/chord/test/data/errors.test.ts",
@@ -2019,8 +2055,12 @@
     },
     {
       "path": "packages/chord/test/data/failure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:057a4956c96187ee0fd6456218cc00c5d85f6b3621992c5843d721a16b84be37"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:057a4956c96187ee0fd6456218cc00c5d85f6b3621992c5843d721a16b84be37",
+      "evidence": [
+        "chord/next/data/failure_test.go"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/data/params.test.ts",
@@ -2182,13 +2222,21 @@
     },
     {
       "path": "packages/chord/test/documents/address-source.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cdbeb08580543cc2485cea4a2bd6f975e6a02ffcb5ac5f6fe94522f4f587f50a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cdbeb08580543cc2485cea4a2bd6f975e6a02ffcb5ac5f6fe94522f4f587f50a",
+      "evidence": [
+        "chord/next/documents/address_source_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/documents/definition.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c9e29008c2cf720b097652f5419de094ee37298800053bc7fc19e752d660d634"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c9e29008c2cf720b097652f5419de094ee37298800053bc7fc19e752d660d634",
+      "evidence": [
+        "chord/next/documents/definition_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/documents/documents.test.ts",
@@ -2197,43 +2245,75 @@
     },
     {
       "path": "packages/chord/test/documents/fence.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3ae48c03edb122a2887c61ab9c10189a9ae5f355461e6a88ac1f23a4cf8602ac"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3ae48c03edb122a2887c61ab9c10189a9ae5f355461e6a88ac1f23a4cf8602ac",
+      "evidence": [
+        "chord/next/documents/fence_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/documents/handles.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ed42c7bb95e25f057a9bcf928473ce58ee0caca66fa17c00ea9b34e27ca49c71"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ed42c7bb95e25f057a9bcf928473ce58ee0caca66fa17c00ea9b34e27ca49c71",
+      "evidence": [
+        "chord/next/documents/handles_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/documents/keyed-slot.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bf09928cbf58dfb47aaac1e2407045aa4871b4153807966a33e0a8e504234c3e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bf09928cbf58dfb47aaac1e2407045aa4871b4153807966a33e0a8e504234c3e",
+      "evidence": [
+        "chord/next/host/host_keyed_slot_host_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/documents/line.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9a82f5ebeaf6433bbd665354ba51fd6df251ca9183df734aa760536d0ef2614e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9a82f5ebeaf6433bbd665354ba51fd6df251ca9183df734aa760536d0ef2614e",
+      "evidence": [
+        "chord/next/documents/line_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/documents/persistence.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b8b2bcde0ee6f2b20e8f1bf5298d7afde8aff4de3c0a0e65f044ba06e26393f7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b8b2bcde0ee6f2b20e8f1bf5298d7afde8aff4de3c0a0e65f044ba06e26393f7",
+      "evidence": [
+        "chord/next/documents/persistence_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/documents/residency.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f303fcb7995b83a5d5cc7a41fc9b1caa07669bf3cadc2dca90584772681b0ede"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f303fcb7995b83a5d5cc7a41fc9b1caa07669bf3cadc2dca90584772681b0ede",
+      "evidence": [
+        "chord/next/documents/residency_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/documents/slot.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6a7e710e9aef3fab2dadd786accf79e7abebcbc9f282a8383974ebcd9ccc0db3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6a7e710e9aef3fab2dadd786accf79e7abebcbc9f282a8383974ebcd9ccc0db3",
+      "evidence": [
+        "chord/next/host/host_documents_host_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/documents/transaction.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e2ff8f793ed9a9bef40201ba2173c2783ccca53ed265886723bfd4b96835c7e3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e2ff8f793ed9a9bef40201ba2173c2783ccca53ed265886723bfd4b96835c7e3",
+      "evidence": [
+        "chord/next/host/host_documents_host_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/plugins/lists/worker.test.ts",
@@ -2252,8 +2332,12 @@
     },
     {
       "path": "packages/chord/test/host/activity.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:afc9dcd2fc3a8f01caa8a368636733a545a86435d2346cd9cdb6f659f2047d31"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:afc9dcd2fc3a8f01caa8a368636733a545a86435d2346cd9cdb6f659f2047d31",
+      "evidence": [
+        "chord/next/host/host_activity_test.go"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/adapted.test.ts",
@@ -2267,8 +2351,12 @@
     },
     {
       "path": "packages/chord/test/host/backoff.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8d3a5600b98dd5859986cd83220dce110b00bd75feb6723714aefcf01e691f65"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8d3a5600b98dd5859986cd83220dce110b00bd75feb6723714aefcf01e691f65",
+      "evidence": [
+        "chord/next/host/host_backoff_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/ctx.test.ts",
@@ -2277,8 +2365,12 @@
     },
     {
       "path": "packages/chord/test/host/deadline.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9863d41bbe2c0fc380111fb29880f93bc707b5066912313b76d119a5fa320070"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9863d41bbe2c0fc380111fb29880f93bc707b5066912313b76d119a5fa320070",
+      "evidence": [
+        "chord/next/host/host_deadline_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/dependencies.test.ts",
@@ -2292,8 +2384,15 @@
     },
     {
       "path": "packages/chord/test/host/follow.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7163597e13d8d64375d364e40bcab6099b3aea1cd82bf1bee2269fccf6934df7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7163597e13d8d64375d364e40bcab6099b3aea1cd82bf1bee2269fccf6934df7",
+      "evidence": [
+        "chord/next/host/host_follow_test.go"
+      ],
+      "rationale": "All 15 upstream cases run in the evidence files; 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "types › infers the value type from the attachment, without a type argument"
+      ]
     },
     {
       "path": "packages/chord/test/host/host.test.ts",
@@ -2302,8 +2401,12 @@
     },
     {
       "path": "packages/chord/test/host/members.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3be9818adbdda664c94eb5eb4d1512d267dc864402817182faa1836a1ba8b23f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3be9818adbdda664c94eb5eb4d1512d267dc864402817182faa1836a1ba8b23f",
+      "evidence": [
+        "chord/next/host/host_members_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/native.test.ts",
@@ -2322,13 +2425,24 @@
     },
     {
       "path": "packages/chord/test/host/parked.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a0c32e31cb2bb99a1969d4d25114f125a9cb67e2f9463df152a4065ede57c761"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:a0c32e31cb2bb99a1969d4d25114f125a9cb67e2f9463df152a4065ede57c761",
+      "evidence": [
+        "chord/next/host/host_parked_test.go"
+      ],
+      "rationale": "10 of 11 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "missingCases": [
+        "calls on a loading local reference › stop being sent when one's handler releases the reference: the rest reject released (race 15)"
+      ]
     },
     {
       "path": "packages/chord/test/host/presence.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:97ff095839de8be5975399d721b19e6754231ffc87e174676fff1176ec770c87"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:97ff095839de8be5975399d721b19e6754231ffc87e174676fff1176ec770c87",
+      "evidence": [
+        "chord/next/host/host_presence_test.go"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/readiness.test.ts",
@@ -2337,8 +2451,12 @@
     },
     {
       "path": "packages/chord/test/host/ref-state.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0f32607aa90e256bfdcfe2e2ff1dae496adee49f56fb791451d2a3b07e1f8275"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0f32607aa90e256bfdcfe2e2ff1dae496adee49f56fb791451d2a3b07e1f8275",
+      "evidence": [
+        "chord/next/host/host_ref_state_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/reference-keys.test.ts",
@@ -2347,8 +2465,12 @@
     },
     {
       "path": "packages/chord/test/host/reference-source.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:79b50f2e28198a3f3920a2336524c984e7645eb10eeb002ebf2ac1d57a704336"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:79b50f2e28198a3f3920a2336524c984e7645eb10eeb002ebf2ac1d57a704336",
+      "evidence": [
+        "chord/next/host/host_reference_source_test.go"
+      ],
+      "rationale": "All 18 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/reference.test.ts",
@@ -2362,13 +2484,21 @@
     },
     {
       "path": "packages/chord/test/host/retry-on.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:68f3dea01c729df8701716cdfcb804a617eaae0a0c0bf6e9d2c093aee1e185b0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:68f3dea01c729df8701716cdfcb804a617eaae0a0c0bf6e9d2c093aee1e185b0",
+      "evidence": [
+        "chord/next/host/host_retry_on_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/revocation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3da59533e7ae48a7a7bcd407482080cc5e5798aff9cf51c9807e7c0ea9d7dc6c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3da59533e7ae48a7a7bcd407482080cc5e5798aff9cf51c9807e7c0ea9d7dc6c",
+      "evidence": [
+        "chord/next/host/host_revocation_test.go"
+      ],
+      "rationale": "All 19 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/root.test.ts",
@@ -2387,8 +2517,12 @@
     },
     {
       "path": "packages/chord/test/host/sleep.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1ec0f1066f4027620c3a3fe3f703fb4f398a55d85f7cd0964c89ddd71084d7f6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1ec0f1066f4027620c3a3fe3f703fb4f398a55d85f7cd0964c89ddd71084d7f6",
+      "evidence": [
+        "chord/next/host/host_sleep_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/host/staging.test.ts",
@@ -2407,8 +2541,12 @@
     },
     {
       "path": "packages/chord/test/jobs/definition.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:281371fa39c648ec4ffef194a4ec22aa94f7890caa52f132ea6cb8ff08579e19"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:281371fa39c648ec4ffef194a4ec22aa94f7890caa52f132ea6cb8ff08579e19",
+      "evidence": [
+        "chord/next/host/jobs_definition_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/jobs/job.test.ts",
@@ -2427,13 +2565,21 @@
     },
     {
       "path": "packages/chord/test/jobs/run.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2eb2fedc529686609885cac9dc1af58e1f6853c3404f0c35020b4eb5c7b9060c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2eb2fedc529686609885cac9dc1af58e1f6853c3404f0c35020b4eb5c7b9060c",
+      "evidence": [
+        "chord/next/host/jobs_run_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/jobs/running.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1b89073d790879e0d2ea2e51159d105f68fcc9e2a99c15542065728af4edb580"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1b89073d790879e0d2ea2e51159d105f68fcc9e2a99c15542065728af4edb580",
+      "evidence": [
+        "chord/next/host/jobs_running_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/json.test.ts",
@@ -2447,18 +2593,33 @@
     },
     {
       "path": "packages/chord/test/link/errors.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:178b9c284e506085a5d9e1cbb176bc51c865973ae33247a8241e65a04e94652a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:178b9c284e506085a5d9e1cbb176bc51c865973ae33247a8241e65a04e94652a",
+      "evidence": [
+        "chord/next/link/errors_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/link/ipc.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:39f1e430753b62f2d3b64c9e9a0e26ed976016b28f47a4eb2ba524d05afd352b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:39f1e430753b62f2d3b64c9e9a0e26ed976016b28f47a4eb2ba524d05afd352b",
+      "evidence": [
+        "chord/next/link/ipc_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/link/link.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9ce7be5c9e33f214a1b92d3ee6db6136991bc7a40fba3a743780949f5be77bab"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:9ce7be5c9e33f214a1b92d3ee6db6136991bc7a40fba3a743780949f5be77bab",
+      "evidence": [
+        "chord/next/link/link_test.go"
+      ],
+      "rationale": "5 of 6 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "missingCases": [
+        "a closed memory link › keeps no listener set after its close: accepting it keeps no host"
+      ]
     },
     {
       "path": "packages/chord/test/link/message.test.ts",
@@ -2467,8 +2628,12 @@
     },
     {
       "path": "packages/chord/test/link/part.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9804b66b81c76ed6fcab117368b6265db12ce1503e32575bfa4055c192d2e7d3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9804b66b81c76ed6fcab117368b6265db12ce1503e32575bfa4055c192d2e7d3",
+      "evidence": [
+        "chord/next/link/part_test.go"
+      ],
+      "rationale": "All 16 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/link/values.test.ts",
@@ -2477,8 +2642,16 @@
     },
     {
       "path": "packages/chord/test/link/websocket.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8cad040a7cc000888f20c79148cc6e2c470d7aa02da73d467a499e2337ab97fa"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:8cad040a7cc000888f20c79148cc6e2c470d7aa02da73d467a499e2337ab97fa",
+      "evidence": [
+        "chord/next/link/websocket_test.go"
+      ],
+      "rationale": "4 of 6 upstream cases are ported; the 2 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "missingCases": [
+        "WebSocket links over a loopback ws server › carry a live reference both ways; the client's hello waits for open",
+        "WebSocket links over a loopback ws server › close the connection on a frame above maxPayload (1009): references go loading (race 28)"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/app.test.ts",
@@ -2582,23 +2755,39 @@
     },
     {
       "path": "packages/chord/test/node/compression.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c99da4c14c90c85a73f3805dc41f70a1752506027cf3ca20aabdba686130f4cc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c99da4c14c90c85a73f3805dc41f70a1752506027cf3ca20aabdba686130f4cc",
+      "evidence": [
+        "chord/nextnode/compression_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/http/admission.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:389cdda8c4dfbe99a13a6fb6786bc2981c407a25d9511f6efc63ea9d05a9b304"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:389cdda8c4dfbe99a13a6fb6786bc2981c407a25d9511f6efc63ea9d05a9b304",
+      "evidence": [
+        "chord/nextnode/http/admission_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/http/authenticate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7d2cbf96ed37f3279d0c217ae192164589ba560e64fafa29f60e11d8b831178f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7d2cbf96ed37f3279d0c217ae192164589ba560e64fafa29f60e11d8b831178f",
+      "evidence": [
+        "chord/nextnode/http/authenticate_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/http/cookies.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:15544c658be6c62870ed236d96a15d007d17bbd620f69d8a3367fb0b9f29cb2a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:15544c658be6c62870ed236d96a15d007d17bbd620f69d8a3367fb0b9f29cb2a",
+      "evidence": [
+        "chord/nextnode/http/cookies_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/http/file.test.ts",
@@ -2607,8 +2796,12 @@
     },
     {
       "path": "packages/chord/test/node/http/headers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:64825b54655e1ace14f048b81075a3d83c3658055490d035cdf7d8513b2d5703"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:64825b54655e1ace14f048b81075a3d83c3658055490d035cdf7d8513b2d5703",
+      "evidence": [
+        "chord/nextnode/http/headers_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/http/http.test.ts",
@@ -2677,8 +2870,12 @@
     },
     {
       "path": "packages/chord/test/node/plugins/stack.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:613deaec9a13375257e406034a07102aeb89088ed41ba3998e0eaaf0bc608937"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:613deaec9a13375257e406034a07102aeb89088ed41ba3998e0eaaf0bc608937",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_stack_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own stack.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/testing.test.ts",
@@ -2827,8 +3024,12 @@
     },
     {
       "path": "packages/chord/test/node/workers/process.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3d2965a061584446c91dd22387b730f28f5d78879874dffa793f742802a49279"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3d2965a061584446c91dd22387b730f28f5d78879874dffa793f742802a49279",
+      "evidence": [
+        "chord/nextnode/workers/workers_process_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/workers/workers.test.ts",
@@ -2857,8 +3058,12 @@
     },
     {
       "path": "packages/chord/test/registries/entries.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d51803aa69df34c8d43cac3f5e02b489b44166a5f938682dd2edf53c35c364b1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d51803aa69df34c8d43cac3f5e02b489b44166a5f938682dd2edf53c35c364b1",
+      "evidence": [
+        "chord/next/registries/entries_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/registries/record.test.ts",
@@ -2877,8 +3082,12 @@
     },
     {
       "path": "packages/chord/test/remote/calls.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:76761bad6a17f31315542cc0a91072a6245866ea7c1db9c9999f62675a67ce5d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:76761bad6a17f31315542cc0a91072a6245866ea7c1db9c9999f62675a67ce5d",
+      "evidence": [
+        "chord/next/host/remote_calls_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/remote/consumer.test.ts",
@@ -2892,13 +3101,21 @@
     },
     {
       "path": "packages/chord/test/remote/host-link.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:17413b4d8362afbd7c44e039828062f336815b8ab96c521a5069bef548d4fe6d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:17413b4d8362afbd7c44e039828062f336815b8ab96c521a5069bef548d4fe6d",
+      "evidence": [
+        "chord/next/host/remote_host_link_test.go"
+      ],
+      "rationale": "All 21 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/remote/path.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:eb561879506fa4afc5c7208f399c7f21b1ae3257cfb23c6c49493cd3be6164ad"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:eb561879506fa4afc5c7208f399c7f21b1ae3257cfb23c6c49493cd3be6164ad",
+      "evidence": [
+        "chord/next/host/remote_path_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/remote/provider.test.ts",
@@ -2917,13 +3134,23 @@
     },
     {
       "path": "packages/chord/test/remote/replica.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cd1b49616bc07bad285ba1d2bb0249dd585125e7a41b2011c88d400ea92c9ca4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cd1b49616bc07bad285ba1d2bb0249dd585125e7a41b2011c88d400ea92c9ca4",
+      "evidence": [
+        "chord/next/host/remote_replica_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/schema/schema-switch.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c19b9cea231549ffe79b1d3401bd968dba9910a008e4dedd681445b5f8ae793d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c19b9cea231549ffe79b1d3401bd968dba9910a008e4dedd681445b5f8ae793d",
+      "evidence": [
+        "chord/next/host/schema_switch_test.go#TestSchemaSwitchFingerprints",
+        "chord/next/host/schema_switch_test.go#TestSchemaSwitchStoredData",
+        "chord/next/host/schema_switch_test.go#TestSchemaSwitchFixturesAreThoseOfPi"
+      ],
+      "rationale": "Both cases run: declarations.ts, owner.ts and proofs.ts are ported line for line (every helper and option, contract/remote/state/table/job declarations, fingerprints() and storedReads()), over recorded.json, stored/store.db and stored/archive.jsonl whose sha256 equal Pi v1.5.0's files (re-checked). Fingerprints are compared structurally as toEqual and additionally byte for byte as text; the stored-data case reads a copy of the store and an imported archive and compares dump, finished runs and note."
     },
     {
       "path": "packages/chord/test/sqlite/cloudflare.test.ts",
@@ -2985,13 +3212,47 @@
     },
     {
       "path": "packages/chord/test/state/batch.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f47b62f587e900a0b9d2b40649e5aa9dd8e8a3a7539b3b27bf40fd743a847e94"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:f47b62f587e900a0b9d2b40649e5aa9dd8e8a3a7539b3b27bf40fd743a847e94",
+      "evidence": [
+        "chord/next/state/batch_own_test.go",
+        "chord/next/state/batch_test.go"
+      ],
+      "rationale": "1 of 5 upstream cases are ported; the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "missingCases": [
+        "reentrancy › refuses watch (ref.state too), release, get, load, close and a transaction in a commit's derive computes",
+        "reentrancy › refuses them in a lazy compute outside a commit",
+        "reentrancy › clears the flag after a throwing compute",
+        "delivery › reports a delivery that throws and still delivers the later frames of the commit"
+      ]
     },
     {
       "path": "packages/chord/test/state/derive.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:310a73a70cf3f632d7188805bf901b00a4fb1b5053f88e159a16f41d145fd659"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:310a73a70cf3f632d7188805bf901b00a4fb1b5053f88e159a16f41d145fd659",
+      "evidence": [
+        "chord/next/state/derive_own_test.go",
+        "chord/next/state/derive_sources_own_test.go",
+        "chord/next/state/derive_test.go"
+      ],
+      "rationale": "3 of 18 upstream cases are ported; the 15 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "missingCases": [
+        "derives across objects › update in the batch of the commit that changed their source's object",
+        "the pull model › computes a diamond's derives once each per batch",
+        "the pull model › leaves unwatched derives dirty until read; a one-off read does not make them eager",
+        "the pull model › diffs a watched derive's old and new value (counted), and sends no frame when they are equal",
+        "failures › give the throwing derive's watches and those of the derives over it one failure call; they heal on a later change",
+        "failures › give one failure call per episode: a recompute that throws again is quiet; a heal ends the episode",
+        "failures › open a new watch on a failed derive at its last good value, the failure its first call, then the heal",
+        "failures › report once per failure episode, also when nothing watches (a lazy derive fails when read)",
+        "failures › fold a failure and a value for a busy listener: the value replaces the failure, as a root replacement",
+        "GC › a detached derive is not held by its former sources",
+        "GC › a watch open on a failed derive keeps nothing more: it ends with its reference, and a retained one holds no source",
+        "GC of handed-out errors › a failure call's fresh error kept by its listener keeps nothing of its host once the host closes",
+        "the retired flag › a derive over a retired source publishes retired: true although its value and ops are unchanged (rule 21)",
+        "the retired flag › a retirement while the derive is failed travels with its next good value",
+        "the retired flag › a retirement visits each derive of a diamond once, not once per path (40 derives)"
+      ]
     },
     {
       "path": "packages/chord/test/state/native-source.test.ts",
@@ -3000,8 +3261,20 @@
     },
     {
       "path": "packages/chord/test/state/watchable.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2742844ed86fdfe8d53c05d12a71a93cc710158696595e424c112f5a0f289147"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:2742844ed86fdfe8d53c05d12a71a93cc710158696595e424c112f5a0f289147",
+      "evidence": [
+        "chord/next/state/watchable_own_test.go",
+        "chord/next/state/watchable_test.go"
+      ],
+      "rationale": "1 of 6 upstream cases are ported; the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "missingCases": [
+        "watches › start from the value at acquisition; a listener that keeps up gets each commit",
+        "watches › give a busy listener one call with the newest value and the folded ops",
+        "watches › end cancelled when their context aborts",
+        "watches › end with listener_error when the listener throws, reported to onError",
+        "subscribers › get each batch's frame synchronously, inside the commit, and count as watching"
+      ]
     },
     {
       "path": "packages/chord/test/state/writable.test.ts",
@@ -3010,73 +3283,136 @@
     },
     {
       "path": "packages/chord/test/store/allocator.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:43690f0abd06537ae9b768627f7619645b8f53319af285476f9bcdb9f71d0b78"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:43690f0abd06537ae9b768627f7619645b8f53319af285476f9bcdb9f71d0b78",
+      "evidence": [
+        "chord/next/store/allocator_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/applier.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f2bd7c675465d7c64fc61c29a1f56580bfc7197eb2c9e08588a5094b804c4aba"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f2bd7c675465d7c64fc61c29a1f56580bfc7197eb2c9e08588a5094b804c4aba",
+      "evidence": [
+        "chord/next/store/applier_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/apply-batch.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f190d6e378a518bffc330ca95e34f249885ee632c36d42ca0c8e429ba8192e93"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f190d6e378a518bffc330ca95e34f249885ee632c36d42ca0c8e429ba8192e93",
+      "evidence": [
+        "chord/next/store/apply_batch_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/archive.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:367c4afa6ccd4bd2fb5f75ba32ac2da24cff66577beaf620b9c42d1fc6d2f972"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:367c4afa6ccd4bd2fb5f75ba32ac2da24cff66577beaf620b9c42d1fc6d2f972",
+      "evidence": [
+        "chord/next/store/archive_support_test.go",
+        "chord/next/store/archive_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/catalog.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f4114abaff9969590630dfde7bee52db3c940c11fa45171b6498e08e8b99ca6c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f4114abaff9969590630dfde7bee52db3c940c11fa45171b6498e08e8b99ca6c",
+      "evidence": [
+        "chord/next/store/catalog_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/claims.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d0f5b27f80bc4d5db9855a083b16bec1f70c51c80d5475306161ad4b57c1f119"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:d0f5b27f80bc4d5db9855a083b16bec1f70c51c80d5475306161ad4b57c1f119",
+      "evidence": [
+        "chord/next/store/claims_test.go"
+      ],
+      "rationale": "2 of 3 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "missingCases": [
+        "claims › an object claims its tables and documents when it declares them, and releases them at its end"
+      ]
     },
     {
       "path": "packages/chord/test/store/columns.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6b2e106cb68743e54c7d3f603a940d98e4558f3082ee4e36e708136842a3146c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6b2e106cb68743e54c7d3f603a940d98e4558f3082ee4e36e708136842a3146c",
+      "evidence": [
+        "chord/next/store/columns_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files; 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "row types › types rows with optional opt(...) fields and puts with optional defaulted fields"
+      ]
     },
     {
       "path": "packages/chord/test/store/engine.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4900b5df130cad43a4d44e9080070cec63fe7e5235a5987fb8ff211dae7279d9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4900b5df130cad43a4d44e9080070cec63fe7e5235a5987fb8ff211dae7279d9",
+      "evidence": [
+        "chord/next/store/engine_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/evaluate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:47ab0bdb1f5971bcc9c39777ac2c6b0c390f540228d4bdfb364d7219764b4b97"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:47ab0bdb1f5971bcc9c39777ac2c6b0c390f540228d4bdfb364d7219764b4b97",
+      "evidence": [
+        "chord/next/store/evaluate_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/export.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:54dc19bd46c2513400e4fbb45db7e0a6f8c33f69a1d1a353f28ca6c7c492bab7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:54dc19bd46c2513400e4fbb45db7e0a6f8c33f69a1d1a353f28ca6c7c492bab7",
+      "evidence": [
+        "chord/next/store/export_test.go"
+      ],
+      "rationale": "All 12 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/expression.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a7e087452f05312600e16f7978decae38e5b6161947406399dceb99a824798f4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a7e087452f05312600e16f7978decae38e5b6161947406399dceb99a824798f4",
+      "evidence": [
+        "chord/next/store/expression_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/import.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3628629f906117402a67991b301d6528c3ae03d6c7ede7e9479913a7ce01f7d1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3628629f906117402a67991b301d6528c3ae03d6c7ede7e9479913a7ce01f7d1",
+      "evidence": [
+        "chord/next/store/import_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/json-column.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6e48a89541511df505d3c34423eb263ea43869dc54f2157be1c8cdb3abf27443"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6e48a89541511df505d3c34423eb263ea43869dc54f2157be1c8cdb3abf27443",
+      "evidence": [
+        "chord/next/store/json_column_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/jsonl.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2c83c168d1c38cb1c367dd750e3a9b13f78976bd6ed49edd25c8803b2d69b16c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2c83c168d1c38cb1c367dd750e3a9b13f78976bd6ed49edd25c8803b2d69b16c",
+      "evidence": [
+        "chord/next/store/jsonl_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/live-query.test.ts",
@@ -3085,28 +3421,53 @@
     },
     {
       "path": "packages/chord/test/store/outbox.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4e6ee55b2bbada0c6dbd0a6352f1f63409d0bb41768d8f61aa72e632d37c841e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4e6ee55b2bbada0c6dbd0a6352f1f63409d0bb41768d8f61aa72e632d37c841e",
+      "evidence": [
+        "chord/next/store/outbox_decode_test.go",
+        "chord/next/store/outbox_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/query.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:36b305a0d13ded8329706204acb06e3f1e07149e23ca8d7de7d00273eb749e0f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:36b305a0d13ded8329706204acb06e3f1e07149e23ca8d7de7d00273eb749e0f",
+      "evidence": [
+        "chord/next/store/query_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/refusal.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a2206f169e8635646b8afd83b586471cf44a51977e726ec3938f70d225c307f2"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:a2206f169e8635646b8afd83b586471cf44a51977e726ec3938f70d225c307f2",
+      "evidence": [
+        "chord/next/store/refusal_check_code_test.go",
+        "chord/next/store/refusal_test.go"
+      ],
+      "rationale": "1 of 2 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "missingCases": [
+        "Chord's owners › an int out of range fails only its transaction; the object stays live"
+      ]
     },
     {
       "path": "packages/chord/test/store/rows.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ff6ffda5872273f8068b2549d16e903f8f8f4e2fb3e64ba5d581ea153639e1df"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ff6ffda5872273f8068b2549d16e903f8f8f4e2fb3e64ba5d581ea153639e1df",
+      "evidence": [
+        "chord/next/store/rows_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/sql.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f6129bfd99edb9cfe12076bd6ac46a77abc7546c6337939a1475843da1ebd47e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f6129bfd99edb9cfe12076bd6ac46a77abc7546c6337939a1475843da1ebd47e",
+      "evidence": [
+        "chord/next/store/sql_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/store.test.ts",
@@ -3115,23 +3476,39 @@
     },
     {
       "path": "packages/chord/test/store/table-changes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9b5dc907c42da0d10b91336b1bb9036312871f753cea51834b0aa14cab33f043"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9b5dc907c42da0d10b91336b1bb9036312871f753cea51834b0aa14cab33f043",
+      "evidence": [
+        "chord/next/store/table_changes_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/table-evolve.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b0df9187587e080277fc7b0fb5e6b37a5f119222ff35109e3deff583fadad2dc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b0df9187587e080277fc7b0fb5e6b37a5f119222ff35109e3deff583fadad2dc",
+      "evidence": [
+        "chord/next/store/table_evolve_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/table-handle.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:676d009798d7e1df15b0ea2ba2d32dfed3f6246ad92e3592446162547edc2647"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:676d009798d7e1df15b0ea2ba2d32dfed3f6246ad92e3592446162547edc2647",
+      "evidence": [
+        "chord/next/store/table_handle_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/table-history.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:eebf25d0c26fdc250aad5514a1a6fc93cf6d963f422f10084e6bc095f9983940"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:eebf25d0c26fdc250aad5514a1a6fc93cf6d963f422f10084e6bc095f9983940",
+      "evidence": [
+        "chord/next/store/table_history_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/table-migration.test.ts",
@@ -3140,8 +3517,12 @@
     },
     {
       "path": "packages/chord/test/store/table-writes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0073b6aa0fccfea5a30348c8623b02e03f0fe2bd834ba056d3df11d7b0c44f95"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0073b6aa0fccfea5a30348c8623b02e03f0fe2bd834ba056d3df11d7b0c44f95",
+      "evidence": [
+        "chord/next/store/table_writes_test.go"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/store/table.test.ts",
@@ -3150,8 +3531,12 @@
     },
     {
       "path": "packages/chord/test/store/text.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:134a8e79e8fc1cb26149656ac108835e3be3e70a7548cbd35d1f4c93fec14df4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:134a8e79e8fc1cb26149656ac108835e3be3e70a7548cbd35d1f4c93fec14df4",
+      "evidence": [
+        "chord/next/store/text_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/surfaces/active-language.test.ts",
@@ -3483,7 +3868,7 @@
         "coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort",
         "test/parity/scenarios/tools/19-sdk-tool-registry.toml"
       ],
-      "rationale": "Credited at 0.99.2: all four cases keep the 0.87.1 evidence (TestAgentSessionDynamicToolsPort). The one changed assertion (agent-session-dynamic-tools.test.ts:156) expects the built-in read tool's sourceInfo.path \"builtin:read\" (0.87.1: \"\u003cbuiltin:read\u003e\"); coding/session_tool_registry_port_test.go:381-382 asserts exactly {Path builtin:read, Source builtin, Scope temporary, Origin top-level}. It passes (go test ./coding)."
+      "rationale": "Credited at 0.99.2: all four cases keep the 0.87.1 evidence (TestAgentSessionDynamicToolsPort). The one changed assertion (agent-session-dynamic-tools.test.ts:156) expects the built-in read tool's sourceInfo.path \"builtin:read\" (0.87.1: \"<builtin:read>\"); coding/session_tool_registry_port_test.go:381-382 asserts exactly {Path builtin:read, Source builtin, Scope temporary, Origin top-level}. It passes (go test ./coding)."
     },
     {
       "path": "packages/coding-agent/test/agent-session-queued-images.test.ts",
@@ -3629,7 +4014,7 @@
         "tui/bash_execution_test.go#TestBashExecutionBlockWrapsLongOutput",
         "tui/bash_execution_test.go#TestBashExecutionBlockRewrapsAfterResize"
       ],
-      "rationale": "TestBashExecutionBlockRewrapsAfterResize renders the same block at width 12 then width 22 and asserts the wrapped row count changes (3 rows -\u003e 2 rows), directly confirming Render(width) recomputes wrapping from the width parameter passed at render time rather than any construction-time state -- this is exactly case 're-computes lines when width changes between renders'. TestBashExecutionBlockWrapsLongOutput and the collapsed-preview behavior in TestBashExecutionBlockCollapsedLimitUsesVisualRows together confirm collapsed preview lines are wrapped/limited using the width and state at render time, matching 'collapsed preview lines respect render-time width, not construction-time width'."
+      "rationale": "TestBashExecutionBlockRewrapsAfterResize renders the same block at width 12 then width 22 and asserts the wrapped row count changes (3 rows -> 2 rows), directly confirming Render(width) recomputes wrapping from the width parameter passed at render time rather than any construction-time state -- this is exactly case 're-computes lines when width changes between renders'. TestBashExecutionBlockWrapsLongOutput and the collapsed-preview behavior in TestBashExecutionBlockCollapsedLimitUsesVisualRows together confirm collapsed preview lines are wrapped/limited using the width and state at render time, matching 'collapsed preview lines respect render-time width, not construction-time width'."
     },
     {
       "path": "packages/coding-agent/test/bash-executor-truncation.test.ts",
@@ -3861,7 +4246,7 @@
         "codemode/worker_config_upstream_test.go#TestCodemodeWorkerConfigUpstream",
         "codemode/worker_config_upstream_test.go#TestCodemodeEmbedsItsOnlyModuleSource"
       ],
-      "rationale": "Ported as an equivalence test (owner direction node-equiv-100). resolveCodemodeWorkerSpecifier picks the codemode worker for each Pi distribution (Bun binary :6, bundled Node module :12, unbundled :18; #10204). PiG has no worker; its concern is that every distribution loads the same QuickJS module. TestCodemodeWorkerConfigUpstream maps the three cases to PiG's release archive binary, the binary inside the @pi-in-go/pig-\u003cos\u003e-\u003ccpu\u003e npm package, and go install/go test from source: the first two copy the executable out of the tree and run it in an unrelated working directory with an environment naming no source tree; the third runs in-process after leaving the source directory. Each runs a script through the default SandboxOptions the built-in tool uses, requires the embedded prelude's result, and pins the embedded quickjs.wasm SHA-256 d4c9375f.... TestCodemodeEmbedsItsOnlyModuleSource asserts that production codemode code embeds assets/quickjs.wasm and performs no file-system read, and that the built-in codemode tool passes no Wasm loader."
+      "rationale": "Ported as an equivalence test (owner direction node-equiv-100). resolveCodemodeWorkerSpecifier picks the codemode worker for each Pi distribution (Bun binary :6, bundled Node module :12, unbundled :18; #10204). PiG has no worker; its concern is that every distribution loads the same QuickJS module. TestCodemodeWorkerConfigUpstream maps the three cases to PiG's release archive binary, the binary inside the @pi-in-go/pig-<os>-<cpu> npm package, and go install/go test from source: the first two copy the executable out of the tree and run it in an unrelated working directory with an environment naming no source tree; the third runs in-process after leaving the source directory. Each runs a script through the default SandboxOptions the built-in tool uses, requires the embedded prelude's result, and pins the embedded quickjs.wasm SHA-256 d4c9375f.... TestCodemodeEmbedsItsOnlyModuleSource asserts that production codemode code embeds assets/quickjs.wasm and performs no file-system read, and that the built-in codemode tool passes no Wasm loader."
     },
     {
       "path": "packages/coding-agent/test/collapsible-message-components.test.ts",
@@ -4899,7 +5284,7 @@
         "test/gomodule/package_distribution_upstream_test.go#TestPackageDistributionUpstream",
         "automation/release/npm/test_pack_npm.py#bin/pig.js"
       ],
-      "rationale": "Pi 1.2.0 has one case, \"uses the bundle for executables and modular output for libraries\" (:18); it deletes \"keeps experimental exports source-only\" (#9132) with the ./client and ./experimental/plugin exports. TestPackageDistributionUpstream maps the one case (launcher bin pig -\u003e bin/pig.js with no main, exports or scripts, one platform package per release target with exactly its files) and checks the inventory denominator; it failed before this change with \"upstream denominator has 1 cases, want the 2 this port maps\". PiG removes its experimental packages with Pi 1.2.0, so no go list check keeps them unimportable. 1.0.4→1.1.0: no change."
+      "rationale": "Pi 1.2.0 has one case, \"uses the bundle for executables and modular output for libraries\" (:18); it deletes \"keeps experimental exports source-only\" (#9132) with the ./client and ./experimental/plugin exports. TestPackageDistributionUpstream maps the one case (launcher bin pig -> bin/pig.js with no main, exports or scripts, one platform package per release target with exactly its files) and checks the inventory denominator; it failed before this change with \"upstream denominator has 1 cases, want the 2 this port maps\". PiG removes its experimental packages with Pi 1.2.0, so no go list check keeps them unimportable. 1.0.4→1.1.0: no change."
     },
     {
       "path": "packages/coding-agent/test/package-manager-ssh.test.ts",
@@ -4955,7 +5340,7 @@
         "internal/codingagent/bug_report_test.go#TestBugReportEnvironmentUsesPiGUserAgent"
       ],
       "divergence": "D65",
-      "rationale": "The upstream case formats a local user-agent string; it does not contact pi.dev. docs/parity/PORT_MAP.md maps the helper to codingAgentUserAgent in internal/codingagent/bug_report.go. D65 explicitly approves pig/\u003ccoding.Version\u003e (\u003cplatform\u003e \u003crelease\u003e; \u003carch\u003e) instead of Pi's version/platform/runtime/arch form, and the cited caller test asserts that identity in bug-report environment metadata."
+      "rationale": "The upstream case formats a local user-agent string; it does not contact pi.dev. docs/parity/PORT_MAP.md maps the helper to codingAgentUserAgent in internal/codingagent/bug_report.go. D65 explicitly approves pig/<coding.Version> (<platform> <release>; <arch>) instead of Pi's version/platform/runtime/arch form, and the cited caller test asserts that identity in bug-report environment metadata."
     },
     {
       "path": "packages/coding-agent/test/plan-mode-extension.test.ts",
@@ -5103,7 +5488,7 @@
         "internal/codingagent/resource_loader_theme_upstream_test.go#TestDefaultResourceLoaderThemeColorModeUpstream",
         "coding/resource_loader_extend_test.go#TestDefaultResourceLoaderAppliesStrictThemeValidationOnReload"
       ],
-      "rationale": "Reviewed against the 1.1.0 -\u003e 42a3497d delta: 42a3497d adds 'applies strict validation on initial load and reload'; ported as a guard (PiG already validates every user theme, so it was not red). Earlier evidence is retained."
+      "rationale": "Reviewed against the 1.1.0 -> 42a3497d delta: 42a3497d adds 'applies strict validation on initial load and reload'; ported as a guard (PiG already validates every user theme, so it was not red). Earlier evidence is retained."
     },
     {
       "path": "packages/coding-agent/test/resource-loader.test.ts",
@@ -5164,7 +5549,7 @@
         "coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderPointsProjectPackagesAtRemoveLocal",
         "coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderWarnsOnceAboutAFailingInstallWhenProjectTrustIsResolved"
       ],
-      "rationale": "Reviewed against the 1.1.0 -\u003e 42a3497d delta: 42a3497d adds the two symlinked-AGENTS.md nested-worktree cases (pi #10681); both are ported and were red before internal/codingagent/context_files.go changed. Earlier evidence is retained. Pi 6dfb54678 adds four cases for a package that cannot be installed (#11088): the configured package warns and loading goes on, a temporary source points at the source, a project package points at `remove --local`, and one warning remains when project trust is resolved; the Go cases use an npm command that exits 1 and the application name pig."
+      "rationale": "Reviewed against the 1.1.0 -> 42a3497d delta: 42a3497d adds the two symlinked-AGENTS.md nested-worktree cases (pi #10681); both are ported and were red before internal/codingagent/context_files.go changed. Earlier evidence is retained. Pi 6dfb54678 adds four cases for a package that cannot be installed (#11088): the configured package warns and loading goes on, a temporary source points at the source, a project package points at `remove --local`, and one warning remains when project trust is resolved; the Go cases use an npm command that exits 1 and the application name pig."
     },
     {
       "path": "packages/coding-agent/test/restore-sandbox-env.test.ts",
@@ -5173,7 +5558,7 @@
       "evidence": [
         "internal/codingagent/tools/restore_sandbox_env_upstream_test.go#TestRestoreSandboxEnvUpstream"
       ],
-      "rationale": "Ported as an equivalence test (owner direction node-equiv-100). restoreSandboxEnv repairs a Bun sandbox start whose process.env is empty although the kernel passed an environment, so children would otherwise start with none. PiG's same concern is the environment it gives children: nodespawn.ProcessEnv ({...process.env}) and the bash tool's GetShellEnv. TestRestoreSandboxEnvUpstream starts the tools test binary as a probe (before TestMain changes TMPDIR) and requires both to equal the passed block and, on Linux, /proc/self/environ, and the production bash tool's GetShellEnv(\u003cagentDir\u003e/bin) to equal Pi's getShellEnv result (utils/shell.ts:138-150: the passed block with only PATH updated, binDir prepended or PATH=binDir appended): :12 an ordinary start with the parent environment; :28 the same plus RESTORE_SANDBOX_ENV_TEST=1, which reaches the shell environment and replaces nothing; :46 the minimal sandbox start with only FOO=bar and BAZ=qux, which children get exactly, and an empty start, where ProcessEnv stays empty and the bash tool adds only PATH, as Pi does. Go reads the kernel's block at startup, so no restore step exists; the test pins that invariant. Windows is skipped: its case-insensitive block is covered by nodespawn's Windows tests."
+      "rationale": "Ported as an equivalence test (owner direction node-equiv-100). restoreSandboxEnv repairs a Bun sandbox start whose process.env is empty although the kernel passed an environment, so children would otherwise start with none. PiG's same concern is the environment it gives children: nodespawn.ProcessEnv ({...process.env}) and the bash tool's GetShellEnv. TestRestoreSandboxEnvUpstream starts the tools test binary as a probe (before TestMain changes TMPDIR) and requires both to equal the passed block and, on Linux, /proc/self/environ, and the production bash tool's GetShellEnv(<agentDir>/bin) to equal Pi's getShellEnv result (utils/shell.ts:138-150: the passed block with only PATH updated, binDir prepended or PATH=binDir appended): :12 an ordinary start with the parent environment; :28 the same plus RESTORE_SANDBOX_ENV_TEST=1, which reaches the shell environment and replaces nothing; :46 the minimal sandbox start with only FOO=bar and BAZ=qux, which children get exactly, and an empty start, where ProcessEnv stays empty and the bash tool adds only PATH, as Pi does. Go reads the kernel's block at startup, so no restore step exists; the test pins that invariant. Windows is skipped: its case-insensitive block is covered by nodespawn's Windows tests."
     },
     {
       "path": "packages/coding-agent/test/rpc-client-clear-queue.test.ts",
@@ -5266,7 +5651,7 @@
       "evidence": [
         "tui/scrollbar_theme_test.go#TestFullscreenThemeTokensFallBackWhenOmitted"
       ],
-      "rationale": "Reviewed against the 1.1.0 -\u003e 42a3497d delta: 42a3497d changes only the import (validateThemeJson now lives in theme-schema.ts); the retained evidence runs against the 42a build. Earlier evidence is retained."
+      "rationale": "Reviewed against the 1.1.0 -> 42a3497d delta: 42a3497d changes only the import (validateThemeJson now lives in theme-schema.ts); the retained evidence runs against the 42a build. Earlier evidence is retained."
     },
     {
       "path": "packages/coding-agent/test/sdk-client-identity.test.ts",
@@ -6180,7 +6565,7 @@
         "tui/login_dialog_test.go#TestLoginDialogManualInputLayout",
         "internal/codingagent/interactive_manual_auth_test.go#TestProviderOwnedManualAuthPrompt"
       ],
-      "rationale": "Reviewed against the 1.1.0 -\u003e 42a3497d delta: 42a3497d strips the TUI's zero-width cursor markers in the test's text helper; PiG's retained tests compare against the 42a oracle with markers (TUI batch). Earlier evidence is retained."
+      "rationale": "Reviewed against the 1.1.0 -> 42a3497d delta: 42a3497d strips the TUI's zero-width cursor markers in the test's text helper; PiG's retained tests compare against the 42a oracle with markers (TUI batch). Earlier evidence is retained."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/5596-missing-theme-export.test.ts",
@@ -7344,7 +7729,7 @@
         "durable/harness/harness_conversations_test.go#TestHarnessRootAndConversations",
         "durable/harness/harness_tool_snapshot_as_of_test.go#TestToolExecutionApiSnapshotAsOfReadsTheDocumentAsOfTheEntry"
       ],
-      "rationale": "12/12 cases ported; :445 now checks the closed-harness errors contain \"is closed\". 0.5.2 (Pi 5c1736f8): the file gains `checkpointWhen: () =\u003e false` on every definition (checkpointWhen is required); the Go ports gained CheckpointWhen on every definition the same way (a never-checkpoint default in the shared test helpers), with no case added or removed. durable.DefineDoc now rejects a definition with no policy, tested in durable/session/codemode_checkpoints_upstream_test.go (TestDefinitionsRequireACheckpointPolicy; not in Pi). Re-reviewed at Pi 92ab5360 (explicit watch retirement): Conversation.viewState(), Harness.taskGraph() and Session.documentState() are removed, so the Go tests read the same values through Watch, WatchTaskGraph and WatchDoc (a started watch keeps its value current) and stop them, with the same expectations."
+      "rationale": "12/12 cases ported; :445 now checks the closed-harness errors contain \"is closed\". 0.5.2 (Pi 5c1736f8): the file gains `checkpointWhen: () => false` on every definition (checkpointWhen is required); the Go ports gained CheckpointWhen on every definition the same way (a never-checkpoint default in the shared test helpers), with no case added or removed. durable.DefineDoc now rejects a definition with no policy, tested in durable/session/codemode_checkpoints_upstream_test.go (TestDefinitionsRequireACheckpointPolicy; not in Pi). Re-reviewed at Pi 92ab5360 (explicit watch retirement): Conversation.viewState(), Harness.taskGraph() and Session.documentState() are removed, so the Go tests read the same values through Watch, WatchTaskGraph and WatchDoc (a started watch keeps its value current) and stop them, with the same expectations."
     },
     {
       "path": "packages/durable/test/harness-deferred-progress.test.ts",
@@ -7507,7 +7892,7 @@
         "durable/harness/harness_ownership_ended_test.go#keeps ownership queries off finished subtrees",
         "durable/harness/harness_ownership_ended_test.go#finalizes many held siblings that end together in one pass"
       ],
-      "rationale": "Pi f3255de7 changes one expectation: the owned child's pi.live after an abort is {runFailure: {reason: aborted}} instead of {} (harness-ownership.test.ts:1197). harness_ownership_tools_test.go asserts it through expectOnlyRunFailure(RunAborted); the other 37 cases are unchanged. Pi v1.5.0: 37 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 37, the 1.4.0 case `rejects a handle operation queued on the line when the invocation ends before it runs` is replaced by `runs a handle operation queued behind the abort mark before the mark's publication, and the cascade aborts it`). Go harness_ownership_tools_test.go ports the replacement with Pi's inputs: the abort mark's storage call is held (holdMarkStorage), the tool's submit starts while it is in flight and lands, the mark's cascade aborts the run it started (status unanswered, reason aborted), the child holds only its pi.user entry and no submission of it remains. `run` documents now carry `turns: 0` (LiveRun.Turns has no omitempty); `closed` is `{kind: failed}` ; the refused-batch storages follow the batches shape."
+      "rationale": "Pi f3255de7 changes one expectation: the owned child's pi.live after an abort is {runFailure: {reason: aborted}} instead of {} (harness-ownership.test.ts:1197). harness_ownership_tools_test.go asserts it through expectOnlyRunFailure(RunAborted); the other 37 cases are unchanged. Pi v1.5.0: 37 cases (v1.4.0+b3a29f11 -> v1.5.0: 37, the 1.4.0 case `rejects a handle operation queued on the line when the invocation ends before it runs` is replaced by `runs a handle operation queued behind the abort mark before the mark's publication, and the cascade aborts it`). Go harness_ownership_tools_test.go ports the replacement with Pi's inputs: the abort mark's storage call is held (holdMarkStorage), the tool's submit starts while it is in flight and lands, the mark's cascade aborts the run it started (status unanswered, reason aborted), the child holds only its pi.user entry and no submission of it remains. `run` documents now carry `turns: 0` (LiveRun.Turns has no omitempty); `closed` is `{kind: failed}` ; the refused-batch storages follow the batches shape."
     },
     {
       "path": "packages/durable/test/harness-partial-changes.test.ts",
@@ -7523,7 +7908,7 @@
         "durable/harness/harness_prompt_plan_test.go#TestSystemPromptPreparationPlans",
         "durable/harness/harness_prompt_plan_test.go#TestToolLoadoutPreparation"
       ],
-      "rationale": "9 cases: :72, :111, :121 in harness_prompt_test.go TestSystemPromptPreparation; :141, :152, :169, :194 in TestSystemPromptPreparationPlans; :240, :258 in TestToolLoadoutPreparation, all under Pi's names. Unchanged from 1.0.4 to 1.1.0. Pi 1.2.0 only adds callable: [] and deferred: [] to the shared PromptInput fixture's agent (types.ts Agent gained both lists); no assertion reads them. The Go fixture promptInput sets durable.Agent Callable and Deferred to empty lists likewise. All 9 pass. Pi v1.5.0: 9 cases (unchanged v1.4.0+b3a29f11 -\u003e v1.5.0). The only change is `Type.Object({})` becoming `obj({})` for the tool declarations; Go declarations are unchanged."
+      "rationale": "9 cases: :72, :111, :121 in harness_prompt_test.go TestSystemPromptPreparation; :141, :152, :169, :194 in TestSystemPromptPreparationPlans; :240, :258 in TestToolLoadoutPreparation, all under Pi's names. Unchanged from 1.0.4 to 1.1.0. Pi 1.2.0 only adds callable: [] and deferred: [] to the shared PromptInput fixture's agent (types.ts Agent gained both lists); no assertion reads them. The Go fixture promptInput sets durable.Agent Callable and Deferred to empty lists likewise. All 9 pass. Pi v1.5.0: 9 cases (unchanged v1.4.0+b3a29f11 -> v1.5.0). The only change is `Type.Object({})` becoming `obj({})` for the tool declarations; Go declarations are unchanged."
     },
     {
       "path": "packages/durable/test/harness-read-only.test.ts",
@@ -7552,7 +7937,7 @@
         "durable/harness/harness_registry_test.go#TestRegistry",
         "durable/harness/harness_registry_test.go#TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined"
       ],
-      "rationale": "10/10 cases ported against 1.2.0 (tool results now use output). Pi 5ba1cbaf: agentHooks lists each handler table with the name of its extension (:288) and the report callback takes the extension name; TestAgentResolution asserts both. Delta at Pi 38ff9917: Pi 6c2fd73b0 adds persistWithinMs 1000 to the resolved progress policy: TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined and the default-policy tests check it. Pi v1.5.0: 10 cases (unchanged v1.4.0+b3a29f11 -\u003e v1.5.0). The only change is `Type.Object({})` becoming `obj({})` for the tool declarations."
+      "rationale": "10/10 cases ported against 1.2.0 (tool results now use output). Pi 5ba1cbaf: agentHooks lists each handler table with the name of its extension (:288) and the report callback takes the extension name; TestAgentResolution asserts both. Delta at Pi 38ff9917: Pi 6c2fd73b0 adds persistWithinMs 1000 to the resolved progress policy: TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined and the default-policy tests check it. Pi v1.5.0: 10 cases (unchanged v1.4.0+b3a29f11 -> v1.5.0). The only change is `Type.Object({})` becoming `obj({})` for the tool declarations."
     },
     {
       "path": "packages/durable/test/harness-reports.test.ts",
@@ -7562,7 +7947,7 @@
         "durable/core/driver/harness_reports_core_test.go#TestReports",
         "durable/harness/harness_reports_test.go#TestAFailedSessionIsReportedAsSessionFailed"
       ],
-      "rationale": "Pi 440a5fcd (OnReport takes a ReportInfo): all 4 cases are subtests of TestReports under Pi's names, over the reference Harness and the core: the task of a failure or fault, the extension whose definition ran also after a replacement, the extension of a failing section or hook against a failing environment builder, and extension, listener, wake and timer failures told from a failed Session. The reference-only Session failure report is TestAFailedSessionIsReportedAsSessionFailed. Pi v1.5.0: 4 cases (unchanged v1.4.0+b3a29f11 -\u003e v1.5.0). 1.5.0 renames the report discriminator from `type` to `kind`, hands the listener a `{error, ...info}` record, tells a failed Session by `storage_failed` where 1.4.0 had `session_failed`, and attaches the throwing commit listener with observeCommits. Go asserts durable.ReportInfo{Kind: ReportStorageFailed} and ReportListenerError (harness_reports_test.go, harness_reports_core_test.go over both engines)."
+      "rationale": "Pi 440a5fcd (OnReport takes a ReportInfo): all 4 cases are subtests of TestReports under Pi's names, over the reference Harness and the core: the task of a failure or fault, the extension whose definition ran also after a replacement, the extension of a failing section or hook against a failing environment builder, and extension, listener, wake and timer failures told from a failed Session. The reference-only Session failure report is TestAFailedSessionIsReportedAsSessionFailed. Pi v1.5.0: 4 cases (unchanged v1.4.0+b3a29f11 -> v1.5.0). 1.5.0 renames the report discriminator from `type` to `kind`, hands the listener a `{error, ...info}` record, tells a failed Session by `storage_failed` where 1.4.0 had `session_failed`, and attaches the throwing commit listener with observeCommits. Go asserts durable.ReportInfo{Kind: ReportStorageFailed} and ReportListenerError (harness_reports_test.go, harness_reports_core_test.go over both engines)."
     },
     {
       "path": "packages/durable/test/harness-restart-failure.test.ts",
@@ -7576,7 +7961,7 @@
         "durable/core/driver/harness_restart_failure_core_test.go#TestCoreTheRestartLimitOnTheNormalPath",
         "durable/harness/harness_restart_failure_test.go#TestTheRestartLimitOnTheNormalPath"
       ],
-      "rationale": "New in Pi b3a29f11 (#11139): the 18 cases run over both engines in the core driver: a generation interrupted while the model answers is charged an attempt of the retry policy (the aborted entry, the backoff in pi.live.generation.retry, the same deferred handle polled again, runFailure interrupted with no retry left), other tasks cut off restartLimit times in a row end visibly (a tool error result, compactionFailure, runFailure restart_limit, faulted extension tasks), the crash edges (close resends, a charge that is itself cut off), and the task_interrupted and task_faulted reports. Difference (D206): Pi's 'resolves the settings no more often than before on the normal path' counts the reads of `extensions` of a round: 49. Go's TestTheRestartLimitOnTheNormalPath checks that CutOffTooOften reads the settings only for a task that was cut off and counts the reference Harness's resolutions of a round (15 outside the idle settlements, about 34 inside them, as Pi's 49). The core resolves the settings from the snapshot the host sends before each event (D206), so TestCoreTheRestartLimitOnTheNormalPath asserts its measured 9 calls of the settings source a round, and the contract row U-harness-restart-failure states the cf host's measured value for Pi's own test (`expected 6 to be 49`: the host's 6 agent resolutions). Pi's Runtime.commit-wide reporting is the built-in tasks' terminal commits in the core, not a generic hook. Pi v1.5.0: 18 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 18). Body changes in 1.5.0: every `pi.live.runFailure` carries `first: expect.any(Number)` (expectRestartRunFailure in harness_restart_failure_core_test.go fails when runFailure has no first, over both engines); `compactionFailure` names `trigger` where 1.4.0 had `reason` (harness_restart_failure_core_test.go asserts CompactionFailure{Trigger: CompactionManual}); the report info is `{kind: task_interrupted | task_faulted}`; the settings-resolution count is `\u003c= 49` per round where 1.4.0 pinned 49 (Go asserts at most Pi's 34 retention checks a round, harness_restart_failure_test.go); the restart counter is set with commitWrites (Go: rig.setRestarts). The crash setups still end the host by a crash, not a clean close."
+      "rationale": "New in Pi b3a29f11 (#11139): the 18 cases run over both engines in the core driver: a generation interrupted while the model answers is charged an attempt of the retry policy (the aborted entry, the backoff in pi.live.generation.retry, the same deferred handle polled again, runFailure interrupted with no retry left), other tasks cut off restartLimit times in a row end visibly (a tool error result, compactionFailure, runFailure restart_limit, faulted extension tasks), the crash edges (close resends, a charge that is itself cut off), and the task_interrupted and task_faulted reports. Difference (D206): Pi's 'resolves the settings no more often than before on the normal path' counts the reads of `extensions` of a round: 49. Go's TestTheRestartLimitOnTheNormalPath checks that CutOffTooOften reads the settings only for a task that was cut off and counts the reference Harness's resolutions of a round (15 outside the idle settlements, about 34 inside them, as Pi's 49). The core resolves the settings from the snapshot the host sends before each event (D206), so TestCoreTheRestartLimitOnTheNormalPath asserts its measured 9 calls of the settings source a round, and the contract row U-harness-restart-failure states the cf host's measured value for Pi's own test (`expected 6 to be 49`: the host's 6 agent resolutions). Pi's Runtime.commit-wide reporting is the built-in tasks' terminal commits in the core, not a generic hook. Pi v1.5.0: 18 cases (v1.4.0+b3a29f11 -> v1.5.0: 18). Body changes in 1.5.0: every `pi.live.runFailure` carries `first: expect.any(Number)` (expectRestartRunFailure in harness_restart_failure_core_test.go fails when runFailure has no first, over both engines); `compactionFailure` names `trigger` where 1.4.0 had `reason` (harness_restart_failure_core_test.go asserts CompactionFailure{Trigger: CompactionManual}); the report info is `{kind: task_interrupted | task_faulted}`; the settings-resolution count is `<= 49` per round where 1.4.0 pinned 49 (Go asserts at most Pi's 34 retention checks a round, harness_restart_failure_test.go); the restart counter is set with commitWrites (Go: rig.setRestarts). The crash setups still end the host by a crash, not a clean close."
     },
     {
       "path": "packages/durable/test/harness-run-failure.test.ts",
@@ -7585,7 +7970,7 @@
       "evidence": [
         "durable/harness/harness_run_failure_test.go#TestRunFailure"
       ],
-      "rationale": "New in Pi f3255de7: all 5 cases are ported in TestRunFailure under Pi's titles: a model error with its text that a later run clears, a missing model with which one, an abort, a reset that cut the run before an answer (kept by the run its queued input starts), and the failure kept while a run continues the queue in the same commit and replaced by the next. The Durable core writes runFailure too (the restart-failure and view-run core cases assert it on both engines). Pi v1.5.0: 5 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 5). Body change in 1.5.0: `runFailure` carries `first: expect.any(Number)` in the model-error and abort cases; harness_run_failure_test.go asserts failure.First != nil in both."
+      "rationale": "New in Pi f3255de7: all 5 cases are ported in TestRunFailure under Pi's titles: a model error with its text that a later run clears, a missing model with which one, an abort, a reset that cut the run before an answer (kept by the run its queued input starts), and the failure kept while a run continues the queue in the same commit and replaced by the next. The Durable core writes runFailure too (the restart-failure and view-run core cases assert it on both engines). Pi v1.5.0: 5 cases (v1.4.0+b3a29f11 -> v1.5.0: 5). Body change in 1.5.0: `runFailure` carries `first: expect.any(Number)` in the model-error and abort cases; harness_run_failure_test.go asserts failure.First != nil in both."
     },
     {
       "path": "packages/durable/test/harness-scheduler-indexes.test.ts",
@@ -7598,7 +7983,7 @@
         "durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen",
         "durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded"
       ],
-      "rationale": "5/5 cases ported (new in 1.2.0); :82 on SQLite with close and reopen as Pi. Re-reviewed at Pi 92ab5360 (Durable storage adopt callback): this file changes only the Storage commit signature, commit(writes, adopt, context); the Go tests pass the adopt callback at every Storage.Commit with the same inputs and expected results. Pi v1.5.0: 5 cases (unchanged v1.4.0+b3a29f11 -\u003e v1.5.0). The recording storages follow the commit(batches, receive) shape: the terminal-record count is per batch (`commits++` for each batch), which commitCounter in scheduler_indexes_test.go reproduces (Go's Storage.Commit takes the same batches)."
+      "rationale": "5/5 cases ported (new in 1.2.0); :82 on SQLite with close and reopen as Pi. Re-reviewed at Pi 92ab5360 (Durable storage adopt callback): this file changes only the Storage commit signature, commit(writes, adopt, context); the Go tests pass the adopt callback at every Storage.Commit with the same inputs and expected results. Pi v1.5.0: 5 cases (unchanged v1.4.0+b3a29f11 -> v1.5.0). The recording storages follow the commit(batches, receive) shape: the terminal-record count is per batch (`commits++` for each batch), which commitCounter in scheduler_indexes_test.go reproduces (Go's Storage.Commit takes the same batches)."
     },
     {
       "path": "packages/durable/test/harness-scheduler-retention.test.ts",
@@ -7611,7 +7996,7 @@
         "durable/harness/scheduler_retention_test.go#does not scan queued submissions for an input when nothing cancels",
         "durable/harness/scheduler_retention_test.go#lets a task wait on a forgotten ended owner"
       ],
-      "rationale": "New in Pi 1.2.0: neither 1.0.4 nor 1.1.0 has the file. It has 14 cases at v1.5.0 (Pi lines 163, 178, 207, 236, 265, 292, 335, 374, 399, 429, 465, 489, 508, 535), all ported under Pi's names: 8 in TestSchedulerRetention (scheduler_retention_test.go: Pi :163, :178, :374, :399, :465, :489, :508, :535) and 6 in TestSchedulerRetentionBelowAForgottenConversation (scheduler_retention_chains_test.go: Pi :207, :236, :265, :292, :335, :429). Sizes are read through TaskScheduler.indexSizes, Pi's SCHEDULER_INDEX_SIZES. The wait-cycle rule changes :535 'lets a task wait on a forgotten ended owner': a wait on an ended task closes no cycle and resumes at once, and the Go subtest expects completed (6d0ec024f2). :508 is Pi's scenario (busy root, input queued there, no queued-submission scan); the earlier forgotten-conversation variant stays as a Go-only subtest, red when an input queued with no cancellation intent marks a cascade pending. Pi opens SQLite storage by default; the Go cases use MemoryStorage except where Pi reopens, and the scheduler sees the same records either way. Pi v1.5.0 (v1.4.0+b3a29f11 -\u003e v1.5.0: 14 cases, unchanged count). Body changes in 1.5.0: (1) `keeps a scope busy while the chain of new work below a forgotten conversation loads` becomes `loads the chain of new work below a forgotten conversation before admitting it, and keeps the scope busy` (:292): the harness is closed and reopened so B is in no cache, the read of B is held, the creating commit must wait for it, then WaitForIdle stays pending until d ends; Go scheduler_retention_chains_test.go reopens the memory storage (MemoryStorage.Reopen) and holds the task read of B (taskRead). (2) :178 `holds a live owner for work later created in a forgotten conversation, loading its chain again` no longer counts storage reads (Pi v1.5.0 removed countReads); Go asserts what remains of it (P completing for D, both complete). (3) busy `run` documents carry `turns: 0`; LiveRun.Turns has no omitempty, so the Go documents carry it too. Go waits for the scheduler's asynchronous drop queue to empty before it takes the settled-size baselines of :178, :335 and :489 (a comment at each says why); Pi's sweep runs inside the commit."
+      "rationale": "New in Pi 1.2.0: neither 1.0.4 nor 1.1.0 has the file. It has 14 cases at v1.5.0 (Pi lines 163, 178, 207, 236, 265, 292, 335, 374, 399, 429, 465, 489, 508, 535), all ported under Pi's names: 8 in TestSchedulerRetention (scheduler_retention_test.go: Pi :163, :178, :374, :399, :465, :489, :508, :535) and 6 in TestSchedulerRetentionBelowAForgottenConversation (scheduler_retention_chains_test.go: Pi :207, :236, :265, :292, :335, :429). Sizes are read through TaskScheduler.indexSizes, Pi's SCHEDULER_INDEX_SIZES. The wait-cycle rule changes :535 'lets a task wait on a forgotten ended owner': a wait on an ended task closes no cycle and resumes at once, and the Go subtest expects completed (6d0ec024f2). :508 is Pi's scenario (busy root, input queued there, no queued-submission scan); the earlier forgotten-conversation variant stays as a Go-only subtest, red when an input queued with no cancellation intent marks a cascade pending. Pi opens SQLite storage by default; the Go cases use MemoryStorage except where Pi reopens, and the scheduler sees the same records either way. Pi v1.5.0 (v1.4.0+b3a29f11 -> v1.5.0: 14 cases, unchanged count). Body changes in 1.5.0: (1) `keeps a scope busy while the chain of new work below a forgotten conversation loads` becomes `loads the chain of new work below a forgotten conversation before admitting it, and keeps the scope busy` (:292): the harness is closed and reopened so B is in no cache, the read of B is held, the creating commit must wait for it, then WaitForIdle stays pending until d ends; Go scheduler_retention_chains_test.go reopens the memory storage (MemoryStorage.Reopen) and holds the task read of B (taskRead). (2) :178 `holds a live owner for work later created in a forgotten conversation, loading its chain again` no longer counts storage reads (Pi v1.5.0 removed countReads); Go asserts what remains of it (P completing for D, both complete). (3) busy `run` documents carry `turns: 0`; LiveRun.Turns has no omitempty, so the Go documents carry it too. Go waits for the scheduler's asynchronous drop queue to empty before it takes the settled-size baselines of :178, :335 and :489 (a comment at each says why); Pi's sweep runs inside the commit."
     },
     {
       "path": "packages/durable/test/harness-sleep.test.ts",
@@ -7753,7 +8138,7 @@
         "durable/harness/harness_view_test.go#TestConversationView",
         "durable/harness/harness_view_test.go#TestConversationViewWindow"
       ],
-      "rationale": "All 23 upstream cases (Pi 1.5.0) are ported; each Go case cites its upstream line. Ported against durable/harness/view.go. Frames are replayed with chord/delta ApplyImmutable over the view's JSON form; toBe identity is backing-array or map-pointer identity. drained() is a no-op Session line job plus WaitDeliveries instead of setTimeout(0); a queued acquisition is detected with SessionImpl.LineJobs. Compiling mutations of the head cut, the mount drop and the closed check fail them; ops order between documents and entries and a version mismatch are not asserted upstream. Pi 1.0.2 mounts the pi.provider document between Inbox and Usage. 0.5.2 (Pi 5c1736f8): the file gains `checkpointWhen: () =\u003e false` on every definition (checkpointWhen is required); the Go ports gained CheckpointWhen on every definition the same way (a never-checkpoint default in the shared test helpers), with no case added or removed. durable.DefineDoc now rejects a definition with no policy, tested in durable/session/codemode_checkpoints_upstream_test.go (TestDefinitionsRequireACheckpointPolicy; not in Pi). Delta v1.4.0 to v1.5.0, compared with the 1.5.0 bodies (23 cases): watch/onValue replace the old API; \"folds undelivered commits into one call whose ops reach the newest view\" keeps the starting view and replays the folded ops onto it, as upstream (harness-view.test.ts:267); the head-marker and fork cases are Pi's rewritten ones; the raw-head case is removed with Pi's; the 10 \"conversation view window\" cases are TestConversationViewWindow. Mapping of one case: \"rejects window bounds ...\" passes min 0, max below min, and max 0 as upstream; the inputs min 1.5 and from NaN cannot be written through the typed API (*int, EntryId), where the type already excludes them: a Go type-system mechanic, not a behavior difference, so that case is listed in designedOutCases (Main's ruling by IRC, 2026-11-02; owner confirmation pending) and its remaining inputs stay asserted in TestConversationView.",
+      "rationale": "All 23 upstream cases (Pi 1.5.0) are ported; each Go case cites its upstream line. Ported against durable/harness/view.go. Frames are replayed with chord/delta ApplyImmutable over the view's JSON form; toBe identity is backing-array or map-pointer identity. drained() is a no-op Session line job plus WaitDeliveries instead of setTimeout(0); a queued acquisition is detected with SessionImpl.LineJobs. Compiling mutations of the head cut, the mount drop and the closed check fail them; ops order between documents and entries and a version mismatch are not asserted upstream. Pi 1.0.2 mounts the pi.provider document between Inbox and Usage. 0.5.2 (Pi 5c1736f8): the file gains `checkpointWhen: () => false` on every definition (checkpointWhen is required); the Go ports gained CheckpointWhen on every definition the same way (a never-checkpoint default in the shared test helpers), with no case added or removed. durable.DefineDoc now rejects a definition with no policy, tested in durable/session/codemode_checkpoints_upstream_test.go (TestDefinitionsRequireACheckpointPolicy; not in Pi). Delta v1.4.0 to v1.5.0, compared with the 1.5.0 bodies (23 cases): watch/onValue replace the old API; \"folds undelivered commits into one call whose ops reach the newest view\" keeps the starting view and replays the folded ops onto it, as upstream (harness-view.test.ts:267); the head-marker and fork cases are Pi's rewritten ones; the raw-head case is removed with Pi's; the 10 \"conversation view window\" cases are TestConversationViewWindow. Mapping of one case: \"rejects window bounds ...\" passes min 0, max below min, and max 0 as upstream; the inputs min 1.5 and from NaN cannot be written through the typed API (*int, EntryId), where the type already excludes them: a Go type-system mechanic, not a behavior difference, so that case is listed in designedOutCases (Main's ruling by IRC, 2026-11-02; owner confirmation pending) and its remaining inputs stay asserted in TestConversationView.",
       "designedOutCases": [
         "conversation view window › rejects window bounds that are not integers or put `max` below `min`"
       ]
@@ -8130,7 +8515,7 @@
         "env/terminal_test.go#TestOpenTerminalFailsToOpenInAMissingDirectory",
         "env/terminal_test.go#TestPtyWriteRejectsATerminalThatDoesNotExist"
       ],
-      "rationale": "All 7 Pi 1.2.0 cases are ported one to one in env/terminal_test.go, cited at :51, :74, :103, :117, :136, :149 and :156. In :74 the name check runs on darwin and linux only, as in Pi; after the job's group reaches the foreground the test waits for that same group to exec sleep before reading its name, because the shell's child takes the terminal before exec and pty.rs (like the Go daemon) reads the name with proc_name or /proc/\u003cpid\u003e/comm, so the pre-exec shell name ('bash' from macOS /bin/sh) is observable for a moment in Pi and PiG alike. No case differed from Pi; no source change. Pi de022efd (wait for the job named sleep) was already covered: TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt polls until Name == sleep."
+      "rationale": "All 7 Pi 1.2.0 cases are ported one to one in env/terminal_test.go, cited at :51, :74, :103, :117, :136, :149 and :156. In :74 the name check runs on darwin and linux only, as in Pi; after the job's group reaches the foreground the test waits for that same group to exec sleep before reading its name, because the shell's child takes the terminal before exec and pty.rs (like the Go daemon) reads the name with proc_name or /proc/<pid>/comm, so the pre-exec shell name ('bash' from macOS /bin/sh) is observable for a moment in Pi and PiG alike. No case differed from Pi; no source change. Pi de022efd (wait for the job named sleep) was already covered: TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt polls until Name == sleep."
     },
     {
       "path": "packages/evals/test/acme-server.test.ts",
@@ -8394,7 +8779,7 @@
         "tui/file_autocomplete_test.go#TestBuildFdPathQuery",
         "test/parity/scenarios/autocomplete/13-at-regex-metacharacters.toml"
       ],
-      "rationale": "All 40 upstream cases are covered. The 36 cases that exist unchanged since 0.87.1 keep the reviewed evidence above (the Go tests still pass). The 4 cases added in 0.99 are ported with the upstream inputs: 'recognizes @ after opening wrappers like ( and backticks' (autocomplete.test.ts:170, the ( / see ( / [ / ` / \u003c / { rows plus the foo(@REA negative) in TestUpstreamAutocompleteAtAfterOpeningWrappers, and 'completes paths after opening wrappers ...' (:647), 'completes quoted paths after opening wrappers' (:668) and 'keeps wrappers that are closed inside the path' (:681) as subtests of TestUpstreamAutocompletePathsAfterOpeningWrappers. Table: test/parity/unit-evidence/gate-992-misc-audit.md. Pi 612a172e (#10972): 'matches regex metacharacters in queries literally' is three TestUpstreamAutocompleteFD rows."
+      "rationale": "All 40 upstream cases are covered. The 36 cases that exist unchanged since 0.87.1 keep the reviewed evidence above (the Go tests still pass). The 4 cases added in 0.99 are ported with the upstream inputs: 'recognizes @ after opening wrappers like ( and backticks' (autocomplete.test.ts:170, the ( / see ( / [ / ` / < / { rows plus the foo(@REA negative) in TestUpstreamAutocompleteAtAfterOpeningWrappers, and 'completes paths after opening wrappers ...' (:647), 'completes quoted paths after opening wrappers' (:668) and 'keeps wrappers that are closed inside the path' (:681) as subtests of TestUpstreamAutocompletePathsAfterOpeningWrappers. Table: test/parity/unit-evidence/gate-992-misc-audit.md. Pi 612a172e (#10972): 'matches regex metacharacters in queries literally' is three TestUpstreamAutocompleteFD rows."
     },
     {
       "path": "packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts",
@@ -8526,7 +8911,7 @@
         "tui/decode_printable_oracle_test.go#TestDecodePrintableKeyMatchesPi",
         "tui/key_repeat_oracle_test.go#TestIsKeyRepeatAndReleaseMatchPi"
       ],
-      "rationale": "Reviewed against the 1.1.0 -\u003e 42a3497d delta: 42a3497d adds the shifted-symbol, modifyOtherKeys ctrl++ and plain '+' cases. They are ported literally (added after the fix, not red-proven there); the seeded comparator was red on the same inputs before the TUI batch. Earlier evidence is retained. Pi deb12d78 (#11419, #11345) adds the Kitty F1-F12 case and the unmapped functional keys case: both are ported with their inputs and expected results (TestMatchesKittyFunctionKeysF1ToF12WithAndWithoutModifiers, TestDecodeKittyPrintableIgnoresUnmappedKittyFunctionalKeys). The seeded Pi comparators (TestParseAndMatchKeyMatchPiOnSeededInput over f1/f4/f5/f12 with every modifier mask and the P/Q/S and ~ forms, TestDecodePrintableKeyMatchesPi over the Private Use Area, TestIsKeyRepeatAndReleaseMatchPi over P/Q/S) were red against the unported code and are green after it."
+      "rationale": "Reviewed against the 1.1.0 -> 42a3497d delta: 42a3497d adds the shifted-symbol, modifyOtherKeys ctrl++ and plain '+' cases. They are ported literally (added after the fix, not red-proven there); the seeded comparator was red on the same inputs before the TUI batch. Earlier evidence is retained. Pi deb12d78 (#11419, #11345) adds the Kitty F1-F12 case and the unmapped functional keys case: both are ported with their inputs and expected results (TestMatchesKittyFunctionKeysF1ToF12WithAndWithoutModifiers, TestDecodeKittyPrintableIgnoresUnmappedKittyFunctionalKeys). The seeded Pi comparators (TestParseAndMatchKeyMatchPiOnSeededInput over f1/f4/f5/f12 with every modifier mask and the P/Q/S and ~ forms, TestDecodePrintableKeyMatchesPi over the Private Use Area, TestIsKeyRepeatAndReleaseMatchPi over P/Q/S) were red against the unported code and are green after it."
     },
     {
       "path": "packages/tui/test/latex.test.ts",
@@ -8593,7 +8978,7 @@
       "evidence": [
         "coding/extension/host/subprocess/runtime_node_tui_upstream_test.go#TestNodeVendoredTuiUpstreamTests"
       ],
-      "rationale": "Both upstream cases (:8 candidates[0] from the installed TUI package with the bundled-module fallback; :26 standalone-binary fallbacks when the package is unavailable) test getNativeModuleCandidates (packages/tui/src/native-module-path.ts:14-31), whose only caller is native-platform.ts:38: a Node require/dlopen search over prebuilt .node files (native/\u003cos\u003e/prebuilds/...). The shipped Node extension bridge runs that lookup through the vendored runtime-node/shims/pi-dist/pi-tui/native-module-path.js (imported by native-platform.js). TestNodeVendoredTuiUpstreamTests/native-module-path executes the unchanged upstream test file against it, rewriting only the ../src import to the vendored module, and requires the TAP summary to report 2 tests, 2 passed, 0 skipped, 0 cancelled, so both cases keep their exact inputs and assertions. The Go host has no counterpart lookup and needs none: internal/nativeplatform/nativeplatform.go:1 builds with CGO_ENABLED=0 and calls platform APIs or the X11 wire protocol directly (clipboard_x11_linux.go, clipboard_x11_connect_linux.go), Windows loads system DLLs by name (clipboard_windows.go:23-24, windows.NewLazySystemDLL user32.dll/kernel32.dll), macOS dlopens a fixed system framework path (clipboard_darwin.go:28, modifiers_darwin.go:46), and tui/native_platform.go wraps nativeplatform directly. No non-test Go resolves prebuilds/, win32-platform, pi-tui or native-module-path candidates. That Go-host absence is owner-approved design-out mechanics (CGO_ENABLED=0 native access); it does not remove the shipped Node bridge obligation, so the file is ported and its evidence stays verified."
+      "rationale": "Both upstream cases (:8 candidates[0] from the installed TUI package with the bundled-module fallback; :26 standalone-binary fallbacks when the package is unavailable) test getNativeModuleCandidates (packages/tui/src/native-module-path.ts:14-31), whose only caller is native-platform.ts:38: a Node require/dlopen search over prebuilt .node files (native/<os>/prebuilds/...). The shipped Node extension bridge runs that lookup through the vendored runtime-node/shims/pi-dist/pi-tui/native-module-path.js (imported by native-platform.js). TestNodeVendoredTuiUpstreamTests/native-module-path executes the unchanged upstream test file against it, rewriting only the ../src import to the vendored module, and requires the TAP summary to report 2 tests, 2 passed, 0 skipped, 0 cancelled, so both cases keep their exact inputs and assertions. The Go host has no counterpart lookup and needs none: internal/nativeplatform/nativeplatform.go:1 builds with CGO_ENABLED=0 and calls platform APIs or the X11 wire protocol directly (clipboard_x11_linux.go, clipboard_x11_connect_linux.go), Windows loads system DLLs by name (clipboard_windows.go:23-24, windows.NewLazySystemDLL user32.dll/kernel32.dll), macOS dlopens a fixed system framework path (clipboard_darwin.go:28, modifiers_darwin.go:46), and tui/native_platform.go wraps nativeplatform directly. No non-test Go resolves prebuilds/, win32-platform, pi-tui or native-module-path candidates. That Go-host absence is owner-approved design-out mechanics (CGO_ENABLED=0 native access); it does not remove the shipped Node bridge obligation, so the file is ported and its evidence stays verified."
     },
     {
       "path": "packages/tui/test/native-platform.test.ts",
@@ -8726,7 +9111,7 @@
         "tui/stdin_buffer_terminal_reply_upstream_test.go#TestStdinBufferTerminalReplyStrings",
         "tui/stdin_buffer_oracle_test.go#TestStdinBufferMatchesPiOracle"
       ],
-      "rationale": "82 cases. The 59 cases of 1.1.0 are unchanged and keep their evidence: cases 1-29 in tui/stdin_buffer_first_half_upstream_test.go and cases 30-59 in tui/stdin_buffer_second_half_upstream_test.go, timer cases driven through the production TerminalInput timer under synctest. 1.2.0 adds an afterEach destroy (the Go owner closes the TerminalInput in t.Cleanup) and the 23-case describe \"Terminal Reply Strings\": 7 \"keeps delayed \u003creply\u003e intact at every split after its reply header\" cases, \"keeps an OSC reply buffered across multiple expired sequence timeouts\", \"still times out bare string introducers as Alt keys\", 11 \"recovers batched legacy Alt input \u003cinput\u003e within the sequence timeout\" cases, \"recognizes a reply header assembled within the ambiguous-input timeout\", \"recovers from an unterminated reply when a new escape sequence arrives\" and \"discards a canceled reply without swallowing subsequent input\". All 23 are ported with the same inputs and the same timeout options (10ms for the beforeEach buffer, the default for new StdinBuffer()) as subtests of TestStdinBufferTerminalReplyStrings; they observe the StdinBuffer data event as Pi's buffer.on(\"data\") does. The production change of stdin-buffer.ts is ported in tui/stdin_buffer.go: terminalReplyHeaderRegex (TERMINAL_REPLY_HEADER_PATTERN), HasPendingFlush arms no timeout for a recognized reply header, extractCompleteSequences drops a reply cancelled by CAN/SUB and aborts one at a new escape sequence, and FlushExpired (the timeout callback) emits a timed-out control string as its two-unit introducer and reparses the tail; TerminalInput.Flush and the experimental client and durable input loops call FlushExpired, while public Flush keeps returning the remainder whole. testdata/stdin-buffer-oracle.json is regenerated from Pi 1.2.0's stdin-buffer.ts with the unchanged generator (the 1.1.0 source reproduces the old fixture byte for byte), and TestStdinBufferMatchesPiOracle passes 900 of 900 sequences."
+      "rationale": "82 cases. The 59 cases of 1.1.0 are unchanged and keep their evidence: cases 1-29 in tui/stdin_buffer_first_half_upstream_test.go and cases 30-59 in tui/stdin_buffer_second_half_upstream_test.go, timer cases driven through the production TerminalInput timer under synctest. 1.2.0 adds an afterEach destroy (the Go owner closes the TerminalInput in t.Cleanup) and the 23-case describe \"Terminal Reply Strings\": 7 \"keeps delayed <reply> intact at every split after its reply header\" cases, \"keeps an OSC reply buffered across multiple expired sequence timeouts\", \"still times out bare string introducers as Alt keys\", 11 \"recovers batched legacy Alt input <input> within the sequence timeout\" cases, \"recognizes a reply header assembled within the ambiguous-input timeout\", \"recovers from an unterminated reply when a new escape sequence arrives\" and \"discards a canceled reply without swallowing subsequent input\". All 23 are ported with the same inputs and the same timeout options (10ms for the beforeEach buffer, the default for new StdinBuffer()) as subtests of TestStdinBufferTerminalReplyStrings; they observe the StdinBuffer data event as Pi's buffer.on(\"data\") does. The production change of stdin-buffer.ts is ported in tui/stdin_buffer.go: terminalReplyHeaderRegex (TERMINAL_REPLY_HEADER_PATTERN), HasPendingFlush arms no timeout for a recognized reply header, extractCompleteSequences drops a reply cancelled by CAN/SUB and aborts one at a new escape sequence, and FlushExpired (the timeout callback) emits a timed-out control string as its two-unit introducer and reparses the tail; TerminalInput.Flush and the experimental client and durable input loops call FlushExpired, while public Flush keeps returning the remainder whole. testdata/stdin-buffer-oracle.json is regenerated from Pi 1.2.0's stdin-buffer.ts with the unchanged generator (the 1.1.0 source reproduces the old fixture byte for byte), and TestStdinBufferMatchesPiOracle passes 900 of 900 sequences."
     },
     {
       "path": "packages/tui/test/tab-width.test.ts",
