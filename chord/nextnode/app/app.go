@@ -381,7 +381,8 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		}
 	}
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots: []string{root, opened.layout.Plugins}, Kinds: kinds, Install: options.Install, Base: base,
+		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
+		Api: &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
 	workerHosts := &workerHosts{keys: map[string]string{}}
@@ -454,7 +455,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err := PrivateStore(pluginsStore); err != nil {
 		return err
 	}
-	node, nodeReport, err := a.Plugins.Load(plugins.PluginsLoad{
+	node, _, err := a.Plugins.Load(plugins.PluginsLoad{
 		Kind: "server", Modules: modules, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), Telemetry: options.Telemetry,
 		Store: &plugins.StoreOptions{Path: pluginsStore},
@@ -463,11 +464,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},
 		},
 	}, ctx)
-	if err != nil {
-		return err
-	}
+	// A required root's plugin failing returns the loaded host with the *PluginError: the app owns it and closes it.
 	a.Node = node
-	if err := failedPlugins(nodeReport); err != nil {
+	if err != nil {
 		return err
 	}
 	if err := h.Accept(node.Link(), host.LinkOptions{Principal: options.Principal.Server, Trusted: true}, ctx); err != nil {

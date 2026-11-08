@@ -44,6 +44,7 @@ func everyKind() []link.Message {
 	origin := hold(0, link.Text("{}"))
 	origin.Type = "t"
 	origin.Origin = some(2)
+	oldOrigin := &link.CallMessage{Origin: some(2), Call: 1, Hold: 3, Method: 0, Args: link.Text("[1]"), Old: true}
 	return []link.Message{
 		&link.HelloMessage{Protocol: 1, Incarnation: incarnation, Calls: 256},
 		first,
@@ -52,6 +53,9 @@ func everyKind() []link.Message {
 		&link.ReleaseMessage{Hold: 0},
 		&link.CallMessage{Call: 3, Hold: 0, Method: 1, Args: link.Text(`{"text":"x"}`)},
 		&link.CallMessage{Call: 4, Hold: 0, Method: 0},
+		// A call that is old work (a restart's), alone and under an origin (Pi's also carries a trace: T6, no Trace here).
+		&link.CallMessage{Call: 9, Hold: 0, Method: 1, Args: link.Text(`{"text":"x"}`), Old: true},
+		oldOrigin,
 		&link.AbortMessage{Call: 3},
 		&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Variant: 1, Members: []link.BoundMember{{Member: 0, Value: link.Text(`[1,"a"]`)}}, Failed: []link.FailedMember{{Member: 1, Error: released}}}}},
 		&link.BoundMessage{Holds: []link.BoundEntry{
@@ -348,6 +352,24 @@ func TestTheBinaryCodec(t *testing.T) {
 		requireErrorContains(t, err, "a varint does not fit")
 	})
 
+	t.Run("flags a call that is old work of a reload in the kind byte (0x20); another kind with that flag is unknown", func(t *testing.T) {
+		call := enc(&link.CallMessage{Old: true})
+		if call[0] != 3|0x20 {
+			t.Fatalf("call kind byte = %#x", call[0])
+		}
+		decoded, err := binary.Decode(call)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, ok := decoded.(*link.CallMessage); !ok || !reflect.DeepEqual(got, &link.CallMessage{Old: true}) {
+			t.Fatalf("decoded = %#v", decoded)
+		}
+		release := append([]byte{}, enc(&link.ReleaseMessage{Hold: 1})...)
+		release[0] |= 0x20
+		_, err = binary.Decode(release)
+		requireErrorContains(t, err, "unknown kind")
+	})
+
 	t.Run("refuses unknown hold flags", func(t *testing.T) {
 		message := hold(0, link.Text("{}"))
 		message.Type = "t"
@@ -476,6 +498,24 @@ func TestTheTextCodec(t *testing.T) {
 		if got := text(message); got != head+",null,null,null,5]" {
 			t.Fatalf("limit = %s", got)
 		}
+	})
+
+	t.Run("writes a call's old-work flag after its carrier (null when absent), its payload's fields positional then", func(t *testing.T) {
+		// Pi's second case carries a trace ({a:"b"}) in the carrier slot; link.Message has no Trace yet (T6, 0x40 stays
+		// reserved), so the slot is null here.
+		call := &link.CallMessage{Call: 0, Hold: 1, Method: 2, Old: true}
+		if got := text(call); got != `["c",0,1,2,null,null,null,true]` {
+			t.Fatalf("old call = %s", got)
+		}
+		call.Args = link.Text("[1]")
+		if got := text(call); got != `["c",0,1,2,[0,[1]],null,null,true]` {
+			t.Fatalf("old call with args = %s", got)
+		}
+	})
+
+	t.Run("leaves the old-work flag's value to the message schema: only true passes", func(t *testing.T) {
+		_, err := decodeText(`["c",0,1,2,null,null,null,1]`)
+		requireErrorContains(t, err, "old-work flag")
 	})
 
 	t.Run("puts byte segments after the tuple and a newline, their lengths the tuple's last field", func(t *testing.T) {

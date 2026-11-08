@@ -1,52 +1,52 @@
 [
  {
-  "upstream": "packages/chord/src/next/host/backoff.ts",
+  "upstream": "packages/chord/src/host/backoff.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestBackoffOpensAWindowOf1sAfterTheFirstFailureDoublingUpTo60sAndCallsDueAtItsEnd",
    "TestNextDelay"
   ],
-  "upstream_reference": "packages/chord/test/next/host/backoff.test.ts",
+  "upstream_reference": "packages/chord/test/host/backoff.test.ts",
   "mutation": "chord/next/host/host_backoff.go: `return min(previous*2, maxDelay)` -> `return previous * 2` (TestBackoffOpensAWindowOf1sAfterTheFirstFailureDoublingUpTo60sAndCallsDueAtItsEnd, TestNextDelay FAIL)"
  },
  {
-  "upstream": "packages/chord/src/next/host/deadline.ts",
+  "upstream": "packages/chord/src/host/deadline.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestDeadlinePausedTimeDoesNotCountResumedWithTheBudgetItHadLeft"
   ],
-  "upstream_reference": "packages/chord/test/next/host/deadline.test.ts",
+  "upstream_reference": "packages/chord/test/host/deadline.test.ts",
   "mutation": "chord/next/host/host_deadline.go: `d.remaining = max(0, d.remaining-time.Duration(d.loop.Now()-d.started)*time.Millisecond)` -> `d.remaining = max(0, d.remaining)` (TestDeadlinePausedTimeDoesNotCountResumedWithTheBudgetItHadLeft FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/sleep.ts",
+  "upstream": "packages/chord/src/host/sleep.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestSleepChainsTimersForDelaysAbove2Pow31Minus1MsAnAbortClearsTheChainedTimer"
   ],
-  "upstream_reference": "packages/chord/test/next/host/sleep.test.ts",
+  "upstream_reference": "packages/chord/test/host/sleep.test.ts",
   "mutation": "chord/next/host/host_sleep.go: `timer = loop.AfterFunc(min(left, maxTimer), func() {` -> `timer = loop.AfterFunc(left, func() {` (TestSleepChainsTimersForDelaysAbove2Pow31Minus1MsAnAbortClearsTheChainedTimer FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/uuid.ts",
+  "upstream": "packages/chord/src/host/uuid.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestUuidv7HasTheVersionAndVariantBitsAndTheTimestamp"
   ],
-  "upstream_reference": "packages/chord/src/next/host/uuid.ts",
+  "upstream_reference": "packages/chord/src/host/uuid.ts",
   "mutation": "chord/next/host/host_uuid.go: `bytes[6] = 0x70 | byte((sequence>>37)&0x0f)` -> `bytes[6] = 0x40 | byte((sequence>>37)&0x0f)` (TestUuidv7HasTheVersionAndVariantBitsAndTheTimestamp FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/uuid.ts",
+  "upstream": "packages/chord/src/host/uuid.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestUuidv7IdsAreOrderedWithinAMillisecondAndAcrossABackwardsClock"
   ],
-  "upstream_reference": "packages/chord/src/next/host/uuid.ts",
+  "upstream_reference": "packages/chord/src/host/uuid.ts",
   "mutation": "chord/next/host/host_uuid.go: `timestamp := max(state.now(), state.lastTimestamp)` -> `timestamp := state.now()` (TestUuidv7IdsAreOrderedWithinAMillisecondAndAcrossABackwardsClock FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/activity.ts",
+  "upstream": "packages/chord/src/host/activity.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestActivityPublishesOncePerMicrotaskTurnWithChanges",
@@ -56,11 +56,11 @@
    "TestActivityCountsEachKindApartAndNoJobsBeforeSlice5",
    "TestActivityValueIsOneObjectUntilTheNextChange"
   ],
-  "upstream_reference": "packages/chord/test/next/host/activity.test.ts",
+  "upstream_reference": "packages/chord/test/host/activity.test.ts",
   "mutation": "chord/next/host/host_activity.go: `if a.scheduled || (!a.Watched()` -> `if false || (!a.Watched()` (TestActivityPublishesOncePerMicrotaskTurnWithChanges FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/revocation.ts",
+  "upstream": "packages/chord/src/host/revocation.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON",
@@ -69,11 +69,11 @@
    "TestRevocationKeysWithoutRevokedByRevokeNothing",
    "TestRevokedByErasedKeepsTheOrderOfTheRevocations"
   ],
-  "upstream_reference": "packages/chord/test/next/host/revocation.test.ts",
+  "upstream_reference": "packages/chord/test/host/revocation.test.ts",
   "mutation": "chord/next/host/host_revocation.go: `if !ok {` -> `if true || !ok {` (TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/unbound.ts",
+  "upstream": "packages/chord/src/host/unbound.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestTheIndexWakesEveryRequestAtThePublicationOutOfTheIndexFirstADeletedOneIsNotWoken",
@@ -81,11 +81,11 @@
    "TestTheIndexWakesInInsertionOrderOfNamesAndRequests",
    "TestTheIndexRevokeSkipsARequestAnEarlierEndRemoved"
   ],
-  "upstream_reference": "packages/chord/test/next/host/unbound.test.ts",
+  "upstream_reference": "packages/chord/test/host/unbound.test.ts",
   "mutation": "chord/next/host/host_unbound.go: `if requests.size() == 0 {` -> `if requests.size() < 0 {` (TestTheIndexWakesInInsertionOrderOfNamesAndRequests FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/retry-on.ts",
+  "upstream": "packages/chord/src/host/retry-on.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestRetrySourceTakesRegistryValuesAndConstants",
@@ -95,11 +95,11 @@
    "TestRetryWakesReplaceAndStop",
    "TestRetryWakesTheSameSourceTwice"
   ],
-  "upstream_reference": "packages/chord/test/next/host/retry-on.test.ts",
+  "upstream_reference": "packages/chord/test/host/retry-on.test.ts",
   "mutation": "chord/next/host/host_retry_on.go: `if call.Kind == chord.WatchCallValue {` -> `if true {` (TestRetryWakesOnValueCallsOnly FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/ref-state.ts",
+  "upstream": "packages/chord/src/host/ref-state.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestRefStateIsWatchedFromItsCurrentStateAndReleaseEndsIt",
@@ -113,11 +113,11 @@
    "TestRefStateWithoutABatchGivesAnEndedWatch",
    "TestRefStateSingletonsAreDistinctObjects"
   ],
-  "upstream_reference": "packages/chord/test/next/host/ref-state.test.ts",
+  "upstream_reference": "packages/chord/test/host/ref-state.test.ts",
   "mutation": "chord/next/host/host_ref_state.go: `if current == r.last {` -> `if false {` (TestRefStateAnnouncesOnlyAnotherStateObject FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/parked.ts",
+  "upstream": "packages/chord/src/host/parked.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestParkedCallsAreQueuedAndSentInTheOrderTheyWereMade",
@@ -134,11 +134,11 @@
    "TestParkedCallsKeepTheirOrderAfterManyLeft",
    "TestParkedCallResultSettlesOnceAndThenRunsAsAMicrotask"
   ],
-  "upstream_reference": "packages/chord/test/next/host/parked.test.ts",
+  "upstream_reference": "packages/chord/test/host/parked.test.ts",
   "mutation": "chord/next/host/host_parked.go: `if float64(p.loop.Now()) >= call.due {` -> `if false {` (TestParkedCallsAreCheckedAgainstTheirDeadlineWhenSent FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/native.ts",
+  "upstream": "packages/chord/src/host/native.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestNativeThrowsNotReadyBeforeItsOpenResolvedAndReleasedOnceItsCloseStarted",
@@ -152,11 +152,11 @@
    "TestWithin",
    "TestDrained"
   ],
-  "upstream_reference": "packages/chord/test/next/host/native.test.ts",
+  "upstream_reference": "packages/chord/test/host/native.test.ts",
   "mutation": "chord/next/host/host_native.go: `owner.loop.Run(func() { owner.report(timedOut) })` -> `_ = timedOut` (TestNativeReportsACloseStillRunningAfterItsCloseTimeoutAndAbortsItsContext FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/follow.ts",
+  "upstream": "packages/chord/src/host/follow.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource",
@@ -166,11 +166,11 @@
    "TestFollowEndsEndedIsFinalAQueuedRetirementReachesTheWatchFirstTheValueStaysAndANewWatchEndsAtOnce",
    "TestFollowCallsInsideARunningBatchOneFramePerCommitAndADeriveOverTwoViewsComputesOnceWithBoth"
   ],
-  "upstream_reference": "packages/chord/test/next/host/follow.test.ts",
+  "upstream_reference": "packages/chord/test/host/follow.test.ts",
   "mutation": "chord/next/host/host_follow.go: `if call.Kind == chord.WatchCallValue {` -> `if false {` (TestFollowCallsBeforeTheAttachmentResolvedMoveTheAttachmentsOlderValueOn FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/reference-source.ts",
+  "upstream": "packages/chord/src/host/reference-source.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestReferenceSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers",
@@ -178,11 +178,11 @@
    "TestReferenceSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsRecoveryAtTheRebindAsARootReplacement",
    "TestReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenAndALaterAttemptBringsItBack"
   ],
-  "upstream_reference": "packages/chord/test/next/host/reference-source.test.ts",
+  "upstream_reference": "packages/chord/test/host/reference-source.test.ts",
   "mutation": "chord/next/host/host_reference_source.go (bind): `s.Changed()` (the last statement of bind, after `// Marks the derives downstream: a failed one recomputes too (self-healing).`) -> removed (TestReferenceSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers FAILS: host_reference_source_test.go:277: calls = [], want one value call)"
  },
  {
-  "upstream": "packages/chord/src/next/host/members.ts",
+  "upstream": "packages/chord/src/host/members.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestMemberCheckRefusesAMethodTheImplementationDoesNotOwn",
@@ -192,72 +192,72 @@
    "TestAttachDerivesReportsUnderTheExposingMemberAcceptsNativeSourcesAndPropagatesAThrowingGetter",
    "TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue"
   ],
-  "upstream_reference": "packages/chord/test/next/host/members.test.ts",
+  "upstream_reference": "packages/chord/test/host/members.test.ts",
   "mutation": "chord/next/host/host_members.go: `fmt.Sprintf(\"derive #%d\", position+1)` -> `fmt.Sprintf(\"derive #%d\", position)` (TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/ctx.ts",
+  "upstream": "packages/chord/src/host/ctx.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11",
    "TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated",
    "TestLinkedAbortSignalsDetachFromBothSourcesOnReleaseALaterAbortReachesNothing"
   ],
-  "upstream_reference": "packages/chord/test/next/host/ctx.test.ts",
+  "upstream_reference": "packages/chord/test/host/ctx.test.ts",
   "mutation": "chord/next/host/host_ctx.go: `if c.Context.Err() != nil {` -> `if false {` (TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated FAILS: err = <nil>, want the caller's reason)"
  },
  {
-  "upstream": "packages/chord/src/next/host/root.ts",
+  "upstream": "packages/chord/src/host/root.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestHostRootLeavesNoListenerOnTheCallersSignalOnceHostCloseRejectedAnFnThatNeverSettles",
    "TestHostRootAbortsTheScopesOwnSignalWhenFnSettlesAndAtHostCloseTheCallersContextHavingOne",
    "TestHostRootHostCloseRejectsTheCallerAtOnceWhateverAnUncooperativeFnStillDoes"
   ],
-  "upstream_reference": "packages/chord/test/next/host/root.test.ts",
+  "upstream_reference": "packages/chord/test/host/root.test.ts",
   "mutation": "chord/next/host/host_root.go: `linked.release()` -> `_ = linked.release` (TestHostRootLeavesNoListenerOnTheCallersSignalOnceHostCloseRejectedAnFnThatNeverSettles FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/routines.ts",
+  "upstream": "packages/chord/src/host/routines.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestOnAfterAThrowReportsKeepsTheWatchAndCallsAgainWithTheWholeValueAfter1sDoublingSuccessResets",
    "TestOnLiveRestartsAfterAThrowWithTheBackoffResetAfterARunOfAtLeastAMinute",
    "TestOnReportsARetirementAsRetiredFoldedWithTheChangesAroundItIntoOneCallAndGoesOn"
   ],
-  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "upstream_reference": "packages/chord/test/host/routines.test.ts",
   "mutation": "chord/next/host/host_routines.go: `o.delay = nextDelay(o.delay)` -> `o.delay = nextDelay(0)` (TestOnAfterAThrowReportsKeepsTheWatchAndCallsAgainWithTheWholeValueAfter1sDoublingSuccessResets FAILS: calls before the doubled window ended = 3, want 2). The first attempt at this mutation passed: the test advanced the clock past the timer before the handler read it; the test was fixed (commit e47d8b40c8) and the mutation rerun red"
  },
  {
-  "upstream": "packages/chord/src/next/host/facet.ts",
+  "upstream": "packages/chord/src/host/facet.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestFacetsDeclareOnlyWhileTheirSetupRuns",
    "TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns"
   ],
-  "upstream_reference": "packages/chord/test/next/host/facet.test.ts",
+  "upstream_reference": "packages/chord/test/host/facet.test.ts",
   "mutation": "chord/next/host/host_facet.go: `if each.registry.Name == registry.Name {` -> `if each.registry.Name == \"\" {` (TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns FAILS: err = <nil>, want the twice error)"
  },
  {
-  "upstream": "packages/chord/src/next/host/route.ts",
+  "upstream": "packages/chord/src/host/route.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestResolveFailuresAndReResolvesARejectedResolveFailsItsHoldersWaitingWithItsErrorIsReportedAndRunsNoTimerRace2",
    "TestResolveFailuresAndReResolvesADroppedLinkThatCompletedItsHandshakeResolvesAgainAtOnceOnceRace6",
    "TestRouteAdmissionRunsOneResolvePerAddressSharedByTheHoldsThatWaitForItRace1"
   ],
-  "upstream_reference": "packages/chord/test/next/host/route.test.ts (own tests: every upstream case builds hosts and links)",
+  "upstream_reference": "packages/chord/test/host/route.test.ts (own tests: every upstream case builds hosts and links)",
   "mutation": "chord/next/host/host_route.go (changed): the `default:` branch of `case pathDropped:` `r.resolve(routed)` -> removed (TestResolveFailuresAndReResolvesADroppedLinkThatCompletedItsHandshakeResolvesAgainAtOnceOnceRace6 FAILS: host_route_test.go:391: never happened: resolves are [session|S1 session|S1] (now [session|S1]))"
  },
  {
-  "upstream": "packages/chord/src/next/host/destination.ts",
+  "upstream": "packages/chord/src/host/destination.ts",
   "package": "./chord/next/host",
   "tests": [
    "TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone",
    "TestDestinationMisplacedIsNilWhenTheObjectLivesHereElseInvalidHostAddressNamingBothHosts",
    "TestSameAddressNamesTheHostWithTheSameKindAndTheSameValueForEachParam"
   ],
-  "upstream_reference": "packages/chord/src/next/host/destination.ts (no upstream test file; own tests mirror the doc comments)",
+  "upstream_reference": "packages/chord/src/host/destination.ts (no upstream test file; own tests mirror the doc comments)",
   "mutation": "chord/next/host/host_destination.go: `if from.Role() == \"parent\" || !d.parent.Linked() {` -> `if false {` (TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone FAILS: err = <nil>, want a ChordError)"
  }
 ]

@@ -1938,7 +1938,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:c62752eb8e2a5410af29cb656ec793cf8f2a93a4b0e84a06aae9c673b4fcfcab",
       "evidence": [
-        "chord/host/boundary_upstream_test.go#TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord"
+        "chord/boundary_upstream_test.go#TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord"
       ],
       "rationale": "The one case, with pi-telemetry (the dependency of Context.telemetry) allowed as upstream 1402973a does: the Go test accepted the telemetry package as the only Pi-package dependency of chord and rejected any other. Pi v1.5.0 adds pi-schema to the allowed Pi packages (a leaf, decision \"A schema package beneath pi-ai and Chord\"): the Go test now accepts the schema package (and its ecmaregex helper) beside telemetry and rejects any other."
     },
@@ -3188,7 +3188,7 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_baseinputs_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 2 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/build.test.ts",
@@ -3198,7 +3198,7 @@
         "chord/nextnode/plugins/plugins_build_test.go",
         "chord/nextnode/plugins/plugins_cssmodules_test.go"
       ],
-      "rationale": "All 30 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 30 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/discover.test.ts",
@@ -3207,7 +3207,7 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_discover_test.go"
       ],
-      "rationale": "All 13 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 13 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/evaluate.test.ts",
@@ -3217,7 +3217,7 @@
         "chord/nextnode/plugins/plugins_evaluate_test.go",
         "chord/nextnode/plugins/plugins_node_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 10 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/install.test.ts",
@@ -3226,17 +3226,21 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_install_test.go"
       ],
-      "rationale": "All 14 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 14 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/plugins.test.ts",
       "disposition": "ported",
       "upstreamTestHash": "sha256:2130f7a727ac19aa03a900b8a8ce9c3d56a90ba8ac7e96c5524f3dc0b99a7c8d",
       "evidence": [
+        "chord/nextnode/plugins/plugins_endtoend_test.go",
+        "chord/nextnode/plugins/plugins_examples_test.go",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go",
+        "chord/nextnode/plugins/plugins_node_test.go",
         "chord/nextnode/plugins/plugins_plugins_test.go",
-        "chord/nextnode/plugins/plugins_endtoend_test.go"
+        "chord/nextnode/plugins/plugins_runtime_test.go"
       ],
-      "rationale": "All 25 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 25 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/runtime.test.ts",
@@ -3245,7 +3249,7 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_runtime_test.go"
       ],
-      "rationale": "All 6 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 6 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/stack.test.ts",
@@ -3274,7 +3278,7 @@
         "chord/nextnode/plugins/plugins_watcher_base_test.go",
         "chord/nextnode/plugins/plugins_watcher_linux_test.go"
       ],
-      "rationale": "All 23 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 23 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/react/hooks.test.ts",
