@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/schema"
 )
 

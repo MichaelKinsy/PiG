@@ -254,8 +254,9 @@ func TestCreateChecksWhatItTakes(t *testing.T) {
 		t.Fatalf("relative cwd: %v", err)
 	}
 	missing := filepath.Join(t.TempDir(), "missing")
-	if err := call(delta.JsonObjectOf("cwd", missing, "model", f.modelArg())); err == nil {
-		t.Fatal("a missing directory was taken")
+	// As Node's fs reports it: `ENOENT: no such file or directory, stat '<path>'`.
+	if err := call(delta.JsonObjectOf("cwd", missing, "model", f.modelArg())); err == nil || err.Error() != "ENOENT: no such file or directory, stat '"+missing+"'" {
+		t.Errorf("a missing directory: %v", err)
 	}
 	// `createDirectory` makes it.
 	if err := call(delta.JsonObjectOf("cwd", missing, "createDirectory", true, "model", f.modelArg())); err != nil {
@@ -270,6 +271,11 @@ func TestCreateChecksWhatItTakes(t *testing.T) {
 	}
 	if err := call(delta.JsonObjectOf("cwd", file, "model", f.modelArg())); err == nil || !strings.Contains(err.Error(), "not a directory") {
 		t.Fatalf("a file: %v", err)
+	}
+	// `createDirectory` under a file: Node's `fs.mkdirSync(.., {recursive: true})` message.
+	under := filepath.Join(file, "sub")
+	if err := call(delta.JsonObjectOf("cwd", under, "createDirectory", true, "model", f.modelArg())); err == nil || err.Error() != "ENOTDIR: not a directory, mkdir '"+under+"'" {
+		t.Fatalf("a directory under a file: %v", err)
 	}
 	// An environment's directory is the manager's answer.
 	row := f.create(t, owner, "cwd", "/proj", "env", "box", "model", f.modelArg())

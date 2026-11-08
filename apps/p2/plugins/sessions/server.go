@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"os"
 	"path/filepath"
 	"unicode/utf16"
@@ -18,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/google/uuid"
 )
 
