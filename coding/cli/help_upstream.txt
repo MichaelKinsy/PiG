@@ -10,7 +10,7 @@ Commands:
   pig update [source|self|pig]   Update pig, extensions, or model catalogs
   pig list                      List installed extensions from settings
   pig config [-l]               Open TUI to enable/disable package resources (Tab switches scope)
-  pig auth <command>            Print credentials or check provider readiness
+  pig auth <command>            Log in or out, print credentials, or check provider readiness
   pig mcp <command>             Manage MCP servers
   pig <command> --help          Show help for install/remove/uninstall/update/list/config/auth/mcp
 
