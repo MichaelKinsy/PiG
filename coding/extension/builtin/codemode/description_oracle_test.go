@@ -224,11 +224,7 @@ func goDescription(p descriptionProbe) (string, string) {
 	for _, d := range p.Deferred {
 		options.Deferred[d] = true
 	}
-	got, err := codemode.CreateDescription(tools, options)
-	if err != nil {
-		return got, err.Error()
-	}
-	return got, ""
+	return codemode.CreateDescription(tools, options), ""
 }
 
 // TestCodemodeDescriptionProbesDump prints the corpus for the Pi side of the extensions-runtime/79 parity scenario.
