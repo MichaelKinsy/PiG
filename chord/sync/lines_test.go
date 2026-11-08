@@ -89,7 +89,7 @@ func TestBatchBodies(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "ends inside log line 2") {
 			t.Fatalf("err = %v, want it to end inside log line 2", err)
 		}
-		isError[*LogFormatError](t, err)
+		_ = isError[*LogFormatError](t, err)
 	})
 
 	t.Run("refuse sequences that do not increase", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestLogLines(t *testing.T) {
 	t.Run("refuse unknown versions and a missing next id", func(t *testing.T) {
 		for _, text := range []string{`{"v":1,"seq":1,"nextId":2,"writes":[]}`, `{"v":2,"seq":1,"writes":[]}`} {
 			_, err := DecodeLogLine(text, 1)
-			isError[*LogFormatError](t, err)
+			_ = isError[*LogFormatError](t, err)
 		}
 		commit, err := DecodeLogLine(`{"v":2,"seq":1,"nextId":2,"writes":[]}`, 1)
 		noError(t, err)

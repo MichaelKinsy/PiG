@@ -109,7 +109,7 @@ func reads(t testing.TB, s store.Store) []string {
 	t.Helper()
 	export, err := s.Export(background)
 	noError(t, err)
-	defer export.Close()
+	defer func() { _ = export.Close() }()
 	var parts []string
 	for {
 		part, ok, err := export.Next(background)

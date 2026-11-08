@@ -285,7 +285,7 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 			}
 			same(t, "loser upload", loser.upload(), UploadResult{Type: Diverged, At: shared})
 			_, err := PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Store: loser.store()}, State: loser.state})
-			isError[*UnsyncedCommitsError](t, err)
+			_ = isError[*UnsyncedCommitsError](t, err)
 
 			// The loser's copy becomes a new session, uploaded whole as an archive (its outbox was trimmed through
 			// `shared`); the session restores fresh on that device.
@@ -472,7 +472,7 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		// A copy behind the fold cannot continue through folded batches: it restores instead.
 		at := lastSeq(stale.store())
 		_, err := PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Store: stale.store()}, State: stale.state})
-		isError[*HistoryUnavailableError](t, err)
+		_ = isError[*HistoryUnavailableError](t, err)
 		// Nor can it take a folded slot: its own commits are a different history.
 		stale.commit([]rows{entry(300)})
 		same(t, "stale upload", stale.upload(), UploadResult{Type: Diverged, At: at})
@@ -504,14 +504,14 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		}
 		vanishing := overriding{SessionSyncMaintenance: remote, getBatch: func(context.Context, string, Seq) (SyncBody, error) { return nil, nil }}
 		_, _, err := FoldSession(background, FoldOptions{SessionID: session, Store: vanishing, Scratch: backendAt(t, filepath.Join(t.TempDir(), "scratch.sqlite"))})
-		isError[*HistoryUnavailableError](t, err)
+		_ = isError[*HistoryUnavailableError](t, err)
 	})
 
 	t.Run("refuses a store without an outbox", func(t *testing.T) {
 		remote := newRemote(t)
 		plain := opened(t, backendAt(t, ""), false)
 		_, err := UploadSession(background, UploadOptions{SessionID: session, Device: "laptop", Source: plain, Store: remote, State: newMemoryState()})
-		isError[*OutboxUnavailableError](t, err)
+		_ = isError[*OutboxUnavailableError](t, err)
 	})
 
 	t.Run("uploads an archive first for a session whose outbox was turned on late", func(t *testing.T) {

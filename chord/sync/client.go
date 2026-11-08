@@ -333,6 +333,7 @@ func (pages *outboxPages) next(ctx context.Context) ([]store.OutboxCommit, error
 	average := float64(total) / float64(len(page))
 	pages.limit = outboxPage
 	if average > 0 {
+		//portlint:allow numbers average is positive and finite, so the floor is at least 0 and the min bounds it
 		pages.limit = max(1, min(outboxPage, int64(math.Floor(pageBytes/average))))
 	}
 	return page, nil
