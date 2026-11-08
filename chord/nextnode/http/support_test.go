@@ -133,8 +133,7 @@ type servedOptions struct {
 	closeTimeout time.Duration
 	authenticate Authenticator
 	// noLoad: the host is made, not loaded.
-	noLoad       bool
-	readyTimeout time.Duration
+	noLoad bool
 	// telemetry is the HTTP component's adapter.
 	telemetry pitelemetry.TelemetryContext
 	address   *contracts.Address

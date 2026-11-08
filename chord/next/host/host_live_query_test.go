@@ -335,12 +335,10 @@ func TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver(t *te
 		t.Fatalf("objects = %+v, failed = %+v, plugins = %+v", report.Objects, report.Failed, report.Plugins)
 	}
 	turn(b.host)
-	// The restart's old attempt ends first and the successor, a new instance, runs its factory then: `await flushed()`
-	// is the wait for the new attempt's query to take over.
-	eventually(t, "the new attempt's query to take over", func() bool {
-		value, err := b.board.Member("items").Value()
-		return err == nil && reflect.DeepEqual(idsOf(value.([]any)), []int{3, 2})
-	})
+	// The old attempt detaches once the swap's teardown ran (Pi's `await flushed()`).
+	eventually(t, "the old attempt's query to detach", func() bool { _, err := queries.live[0].Value(); return err != nil })
+	// The reference follows the new instance once the old one stopped changing (a restart's seal): one frame later.
+	eventually(t, "the board's items come from the new attempt's query", func() bool { return reflect.DeepEqual(idsOf(b.items(t)), []int{3, 2}) })
 	equalInts(t, "ids", idsOf(b.items(t)), 3, 2)
 	runs := b.counts()["chord.query.runs"]
 	b.put(t, 4, "t4")

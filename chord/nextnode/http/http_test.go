@@ -143,8 +143,13 @@ func httpExpectCollected(t *testing.T, refs []weak.Pointer[byte]) {
 
 func TestStartupFetchAnswers503BeforeLoadAtOnceThenServesTheRegistriesAreResolvedOnce(t *testing.T) {
 	server := serving(t, []plugin{{"@app/who", httpWhoami}}, servedOptions{noLoad: true})
+	// At once: the answer is not waited for (bounded well under the host's old 5 s wait).
+	started := time.Now()
 	if got := httpStatus(server, "/whoami"); got != 503 {
-		t.Fatalf("status before load = %d, want 503", got)
+		t.Fatalf("status = %d, want 503", got)
+	}
+	if elapsed := time.Since(started); elapsed > 5*time.Second {
+		t.Fatalf("the 503 took %v, want at once", elapsed)
 	}
 	server.load()
 	if got := fetchText(t, httpFetch(server, "/whoami")); got != "null" { //nolint:bodyclose // fetchText closes the body
