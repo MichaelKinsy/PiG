@@ -15,6 +15,7 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -193,7 +194,7 @@ func extensionsOf(t *testing.T, fixture *p2test.TestHost) *p2runtime.P2Extension
 	var found *p2runtime.P2Extension
 	if err := p2test.Poll(func() (bool, error) {
 		// Read inside a section of the host's loop, where contributions change.
-		value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
+		value, err := registryCurrent(fixture.Host, p2runtime.Extensions.Registry)
 		if err != nil {
 			return false, nil
 		}
@@ -243,7 +244,7 @@ func TestReloadPluginsIsOfferedOnlyInDevModeForASessionOnThisP2Checkout(t *testi
 		}
 		fixture := devToolsHost(t, t.TempDir(), cwd)
 		time.Sleep(20 * time.Millisecond)
-		value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
+		value, err := registryCurrent(fixture.Host, p2runtime.ExtensionSwitches.Registry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -263,4 +264,13 @@ func TestReloadPluginsIsOfferedOnlyInDevModeForASessionOnThisP2Checkout(t *testi
 	if offered(true, t.TempDir()) {
 		t.Error("another directory: offered")
 	}
+}
+
+// registryCurrent is a registry's value now, read as the host's section gives it (the source reads inside one).
+func registryCurrent(h host.Host, registry registries.Registry[any, any]) (any, error) {
+	source, err := h.Registry(p2test.Background, registry, host.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return source.Current()
 }
