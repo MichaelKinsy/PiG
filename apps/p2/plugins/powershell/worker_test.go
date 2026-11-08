@@ -69,7 +69,7 @@ func agentAfter(t *testing.T, stored string, change func(draft *delta.Object)) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	return state, offersPowerShell(&typed)
+	return state, OffersPowerShell(&typed)
 }
 
 func TestPowerShellIsOfferedByAnAgentsOwnToolSelectionOtherChoicesUntouched(t *testing.T) {
