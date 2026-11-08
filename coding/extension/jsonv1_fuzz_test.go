@@ -31,10 +31,7 @@ func FuzzRejectDuplicateLoginJSONFieldsMatchesV1(f *testing.F) {
 	f.Add([]byte(`{"palette":{"a":1,"a":2}}`))
 	f.Add([]byte(`{"brand":["x"],"brand":["y"]}`))
 	f.Fuzz(func(t *testing.T, data []byte) {
-		var out any
-		if _, ok := errors.AsType[*json.UnmarshalTypeError](json.Unmarshal(data, &out)); ok {
-			t.Skip("encoding/json v1 Token rejected a number outside float64 range here; the typed decode that follows rejects it still")
-		}
+		jsonseed.SkipJSKeys(t, data)
 		gotErr := rejectDuplicateLoginJSONFields(data)
 		wantErr := rejectDuplicateLoginJSONFieldsV1(data)
 		jsonseed.Same(t, data, "rejectDuplicateLoginJSONFields", nil, nil, gotErr, wantErr)

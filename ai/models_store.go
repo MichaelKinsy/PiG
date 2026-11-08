@@ -404,21 +404,20 @@ func parseStoredModels(data []byte) ([]storedModels, modelsRoot, error) {
 	var entries []storedModels
 	positions := make(map[string]int)
 	for decoder.PeekKind() != '}' {
-		key, err := decoder.ReadToken()
+		name, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return nil, modelsRoot{}, fmt.Errorf("models store: parse: %w", err)
 		}
-		providerID := key.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
 		rawValue, err := decoder.ReadValue()
 		if err != nil {
 			return nil, modelsRoot{}, fmt.Errorf("models store: parse: %w", err)
 		}
 		raw := json.RawMessage(bytes.Clone(rawValue))
-		if index, exists := positions[providerID]; exists {
+		if index, exists := positions[name]; exists {
 			entries[index].raw = raw
 		} else {
-			positions[providerID] = len(entries)
-			entries = append(entries, storedModels{providerID: providerID, raw: raw})
+			positions[name] = len(entries)
+			entries = append(entries, storedModels{providerID: jsonopts.ValidName(name), raw: raw})
 		}
 	}
 	return entries, modelsRoot{}, nil

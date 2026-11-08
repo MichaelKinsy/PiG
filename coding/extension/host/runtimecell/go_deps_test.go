@@ -177,6 +177,7 @@ func TestRenderGoModRaisesTheLanguageVersionToTheHighestExtensionModule(t *testi
 	}
 	low, root126 := write("low", "go 1.26"), write("exact", "go 1.26.0")
 	newer, newest := write("newer", "go 1.27"), write("newest", "go 1.27.3")
+	candidate, beta := write("candidate", "go 1.28rc1"), write("beta", "go 1.29beta2")
 	for _, tc := range []struct {
 		name  string
 		roots []string
@@ -185,6 +186,8 @@ func TestRenderGoModRaisesTheLanguageVersionToTheHighestExtensionModule(t *testi
 		{"floor", []string{low, root126}, "1.26.0"},
 		{"two-part version is spelled with a patch", []string{low, newer}, "1.27.0"},
 		{"highest wins", []string{newest, newer, low}, "1.27.3"},
+		{"a release candidate keeps its spelling", []string{newest, candidate}, "1.28rc1"},
+		{"a beta keeps its spelling", []string{candidate, beta}, "1.29beta2"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var extensions []GoExtension

@@ -32,11 +32,10 @@ func parseModelDataObject(data []byte) *modelDataObject {
 	}
 	object := &modelDataObject{values: map[string]json.RawMessage{}}
 	for decoder.PeekKind() != '}' {
-		token, err := decoder.ReadToken()
+		key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 		if err != nil {
 			return nil
 		}
-		key := token.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
 		valueBytes, err := decoder.ReadValue()
 		if err != nil {
 			return nil

@@ -24,6 +24,7 @@ func FuzzDecodeOrderedHeaderEntriesMatchesV1(f *testing.F) {
 func FuzzOrderedObjectValuesMatchesV1(f *testing.F) {
 	jsonseed.Add(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		if !json.Valid(data) || !jsonseed.IsObject(data) {
 			t.Skip("the reader is lenient about a cut-off document and is called with objects; response.json() has rejected the rest")
 		}

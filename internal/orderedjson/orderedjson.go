@@ -13,6 +13,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Object is a JSON object with its keys in JavaScript enumeration order: the array-index keys ("0", "7", "42") in ascending order, then the other keys in insertion order.
@@ -56,11 +57,10 @@ func (o *Object) UnmarshalJSON(data []byte) error {
 	}
 	o.keys, o.indexKeys, o.values = nil, 0, map[string]json.RawMessage{}
 	for dec.PeekKind() != '}' {
-		keyToken, err := dec.ReadToken()
+		key, err := jsonopts.ReadName(dec) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 		if err != nil {
 			return err
 		}
-		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
 		value, err := dec.ReadValue()
 		if err != nil {
 			return err
@@ -84,7 +84,7 @@ func (o *Object) MarshalJSON() ([]byte, error) {
 		if i > 0 {
 			buf.WriteByte(',')
 		}
-		name, err := json.Marshal(key)
+		name, err := jsstring.MarshalKeepingSurrogates(key) // a lone-surrogate key is held as WTF-8; json.Marshal would write three U+FFFD
 		if err != nil {
 			return nil, err
 		}

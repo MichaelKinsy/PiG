@@ -11,6 +11,7 @@ import (
 func FuzzUnmarshalJSONMatchesV1(f *testing.F) {
 	jsonseed.Add(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		var got, want Object
 		gotErr := got.UnmarshalJSON(data)
 		wantErr := want.UnmarshalJSONV1(data)

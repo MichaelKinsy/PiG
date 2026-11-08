@@ -31,6 +31,7 @@ func sameResult(t *testing.T, data []byte, name string, got, want any, gotErr, w
 func FuzzOrderedJSONObjectMatchesV1(f *testing.F) {
 	fuzzSeeds(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		got, gotErr := orderedJSONObject(data)
 		want, wantErr := orderedJSONObjectV1(data)
 		sameResult(t, data, "orderedJSONObject", got, want, gotErr, wantErr)
@@ -40,6 +41,7 @@ func FuzzOrderedJSONObjectMatchesV1(f *testing.F) {
 func FuzzReadJSONObjectMembersMatchesV1(f *testing.F) {
 	fuzzSeeds(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		got, gotErr := readJSONObjectMembers(data)
 		want, wantErr := readJSONObjectMembersV1(data)
 		sameResult(t, data, "readJSONObjectMembers", got, want, gotErr, wantErr)
@@ -49,6 +51,7 @@ func FuzzReadJSONObjectMembersMatchesV1(f *testing.F) {
 func FuzzOrderedSectionsMatchesV1(f *testing.F) {
 	fuzzSeeds(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		var got, want OrderedSections
 		gotErr := got.UnmarshalJSON(data)
 		wantErr := want.UnmarshalJSONV1(data)
@@ -61,6 +64,7 @@ func FuzzOpenAIReasoningDetailMatchesV1(f *testing.F) {
 	f.Add([]byte(`{"type":"reasoning.text","text":"x","signature":"s","text":"y"}`))
 	f.Add([]byte(`{"type":"reasoning.encrypted","data":"d","id":"i"}`))
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		if !json.Valid(data) {
 			t.Skip("the reader is lenient about a cut-off document; its caller has validated the JSON")
 		}
@@ -75,6 +79,7 @@ func FuzzOpenAIReasoningDetailMatchesV1(f *testing.F) {
 func FuzzParseStoredModelsMatchesV1(f *testing.F) {
 	fuzzSeeds(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		if !json.Valid(data) {
 			t.Skip("the reader is lenient about a cut-off document; Pi's JSON.parse rejects it")
 		}
