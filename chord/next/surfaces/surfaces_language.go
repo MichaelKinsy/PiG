@@ -1,11 +1,8 @@
 package surfaces
 
 import (
-	"fmt"
 	"slices"
 	"strings"
-
-	"golang.org/x/text/language"
 )
 
 // Ports packages/chord/src/surfaces/language.ts.
@@ -125,16 +122,3 @@ func baseLanguage(locale string) string {
 
 // rtlScripts are the scripts written right to left (ISO 15924), as `Intl.Locale` maximizes a tag's script.
 var rtlScripts = []string{"Adlm", "Arab", "Hebr", "Mand", "Nkoo", "Rohg", "Samr", "Syrc", "Thaa", "Yezi"}
-
-// directionOf is the text direction of locale: right to left when its likely script is (Arabic for `ar`, `ur`, `fa`).
-func directionOf(locale string) (string, error) {
-	tag, err := language.Parse(locale)
-	if err != nil {
-		return "", fmt.Errorf("%q is no language tag: %w", locale, err)
-	}
-	script, _ := tag.Script()
-	if slices.Contains(rtlScripts, script.String()) {
-		return "rtl", nil
-	}
-	return "ltr", nil
-}
