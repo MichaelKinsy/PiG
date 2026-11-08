@@ -10,7 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// pig additive (D481): `/tree` as the web's drawer and chat have it (docs/tree.md): a session with two branches or more lists
+// `/tree` as the web's drawer and chat have it (docs/tree.md): a session with two branches or more lists
 // them under its row behind a toggle (choosing another switches the session to it, the pencil renames it), and a message of the
 // main conversation offers "Branch from here" (a user message's text goes back to the prompt).
 

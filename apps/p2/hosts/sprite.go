@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// The PiG sprite hook (pig additive (D482): Pi has no sprites). PiG Standard lets its user choose the pig of the PiG mark (`/sprite`);
+// The PiG sprite hook. PiG Standard lets its user choose the pig of the PiG mark (`/sprite`);
 // the branded web UI draws the chosen one. The hook is a SpriteSource a branded executable passes in ServerOptions.Sprite: nil
 // (Stock, and every test that does not ask) leaves the server as Pi's, without the routes below or the page's attributes, and
 // only a bundle built with the brand layer (its mark reads them) can use it.
