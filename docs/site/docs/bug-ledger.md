@@ -1160,6 +1160,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D371](#bf-d371) | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D520](#bf-d520) | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -17650,6 +17651,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0d59519cff` (2026-11-07), `930ef101d0` (2026-11-07)
 - **Tests:** None recorded.
 
+### BF-D520
+
+**A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D520)
+- **Symptom:** none.
+- **Root cause:** Go's dial returns before the peer's reset arrives and the request write goes into the socket buffer, so the reset surfaces on the response read. PiG cannot tell the two apart without guessing from timing, and the reset after the request is the failure a real server produces, so it keeps Node's text for that case.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** PiG can tell a reset on accept from a reset after the request (for example by recording whether the request body was written before the reset reached the connection), or Pi stops reporting the connect.
+- **Fix commits:** `403a475ba7` (2026-11-08)
+- **Tests:** `ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi`, `ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -26632,6 +26648,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D371 | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | [BF-D371](#bf-d371) |
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
+| D520 | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | [BF-D520](#bf-d520) |
 
 ## Fix-titled commits that are not bugs in a release
 

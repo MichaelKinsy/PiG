@@ -32256,6 +32256,30 @@
       "tests": []
     },
     {
+      "id": "BF-D520",
+      "title": "A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect",
+      "symptom": "none.",
+      "rootCause": "Go's dial returns before the peer's reset arrives and the request write goes into the socket buffer, so the reset surfaces on the response read. PiG cannot tell the two apart without guessing from timing, and the reset after the request is the failure a real server produces, so it keeps Node's text for that case.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D520",
+      "removeWhen": "PiG can tell a reset on accept from a reset after the request (for example by recording whether the request body was written before the reset reached the connection), or Pi stops reporting the connect.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "403a475ba7",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi",
+        "ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -52658,6 +52682,11 @@
       "id": "D431",
       "title": "PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)",
       "entry": "BF-D431"
+    },
+    {
+      "id": "D520",
+      "title": "A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect",
+      "entry": "BF-D520"
     }
   ],
   "exemptCommits": {
