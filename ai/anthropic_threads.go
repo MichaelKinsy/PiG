@@ -200,32 +200,74 @@ func (full *anthThreadPayload) hashPrefix(providerID, baseURL string, messages [
 // last request has none in this one. Extensions may add markers anywhere too. To attach that marker, the newest user message's string
 // content is sent as one text block; the next request sends the same message as a string.
 func normalizeThreadMessage(message json.RawMessage) ([]byte, error) {
-	decoder := json.NewDecoder(bytes.NewReader(message))
-	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
-		return nil, err
-	}
-	return json.Marshal(normalizeThreadValue(value))
+	return normalizeThreadValue(message)
 }
 
-func normalizeThreadValue(value any) any {
-	switch v := value.(type) {
-	case map[string]any:
-		delete(v, "cache_control")
-		for key, member := range v {
-			if text, ok := member.(string); ok && key == "content" {
-				v[key] = []any{map[string]any{"type": "text", "text": text}}
+// normalizeThreadValue walks value through json.RawMessage containers, so no member is decoded into an interface.
+func normalizeThreadValue(value json.RawMessage) (json.RawMessage, error) {
+	switch firstJSONByte(value) {
+	case '{':
+		var members map[string]json.RawMessage
+		if err := json.Unmarshal(value, &members); err != nil {
+			return nil, err
+		}
+		delete(members, "cache_control")
+		for key, member := range members {
+			if key == "content" && firstJSONByte(member) == '"' {
+				var text string
+				if err := json.Unmarshal(member, &text); err != nil {
+					return nil, err
+				}
+				block, err := json.Marshal([]map[string]string{{"type": "text", "text": text}})
+				if err != nil {
+					return nil, err
+				}
+				members[key] = block
 				continue
 			}
-			v[key] = normalizeThreadValue(member)
+			normalized, err := normalizeThreadValue(member)
+			if err != nil {
+				return nil, err
+			}
+			members[key] = normalized
 		}
-	case []any:
-		for i, member := range v {
-			v[i] = normalizeThreadValue(member)
+		return json.Marshal(members)
+	case '[':
+		var members []json.RawMessage
+		if err := json.Unmarshal(value, &members); err != nil {
+			return nil, err
 		}
+		for i, member := range members {
+			normalized, err := normalizeThreadValue(member)
+			if err != nil {
+				return nil, err
+			}
+			members[i] = normalized
+		}
+		return json.Marshal(members)
+	case '"':
+		var text string
+		if err := json.Unmarshal(value, &text); err != nil {
+			return nil, err
+		}
+		return json.Marshal(text)
 	}
-	return value
+	if !json.Valid(value) {
+		return nil, fmt.Errorf("anthropic thread: message is not valid JSON")
+	}
+	return json.Marshal(value)
+}
+
+// firstJSONByte is the first non-space byte of value, or 0.
+func firstJSONByte(value json.RawMessage) byte {
+	for _, b := range value {
+		switch b {
+		case ' ', '\t', '\n', '\r':
+			continue
+		}
+		return b
+	}
+	return 0
 }
 
 // anthThreadRequest is a request sent with a thread member.

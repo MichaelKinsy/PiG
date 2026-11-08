@@ -5,13 +5,6 @@
 
 
 [[hit]]
-file = "agent/message_json.go"
-func = "AgentMessage.decode"
-call = "sdkjson.Unmarshal"
-dest = "*map[string]any"
-count = 1
-
-[[hit]]
 file = "ai/anthropic.go"
 func = "decodeAnthropicEvent"
 call = "json.Unmarshal"
