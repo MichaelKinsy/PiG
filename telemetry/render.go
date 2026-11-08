@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // escaped is text with every control character (C0, C1, DEL) written as a `\uXXXX` escape: a stored id, name or message
@@ -20,15 +21,17 @@ func escaped(text string) string {
 	if !strings.ContainsFunc(text, isControl) {
 		return text
 	}
-	var out strings.Builder
-	for _, char := range text {
+	// CodePoints keeps a lone surrogate (a clipped text has them) as one code point: ranging over the string would turn it into U+FFFD.
+	points := jsstring.CodePoints(text)
+	out := make([]rune, 0, len(points)+16)
+	for _, char := range points {
 		if isControl(char) {
-			fmt.Fprintf(&out, "\\u%04x", char)
+			out = append(out, []rune(fmt.Sprintf("\\u%04x", char))...)
 		} else {
-			out.WriteRune(char)
+			out = append(out, char)
 		}
 	}
-	return out.String()
+	return jsstring.FromCodePoints(out)
 }
 
 func isControl(char rune) bool { return char <= 0x1f || (char >= 0x7f && char <= 0x9f) }

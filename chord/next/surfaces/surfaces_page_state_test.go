@@ -27,7 +27,7 @@ func client(t testing.TB) host.Host {
 
 func TestPageStateKeepsAKeysValueForWhoeverAsksNext(t *testing.T) {
 	h := client(t)
-	defer h.Close(context.Background())
+	defer func() { closed(t, h.Close(context.Background())) }()
 	PageStateOf(h, "draft", "").Set("oat mi")
 	if got := PageStateOf(h, "draft", "ignored").Read(); got != "oat mi" {
 		t.Errorf("draft = %q", got)
@@ -36,8 +36,8 @@ func TestPageStateKeepsAKeysValueForWhoeverAsksNext(t *testing.T) {
 
 func TestPageStateStartsANewKeyOrTheSameKeyOnAnotherHostAtItsInitialValue(t *testing.T) {
 	h, other := client(t), client(t)
-	defer h.Close(context.Background())
-	defer other.Close(context.Background())
+	defer func() { closed(t, h.Close(context.Background())) }()
+	defer func() { closed(t, other.Close(context.Background())) }()
 	PageStateOf(h, "draft", "").Set("oat mi")
 	if got := PageStateOf(h, "scroll", 0).Read(); got != 0 {
 		t.Errorf("scroll = %d", got)
@@ -49,7 +49,7 @@ func TestPageStateStartsANewKeyOrTheSameKeyOnAnotherHostAtItsInitialValue(t *tes
 
 func TestPageStateHoldsAnyValueAsItWasSetNeverCopied(t *testing.T) {
 	h := client(t)
-	defer h.Close(context.Background())
+	defer func() { closed(t, h.Close(context.Background())) }()
 	type selection struct {
 		start, end int
 		element    func() any
@@ -63,7 +63,7 @@ func TestPageStateHoldsAnyValueAsItWasSetNeverCopied(t *testing.T) {
 
 func TestPageStateCallsEverySubscriberAfterASetThatChangedTheValueUntilItUnsubscribes(t *testing.T) {
 	h := client(t)
-	defer h.Close(context.Background())
+	defer func() { closed(t, h.Close(context.Background())) }()
 	state := PageStateOf(h, "draft", "")
 	var calls []string
 	first := state.Subscribe(func() { calls = append(calls, "first "+state.Read()) })
@@ -84,7 +84,7 @@ func TestPageStateIsCollectedWithItsHost(t *testing.T) {
 		created := client(t)
 		value := &kept{"oat mi"}
 		PageStateOf(created, "draft", value)
-		created.Close(context.Background())
+		closed(t, created.Close(context.Background()))
 		// The host is the one pointer CreateHost returned.
 		runtime.AddCleanup((*byte)(reflect.ValueOf(created).UnsafePointer()), func(struct{}) { close(hostGone) }, struct{}{})
 		runtime.AddCleanup(value, func(struct{}) { close(valueGone) }, struct{}{})

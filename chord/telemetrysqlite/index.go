@@ -292,7 +292,7 @@ func (store *SqliteTelemetry) drainLocked(partial bool) error {
 // micros is ms in whole microseconds, as the store keeps span times (Math.round(ms * 1000)).
 func micros(ms float64) int64 {
 	//portlint:allow numbers span times are finite and far inside int64 microseconds
-	return int64(math.Floor(ms*1000 + 0.5))
+	return int64(math.Floor(float64(ms*1000) + 0.5))
 }
 
 func (store *SqliteTelemetry) write(batch Batch) error {

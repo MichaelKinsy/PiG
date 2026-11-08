@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Ports packages/chord/src/node/app/tar.ts
@@ -120,11 +121,28 @@ func tarHeader(path string, size int64) ([]byte, error) {
 	return block, nil
 }
 
-func leftPad(text string, width int) string {
-	if len(text) >= width {
-		return text
+// leftPad is text (ASCII digits) padded with zeros to width: Pi's `padStart(width, "0")`.
+func leftPad(text string, width int) string { return fmt.Sprintf("%0*s", width, text) }
+
+// parseOctal is `Number.parseInt(text, 8)`: an optional sign and the octal digits it starts with; false (NaN) when there are none.
+func parseOctal(text string) (int64, bool) {
+	negative := false
+	if text != "" && (text[0] == '+' || text[0] == '-') {
+		negative = text[0] == '-'
+		text = text[1:]
 	}
-	return strings.Repeat("0", width-len(text)) + text
+	var value int64
+	digits := 0
+	for ; digits < len(text) && text[digits] >= '0' && text[digits] <= '7'; digits++ {
+		value = value*8 + int64(text[digits]-'0')
+	}
+	if digits == 0 {
+		return 0, false
+	}
+	if negative {
+		value = -value
+	}
+	return value, true
 }
 
 // tarField writes text (ASCII) at offset of block, NUL-terminated within length.
@@ -148,7 +166,7 @@ func checkTarPath(path string) error {
 		}
 	}
 	if bad {
-		quoted, _ := json.Marshal(path)
+		quoted, _ := chordjson.Marshal(path)
 		return fmt.Errorf("tar: the path %s is refused", quoted)
 	}
 	return nil
@@ -173,7 +191,7 @@ func ReadTar(src io.Reader, visit func(entry TarRead) error) error {
 		if err != nil {
 			return err
 		}
-		padded := (size + tarBlock - 1) / tarBlock * tarBlock
+		padded := (size + tarBlock - 1) &^ (tarBlock - 1)
 		if directory {
 			if err := visit(TarRead{Kind: TarDirectory, Path: path}); err != nil {
 				return err
@@ -234,7 +252,7 @@ func (data *tarData) Read(p []byte) (int, error) {
 
 // parseTarHeader is a header's path, size and type, its checksum checked; anything but a regular file or a directory refused.
 func parseTarHeader(block []byte) (path string, size int64, directory bool, err error) {
-	stored, perr := strconv.ParseInt(strings.TrimSpace(tarText(block, 148, 8)), 8, 64)
+	stored, storedOK := parseOctal(strings.TrimSpace(tarText(block, 148, 8)))
 	sum := 0
 	for index := range tarBlock {
 		if index >= 148 && index < 156 {
@@ -243,7 +261,7 @@ func parseTarHeader(block []byte) (path string, size int64, directory bool, err 
 			sum += int(block[index])
 		}
 	}
-	if perr != nil || stored != int64(sum) {
+	if !storedOK || stored != int64(sum) {
 		return "", 0, false, errors.New("tar: a header's checksum does not hold")
 	}
 	flag := block[156]
@@ -252,7 +270,7 @@ func parseTarHeader(block []byte) (path string, size int64, directory bool, err 
 	case '5':
 		directory = true
 	default:
-		quoted, _ := json.Marshal(string(rune(flag)))
+		quoted, _ := chordjson.Marshal(string(rune(flag)))
 		return "", 0, false, fmt.Errorf("tar: an entry of type %s is refused (files only)", quoted)
 	}
 	prefix, name := tarText(block, 345, 155), tarText(block, 0, 100)
@@ -268,8 +286,9 @@ func parseTarHeader(block []byte) (path string, size int64, directory bool, err 
 	if stamp == "" {
 		stamp = "0"
 	}
-	size, perr = strconv.ParseInt(stamp, 8, 64)
-	if perr != nil || size < 0 || size > 1<<53-1 {
+	var sizeOK bool
+	size, sizeOK = parseOctal(stamp)
+	if !sizeOK || size < 0 || size > 1<<53-1 {
 		return "", 0, false, fmt.Errorf("tar: %s has no valid size", path)
 	}
 	if directory {

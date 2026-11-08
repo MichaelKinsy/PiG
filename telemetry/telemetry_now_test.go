@@ -25,7 +25,7 @@ func TestTelemetryNowCountsSubMillisecondStepsOfTheMonotonicClockWhileTheWallClo
 		t.Errorf("after 0.5012 ms = %v, want 0.501", d)
 	}
 	now := telemetry.TelemetryNow() * 1000
-	if now != math.Trunc(now) && math.Abs(now-math.Round(now)) > 1e-6 {
+	if now != math.Trunc(now) {
 		t.Errorf("not a whole number of microseconds: %v", now)
 	}
 }

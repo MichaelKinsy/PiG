@@ -51,7 +51,11 @@ func newHost(t testing.TB) host.Host {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { h.Close(bg) })
+	t.Cleanup(func() {
+		if err := h.Close(bg); err != nil {
+			t.Errorf("close: %v", err)
+		}
+	})
 	facet := host.DefineFacet(func(fh host.FacetHost, self host.FacetSelf) error {
 		err := fh.Serve(Notes, func(_ *delta.JsonObject, object host.Self) (contracts.Implementation, error) {
 			text := object.Writable("first")
@@ -145,10 +149,8 @@ func settle(n *atomic.Int64) {
 		case <-woken:
 			quiet.Stop()
 		case <-quiet.C:
-			if now := n.Load(); now == last {
+			if n.Load() == last {
 				return
-			} else {
-				last = now
 			}
 		}
 		last = n.Load()

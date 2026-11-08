@@ -138,7 +138,7 @@ func (m *Messages) renderKey(language *Language, key string, args []any) (string
 			}
 		}
 		own, hasOwn := m.own[locale]
-		if hasOwn && !(hasContributed && sameCatalog(own, contributed.Value.Messages)) {
+		if hasOwn && (!hasContributed || !sameCatalog(own, contributed.Value.Messages)) {
 			if _, ok := own[key]; ok {
 				text, err := call(language, own, key, args)
 				if err != nil {

@@ -110,8 +110,8 @@ func ThemeVariables(theme Theme) map[string]string {
 
 var (
 	indexColor = regexp.MustCompile(`^\d{1,3}$`)
-	//portlint:allow regexfold a #rrggbb colour is hex digits of either case, as Pi's /i flag
-	hexColor = regexp.MustCompile(`(?i)^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$`)
+	// Pi's /i flag over hex digits matches only ASCII letters, as these classes do.
+	hexColor = regexp.MustCompile(`^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$`)
 )
 
 // TerminalColor is the SGR parameters of role's colour in theme for a terminal of depth "truecolor" or "256"
@@ -131,8 +131,8 @@ func TerminalColor(theme Theme, role, depth, layer string) string {
 		base = "48"
 	}
 	if has && indexColor.MatchString(color) {
-		//portlint:allow numbers indexColor matched 1 to 3 digits: Atoi cannot fail, and 255 is the largest index Pi accepts
-		if n, _ := strconv.Atoi(color); n < 256 {
+		// Number(color) < 256 over one to three digits.
+		if decimal(color) < 256 {
 			return base + ";5;" + color
 		}
 	}
@@ -145,14 +145,39 @@ func TerminalColor(theme Theme, role, depth, layer string) string {
 		return "49"
 	}
 	for i := range rgb {
-		//portlint:allow numbers hexColor matched two hex digits: ParseInt cannot fail
-		value, _ := strconv.ParseInt(match[i+1], 16, 0)
-		rgb[i] = int(value)
+		rgb[i] = hexByte(match[i+1])
 	}
 	if depth == "truecolor" {
 		return fmt.Sprintf("%s;2;%s", base, strings.Join([]string{strconv.Itoa(rgb[0]), strconv.Itoa(rgb[1]), strconv.Itoa(rgb[2])}, ";"))
 	}
 	return fmt.Sprintf("%s;5;%d", base, nearest256(rgb))
+}
+
+// decimal is the value of text, one to three ASCII digits (indexColor matched).
+func decimal(text string) int {
+	value := 0
+	for index := range len(text) {
+		value = value*10 + int(text[index]-'0')
+	}
+	return value
+}
+
+// hexByte is the value of two hex digits of either case (hexColor matched).
+func hexByte(text string) int {
+	value := 0
+	for index := range len(text) {
+		char := text[index]
+		switch {
+		case char >= 'a':
+			char = char - 'a' + 10
+		case char >= 'A':
+			char = char - 'A' + 10
+		default:
+			char -= '0'
+		}
+		value = value*16 + int(char)
+	}
+	return value
 }
 
 // cube is the levels of the xterm 6×6×6 colour cube.
@@ -174,7 +199,7 @@ func nearest256(rgb [3]int) int {
 	near := [3]int{cube[r], cube[g], cube[b]}
 	average := float64(rgb[0]+rgb[1]+rgb[2]) / 3
 	// Math.round rounds half up.
-	//portlint:allow numbers the value is clamped to 0..23 and floored before the conversion, as Math.round then clamp
+	//portlint:allow numbers Pi rounds the float quotient (average - 8) / 10 with Math.round; an integer form of that quotient ((sum - 24) / 30) rounds ties differently where the float division is inexact, so the float result is converted once it is clamped to 0..23 and floored
 	grey := int(math.Max(0, math.Min(23, math.Floor((average-8)/10+0.5))))
 	greyValue := 8 + grey*10
 	distance := func(other [3]int) int {

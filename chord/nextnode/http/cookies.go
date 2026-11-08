@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsclock"
 )
@@ -21,7 +20,7 @@ import (
 // expiry (`maxAge`) is a *float64 (absent: a session cookie). `encodeURIComponent` is encodeURIComponent below.
 
 // now is `Date.now()` as a time: jsclock's, so a test that mocks the date (the app kit's rolling cookies) moves it too.
-var now = func() time.Time { return time.UnixMilli(int64(jsclock.DateNow())) }
+var now = jsclock.DateTime
 
 // SameSite is a cookie's `SameSite` attribute: Pi's closed union `"Strict" | "Lax"`, which no text can extend.
 type SameSite uint8

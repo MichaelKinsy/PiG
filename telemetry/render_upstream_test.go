@@ -232,3 +232,16 @@ func TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessa
 		}
 	}
 }
+
+// A name clipped inside a surrogate pair (three-byte WTF-8 surrogates, as the failure clipping leaves) keeps its lone surrogate next
+// to an escaped control character: JS strings hold it as it is.
+func TestRenderTraceKeepsALoneSurrogateBesideAnEscapedControlCharacter(t *testing.T) {
+	name := "a\x1b\xed\xa0\x80b"
+	rendered := telemetry.RenderTrace([]telemetry.StoredSpan{renderSpan("root", func(span *telemetry.StoredSpan) { span.Name = name })})
+	if want := "a\\u001b\xed\xa0\x80b"; !strings.Contains(rendered, want) {
+		t.Errorf("rendered lacks %q:\n%q", want, rendered)
+	}
+	if strings.Contains(rendered, "\uFFFD") {
+		t.Errorf("rendered holds U+FFFD: %q", rendered)
+	}
+}

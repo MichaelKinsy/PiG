@@ -97,7 +97,7 @@ func TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer h.Close(context.Background())
+	defer func() { closed(t, h.Close(context.Background())) }()
 	ctx := context.Background()
 	report, err := h.Load([]host.HostFacet{
 		{Name: "chord.translations", Facet: TranslationsFacet()},

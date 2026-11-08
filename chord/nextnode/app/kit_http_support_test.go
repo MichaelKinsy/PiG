@@ -174,7 +174,7 @@ func (s *kitServer) send(method, path string, headers map[string]string, body st
 	if err != nil {
 		s.t.Fatal(err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	text, err := io.ReadAll(response.Body)
 	if err != nil {
 		s.t.Fatal(err)
