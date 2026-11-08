@@ -29,25 +29,15 @@ json_output_equal = true
 stderr_equal = true
 exit_code = 0
 runs = 3
+both_contain = [
+  '{"type":"queue_update","steering":[],"followUp":[""]}',
+  '{"type":"queue_update","steering":[],"followUp":[]}',
+]
 
-# Pi 1.5.0 agent-session.ts:1136-1156 (_handleAgentEvent, user message_start) removes a delivered message from the pending queue only when its text is truthy,
-# so the empty steering and follow-up entries this scenario queues stay in Pi's pending queue and Pi emits no queue_update for them. D250 (Pi main a63c4ec5c,
-# #8612) matches empty text too, and the RPC stream carries the resulting queue_update before the user message_start that caused it. These two records are the
-# whole difference: the empty prompt's message_start removes the queued empty steering entry (first record), the delivery of the steer's message removes the
-# queued empty follow-up entry (second record). Each run of Pig carries exactly one of each, each directly before a message_start; any other count or position fails.
-[[assert.json_pig_only_records]]
-divergence = "D250"
-record = '{"type":"queue_update","steering":[],"followUp":[""]}'
-count = 1
-before_type = "message_start"
-reason = "D250: the empty prompt's message_start removes the queued empty steering entry, leaving the empty follow-up entry; Pi 1.5.0 keeps the entry and emits nothing."
-
-[[assert.json_pig_only_records]]
-divergence = "D250"
-record = '{"type":"queue_update","steering":[],"followUp":[]}'
-count = 1
-before_type = "message_start"
-reason = "D250: the steer's message_start removes the queued empty follow-up entry, emptying the pending queue; Pi 1.5.0 keeps the entry and emits nothing."
+# Pi's agent-session.ts _handleAgentEvent (user message_start) matches a delivered message against the pending queue even when its text is empty since Pi main a63c4ec5c
+# (#8612, in the pin c23b9ec1; Pi 1.5.0 guarded the match with a truthy text and emitted nothing). The RPC stream therefore carries two queue_update records in both
+# engines, each before the message_start that caused it: the empty prompt's message_start removes the queued empty steering entry, and the delivery of the steer's message
+# removes the queued empty follow-up entry. They are compared like every other record; its divergence record is retired. both_contain pins both records so the scenario fails if either engine stops emitting them.
 
 [[assert.json_aliases]]
 paths = ["/**/sessionId"]

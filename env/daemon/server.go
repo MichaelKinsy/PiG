@@ -5,12 +5,14 @@ package daemon
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
@@ -695,6 +697,23 @@ func runInOrder(queue *jobQueue, handle *fileHandle, job func()) {
 	})
 }
 
+// writeStderr writes message to stderr, waiting while it is full. Stderr shares stdout's open file description when the
+// daemon runs with 2>&1, and Serve has that description non-blocking: Go treats the inherited stderr as blocking, so a full
+// pipe would otherwise answer EAGAIN and lose the message. Pi's blocking eprintln waits.
+func writeStderr(stderr *os.File, message string) {
+	deadline := time.Now().Add(5 * time.Second)
+	for text := []byte(message); len(text) > 0; {
+		written, err := stderr.Write(text)
+		text = text[written:]
+		if err != nil && (!errors.Is(err, syscall.EAGAIN) || time.Now().After(deadline)) {
+			return
+		}
+		if err != nil {
+			time.Sleep(time.Millisecond)
+		}
+	}
+}
+
 // respondHook, nil outside tests, runs before a request is answered; a test panics in it to reach recoverThreadPanic.
 var respondHook atomic.Pointer[func(op string)]
 
@@ -704,7 +723,7 @@ var respondHook atomic.Pointer[func(op string)]
 // jobs, and Rust's default hook reports the panic on stderr.
 func recoverThreadPanic() {
 	if failure := recover(); failure != nil {
-		fmt.Fprintf(os.Stderr, "thread panicked: %v\n", failure)
+		writeStderr(os.Stderr, fmt.Sprintf("thread panicked: %v\n", failure))
 	}
 }
 
@@ -823,6 +842,15 @@ func (s seen) Read(buffer []byte) (int, error) {
 // refuses with EMFILE at about 1020 handles on a default shell succeeds here up to the hard limit or maxHandles.
 func Serve(input io.Reader, output io.Writer, token string, options Options) error {
 	defaultChildSignals()
+	input, closeInput := pollableReader(input)
+	output, closeOutput := pollableWriter(output)
+	// Every way out of the process gives the descriptors' mode back: os.Exit skips defers, and a parent or a sibling that shares
+	// the open file descriptions would otherwise find them non-blocking.
+	restoreStdio := sync.OnceFunc(func() {
+		closeInput()
+		closeOutput()
+	})
+	defer restoreStdio()
 	// A client that stops the daemon (Node's `child.kill()`), or a hangup, leaves nothing running either. The signals are
 	// taken before anything starts, so none is lost to their default action.
 	exitSignals, stopExitSignals := notifyExitSignals()
@@ -866,6 +894,7 @@ func Serve(input io.Reader, output io.Writer, token string, options Options) err
 			if options.OnExitSignal != nil {
 				options.OnExitSignal(number)
 			} else {
+				restoreStdio()
 				os.Exit(128 + number)
 			}
 		case <-stop:
@@ -888,6 +917,7 @@ func Serve(input io.Reader, output io.Writer, token string, options Options) err
 				if options.OnSilence != nil {
 					options.OnSilence()
 				} else {
+					restoreStdio()
 					os.Exit(0)
 				}
 				return

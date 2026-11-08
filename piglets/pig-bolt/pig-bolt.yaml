@@ -1,0 +1,17 @@
+name: pig-bolt
+description: "Experimental, not an official Pi-Bolt project: compiles a session's TypeScript extensions into one executable with the Pi-Bolt compiler, in the background, and runs it from the next start."
+
+release:
+  version: 0.5.0-dev
+
+build:
+  extensionRealization: fused
+
+extensions:
+  - name: boltruntime
+    origins:
+      - local:extensions/boltruntime
+
+discovery:
+  extensions: []
+  skills: []

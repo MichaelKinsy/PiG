@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"time"
@@ -67,13 +68,9 @@ const workerSend = time.Second
 func StartWorker(options WorkerOptions) {
 	// The worker's facet kind comes with the start message: every kind's packages are offered, its own are imported.
 	packages := plugins.HostPackages{}
-	for name, path := range options.API.Modules {
-		packages[name] = path
-	}
+	maps.Copy(packages, options.API.Modules)
 	for _, kind := range options.Kinds {
-		for name, path := range kind.Packages {
-			packages[name] = path
-		}
+		maps.Copy(packages, kind.Packages)
 	}
 	nodeOptions := options.Node
 	workers.WorkerMain(func(start workers.WorkerStart, ctx context.Context) (*workers.WorkerResult, error) {

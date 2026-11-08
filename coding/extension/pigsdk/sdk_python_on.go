@@ -3,9 +3,6 @@
 package pigsdk
 
 import (
-	"slices"
-	"sync"
-
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 
 	pysdk "github.com/MichaelKinsy/PiG/extensions/sdk-py"
@@ -20,8 +17,5 @@ func pythonBundle() (sdkBundle, bool) {
 	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.ExtensionSDKPython) {
 		return sdkBundle{}, false
 	}
-	return sdkBundle{lang: "python", files: pythonBundleFiles(), fsys: pysdk.Source}, true
+	return sdkBundle{lang: "python", stagedHash: pysdk.StagedHash(), unpack: func() ([]byte, error) { return decodeBundle(pysdk.Source) }}, true
 }
-
-// pythonBundleFiles lists the embedded Python SDK once per process: the embedded files never change, and staging and the staged directory's hash both read the list, which they never write; its capacity is clipped, so an append copies it.
-var pythonBundleFiles = sync.OnceValue(func() []string { return slices.Clip(pysdk.BundledFiles()) })

@@ -62,6 +62,10 @@ func runExtensionsRuntime(ctx context.Context, args []string, stdout, stderr io.
 	if status.Request.ID != tsruntime.Node {
 		// A runtime with images per extension set has none for the empty set: its status names the sets it holds.
 		status.Selection = tsruntime.NewResolver(status.Root, tsruntime.NewVerifier(tsruntime.Lock)).Resolve(ctx, status.Request, tsruntime.Set{})
+		// The status starts nothing, so it does not keep the verified executable open.
+		if status.Selection.Verified != nil {
+			_ = status.Selection.Verified.Close()
+		}
 	}
 	status.NodeOnly = tsruntime.ListNodeOnly(status.Root)
 	if status.Installed, err = tsruntime.List(status.Root); err != nil {

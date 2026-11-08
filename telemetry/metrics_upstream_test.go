@@ -5,8 +5,9 @@ package telemetry_test
 // The expectTypeOf and @ts-expect-error assertions check TypeScript inference: counter names restricted to counters,
 // histogram names to histograms, unknown names, required and exact measurement attributes, closed-set values, variables
 // with unknown attributes, duplicate metric names across schemas, and high-cardinality attributes on metrics. They have no
-// Go form, and upstream performs no runtime validation for them (see the header of metrics.go). Object.isFrozen has no Go
-// form either: the shared no-op instruments are stateless values.
+// Go form, and upstream performs no runtime validation for them (see the header of metrics.go). Object.isFrozen checks that
+// no caller can change the shared no-op instruments; its Go form asserts that they hold no state to change (a type with no
+// fields), in the same subtest.
 
 import (
 	"encoding/json"
@@ -171,6 +172,12 @@ func TestMetricsUpstream(t *testing.T) {
 		}
 		if active != telemetry.NoopTelemetryMetrics.UpDownCounter("other", telemetry.InstrumentOptions{}) || histogram != telemetry.NoopTelemetryMetrics.Histogram("other", telemetry.HistogramOptions{}) {
 			t.Fatal("the no-op up-down counters or histograms differ: the instrument is shared")
+		}
+		// Object.isFrozen(counter), (active) and (histogram): a frozen object cannot change, and a value of a struct type with no fields cannot either.
+		for name, instrument := range map[string]any{"counter": counter, "upDownCounter": active, "histogram": histogram} {
+			if kind := reflect.TypeOf(instrument); kind.Kind() != reflect.Struct || kind.NumField() != 0 {
+				t.Errorf("the no-op %s is a %s with state a caller could change; want a struct with no fields", name, kind)
+			}
 		}
 		counter.Add(1, attributes)
 		active.Add(-1, attributes)

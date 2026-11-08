@@ -2,7 +2,7 @@ package mermaid
 
 import "testing"
 
-// TestStringWidthMatchesUpstream pins pig's width measurement to grok-mermaid's
+// TestStringWidthMatchesUpstream pins pig's width measurement to lovely-mermaid's
 // own stringWidth (src/width.ts): the values pi uses to size boxes. Covers the
 // generated WIDTHS table, grapheme clustering, and the VS16 / regional-indicator
 // / combining-mark rules of clusterWidth.

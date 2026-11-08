@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os/exec"
 	"reflect"
 	"slices"
@@ -77,24 +76,6 @@ func TestAppKeybindingsManagerMatchesPi(t *testing.T) {
 			probes = append(probes, keybindingsProbe{Kitty: kitty, Bindings: b})
 		}
 	}
-	// pig divergence (D241): where Windows defaults apply (win32 and WSL), Pig's default for app.clipboard.pasteImage is alt+v and ctrl+v, Pi 1.5.0's
-	// alt+v only. Pi bound to those two keys by the user behaves exactly as Pi's later default does, so a probe that does not bind the action is paired
-	// with one that does, and only that action's matches and keys are read from the pair. Nothing else is excused.
-	d241Pair := map[int]int{}
-	if tui.HostKeybindingPlatform().UsesWindowsKeybindings() {
-		for index, probe := range slices.Clone(probes) {
-			if _, bound := probe.Bindings["app.clipboard.pasteImage"]; bound {
-				continue
-			}
-			paired := maps.Clone(probe.Bindings)
-			if paired == nil {
-				paired = map[string][]string{}
-			}
-			paired["app.clipboard.pasteImage"] = []string{"alt+v", "ctrl+v"}
-			d241Pair[index] = len(probes)
-			probes = append(probes, keybindingsProbe{Kitty: probe.Kitty, Bindings: paired})
-		}
-	}
 	input, err := json.Marshal(map[string]any{"probes": probes, "candidates": candidates})
 	if err != nil {
 		t.Fatal(err)
@@ -156,11 +137,6 @@ func TestAppKeybindingsManagerMatchesPi(t *testing.T) {
 			return tui.GetTUIKeybindings().GetKeys(action)
 		}
 		want := expected.Results[index]
-		if pair, ok := d241Pair[index]; ok {
-			const paste = "app.clipboard.pasteImage"
-			want.Matches, want.Keys = maps.Clone(want.Matches), maps.Clone(want.Keys)
-			want.Matches[paste], want.Keys[paste] = expected.Results[pair].Matches[paste], expected.Results[pair].Keys[paste]
-		}
 		for _, action := range expected.Actions {
 			var got []int
 			for i, data := range candidates {
@@ -216,42 +192,4 @@ func TestAppKeybindingsManagerMatchesPi(t *testing.T) {
 type keybindingsProbe struct {
 	Kitty    bool                `json:"kitty"`
 	Bindings map[string][]string `json:"bindings,omitempty"`
-}
-
-// pasteImageAction is the action D241 changes.
-const pasteImageAction = "app.clipboard.pasteImage"
-
-// d241Applies reports whether Windows defaults, and so D241's extra ctrl+v on app.clipboard.pasteImage, apply to this host (win32, or Linux under WSL).
-func d241Applies() bool { return tui.HostKeybindingPlatform().UsesWindowsKeybindings() }
-
-// d241PasteKeys returns the keys Pig's default for app.clipboard.pasteImage has where d241Applies, given the keys Pi 1.5.0 reports for its default, which
-// must be alt+v alone: a Pi whose default already holds ctrl+v makes the allowance obsolete and fails here instead of passing silently.
-func d241PasteKeys(t *testing.T, piKeys []string) []string {
-	t.Helper()
-	if !slices.Equal(piKeys, []string{"alt+v"}) {
-		t.Fatalf("D241: Pi's default for %s on this host is %v, want [alt+v]; the allowance is obsolete", pasteImageAction, piKeys)
-	}
-	return []string{"alt+v", "ctrl+v"}
-}
-
-// d241PiProbes returns the custom-editor probes as Pi receives them. Where d241Applies, a probe that sends Ctrl+V (0x16) and does not bind the paste action
-// goes to Pi with that action bound to alt+v and ctrl+v, which is how Pi behaves with D241's default; Pig's side keeps the probe unchanged. Every other probe
-// and key compares unchanged.
-func d241PiProbes(probes []ceOracleProbe) []ceOracleProbe {
-	piProbes := slices.Clone(probes)
-	if !d241Applies() {
-		return piProbes
-	}
-	for i, probe := range probes {
-		if _, bound := probe.Bindings[pasteImageAction]; bound || !slices.ContainsFunc(probe.Ops, func(op ceOracleOp) bool { return op.Keys != nil && *op.Keys == "\x16" }) {
-			continue
-		}
-		bindings := maps.Clone(probe.Bindings)
-		if bindings == nil {
-			bindings = map[string][]string{}
-		}
-		bindings[pasteImageAction] = []string{"alt+v", "ctrl+v"}
-		piProbes[i].Bindings = bindings
-	}
-	return piProbes
 }

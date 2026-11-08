@@ -1895,14 +1895,21 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 }
 
 // startupChangelog records the changelog version and returns the What's New entries of a fresh session (recordChangelogVersionAndMaybeReportInstall).
-// Only a recorded version other than appVersion reads the entries, so the bundled changelog is parsed only then; the first start and a start of the recorded version parse nothing.
-// pig additive (D92): a Piglet that strips the changelog parses an empty bundle; see changelog_bundle.go.
+// Only a recorded version other than appVersion reads the entries, and then only as far as the entries newer than it extend (parseChangelogNewerThan):
+// the first start and a start of the recorded version read nothing, and a recorded version ahead of this build's decodes a few kilobytes.
+// pig additive (D92): a Piglet that strips the changelog reads an empty bundle; see changelog_bundle.go.
 func startupChangelog(sm *SettingsManager, appVersion string) []ChangelogEntry {
-	var allEntries []ChangelogEntry
+	var newer []ChangelogEntry
 	if lastSeen := sm.GetLastChangelogVersion(); lastSeen != "" && lastSeen != appVersion {
-		allEntries = ParseChangelog(bundledChangelog())
+		// An unreadable recorded version has nothing to compare with: recordChangelogVersionAndMaybeReportInstall records the current one and shows nothing.
+		if last, ok := parseLastSeenVersion(lastSeen); ok {
+			var err error
+			if newer, err = parseChangelogNewerThan(bundledChangelogReader(), last); err != nil {
+				panic("pig: embedded CHANGELOG.md.gz: " + err.Error())
+			}
+		}
 	}
-	return recordChangelogVersionAndMaybeReportInstall(sm, appVersion, allEntries)
+	return recordChangelogVersionAndMaybeReportInstall(sm, appVersion, newer)
 }
 
 // startInitialMessages is run()'s processing of the initial message and initialMessages once the TUI is up: the message is fed through the same handleSubmit

@@ -23,3 +23,35 @@ func TestHelpWithoutSelfUpdateListsOnlyTheSourceTarget(t *testing.T) {
 		t.Fatalf("help without self-update:\n%s", stripped.String())
 	}
 }
+
+// pig additive (D92): the --tools examples drop whole when one of their tools is stripped, also when the tool carries the + or - modifier of the
+// default tools (`pig --tools +codemode`), so a build without codemode does not show an example for it.
+func TestHelpWithoutCodemodeDropsTheToolModifierExample(t *testing.T) {
+	const example, comment = "  pig --tools +codemode\n", "# Add codemode to the default tools\n"
+	var stock bytes.Buffer
+	printHelp(&stock, false)
+	if !strings.Contains(stock.String(), example) || !strings.Contains(stock.String(), comment) {
+		t.Fatalf("stock help lacks the +codemode example:\n%s", stock.String())
+	}
+	t.Cleanup(pigstrip.Strip(pigstrip.ListExtensions, "codemode"))
+	var stripped bytes.Buffer
+	printHelp(&stripped, false)
+	if strings.Contains(stripped.String(), example) || strings.Contains(stripped.String(), comment) {
+		t.Fatalf("help without codemode keeps its +codemode example:\n%s", stripped.String())
+	}
+	if !strings.Contains(stripped.String(), "pig --tools read,grep,find,ls -p") {
+		t.Fatalf("help without codemode lost an example that names no stripped tool:\n%s", stripped.String())
+	}
+	modified := []string{"  pig --tools +write\n", "  pig --tools -write,+read\n"}
+	for _, line := range modified {
+		if _, keep := stripHelpLine(line); !keep {
+			t.Fatalf("stripHelpLine dropped %q with write kept", line)
+		}
+	}
+	t.Cleanup(pigstrip.Strip(pigstrip.ListTools, "write"))
+	for _, line := range modified {
+		if _, keep := stripHelpLine(line); keep {
+			t.Fatalf("stripHelpLine kept %q with write stripped", line)
+		}
+	}
+}

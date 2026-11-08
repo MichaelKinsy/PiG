@@ -110,14 +110,9 @@ func sameValue(a, b any) bool {
 
 // comparableEqual is a == b for two values of one comparable type; a struct or array holding an interface that holds an
 // uncomparable value (a slice) is no `===` of anything: not the same.
-func comparableEqual(a, b any) (same bool) {
-	defer func() {
-		// upstream: packages/chord/src/surfaces/page-state.ts (`===` of an uncomparable value is no throw in JS: not the same)
-		if recover() != nil {
-			same = false
-		}
-	}()
-	return a == b
+func comparableEqual(a, b any) bool {
+	// Comparable is true only when == on a and anything else cannot panic (the dynamic type and the interfaces inside it).
+	return reflect.ValueOf(a).Comparable() && a == b
 }
 
 // pageStates are each client host's page state by key, kept as long as the host.

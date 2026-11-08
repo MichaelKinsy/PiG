@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { createMermaidMarkdownTransformer } from "../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/components/mermaid.js";
+import { importPiMermaid } from "./mermaid-oracle.mjs";
+const { createMermaidMarkdownTransformer } = await importPiMermaid();
 
 // Reuse only the wide input fixture, not native output or expectations. Both engines receive the same diagram that previously triggered the removed fitting search.
 const fixture = readFileSync(new URL("../../../internal/codingagent/mermaid_fallback_upstream_test.go", import.meta.url), "utf8");

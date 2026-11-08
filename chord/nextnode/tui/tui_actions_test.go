@@ -241,7 +241,7 @@ func (s *swapping) Ask(lines []string) (bool, error) {
 		if err := os.Rename(filepath.Join(s.dir, "a"), filepath.Join(s.dir, "a-old")); err != nil {
 			s.t.Fatal(err)
 		}
-		testenv.Symlink(s.t, filepath.Join(s.dir, "b"), filepath.Join(s.dir, "a"))
+		testenv.RequireDirectoryLink(s.t, filepath.Join(s.dir, "b"), filepath.Join(s.dir, "a"))
 	}
 	return true, nil
 }

@@ -1,0 +1,81 @@
+# Behavior family: extensions-runtime
+# Upstream evidence: real Pi 1.5.0 (extensions/sdk-ts/node_modules) run side by side with PiG in tmux at 100x40 over the same session fixture, three pairs, byte-equal captures; PiG with a new identity per entry component collapses the card after the rebuild, where Pi (same session-manager entry object, same WeakMap key) keeps it open.
+# Surface: a custom entry renderer keeps its card's state per entry (a WeakMap keyed by the entry object, which Pi's session manager holds once per
+# entry and hands the renderer on every rebuild of the transcript). A left click on the second entry's MouseRegion expands it; changing the
+# "Cache miss notices" setting then rebuilds the transcript from the session (Pi: onShowCacheMissNoticesChange -> rebuildChatFromMessages), and the
+# card is still expanded, because the rebuilt component is drawn for the same entry. PiG decodes the entry again on each rebuild and used to make a
+# new identity for it, so the card collapsed.
+#
+# renderer-click-entry.mjs registers the entry renderer. The session fixture (testdata/click-entry-cwd) holds a user message, a reply and two
+# click-entry entries.
+
+name = "97-entry-click-state-survives-rebuild"
+description = "A custom entry card expanded by a click stays expanded after the transcript is rebuilt from the session"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-entry.ts",
+  "packages/tui/src/components/mouse-region.ts",
+]
+tags = ["hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/quiet-pig-home", "COLORTERM="]
+pi = ["PI_CODING_AGENT_DIR=testdata/quiet-pi-agent", "PI_SKIP_VERSION_CHECK=1", "COLORTERM="]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+pig_extensions = ["testdata/ext/renderer-click-entry.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/renderer-click-entry.mjs",
+]
+
+[tmux]
+width = 100
+height = 40
+cwd = "testdata/click-entry-cwd"
+ready_pattern_pig = "entry:second:closed"
+ready_pattern_pi = "entry:second:closed"
+ready_timeout_seconds = 30
+capture_start = "entry:first"
+capture_end = "details of second"
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 35 3b 39 4d 1b 5b 3c 30 3b 35 3b 39 6d"]
+wait_visible_contains = ["details of second"]
+wait_stable_milliseconds = 400
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+# Synchronize the modal input-owner handoff before entering the filter.
+[[tmux.steps]]
+keys = ["Space"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["cache miss"]
+wait_contains = ["> cache miss"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_visible_contains = ["details of second"]
+wait_stable_milliseconds = 400
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["entry:first:closed", "details of second"]
+both_not_contain = ["entry:second:closed", "panic:", "goroutine "]
+output_equal = true
+runs = 3

@@ -628,6 +628,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/anthropic-message-threads.test.ts",
+      "upstreamTestHash": "sha256:c3c9855ef1f514fe9246f75f7a9acec233b6a6b7cad68c228bee9dc80d43a18b",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
       "path": "packages/ai/test/anthropic-mid-conversation-effort.test.ts",
       "upstreamTestHash": "sha256:41c4e19ce197243044d203cfb7e2e0de6b5f185121ab9ae2806bc9b9af402767",
       "area": "providers",
@@ -882,6 +891,15 @@
     {
       "path": "packages/ai/test/cache-retention.test.ts",
       "upstreamTestHash": "sha256:12c858b08949b9e939c833e8a7ea0a2668d2f12f4b31d16071ab581d41cc4044",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/ai/test/clamp-max-tokens.test.ts",
+      "upstreamTestHash": "sha256:df80896bb514f1dfc0f4b4f3bb16027dc1b746741345597e666b09239f93691e",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1492,6 +1510,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/openai-completions-non-null-assistant-content.test.ts",
+      "upstreamTestHash": "sha256:ab06a46cee61291d8793a1b904cc201f902b09dc5ec19efef7e9e4fe2da25f05",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
       "path": "packages/ai/test/openai-completions-prompt-cache.test.ts",
       "upstreamTestHash": "sha256:276535dc7e725b031e734fd3595cb644e1728a7e12520e0bf0aa8274c7fe8a01",
       "area": "providers",
@@ -1674,6 +1701,15 @@
     {
       "path": "packages/ai/test/openai-responses-partial-json-cleanup.test.ts",
       "upstreamTestHash": "sha256:ad44bf0cb7726e895b13b64e59070579a2a42ab84df0c6cc6117376bcf7ad7e9",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/ai/test/openai-responses-prompt-cache.test.ts",
+      "upstreamTestHash": "sha256:17de0ec9bf7c1fabd7882e6a0522684c785142c811c040111e3eb06243164827",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -2977,11 +3013,9 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Codemode sandbox execution reached on coding turns: the built-in codemode tool runs every script through codemode.NewSandbox (coding/extension/builtin/codemode/execute.go); the inline and remote backends serve the durable and Cloudflare hosts. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, 'Yes go with recommendations'): the cases 'accepts a worker path string' and 'reports a missing worker file as a sandbox error' are designed out because the Go engine runs QuickJS on wazero in process and has no worker file. Carried to 1.2.0: both cases are unchanged in the 1.2.0 'worker host' describe and the Go engine still has no worker file. The 1.2.0 case 'ignores Node --watch notifications from the worker' is designed out on the same mechanic: the in-process wazero QuickJS engine has no worker message channel, so no Node --watch notification can arrive (nodejs/node#65044 is the Node behavior the case guards against). SCRUTINIZED:approved by the lead ruling of 2026-10-11T18:42Z (Q5, commit 4c6bb3897f), confirmed for 1.2.0 by the lead on 2026-10-12.",
+      "rationale": "Codemode sandbox execution reached on coding turns: the built-in codemode tool runs every script through codemode.NewSandbox (coding/extension/builtin/codemode/execute.go); the inline and remote backends serve the durable and Cloudflare hosts. The cases 'accepts a worker path string' and 'reports a missing worker file as a sandbox error', first designed out because the Go engine runs QuickJS on wazero in process and has no worker file, are ported against SandboxOptions.Wasm, the PiG analogue of the worker file (TestWorkerHostAcceptsAModuleFromAFilePath, TestWorkerHostReportsAMissingModuleFileAsASandboxError). The 1.2.0 case 'ignores Node --watch notifications from the worker' is designed out: the in-process wazero QuickJS engine has no worker message channel, so no Node --watch notification can arrive (nodejs/node#65044 is the Node behavior the case guards against). SCRUTINIZED:approved by the lead ruling of 2026-10-11T18:42Z (Q5, commit 4c6bb3897f), confirmed for 1.2.0 by the lead on 2026-10-12.",
       "designedOutCases": [
-        "worker host › accepts a worker path string",
-        "worker host › ignores Node --watch notifications from the worker",
-        "worker host › reports a missing worker file as a sandbox error"
+        "worker host › ignores Node --watch notifications from the worker"
       ]
     },
     {
@@ -3057,6 +3091,15 @@
       "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
     },
     {
+      "path": "packages/coding-agent/test/agent-session-queued-images.test.ts",
+      "upstreamTestHash": "sha256:9b32a6ef0b1442d8cc525fe67ba65a542b0cd335891b0695f177ee7f1bc96f1d",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 4cf69332c: the Go test drives Session.Steer, Session.FollowUp and Session.Prompt with a streaming behavior (the exported entry points RPC steer/follow_up and the interactive queue call) through the real agent loop, persistence and ConvertToLLM; only the faux provider is scripted."
+    },
+    {
       "path": "packages/coding-agent/test/agent-session-retry.test.ts",
       "upstreamTestHash": "sha256:37f22f6cd27c74fe668ea1bd81467016aec3dde2725c2f44c9e12c69450d80ec",
       "area": "sessions",
@@ -3129,6 +3172,24 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/coding-agent/test/auth-login.test.ts",
+      "upstreamTestHash": "sha256:839cebc1dce9ade4a62ea1dd6ac4bf3539b81affde79e16da7b9e87bc688f8bc",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: the Go tests call RunAuthLogin, which runAuthLoginCommand (coding/cli/auth_run.go, `pig auth login`) runs, with a real ModelRuntime over in-memory credential storage and a scripted LoginTerminal; Pi's test scripts its terminal the same way. The process terminal itself is covered by auth-terminal."
+    },
+    {
+      "path": "packages/coding-agent/test/auth-logout.test.ts",
+      "upstreamTestHash": "sha256:9dbc5f7ea18231b558c246edac85e31132f545f422f96e47d09f73247f409d18",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: the Go tests call RunAuthLogout, which runAuthLogoutCommand (coding/cli/auth_run.go, `pig auth logout`) runs, over a real ModelRuntime with in-memory credential storage."
+    },
+    {
       "path": "packages/coding-agent/test/auth-storage.test.ts",
       "upstreamTestHash": "sha256:0042056147ba08c05368926f1fb368d3dbb92a2fa470f38dd603e389c9c2a8ee",
       "area": "providers",
@@ -3136,6 +3197,15 @@
         "hot-path"
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/coding-agent/test/auth-terminal.test.ts",
+      "upstreamTestHash": "sha256:a13be777ecf771f5f1f7efa175d2ac8edf9ce28ed04d2f680ce5b96b40e2f189",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: the Go tests drive processLoginTerminal.Question, the method `pig auth login` calls through CreateProcessLoginTerminal (coding/cli/auth_terminal.go). They build the struct with a Reader over a pipe where CreateProcessLoginTerminal binds terminalquestion.Stdin() and os.Stdout; Pi's test replaces process.stdin the same way."
     },
     {
       "path": "packages/coding-agent/test/auth-url-copy.test.ts",
@@ -3163,6 +3233,15 @@
         "hot-path"
       ],
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+    },
+    {
+      "path": "packages/coding-agent/test/bash-executor-truncation.test.ts",
+      "upstreamTestHash": "sha256:3af2e5be5a16db20e6d08cc692b2e979c883a43ab932a29f482f07e6e17876a3",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 66c655677: the Go tests call tools.ExecuteBashWithOperations, which Session.ExecuteBashWithOperations (coding/session.go) and the interactive user-bash path (internal/codingagent/interactive_turn.go) call, with a scripted BashOperations as Pi's test scripts exec; the model-facing text is checked through the production converter."
     },
     {
       "path": "packages/coding-agent/test/block-images.test.ts",
@@ -3406,6 +3485,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/coding-agent/test/config-selector-keybindings.test.ts",
+      "upstreamTestHash": "sha256:392a976c0dd227977187e3881fcd5312d862c6b14cfb4b66516490a9ab41ccc6",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi b0c64f33c: the Go test calls newConfigSelectorUI, which runConfig (coding/cli/config_command.go) builds the selector screen with, over a real keybindings.json in an agent directory; Pi's test mocks the selector component and the screen the same way."
+    },
+    {
       "path": "packages/coding-agent/test/config-value-migration.test.ts",
       "upstreamTestHash": "sha256:c6813b0c9217ce396c7f5725b387d8c0cea80282181fd99fc361c52a3ca41a3b",
       "area": "utilities",
@@ -3645,6 +3733,15 @@
         "hot-path"
       ],
       "rationale": "Extension renderers' keybinding text and hints on message, entry and tool rendering (Pi 9376c8d1)."
+    },
+    {
+      "path": "packages/coding-agent/test/extension-selector.test.ts",
+      "upstreamTestHash": "sha256:6fdbcb4ada3d8e6fc2bd888aca6f6b1c20366ab89bd973802eccc854c652ec09",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 3b57ed7e2: the Go tests drive tui.ExtensionSelectorComponent, the component extension ui.select, /bug and the login pickers mount (D257), through HandleInput and Render; the extension dialog path is covered in internal/codingagent/ext_ui_dialog_displace_test.go."
     },
     {
       "path": "packages/coding-agent/test/extensions-discovery.test.ts",
@@ -3915,6 +4012,15 @@
       "rationale": "Production-path review at Pi e7a0df27: Model scope notice in the fullscreen header at startup (Pi 7391dbb0)."
     },
     {
+      "path": "packages/coding-agent/test/interactive-mode-paste.test.ts",
+      "upstreamTestHash": "sha256:66253101f082c38c7337ab04a9640c1585afd975ae0ee9114befc16cefe9a5e2",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 51313540a: the Go tests drive InteractiveMode.setRemoteEditor (both directions), the custom UI path through the extension UI context, and restoreQueuedMessagesToEditor with a real tui.Editor holding a collapsed bracketed paste; Pi's test reaches the same InteractiveMode methods through Reflect.get."
+    },
+    {
       "path": "packages/coding-agent/test/interactive-mode-startup-input.test.ts",
       "upstreamTestHash": "sha256:83b8e742a842893e8af364d7da754f672332335f33e5bd03857ea794aa325664",
       "area": "tui",
@@ -3994,6 +4100,15 @@
         "hot-path"
       ],
       "rationale": "Extension API, discovery, runtime callbacks, or Resources on startup and turns."
+    },
+    {
+      "path": "packages/coding-agent/test/llama-ui.test.ts",
+      "upstreamTestHash": "sha256:bb1fa7ca95ef5156e61dddaf1c59a19f9a4731ec6ff5fa6bb2b4eb68e73c8c40",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main df0d88aac: the Go tests drive LlamaView.SearchModels, which the llama extension's model picker (internal/codingagent/llama/index.go) calls through ShowLlamaUi, with scripted search results and a manual clock for the debounce, as Pi's test uses fake timers."
     },
     {
       "path": "packages/coding-agent/test/login-dialog-device-code.test.ts",
@@ -4346,6 +4461,15 @@
       "rationale": "Extension API, discovery, runtime callbacks, or Resources on startup and turns."
     },
     {
+      "path": "packages/coding-agent/test/provider-matching.test.ts",
+      "upstreamTestHash": "sha256:7049fe7a5d06daa9238c1d06933b43f5397a8cd11e0e4b695d63d44541448cda",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: the Go test calls codingagent.FindMatchingProviders, which `pig auth login`, `pig auth logout` (coding/cli/auth_login.go, auth_logout.go) and the /login slash command (internal/codingagent/slash_auth.go) call."
+    },
+    {
       "path": "packages/coding-agent/test/radius.test.ts",
       "upstreamTestHash": "sha256:f4cfc14df90a8f3555d6e514e28fdf46cc1cdc967cf030c171a65996dd3c7f06",
       "area": "cli",
@@ -4377,7 +4501,7 @@
       "upstreamTestHash": "sha256:e9a25e5e160394561ca1893b5080d447424909678f503a3043bcf99c3dd43bdb",
       "area": "utilities",
       "tags": [],
-      "rationale": "New in Pi 8efd314f (1.3.0+8efd314f): a docs check of the generated models.json reference; no production path. Designed out: PiG has no generated reference doc, and the schemas are byte-identical to Pi's."
+      "rationale": "New in Pi 8efd314f (1.3.0+8efd314f): a docs check of the generated models.json reference; no production path. Ported: configschema.RenderReferences renders the page from the Go schema trees, and the committed docs/site/docs/models-configuration.md is checked against it and against Pi's page."
     },
     {
       "path": "packages/coding-agent/test/remote-catalog-provider.test.ts",
@@ -4799,6 +4923,13 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/coding-agent/test/subagent-extension.test.ts",
+      "upstreamTestHash": "sha256:9cf1826b09fd6a57b74e51696aa4199a01f2c5c277e46fe2fbca743e36247266",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Explicit example extension or Worker-only adapter; not a Stock native text-session mechanism. Retain the underlying test disposition. PiG ships no port of Pi's examples/extensions/subagent extension, so nothing in Go runs these cases; the mapping stays pending."
+    },
+    {
       "path": "packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts",
       "upstreamTestHash": "sha256:f50f88222a622b6b975f49d5b7f1decfd580e32b18723db486e5c7ebba0534ff",
       "area": "sessions",
@@ -4977,6 +5108,24 @@
         "hot-path"
       ],
       "rationale": "Production-path review at Pi e7a0df27: SDK compaction and branch summaries resolve auth through the stream (Pi 6fed3cfb)."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/11613-bash-timeout-after-shell-exit.test.ts",
+      "upstreamTestHash": "sha256:6a13a0eac8ad661c76d9d1bf1af4ba8e6b20f5249276ac836596e50ced1c2f11",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 06aa6563e: the Go test runs the real BashTool through its Execute path with a real shell and a background writer; it replaces only the timeout and stdio-grace timers (test hooks), because a loaded host cannot hold the real 100 ms grace and 1 s deadline (the comment in the test records the failing runs)."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/11692-dispose-waits-for-oauth-refresh.test.ts",
+      "upstreamTestHash": "sha256:b1ffb8edc385e9a051380f754b20294591ee45ea2e30cf6b7a090fe1e1884751",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main b2cb62923: the Go tests close the real Runtime (the process's dispose) while an OAuth refresh of an extension provider is in flight, once from a direct credential read and once from the catalog refresh model task runRPCMode starts, and assert the rotated token reaches the stored credentials."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -5645,6 +5794,15 @@
       "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
     },
     {
+      "path": "packages/coding-agent/test/suite/regressions/9124-runtime-dispose-tool-settlement.test.ts",
+      "upstreamTestHash": "sha256:a8cdfe9a091760bca6b6ea933a451056739937176180886c68c50592421a9352",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 7a53c310a: the Go test closes the real Runtime during a running tool and asserts the persisted session entries (roles and the aborted tool result's text and isError) and that session_shutdown sees the settled turn."
+    },
+    {
       "path": "packages/coding-agent/test/suite/regressions/9154-prompt-during-tree-navigation.test.ts",
       "upstreamTestHash": "sha256:3cdab06ca9ec5c19b4bd863b90ef04b7b0f604a60f3d5468330c17b84ac87fdb",
       "area": "sessions",
@@ -5661,6 +5819,15 @@
         "hot-path"
       ],
       "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/9221-reload-during-tool.test.ts",
+      "upstreamTestHash": "sha256:5d0e505bb397a30d4b269d9a6842ab2b8348d8034634c7ff3a12bff3c990532f",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c3b938e3e: the Go tests hold a real tool, a manual compaction and a tree navigation open (the tool itself, and session_before_compact and session_before_tree handlers) and call Session.Reload; the extension-command (ctx.reload) variant runs the real binary in coding/cli."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9340-9777-auto-compaction-cancellation.test.ts",
@@ -5778,6 +5945,15 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/coding-agent/test/ until the production-path review."
+    },
+    {
+      "path": "packages/coding-agent/test/terminal-question.test.ts",
+      "upstreamTestHash": "sha256:8b3415d41fdb22ff48724d9dd5adec01abd8757d71415a5d447a78ea5239614a",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: the Go tests drive terminalquestion.Reader.Question, which processLoginTerminal.Question (coding/cli/auth_terminal.go, `pig auth login`) calls through terminalquestion.Stdin(), over pipes and byte readers. Pi's listener, pause and raw-mode cleanup assertions have no Go counterpart: the Reader registers no listener and sets no terminal mode."
     },
     {
       "path": "packages/coding-agent/test/test-harness.test.ts",
@@ -6554,10 +6730,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f). SCRUTINIZED:approved by the owner (2026-10-20) — Durable telemetry: only the async-listener case (:899) is designed out: Go commit listeners (SubscribeCommits) return no value, so a Promise-returning listener has no Go form.",
-      "designedOutCases": [
-        "Durable telemetry › preserves async listener error containment and report counting"
-      ]
+      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f). All cases run; the async-listener case (:911) runs in PiG's own form: a Go commit listener returns nothing from Advance and fails by panic, so the failure that arrives after every span settled is a listener that fails on a later commit (TestDurableTelemetryCountsAListenerFailureThatArrivesAfterEverySpanSettled)."
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
@@ -6702,10 +6875,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: the Session newest-entry and head-marker cache of each conversation; the Go test drives durable/session/conversation_tails.go (ConversationTails: newest entry and newest head marker per conversation, bounded LRU) used by the Session for LatestEntryId and LatestHeadMarker. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [conversation tails › freezes the markers it keeps]: Go has no Object.freeze: ConversationTails (durable/session/conversation_tails.go) shares the kept markers and records are immutable by convention, so a mutation after apply neither throws nor is refused, and no Go production path can express the frozen-record input; the remaining behavior of the markers (kept, bounded, cutoff answers) runs in TestConversationTailsReadsOnceThenFollowsCommits, TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt and TestConversationTailsKeepsBoundedNumberOfConversationsFewerWithMarkers.",
-      "designedOutCases": [
-        "conversation tails › freezes the markers it keeps"
-      ]
+      "rationale": "Production-path review at Pi 1.5.0: the Session newest-entry and head-marker cache of each conversation; the Go test drives durable/session/conversation_tails.go (ConversationTails: newest entry and newest head marker per conversation, bounded LRU) used by the Session for LatestEntryId and LatestHeadMarker. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). All cases run; 'freezes the markers it keeps' runs in PiG's own form (TestConversationTailsFreezesTheMarkersItKeeps): Go has no Object.freeze, so the test holds what it protects, that no caller mutation of the written record or of a returned marker changes the kept marker (Apply keeps a detached copy, Marker returns one)."
     },
     {
       "path": "packages/durable/test/session-deferred-commits.test.ts",
@@ -6732,10 +6902,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.2.0: Durable session document cache retention, on every durable turn's state; hot-path with the sibling packages/durable/test/ rows. SCRUTINIZED:approved by the tern lead ruling 2026-10-13 (tests-120-b): :451 is designed out (it tests Node's unreferenced-timer mechanism, runtime mechanics).",
-      "designedOutCases": [
-        "document cache retention › keeps no timer where timers cannot be unreferenced, and evicts on commits"
-      ]
+      "rationale": "Production-path review at Pi 1.2.0: Durable session document cache retention, on every durable turn's state; hot-path with the sibling packages/durable/test/ rows. All cases run; :468 runs in PiG's own form (TestSessionDocumentCacheKeepsNoTimerWhereTimersCannotBeBackground): a SetTimer hook that declines background timers stands for Pi's setTimeout without unref."
     },
     {
       "path": "packages/durable/test/session-documents.test.ts",
@@ -6948,6 +7115,20 @@
       "rationale": "New in 1.0.4 with the pi-env package (remote execution over SSH). No coding-agent package reaches it, so it is not tagged hot-path."
     },
     {
+      "path": "packages/env/test/process.test.ts",
+      "upstreamTestHash": "sha256:f07cb629df7676da6a7822e29f47a651fbe12d59681d46e730315b263daf8253",
+      "area": "tools",
+      "tags": [],
+      "rationale": "Production-path review at Pi 9c9ce8547: the Go tests call env.OpenProcess on a Connection to the real daemon (this test binary in daemon mode, and Pi's daemon when the pin has the `process` operation); env.OpenProcess is the published pi-env entry point, and no PiG command calls it yet (the MCP pipe transport takes its RemoteProcess shape). Not tagged hot-path: no coding turn reaches it."
+    },
+    {
+      "path": "packages/env/test/remote-abort.test.ts",
+      "upstreamTestHash": "sha256:f36b11a942c859d032ee7fb65b1bb1943025a1087b3227bc189d37cbb7c9ccf7",
+      "area": "tools",
+      "tags": [],
+      "rationale": "Production-path review at Pi main c96e368e2: the Go tests drive env.Connection, ExecRemote and the remote file operations against a daemon that stops answering after hello; Connection is what the SSH environment (env/ssh.go) uses. Not tagged hot-path: remote execution over SSH is not reached by a default coding run."
+    },
+    {
       "path": "packages/env/test/remote.test.ts",
       "upstreamTestHash": "sha256:225016706c17f0596d032b4c51c9904f4eeef93b14b62a14764d1168268e95fd",
       "area": "tools",
@@ -7030,6 +7211,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/mcp/test/auth-provider.test.ts",
+      "upstreamTestHash": "sha256:642139b950877d9c93db725fda23820dc478619f1c217b0fe87530ddaa3682f5",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main bb266bf35: the Go tests call oauth.CreateMcpAuthProvider, which coding/mcpext/oauth.go (NewMcpAuthProvider) builds for each HTTP MCP connection, over a real client store, with a scripted token endpoint."
+    },
+    {
       "path": "packages/mcp/test/client.test.ts",
       "upstreamTestHash": "sha256:fdd11daf8bce7d83dff22c8ef25a71d7c10d3098d0096470270d2b65aad1a2e1",
       "area": "extensions",
@@ -7037,6 +7227,15 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1 (D-B, docs/plan/upgrade-0.99.1.md): mcp behavior that coding turns reach through the built-in extension; tagged hot-path until the production-path review."
+    },
+    {
+      "path": "packages/mcp/test/config.test.ts",
+      "upstreamTestHash": "sha256:ad75a745a42d2cf7aaa78559a247516d57c07419dbd2b35f939c077420247bca",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 76c040a2a: the Go tests call mcp.ValidateMcpServerConfig and mcp.IsMcpServerOverride, thin exports of internal/mcpshared, whose validator coding/extension/mcp_servers.go and coding/mcpext/config.go call for every configured server."
     },
     {
       "path": "packages/mcp/test/content.test.ts",
@@ -7048,6 +7247,42 @@
       "rationale": "New in 0.99.1 (D-B, docs/plan/upgrade-0.99.1.md): mcp behavior that coding turns reach through the built-in extension; tagged hot-path until the production-path review."
     },
     {
+      "path": "packages/mcp/test/input-schema.test.ts",
+      "upstreamTestHash": "sha256:0a3adf85d9a213df1e49bee7beef106a348470a62443ff218fdb719cb5877059",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 76c040a2a: the Go tests call mcp.NormalizeMcpInputSchema, which coding/mcpext/tools.go calls for every MCP tool's parameters."
+    },
+    {
+      "path": "packages/mcp/test/lines.test.ts",
+      "upstreamTestHash": "sha256:2086d09de7e36ff9ca56241ecd3ea5c39fc00d7f23078ff70476514d4962cd91",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main c158fa2ee and f6278a472: the Go tests feed the unexported lineReader the way StdioTransport (mcp/stdio.go, built by coding/mcpext/runtime.go for every stdio server) and PipeTransport construct it, and TestStdioTransportDeliversALargeMessageSpanningManyReads reads it through the real transport."
+    },
+    {
+      "path": "packages/mcp/test/loopback.test.ts",
+      "upstreamTestHash": "sha256:2ef4e965b1939780d5b0d53b9ea84960d946104cb29306438b4b32f68ac124d1",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main bb266bf35: the Go tests call oauth.ListenForLoopbackSignIn and WaitForLoopbackSignIn, which coding/mcpext/oauth.go calls for the browser sign-in, over a real loopback listener."
+    },
+    {
+      "path": "packages/mcp/test/naming.test.ts",
+      "upstreamTestHash": "sha256:6d072ca5aa991556bf13342eecbc3b3c1c9c8382618925c51737021225848a61",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 76c040a2a: the Go tests call mcp.CreateMcpToolName and mcp.McpNamespace, exports of internal/mcpshared that coding/mcpext/extension.go and coding/extension/tool_filter.go call to name and filter every MCP tool."
+    },
+    {
       "path": "packages/mcp/test/oauth.test.ts",
       "upstreamTestHash": "sha256:e145e6ec13011c87c97736ad02408a225adce9ac5ff90b1ac8f059c0cc4a4f90",
       "area": "extensions",
@@ -7055,6 +7290,31 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1 (D-B, docs/plan/upgrade-0.99.1.md): mcp behavior that coding turns reach through the built-in extension; tagged hot-path until the production-path review."
+    },
+    {
+      "path": "packages/mcp/test/output-limit.test.ts",
+      "upstreamTestHash": "sha256:7b8b4d97a6919bbdbdea9294d49d071ef69b42dcc8a4d1abd71bdff0b69e1266",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main 76c040a2a: the Go tests call mcp.LimitMcpContent, which coding/mcpext/tools.go calls on every MCP tool result."
+    },
+    {
+      "path": "packages/mcp/test/pipe.test.ts",
+      "upstreamTestHash": "sha256:dd9999f2aa1acb109208dff5630ba49c91e720e95beea7f465996fa02ef0e19a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Production-path review at Pi main c23b9ec1: no production path in Pi or PiG: PipeTransport is a library export (packages/mcp/src/index.ts) that no package of Pi or PiG constructs; pi-env's openProcess is the pipe it is meant for. Proven by its ported tests alone."
+    },
+    {
+      "path": "packages/mcp/test/sign-in.test.ts",
+      "upstreamTestHash": "sha256:3780d67bad75f30e4661aee275b1c64b5a5b61c8473c97c779514ca0eb85499c",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main bb266bf35: the Go tests call oauth.StartMcpSignIn and CompleteMcpSignIn, which coding/mcpext/oauth.go calls for the browser sign-in, over a real client store and scripted authorization server."
     },
     {
       "path": "packages/mcp/test/stdio.test.ts",
@@ -7325,10 +7585,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation. SCRUTINIZED:approved by the owner (2026-11-01): Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and releases it on FinishStreaming, Invalidate and a theme or grammar change; reviewed, no lifetime bug.",
-      "designedOutCases": [
-        "Markdown component › Block reuse › holds rendered blocks weakly, so a full garbage collection releases them"
-      ]
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",

@@ -74,20 +74,29 @@ def estimate_tokens(message: Mapping[str, Any]) -> int:
 
 
 def _json_stringify_length(value: Any) -> int:
-    """The UTF-16 length of JSON.stringify(value) for a decoded JSON value, without building the text."""
-    if value is None:
-        return 4
-    if isinstance(value, bool):
-        return 4 if value else 5
-    if isinstance(value, (int, float)):
-        return len(_js_number_string(value))
-    if isinstance(value, str):
-        return _json_quoted_length(value)
-    if isinstance(value, (list, tuple)):
-        return 2 + sum(_json_stringify_length(element) for element in value) + max(len(value) - 1, 0)
-    if isinstance(value, Mapping):
-        return 2 + sum(_json_quoted_length(str(key)) + 1 + _json_stringify_length(element) for key, element in value.items()) + max(len(value) - 1, 0)
-    return 0
+    """The UTF-16 length of JSON.stringify(value) for a decoded JSON value, without building the text. It walks with a stack of its own, not the interpreter's: tool-call arguments nested
+    thousands of levels deep (the host sends up to 10000) are measured, where a recursive walk raises RecursionError at about 1000 levels."""
+    total = 0
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if item is None:
+            total += 4
+        elif isinstance(item, bool):
+            total += 4 if item else 5
+        elif isinstance(item, (int, float)):
+            total += len(_js_number_string(item))
+        elif isinstance(item, str):
+            total += _json_quoted_length(item)
+        elif isinstance(item, (list, tuple)):
+            total += 2 + max(len(item) - 1, 0)
+            stack.extend(item)
+        elif isinstance(item, Mapping):
+            total += 2 + max(len(item) - 1, 0)
+            for key, element in item.items():
+                total += _json_quoted_length(str(key)) + 1
+                stack.append(element)
+    return total
 
 
 def _json_quoted_length(text: str) -> int:

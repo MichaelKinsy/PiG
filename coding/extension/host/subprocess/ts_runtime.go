@@ -128,9 +128,9 @@ func typeScriptRuntimeCommand(ctx context.Context, sel tsruntime.Selection, runt
 	switch sel.Kind {
 	case tsruntime.KindBun:
 		bunArgs := []string{"--no-install", "--no-env-file", "--config=" + filepath.Join(runtimeDir, "shims", "bunfig.toml"), "--preload", loaderPath, filepath.Join(runtimeDir, script)}
-		return linkerexec.CommandContext(ctx, sel.Executable, append(bunArgs, args...)...)
+		return runVerified(linkerexec.CommandContext(ctx, sel.Executable, append(bunArgs, args...)...), sel)
 	case tsruntime.KindExecutable:
-		return linkerexec.CommandContext(ctx, sel.Executable, append([]string{strings.TrimSuffix(script, ".mjs")}, args...)...)
+		return runVerified(linkerexec.CommandContext(ctx, sel.Executable, append([]string{strings.TrimSuffix(script, ".mjs")}, args...)...), sel)
 	}
 	loaderURL, urlErr := nodeFileURL(loaderPath)
 	cmd := linkerexec.CommandContext(ctx, "node", append([]string{"--import", loaderURL, filepath.Join(runtimeDir, script)}, args...)...)
@@ -138,6 +138,29 @@ func typeScriptRuntimeCommand(ctx context.Context, sel tsruntime.Selection, runt
 		cmd.Err = fmt.Errorf("%s %s: %w", loaderLabel, loaderPath, urlErr)
 	}
 	return cmd
+}
+
+// runVerified makes cmd start the file Verify checked, where the platform can start an open file (see tsruntime.Executable): the
+// command keeps the executable's path as argv[0] and runs its verified descriptor, so replacing the path after the check does not
+// change which bytes run. A command the launcher rewrote (the Android linker) keeps its program. The launch calls releaseVerified
+// once the process has started.
+// pig additive (D19): Pi has no runtime slot whose executable a start verifies.
+func runVerified(cmd *exec.Cmd, sel tsruntime.Selection) *exec.Cmd {
+	if sel.Verified == nil || cmd.Err != nil || cmd.Path != sel.Executable {
+		return cmd
+	}
+	path, err := sel.Verified.ExecPath()
+	if err != nil {
+		cmd.Err = err
+		return cmd
+	}
+	cmd.Path = path
+	return cmd
+}
+
+// releaseVerified releases the open file of a selection once its process has started: the kernel took the file at exec.
+func releaseVerified(sel tsruntime.Selection) {
+	_ = sel.Verified.Close()
 }
 
 // typeScriptRuntimeEnv is the environment a selected runtime needs beyond the host's: a host executable finds the runtime tree,
@@ -272,7 +295,12 @@ func (h *Host) dropStaleTier(ctx context.Context, share *processShare, binPath, 
 		return share
 	}
 	set, ok := nodeLauncherSet(binPath, label)
-	if !ok || h.resolveUnlessNodeOnly(ctx, TypeScriptRuntimeRequest(), set).Executable == share.tier {
+	if !ok {
+		return share
+	}
+	current := h.resolveUnlessNodeOnly(ctx, TypeScriptRuntimeRequest(), set)
+	releaseVerified(current)
+	if current.Executable == share.tier {
 		return share
 	}
 	share.release()

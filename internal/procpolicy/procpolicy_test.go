@@ -191,3 +191,30 @@ func TestApplyRPCLeavesAUserGOMAXPROCS(t *testing.T) {
 		t.Fatalf("with GOMAXPROCS set: GOMAXPROCS = %d, capped = %v; want %d, false", got, capped.Load(), Cap+3)
 	}
 }
+
+// Release lifts the cap: the runtime default width is back, and a section changes nothing (D232).
+func TestReleaseRestoresTheDefaultWidth(t *testing.T) {
+	defaultProcs := capForTest(t)
+	Release()
+	if got := runtime.GOMAXPROCS(0); got != defaultProcs || capped.Load() {
+		t.Fatalf("after Release GOMAXPROCS = %d, capped = %v; want %d, false", got, capped.Load(), defaultProcs)
+	}
+	narrow := Widen()
+	narrow()
+	if got := runtime.GOMAXPROCS(0); got != defaultProcs {
+		t.Fatalf("after a section on a released process GOMAXPROCS = %d, want %d", got, defaultProcs)
+	}
+}
+
+// Release leaves a user's GOMAXPROCS alone: Apply never lowered it.
+func TestReleaseLeavesAUserGOMAXPROCS(t *testing.T) {
+	started := runtime.GOMAXPROCS(0)
+	t.Cleanup(func() { runtime.GOMAXPROCS(started) })
+	runtime.GOMAXPROCS(Cap + 3)
+	t.Setenv("GOMAXPROCS", "5")
+	Apply()
+	Release()
+	if got := runtime.GOMAXPROCS(0); got != Cap+3 {
+		t.Fatalf("with GOMAXPROCS set: after Release GOMAXPROCS = %d, want %d", got, Cap+3)
+	}
+}

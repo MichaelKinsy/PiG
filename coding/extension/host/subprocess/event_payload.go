@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"maps"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -58,5 +59,19 @@ func applyToolCallInput(event any, input json.RawMessage) error {
 	if custom.WireInput != nil {
 		*custom.WireInput = canonical
 	}
+	return nil
+}
+
+// applyMessageEndEdit writes the message a Node handler left in event.message into the message the event carries, as Pi's handler edits the one object the transcript, the later handlers and the stored entry share (runner.ts emitMessageEnd, agent-session.ts appendMessage). An edit that is no message of the event's kind changes nothing, as a replacement of another kind does not.
+func applyMessageEndEdit(event any, edited json.RawMessage) error {
+	end, ok := event.(extension.MessageEndEvent)
+	if !ok {
+		return nil
+	}
+	var message agent.AgentMessage
+	if err := json.Unmarshal(edited, &message); err != nil {
+		return err
+	}
+	agent.ReplaceMessageInPlace(end.Message, message)
 	return nil
 }

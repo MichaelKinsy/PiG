@@ -111,6 +111,10 @@ type Extension struct {
 	// upstream: types.ts Extension.markdownTransformer
 	MarkdownTransformer MarkdownTransformer
 
+	// MarkdownMessageTypes are the surfaces MarkdownTransformer runs on, as the registration chose them; nil means the default types.
+	// upstream: types.ts MarkdownTransformerRegistration.messageTypes
+	MarkdownMessageTypes []MarkdownMessageType
+
 	// Commands is keyed by the command name (without leading slash).
 	Commands map[string]RegisteredCommand
 

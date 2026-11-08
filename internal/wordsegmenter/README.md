@@ -27,13 +27,13 @@ ICU sources are under <https://github.com/unicode-org/icu/tree/release-78.3/icu4
 
 Dictionary sources are in `data/brkitr/dictionaries/`:
 
-| File | SHA256 | Embedded index bytes |
+| File | SHA256 | Embedded trie bytes |
 |---|---|---:|
-| `cjdict.txt` | `e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0` | 4,212,243 |
-| `thaidict.txt` | `3166abde40c0f44ab91c28f5ce96d7d1472cb7882e1c0bda0a72f8f69dba4274` | 260,897 |
-| `laodict.txt` | `3c876934a3fa81031d2333525eafaca6a7c9f842e3b98f18c38880420afb5d36` | 335,860 |
-| `khmerdict.txt` | `87bee2d17cd5148aa36957eb05409eefc124de8ad519b81b789298ef3e60b5d9` | 974,071 |
-| `burmesedict.txt` | `61d8abc3d9102b2f9bf0c9f44db0d7ab89b18172d8cd26832e4c83174bd8673b` | 537,893 |
+| `cjdict.txt` | `e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0` | 1,646,963 |
+| `thaidict.txt` | `3166abde40c0f44ab91c28f5ce96d7d1472cb7882e1c0bda0a72f8f69dba4274` | 145,280 |
+| `laodict.txt` | `3c876934a3fa81031d2333525eafaca6a7c9f842e3b98f18c38880420afb5d36` | 191,170 |
+| `khmerdict.txt` | `87bee2d17cd5148aa36957eb05409eefc124de8ad519b81b789298ef3e60b5d9` | 503,207 |
+| `burmesedict.txt` | `61d8abc3d9102b2f9bf0c9f44db0d7ab89b18172d8cd26832e4c83174bd8673b` | 289,024 |
 
 The Unicode property files are from <https://www.unicode.org/Public/17.0.0/ucd/>. `generate_sea_dictionary.py` pins and verifies the hashes of `LineBreak.txt`, `Scripts.txt`, `auxiliary/WordBreakProperty.txt`, and `auxiliary/GraphemeBreakProperty.txt`.
 
@@ -47,11 +47,13 @@ python3 internal/wordsegmenter/generate_sea_dictionary.py /path/to/source-direct
 gofmt -w internal/wordsegmenter/rule_data.go
 ```
 
-The CJK index has one current unversioned shape: a little-endian uint32 entry count, `count + 1` uint32 offsets, `count` byte weights, and concatenated UTF-8 words in byte-lexical order.
+Both generators write the embedded trie with `dictionary_format.py` (`encode_trie`, whose header comment defines the one current unversioned shape). The trie is a radix DAG over the dictionary words: one label is one symbol (a byte for the Southeast Asian indexes, a UTF-16 unit for CJK), identical subtrees are stored once, a run of single-child nodes is one skip string, and a word that ends a path is a leaf edge holding its weight. A node is a small record: a flags byte, the weight when a word ends there and the dictionary is weighted, the skip string, then the leaf edges and the inner edges, each sorted by label and of fixed size (a label and a weight, or a label and a 3-byte offset). A lookup walks one label per step and binary-searches the two small edge arrays of the current node.
 
-The Southeast Asian indexes have one current unversioned shape: a little-endian uint32 entry count, `count + 1` uint32 offsets, and concatenated offset-transformed word bytes in lexical order. They preserve the byte transforms in ICU's `data/BUILDRULES.py`, including the ZWNJ/ZWJ reserved bytes. They need no weights. The four indexes total 2,108,721 bytes.
+The generators also write each dictionary's flat sorted-array form (a uint32 count, one uint32 offset per block of 16 words, one length byte per word, one weight byte per word when weighted, the words in byte-lexical order; `encode` in `dictionary_format.py`) gzipped to `testdata/<name>_flat.bin.gz`. It is the previous embedded format and is only the oracle of `TestEmbeddedTriesMatchTheFlatIndexes`, which compares every word, weight and prefix range of the trie with it (all words, every prefix of every 97th word, random diverging prefixes).
 
-Lookup borrows the embedded strings. It narrows a sorted prefix range without constructing a runtime dictionary map or decompressing the data on the input loop. `PossibleWord` caches have fixed size. Per-call temporary storage scales with the supplied text, not Session history. No worker, retained cache, IPC, network call or file descriptor is created.
+The CJK index holds the words' UTF-16 units and weights. Every cjdict word is BMP text without U+FFFD, which the generator checks, so reading the text as UTF-16 units misses no word and invents none: invalid UTF-8 and supplementary characters match nothing, as before. The Southeast Asian indexes hold offset-transformed word bytes and need no weights. They preserve the byte transforms in ICU's `data/BUILDRULES.py`, including the ZWNJ/ZWJ reserved bytes. The four Southeast Asian tries total 1,128,681 bytes; all five total 2,775,644.
+
+Lookup borrows the embedded strings. It walks a trie without constructing a runtime dictionary map or decompressing the data on the input loop, and allocates nothing. `PossibleWord` caches have fixed size. Per-call temporary storage scales with the supplied text, not Session history. No worker, retained cache, IPC, network call or file descriptor is created.
 
 The generators copy the complete dictionary notices to `LICENSES/LicenseRef-ICU-CJK.txt` and `LICENSES/LicenseRef-ICU-SEA.txt`. See those files, `LICENSES/Unicode-3.0.txt`, `REUSE.toml`, and `THIRD_PARTY_NOTICES.md` for redistribution terms.
 
@@ -67,4 +69,4 @@ go test ./internal/wordsegmenter ./tui -run TestICUSoutheastAsian
 
 The original implementation fails `TestICUSoutheastAsianSegments` and `TestICUSoutheastAsianWordNavigation` in all four scripts. A separate red probe caught CJK/Hangul rule-class exclusions, false engine-end boundaries at combining marks, and rule-status propagation. A random differential probe against the pinned Node segmenter then found engine-selection differences: a span started at U+FF9E, and `UnhandledEngine` state was not modeled. The `engine-selection` cases fail the previous implementation and each compiling mutation of those rules. The final corpus has zero mismatches. An engine-disabled compiling mutation also fails both tests and all five Southeast Asian Editor cases in `tui-components/20-editor-word-and-paste-segments`. That scenario retains `output_equal = true` and three paired runs, including word movement, deletion, yank, paste markers, UTF-16 cursor state and rendered bytes.
 
-On linux/amd64 with Go 1.27.1, equivalent `go build -trimpath -ldflags='-s -w' ./cmd/pig` artifacts grow from 53,108,999 to 55,238,919 bytes: +2,129,920 bytes (4.01%). `BenchmarkSoutheastAsianWordNavigation` measures ordinary and 128/4096-repeat inputs through the production helper. A CPU/allocation profile attributes dictionary CPU work to prefix lookup and most allocation volume to existing UTF-16 slicing plus the tailored scanner buffer. The measured ordinary calls take about 6–11 µs; the largest 4096-repeat cases take about 12–24 ms and allocate 1.6–3.5 MB. These are workload measurements, not a fixed latency guarantee.
+On linux/amd64 with Go 1.27.1, equivalent `go build -trimpath -ldflags='-s -w' ./cmd/pig` artifacts grow from 53,108,999 to 55,238,919 bytes: +2,129,920 bytes (4.01%). `BenchmarkSoutheastAsianWordNavigation` measures ordinary and 128/4096-repeat inputs through the production helper. A CPU/allocation profile attributes dictionary CPU work to prefix lookup and most allocation volume to existing UTF-16 slicing plus the tailored scanner buffer. The measured ordinary calls take about 6–11 µs; the largest 4096-repeat cases take about 12–24 ms and allocate 1.6–3.5 MB. These are workload measurements, not a fixed latency guarantee. `BenchmarkCJKSegments` and `BenchmarkCJKEditingSession` measure the CJK engine on ordinary 30–60 character lines, the 128/4096-repeat input and a 10,000-call session over 2,000 different lines.

@@ -3,10 +3,10 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/mcp"
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
@@ -155,7 +155,7 @@ func TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberFor
 	}
 }
 
-// TestMcpHelpersMatchPi compares createToolNameMatcher, isMcpToolName, isLoopbackRedirectUri and mcpNamespace with Pi 1.0.4.
+// TestMcpHelpersMatchPi compares createToolNameMatcher, isMcpToolName, the loopback test of oauth.callbackUrl (Pi's isLoopbackRedirectUri, observed through validateMcpServerConfig) and mcpNamespace with Pi.
 func TestMcpHelpersMatchPi(t *testing.T) {
 	entrySets := [][]string{
 		{}, {"read"}, {"*"}, {"mcp__*"}, {"a*b"}, {"a.b", "c+d"}, {"[x]*", "(y)?"}, {"^*$"}, {"*\\*"}, {"a*", "*z"}, {"é*"}, {"a**b"},
@@ -171,11 +171,14 @@ func TestMcpHelpersMatchPi(t *testing.T) {
 	}
 	pioracle.Run(t, `
 const mod = await load("pi-coding-agent/core/mcp-servers.js");
+// mcpNamespace moved to pi-mcp in Pi 76c040a2a.
+const mcpPkg = await load("pi-mcp/index.js");
 emit({
 	matches: input.entrySets.map((entries) => { const m = mod.createToolNameMatcher(entries); return input.names.map((n) => m(n)); }),
 	isMcp: input.names.map((n) => mod.isMcpToolName(n)),
-	loopback: input.uris.map((u) => mod.isLoopbackRedirectUri(u)),
-	namespaces: input.servers.map((s) => mod.mcpNamespace(s)),
+	// isLoopbackRedirectUri is not exported since Pi 76c040a2a (packages/mcp/src/config.ts): observed through the oauth.callbackUrl check.
+	loopback: input.uris.map((u) => { const r = mod.validateMcpServerConfig("s", { url: "https://x.example", oauth: { callbackUrl: u } }); return !(typeof r === "string" && r.includes("oauth.callbackUrl must be an http URI")); }),
+	namespaces: input.servers.map((s) => mcpPkg.mcpNamespace(s)),
 });`, map[string]any{"entrySets": entrySets, "names": names, "uris": uris, "servers": servers}, &want)
 	for i, entries := range entrySets {
 		set := map[string]struct{}{}
@@ -200,8 +203,8 @@ emit({
 		}
 	}
 	for j, server := range servers {
-		if got := mcp.McpNamespace(server); got != want.Namespaces[j] {
-			t.Errorf("mcp.McpNamespace(%q) = %q, Pi %q", server, got, want.Namespaces[j])
+		if got := mcpshared.McpNamespace(server); got != want.Namespaces[j] {
+			t.Errorf("mcpshared.McpNamespace(%q) = %q, Pi %q", server, got, want.Namespaces[j])
 		}
 	}
 }

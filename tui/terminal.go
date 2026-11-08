@@ -378,10 +378,10 @@ var (
 	restoreTerminal = term.Restore
 )
 
-// makeRaw puts fd into raw mode and returns the state to restore. It retries the ioctl while it fails with EINTR, as libuv's
+// MakeRaw puts fd into raw mode and returns the state to restore. It retries the ioctl while it fails with EINTR, as libuv's
 // uv_tty_set_mode and uv__tcsetattr do (deps/uv/src/unix/tty.c): setRawMode returns after the process was stopped inside the call
 // and continued, where a plain ioctl fails with EINTR on macOS and ended the session on `fg` (#397).
-func makeRaw(fd int) (*term.State, error) {
+func MakeRaw(fd int) (*term.State, error) {
 	for {
 		state, err := makeRawTerminal(fd)
 		if !isEINTR(err) {
@@ -390,8 +390,8 @@ func makeRaw(fd int) (*term.State, error) {
 	}
 }
 
-// restoreCooked hands fd back in the mode state captured, retrying EINTR as makeRaw does.
-func restoreCooked(fd int, state *term.State) error {
+// RestoreCooked hands fd back in the mode state captured, retrying EINTR as MakeRaw does.
+func RestoreCooked(fd int, state *term.State) error {
 	for {
 		err := restoreTerminal(fd, state)
 		if !isEINTR(err) {
@@ -405,7 +405,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		return nil, fmt.Errorf("terminal raw mode requires stdin/stdout")
 	}
 	fd := int(t.stdin.Fd())
-	state, err := makeRaw(fd)
+	state, err := MakeRaw(fd)
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +419,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 	// The process-exit restore (RestoreTerminalOnExit) owns the terminal from here until restore runs, as Pi's exit handler
 	// owns it from start() to stop(). It also hands the terminal back in cooked mode, which libuv does when Node exits.
 	registerExitRestoreTerminal(t, func() {
-		_ = restoreCooked(fd, state)
+		_ = RestoreCooked(fd, state)
 		vtRestore()
 	})
 	return func() {
@@ -436,7 +436,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		if drainOnRestore {
 			_ = t.DrainInput(time.Second, 50*time.Millisecond)
 		}
-		_ = restoreCooked(fd, state)
+		_ = RestoreCooked(fd, state)
 		vtRestore()
 		t.protocolQueried = false
 	}, nil
@@ -820,12 +820,29 @@ func encodesOwnWrites(out io.Writer) bool {
 
 // writeTerminalText writes data, already encoded, to out and hands a failed write to the OnTerminalWriteError handler.
 func writeTerminalText(out io.Writer, data string) {
-	if _, err := io.WriteString(out, data); err != nil {
+	if _, err := writeString(out, data); err != nil {
 		if handler := terminalWriteErrorHandler.Load(); handler != nil {
 			(*handler)(err)
 		}
 	}
 }
+
+// writeString is io.WriteString that copies data into a pooled buffer (which the garbage collector empties) for a writer with no WriteString, where io.WriteString allocates a new byte slice for every write: the cursor's
+// hide and show of each frame cost an allocation each (fmt.Fprint, which those writes were before they went through WriteToTerminal, copies into a pooled buffer as well).
+func writeString(out io.Writer, data string) (int, error) {
+	if sw, ok := out.(io.StringWriter); ok {
+		return sw.WriteString(data)
+	}
+	buf := terminalWriteBuffers.Get().(*[]byte)
+	*buf = append((*buf)[:0], data...)
+	n, err := out.Write(*buf)
+	//perf:ok the buffers hold single small writes (the cursor's hide and show, a frame's chunk) and the garbage collector empties the pool, so no cap is needed
+	terminalWriteBuffers.Put(buf)
+	return n, err
+}
+
+// terminalWriteBuffers holds the byte copies of strings written to a writer that takes no strings.
+var terminalWriteBuffers = sync.Pool{New: func() any { return new([]byte) }}
 
 // Columns returns the terminal width, falling back to COLUMNS or 80 when unavailable.
 func (t *ProcessTerminal) Columns() int {

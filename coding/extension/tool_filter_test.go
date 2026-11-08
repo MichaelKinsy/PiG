@@ -1,9 +1,10 @@
 package extension
 
 import (
-	"github.com/MichaelKinsy/PiG/mcp"
 	"slices"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 // Ports packages/coding-agent/src/core/mcp-servers.ts createToolNameMatcher and the `_isAllowedTool` and `_isActivatable`
@@ -80,7 +81,7 @@ func TestToolFilterScopeIntersects(t *testing.T) {
 	plain := NewToolFilter(allowed, excluded)
 	keepAdapterX := []string{"mcp__a__x", "mcp__a__z"}
 	scoped := plain.WithScope(&ToolScope{Extensions: map[string]*[]string{McpAdapterEntry: &keepAdapterX}})
-	namespace := &ToolNamespace{Name: mcp.McpNamespace("a")}
+	namespace := &ToolNamespace{Name: mcpshared.McpNamespace("a")}
 	for _, name := range []string{"read", "bash", "mcp__a__x", "mcp__a__y", "mcp__a__z", "mcp__b__z", "read_mcp_resource"} {
 		info := ToolInfo{Name: name}
 		if IsMcpToolName(name) && name != "read_mcp_resource" {

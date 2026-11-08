@@ -15,7 +15,7 @@ import (
 type extensionCatalogEncoding struct {
 	mu    sync.Mutex
 	input []*ai.Model
-	// records is ai.CatalogRecordOf of each input model: the snapshot leaves unexported members out, and a model's catalog
+	// records is ai.CatalogRecordRefOf of each input model: the snapshot leaves unexported members out, and a model's catalog
 	// record decides the member order of its model object.
 	records []string
 	models  json.RawMessage
@@ -106,7 +106,7 @@ func (c *extensionCatalogEncoding) state(registry *ModelRegistry, catalog []*ai.
 			normalized[i] = *model
 			normalized[i].Provider = nil
 			values[i] = &normalized[i]
-			records[i] = ai.CatalogRecordOf(model)
+			records[i] = ai.CatalogRecordRefOf(model)
 		}
 		input, ok := cloneCatalogInput(reflect.ValueOf(values))
 		if !ok {

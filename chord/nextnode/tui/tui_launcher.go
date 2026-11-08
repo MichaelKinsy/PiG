@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	next "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
 )
 
 // Ports packages/chord/src/node/tui/launcher.ts. `StartTerminal` (slice 11 §4, decision "Slice 11, P8"): the trusted launcher of
@@ -580,7 +582,7 @@ func (l *Launcher) openSocket(id int) {
 	headers := http.Header{"Authorization": {"Bearer " + l.token}}
 	//portlint:allow golifetime the dial ends with its context, which close and finish cancel; what it dialed is handed to the loop, which closes it when the loop is gone
 	go func() {
-		conn, _, err := websocket.DefaultDialer.DialContext(dialCtx, target.String(), headers) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
+		conn, _, err := webSocketDialer.DialContext(dialCtx, target.String(), headers) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
 		if !l.post(func() { l.dialed(id, socket, sandbox, conn, err) }) && conn != nil {
 			_ = conn.Close()
 		}
@@ -914,3 +916,6 @@ func systemLocales() []string {
 	add(next.PlatformLocale())
 	return locales
 }
+
+// webSocketDialer is gorilla/websocket's DefaultDialer with the TLS peer's chain checked like every other (pig additive (D191)).
+var webSocketDialer = websocket.Dialer{Proxy: http.ProxyFromEnvironment, HandshakeTimeout: 45 * time.Second, TLSClientConfig: tlsdistrust.Harden(&tls.Config{MinVersion: tls.VersionTLS12})}

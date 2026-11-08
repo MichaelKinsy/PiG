@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode/utf16"
 
+	"github.com/dlclark/regexp2"
+
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -16,7 +18,6 @@ import (
 
 // The block rules marked builds with edit() that markdown_marked_block.go does not hold (rules.ts:60-110, 164-176).
 const (
-	markedFencesSource  = "^ {0,3}(`{3,}(?=[^`\\n]*(?:\\n|$))|~{3,})([^\\n]*)(?:\\n|$)(?:|([\\s\\S]*?)(?:\\n|$))(?: {0,3}\\1[~`]* *(?=\\n|$)|$)"
 	markedHeadingSource = `^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)`
 	// markedLheadingSource is lheadingGfm: lheadingCore with its pieces replaced the way rules.ts:67-86 does.
 	markedLheadingBullet = ` {0,3}(?:[*+-]|\d{1,9}[.)])`
@@ -25,7 +26,6 @@ const (
 )
 
 var (
-	markedBlockFences   = newAnchoredMarkedRegexp(markedFencesSource, false)
 	markedBlockHeading  = newAnchoredMarkedRegexp(markedHeadingSource, false)
 	markedBlockLheading = newAnchoredMarkedRegexp(markedLheadingSource, false)
 	// markedBlockquoteSetext is other.blockquoteSetextReplace (rules.ts:75); markedStripQuoteMarkers is other.blockquoteSetextReplace2 (rules.ts:76).
@@ -73,6 +73,17 @@ type markedBlockLexer struct {
 	slab, used int
 	// topTokens is the token list of the last document, kept for the next.
 	topTokens []*markedBlock
+	// lists hold the token lists of list items and the item lists of lists, so that lexing a streamed text again allocates none of them; listSlab and listUsed are the next free entry.
+	lists              [][]*markedBlock
+	listSlab, listUsed int
+	// chunk is the buffer that the strings of the document's tokens are copied into, so that a document costs a few allocations instead of one per string; sourceLen sizes the first chunk.
+	chunk     strings.Builder
+	sourceLen int
+	// listRawBuf, itemRawBuf and itemTextBuf collect the pieces of the texts of a list and its items before they are copied to the chunk.
+	listRawBuf, itemRawBuf, itemTextBuf []byte
+	// runeBufs are the code points of the nested sources of list items and quotes, one buffer per nesting level; depth is the level being lexed.
+	runeBufs [][]rune
+	depth    int
 }
 
 // pig additive (D112): Pi's marked lexer keeps no state between renders and allocates each token; a lexer that reuses slabs of tokens lexes the same text to the same tokens.
@@ -97,9 +108,114 @@ func (l *markedInlineState) blockLexer() *markedBlockLexer {
 	lexer := &l.block
 	lexer.state, lexer.top = l, true
 	lexer.slab, lexer.used = 0, 0
+	lexer.listSlab, lexer.listUsed, lexer.depth = 0, 0, 0
+	// The strings of the last document may still be held (a code block's text is a key of the highlight memo), so its chunk is left to them.
+	lexer.chunk = strings.Builder{}
 	clear(lexer.queue)
 	lexer.queue = lexer.queue[:0]
 	return lexer
+}
+
+// pig additive (D112): Pi's marked lexer allocates each token list; a lexer that takes them from slabs it keeps lexes the same text to the same tokens.
+// markedListSlabSize is the number of entries of one slab of token lists, and markedListCap the capacity of a token list taken from one.
+const (
+	markedListSlabSize = 256
+	markedListCap      = 4
+)
+
+// tokenList is an empty token list with room for markedListCap tokens, taken from the lexer's slabs; a list that grows past it moves to the heap.
+func (l *markedBlockLexer) tokenList() []*markedBlock {
+	for l.listSlab < len(l.lists) && len(l.lists[l.listSlab])-l.listUsed < markedListCap {
+		l.listSlab, l.listUsed = l.listSlab+1, 0
+	}
+	if l.listSlab == len(l.lists) {
+		l.lists = append(l.lists, make([]*markedBlock, markedListSlabSize))
+	}
+	slab := l.lists[l.listSlab]
+	start := l.listUsed
+	l.listUsed += markedListCap
+	return slab[start:start:l.listUsed]
+}
+
+// pig additive (D112): Pi allocates each string of a token; the lexer copies them into chunks, which changes how often memory is allocated and never a string. A chunk is never reused, because a string of the last document may still be held.
+// markedChunkMin and markedChunkMax bound the size of the chunks that the lexer copies strings into.
+const (
+	markedChunkMin = 256
+	markedChunkMax = 16 << 10
+)
+
+// bytesRoom makes the chunk able to take n more bytes: a chunk that is full is left to the strings in it, and a new one takes the next.
+func (l *markedBlockLexer) bytesRoom(n int) {
+	if l.chunk.Cap()-l.chunk.Len() >= n {
+		return
+	}
+	l.chunk = strings.Builder{}
+	l.chunk.Grow(max(n, min(max(2*l.sourceLen, markedChunkMin), markedChunkMax)))
+}
+
+// copyRunes is jsstring.FromCodePoints(runes) in the lexer's chunk.
+func (l *markedBlockLexer) copyRunes(runes []rune) string {
+	if len(runes) == 0 {
+		return ""
+	}
+	n := 0
+	for _, r := range runes {
+		n += jsstring.CodePointLen(r)
+	}
+	l.bytesRoom(n)
+	start := l.chunk.Len()
+	writeCodePoints(&l.chunk, runes)
+	return l.chunk.String()[start:]
+}
+
+// copyBytes is string(b) in the lexer's chunk.
+func (l *markedBlockLexer) copyBytes(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	l.bytesRoom(len(b))
+	start := l.chunk.Len()
+	l.chunk.Write(b)
+	return l.chunk.String()[start:]
+}
+
+// withNewline is s + "\n" in the lexer's chunk.
+func (l *markedBlockLexer) withNewline(s string) string {
+	l.bytesRoom(len(s) + 1)
+	start := l.chunk.Len()
+	l.chunk.WriteString(s)
+	l.chunk.WriteByte('\n')
+	return l.chunk.String()[start:]
+}
+
+// pushRunes is the code points of text in the buffer of the next nesting level, which stays the lexer's until popRunes.
+func (l *markedBlockLexer) pushRunes(text string) []rune {
+	l.depth++
+	for len(l.runeBufs) <= l.depth {
+		l.runeBufs = append(l.runeBufs, nil)
+	}
+	buf := l.runeBufs[l.depth][:0]
+	//portlint:allow utf16units the byte length of text bounds its number of code points, which is all the buffer's capacity needs
+	if cap(buf) < len(text) {
+		buf = make([]rune, 0, len(text))
+	}
+	buf = jsstring.AppendCodePoints(buf, text)
+	l.runeBufs[l.depth] = buf
+	return buf
+}
+
+func (l *markedBlockLexer) popRunes() { l.depth-- }
+
+// matchText is the text a match covers, with its lone surrogates spelled as WTF-8.
+func (l *markedBlockLexer) matchText(m *regexp2.Match) string { return l.copyRunes(m.Runes()) }
+
+// group is a capture group's text, "" when the group did not participate.
+func (l *markedBlockLexer) group(match *regexp2.Match, group int) string {
+	g := match.GroupByNumber(group)
+	if g == nil || len(g.Captures) == 0 {
+		return ""
+	}
+	return l.copyRunes(g.Runes())
 }
 
 // blockRunes is src as code points in a buffer that the state keeps for the next source.
@@ -114,6 +230,7 @@ func (l *markedInlineState) blockRunes(src string) []rune {
 // lexRunes is Lexer.lex up to the inline queue: the block tokens of a source whose line endings and tabs are normalized. A token's offset is where it starts in src.
 func (l *markedBlockLexer) lexRunes(src []rune, str string) []*markedBlock {
 	tokens := l.topTokens[:0]
+	l.sourceLen = len(src)
 	l.blockTokens(src, str, &tokens, false)
 	l.topTokens = tokens
 	return tokens
@@ -181,9 +298,9 @@ func (l *markedBlockLexer) blockTokens(src []rune, str string, tokens *[]*marked
 			pos += n
 			if last := markedLast(*tokens); n == 1 && last != nil {
 				// A single newline terminates the last line, so it moves there.
-				last.raw += "\n"
+				last.raw = l.withNewline(last.raw)
 			} else {
-				appendBlock(tokens, l.newBlock(markedBlock{kind: "space", raw: markedRawText(rest, restStr, n)}), at)
+				appendBlock(tokens, l.newBlock(markedBlock{kind: "space", raw: l.rawText(rest, restStr, n)}), at)
 			}
 			continue
 		}
@@ -203,7 +320,7 @@ func (l *markedBlockLexer) blockTokens(src []rune, str string, tokens *[]*marked
 		}
 
 		// fences
-		if token, n := markedFence(rest); token != nil {
+		if token, n := l.fence(rest); token != nil {
 			appendBlock(tokens, token, at)
 			pos += n
 			continue
@@ -231,7 +348,7 @@ func (l *markedBlockLexer) blockTokens(src []rune, str string, tokens *[]*marked
 		}
 
 		// list
-		if token, n := l.list(rest); token != nil {
+		if token, n := l.list(rest, restStr); token != nil {
 			appendBlock(tokens, token, at)
 			pos += n
 			continue
@@ -396,8 +513,8 @@ func markedCode(src []rune) (*markedBlock, int) {
 	return &markedBlock{kind: "code", raw: raw, text: text.String()}, markedRuneCount(raw)
 }
 
-// markedFence is Tokenizer.fences.
-func markedFence(src []rune) (*markedBlock, int) {
+// fence is Tokenizer.fences, whose rule is ^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}\1[~`]* *(?=\n|$)|$), matched without the pattern: the opening run takes every fence character, because a pattern that fails behind a shorter run fails behind the longer one as well; the rest of the opening line is the info string; the first line that closes the block (at most three spaces, a run of the opening character at least as long as the opening's, any more of the fence characters, spaces, and the end of the line) ends the match, and so does the end of the source.
+func (l *markedBlockLexer) fence(src []rune) (*markedBlock, int) {
 	if len(src) < 3 {
 		return nil, 0
 	}
@@ -405,18 +522,93 @@ func markedFence(src []rune) (*markedBlock, int) {
 	if spaces >= len(src) || src[spaces] != '`' && src[spaces] != '~' {
 		return nil, 0
 	}
-	match := markedBlockFences.exec(src)
-	if match == nil {
+	fence := src[spaces]
+	run := 0
+	for spaces+run < len(src) && src[spaces+run] == fence {
+		run++
+	}
+	if run < 3 {
 		return nil, 0
 	}
-	raw := matchString(match)
-	info, _ := markedGroup(match, 2)
-	content, _ := markedGroup(match, 3)
+	infoStart := spaces + run
+	infoEnd := markedLineEnd(src, infoStart)
+	// A backtick fence takes no backtick in its info string.
+	if fence == '`' && slices.Contains(src[infoStart:infoEnd], '`') {
+		return nil, 0
+	}
+	bodyStart := min(infoEnd+1, len(src))
+	contentEnd, end := -1, markedFenceClose(src, bodyStart, fence, run)
+	if end < 0 {
+		// The first line that starts at the end of a line of the body and closes it; the end of the source always does.
+		for at := bodyStart; ; at++ {
+			if at < len(src) && src[at] != '\n' {
+				continue
+			}
+			if end = markedFenceClose(src, min(at+1, len(src)), fence, run); end >= 0 {
+				contentEnd = at
+				break
+			}
+		}
+	} else {
+		contentEnd = bodyStart
+	}
+	raw := l.copyRunes(src[:end])
+	// The info string and the content are parts of raw: a source of one-byte characters has their offsets as byte offsets.
+	offset := func(n int) int {
+		if len(raw) == end {
+			return n
+		}
+		return markedByteLength(src[:n])
+	}
 	lang := ""
-	if info != "" {
+	//portlint:allow utf16units offset gives the byte offsets in raw of the code point indexes infoStart and infoEnd, so the slice is the info string
+	if info := raw[offset(infoStart):offset(infoEnd)]; info != "" {
 		lang = markedUnescapePunctuation(widthx.JSTrim(info))
 	}
-	return &markedBlock{kind: "code", raw: raw, lang: lang, text: markedIndentCodeCompensation(raw, content)}, match.Length
+	// The body is a group of the match only when a line of it was read; a fence that closes on its first body line has no content, which is what an absent group reads as.
+	//portlint:allow utf16units offset gives the byte offsets in raw of the code point indexes bodyStart and contentEnd, so the slice is that part of the fence's text
+	content := raw[offset(bodyStart):offset(contentEnd)]
+	token := l.newBlock(markedBlock{kind: "code", raw: raw, lang: lang, text: markedIndentCodeCompensation(raw, content)})
+	return token, end
+}
+
+// markedFenceClose is the index after the closing line of a fence of run characters fence that starts at index at, or -1 when the line does not close it: at most three spaces, run fence characters, any more of "`" and "~", spaces, and then the end of the line or of the source; the end of the source closes the fence as well.
+func markedFenceClose(src []rune, at int, fence rune, run int) int {
+	i := at
+	for i < len(src) && i-at < 3 && src[i] == ' ' {
+		i++
+	}
+	if i+run <= len(src) {
+		n := 0
+		for n < run && src[i+n] == fence {
+			n++
+		}
+		if n == run {
+			i += run
+			for i < len(src) && (src[i] == '~' || src[i] == '`') {
+				i++
+			}
+			for i < len(src) && src[i] == ' ' {
+				i++
+			}
+			if i == len(src) || src[i] == '\n' {
+				return i
+			}
+		}
+	}
+	if at == len(src) {
+		return at
+	}
+	return -1
+}
+
+// markedByteLength is the length of runes in WTF-8.
+func markedByteLength(runes []rune) int {
+	n := 0
+	for _, r := range runes {
+		n += jsstring.CodePointLen(r)
+	}
+	return n
 }
 
 // markedIndentCodeCompensation is Tokenizer.ts indentCodeCompensation: a fence indented by n spaces removes n whitespace characters from each code line that starts with at least as many.
@@ -456,8 +648,8 @@ func (l *markedBlockLexer) heading(src []rune) (*markedBlock, int) {
 	if match == nil {
 		return nil, 0
 	}
-	hashes, _ := markedGroup(match, 1)
-	body, _ := markedGroup(match, 2)
+	hashes := match.GroupByNumber(1).Length
+	body := l.group(match, 2)
 	text := widthx.JSTrim(body)
 	// remove trailing #s
 	if strings.HasSuffix(text, "#") {
@@ -467,8 +659,8 @@ func (l *markedBlockLexer) heading(src []rune) (*markedBlock, int) {
 			text = widthx.JSTrim(trimmed)
 		}
 	}
-	raw := markedRtrim(matchString(match), '\n')
-	return l.inline(l.newBlock(markedBlock{kind: "heading", raw: raw, depth: len(hashes), text: text}), text), markedRuneCount(raw)
+	raw := markedRtrim(l.matchText(match), '\n')
+	return l.inline(l.newBlock(markedBlock{kind: "heading", raw: raw, depth: hashes, text: text}), text), markedRuneCount(raw)
 }
 
 // markedHr is Tokenizer.hr.
@@ -549,9 +741,9 @@ func (l *markedBlockLexer) table(src []rune) (*markedBlock, int) {
 	if match == nil {
 		return nil, 0
 	}
-	header, _ := markedGroup(match, 1)
-	delimiter, _ := markedGroup(match, 2)
-	cells, _ := markedGroup(match, 3)
+	header := l.group(match, 1)
+	delimiter := l.group(match, 2)
+	cells := l.group(match, 3)
 	// A delimiter row without a pipe or colon is a setext underline.
 	if !strings.ContainsAny(delimiter, ":|") {
 		return nil, 0
@@ -570,7 +762,7 @@ func (l *markedBlockLexer) table(src []rune) (*markedBlock, int) {
 		}
 		rowSources = strings.Split(cells, "\n")
 	}
-	raw := markedRtrim(matchString(match), '\n')
+	raw := markedRtrim(l.matchText(match), '\n')
 	// header and align columns must be equal, rows can be different.
 	if len(headers) != strings.Count(aligns, "|")+1 {
 		return nil, 0
@@ -664,14 +856,14 @@ func (l *markedBlockLexer) lheading(src []rune) (*markedBlock, int) {
 	if match == nil {
 		return nil, 0
 	}
-	body, _ := markedGroup(match, 1)
-	underline, _ := markedGroup(match, 2)
+	body := l.group(match, 1)
+	underline := l.group(match, 2)
 	text := widthx.JSTrim(body)
 	depth := 2
 	if underline[0] == '=' {
 		depth = 1
 	}
-	raw := markedRtrim(matchString(match), '\n')
+	raw := markedRtrim(l.matchText(match), '\n')
 	return l.inline(&markedBlock{kind: "heading", raw: raw, depth: depth, text: text}, text), markedRuneCount(raw)
 }
 
@@ -726,7 +918,7 @@ func (l *markedBlockLexer) paragraph(src []rune, str string) (*markedBlock, int)
 		}
 		end = lineEnd
 	}
-	text := markedRawText(src, str, end)
+	text := l.rawText(src, str, end)
 	return l.inline(l.newBlock(markedBlock{kind: "paragraph", raw: text, text: text}), text), end
 }
 
@@ -736,16 +928,16 @@ func (l *markedBlockLexer) text(src []rune, str string) (*markedBlock, int) {
 	if end == 0 {
 		return nil, 0
 	}
-	text := markedRawText(src, str, end)
+	text := l.rawText(src, str, end)
 	return l.inline(l.newBlock(markedBlock{kind: "text", raw: text, text: text}), text), end
 }
 
-// markedRawText is string(src[:n]), taken from str, the same text, when there is one.
-func markedRawText(src []rune, str string, n int) string {
+// rawText is string(src[:n]), taken from str, the same text, when there is one.
+func (l *markedBlockLexer) rawText(src []rune, str string, n int) string {
 	if str != "" {
 		return str[:n]
 	}
-	return jsstring.FromCodePoints(src[:n])
+	return l.copyRunes(src[:n])
 }
 
 // markedLatexStartAt is the start() of the latexBlock extension on src[pos:].slice(1): the index in that slice of the first display-math start at its beginning or behind a line break, or -1. The cut is src.substring(0, start+1). It serves the successive positions of one lexing: next remembers the first display-math start behind a line break after the last position (-1 before the first call), so the search reads each line of the text once.
@@ -933,7 +1125,8 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 		// parse blockquote lines as top level tokens; merge paragraphs if this is a continuation
 		top := l.top
 		l.top = true
-		l.blockTokens(jsstring.CodePoints(currentText), currentText, &tokens, true)
+		l.blockTokens(l.pushRunes(currentText), currentText, &tokens, true)
+		l.popRunes()
 		l.top = top
 
 		// if there is no continuation then we are done
@@ -950,7 +1143,8 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 			// include continuation in nested blockquote
 			continuation := strings.Join(lines, "\n")
 			newText := last.raw + "\n" + markedStripQuoteMarkers(continuation)
-			newToken, _ := l.blockquote(jsstring.CodePoints(newText))
+			newToken, _ := l.blockquote(l.pushRunes(newText))
+			l.popRunes()
 			tokens[len(tokens)-1] = newToken
 
 			raw = raw + "\n" + continuation
@@ -959,7 +1153,8 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 		case last != nil && last.kind == "list":
 			// include continuation in nested list
 			newText := last.raw + "\n" + strings.Join(lines, "\n")
-			newToken, _ := l.list(jsstring.CodePoints(newText))
+			newToken, _ := l.list(l.pushRunes(newText), "")
+			l.popRunes()
 			tokens[len(tokens)-1] = newToken
 			raw = markedWithoutTail(raw, last.raw) + newToken.raw
 			text = markedWithoutTail(text, last.raw) + newToken.raw
@@ -1157,7 +1352,7 @@ func markedFirstNonSpace(line string) int {
 func markedSliceUnits(line string, from int) string { return jsstring.Slice(line, from) }
 
 // list is Tokenizer.list.
-func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
+func (l *markedBlockLexer) list(src []rune, str string) (*markedBlock, int) {
 	spaces := markedLeadingSpaces(src)
 	if spaces > 3 {
 		return nil, 0
@@ -1166,18 +1361,19 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 	if !ok {
 		return nil, 0
 	}
-	bull := string(src[spaces:end]) // the bullet rule matched ASCII
+	bull := src[spaces:end] // the bullet rule matched ASCII
 	ordered := len(bull) > 1
-	list := &markedBlock{kind: "list", ordered: ordered}
+	list := l.newBlock(markedBlock{kind: "list", ordered: ordered, items: l.tokenList()})
 	if ordered {
 		//portlint:allow numbers bull is one to nine ASCII digits and a . or ) (markedBulletEnd), so Atoi on the digits is parseInt and cannot fail
-		list.start, _ = strconv.Atoi(bull[:len(bull)-1])
+		list.start, _ = strconv.Atoi(string(bull[:len(bull)-1]))
 	}
 
-	// Get next list item.
+	// Get next list item. The text of an item, and of the list, is collected in buffers that are kept for the next list and copied to the chunk once.
 	endsWithBlankLine := false
 	pos := 0
-	var listRaw strings.Builder
+	listRaw := l.listRawBuf[:0]
+	raw, contents := l.itemRawBuf[:0], l.itemTextBuf[:0]
 	// Check if current bullet point can start a new List Item.
 	for pos < len(src) {
 		rest := src[pos:]
@@ -1190,18 +1386,17 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 			break
 		}
 
-		var raw strings.Builder
-		raw.Grow(itemEnd)
-		writeCodePoints(&raw, rest[:itemEnd])
+		raw = appendCodePoints(raw[:0], rest[:itemEnd])
 		pos += itemEnd
 
-		line := markedFirstLine(rest[bulletLength:itemEnd])
-		nextLine := markedFirstLine(src[pos:])
+		line := l.lineAt(src, str, pos-itemEnd+bulletLength)
+		nextLine := l.lineAt(src, str, pos)
+		nextLinePos := pos
 		blankLine := widthx.JSTrim(line) == ""
 		endEarly := false
 
 		indent := 0
-		itemContents := ""
+		contents = contents[:0]
 		if blankLine {
 			indent = bulletLength + 1
 		} else {
@@ -1211,13 +1406,13 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 				// Treat indented code blocks (> 4 spaces) as having only 1 indent.
 				indent = 1
 			}
-			itemContents = markedSliceUnits(line, indent)
+			contents = append(contents, markedSliceUnits(line, indent)...)
 			indent += bulletLength
 		}
 
 		if blankLine && strings.Trim(nextLine, " \t") == "" {
 			// Items begin with at most one blank line.
-			raw.WriteString(nextLine + "\n")
+			raw = append(append(raw, nextLine...), '\n')
 			pos = min(len(src), pos+markedRuneCount(nextLine)+1)
 			endEarly = true
 		}
@@ -1226,7 +1421,10 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 			begin := max(0, min(3, indent-1))
 			// Check if following lines should be included in List Item.
 			for pos < len(src) {
-				rawLine := markedFirstLine(src[pos:])
+				rawLine := nextLine
+				if pos != nextLinePos {
+					rawLine = l.lineAt(src, str, pos)
+				}
 				nextLine = rawLine
 
 				if markedFencesBegin(nextLine, begin) || markedHeadingBegin(nextLine, begin) || markedHTMLBeginAt(nextLine, begin) || markedBlockquoteBegin(nextLine, begin) || markedItemBegin(nextLine, begin) || markedHrBegin(nextLine, begin) {
@@ -1235,7 +1433,7 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 
 				if markedFirstNonSpace(nextLine) >= indent || widthx.JSTrim(nextLine) == "" {
 					// Dedent if possible.
-					itemContents += "\n" + markedSliceUnits(nextLine, indent)
+					contents = append(append(contents, '\n'), markedSliceUnits(nextLine, indent)...)
 				} else {
 					// not enough indentation
 					if blankLine {
@@ -1249,17 +1447,17 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 					if markedFencesBegin(line, begin) || markedHeadingBegin(line, begin) || markedHrBegin(line, begin) {
 						break
 					}
-					itemContents += "\n" + nextLine
+					contents = append(append(contents, '\n'), nextLine...)
 				}
 
 				blankLine = widthx.JSTrim(nextLine) == ""
-				raw.WriteString(rawLine + "\n")
+				raw = append(append(raw, rawLine...), '\n')
 				pos = min(len(src), pos+markedRuneCount(rawLine)+1)
 				line = markedSliceUnits(nextLine, indent)
 			}
 		}
 
-		itemRaw := raw.String()
+		itemRaw := l.copyBytes(raw)
 		if !list.loose {
 			// If the previous item ended with a blank line, the list is loose.
 			if endsWithBlankLine {
@@ -1269,10 +1467,12 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 			}
 		}
 
+		itemContents := l.copyBytes(contents)
 		_, task := markedTaskPrefix(itemContents)
-		list.items = append(list.items, &markedBlock{kind: "list_item", raw: itemRaw, task: task, text: itemContents})
-		listRaw.WriteString(itemRaw)
+		list.items = append(list.items, l.newBlock(markedBlock{kind: "list_item", raw: itemRaw, task: task, text: itemContents}))
+		listRaw = append(listRaw, itemRaw...)
 	}
+	l.listRawBuf, l.itemRawBuf, l.itemTextBuf = listRaw, raw, contents
 
 	// Do not consume newlines at end of final item.
 	if len(list.items) == 0 {
@@ -1282,13 +1482,14 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 	lastItem := list.items[len(list.items)-1]
 	lastItem.raw = widthx.JSTrimEnd(lastItem.raw)
 	lastItem.text = widthx.JSTrimEnd(lastItem.text)
-	list.raw = widthx.JSTrimEnd(listRaw.String())
+	list.raw = widthx.JSTrimEnd(l.copyBytes(listRaw))
 
 	// Item child tokens handled here at end because we needed to have the final item to trim it first. First pass: tokenize items and finalize list.loose from spacers before placing checkboxes.
 	for _, item := range list.items {
 		l.top = false
-		var tokens []*markedBlock
-		l.blockTokens(jsstring.CodePoints(item.text), item.text, &tokens, false)
+		tokens := l.tokenList()
+		l.blockTokens(l.pushRunes(item.text), item.text, &tokens, false)
+		l.popRunes()
 		item.tokens = tokens
 
 		if !list.loose {
@@ -1358,11 +1559,25 @@ func markedCheckboxChecked(raw string) bool {
 	return false
 }
 
-// markedFirstLine is the text of src before its first newline.
-func markedFirstLine(src []rune) string { return jsstring.FromCodePoints(src[:markedLineEnd(src, 0)]) }
+// lineAt is the text of src from index from to its next newline, taken from str, the same text, when there is one, and copied to the lexer's chunk when there is not.
+func (l *markedBlockLexer) lineAt(src []rune, str string, from int) string {
+	end := markedLineEnd(src, from)
+	if str != "" {
+		return str[from:end]
+	}
+	return l.copyRunes(src[from:end])
+}
+
+// appendCodePoints appends the text of runes to dst, a lone surrogate spelled as WTF-8.
+func appendCodePoints(dst []byte, runes []rune) []byte {
+	for _, r := range runes {
+		dst = jsstring.AppendCodePoint(dst, r)
+	}
+	return dst
+}
 
 // markedListItem is the item rule other.listItemRegex(bull) builds, ^( {0,3}bull)((?:[\t ][^\n]*)?(?:\n|$)), on src: the length of its first group, the length of the whole match, and whether it matches.
-func markedListItem(src []rune, bull string) (bulletLength, length int, ok bool) {
+func markedListItem(src []rune, bull []rune) (bulletLength, length int, ok bool) {
 	spaces := markedLeadingSpaces(src)
 	if spaces > 3 {
 		return 0, 0, false
@@ -1371,9 +1586,8 @@ func markedListItem(src []rune, bull string) (bulletLength, length int, ok bool)
 	if !ok {
 		return 0, 0, false
 	}
-	marker := string(src[spaces:end]) // the bullet rule matched ASCII
-	//portlint:allow utf16units bull and marker are ASCII (the bullet rule matched ASCII), so their byte lengths and last bytes are their .length and charAt
-	if len(bull) == 1 && marker != bull || len(bull) > 1 && (len(marker) < 2 || marker[len(marker)-1] != bull[len(bull)-1]) {
+	marker := src[spaces:end] // the bullet rule matched ASCII
+	if len(bull) == 1 && (len(marker) != 1 || marker[0] != bull[0]) || len(bull) > 1 && (len(marker) < 2 || marker[len(marker)-1] != bull[len(bull)-1]) {
 		return 0, 0, false
 	}
 	lineEnd := markedLineEnd(src, end)

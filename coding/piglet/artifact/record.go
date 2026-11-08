@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"golang.org/x/mod/semver"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // RecordKind is the closed vocabulary for first-production Piglet records.
@@ -225,7 +227,7 @@ func NewBinaryRecord(piglet, releaseVersion string, createdAt time.Time, resolut
 	}
 	if len(input.Strip) > 0 {
 		binary.Strip = slices.Clone(input.Strip)
-		slices.SortFunc(binary.Strip, compareStripEntries)
+		sortx.Func(binary.Strip, compareStripEntries)
 	}
 	binary.StripKeep = canonicalStripIDs(input.StripKeep)
 	binary.StripTable = canonicalStripIDs(input.StripTable)
@@ -439,7 +441,7 @@ func canonicalStripIDs(lists []StripIDs) []StripIDs {
 		out[i] = StripIDs{Kind: list.Kind, IDs: append([]string{}, list.IDs...)}
 		slices.Sort(out[i].IDs)
 	}
-	slices.SortFunc(out, func(a, b StripIDs) int { return cmp.Compare(a.Kind, b.Kind) })
+	sortx.Func(out, func(a, b StripIDs) int { return cmp.Compare(a.Kind, b.Kind) })
 	return out
 }
 
@@ -479,7 +481,7 @@ func canonicalResolution(input ResolutionInput) (Resolution, error) {
 		inputs[i].Package = strings.TrimSpace(inputs[i].Package)
 		inputs[i].Plugin = strings.TrimSpace(inputs[i].Plugin)
 	}
-	slices.SortFunc(inputs, compareInputPins)
+	sortx.Func(inputs, compareInputPins)
 	componentPlan := input.ComponentPlan
 	componentPlan.Components = slices.Clone(input.ComponentPlan.Components)
 	resolution := Resolution{

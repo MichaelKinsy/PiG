@@ -415,8 +415,7 @@ func (t *TestedPlugin) Contributions(name string, ctx context.Context) ([]Contri
 	}
 	reply, err := t.Host.await(call, ctx)
 	if err != nil {
-		var node *NodeError
-		if errors.As(err, &node) {
+		if node, ok := errors.AsType[*NodeError](err); ok {
 			return nil, errors.New(node.Message)
 		}
 		return nil, err

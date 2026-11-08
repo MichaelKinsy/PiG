@@ -9,8 +9,7 @@ import (
 )
 
 // cli/args.ts printHelp against pinned Pi: every line of Pi's help appears in Pig's, in order, after the program name (`pi` is `pig`), the
-// configuration directory and the environment variable prefix are renamed. PiG's own sections are skipped, and the lines Pi 1.1.0 adds for
-// `--tools +name/-name` belong to the tool-selection port (K1) and are listed as known gaps rather than hidden.
+// configuration directory and the environment variable prefix are renamed. PiG's own sections are skipped.
 func TestHelpMatchesPi(t *testing.T) {
 	cmd := exec.CommandContext(t.Context(), "node", "testdata/help.mjs")
 	var stderr bytes.Buffer
@@ -41,19 +40,12 @@ func TestHelpMatchesPi(t *testing.T) {
 	}
 
 	knownGaps := map[string]string{
-		"                                 Only +name/-name entries add to or remove from the defaults":          "K1: --tools +name/-name",
-		"  # Add codemode to the default tools":                                                                 "K1: --tools +name/-name",
-		"  pig --tools +codemode":                                                                               "K1: --tools +name/-name",
 		"  PIG_SHARE_VIEWER_URL              - Base URL for /share command (default: https://pig.dev/session/)": "PiG's /share has no viewer URL variable",
 		"  PI_SHARE_VIEWER_URL              - Base URL for /share command (default: https://pig.dev/session/)":  "PiG's /share has no viewer URL variable",
 	}
-	// A known-gap example block ends with the blank line that separates examples; it is skipped with the block.
 	var expected []string
 	for i := 0; i < len(want); i++ {
 		if _, known := knownGaps[want[i]]; known {
-			if want[i] == "  pig --tools +codemode" && i+1 < len(want) && want[i+1] == "" {
-				i++
-			}
 			continue
 		}
 		expected = append(expected, want[i])

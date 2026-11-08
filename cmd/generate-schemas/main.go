@@ -1,5 +1,6 @@
 // Command generate-schemas writes the JSON Schema artifacts of the configuration files (models.json, settings.json, keybindings.json and
-// themes) to schemas/. It is the counterpart of packages/coding-agent/scripts/generate-schemas.ts.
+// themes) to schemas/, and the reference page of the models.json fields to docs/site/docs/. It is the counterpart of
+// packages/coding-agent/scripts/generate-schemas.ts and generate-references.ts.
 package main
 
 import (
@@ -31,5 +32,13 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("Generated", path)
+	}
+	for name, page := range configschema.RenderReferences() {
+		target := filepath.Join(*out, "docs", "site", "docs", name)
+		if err := os.WriteFile(target, []byte(page), 0o644); err != nil {
+			fmt.Fprintln(os.Stderr, "generate-schemas:", err)
+			os.Exit(1)
+		}
+		fmt.Println("Generated", filepath.Join("docs", "site", "docs", name))
 	}
 }

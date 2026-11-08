@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/utils/provider-env.ts
+
 import "testing"
 
 // TestGetProviderEnvValue verifies provider-scoped overrides take precedence

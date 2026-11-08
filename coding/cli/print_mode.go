@@ -216,13 +216,23 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	// disposal therefore waits for that result (resultMu) before it disposes the Session.
 	var disposeOnce sync.Once
 	var disposed atomic.Bool
-	// pig divergence (D234): follows Pi main ace560c30 ahead of the v1.5.0 pin. finalDisposing is set while the final disposal (the teardown's rt.Close) runs, and finalDisposed closes when it ends; a signal during it waits for that disposal, as Pi's disposeRuntime() returns the shared in-flight disposal (print-mode.ts), instead of starting a second one or cutting it off.
+	// finalDisposing is set while the final disposal (the teardown's rt.Close) runs, and finalDisposed closes when it ends; a signal during it waits for that disposal, as Pi's disposeRuntime() returns the shared in-flight disposal (print-mode.ts), instead of starting a second one or cutting it off.
 	var finalDisposing atomic.Bool
 	finalDisposed := make(chan struct{})
-	// teardownDone closes when the teardown has ended. The signal handlers live until then, not until the run's ctx ends: a stdout or conversion error cancels ctx before the final disposal, and a signal during it must still be handled, a repeated one by exiting at once (D234).
+	// teardownDone closes when the teardown has ended. The signal handlers live until then, not until the run's ctx ends: a stdout or conversion error cancels ctx before the final disposal, and a signal during it must still be handled, a repeated one by exiting at once.
 	teardownDone := make(chan struct{})
 	defer close(teardownDone)
 	var resultMu sync.Mutex
+	// Pi's disposal and the prompt it interrupts interleave on one event loop (print-mode.ts, agent-session-runtime.ts dispose): once the aborted
+	// run settles, runtimeHost.dispose() goes on into the session_shutdown handlers up to their first await, and only then does the prompt's own
+	// continuation print the run's result. disposalStarted marks a disposal in progress, handlersDone closes when the handlers have yielded or
+	// ended, and resultStageDone closes when the main flow has printed (or skipped) the result of a prompt that was in flight at the signal.
+	var disposalStarted atomic.Bool
+	var promptsInFlight atomic.Int32
+	handlersDone, resultStageDone := make(chan struct{}), make(chan struct{})
+	var handlersDoneOnce, resultStageOnce sync.Once
+	endHandlerPhase := func() { handlersDoneOnce.Do(func() { close(handlersDone) }) }
+	passResultStage := func() { resultStageOnce.Do(func() { close(resultStageDone) }) }
 	var releaseHoldMu sync.Mutex
 	releaseHold := func() {}
 	setTerminationPrelude(func() {
@@ -254,8 +264,22 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			for _, detach := range detaches {
 				detach()
 			}
+			// runtimeHost.dispose() awaits session.abort() before session_shutdown (agent-session-runtime.ts dispose, Pi main 7a53c310a, #9126):
+			// the abort flag is set while the signal's hold is still in place, so the killed tool's turn ends as aborted and starts no next request,
+			// and the interrupted run settles (its tool result and aborted assistant message are persisted) before any handler runs.
+			disposalStarted.Store(true)
+			resultPending := promptsInFlight.Load() > 0
+			session := rt.Session()
+			session.RequestAbort()
+			release()
 			//portlint:allow ctxbackground Pi's SIGTERM/SIGHUP handler awaits runtimeHost.dispose() with no signal (print-mode.ts:57-60); this signal hook has no caller context
-			rt.EmitQuitShutdownContext(handleryield.With(context.Background(), release))
+			_ = session.WaitForIdle(context.Background())
+			//portlint:allow ctxbackground Pi's SIGTERM/SIGHUP handler awaits runtimeHost.dispose() with no signal (print-mode.ts:57-60); this signal hook has no caller context
+			rt.EmitQuitShutdownContext(handleryield.With(context.Background(), func() { release(); endHandlerPhase() }))
+			endHandlerPhase()
+			if resultPending {
+				<-resultStageDone
+			}
 			// Pi exits a microtask after dispose; the aborted run's later extension errors (a turn_end boundary without a persisted entry) are never printed.
 			resultMu.Lock()
 			disposed.Store(true)
@@ -281,7 +305,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	go func() {
 		select {
 		case sig := <-intCh:
-			// pig divergence (D234): a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1), including a wait for a credential write (D237). The watcher starts before anything that can wait on that disposal.
+			// a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1), including a wait for a credential write (D237). The watcher starts before anything that can wait on that disposal.
 			go func() {
 				select {
 				case again := <-intCh:
@@ -521,7 +545,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			disposeFromSignal()
 		}
 		// Ordered teardown: shutdown hooks run while the Session is still open,
-		// then closing it ends the Session's event executor. The signal handlers stay until it is done (D234).
+		// then closing it ends the Session's event executor. The signal handlers stay until it is done.
 		finalDisposing.Store(true)
 		_ = rt.Close()
 		close(finalDisposed)
@@ -559,9 +583,11 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	// A termination signal ends the run where it is: upstream's handler
 	// disposes the runtime and exits, so no later prompt starts.
 	send := func(message string, images []ai.ImageContent) {
-		if runErr != nil || ctx.Err() != nil {
+		if runErr != nil || ctx.Err() != nil || disposalStarted.Load() {
 			return
 		}
+		promptsInFlight.Add(1)
+		defer promptsInFlight.Add(-1)
 		_, runErr = sendPrintPrompt(ctx, current(), *currentCommands.Load(), message, images)
 	}
 	if opts.InitialMessage != "" {
@@ -572,6 +598,10 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	}
 	// A run that a signal's disposal cut short never resolves Pi's prompt; one that ended first prints its result before
 	// the disposal goes on.
+	defer passResultStage()
+	if disposalStarted.Load() {
+		<-handlersDone
+	}
 	resultMu.Lock()
 	defer resultMu.Unlock()
 	if disposed.Load() {

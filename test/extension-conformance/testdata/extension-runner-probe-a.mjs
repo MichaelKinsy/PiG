@@ -36,6 +36,10 @@ export default function (pi) {
     message: { customType: "probe", content: "a:" + event.prompt, display: false },
     systemPrompt: event.systemPrompt + "\n[A]",
   }));
+  // Pi gives every handler of one emit the one event.message: a second handler of the same extension compares it with the first's (also in an extension packed with another, or isolated).
+  let started;
+  pi.on("message_start", async (event) => { started = event.message; });
+  pi.on("message_start", async (event) => note("identity", { sameMessage: event.message === started }));
   pi.on("message_end", async (event) => ({ message: { ...event.message, content: "A-end" } }));
   pi.on("before_provider_request", async (event) => ({ ...event.payload, a: 1 }));
   pi.on("before_provider_headers", async (event) => {

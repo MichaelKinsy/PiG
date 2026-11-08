@@ -237,7 +237,15 @@ func (c *Container) handleMouse(event TuiMouseEvent, held bool) *TuiMouseDispatc
 	if children == nil {
 		children = measureMouseChildren(components, event.Width)
 	}
-	return dispatchToStackedChild(children, event, event.X, event.Y, event.Width)
+	result := dispatchToStackedChild(children, event, event.X, event.Y, event.Width)
+	if result != nil {
+		// A handler changes what its component draws without telling anyone (Pi's MouseRegion closure flips a field, and Pi redraws every
+		// component on the next frame), so no cached rows of this container's path are known to still hold. A cached row of an ancestor that reports
+		// itself clean (a message component wrapping the handler) would hide the change.
+		c.dirty.Store(true)
+		c.notifySurface()
+	}
+	return result
 }
 
 // HandleMouse forwards an event inside the padded content area to the child

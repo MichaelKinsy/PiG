@@ -288,7 +288,7 @@ func TestTimesMatchNode(t *testing.T) {
 	// every minute of a day in a few locales and shapes
 	for _, locale := range []string{"en-US", "de", "ja", "ar-EG", "fa", "hi", "zh-TW", "fr-CA", "bn", "my"} {
 		for _, shape := range []TimeOptions{{TimeStyle: TimeStyleShort}, {Hour: FieldNumeric}, {Hour: FieldTwoDigit, Minute: FieldTwoDigit, Second: FieldNumeric}, {TimeStyle: TimeStyleMedium}} {
-			for minute := 0; minute < 24*60; minute++ {
+			for minute := range 24 * 60 {
 				ms := time.Date(2026, 6, 15, minute/60, minute%60, minute%60, 0, time.UTC).UnixMilli()
 				o := shape
 				c := driftCase{Kind: "time", Locale: &locale, MS: ms, at: time.UnixMilli(ms), timeOptions: &o, Options: map[string]any{"timeZone": "UTC"}}

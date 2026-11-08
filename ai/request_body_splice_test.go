@@ -83,7 +83,7 @@ func TestAQuotedStringIsEncodedOnceAndNeverServedForAnotherString(t *testing.T) 
 		key = k
 	}
 	cache.entries[key].Value.(*quotedString).source = "another string with the same hash"
-	if got := cache.quote(text); !bytes.Equal(got, first) || cache.misses != 2 {
+	if got := cache.quote(strings.Clone(text)); !bytes.Equal(got, first) || cache.misses != 2 {
 		t.Fatalf("a colliding entry served the wrong string: %.40q misses=%d", got, cache.misses)
 	}
 }
@@ -348,8 +348,8 @@ func TestAnEvictedStringIsNoLongerRecognisedByIdentity(t *testing.T) {
 	}
 }
 
-// An equal copy that hits by content becomes the entry's source, so a request that re-sends the copy finds it by identity. The entry keeps one source and is counted against the limit once.
-func TestEqualCopyOfAHeldStringBecomesTheRecognisedSource(t *testing.T) {
+// An equal copy that hits by content is remembered by its address too, so a request that re-sends the copy finds it by identity, and so does the string it equals. The copy's bytes count against the limit, because the entry keeps it alive.
+func TestEqualCopyOfAHeldStringIsRecognisedAsWellAsItsSource(t *testing.T) {
 	cache := newQuotedStringCache(1 << 20)
 	first := strings.Repeat("copy <&>\n", 500)
 	want, _ := cache.quoteValid(first)
@@ -364,35 +364,72 @@ func TestEqualCopyOfAHeldStringBecomesTheRecognisedSource(t *testing.T) {
 	if got, ok := cache.known(copied); !ok || !bytes.Equal(got, want) {
 		t.Fatal("the copy is not held by identity")
 	}
-	if cache.held != held || len(cache.entries) != 1 || len(cache.bySource) != 1 {
-		t.Fatalf("held=%d (was %d) entries=%d identities=%d", cache.held, held, len(cache.entries), len(cache.bySource))
+	if got, ok := cache.known(first); !ok || !bytes.Equal(got, want) {
+		t.Fatal("the source stopped being held by identity")
+	}
+	if cache.held != held+len(copied) || len(cache.entries) != 1 || len(cache.bySource) != 2 {
+		t.Fatalf("held=%d (was %d, copy %d) entries=%d identities=%d", cache.held, held, len(copied), len(cache.entries), len(cache.bySource))
 	}
 }
 
-// Evicting a copy releases its identity and nothing else, and evicting the first entry leaves the copies recognised.
-func TestEvictingACopyKeepsTheEntryAndEvictingTheEntryKeepsTheCopy(t *testing.T) {
+// A conversation that reads one file again and again holds an equal string per read: every one of them is found by identity once each has been looked up, so a request hashes and compares none, and the oldest is forgotten past requestSpliceMaxCopies.
+func TestEqualCopiesOfOneStringAreEachRecognisedByIdentity(t *testing.T) {
+	cache := newQuotedStringCache(1 << 30)
+	first := strings.Repeat("read again <&>\n", 400)
+	want, _ := cache.quoteValid(first)
+	copies := make([]string, requestSpliceMaxCopies+10)
+	for i := range copies {
+		copies[i] = strings.Clone(first)
+		if got, valid := cache.quoteValid(copies[i]); !valid || !bytes.Equal(got, want) {
+			t.Fatalf("copy %d was not found by content", i)
+		}
+	}
+	if cache.misses != 1 || len(cache.entries) != 1 {
+		t.Fatalf("misses=%d entries=%d, want one entry encoded once", cache.misses, len(cache.entries))
+	}
+	for i, copied := range copies {
+		_, ok := cache.known(copied)
+		if recent := i >= len(copies)-requestSpliceMaxCopies; ok != recent {
+			t.Fatalf("copy %d: held by identity = %v, want %v", i, ok, recent)
+		}
+	}
+	if len(cache.bySource) != requestSpliceMaxCopies+1 || cache.held != len(first)+requestSpliceMaxCopies*len(first)+len(want) {
+		t.Fatalf("identities=%d held=%d", len(cache.bySource), cache.held)
+	}
+	cache.release()
+	if len(cache.bySource) != 0 || cache.held != 0 {
+		t.Fatalf("release left identities=%d held=%d", len(cache.bySource), cache.held)
+	}
+}
+
+// Evicting an entry releases the identity of its source and of every copy it remembers.
+func TestEvictingAnEntryReleasesItsCopies(t *testing.T) {
 	text := strings.Repeat("c", 1000)
 	cache := newQuotedStringCache(2*2002 + 1000)
 	cache.quoteValid(text)
 	copied := strings.Clone(text)
 	cache.quoteValid(copied)
-	other := strings.Repeat("d", 1000)
-	cache.quoteValid(other) // evicts the entry for text, the least recent
 	if _, ok := cache.known(copied); !ok {
-		t.Fatal("the copy was released with the entry")
+		t.Fatal("the copy is not held")
 	}
-	if _, ok := cache.known(text); ok {
-		t.Fatal("the evicted entry's string is still held by identity")
+	cache.quoteValid(strings.Repeat("d", 1000))
+	cache.quoteValid(strings.Repeat("e", 1000)) // the entry for text is the least recent and goes
+	for name, s := range map[string]string{"source": text, "copy": copied} {
+		if _, ok := cache.known(s); ok {
+			t.Fatalf("the evicted entry's %s is still held by identity", name)
+		}
 	}
-	// Evicting a copy leaves its entry: the entry for text is rebuilt, then the copy is the least recent and goes.
-	rebuilt, _ := cache.quoteValid(text)
-	cache.quoteValid(strings.Repeat("e", 1000))
-	if _, ok := cache.known(copied); ok {
-		t.Fatal("the copy was kept past the limit")
+	if cache.held != cacheHeld(cache) {
+		t.Fatalf("held=%d, the entries hold %d", cache.held, cacheHeld(cache))
 	}
-	if _, ok := cache.known(text); !ok || !cache.holds(rebuilt) || len(cache.entries) != 2 {
-		t.Fatalf("evicting a copy took its entry: entries=%d", len(cache.entries))
+}
+
+func cacheHeld(cache *quotedStringCache) int {
+	held := 0
+	for element := cache.recency.Front(); element != nil; element = element.Next() {
+		held += element.Value.(*quotedString).size()
 	}
+	return held
 }
 
 // A string the request cache holds is valid UTF-8, so removing lone surrogates from it is the identity and needs no scan. The test shows it by planting a surrogate under a held string, which Go strings never carry: a held string comes back as it is, and a string the cache does not hold is cleaned.

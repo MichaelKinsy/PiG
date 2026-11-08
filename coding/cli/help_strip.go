@@ -95,7 +95,8 @@ func stripHelpLine(line string) (string, bool) {
 	case strings.HasPrefix(trimmed, "pig --tools "):
 		tools, _, _ := strings.Cut(strings.TrimPrefix(trimmed, "pig --tools "), " ")
 		for tool := range strings.SplitSeq(tools, ",") {
-			tool = strings.Trim(tool, "'\n")
+			// +name and -name are the modifiers of the default tools.
+			tool = strings.TrimLeft(strings.Trim(tool, "'\n"), "+-")
 			if pigstrip.Has(pigstrip.ListTools, tool) || pigstrip.Has(pigstrip.ListExtensions, tool) || mcpStripped && strings.HasPrefix(tool, "mcp__") {
 				return line, false
 			}

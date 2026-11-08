@@ -1,6 +1,8 @@
 package codingagent
 
 import (
+	"bufio"
+	"io"
 	"slices"
 	"strconv"
 	"strings"
@@ -137,25 +139,85 @@ var lastSeenVersionRE = lazyregexp.New(`^v?([0-9]+)\.([0-9]+)\.([0-9]+)`)
 // pig divergence (D245): Pi 1.5.0 reads `lastVersion.split(".").map(Number)`, so 0.1.5-20261020.7 counts as 0.1.0 and an unreadable
 // value as 0.0.0; Pi main 9a1953961 (#11753) reads the leading triple and returns undefined for an unreadable one.
 func GetNewEntries(entries []ChangelogEntry, sinceVersion string) ([]ChangelogEntry, bool) {
+	last, ok := parseLastSeenVersion(sinceVersion)
+	if !ok {
+		return nil, false
+	}
+	var newer []ChangelogEntry
+	for _, e := range entries {
+		if e.newerThan(last) {
+			newer = append(newer, e)
+		}
+	}
+	return newer, true
+}
+
+// parseLastSeenVersion reads the leading major.minor.patch of a recorded version, and reports false when it has none.
+func parseLastSeenVersion(sinceVersion string) ([3]float64, bool) {
 	parts := lastSeenVersionRE.FindStringSubmatch(jsstring.Trim(sinceVersion))
 	if parts == nil {
-		return nil, false
+		return [3]float64{}, false
 	}
 	var last [3]float64
 	for i := range last {
 		last[i], _ = strconv.ParseFloat(parts[i+1], 64)
 	}
-	var newer []ChangelogEntry
-	for _, e := range entries {
-		for i, value := range [3]float64{float64(e.Major), float64(e.Minor), float64(e.Patch)} {
-			if value == last[i] {
-				continue
+	return last, true
+}
+
+// newerThan reports whether the entry's version is greater than last, component by component.
+func (e ChangelogEntry) newerThan(last [3]float64) bool {
+	for i, value := range [3]float64{float64(e.Major), float64(e.Minor), float64(e.Patch)} {
+		if value == last[i] {
+			continue
+		}
+		return value > last[i]
+	}
+	return false
+}
+
+// parseChangelogNewerThan returns the entries ParseChangelog would find in the changelog r reads that are newer than last, reading only as far as
+// they extend. A changelog lists its releases newest first (TestBundledChangelogIsNewestFirst holds the bundled one to it), so the first release
+// that is not newer ends the read: the startup What's New of a build that is not an update, or whose recorded version is ahead of it, decodes a few
+// kilobytes of the embedded changelog instead of inflating all of it. read reports the reader's failure, which an embedded changelog cannot have.
+func parseChangelogNewerThan(r io.Reader, last [3]float64) (newer []ChangelogEntry, err error) {
+	br := bufio.NewReader(r)
+	var current *ChangelogEntry
+	var body strings.Builder
+	// finish closes the entry under construction. An entry's content runs from its heading line to the newline before the next "## " line,
+	// which the trim removes with the rest.
+	finish := func() {
+		if current != nil {
+			current.Content = jsstring.Trim(body.String())
+			newer = append(newer, *current)
+			current = nil
+		}
+		body.Reset()
+	}
+	for {
+		line, readErr := br.ReadString('\n')
+		if strings.HasPrefix(line, "## ") {
+			finish()
+			if match := versionHeaderRE.FindStringSubmatch(strings.TrimSuffix(line, "\n")); match != nil {
+				major, _ := strconv.Atoi(match[1])
+				minor, _ := strconv.Atoi(match[2])
+				patch, _ := strconv.Atoi(match[3])
+				entry := ChangelogEntry{Major: major, Minor: minor, Patch: patch}
+				if !entry.newerThan(last) {
+					return newer, nil
+				}
+				current = &entry
 			}
-			if value > last[i] {
-				newer = append(newer, e)
+		}
+		if current != nil {
+			body.WriteString(line)
+		}
+		if readErr != nil {
+			if readErr == io.EOF {
+				finish()
+				return newer, nil
 			}
-			break
+			return newer, readErr
 		}
 	}
-	return newer, true
 }

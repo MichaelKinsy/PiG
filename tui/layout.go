@@ -4,10 +4,10 @@ package tui
 
 import (
 	"math"
-	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -549,7 +549,7 @@ func GetLayoutBoxesAt(frame LayoutFrame, x, y int) []*LayoutBox {
 		}
 	}
 	visit(frame.Root, 0)
-	slices.SortStableFunc(result, func(a, b hit) int {
+	sortx.Stable(result, func(a, b hit) int {
 		if a.box.Layer != b.box.Layer {
 			return b.box.Layer - a.box.Layer
 		}
@@ -603,7 +603,7 @@ func GetScrollViewsAt(frame LayoutFrame, x, y int) []*ScrollView {
 	visit(frame.Root, 0)
 	// Deepest first; stable so ties keep insertion order, matching upstream's
 	// stable sort with comparator b.depth - a.depth.
-	slices.SortStableFunc(result, func(a, b hit) int { return b.depth - a.depth })
+	sortx.Stable(result, func(a, b hit) int { return b.depth - a.depth })
 	views := make([]*ScrollView, len(result))
 	for i, h := range result {
 		views[i] = h.scrollView
