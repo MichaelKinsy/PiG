@@ -205,19 +205,15 @@
   },
   "pkg:chord/.#AcceptsTable": {
     "go": "chord/next/contracts/accepts.go#AcceptsTable",
-    "reason": "Pi chord/src/contracts/accepts.ts:29 AcceptsTable\u003cC\u003e = AcceptsOf\u003cShapeOf\u003cC\u003e\u003e is a mapped type over the contract's older versions, computed at compile time. Go's contracts.AcceptsTable is the same table as data: the ordered entries keyed by the version number as text, each a VersionMappings of the mappings its later edits require (accepts.go header); the key set a contract's history allows is checked where the table is bound (BindProvider), as Pi's bindProvider does (chord/src/data/args.ts:48). Locked by TestAcceptsTable* in chord/next/contracts."
+    "reason": "Pi chord/src/contracts/accepts.ts:29 AcceptsTable<C> = AcceptsOf<ShapeOf<C>> is a mapped type over the contract's older versions, computed at compile time. Go's contracts.AcceptsTable is the same table as data: the ordered entries keyed by the version number as text, each a VersionMappings of the mappings its later edits require (accepts.go header); the key set a contract's history allows is checked where the table is bound (BindProvider), as Pi's bindProvider does (chord/src/data/args.ts:48). Locked by TestAcceptsTable* in chord/next/contracts."
   },
   "pkg:chord/.#Address": {
     "go": "chord/next/contracts/host_kind.go#Address",
-    "reason": "Pi chord/src/contracts/host-kind.ts:12 Address\u003cK\u003e types `kind` as K[\"kind\"] and `params` as ParamsOfKind\u003cK\u003e, both computed from the host kind's type parameters. Go's contracts.Address has the same three members, Kind string, Params *delta.JsonObject and Key string (host_kind.go), the kind's literal and the params' static types being compile-time only. Locked by TestHostKinds (chord/next/contracts/host_kind_test.go)."
+    "reason": "Pi chord/src/contracts/host-kind.ts:12 Address<K> types `kind` as K[\"kind\"] and `params` as ParamsOfKind<K>, both computed from the host kind's type parameters. Go's contracts.Address has the same three members, Kind string, Params *delta.JsonObject and Key string (host_kind.go), the kind's literal and the params' static types being compile-time only. Locked by TestHostKinds (chord/next/contracts/host_kind_test.go)."
   },
   "pkg:chord/.#ArchiveManifest": {
     "go": "chord/next/store/archive.go#ManifestPart",
     "reason": "Pi chord/src/store/archive.ts:30 ArchiveManifest is the object type { kind: \"manifest\", format, schema, lastSeq, nextId } (the `.` entry publishes this one; node/app/archive.ts declares another ArchiveManifest, which is the pkg:chord/app row). Go's store.ManifestPart carries the same fields (Format, Schema, LastSeq, NextID) and its StoreWriteKind() is \"manifest\" (archive.go). Locked by the export cases of TestStore and TestJsonl."
-  },
-  "pkg:chord/.#BaseRole": {
-    "go": "chord/next/surfaces/surfaces_themes.go#BaseRole",
-    "reason": "Pi chord/src/surfaces/themes.ts:15 BaseRole = (typeof BASE_ROLES)[number] is the union of the array's literals. Go's surfaces.BaseRole is a string type with a constant per role (BaseRoleAccent ... BaseRoleSuccess) in BaseRoles' order. Locked by TestFallbackThemesFillEveryBaseRole (chord/next/surfaces/surfaces_themes_test.go)."
   },
   "pkg:chord/.#CHORD_TELEMETRY_SCHEMA": {
     "go": "chord/next/telemetry/schema.go#Schema",
@@ -225,7 +221,7 @@
   },
   "pkg:chord/.#ChordError": {
     "go": "chord/next/data/errors.go#ChordError",
-    "reason": "Pi chord/src/data/errors.ts:71 ChordError = ChordErrorClass \u0026 ChordErrorJson intersects the class (message, cause, stack) with the tagged union of code/reason/details. Go's data.ChordError is one struct with Code, Reason, Message, Details (HasDetails marks an absent one) and Cause, and Error()/Unwrap(); the code/reason pairing the union checks at compile time is checked by ChordErrorFromJson at run time, as Pi's runtime does (errors.go ChordErrorInit comment). Locked by TestChordError and TestErrorHelpers (chord/next/data/errors_test.go)."
+    "reason": "Pi chord/src/data/errors.ts:71 ChordError = ChordErrorClass & ChordErrorJson intersects the class (message, cause, stack) with the tagged union of code/reason/details. Go's data.ChordError is one struct with Code, Reason, Message, Details (HasDetails marks an absent one) and Cause, and Error()/Unwrap(); the code/reason pairing the union checks at compile time is checked by ChordErrorFromJson at run time, as Pi's runtime does (errors.go ChordErrorInit comment). Locked by TestChordError and TestErrorHelpers (chord/next/data/errors_test.go)."
   },
   "pkg:chord/.#ChordErrorCode": {
     "go": "chord/next/data/errors.go#ChordErrorCode",
@@ -233,19 +229,19 @@
   },
   "pkg:chord/.#ChordErrorReason": {
     "go": "chord/next/data/errors.go#ChordErrorReason",
-    "reason": "Pi chord/src/data/errors.ts:29 ChordErrorReason\u003cC\u003e = (typeof CHORD_ERROR_REASONS)[C][number] is the reasons the table allows a code. Go's data.ChordErrorReason is a string type with a constant per reason (ReasonArgs, ...; the empty reason is upstream's undefined) and ChordErrorReasons(code) lists those a code allows; ChordErrorFromJson refuses a reason the code does not allow, as Pi's chordErrorFromJson does. Locked by TestErrorTable and TestChordErrorFromJson* (chord/next/data/errors_test.go)."
+    "reason": "Pi chord/src/data/errors.ts:29 ChordErrorReason<C> = (typeof CHORD_ERROR_REASONS)[C][number] is the reasons the table allows a code. Go's data.ChordErrorReason is a string type with a constant per reason (ReasonArgs, ...; the empty reason is upstream's undefined) and ChordErrorReasons(code) lists those a code allows; ChordErrorFromJson refuses a reason the code does not allow, as Pi's chordErrorFromJson does. Locked by TestErrorTable and TestChordErrorFromJson* (chord/next/data/errors_test.go)."
   },
   "pkg:chord/.#ChordStore::property:export::call:0": {
     "go": "chord/next/store/store.go#ChordStore.Export",
-    "reason": "Pi chord/src/store/store.ts:35 export(context): AsyncIterableIterator\u003cArchivePart\u003e returns an async iterator of the archive parts. Go has no async iterator: ChordStore.Export(ctx) returns *StoreExport, which implements store.PartIterator (Next(ctx) (part, ok, err) blocks for the next part, Close ends the stream as Pi's return() does; export.go). Locked by the export cases of TestStore and TestJsonl (chord/next/store)."
+    "reason": "Pi chord/src/store/store.ts:35 export(context): AsyncIterableIterator<ArchivePart> returns an async iterator of the archive parts. Go has no async iterator: ChordStore.Export(ctx) returns *StoreExport, which implements store.PartIterator (Next(ctx) (part, ok, err) blocks for the next part, Close ends the stream as Pi's return() does; export.go). Locked by the export cases of TestStore and TestJsonl (chord/next/store)."
   },
   "pkg:chord/.#ClientOptions": {
     "go": "chord/next/surfaces/surfaces_client.go#ClientOptions",
-    "reason": "Pi chord/src/surfaces/client.ts:39 ClientOptions\u003cP\u003e.scripts is a ScriptsContract, a type alias of the kind's scripts object contract. Go's ClientOptions.Scripts is the *contracts.Contract that object is; every other member agrees (Promise callbacks take the client's context and block: the forced differences recorded in surfaces_client.go). Locked by surfaces_client_test.go."
+    "reason": "Pi chord/src/surfaces/client.ts:39 ClientOptions<P>.scripts is a ScriptsContract, a type alias of the kind's scripts object contract. Go's ClientOptions.Scripts is the *contracts.Contract that object is; every other member agrees (Promise callbacks take the client's context and block: the forced differences recorded in surfaces_client.go). Locked by surfaces_client_test.go."
   },
   "pkg:chord/.#ColumnRefs": {
     "go": "chord/next/store/expression.go#ColumnRefs",
-    "reason": "Pi chord/src/store/query.ts:14 ColumnRefs\u003cC\u003e maps each column of C to its typed ColumnRef. Go's store.ColumnRefs maps each column name to its ColumnRef (an Expression of operator ExprCol), the column's value type being a Go type parameter or any of the operand. Locked by TestExample20Tables (chord/next/host/host_example_20_test.go)."
+    "reason": "Pi chord/src/store/query.ts:14 ColumnRefs<C> maps each column of C to its typed ColumnRef. Go's store.ColumnRefs maps each column name to its ColumnRef (an Expression of operator ExprCol), the column's value type being a Go type parameter or any of the operand. Locked by TestExample20Tables (chord/next/host/host_example_20_test.go)."
   },
   "pkg:chord/.#Contract::property:kind": {
     "go": "chord/next/contracts/contract.go#Contract.Kind",
@@ -257,79 +253,79 @@
   },
   "pkg:chord/.#Ctx::property:get::call:0": {
     "go": "chord/next/host/host_ctx.go#Ctx.Get",
-    "reason": "Pi chord/src/host/ctx.ts:24 Ctx.get\u003cC\u003e(Type, params: ParamsOf\u003cC\u003e, options?) types params from the contract's params shape. Go's Ctx.Get(Type, params any, options GetOptions) takes the params untyped and the host checks them against the contract (Normalize, as Pi's get does at run time); the Promise is the blocking return (*Reference, error). Locked by the get cases of host_ctx_test.go."
+    "reason": "Pi chord/src/host/ctx.ts:24 Ctx.get<C>(Type, params: ParamsOf<C>, options?) types params from the contract's params shape. Go's Ctx.Get(Type, params any, options GetOptions) takes the params untyped and the host checks them against the contract (Normalize, as Pi's get does at run time); the Promise is the blocking return (*Reference, error). Locked by the get cases of host_ctx_test.go."
   },
   "pkg:chord/.#FacetHost::property:references::call:0": {
     "go": "chord/next/host/host_facet.go#FacetHost.References",
-    "reason": "Pi chord/src/host/facet.ts:26 references(Type) returns Watchable\u003creadonly Presence\u003cC, P\u003e[]\u003e, a JSON watchable of the presence list. Go's FacetHost.References returns state.SourceHandle, the JSON watchable handle layers hold (Value() (JsonValue, error) for a getter that may throw, Watch(ctx) (WatchHandle, error) for the Promise; state/doc.go). Locked by TestSetUpReturnsServedEntriesAndContributionsInOrderByKind and the presence tests."
+    "reason": "Pi chord/src/host/facet.ts:26 references(Type) returns Watchable<readonly Presence<C, P>[]>, a JSON watchable of the presence list. Go's FacetHost.References returns state.SourceHandle, the JSON watchable handle layers hold (Value() (JsonValue, error) for a getter that may throw, Watch(ctx) (WatchHandle, error) for the Promise; state/doc.go). Locked by TestSetUpReturnsServedEntriesAndContributionsInOrderByKind and the presence tests."
   },
   "pkg:chord/.#FacetHost::property:serve::call:0": {
     "go": "chord/next/host/host_facet.go#FacetHost.Serve",
-    "reason": "Pi chord/src/host/facet.ts:19 serve\u003cC\u003e(Type, factory: Factory\u003cC, P\u003e, options?) types the factory by a conditional type on the contract's params. Go's Serve takes the implementation as any and the host's type switch accepts a LocalFactory or RemoteFactory (host_facet.go; the Factory rows record the two forms). Locked by the serve cases of host_facet_test.go."
+    "reason": "Pi chord/src/host/facet.ts:19 serve<C>(Type, factory: Factory<C, P>, options?) types the factory by a conditional type on the contract's params. Go's Serve takes the implementation as any and the host's type switch accepts a LocalFactory or RemoteFactory (host_facet.go; the Factory rows record the two forms). Locked by the serve cases of host_facet_test.go."
   },
   "pkg:chord/.#FacetSelf::property:contribute::call:0": {
     "go": "chord/next/host/host_facet.go#FacetSelf.Contribute",
-    "reason": "Pi chord/src/host/facet.ts:54 contribute\u003cC\u003e(R, value: Contribution\u003cC\u003e) takes a value, a Watchable or a NativeWatchable. Go has no union: Contribute takes the value as any and the registry classifies it at run time (registries.ContributionKind), as the reviewed pkg:chord/.#Contribution row records. Locked by TestExample29Registries (chord/next/host/host_example_29_test.go)."
+    "reason": "Pi chord/src/host/facet.ts:54 contribute<C>(R, value: Contribution<C>) takes a value, a Watchable or a NativeWatchable. Go has no union: Contribute takes the value as any and the registry classifies it at run time (registries.ContributionKind), as the reviewed pkg:chord/.#Contribution row records. Locked by TestExample29Registries (chord/next/host/host_example_29_test.go)."
   },
   "pkg:chord/.#Held": {
     "go": "chord/next/host/host_reference.go#Held",
-    "reason": "Pi chord/src/host/reference.ts:42 Held\u003cC\u003e is a Reference whose variant is also undefined until its first binding (a conditional type on the contract kind; documents/persistence.ts declares an unrelated Held for held ops, which the detector cannot tell apart by name). Go's host.Held is an alias of Reference, whose Variant is unbound until its first binding (host_reference.go). Locked by TestHoldGC and TestHostHold* (chord/next/host)."
+    "reason": "Pi chord/src/host/reference.ts:42 Held<C> is a Reference whose variant is also undefined until its first binding (a conditional type on the contract kind; documents/persistence.ts declares an unrelated Held for held ops, which the detector cannot tell apart by name). Go's host.Held is an alias of Reference, whose Variant is unbound until its first binding (host_reference.go). Locked by TestHoldGC and TestHostHold* (chord/next/host)."
   },
   "pkg:chord/.#Host::property:activity": {
     "go": "chord/next/host/host_host.go#Host.Activity",
-    "reason": "Pi chord/src/host/host.ts:354 Host.activity is a Watchable\u003cActivityCounts\u003e, a JSON watchable. Go's Host.Activity() returns state.SourceHandle, the JSON watchable handle (Value() (JsonValue, error), Watch(ctx) (WatchHandle, error); state/doc.go). Locked by TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot (chord/next/host/host_activity_test.go)."
+    "reason": "Pi chord/src/host/host.ts:354 Host.activity is a Watchable<ActivityCounts>, a JSON watchable. Go's Host.Activity() returns state.SourceHandle, the JSON watchable handle (Value() (JsonValue, error), Watch(ctx) (WatchHandle, error); state/doc.go). Locked by TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot (chord/next/host/host_activity_test.go)."
   },
   "pkg:chord/.#Host::property:get::call:0": {
     "go": "chord/next/host/host_host.go#Host.Get",
-    "reason": "Pi chord/src/host/host.ts:304 get\u003cC\u003e(Type, params: ParamsOf\u003cC\u003e, context, options?) types params from the contract's params shape. Go's Host.Get(ctx, Type, params any, options) takes them untyped and checks them at run time against the contract; the Promise is the blocking return. Locked by host_attempt_test.go and the examples."
+    "reason": "Pi chord/src/host/host.ts:304 get<C>(Type, params: ParamsOf<C>, context, options?) types params from the contract's params shape. Go's Host.Get(ctx, Type, params any, options) takes them untyped and checks them at run time against the contract; the Promise is the blocking return. Locked by host_attempt_test.go and the examples."
   },
   "pkg:chord/.#Host::property:hold::call:0": {
     "go": "chord/next/host/host_host.go#Host.Hold",
-    "reason": "Pi chord/src/host/host.ts:312 hold\u003cC\u003e(Type, params: ParamsOf\u003cC\u003e, context, options?) types params from the contract's params shape. Go's Host.Hold(ctx, Type, params any, options) takes them untyped and checks them at run time. Locked by TestHoldGC (chord/next/host/remote_hold_test.go)."
+    "reason": "Pi chord/src/host/host.ts:312 hold<C>(Type, params: ParamsOf<C>, context, options?) types params from the contract's params shape. Go's Host.Hold(ctx, Type, params any, options) takes them untyped and checks them at run time. Locked by TestHoldGC (chord/next/host/remote_hold_test.go)."
   },
   "pkg:chord/.#Host::property:references::call:0": {
     "go": "chord/next/host/host_host.go#Host.References",
-    "reason": "Pi chord/src/host/host.ts:349 references(Type) returns Watchable\u003creadonly Presence\u003cC, P\u003e[]\u003e, a JSON watchable. Go's Host.References returns state.SourceHandle (Value() (JsonValue, error), Watch(ctx) (WatchHandle, error); state/doc.go). Locked by host_presence_test.go and host_activity_test.go."
+    "reason": "Pi chord/src/host/host.ts:349 references(Type) returns Watchable<readonly Presence<C, P>[]>, a JSON watchable. Go's Host.References returns state.SourceHandle (Value() (JsonValue, error), Watch(ctx) (WatchHandle, error); state/doc.go). Locked by host_presence_test.go and host_activity_test.go."
   },
   "pkg:chord/.#Host::property:registry::call:0": {
     "go": "chord/next/host/host_host.go#Host.Registry",
-    "reason": "Pi chord/src/host/host.ts:361 registry(R, context, options?) resolves to RegistryValue\u003cV\u003e, the composed value as a watchable-bearing record. Go's Host.Registry returns *registries.RegistryValueSource, the source that carries that value (Value, Watch); the Promise is the blocking return. Locked by TestExample29Registries (chord/next/host/host_example_29_test.go)."
+    "reason": "Pi chord/src/host/host.ts:361 registry(R, context, options?) resolves to RegistryValue<V>, the composed value as a watchable-bearing record. Go's Host.Registry returns *registries.RegistryValueSource, the source that carries that value (Value, Watch); the Promise is the blocking return. Locked by TestExample29Registries (chord/next/host/host_example_29_test.go)."
   },
   "pkg:chord/.#HostKind::call:0": {
     "go": "chord/next/contracts/host_kind.go#HostKind.Address",
-    "reason": "Pi chord/src/contracts/host-kind.ts:19 HostKind\u003cN, P\u003e is callable: its call takes the params as the rest tuple `[params?: Record\u003cnever, never\u003e]` when the kind has no params, else `[params: {[F in keyof P]: Static\u003cP[F]\u003e}]`, and returns Address\u003cHostKind\u003cN, P\u003e\u003e. Go has no callable struct, so the call is the method HostKind.Address(values *delta.JsonObject) Address (nil for a kind without params), which builds the kind, params and key (host_kind.go; the typed tuple is compile-time only; params are checked where the address is routed, as in Pi). Locked by TestHostKinds (chord/next/contracts/host_kind_test.go)."
+    "reason": "Pi chord/src/contracts/host-kind.ts:19 HostKind<N, P> is callable: its call takes the params as the rest tuple `[params?: Record<never, never>]` when the kind has no params, else `[params: {[F in keyof P]: Static<P[F]>}]`, and returns Address<HostKind<N, P>>. Go has no callable struct, so the call is the method HostKind.Address(values *delta.JsonObject) Address (nil for a kind without params), which builds the kind, params and key (host_kind.go; the typed tuple is compile-time only; params are checked where the address is routed, as in Pi). Locked by TestHostKinds (chord/next/contracts/host_kind_test.go)."
   },
   "pkg:chord/.#add::call:0": {
     "go": "chord/next/store/expression.go#Add",
-    "reason": "Pi chord/src/store/expression.ts:163 add(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand\u003cT, K\u003e = Expression\u003cT, K\u003e | T). Go has no unions: store.Add(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
+    "reason": "Pi chord/src/store/expression.ts:163 add(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Add(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
   },
   "pkg:chord/.#coalesce::call:0": {
     "go": "chord/next/store/expression.go#Coalesce",
-    "reason": "Pi chord/src/store/expression.ts:193 coalesce(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand\u003cT, K\u003e = Expression\u003cT, K\u003e | T). Go has no unions: store.Coalesce(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
+    "reason": "Pi chord/src/store/expression.ts:193 coalesce(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Coalesce(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
   },
   "pkg:chord/.#concat::call:0": {
     "go": "chord/next/store/expression.go#Concat",
-    "reason": "Pi chord/src/store/expression.ts:183 concat(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand\u003cT, K\u003e = Expression\u003cT, K\u003e | T). Go has no unions: store.Concat(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
+    "reason": "Pi chord/src/store/expression.ts:183 concat(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Concat(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
   },
   "pkg:chord/.#decodeJsonl::call:0": {
     "go": "chord/next/store/jsonl.go#DecodeJsonl",
-    "reason": "Pi chord/src/store/jsonl.ts:28 decodeJsonl(bytes: AsyncIterable\u003cUint8Array\u003e) reads an async iterable of byte chunks. Go has no async iterable: DecodeJsonl takes a store.ByteSource (Next(ctx) (chunk, ok, err), Close) and returns the decoded values as a PartSource (Pi's AsyncIterable\u003cunknown\u003e). Locked by TestJsonl (chord/next/store/jsonl_test.go)."
+    "reason": "Pi chord/src/store/jsonl.ts:28 decodeJsonl(bytes: AsyncIterable<Uint8Array>) reads an async iterable of byte chunks. Go has no async iterable: DecodeJsonl takes a store.ByteSource (Next(ctx) (chunk, ok, err), Close) and returns the decoded values as a PartSource (Pi's AsyncIterable<unknown>). Locked by TestJsonl (chord/next/store/jsonl_test.go)."
   },
   "pkg:chord/.#encodeJsonl::call:0": {
     "go": "chord/next/store/jsonl.go#EncodeJsonl",
-    "reason": "Pi chord/src/store/jsonl.ts:11 encodeJsonl(parts: AsyncIterable\u003cArchivePart\u003e) takes the parts as an async iterable and yields AsyncIterable\u003cUint8Array\u003e. Go takes a store.PartIterator (Next(ctx) (part, ok, err), Close), which StoreExport implements, and returns a ByteSource of whole lines. Locked by TestJsonl (chord/next/store/jsonl_test.go)."
+    "reason": "Pi chord/src/store/jsonl.ts:11 encodeJsonl(parts: AsyncIterable<ArchivePart>) takes the parts as an async iterable and yields AsyncIterable<Uint8Array>. Go takes a store.PartIterator (Next(ctx) (part, ok, err), Close), which StoreExport implements, and returns a ByteSource of whole lines. Locked by TestJsonl (chord/next/store/jsonl_test.go)."
   },
   "pkg:chord/.#findDocument::call:0": {
     "go": "chord/next/store/engine.go#FindDocument",
-    "reason": "Pi chord/src/store/engine.ts:300 findDocument(executor: Pick\u003cSqliteExecutor, \"get\"\u003e, address, at) needs only the executor's `get`. Go's store.FindDocument takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore and the document engine tests (chord/next/store)."
+    "reason": "Pi chord/src/store/engine.ts:300 findDocument(executor: Pick<SqliteExecutor, \"get\">, address, at) needs only the executor's `get`. Go's store.FindDocument takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore and the document engine tests (chord/next/store)."
   },
   "pkg:chord/.#findDocumentEntry::call:0": {
     "go": "chord/next/store/engine.go#FindDocumentEntry",
-    "reason": "Pi chord/src/store/engine.ts:345 findDocumentEntry(executor: Pick\u003cSqliteExecutor, \"get\"\u003e, address, at) needs only the executor's `get`. Go's store.FindDocumentEntry takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore and the document engine tests (chord/next/store)."
+    "reason": "Pi chord/src/store/engine.ts:345 findDocumentEntry(executor: Pick<SqliteExecutor, \"get\">, address, at) needs only the executor's `get`. Go's store.FindDocumentEntry takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore and the document engine tests (chord/next/store)."
   },
   "pkg:chord/.#forbidden::call:0": {
     "go": "chord/next/data/errors.go#Forbidden",
-    "reason": "Pi chord/src/data/errors.ts:117 forbidden(message, details?) returns Extract\u003cChordError, {code: \"forbidden\"}\u003e, the ChordError narrowed to its forbidden member at compile time. Go's data.Forbidden(message, details...) returns *data.ChordError with Code CodeForbidden and no reason, the narrowing being the Code field. Locked by TestErrorHelpers (chord/next/data/errors_test.go)."
+    "reason": "Pi chord/src/data/errors.ts:117 forbidden(message, details?) returns Extract<ChordError, {code: \"forbidden\"}>, the ChordError narrowed to its forbidden member at compile time. Go's data.Forbidden(message, details...) returns *data.ChordError with Code CodeForbidden and no reason, the narrowing being the Code field. Locked by TestErrorHelpers (chord/next/data/errors_test.go)."
   },
   "pkg:chord/context#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",
