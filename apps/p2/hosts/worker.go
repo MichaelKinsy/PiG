@@ -37,6 +37,7 @@ func RunWorker() {
 			return workers.CrossedError{Message: p2runtime.ProcessLogs.Redactor.Redact(fmt.Sprint(err))}
 		},
 		OnError: func(err any) { fmt.Fprintln(os.Stderr, "p2 worker:", err) },
+		Reload:  reloadWorker,
 	})
 }
 
@@ -107,13 +108,15 @@ func runWorker(start workers.WorkerStart, ctx context.Context) (*workers.WorkerR
 		// The session's files (the kit's `Files`): `<data>/sessions/<id>/files/`.
 		{Name: "chord.app.files", Facet: app.FilesFacet(p2runtime.HostFiles(dir), app.FilesCaps{}, 0)},
 	}
-	report, err := worker.Load(append(facets, workerFacets(selection)...), ctx)
+	facets = append(facets, workerFacets(selection)...)
+	report, err := worker.Load(facets, ctx)
 	if err != nil {
 		return nil, err
 	}
 	if len(report.Failed) > 0 {
 		return nil, report.Failed[0].Error
 	}
+	setReloader(&workerReloader{host: worker, facets: facets, selection: selection, applied: map[string]string{}})
 	// A Harness that cannot open fails the worker (its error, with Retry), as an unknown root model does: at its first
 	// failed attempt (`get` would retry it until its ready timeout, the start meanwhile hanging).
 	if err := openedHarness(ctx, worker); err != nil {

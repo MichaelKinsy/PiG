@@ -1,12 +1,16 @@
 // Ports test/p2/smoke.test.ts and test/p2/m1.test.ts (Pi main c23b9ec1): the Chat, Models, Sessions and status contracts
 // against the compiled-in plugins.
 //
-// D473: Pi's "keeps streaming through a compatible reload of the chat plugin" reloads the chat plugin's code in the running
-// server and worker; compiled-in plugins cannot, so that case asserts the restart-required form (P2Server.Reload).
+// Pi's "keeps streaming through a compatible reload of the chat plugin" reloads unchanged code: Pi's build digests are the
+// same, so nothing reaches the server host or the workers (the case asserts `stopped` is unset, the stream goes on and
+// calls after it work). The Go case asserts the same, and more: P2Server.Reload re-evaluates the plugin's facets on the
+// server and the running worker (twice: the second ships too), see hosts/reload.go.
 
 package e2e_test
 
 import (
+	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +24,7 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 
 	// The plugins M1 runs with: the server and each session worker (this test binary) load what registered.
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
@@ -294,13 +299,27 @@ func TestM1WorkingChat(t *testing.T) {
 		}, 0)
 	})
 
-	t.Run("asks for a restart where Pi reloads the chat plugin in place (D473)", func(t *testing.T) {
+	t.Run("keeps streaming through a compatible reload of the chat plugin", func(t *testing.T) {
 		send(t, "slow two", "r4")
 		until(t, chat().Member("view"), func(value delta.JsonValue) bool { return value != nil && len(partial(value)) > 20 }, 0)
-		if err := fixture.Server.Reload([]string{"chat"}); err != hosts.ErrRestartRequired {
-			t.Fatalf("reload: %v", err)
+		current, _ := chat().Member("view").Value()
+		before := partial(current)
+		// Pi's reload of unchanged code is a no-op (the build's digests are the same); here it re-evaluates the plugin on the
+		// server and the running worker. Twice: a second reload of the same code ships as well (the counter is in the key).
+		for round := 1; round <= 2; round++ {
+			result, err := fixture.Server.Reload([]string{"chat"}, context.Background())
+			if err != nil {
+				t.Fatalf("reload %d: %v", round, err)
+			}
+			if !slices.Contains(result.Server.Plugins.Changed, "chat") || len(result.Server.Failed) != 0 {
+				t.Fatalf("reload %d: the server's report = %+v", round, result.Server)
+			}
+			if len(result.Workers) != 1 || result.Workers[0].Kind != plugins.RolloutReported || !slices.Contains(result.Workers[0].Report.Plugins.Changed, "chat") || len(result.Workers[0].Report.Failed) != 0 {
+				t.Fatalf("reload %d: the workers' reports = %+v", round, result.Workers)
+			}
 		}
-		// The stream continues: the full answer commits, and calls go on.
+		// The stream continues after the reload: partials grow, then the full answer commits.
+		until(t, chat().Member("view"), func(value delta.JsonValue) bool { return value != nil && len(partial(value)) > len(before)+40 }, 0)
 		view := until(t, chat().Member("view"), func(value delta.JsonValue) bool {
 			return value != nil && !running(value) && strings.HasPrefix(answerText(lastAssistant(value)), "Echo: slow two")
 		}, 30*time.Second)
@@ -308,6 +327,7 @@ func TestM1WorkingChat(t *testing.T) {
 		if answer.Value("stopReason") != "stop" || answerText(answer) != "Echo: slow two "+strings.Repeat("streaming ", 300) {
 			t.Fatalf("the answer: %v", answerText(answer))
 		}
+		// Calls after the reload run on the new code.
 		send(t, "after reload", "r5")
 		until(t, chat().Member("view"), func(value delta.JsonValue) bool {
 			return value != nil && answerText(lastAssistant(value)) == "Echo: after reload"

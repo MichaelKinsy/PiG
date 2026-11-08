@@ -30,8 +30,8 @@ import (
 //
 // Forced Go differences. Node's `http.createServer` and `ws` are net/http and Chord's upgrades endpoint
 // (chordhttp.Upgrades.Link, which carries socket-limits.ts: frames up to 1 MiB, 4 MiB of unsent output); a request
-// handler that may throw returns an error. Plugin hot reload and the dev supervisor are designed out (D473): plugins are
-// compiled in, so P2Server.Reload reports that a restart is required. The web UI and the TUI bundle (bundles.ts, web.ts)
+// handler that may throw returns an error. The dev supervisor and the plugin build are designed out (D473): plugins are
+// compiled in, so P2Server.Reload re-evaluates a plugin's facets instead of building them (reload.go). The web UI and the TUI bundle (bundles.ts, web.ts)
 // are lane D's and E's: until they land, an owner's request no route answers gets "Not found".
 
 // MaxClientFrame is the largest frame a client may send (`MAX_CLIENT_FRAME`). Uploads go over HTTP; a 1,000,000-character
@@ -76,17 +76,11 @@ type P2Server struct {
 	httpServer *http.Server
 	upgrades   *chordhttp.Upgrades
 	workers    *SessionWorkers
+	reloads    reloader
 	closeOnce  sync.Once
 	closeErr   error
 	closeFn    func(ctx context.Context) error
 }
-
-// ErrRestartRequired is what Reload answers: compiled-in plugins cannot be swapped in a running process (D473).
-var ErrRestartRequired = errors.New("restart required: p2's plugins are compiled in")
-
-// Reload would build the plugins and roll them out to the server and every running worker; compiled-in plugins have no
-// hot swap (D473), so it answers ErrRestartRequired.
-func (*P2Server) Reload([]string) error { return ErrRestartRequired }
 
 // Workers are the session workers.
 func (s *P2Server) Workers() *SessionWorkers { return s.workers }
@@ -269,6 +263,7 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 		names[i] = plugin.Name
 	}
 	server := &P2Server{Host: h, Port: actualPort, DataDir: dataDir, Plugins: names, httpServer: httpServer, upgrades: state.upgrades, workers: sessionWorkers}
+	server.reloads = reloader{facets: facets, selection: selection, generation: map[string]int{}}
 	server.closeFn = func(closeCtx context.Context) error {
 		deadline := make(chan struct{})
 		timer := time.AfterFunc(5*time.Second, func() { close(deadline) })
