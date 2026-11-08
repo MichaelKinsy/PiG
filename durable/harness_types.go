@@ -547,10 +547,10 @@ func (policy CompactionPolicy) PolicyFor(model ModelRef, conversation *Compactio
 	var layers [3]CompactionPolicyOverride
 	var conversationModel CompactionPolicyOverride
 	if conversation != nil {
-		conversationModel = conversation.ModelOverrides.Get(key)
+		conversationModel, _ = conversation.ModelOverrides.Get(key)
 		layers[0], layers[2] = conversationModel, conversation.own()
 	}
-	layers[1] = policy.ModelOverrides.Get(key)
+	layers[1], _ = policy.ModelOverrides.Get(key)
 	field := func(pick func(CompactionPolicyOverride) *int, harness int) int {
 		for _, layer := range layers {
 			if value := pick(layer); value != nil {

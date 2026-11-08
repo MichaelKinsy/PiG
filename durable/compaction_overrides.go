@@ -39,12 +39,13 @@ func (set *CompactionOverrides) Set(model string, override CompactionPolicyOverr
 	set.entries = append(set.entries, CompactionModelOverride{Model: model, Override: override})
 }
 
-// Get returns the override of model; the zero override, which sets no field, when there is none.
-func (set CompactionOverrides) Get(model string) CompactionPolicyOverride {
+// Get returns the override of model and whether the object has that key, as indexing a JavaScript object does; the zero override,
+// which sets no field, when it has none.
+func (set CompactionOverrides) Get(model string) (CompactionPolicyOverride, bool) {
 	if i := set.index(model); i >= 0 {
-		return set.entries[i].Override
+		return set.entries[i].Override, true
 	}
-	return CompactionPolicyOverride{}
+	return CompactionPolicyOverride{}, false
 }
 
 // IsSet reports whether modelOverrides is present, even when empty.

@@ -1756,7 +1756,7 @@ func (d *detector) phantomBrand(prop *upstreamEntry) bool {
 
 // phantomBrandRationale is the designed-out text of a phantom type marker.
 func phantomBrandRationale(name string) string {
-	return "Pi declares " + name + " as an optional readonly property keyed by a `declare const ...: unique symbol`, which has no run-time value: it only lets the compiler carry a type parameter through the type. No code sets or reads it, and the Go type parameter carries the same type, so no Go member exists or is needed (language mechanic, LEAD-RULINGS-1520 principle)."
+	return "Pi declares " + name + " as an optional readonly property keyed by a `declare const ...: unique symbol`, which has no run-time value: it is a compile-time brand that only lets the compiler carry a type parameter through the type. No code sets or reads it, and the Go type parameter carries the same type, so no Go member exists or is needed (language mechanic, LEAD-RULINGS-1520 principle)."
 }
 
 // nodeEventsPath is the declaration file of Node's EventEmitter members.
