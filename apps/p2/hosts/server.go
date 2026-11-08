@@ -31,7 +31,7 @@ import (
 // Forced Go differences. Node's `http.createServer` and `ws` are net/http and Chord's upgrades endpoint
 // (chordhttp.Upgrades.Link, which carries socket-limits.ts: frames up to 1 MiB, 4 MiB of unsent output); a request
 // handler that may throw returns an error. The dev supervisor and the plugin build are designed out (D473): plugins are
-// compiled in, so P2Server.Reload re-evaluates a plugin's facets instead of building them (reload.go). The web UI and the TUI bundle (bundles.ts, web.ts)
+// compiled in, so P2Server.Reload rolls out a plugin whose build revision changed, as Pi's digest-changed rollout, and is a no-op otherwise (reload.go). The web UI and the TUI bundle (bundles.ts, web.ts)
 // are lane D's and E's: until they land, an owner's request no route answers gets "Not found".
 
 // MaxClientFrame is the largest frame a client may send (`MAX_CLIENT_FRAME`). Uploads go over HTTP; a 1,000,000-character
@@ -63,6 +63,11 @@ type ServerOptions struct {
 	// these to start itself as a worker (p2test).
 	Entry    string
 	ExecArgv []string
+	// BuildRevision reports the build revision of a plugin, read at each Reload (nil: always empty). A Go plugin's code is
+	// compiled in, so this is the input Pi's build digest has: a Reload rolls a plugin out only when its revision differs
+	// from the last one rolled out (the initial one is empty, which the workers start on). A test changes it to stand in
+	// for a rebuilt plugin source.
+	BuildRevision func(plugin string) string
 }
 
 // P2Server is a running server.
@@ -263,7 +268,10 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 		names[i] = plugin.Name
 	}
 	server := &P2Server{Host: h, Port: actualPort, DataDir: dataDir, Plugins: names, httpServer: httpServer, upgrades: state.upgrades, workers: sessionWorkers}
-	server.reloads = reloader{facets: facets, selection: selection, generation: map[string]int{}}
+	server.reloads = reloader{facets: facets, selection: selection, revision: map[string]string{}, build: options.BuildRevision}
+	if server.reloads.build == nil {
+		server.reloads.build = func(string) string { return "" }
+	}
 	server.closeFn = func(closeCtx context.Context) error {
 		deadline := make(chan struct{})
 		timer := time.AfterFunc(5*time.Second, func() { close(deadline) })
