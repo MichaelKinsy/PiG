@@ -1,3 +1,6 @@
+//go:build !windows
+
+// The tests kill the harness with POSIX signals (SIGTERM, SIGKILL), which Windows has no counterpart for.
 package subprocess
 
 import (
