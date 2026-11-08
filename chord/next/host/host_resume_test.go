@@ -59,7 +59,7 @@ func TestResumeRunsAfterAHandlerSuspendedInASectionOfTheLoop(t *testing.T) {
 	})}}, background))
 	object, err := h.Get(background, resumeContract, jsonObject(), GetOptions{})
 	must(t, err)
-	got, err := object.Call("probe", nil, background)
+	got, err := object.Call("probe", 0.0, background)
 	must(t, err)
 	if got != 3.0 {
 		t.Fatalf("probe = %v, want 3 (the work ran on the loop inline and after a suspension)", got)
