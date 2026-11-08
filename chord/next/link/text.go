@@ -135,7 +135,7 @@ func ownTuple(message Message) string {
 		//portlint:allow utf16units head is jsonText's output, ending in the one-byte ASCII ']' that is also one code unit; dropped as .slice(0, -1) at text.ts:77
 		head = head[:len(head)-1]
 		// Optional trailing fields: an absent one in the middle is null, absent ones at the end are left out.
-		optional := []any{nil, nil, nil, nil}
+		optional := []any{nil, nil, nil, nil, nil}
 		if typed.Principal != nil {
 			optional[0] = typed.Principal
 		}
@@ -147,6 +147,9 @@ func ownTuple(message Message) string {
 		}
 		if typed.Limit.Ok {
 			optional[3] = float64(typed.Limit.Value)
+		}
+		if typed.Trace != nil {
+			optional[4] = carrierValue(typed.Trace, typed.TraceOrder)
 		}
 		for len(optional) > 0 && optional[len(optional)-1] == nil {
 			optional = optional[:len(optional)-1]
@@ -160,11 +163,11 @@ func ownTuple(message Message) string {
 		return jsonText([]any{"R", float64(typed.Hold)})
 	case *CallMessage:
 		head := jsonText([]any{"c", float64(typed.Call), float64(typed.Hold), float64(typed.Method)})
-		if !typed.Old {
+		if typed.Trace == nil && !typed.Old {
 			return withPayload(head, typed.Args, typed.Segments)
 		}
-		// With the old-work flag the payload's fields are positional (null when absent), the trace carrier's place next
-		// (null: no carrier here), the flag last.
+		// With a trace or the old-work flag the payload's fields are positional (null when absent), the carrier next
+		// (null when absent before the flag), the flag last.
 		lengths := "null"
 		if typed.Segments != nil {
 			sizes := make([]any, len(typed.Segments))
@@ -178,7 +181,14 @@ func ownTuple(message Message) string {
 			part = mustPartText(typed.Args)
 		}
 		//portlint:allow utf16units head is a closed JSON tuple ending in the one-byte ASCII ']' that is also one code unit; dropped as head.slice(0, -1) at text.ts:93
-		return head[:len(head)-1] + "," + part + "," + lengths + ",null,true]"
+		tail := "null"
+		if typed.Trace != nil {
+			tail = jsonText(carrierValue(typed.Trace, typed.TraceOrder))
+		}
+		if typed.Old {
+			tail += ",true"
+		}
+		return head[:len(head)-1] + "," + part + "," + lengths + "," + tail + "]"
 	case *AbortMessage:
 		return jsonText([]any{"x", float64(typed.Call)})
 	case *BoundMessage:
@@ -361,7 +371,7 @@ func fromFields(fields []any, rest []byte) Message {
 		arity(3)
 		return &HelloMessage{Protocol: asInt(f[0]), Incarnation: asString(f[1]), Calls: asInt(f[2])}
 	case "H":
-		arity(6, 7, 8, 9, 10)
+		arity(6, 7, 8, 9, 10, 11)
 		address := list(f[5])
 		if len(address) != 2 {
 			fail("text: an address is a pair")
@@ -387,19 +397,26 @@ func fromFields(fields []any, rest []byte) Message {
 		if limit := optional(9); limit != nil {
 			message.Limit = Some(asInt(limit))
 		}
+		if trace := optional(10); trace != nil {
+			// The message schema refuses another shape of carrier.
+			carrier, order, ok := carrierOf(trace)
+			if !ok {
+				failWith(errSchema)
+			}
+			message.Trace, message.TraceOrder = carrier, order
+		}
 		return message
 	case "R":
 		arity(1)
 		return &ReleaseMessage{Hold: asInt(f[0])}
 	case "c":
-		arity(3, 4, 5, 7)
+		arity(3, 4, 5, 6, 7)
 		message := &CallMessage{Call: asInt(f[0]), Hold: asInt(f[1]), Method: asInt(f[2])}
 		if len(f) < 6 {
 			message.Args, message.Segments = payloadFields(f[3:], rest)
 			return message
 		}
-		// With the old-work flag: the payload's fields positional, null when absent, then the trace carrier's place (this
-		// codec carries none: only null) and the flag (`true` only).
+		// With a trace or the old-work flag: the payload's fields positional, null when absent.
 		fields := []any{}
 		switch {
 		case f[3] == nil:
@@ -408,14 +425,21 @@ func fromFields(fields []any, rest []byte) Message {
 		default:
 			fields = f[3:5]
 		}
-		if f[5] != nil {
-			fail("text: a trace carrier on a call")
-		}
-		if f[6] != true {
-			fail("text: a call's old-work flag is true only")
-		}
 		message.Args, message.Segments = payloadFields(fields, rest)
-		message.Old = true
+		if f[5] != nil {
+			carrier, order, ok := carrierOf(f[5])
+			if !ok {
+				failWith(errSchema)
+			}
+			message.Trace, message.TraceOrder = carrier, order
+		}
+		if len(f) == 7 {
+			// The message schema checks the flag (`true` only).
+			if f[6] != true {
+				failWith(errSchema)
+			}
+			message.Old = true
+		}
 		return message
 	case "x":
 		arity(1)

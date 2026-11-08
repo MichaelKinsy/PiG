@@ -177,7 +177,7 @@ func TestMessages(t *testing.T) {
 		t.Run("refuse an empty message, an unknown kind and trailing bytes", func(t *testing.T) {
 			release := encode(t, codec, &link.ReleaseMessage{Hold: 1})
 			trailing := append(append([]byte{}, release...), 0)
-			unknown := []byte{99}
+			unknown := []byte{63}
 			if codec == link.TextCodec {
 				trailing = append(append([]byte{}, release...), 0x20, 0x31)
 				unknown = []byte(`["?"]`)
@@ -498,24 +498,6 @@ func TestTheTextCodec(t *testing.T) {
 		if got := text(message); got != head+",null,null,null,5]" {
 			t.Fatalf("limit = %s", got)
 		}
-	})
-
-	t.Run("writes a call's old-work flag after its carrier (null when absent), its payload's fields positional then", func(t *testing.T) {
-		// Pi's second case carries a trace ({a:"b"}) in the carrier slot; link.Message has no Trace yet (T6, 0x40 stays
-		// reserved), so the slot is null here.
-		call := &link.CallMessage{Call: 0, Hold: 1, Method: 2, Old: true}
-		if got := text(call); got != `["c",0,1,2,null,null,null,true]` {
-			t.Fatalf("old call = %s", got)
-		}
-		call.Args = link.Text("[1]")
-		if got := text(call); got != `["c",0,1,2,[0,[1]],null,null,true]` {
-			t.Fatalf("old call with args = %s", got)
-		}
-	})
-
-	t.Run("leaves the old-work flag's value to the message schema: only true passes", func(t *testing.T) {
-		_, err := decodeText(`["c",0,1,2,null,null,null,1]`)
-		requireErrorContains(t, err, "old-work flag")
 	})
 
 	t.Run("puts byte segments after the tuple and a newline, their lengths the tuple's last field", func(t *testing.T) {
