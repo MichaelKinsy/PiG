@@ -100,9 +100,12 @@ func NewRegistryValueSource(record *RegistryRecord, version int, batch *state.Ba
 }
 
 // Value is the composition (or its mapping) at its last good value. Upstream's getter throws the failure when there is
-// none: Go panics with that error, the form a getter without an error result has.
+// none: Go panics with that error, the form a getter without an error result has. It is read in a section of the host (see
+// section).
 func (v *RegistryValueSource) Value() any {
-	start, err := v.start()
+	var start state.NativeStart[any]
+	var err error
+	v.section(func() { start, err = v.start() })
 	if err != nil {
 		panic(err)
 	}
@@ -113,6 +116,38 @@ func (v *RegistryValueSource) Value() any {
 		panic(start.Error)
 	}
 	return start.Last
+}
+
+// section runs work as a section of the host when it is open (inline in one): a source composes when it is read, and it
+// records its waiters as objects park and follows as watches open, all in sections, so a Go goroutine that reads, watches
+// or observes it (a native's opener, a job) races them otherwise (Pi runs all of it on one event loop).
+func (v *RegistryValueSource) section(work func()) {
+	if batch := v.Batch(); batch != nil {
+		batch.Section(work)
+		return
+	}
+	work()
+}
+
+// OpenWatch is FollowedSource.OpenWatch as a section of the host.
+func (v *RegistryValueSource) OpenWatch(ctx context.Context) (watch *chord.NativeWatch[any], err error) {
+	v.section(func() { watch, err = v.FollowedSource.OpenWatch(ctx) })
+	return watch, err
+}
+
+// Watch is FollowedSource.Watch as a section of the host.
+func (v *RegistryValueSource) Watch(ctx context.Context) (chord.NativeWatchHandle[any], error) {
+	watch, err := v.OpenWatch(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return watch, nil
+}
+
+// Observe is FollowedSource.Observe as a section of the host.
+func (v *RegistryValueSource) Observe(observer state.NativeObserver[any], ctx context.Context) (observation state.NativeObservation[any], err error) {
+	v.section(func() { observation, err = v.FollowedSource.Observe(observer, ctx) })
+	return observation, err
 }
 
 // Start is its composition (mapped for an older version), composed now if its table changed; a change of whether it is
