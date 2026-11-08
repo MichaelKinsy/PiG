@@ -41141,9 +41141,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[77]ModelCompat"
+        "type": "[80]ModelCompat"
       },
-      "shapeHash": "sha256:045ae8e56836001bc960deb08dc5c7e8de502f911d26ee072bce511c37fa481f"
+      "shapeHash": "sha256:b0aa9450b333430eeba43b81cfe299325bc3a4c342cd498337a06c05d619ee5a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedFalse",
@@ -41185,9 +41185,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[48]generatedMapRef"
+        "type": "[47]generatedMapRef"
       },
-      "shapeHash": "sha256:dde4b83de9fe6f08aac794c8daa02b1686637ad643fc4325802f7b95ccea4a8c"
+      "shapeHash": "sha256:2c287ec9a89c4109b662039d756e35c0d009c047afc61d2642658e654a001036"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedInputLimits",
@@ -41262,9 +41262,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1592]GeneratedModel"
+        "type": "[1629]GeneratedModel"
       },
-      "shapeHash": "sha256:c08903afbacb996815b3afe5efa1b628a3918600d7a5ee49939b2d50e8227005"
+      "shapeHash": "sha256:002711ac7f88cdd84a7366f74de693a420277ff52b8f80dc63101cc9066fc9d4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedStrings",
@@ -41306,9 +41306,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[844]generatedMapRef"
+        "type": "[871]generatedMapRef"
       },
-      "shapeHash": "sha256:52fda753f86bf5b0250f63ea96f27852aa99095f5ace09ade1a869bf85c430dc"
+      "shapeHash": "sha256:f42e3b11ea22ce1ec7dbf02c23274a55a39842644f1ac68366446137f19a3196"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",

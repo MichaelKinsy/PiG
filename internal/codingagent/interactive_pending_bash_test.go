@@ -2,21 +2,23 @@ package codingagent
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"strings"
 	"testing"
 	"testing/synctest"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // A `!cmd` started during a run appears in the pending-message area while it runs and stays there after it
-// completes and after the run ends; the next prompt submitted while idle, including an extension command, moves it
-// into the chat (interactive-mode.ts handleBashCommand pendingMessagesContainer.addChild, onSubmit
-// flushPendingBashComponents; agent_end leaves it). PiG kept the block out of view while it ran and moved it into
+// completes; the run settling moves it into the chat (interactive-mode.ts handleBashCommand pendingMessagesContainer.addChild,
+// agent_settled flushPendingBashComponents, Pi acd059b72; agent_end leaves it). PiG kept the block out of view while it ran and moved it into
 // the chat when it completed and again at agent end.
-func TestInteractiveBashDuringRunStaysPendingUntilTheNextIdlePrompt(t *testing.T) {
+func TestInteractiveBashDuringRunStaysPendingUntilTheRunSettles(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m, ctx, cancel := userBashOwnerProbe(t, func(...any) (any, error) { return userBashOwnedResult(), nil })
 		m.newRunner = inproc.NewRunner([]extension.Extension{{
@@ -55,12 +57,12 @@ func TestInteractiveBashDuringRunStaysPendingUntilTheNextIdlePrompt(t *testing.T
 		}
 		check("after the command completed during the run", true)
 
-		m.runOnMain(ctx, func() { m.turnActive.Store(false); m.isIdle = true })
+		m.runOnMain(ctx, func() { m.turnActive.Store(false); m.isIdle = true; m.handleAgentEvent(agent.AgentEndEvent{}) })
 		check("after the run ended", true)
 
-		m.runOnMain(ctx, func() { m.handleSubmit(ctx, "/owned-command") })
+		m.runOnMain(ctx, func() { m.handleAgentEvent(agent.AgentSettledEvent{}) })
 		synctest.Wait()
-		check("after an idle extension command", false)
+		check("after the run settled", false)
 	})
 }
 
@@ -124,4 +126,87 @@ func TestInteractivePendingBashFlushesOnlyOnTheIdleSubmitPath(t *testing.T) {
 			})
 		})
 	}
+}
+
+// interactive-mode-status.test.ts "InteractiveMode pending user bash output" (#11875, Pi acd059b72).
+func pendingBashProbe(t *testing.T) (*InteractiveMode, *tui.BashExecutionComponent) {
+	t.Helper()
+	m, _ := newFlushQueueMode(t)
+	block := tui.NewBashExecutionComponent("seq 1 40", m.tuiInst, false, m.outputPad)
+	var output strings.Builder
+	for line := 1; line <= 40; line++ {
+		fmt.Fprintf(&output, "line %d\n", line)
+	}
+	block.AppendOutput(output.String())
+	exitCode := 0
+	block.SetComplete(&exitCode, false, nil, "")
+	m.pendingBashBlocks = []*tui.BashExecutionComponent{block}
+	m.pendingMessagesContainer.Add(block)
+	return m, block
+}
+
+func TestCtrlOExpandsUserBashOutputInThePendingArea(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m, block := pendingBashProbe(t)
+		collapsed := len(block.Render(100))
+		m.setAllToolsExpanded(true)
+		if expanded := len(block.Render(100)); expanded <= collapsed {
+			t.Fatalf("pending bash output has %d rows expanded, %d collapsed", expanded, collapsed)
+		}
+	})
+}
+
+func TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m, block := pendingBashProbe(t)
+		m.compactionQueue = []compactionQueuedMessage{{text: "steer", mode: compactionQueueSteer}}
+		m.updatePendingMessagesDisplay()
+		if !slices.Contains(m.pendingMessagesContainer.Children(), tui.Component(block)) {
+			t.Fatal("a queued message update dropped the user bash output from the pending area")
+		}
+		if pending := strings.Join(m.pendingMessagesContainer.Render(100), "\n"); !strings.Contains(pending, "Steering: steer") {
+			t.Fatalf("pending area = %q", pending)
+		}
+	})
+}
+
+func TestNewUserBashOutputStartsInTheCurrentExpandState(t *testing.T) {
+	for _, expanded := range []bool{true, false} {
+		t.Run(fmt.Sprintf("expanded=%t", expanded), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				long := &extension.UserBashEventResult{Result: map[string]any{"output": "first row\n" + strings.Repeat("row\n", 40), "exitCode": 0, "cancelled": false, "truncated": false}}
+				m, ctx, cancel := userBashOwnerProbe(t, func(...any) (any, error) { return long, nil })
+				m.toolsExpanded = expanded
+				m.turnActive.Store(true)
+				m.isIdle = false
+				loopDone := make(chan struct{})
+				go m.drainLoop(ctx, loopDone)
+				defer func() { cancel(); <-loopDone; m.backgroundTasks.Wait() }()
+				m.runOnMain(ctx, func() { m.handleBashCommand(ctx, "during-run", false) })
+				synctest.Wait()
+				m.backgroundTasks.Wait()
+				rendered := make(chan string)
+				m.runOnMain(ctx, func() {
+					text := ""
+					if len(m.bashOrder) == 1 {
+						text = strings.Join(m.bashOrder[0].Render(100), "\n")
+					}
+					rendered <- text
+				})
+				if text := <-rendered; text == "" || strings.Contains(text, "first row") != expanded {
+					t.Fatalf("expanded=%t: block rendered %q", expanded, text)
+				}
+			})
+		})
+	}
+}
+
+func TestSettlingTheRunMovesUserBashOutputToTheChat(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m, block := pendingBashProbe(t)
+		m.handleAgentEvent(agent.AgentSettledEvent{})
+		if slices.Contains(m.pendingMessagesContainer.Children(), tui.Component(block)) || !slices.Contains(m.chatContainer.Children(), tui.Component(block)) || len(m.pendingBashBlocks) != 0 {
+			t.Fatalf("pending %v, chat %v, queue %d", m.pendingMessagesContainer.Children(), m.chatContainer.Children(), len(m.pendingBashBlocks))
+		}
+	})
 }

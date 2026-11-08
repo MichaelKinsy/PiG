@@ -199,33 +199,35 @@ func (event ProxyAssistantMessageEvent) MarshalJSON() ([]byte, error) {
 // equivalent of upstream's optional AbortSignal.
 // Non-nil maps retain empty objects. ThinkingBudgets preserves each budget's presence, including explicit zeros.
 type ProxyStreamOptions struct {
-	Temperature     *float64
-	SamplingParams  map[string]any
-	MaxTokens       *int
-	Reasoning       ai.ModelThinkingLevel
-	CacheRetention  ai.CacheRetention
-	SessionID       string
-	Headers         ai.ProviderHeaders
-	Metadata        map[string]any
-	Transport       ai.Transport
-	ThinkingBudgets *ProxyThinkingBudgets
-	MaxRetryDelayMs *int
-	AuthToken       string
-	ProxyURL        string
+	Temperature         *float64
+	SamplingParams      map[string]any
+	MaxTokens           *int
+	Reasoning           ai.ModelThinkingLevel
+	CacheRetention      ai.CacheRetention
+	SessionID           string
+	DisableContinuation bool
+	Headers             ai.ProviderHeaders
+	Metadata            map[string]any
+	Transport           ai.Transport
+	ThinkingBudgets     *ProxyThinkingBudgets
+	MaxRetryDelayMs     *int
+	AuthToken           string
+	ProxyURL            string
 }
 
 type proxySerializableStreamOptions struct {
-	Temperature     *float64              `json:"temperature,omitempty"`
-	SamplingParams  map[string]any        `json:"samplingParams,omitzero"`
-	MaxTokens       *int                  `json:"maxTokens,omitempty"`
-	Reasoning       ai.ModelThinkingLevel `json:"reasoning,omitempty"`
-	CacheRetention  ai.CacheRetention     `json:"cacheRetention,omitempty"`
-	SessionID       string                `json:"sessionId,omitempty"`
-	Headers         ai.ProviderHeaders    `json:"headers,omitzero"`
-	Metadata        map[string]any        `json:"metadata,omitzero"`
-	Transport       ai.Transport          `json:"transport,omitempty"`
-	ThinkingBudgets *ProxyThinkingBudgets `json:"thinkingBudgets,omitempty"`
-	MaxRetryDelayMs *int                  `json:"maxRetryDelayMs,omitempty"`
+	Temperature         *float64              `json:"temperature,omitempty"`
+	SamplingParams      map[string]any        `json:"samplingParams,omitzero"`
+	MaxTokens           *int                  `json:"maxTokens,omitempty"`
+	Reasoning           ai.ModelThinkingLevel `json:"reasoning,omitempty"`
+	CacheRetention      ai.CacheRetention     `json:"cacheRetention,omitempty"`
+	SessionID           string                `json:"sessionId,omitempty"`
+	DisableContinuation bool                  `json:"disableContinuation,omitempty"`
+	Headers             ai.ProviderHeaders    `json:"headers,omitzero"`
+	Metadata            map[string]any        `json:"metadata,omitzero"`
+	Transport           ai.Transport          `json:"transport,omitempty"`
+	ThinkingBudgets     *ProxyThinkingBudgets `json:"thinkingBudgets,omitempty"`
+	MaxRetryDelayMs     *int                  `json:"maxRetryDelayMs,omitempty"`
 }
 
 // ProxyThinkingBudgets carries optional per-level token budgets to the proxy server.
@@ -332,7 +334,7 @@ func buildProxyRequest(model *ai.Model, transcript ai.TranscriptContext, options
 		Context: proxyRequestContext{Messages: messages},
 		Options: proxySerializableStreamOptions{
 			Temperature: options.Temperature, SamplingParams: options.SamplingParams, MaxTokens: options.MaxTokens,
-			Reasoning: options.Reasoning, CacheRetention: options.CacheRetention, SessionID: options.SessionID,
+			Reasoning: options.Reasoning, CacheRetention: options.CacheRetention, SessionID: options.SessionID, DisableContinuation: options.DisableContinuation,
 			Headers: options.Headers, Metadata: options.Metadata, Transport: options.Transport,
 			ThinkingBudgets: options.ThinkingBudgets, MaxRetryDelayMs: options.MaxRetryDelayMs,
 		},

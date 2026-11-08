@@ -41,6 +41,7 @@ PiG ships the same built-in chat providers and classifier models as Pi 1.5.0. `t
 | `qwen-token-plan` | Qwen Token Plan | `openai-completions` | `QWEN_TOKEN_PLAN_API_KEY` |
 | `qwen-token-plan-cn` | Qwen Token Plan (China) | `openai-completions` | `QWEN_TOKEN_PLAN_CN_API_KEY` |
 | `qwen-token-plan-individual` | Qwen Token Plan (Individual) | `openai-completions` | `QWEN_TOKEN_PLAN_API_KEY` |
+| `qwen-token-plan-individual-cn` | Qwen Token Plan (Individual, China) | `openai-completions` | `QWEN_TOKEN_PLAN_CN_API_KEY` |
 | `radius` | Radius | `pi-messages` | `RADIUS_API_KEY` or OAuth. See [Radius](#radius). |
 | `together` | Together AI | `openai-completions` | `TOGETHER_API_KEY` |
 | `vercel-ai-gateway` | Vercel AI Gateway | `anthropic-messages` | `AI_GATEWAY_API_KEY` |

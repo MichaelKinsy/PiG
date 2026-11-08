@@ -282,7 +282,7 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 	})
 
 	// The individual plan keeps its allowlist of the international models, and strict generation requires exactly that list.
-	all := []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max"}
+	all := []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2", "glm-5.3", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max"}
 	var allowed []provBSpec
 	for _, id := range all {
 		allowed = append(allowed, provBSpec{ID: id})
@@ -303,6 +303,22 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 	}
 	if _, err := provBBuild(t, "qwen-token-plan-individual", missing, false); err != nil {
 		t.Errorf("non-strict individual error = %v", err)
+	}
+
+	// qwen-token-plan-individual-cn serves the same allowlist from the China catalog (Pi 3e4f8726).
+	individualCn := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan-cn": append(append([]provBSpec{}, allowed...), provBSpec{ID: "qwen3.8-max-preview"}, provBSpec{ID: "cn-only"})})}
+	individualCnCatalog, err := provBBuild(t, "qwen-token-plan-individual-cn", individualCn, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	provBIDsEqual(t, provBIDs(individualCnCatalog), all...)
+	provBCheck(t, provBModelsOf(individualCnCatalog), []provBWant{
+		{"qwen3.7-max", "baseUrl", `"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"`},
+		{"qwen3.7-max", "compat", without},
+	})
+	missingCn := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan-cn": allowed[1:]})}
+	if _, err := provBBuild(t, "qwen-token-plan-individual-cn", missingCn, true); err == nil || !strings.HasPrefix(err.Error(), "qwen-token-plan-individual-cn model IDs do not match") {
+		t.Errorf("strict individual-cn error = %v", err)
 	}
 }
 

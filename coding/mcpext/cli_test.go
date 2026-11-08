@@ -450,7 +450,7 @@ func TestMcpCommandSendsTheTokenOfTheProviderNamedByAuthProvider(t *testing.T) {
 	}
 
 	for _, command := range []string{"login", "logout"} {
-		want := `MCP server "radius" uses the credentials of provider "radius". Run /` + command + ` radius in pi.`
+		want := `MCP server "radius" uses the credentials of provider "radius". Run "pi auth ` + command + ` radius".`
 		if code, output := run(nil, command, "radius"); code != 1 || output != want {
 			t.Fatalf("%s radius = %d %q, want %q", command, code, output, want)
 		}

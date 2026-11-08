@@ -36,6 +36,8 @@ type customCall struct {
 	isOverlay bool
 	entry     *extensionDialog // the editor-slot stack entry once mounted
 	savedText string
+	// statusSource is the program status source of a blocking overlay, "" for a call without one.
+	statusSource string
 }
 
 // blockedStatusOf is the status an inline component reports while it is visible: nil for a component that did not opt in.
@@ -150,6 +152,10 @@ func (c *customCall) build(ctx context.Context, create extension.CustomFactory, 
 		return
 	}
 	c.savedText = m.editor.GetExpandedText() // pig divergence (D251): Pi main 51313540a keeps pasted text
+	if options.Overlay && options.Blocked != nil {
+		// An overlay stays blocked until its interaction ends, also while setHidden() hides it.
+		c.statusSource = m.nextBlockingOverlaySource()
+	}
 	c.mu.Lock()
 	c.building = true
 	c.mu.Unlock()
@@ -186,6 +192,10 @@ func (c *customCall) build(ctx context.Context, create extension.CustomFactory, 
 	c.component = component
 	if options.Overlay {
 		c.handle = m.tuiInst.ShowOverlay(component, overlayOptionsOf(options.OverlayOptions))
+		m.addExtensionOverlay(c.handle, c.removeOverlay)
+		if c.statusSource != "" {
+			m.programStatusReporter().SetBlocked(c.statusSource, blockedStatusOf(options.Blocked))
+		}
 		// upstream: interactive-mode.ts:2905 options.onHandle?.(handle)
 		if options.OnHandle != nil {
 			options.OnHandle(c.handle)
@@ -226,14 +236,29 @@ func (c *customCall) teardown() {
 	if c.torn || !c.mounted {
 		return
 	}
-	c.torn = true
 	if c.isOverlay {
-		// upstream: interactive-mode.ts:2999 close() hides this overlay through its own handle, not the topmost one: another overlay
-		// may have opened above it (Pi #10999).
-		c.handle.Hide()
+		c.removeOverlay()
 		return
 	}
+	c.torn = true
 	c.restoreEditor()
+}
+
+// removeOverlay is removeOverlay of showExtensionCustom, shared by done and the reset of the extension UI: it removes the overlay from the
+// open extension overlays first, which makes a second call a no-op, hides it through its own handle, not the topmost one, since another
+// overlay may have opened above it (Pi #10999), clears its blocked status and disposes the component.
+// upstream: interactive-mode.ts showExtensionCustom removeOverlay
+func (c *customCall) removeOverlay() {
+	m := c.u.m
+	c.torn = true
+	if !m.deleteExtensionOverlay(c.handle) {
+		return
+	}
+	c.handle.Hide()
+	if c.statusSource != "" {
+		m.programStatusReporter().SetBlocked(c.statusSource, nil)
+	}
+	c.dispose()
 }
 
 // restoreEditor takes the component out of the editor-slot dialog stack, which shows the previous dialog or the editor, and puts back
