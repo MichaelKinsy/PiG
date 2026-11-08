@@ -34,7 +34,7 @@ const pcLabelOps = `label: async ({ dir }, { ctx }) => {
 `
 
 // pcHostPackages are the host packages every fixture build keeps external.
-var pcHostPackages = []string{"@earendil-works/chord/next"}
+var pcHostPackages = []string{"@earendil-works/chord"}
 
 // pcJSON is value as JavaScript's JSON.stringify writes it.
 func pcJSON(t *testing.T, value any) string {
@@ -51,7 +51,7 @@ func pcJSON(t *testing.T, value any) string {
 func pcItemPlugin(t *testing.T, root, dir, label string) {
 	t.Helper()
 	pcPluginSource(t, root, dir, strings.Join([]string{
-		`import { constant, defineFacet, local, str } from "@earendil-works/chord/next";`,
+		`import { constant, defineFacet, local, str } from "@earendil-works/chord";`,
 		fmt.Sprintf(`const Item = local("test.%s", { version: 1, params: {}, members: { label: str() } });`, dir),
 		fmt.Sprintf(`export default defineFacet((host) => host.serve(Item, () => ({ label: constant(%s) })));`, pcJSON(t, label)),
 	}, "\n"))
@@ -333,7 +333,7 @@ func (h *hostErrors) next(t *testing.T, kind string) NodeHostError {
 // hostErrorPlugin serves the types whose failures the host reports (each with a param, so its object lives while it is
 // held): `test.leaky` (two natives whose closes fail and hang), `test.boom` (a routine that throws, and a derive that throws
 // once `bump` changed its document) and `test.parks` (an object that waits for a type nobody serves).
-const hostErrorPlugin = `import { constant, defineFacet, defineState, int, local, method, obj, str } from "@earendil-works/chord/next";
+const hostErrorPlugin = `import { constant, defineFacet, defineState, int, local, method, obj, str } from "@earendil-works/chord";
 const Leaky = local("test.leaky", { version: 1, params: { id: str() }, members: { n: int() } });
 const Boom = local("test.boom", { version: 1, params: { id: str() }, members: { n: int(), bump: method() } });
 const Parks = local("test.parks", { version: 1, params: { id: str() }, members: { n: int() } });

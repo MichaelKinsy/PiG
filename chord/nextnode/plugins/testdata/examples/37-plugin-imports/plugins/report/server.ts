@@ -1,8 +1,8 @@
 // The report plugin's server facet: one of each import a facet may have.
 
 import { readFileSync } from "node:fs";
-import { constant, defineFacet } from "@earendil-works/chord/next";
-import { pluginFile } from "@earendil-works/chord/next/plugins";
+import { constant, defineFacet } from "@earendil-works/chord";
+import { pluginFile } from "@earendil-works/chord/plugins";
 // Host packages: an ES module (default and named imports) and a CommonJS one, the app's own instances.
 import app, { currency } from "@example/app";
 import legacy from "@example/legacy";

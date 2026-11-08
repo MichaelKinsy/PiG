@@ -61,7 +61,7 @@ type goExportWire struct {
 func goFunctionName(specifier, export string) string { return "pkg:" + specifier + "#" + export }
 
 // goPackagesWire validates packages and returns them as the process imports them. A GoPackage cannot be offered when its
-// specifier is empty, one that two packages or a HostPackages file share, or one of the host's own (`@earendil-works/chord/next`,
+// specifier is empty, one that two packages or a HostPackages file share, or one of the host's own (`@earendil-works/chord`,
 // `@earendil-works/chord/context`); nor when an export has no name, is neither GoFunc nor GoValue, or is a value that is not
 // JSON.
 func goPackagesWire(packages []GoPackage, modules HostPackages) ([]goPackageWire, error) {
@@ -73,7 +73,7 @@ func goPackagesWire(packages []GoPackage, modules HostPackages) ([]goPackageWire
 			return nil, errors.New("plugins.load: a GoPackage has no Specifier")
 		case seen[pkg.Specifier]:
 			return nil, fmt.Errorf("plugins.load: GoPackage %q is offered twice", pkg.Specifier)
-		case pkg.Specifier == "@earendil-works/chord/next" || pkg.Specifier == "@earendil-works/chord/context":
+		case pkg.Specifier == "@earendil-works/chord" || pkg.Specifier == "@earendil-works/chord/context":
 			return nil, fmt.Errorf("plugins.load: GoPackage %q is the host's own package", pkg.Specifier)
 		}
 		if _, file := modules[pkg.Specifier]; file {

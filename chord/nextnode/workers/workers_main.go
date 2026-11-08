@@ -60,7 +60,7 @@ type WorkerStart struct {
 type WorkerLoad struct {
 	Kind string
 	// Core is the app's own facets that are JavaScript: modules whose default export is the facet, loaded into the NodeHost
-	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord/next`).
+	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord`).
 	Core []plugins.CoreFacet
 	// GoCore are the app's own facets that are Go: they load on the worker's Go host, and the local types the NodeHost's
 	// facets use are named by Bridged.

@@ -1,6 +1,6 @@
 // The forecast plugin's server facet: a consumer of the weather plugin's `Weather`.
 
-import { defineFacet, local, str } from "@earendil-works/chord/next";
+import { defineFacet, local, str } from "@earendil-works/chord";
 import { Weather } from "../weather/contract.ts";
 
 const Forecast = local("example.forecast", { version: 1, params: {}, members: { text: str() } });

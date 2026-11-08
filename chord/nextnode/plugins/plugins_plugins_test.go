@@ -268,7 +268,7 @@ func TestPluginsPerPluginAtStartupLeavesOutAPluginWhoseBuildFailsWhoseEvaluation
 	pcItemPlugin(t, root, "good", "good")
 	pcPluginSource(t, root, "syntax", "export default {")
 	pcPluginSource(t, root, "throws", "throw new Error(\"at import\");\nexport default {};")
-	pcPluginSource(t, root, "setup", "import { defineFacet } from \"@earendil-works/chord/next\";\nexport default defineFacet(() => { throw new Error(\"in setup\"); });")
+	pcPluginSource(t, root, "setup", "import { defineFacet } from \"@earendil-works/chord\";\nexport default defineFacet(() => { throw new Error(\"in setup\"); });")
 	c := pcNew(t, root)
 	core := c.coreFile(t, "@app/core", "constant, defineFacet, local, str", `const Item = local("test.item", { version: 1, params: {}, members: { label: str() } });
 export default defineFacet((h) => h.serve(Item, () => ({ label: constant("core") })));
@@ -395,14 +395,14 @@ func TestPluginsPerPluginAtReloadKeepsAConsumerEditedTogetherWithAProviderWhoseN
 	root := tempRoot(t)
 	provider := func(version string) string {
 		return strings.Join([]string{
-			`import { constant, defineFacet, local, int } from "@earendil-works/chord/next";`,
+			`import { constant, defineFacet, local, int } from "@earendil-works/chord";`,
 			`export const P = local("test.provider", { version: ` + version + `, params: {}, members: { n: int() } });`,
 			`export default defineFacet((host) => host.serve(P, () => ({ n: constant(` + version + `) })));`,
 		}, "\n")
 	}
 	consumer := func(version string) string {
 		return strings.Join([]string{
-			`import { defineFacet, local, int, str } from "@earendil-works/chord/next";`,
+			`import { defineFacet, local, int, str } from "@earendil-works/chord";`,
 			`const P = local("test.provider", { version: ` + version + `, params: {}, members: { n: int() } });`,
 			`const C = local("test.consumer", { version: 1, params: {}, members: { label: str() } });`,
 			`export default defineFacet((host) => host.serve(C, (_, self) => ({ label: self.derive([self.get(P, {}).n], ([n]) => "v` + version + ` " + n) })));`,
@@ -714,7 +714,7 @@ func TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstThe
 // plugins.test.ts › the app's API, required roots and installs (slice 12 §1, §5) › rejects load when a required root is
 // missing, holds a broken package or loses a name to an earlier root (Opus M3).
 func TestPluginsTheAppsAPIRequiredRootsAndInstallsRejectsLoadWhenARequiredRootIsMissingHoldsABrokenPackageOrLosesANameToAnEarlierRootOpusM3(t *testing.T) {
-	facet := "import { defineFacet } from \"@earendil-works/chord/next\";\nexport default defineFacet(() => {});"
+	facet := "import { defineFacet } from \"@earendil-works/chord\";\nexport default defineFacet(() => {});"
 	broken := tempRoot(t)
 	writePlugin(t, broken, "core", "@app/core", map[string]string{"server.ts": facet}, nil)
 	writeFiles(t, filepath.Join(broken, "core"), map[string]string{"package.json": "{ not json"})
@@ -780,7 +780,7 @@ func TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRoo
 func pcItemText(t *testing.T, name, label string) string {
 	t.Helper()
 	return strings.Join([]string{
-		`import { constant, defineFacet, local, str } from "@earendil-works/chord/next";`,
+		`import { constant, defineFacet, local, str } from "@earendil-works/chord";`,
 		`const Item = local("test.` + name + `", { version: 1, params: {}, members: { label: str() } });`,
 		`export default defineFacet((host) => host.serve(Item, () => ({ label: constant(` + pcJSON(t, label) + `) })));`,
 	}, "\n")
@@ -904,7 +904,7 @@ func TestPluginsGCCollectsOldFacetsOver200ReloadsTheHeapStaysFlatAfterWarmUp(t *
 	root := tempRoot(t)
 	source := func(label string) string {
 		return strings.Join([]string{
-			`import { constant, defineFacet, local, str } from "@earendil-works/chord/next";`,
+			`import { constant, defineFacet, local, str } from "@earendil-works/chord";`,
 			`import { made } from "@test/probe";`,
 			`const Item = local("test.gc", { version: 1, params: {}, members: { label: str() } });`,
 			// A closure per evaluation, which only this evaluation's code holds.
@@ -1088,7 +1088,7 @@ func TestPluginsFixRound1LeavesAPluginOutOfAHostWhoseKindItsRebuiltFacetsNoLonge
 	if err := os.Remove(filepath.Join(root, "a", "worker.ts")); err != nil {
 		t.Fatal(err)
 	}
-	pcWrite(t, root, "a", "server.ts", "import { defineFacet } from \"@earendil-works/chord/next\";\nexport default defineFacet(() => {});")
+	pcWrite(t, root, "a", "server.ts", "import { defineFacet } from \"@earendil-works/chord\";\nexport default defineFacet(() => {});")
 	c.waitMarks(t, "set", func(marks PluginsState) bool { return marks.Set })
 	built := c.build(t, "@test/a")
 	if len(built.Removed) != 0 {
@@ -1197,7 +1197,7 @@ func TestPluginsTheReloadQueuesAndGarbageCollectionLetsARejectedNewFacetGoOnceIt
 	root := tempRoot(t)
 	source := func(bad string) string {
 		return strings.Join([]string{
-			`import { constant, defineFacet, int, local } from "@earendil-works/chord/next";`,
+			`import { constant, defineFacet, int, local } from "@earendil-works/chord";`,
 			`import { made } from "@test/probe";`,
 			`const state = { bad: ` + bad + `, big: new Array(10000).fill("payload") };`,
 			"made(state);",

@@ -24,7 +24,7 @@ import (
 
 // rfThingModule is a core facet serving `test.thing`: a local type with a constant, a derived count, a keyed member and
 // the methods that read and change them (the oracle is the fingerprint: the Go contract below declares the same members).
-const rfThingModule = `import { ChordError, bytes, constant, defineFacet, defineState, int, keyed, local, method, obj, str, unknown } from "@earendil-works/chord/next";
+const rfThingModule = `import { ChordError, bytes, constant, defineFacet, defineState, int, keyed, local, method, obj, str, unknown } from "@earendil-works/chord";
 const Thing = local("test.thing", {
 	version: 1,
 	params: { id: str() },
