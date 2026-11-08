@@ -7,7 +7,6 @@ package ai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"strings"
@@ -462,7 +461,7 @@ func anthropicEventType(parsed string) string {
 		key := parsed[i+1 : end-1]
 		if escaped {
 			var decoded string
-			if json.Unmarshal([]byte(parsed[i:end]), &decoded) != nil {
+			if jsonwire.Unmarshal(parsed[i:end], &decoded) != nil {
 				return ""
 			}
 			key = decoded
@@ -490,7 +489,7 @@ func anthropicEventType(parsed string) string {
 		return value[1 : len(value)-1]
 	}
 	var eventType string
-	_ = json.Unmarshal([]byte(value), &eventType)
+	_ = jsonwire.Unmarshal(value, &eventType)
 	return eventType
 }
 

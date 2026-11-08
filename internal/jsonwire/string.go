@@ -17,6 +17,6 @@ func Bytes(s string) []byte {
 // Valid is json.Valid(s) without the copy of s that json.Valid([]byte(s)) makes.
 func Valid(s string) bool { return json.Valid(Bytes(s)) }
 
-// Unmarshal is json.Unmarshal([]byte(s), v) without the copy of s: Unmarshal does not retain its input, and the strings and raw messages it
-// stores are copies.
+// Unmarshal is json.Unmarshal([]byte(s), v) without the copy of s. encoding/json copies the strings and raw messages it stores, so v holds no
+// reference to s; v must not be, or hold, a type whose UnmarshalJSON keeps the slice it is given, which this would hand the memory of s.
 func Unmarshal(s string, v any) error { return json.Unmarshal(Bytes(s), v) }
