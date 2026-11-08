@@ -290,7 +290,8 @@ func marshalContent(contentType string, content any) ([]byte, error) {
 	} else {
 		encoded = append(encoded, '}')
 	}
-	return encoded, nil
+	// JSON.stringify writes a negative zero as 0 and an ill-formed byte as the replacement character, as MarshalJSONTo does.
+	return sdkjson.AppendJSNormalized(encoded[:0], encoded)
 }
 
 // appendContent appends the JSON.stringify text of marshalContent(contentType, content) to dst: content is encoded in place after the type

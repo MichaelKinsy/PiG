@@ -34,7 +34,7 @@ func marshalJSONToMessages() map[string]AgentMessage {
 	}
 	call := ai.ToolCall{ID: "call-1", Name: "read", Arguments: ai.JsonObject{"path": "a<b>&c\u2028", "n": 1.5, "nested": []any{"x", nil, true}}}
 	negZero := math.Copysign(0, -1)
-	zeroCall := ai.ToolCall{ID: "call-0", Name: "read", Arguments: ai.JsonObject{"neg": negZero, "nested": []any{negZero, map[string]any{"z": negZero}}}}
+	zeroCall := ai.ToolCall{ID: "call-z", Name: "read", Arguments: ai.JsonObject{"neg": negZero, "nested": []any{negZero, map[string]any{"z": negZero}}}}
 	zeroAssistant := assistant("inv \xff <b> \xc0\xaf", zeroCall)
 	zeroAssistant.Usage = &ai.Usage{Input: 1, TotalTokens: 1, Cost: ai.UsageCost{Input: negZero, Output: -0.5, Total: negZero}}
 	return map[string]AgentMessage{
