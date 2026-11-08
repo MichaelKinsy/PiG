@@ -532,6 +532,7 @@ func TestHoldCallsInFlightAcrossALoadingUnbind(t *testing.T) {
 		if call, code, _, _ := k.error(); call != 1 || code != "not_ready" {
 			t.Fatalf("error = call %d %s, want call 1 not_ready", call, code)
 		}
+		gate.fire()
 	})
 }
 
@@ -545,7 +546,7 @@ var keptPlaced = mustContract(declareRemote("app.placed-kept", contracts.RemoteD
 }))
 
 // keptServePlaced serves `PlacedKept` answering n (recorded in ran), with a native that opens once opened fires.
-func keptServePlaced(t testing.TB, h FacetHost, n int, ran *keptRan, opened signal) error {
+func keptServePlaced(t testing.TB, h FacetHost, n int, ran *keptRan, opened, gate signal) error {
 	return h.Serve(keptPlaced, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
 		self.Open(func(ctx context.Context) (any, error) {
 			if opened != nil {
@@ -555,7 +556,10 @@ func keptServePlaced(t testing.TB, h FacetHost, n int, ran *keptRan, opened sign
 		}, func(any, NativeCloseReason, context.Context) error { return nil })
 		return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"label": constant("v" + string(rune('0'+n)))},
-			Methods: map[string]contracts.MethodFunction{"ping": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+			Methods: map[string]contracts.MethodFunction{"ping": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+				if gate != nil {
+					gate.await(t, ctx)
+				}
 				ran.push(string(rune('0' + n)))
 				return float64(n), nil
 			}},
@@ -565,9 +569,9 @@ func keptServePlaced(t testing.TB, h FacetHost, n int, ran *keptRan, opened sign
 
 func TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay(t *testing.T) {
 	key := Session.Address(jsonObject("id", "S1")).Key
-	start := func(t *testing.T, ran *keptRan) *relayed {
-		rel := relay(t, relayedOptions{Worker: func(h FacetHost) error { return keptServePlaced(t, h, 1, ran, nil) }})
-		return rel
+	// start is a relay whose worker serves `PlacedKept` as code 1, its `ping` waiting for gate.
+	start := func(t *testing.T, ran *keptRan, gate signal) *relayed {
+		return relay(t, relayedOptions{Worker: func(h FacetHost) error { return keptServePlaced(t, h, 1, ran, nil, gate) }})
 	}
 	reloadWorker := func(rel *relayed, n int, ran *keptRan, opened signal) {
 		rel.WorkerLoaded(t, key)
@@ -575,54 +579,68 @@ func TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay(t *testing.T) {
 			if _, err := serveNotes(h, PlacedNotes); err != nil {
 				return err
 			}
-			return keptServePlaced(t, h, n, ran, opened)
+			return keptServePlaced(t, h, n, ran, opened, nil)
 		})}}, background, ReloadOptions{})
 		must(t, err)
 	}
 
 	// hold.test.ts: calls in flight across a `loading` unbind › through a relay › a worker's restart: the tab's kept call crosses the forwarded loading and is answered by the new code
+	// Pi sends the call in the turn of the reload, before the `loading` takes its hops; a running call keeps the old instance
+	// draining here, so the order does not depend on a goroutine's start.
 	t.Run("a worker's restart: the tab's kept call crosses the forwarded loading and is answered by the new code", func(t *testing.T) {
-		ran := &keptRan{}
-		rel := start(t, ran)
+		ran, gate, opened := &keptRan{}, newSignal(), newSignal()
+		t.Cleanup(gate.fire)
+		t.Cleanup(opened.fire)
+		rel := start(t, ran, gate)
 		kept := refGet(t, rel.Tab, keptPlaced, jsonObject("session", "S1"))
 		watch, err := refStateWatch(kept, background)
 		must(t, err)
 		states := statesOf(t, watch)
-		opened := newSignal()
-		t.Cleanup(opened.fire)
+		old := startCallWith(t, kept, "ping", nil)
+		rel.Transported()
 		reloadWorker(rel, 2, ran, opened)
 		// Still live during the drain: the call goes out and waits at the worker's gate.
-		answer := startReloadCall(kept, "ping", nil)
+		answer := startCallWith(t, kept, "ping", nil)
 		rel.Transported()
-		rhWaitFor(t, func() bool { return len(states.All()) >= 1 })
+		rhEqual(t, "states", states.All(), []string(nil))
+		gate.fire()
+		if got, err := old.wait(background); err != nil || got != 1.0 {
+			t.Fatalf("old ping = %v, %v, want 1", got, err)
+		}
+		rhWaitFor(t, func() bool { rel.Transported(); return len(states.All()) >= 1 })
 		rhEqual(t, "states", states.All(), []string{"loading"})
 		opened.fire()
-		if got := answer.wait(t); got != 2.0 {
-			t.Fatalf("ping = %v, want 2", got)
+		if got, err := answer.wait(background); err != nil || got != 2.0 {
+			t.Fatalf("kept ping = %v, %v, want 2", got, err)
 		}
 		rhWaitFor(t, func() bool { rel.Transported(); return len(states.All()) >= 2 })
 		rhEqual(t, "states", states.All(), []string{"loading", "live"})
-		keptWant(t, "ran", ran.all(), []string{"2"})
+		keptWant(t, "ran", ran.all(), []string{"1", "2"})
 	})
 
 	// hold.test.ts: calls in flight across a `loading` unbind › through a relay › a downstream drop while the call is kept aborts it on the worker: it never runs
 	t.Run("a downstream drop while the call is kept aborts it on the worker: it never runs", func(t *testing.T) {
-		ran := &keptRan{}
-		rel := start(t, ran)
-		kept := refGet(t, rel.Tab, keptPlaced, jsonObject("session", "S1"))
-		opened := newSignal()
+		ran, gate, opened := &keptRan{}, newSignal(), newSignal()
+		t.Cleanup(gate.fire)
 		t.Cleanup(opened.fire)
+		rel := start(t, ran, gate)
+		kept := refGet(t, rel.Tab, keptPlaced, jsonObject("session", "S1"))
+		startCallWith(t, kept, "ping", nil)
+		rel.Transported()
 		reloadWorker(rel, 2, ran, opened)
-		answer := startReloadCall(kept, "ping", nil)
+		answer := startCallWith(t, kept, "ping", nil)
 		rel.Transported()
 		rel.TabLink.Close()
-		err := answer.rejected(t)
+		rel.Transported()
+		_, err := answer.wait(background)
 		if _, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok {
 			t.Fatalf("ping error = %v, want unavailable", err)
 		}
-		rel.Transported()
+		gate.fire()
+		rhWaitFor(t, func() bool { rel.Transported(); return len(ran.all()) >= 1 })
 		opened.fire()
 		rel.Transported()
-		keptWant(t, "ran", ran.all(), []string(nil))
+		// Only the call that ran on the old code ran: the kept one was aborted at the worker.
+		keptWant(t, "ran", ran.all(), []string{"1"})
 	})
 }
