@@ -101,7 +101,7 @@ func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScr
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Fatalf("the set has no plugin script; the build: %+v", built.Facets)
+		t.Fatalf("the set has no plugin script; the build: %+v; discovery: %+v", built.Facets, s.app.Plugins.Discovery())
 	}
 	entry := set.Plugins[0]
 	if entry.URL != "/_chord/tui/plugin/@test~lines."+entry.Digest+".js" {
