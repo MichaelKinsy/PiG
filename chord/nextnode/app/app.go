@@ -43,8 +43,8 @@ import (
 // worker kinds.
 //
 // Not ported yet (pending, no divergence): the web and terminal surfaces (`web`, `tui`: T11, nextnode/surfaces and nextnode/tui; until
-// they land AppOptions has no such field); `plugins.install` (Pi's `installPlugin`: T9, the plugins component has none, so App.Plugins
-// has no Install); the `principalAttributes` hook (T6 host spans: the Go host has none); `reloadDrainTimeout` (not a Go host option).
+// they land AppOptions has no such field); the `principalAttributes` hook (T6 host spans: the Go host has none);
+// `reloadDrainTimeout` (not a Go host option).
 
 // Server is the server's host kind: the kit's server host is Server().
 var Server = mustHostKind("server")
@@ -176,6 +176,11 @@ type AppOptions struct {
 	Limits AppLimits
 	// Install is how installs run npm.
 	Install plugins.InstallOptions
+	// Facets are facets the server host loads beside the kit's own (D456): the Go form of what Pi's app does with a facet that has
+	// settings (`ephemeralLoginFacet()`, `inviteFacet()`, `defineUsers(...)`), which it re-exports through its API's server module
+	// and loads with a one-line plugin. A plugin directory is TypeScript the Node plugin host evaluates and cannot import a Go
+	// facet. Each is named; its name must not be one of the kit's (`chord.…`).
+	Facets []host.HostFacet
 	// Telemetry is the app's telemetry store; nil: none.
 	Telemetry AppTelemetry
 	// Base is the app's base code beside what the kit knows (files or directories: its API modules, its start script), hashed at start.
@@ -290,6 +295,11 @@ type App struct {
 	options AppOptions
 	link    string
 
+	// build and rollout are the plugins component's Build and Rollout, the two steps ApplyChanges runs (Pi's tests replace the
+	// component's `build` and `rollout` to hold one: a test here replaces these two, before it applies anything).
+	build   func(names []string, ctx context.Context) (*plugins.Built, error)
+	rollout func(steps []plugins.RolloutStep, built *plugins.Built, ctx context.Context) (plugins.RolloutResult, error)
+
 	applyMu sync.Mutex
 	close   sync.Once
 	closed  error
@@ -384,6 +394,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
 		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
+	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
 	workerHosts := &workerHosts{keys: map[string]string{}}
 	link := &OwnerLink{}
 	owner := options.Principal.Owner
@@ -420,6 +431,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			PrincipalAttributes: func(data.Principal) telemetry.SpanAttributes { return nil },
 		})})
 	}
+	core = append(core, options.Facets...)
 	for _, kind := range options.Workers {
 		created, err := a.workersOf(kind, opened.layout.DataDir, workerHosts, ctx)
 		if err != nil {
@@ -647,12 +659,18 @@ func linkHost(listened string, port int) string {
 	return name + ":" + strconv.Itoa(port)
 }
 
+// InstallPlugin installs plugins from git or npm into the user's root and returns their names (Pi's `app.plugins.install`, which binds
+// the user's root where Plugins.InstallPlugin takes any root); applying changes loads them.
+func (a *App) InstallPlugin(source plugins.PluginSource, ctx context.Context) ([]string, error) {
+	return a.Plugins.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
+}
+
 // ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind (the web and terminal surfaces will follow, T11);
 // never by itself. Calls run one after another (a later one builds after the earlier one rolled out).
 func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	a.applyMu.Lock()
 	defer a.applyMu.Unlock()
-	built, err := a.Plugins.Build(a.Plugins.Marks().Dirty, ctx)
+	built, err := a.build(a.Plugins.Marks().Dirty, ctx)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
@@ -664,7 +682,7 @@ func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	for _, kind := range a.options.Workers {
 		steps = append(steps, a.Workers[kind.Kind.Kind].Step(kind.Kind.Kind))
 	}
-	return a.Plugins.Rollout(steps, built, ctx)
+	return a.rollout(steps, built, ctx)
 }
 
 func (a *App) workersFor(address contracts.Address) (*workers.Workers, error) {

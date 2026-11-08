@@ -110,7 +110,10 @@ type Client struct {
 	updates *updates
 }
 
-// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current.
+// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. ctx is the
+// client's lifetime: it bounds the scripts object's hold and watch, the script fetches and the stylesheets' loads, so a ctx
+// cancelled while the client runs stops its plugin updates (the link stays up until Stop); Pi's client uses BACKGROUND_CONTEXT.
+// Pass a context that lives as long as the client.
 func StartClient(options ClientOptions, ctx context.Context) (*Client, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	var made host.Host

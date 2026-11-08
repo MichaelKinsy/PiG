@@ -193,6 +193,10 @@ func TestAppNamesTheAddressListenedOnInTheOwnerLink(t *testing.T) {
 }
 
 func TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed(t *testing.T) {
+	// Registered first, so it runs after the starts: nothing of the app, its HTTP component, its workers or its plugins is left.
+	t.Cleanup(func() {
+		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
+	})
 	options, _ := testOptions(t, nil)
 	writePlugin(t, options.Root, "broken", "@test/broken", map[string]string{"server.ts": "export default {"})
 	_, err := StartServer(options, background)
@@ -221,7 +225,15 @@ func TestAppRefusesAnOwnerThatIsNotStrictJSONOrIsTheServersPrincipalBeforeItOpen
 	}
 }
 
-func TestAppRefusesWorkerKindsWithoutAWorkerPrincipal(t *testing.T) {
+// Pi's last part is a type error (`@ts-expect-error`: worker kinds without `principal.worker`); here it is refused at start.
+func TestAppStartsWithoutWorkerKindsAndWithoutAWorkerPrincipalWorkerKindsNeedIt(t *testing.T) {
+	s := startTestApp(t, nil, func(o *AppOptions) { o.Principal.Worker = nil })
+	if len(s.app.Workers) != 0 {
+		t.Fatalf("workers = %d, want 0", len(s.app.Workers))
+	}
+	if err := s.app.Close(background); err != nil {
+		t.Fatal(err)
+	}
 	options, _ := testOptions(t, nil)
 	options.Principal.Worker = nil
 	options.Workers = []AppWorkerKind{testWorker(t, project, "")}
