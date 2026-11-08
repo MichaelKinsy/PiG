@@ -112453,7 +112453,7 @@
       "id": "pkg:chord/.#Self::property:on::call:1",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:93fc02c7521d539ca886798b17eb7480649746520c83843e8977e39d0b2b3f53",
-      "rationale": "Pi packages/chord/src/host/routines.ts:69 Self::property:on::call:1 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise<void>`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:7-13, 53-63). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
+      "rationale": "Pi packages/chord/src/host/routines.ts:69 Self::property:on::call:1 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise<void>`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:22-31, 57-90). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
       "pigTargets": [
         "chord/next/host/host_routines.go#RoutineDeclarations.On"
       ]
@@ -114684,7 +114684,7 @@
       "id": "pkg:chord/.#StoreSelf::property:on::call:1",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:93fc02c7521d539ca886798b17eb7480649746520c83843e8977e39d0b2b3f53",
-      "rationale": "Pi packages/chord/src/host/routines.ts:69 StoreSelf::property:on::call:1 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise<void>`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:7-13, 53-63). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
+      "rationale": "Pi packages/chord/src/host/routines.ts:69 StoreSelf::property:on::call:1 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise<void>`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:22-31, 57-90). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
       "pigTargets": [
         "chord/next/host/host_routines.go#RoutineDeclarations.On"
       ]
@@ -115803,7 +115803,7 @@
       "id": "pkg:chord/.#TableEditor::property:~columns",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:74cfdd7565719c234a7858df099d175bb87274c910ef8aea5ec4397791f1047f",
-      "rationale": "Pi packages/chord/src/store/table-evolve.ts:34 TableEditor::property:~columns (Pi 1.5.0+c23b9ec1): is a type-only declaration (`declare readonly`/optional brand that no code assigns or reads at run time; Pi uses it only to carry type parameters), so no Go field or method stands for it; Go has no phantom members (owner 2026-10-29: type-level mechanics are designed out), and the type it carries is a Go type parameter or `any` of the editor chain (store/table_evolve.go:55). Exercised by TestTableHandle (chord/next/store/table_handle_test.go).",
+      "rationale": "Pi packages/chord/src/store/table-evolve.ts:34 TableEditor::property:~columns (Pi 1.5.0+c23b9ec1): is a type-only declaration (`declare readonly`/optional brand that no code assigns or reads at run time; Pi uses it only to carry type parameters), so no Go field or method stands for it; Go has no phantom members (owner 2026-10-29: type-level mechanics are designed out), and the type it carries is a Go type parameter or `any` of the editor chain (store/table_evolve.go:71). Exercised by TestTableHandle (chord/next/store/table_handle_test.go).",
       "pigTargets": [
         "chord/next/store/table_evolve.go#TableEditor"
       ]
@@ -115898,7 +115898,7 @@
       "id": "pkg:chord/.#TableEditor::property:drop::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:8565c2ad4fd3ded7a646748fd06f5e57ef96ec06c01db01196b84ec3d32392f2",
-      "rationale": "Pi packages/chord/src/store/table-evolve.ts:28 TableEditor::property:drop::call:0 (Pi 1.5.0+c23b9ec1): drop(...) returns TableTailEditor<C, K>, the editor after the edit, whose only non-method member is the phantom \"~columns\" brand; Go's TableEditor.Drop returns the same *TableEditor chain (store/table_evolve.go:267), the one editor Pi's two interfaces describe. Designed out with the phantom member (type-level). Exercised by TestEvolveChecks (chord/next/store/table_evolve_test.go).",
+      "rationale": "Pi packages/chord/src/store/table-evolve.ts:28 TableEditor::property:drop::call:0 (Pi 1.5.0+c23b9ec1): drop(...) returns TableTailEditor<C, K>, the editor after the edit, whose only non-method member is the phantom \"~columns\" brand; Go's TableEditor.Drop returns the same *TableEditor chain (store/table_evolve.go:283), the one editor Pi's two interfaces describe. Designed out with the phantom member (type-level). Exercised by TestEvolveChecks (chord/next/store/table_evolve_test.go).",
       "pigTargets": [
         "chord/next/store/table_evolve.go#TableEditor.Drop"
       ]
@@ -116192,7 +116192,7 @@
       "id": "pkg:chord/.#TableTailEditor::property:~columns",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:74cfdd7565719c234a7858df099d175bb87274c910ef8aea5ec4397791f1047f",
-      "rationale": "Pi packages/chord/src/store/table-evolve.ts:34 TableTailEditor::property:~columns (Pi 1.5.0+c23b9ec1): is a type-only declaration (`declare readonly`/optional brand that no code assigns or reads at run time; Pi uses it only to carry type parameters), so no Go field or method stands for it; Go has no phantom members (owner 2026-10-29: type-level mechanics are designed out), and the type it carries is a Go type parameter or `any` of the editor chain (store/table_evolve.go:55). Exercised by TestTableHandle (chord/next/store/table_handle_test.go).",
+      "rationale": "Pi packages/chord/src/store/table-evolve.ts:34 TableTailEditor::property:~columns (Pi 1.5.0+c23b9ec1): is a type-only declaration (`declare readonly`/optional brand that no code assigns or reads at run time; Pi uses it only to carry type parameters), so no Go field or method stands for it; Go has no phantom members (owner 2026-10-29: type-level mechanics are designed out), and the type it carries is a Go type parameter or `any` of the editor chain (store/table_evolve.go:71). Exercised by TestTableHandle (chord/next/store/table_handle_test.go).",
       "pigTargets": [
         "chord/next/store/table_evolve.go#TableEditor"
       ]
@@ -116201,7 +116201,7 @@
       "id": "pkg:chord/.#TableTailEditor::property:~key",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:aad2e53995cab2c7a71aedf5eede9abb2f0e6539bb60494ca8ef644f6e166325",
-      "rationale": "Pi packages/chord/src/store/table-evolve.ts:35 TableTailEditor::property:~key (Pi 1.5.0+c23b9ec1): is a type-only declaration (`declare readonly`/optional brand that no code assigns or reads at run time; Pi uses it only to carry type parameters), so no Go field or method stands for it; Go has no phantom members (owner 2026-10-29: type-level mechanics are designed out), and the type it carries is a Go type parameter or `any` of the editor chain (store/table_evolve.go:55). Exercised by TestTableHandle (chord/next/store/table_handle_test.go).",
+      "rationale": "Pi packages/chord/src/store/table-evolve.ts:35 TableTailEditor::property:~key (Pi 1.5.0+c23b9ec1): is a type-only declaration (`declare readonly`/optional brand that no code assigns or reads at run time; Pi uses it only to carry type parameters), so no Go field or method stands for it; Go has no phantom members (owner 2026-10-29: type-level mechanics are designed out), and the type it carries is a Go type parameter or `any` of the editor chain (store/table_evolve.go:71). Exercised by TestTableHandle (chord/next/store/table_handle_test.go).",
       "pigTargets": [
         "chord/next/store/table_evolve.go#TableTailEditor"
       ]
@@ -116310,7 +116310,7 @@
       "id": "pkg:chord/.#TableTailEditor::property:index::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:5e5d5218578d43cbe4ef80b6a36ef5732cbd4ee1bc7ae28c242dae328e83662d",
-      "rationale": "Pi packages/chord/src/store/table-evolve.ts:30 TableTailEditor::property:index::call:0 (Pi 1.5.0+c23b9ec1): index(name, columns) takes the columns as a mapped type over the table's columns ({ [K in keyof C]: ... }, type-level); Go's TableEditor.Index(name string, columns []string) takes the column names and checks them against the table at run time (store/table_evolve.go:299). Exercised by TestEvolveChecks (chord/next/store/table_evolve_test.go).",
+      "rationale": "Pi packages/chord/src/store/table-evolve.ts:30 TableTailEditor::property:index::call:0 (Pi 1.5.0+c23b9ec1): index(name, columns) takes the columns as a mapped type over the table's columns ({ [K in keyof C]: ... }, type-level); Go's TableEditor.Index(name string, columns []string) takes the column names and checks them against the table at run time (store/table_evolve.go:315). Exercised by TestEvolveChecks (chord/next/store/table_evolve_test.go).",
       "pigTargets": [
         "chord/next/store/table_evolve.go#TableEditor.Index"
       ]
@@ -116727,7 +116727,7 @@
       "id": "pkg:chord/.#Translator",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:8c9b874e8582b7f85ed406bce01cb50660d7a15930135afbc2463db10f48aa81",
-      "rationale": "Pi packages/chord/src/surfaces/messages.ts:59 Translator<N, M> (Pi 1.5.0+c23b9ec1) is a callable object: `t(key, ...args)` renders a message and `t.render(message)` renders one as data, with the key and arguments typed from the catalog shape M (`translator()` builds it as `Object.assign(t, { render })`). Go has no function value that carries a member and no type that computes the argument tuple from a catalog shape, so the callable object is a struct whose method T is the call and whose method Render is the member (surfaces/surfaces_messages.go: Translator, T, Render); In returns it for a language as Pi's `in(language)` does. Designed out as a language mechanic (a callable object with members; the typed arguments are the type-level mechanic of owner 2026-10-29/30). Go: chord/next/surfaces/surfaces_messages.go#Translator. Intention check: what Translator guards is that a plugin renders a message by key (with its arguments) and as data in the language it was made for, and that is ported as behavior (T and Render, tested); only the callable-object spelling has no Go form. Exercised by TestRendersThePluginsOwnCatalogOfTheLanguageValuesAndFunctions (chord/next/surfaces/surfaces_messages_test.go).",
+      "rationale": "Pi packages/chord/src/surfaces/messages.ts:59 Translator<N, M> (Pi 1.5.0+c23b9ec1) is a callable object: `t(key, ...args)` renders a message and `t.render(message)` renders one as data, with the key and arguments typed from the catalog shape M (`translator()` builds it as `Object.assign(t, { render })`). A named Go func type can carry methods, but a method cannot reach the state the call closes over (the messages and the language), so `render` cannot be a member of a func-typed Translator without a reserved-argument protocol on the call that would collide with real message keys; and Go has no type that computes the argument tuple from a catalog shape. So the callable object is a struct whose method T is the call and whose method Render is the member (surfaces/surfaces_messages.go: Translator, T, Render); In returns it for a language as Pi's `in(language)` does. Designed out as a language mechanic (a callable object whose members reach the call's state; the typed arguments are the type-level mechanic of owner 2026-10-29/30); pending owner confirmation that a reserved-argument func type is not wanted instead. Go: chord/next/surfaces/surfaces_messages.go#Translator. Intention check: what Translator guards is that a plugin renders a message by key (with its arguments) and as data in the language it was made for, and that is ported as behavior (T and Render, tested); only the callable-object spelling has no Go form. Exercised by TestRendersThePluginsOwnCatalogOfTheLanguageValuesAndFunctions (chord/next/surfaces/surfaces_messages_test.go).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#Translator"
       ]
@@ -116736,7 +116736,7 @@
       "id": "pkg:chord/.#Translator::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b1c2d9c0876357818689bcb0f4f99b6f2c0ad74b6b7ed85f16dfa4985531dc29",
-      "rationale": "Pi packages/chord/src/surfaces/messages.ts:59 Translator::call:0 (Pi 1.5.0+c23b9ec1) is a callable object: `t(key, ...args)` renders a message and `t.render(message)` renders one as data, with the key and arguments typed from the catalog shape M (`translator()` builds it as `Object.assign(t, { render })`). Go has no function value that carries a member and no type that computes the argument tuple from a catalog shape, so the callable object is a struct whose method T is the call and whose method Render is the member (surfaces/surfaces_messages.go: Translator, T, Render); In returns it for a language as Pi's `in(language)` does. Designed out as a language mechanic (a callable object with members; the typed arguments are the type-level mechanic of owner 2026-10-29/30). Go: chord/next/surfaces/surfaces_messages.go#Translator. Intention check: what Translator guards is that a plugin renders a message by key (with its arguments) and as data in the language it was made for, and that is ported as behavior (T and Render, tested); only the callable-object spelling has no Go form. Exercised by TestRendersThePluginsOwnCatalogOfTheLanguageValuesAndFunctions (chord/next/surfaces/surfaces_messages_test.go).",
+      "rationale": "Pi packages/chord/src/surfaces/messages.ts:59 Translator::call:0 (Pi 1.5.0+c23b9ec1) is a callable object: `t(key, ...args)` renders a message and `t.render(message)` renders one as data, with the key and arguments typed from the catalog shape M (`translator()` builds it as `Object.assign(t, { render })`). A named Go func type can carry methods, but a method cannot reach the state the call closes over (the messages and the language), so `render` cannot be a member of a func-typed Translator without a reserved-argument protocol on the call that would collide with real message keys; and Go has no type that computes the argument tuple from a catalog shape. So the callable object is a struct whose method T is the call and whose method Render is the member (surfaces/surfaces_messages.go: Translator, T, Render); In returns it for a language as Pi's `in(language)` does. Designed out as a language mechanic (a callable object whose members reach the call's state; the typed arguments are the type-level mechanic of owner 2026-10-29/30); pending owner confirmation that a reserved-argument func type is not wanted instead. Go: chord/next/surfaces/surfaces_messages.go#Translator. Intention check: what Translator guards is that a plugin renders a message by key (with its arguments) and as data in the language it was made for, and that is ported as behavior (T and Render, tested); only the callable-object spelling has no Go form. Exercised by TestRendersThePluginsOwnCatalogOfTheLanguageValuesAndFunctions (chord/next/surfaces/surfaces_messages_test.go).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#Translator"
       ]
