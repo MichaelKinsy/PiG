@@ -257,7 +257,7 @@ func TestLiveQueryPublicationAnInsertAnUpdateAndADeleteReachAWatchAsOpsInTheComm
 	if got := lqJSON(t, b.items(t)); got != `[{"id":1,"text":"A"}]` {
 		t.Fatalf("items = %s", got)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, b.host)
 }
 
@@ -277,7 +277,7 @@ func TestLiveQueryPublicationKeepsTheWindowAtItsLimitANewerRowPushesTheOldestOut
 	if len(ops) != 1 || ops[0] != `[["p",[],0,0,[{"id":3,"text":"t3"}]],["p",[],2,1,[]]]` {
 		t.Fatalf("frames = %v", ops)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, b.host)
 }
 
@@ -319,7 +319,7 @@ func TestLiveQueryPublicationACommitWritingAnotherTableRunsNoQueryAndPublishesNo
 	if got := len(frames.all()); got != 1 {
 		t.Fatalf("calls = %d, want 1", got)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, b.host)
 }
 
@@ -426,7 +426,7 @@ func TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHea
 	if state := b.board.State().Value(); state.Kind != RefStateLive {
 		t.Fatalf("state = %v, want live", state.Kind)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, b.host)
 }
 

@@ -2,7 +2,8 @@
 
 package app
 
-import "io/fs"
+import "os"
 
-// checkDirectoryOwner accepts any data directory: Node has no `process.getuid` on Windows, so Pi's check does not run there.
-func checkDirectoryOwner(string, fs.FileInfo) error { return nil }
+// ownerOf is the user id that owns the file info describes; a platform without user ids (Windows) has none, as Node's
+// `stat.uid` is not meaningful there either.
+func ownerOf(os.FileInfo) (uid int, ok bool) { return 0, false }

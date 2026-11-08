@@ -663,6 +663,10 @@ func (source *panickingSource) Next(ctx context.Context) (any, bool, error) {
 
 func (source *panickingSource) Close() error { return nil }
 
+// stalledForever is what a stalledSource waits on: nothing sends on it; TestMain closes it once the tests ended, so the
+// goroutine that modelled a never-settling promise is not reported as a leak.
+var stalledForever = make(chan struct{})
+
 // stalledSource yields `values`, then waits for ever: a Close wakes nothing, as Pi's never-settling promise.
 type stalledSource struct {
 	values []ArchivePart
@@ -675,7 +679,7 @@ func (source *stalledSource) Next(ctx context.Context) (any, bool, error) {
 		source.index++
 		return source.values[source.index-1], true, nil
 	}
-	<-make(chan struct{})
+	<-stalledForever
 	return nil, false, nil
 }
 

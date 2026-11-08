@@ -29,7 +29,7 @@ func TestQueryRefreshAdoptsItsLastApplicationsRunsOnlyAGroupedCommitThatRolledBa
 			t.Fatal(err)
 		}
 	}
-	refresh.Adopt()
+	_ = refresh.Adopt()
 	if len(stub.adopted) != 1 || stub.adopted[0].Rows.value[0] != 2 {
 		t.Fatalf("adopted = %+v, want the second run only", stub.adopted)
 	}
