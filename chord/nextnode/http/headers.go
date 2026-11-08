@@ -203,6 +203,18 @@ func (d *DefaultHeaders) Of(admitted *Admitted, router *Router, nonce string) (*
 	return headers, nil
 }
 
+// scriptSources is where scripts may come from: the contributed script paths of the request's origin, else the whole origin.
+func scriptSources(admitted *Admitted, router *Router) []string {
+	if router == nil || admitted == nil || len(router.Scripts) == 0 {
+		return []string{"'self'"}
+	}
+	sources := make([]string, len(router.Scripts))
+	for i, path := range router.Scripts {
+		sources[i] = admitted.Origin + path
+	}
+	return sources
+}
+
 // policy is the CSP's text around the nonce for admitted under router.
 func (d *DefaultHeaders) policy(admitted *Admitted, router *Router) [2]string {
 	if router == nil || admitted == nil || admitted.Relay != nil {
@@ -256,7 +268,7 @@ func csp(admitted *Admitted, router *Router) [2]string {
 	}
 	directives := []*directive{
 		{"default-src", []string{"'none'"}},
-		{"script-src", []string{"'self'", nonceMark}},
+		{"script-src", append(scriptSources(admitted, router), nonceMark)},
 		{"connect-src", connect},
 		{"base-uri", []string{"'none'"}},
 		{"form-action", []string{"'self'"}},
