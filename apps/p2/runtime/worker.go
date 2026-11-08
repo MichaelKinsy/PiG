@@ -1151,6 +1151,9 @@ func WorkerCore(init WorkerInit, session SessionInit, liveness *Liveness, locati
 			checks := objectSelf.Registry(RelocationChecks.Registry)
 			return contracts.Implementation{Variant: "server", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 				"prepare": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					// First use in this section; then the method waits for Durable, whose publications need the host's loop.
+					_, _ = harnessOf()
+					chordctx.Suspend(ctx)
 					frozen := liveness.Freeze()
 					result, err := prepareRelocation(ctx, args, frozen, harnessOf, checks, location)
 					if err != nil || !result.accepted {
@@ -1168,6 +1171,9 @@ func WorkerCore(init WorkerInit, session SessionInit, liveness *Liveness, locati
 					return nil, nil
 				},
 				"relocate": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					// First use in this section; then the method waits for Durable, whose publications need the host's loop.
+					_, _ = harnessOf()
+					chordctx.Suspend(ctx)
 					if !liveness.Relocating() {
 						return nil, errors.New("Relocation was not prepared")
 					}
