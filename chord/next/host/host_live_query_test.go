@@ -23,12 +23,10 @@ import (
 // chord/next/store/live_query_test.go, where QueryRefresh lives.
 //
 // Forced differences: a `limit` is an int64, so Pi's fractional and absent limits cannot be written (designed out; 0 and a
-// negative one are the Go cases of "a limit is required"). The reload report says `swapped` where Pi main says `restarted`
-// until the reload restart model (Pi a5d209afd) is ported: its one line below.
+// negative one are the Go cases of "a limit is required").
 
-// reloadedKindOfABoard is the kind a reload reports for the board: Pi 2439933cf's `swapped`; Pi main's `restarted` once
-// a5d209afd is ported.
-const reloadedKindOfABoard = ReloadSwapped
+// reloadedKindOfABoard is the kind a reload reports for the board: Pi main's `restarted` (a5d209afd).
+const reloadedKindOfABoard = ReloadRestarted
 
 var (
 	lqItems = mustTableDef("items", store.TableOptions{
