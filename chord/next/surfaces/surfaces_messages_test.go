@@ -6,7 +6,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
+	"github.com/MichaelKinsy/PiG/schema"
 )
 
 // pi: packages/chord/test/surfaces/messages.test.ts
@@ -240,6 +242,47 @@ func TestBuildsDataAndRendersItInTheViewersLanguage(t *testing.T) {
 	}
 	if got := notes.Render(saved); got != `Saved "Plan" at 10:00` {
 		t.Errorf("plain = %q", got)
+	}
+}
+
+// messages.test.ts › messages as data › builds typed data for the keys whose arguments are data: Pi's `@ts-expect-error a Date is no
+// data: it would not cross a link` is compile-time; here a message as data crosses a link only through MessageSchema, whose params
+// are strings, numbers, booleans and null (messages.ts:28, `MessageParam`).
+func TestAMessageAsDataCrossesALinkOnlyWithJSONScalarParams(t *testing.T) {
+	validator, err := schema.Compile(MessageSchema.Node, schema.CompileOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(params []any) bool {
+		t.Helper()
+		ok, err := validator.Check(delta.JsonObjectOf("namespace", "notes", "key", "saved", "params", params))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ok
+	}
+	saved := notesMessages(t).Message("saved", "Plan", "2026-11-03T10:00:00Z")
+	if !check(saved.Params) {
+		t.Errorf("params %v of a built message did not pass the schema", saved.Params)
+	}
+	if !check([]any{"a", 1.0, true, nil}) {
+		t.Error("a string, a number, a boolean and null did not pass")
+	}
+	if check([]any{delta.JsonObjectOf("when", "now")}) || check([]any{[]any{"a"}}) {
+		t.Error("an object or an array param passed: it would not be a MessageParam")
+	}
+}
+
+// messages.test.ts › messages as data › builds typed data for the keys whose arguments are data: Pi's `@ts-expect-error a wrong
+// argument` (`notes.message("count", "2")`, MessageArgs of the key's function, messages.ts:25) is compile-time; the Go way is the
+// error a JavaScript message would throw: a MessageFunc whose arguments do not fit returns it from T, and Render shows the key.
+func TestAMessageFunctionWhoseArgumentsDoNotFitReturnsTheErrorAThrowWouldBe(t *testing.T) {
+	notes := notesMessages(t)
+	if text, err := notes.T("count", "2"); err == nil {
+		t.Fatalf("t(count, %q) = %q, want the error of an argument that is no number", "2", text)
+	}
+	if got := notes.Render(notes.Message("count", "2")); got != "count" {
+		t.Errorf("render of a message whose argument does not fit = %q, want its key", got)
 	}
 }
 

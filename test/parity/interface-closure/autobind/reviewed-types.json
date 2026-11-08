@@ -209,7 +209,7 @@
   },
   "pkg:chord/.#JobHandle::property:running": {
     "go": "chord/next/host/jobs_job.go#JobHandle.Running",
-    "reason": "Pi packages/chord/src/jobs/job.ts:41 `readonly running: Watchable<readonly RunningEntry<A, S>[]>` is a Chord watchable of the unsettled runs. Go's Watchable is not a type but the state package's source handle: state.SourceHandle is what every Watchable member of a contract implementation, a derive source or an `on` source takes (host.JSONSource, documents.KeySource), and JobHandle.Running returns it (jobs_job.go). TestRunningHasOneEntryPerUnsettledRunInStartOrderTaggedByPhaseAKeyWhenGiven (chord/next/host/jobs_job_runs_test.go) reads it."
+    "reason": "Pi packages/chord/src/jobs/job.ts:40 `readonly running: Watchable<readonly RunningEntry<A, S>[]>` is a Chord watchable of the unsettled runs. Go's Watchable is not a type but the state package's source handle: state.SourceHandle is what every Watchable member of a contract implementation, a derive source or an `on` source takes (host.JSONSource, documents.KeySource), and JobHandle.Running returns it (jobs_job.go). TestRunningHasOneEntryPerUnsettledRunInStartOrderTaggedByPhaseAKeyWhenGiven (chord/next/host/jobs_job_runs_test.go) reads it."
   },
   "pkg:chord/.#JsonObject": {
     "go": "chord/next/documents/definition.go#JsonObject",
@@ -273,19 +273,19 @@
   },
   "pkg:chord/.#listDocumentEntries::call:0": {
     "go": "chord/next/store/engine.go#ListDocumentEntries",
-    "reason": "Pi store/engine.ts listDocumentEntries(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (engine_test.go and the adapter tests)."
+    "reason": "Pi store/engine.ts listDocumentEntries(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineEntries, chord/next/store/engine_test.go: entries of a scope by id, live now or at a point with retired_at, from a cursor, by kind, up to a limit)."
   },
   "pkg:chord/.#listDocuments::call:0": {
     "go": "chord/next/store/engine.go#ListDocuments",
-    "reason": "Pi store/engine.ts listDocuments(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (engine_test.go and the adapter tests)."
+    "reason": "Pi store/engine.ts listDocuments(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineHistoryRules, chord/next/store/engine_test.go: a rewindable record listed at a point and not listed once retired)."
   },
   "pkg:chord/.#loadContent::call:0": {
     "go": "chord/next/store/engine.go#LoadContent",
-    "reason": "Pi store/engine.ts loadContent(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (engine_test.go and the adapter tests)."
+    "reason": "Pi store/engine.ts loadContent(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (LoadDocument is LoadContent plus its record, so TestEngineHistoryRules in chord/next/store/engine_test.go loads through it; no test calls it apart from LoadDocument)."
   },
   "pkg:chord/.#loadDocument::call:0": {
     "go": "chord/next/store/engine.go#LoadDocument",
-    "reason": "Pi store/engine.ts loadDocument(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (engine_test.go and the adapter tests)."
+    "reason": "Pi store/engine.ts loadDocument(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineHistoryRules, chord/next/store/engine_test.go: a rewindable record loaded at every point of its lifetime)."
   },
   "pkg:chord/.#max::call:0": {
     "go": "chord/next/store/expression.go#Max",
@@ -305,11 +305,11 @@
   },
   "pkg:chord/.#readDocument::call:0": {
     "go": "chord/next/store/engine.go#ReadDocument",
-    "reason": "Pi store/engine.ts readDocument(executor: Pick<SqliteExecutor, \"get\">, id) takes the one method of the executor a read needs. Go's rowGetter is that Pick as an interface (store/engine.go: Get(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (engine_test.go and the adapter tests)."
+    "reason": "Pi store/engine.ts readDocument(executor: Pick<SqliteExecutor, \"get\">, id) takes the one method of the executor a read needs. Go's rowGetter is that Pick as an interface (store/engine.go: Get(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineHistoryRules, chord/next/store/engine_test.go: an adapter's retirement reads record 10 by id in its step through it, and TestEngineEntries does the same)."
   },
   "pkg:chord/.#readDocumentEntry::call:0": {
     "go": "chord/next/store/engine.go#ReadDocumentEntry",
-    "reason": "Pi store/engine.ts readDocumentEntry(executor: Pick<SqliteExecutor, \"get\">, id) takes the one method of the executor a read needs. Go's rowGetter is that Pick as an interface (store/engine.go: Get(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (engine_test.go and the adapter tests)."
+    "reason": "Pi store/engine.ts readDocumentEntry(executor: Pick<SqliteExecutor, \"get\">, id) takes the one method of the executor a read needs. Go's rowGetter is that Pick as an interface (store/engine.go: Get(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineEntries, chord/next/store/engine_test.go: an entry by id, live or retired, with its owner, namespace and history; none for an absent id)."
   },
   "pkg:chord/.#replacePrefix::call:0": {
     "go": "chord/next/store/expression.go#ReplacePrefix",
