@@ -166578,7 +166578,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "81 normalized-name Pig candidates are ambiguous."
+        "82 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -166603,6 +166603,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#streamedToolCallCounter.Store",
         "go:github.com/MichaelKinsy/PiG/ai#testFauxRetryState.Store",
         "go:github.com/MichaelKinsy/PiG/ai#walkPlans.Store",
+        "go:github.com/MichaelKinsy/PiG/coding#lastMessageSequence.Store",
         "go:github.com/MichaelKinsy/PiG/coding#testFauxProviderFactory.Store",
         "go:github.com/MichaelKinsy/PiG/coding#uiRawResult.store",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.Store",
@@ -171070,7 +171071,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "105 normalized-name Pig candidates are ambiguous."
+        "106 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -171097,6 +171098,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#responsesSlotObjects.Add",
         "go:github.com/MichaelKinsy/PiG/ai#streamedToolCallCounter.Add",
         "go:github.com/MichaelKinsy/PiG/ai#timeComposer.add",
+        "go:github.com/MichaelKinsy/PiG/coding#lastMessageSequence.Add",
         "go:github.com/MichaelKinsy/PiG/coding#pathMetadataIndex.add",
         "go:github.com/MichaelKinsy/PiG/coding/cli#authContributionRegistry.add",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.Add",
@@ -171232,7 +171234,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "21 normalized-name Pig candidates are ambiguous."
+        "22 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -171250,6 +171252,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexToolCallCounter.And",
         "go:github.com/MichaelKinsy/PiG/ai#responsesSlotObjects.And",
         "go:github.com/MichaelKinsy/PiG/ai#streamedToolCallCounter.And",
+        "go:github.com/MichaelKinsy/PiG/coding#lastMessageSequence.And",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.And",
         "go:github.com/MichaelKinsy/PiG/coding/extension#registrationRevision.And",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#workersStarted.And",
@@ -174762,7 +174765,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "25 normalized-name Pig candidates are ambiguous."
+        "26 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -174780,6 +174783,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexToolCallCounter.Or",
         "go:github.com/MichaelKinsy/PiG/ai#responsesSlotObjects.Or",
         "go:github.com/MichaelKinsy/PiG/ai#streamedToolCallCounter.Or",
+        "go:github.com/MichaelKinsy/PiG/coding#lastMessageSequence.Or",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.Or",
         "go:github.com/MichaelKinsy/PiG/coding/extension#registrationRevision.Or",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#workersStarted.Or",
