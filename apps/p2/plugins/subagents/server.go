@@ -146,6 +146,11 @@ func serveChildStore(_ *delta.JsonObject, self host.Self) (contracts.Implementat
 					updates = append(updates, update{session, string(encoded)})
 				}
 			}
+			if err := stored.Err(); err != nil {
+				_ = stored.Close()
+				_ = db.Close()
+				return nil, err
+			}
 			if err := stored.Close(); err != nil {
 				_ = db.Close()
 				return nil, err
