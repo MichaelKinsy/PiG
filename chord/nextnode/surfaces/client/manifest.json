@@ -814,6 +814,18 @@
 			"sha256": "a645ef278212918ffd6f1a5635ccb6d1b826d5b1d1e849e1dc9de42f4e7a09ad"
 		},
 		{
+			"path": "pi/chord/test/node/fixtures/reload/entry.ts",
+			"sha256": "ad87456aaeb1bb906440765d94f85c4747f0f10945c12e1b7826a436af6ced3c"
+		},
+		{
+			"path": "pi/chord/test/node/fixtures/reload/main.ts",
+			"sha256": "7b900acffeb4da45a65faf77dcf43462233a8bd0dcaef42b1867c0700ec2709b"
+		},
+		{
+			"path": "pi/chord/test/node/fixtures/reload/web-api.ts",
+			"sha256": "dfa3d3fa1e76c5e6cdecde5e583c33925d47ac882e4583d899f8bdabe7ff846d"
+		},
+		{
 			"path": "pi/chord/test/node/fixtures/tui/api.ts",
 			"sha256": "9dda2091f1f6d2f7bef47384d2d6d6689358e101052850eb67cf23fc2b2616a3"
 		},

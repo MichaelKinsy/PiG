@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -801,8 +802,10 @@ func TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanB
 		Plugins:   plugs,
 		OnError:   func(WorkersError) {},
 	}
-	if _, err := CreateWorkers(server, fixtureSession, options, background); err == nil {
-		t.Fatal("CreateWorkers with an entry that is no program: no error")
+	// Pi's `rejects.toThrow(/Unexpected ";"/)`: the rejection says why the entry cannot be used (here the entry's path and the file it lacks).
+	_, err = CreateWorkers(server, fixtureSession, options, background)
+	if err == nil || !strings.Contains(err.Error(), "workers: the worker entry cannot be started") || !strings.Contains(err.Error(), options.Entry) || !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("CreateWorkers with an entry that is no program = %v, want the entry cannot be started: %q: not exist", err, options.Entry)
 	}
 	options.Entry = fixtureEntry(t)
 	workers, err := CreateWorkers(server, fixtureSession, options, background)
