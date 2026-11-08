@@ -195,6 +195,8 @@ type ChatSurface struct {
 	runtime *runtime.TuiRuntime
 	ctx     context.Context
 	cancel  context.CancelFunc
+	// calls runs what perform is given, one call at a time in the order they were made.
+	calls callQueue
 	// Editor is pi's editor; Focus is what takes the cursor.
 	Editor     *components.CustomEditor
 	transcript *components.TranscriptView
@@ -1058,13 +1060,17 @@ func (s *ChatSurface) ownAuthor() p2runtime.Author {
 	return p2runtime.Author{Kind: p2runtime.AuthorOwner, Name: "Owner"}
 }
 
-// perform runs a call off the loop and shows its failure.
+// perform runs a call off the loop and shows its failure. The calls run one at a time, in the order they were made (callQueue); a disposed surface runs the
+// ones it has not begun no more and shows no failure.
 func (s *ChatSurface) perform(call func() error) {
-	go func() {
-		if err := call(); err != nil {
+	s.calls.push(func() {
+		if s.ctx.Err() != nil {
+			return
+		}
+		if err := call(); err != nil && s.ctx.Err() == nil {
 			s.runtime.Post(func() { s.runtime.Fail(err) })
 		}
-	}()
+	})
 }
 
 // call is a method of ref called with no deadline.
@@ -1360,7 +1366,7 @@ func (s *ChatSurface) Send(mode string) {
 	s.perform(func() error {
 		return sending(message, func() error {
 			// Waits through a connecting conversation; calls made while it reconnects wait for it too.
-			err := p2runtime.WhenLive(context.Background(), ref)
+			err := p2runtime.WhenLive(s.ctx, ref)
 			var writer *host.Reference
 			if err == nil {
 				if writer = liveIn(ref, "participant"); writer == nil {
