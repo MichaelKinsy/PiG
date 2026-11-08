@@ -23,12 +23,12 @@ import (
 
 // Binary is the Chromium binary, or "" when there is none: `CHROMIUM_BIN`, else `chromium-docker` on the PATH, whichever answers
 // `--version`.
-func Binary() string {
+func Binary(ctx context.Context) string {
 	for _, candidate := range []string{os.Getenv("CHROMIUM_BIN"), "chromium-docker"} {
 		if candidate == "" {
 			continue
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		//nolint:gosec // G204: the binary is the test runner's own choice (CHROMIUM_BIN), as Pi's driver runs it
 		err := exec.CommandContext(ctx, candidate, "--version").Run()
 		cancel()
@@ -85,6 +85,8 @@ type Browser struct {
 	done      chan struct{}
 	// stderr is the end of what Chromium wrote to its standard error, logged when the test failed.
 	stderr *tail
+	// base is the context of the driver's own calls: the test's, kept alive past its end for the cleanup that closes Chromium.
+	base context.Context
 }
 
 // tail keeps the last 8 KiB written to it.
@@ -112,7 +114,7 @@ func (w *tail) String() string {
 // Start starts Chromium (the test is skipped when there is none) and attaches to its page; it is closed when the test ends.
 func Start(t testing.TB) *Browser {
 	t.Helper()
-	binary := Binary()
+	binary := Binary(t.Context())
 	if binary == "" {
 		t.Skip("no Chromium: set CHROMIUM_BIN (or put chromium-docker on the PATH)")
 	}
@@ -132,7 +134,7 @@ func Start(t testing.TB) *Browser {
 		t.Fatal(err)
 	}
 	b := &Browser{
-		stderr: stderr, t: t, command: command, exited: make(chan struct{}), profile: profile, pending: map[int]chan answer{},
+		stderr: stderr, t: t, base: context.WithoutCancel(t.Context()), command: command, exited: make(chan struct{}), profile: profile, pending: map[int]chan answer{},
 		loaded: map[string]bool{}, listeners: map[string]func(json.RawMessage){}, done: make(chan struct{}),
 	}
 	go func() {
@@ -140,7 +142,7 @@ func Start(t testing.TB) *Browser {
 		close(b.exited)
 	}()
 	t.Cleanup(b.Close)
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 	portFile := filepath.Join(profile, "DevToolsActivePort")
 	var port string
@@ -368,7 +370,7 @@ func (b *Browser) Evaluate(ctx context.Context, expression string, out any) erro
 // String is expression's value as a string; the test fails when it is not one.
 func (b *Browser) String(expression string) string {
 	b.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(b.base, 30*time.Second)
 	defer cancel()
 	var value string
 	if err := b.Evaluate(ctx, expression, &value); err != nil {
@@ -380,7 +382,7 @@ func (b *Browser) String(expression string) string {
 // Run evaluates expression for its effect; the test fails when it throws.
 func (b *Browser) Run(expression string) {
 	b.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(b.base, 30*time.Second)
 	defer cancel()
 	if err := b.Evaluate(ctx, expression, nil); err != nil {
 		b.t.Fatal(err)
@@ -394,7 +396,7 @@ func (b *Browser) Wait(expression string, timeout ...time.Duration) {
 	if len(timeout) > 0 {
 		limit = timeout[0]
 	}
-	err := Poll(context.Background(), limit, expression, func(ctx context.Context) (bool, error) {
+	err := Poll(b.base, limit, expression, func(ctx context.Context) (bool, error) {
 		var ok bool
 		err := b.Evaluate(ctx, "Boolean("+expression+")", &ok)
 		return ok, err
@@ -407,7 +409,7 @@ func (b *Browser) Wait(expression string, timeout ...time.Duration) {
 // Open navigates to url and waits for its document.
 func (b *Browser) Open(url string) {
 	b.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(b.base, 60*time.Second)
 	defer cancel()
 	raw, err := b.Call(ctx, "Page.navigate", map[string]any{"url": url})
 	if err != nil {
@@ -437,7 +439,7 @@ func (b *Browser) Open(url string) {
 // Type types text into the focused element.
 func (b *Browser) Type(text string) {
 	b.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(b.base, 30*time.Second)
 	defer cancel()
 	if _, err := b.Call(ctx, "Input.insertText", map[string]any{"text": text}); err != nil {
 		b.t.Fatal(err)
@@ -453,7 +455,7 @@ func (b *Browser) Close() {
 	}
 	b.closed = true
 	b.mu.Unlock()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(b.base, 10*time.Second)
 	_, _ = b.Call(ctx, "Browser.close", nil)
 	cancel()
 	_ = b.socket.Close()
@@ -473,7 +475,7 @@ func (b *Browser) Close() {
 // Emulate sets the media feature (`prefers-color-scheme`) to value for the page.
 func (b *Browser) Emulate(feature, value string) {
 	b.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(b.base, 30*time.Second)
 	defer cancel()
 	features := []map[string]string{{"name": feature, "value": value}}
 	if _, err := b.Call(ctx, "Emulation.setEmulatedMedia", map[string]any{"features": features}); err != nil {
