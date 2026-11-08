@@ -1,8 +1,10 @@
+artifacts
 chat
 coding-tools
 envs
 login
 logs
+send-file
 sessions
 sharing
 subagents
