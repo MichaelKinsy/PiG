@@ -453,7 +453,10 @@ func (s *serverState) credentialAccess(request *http.Request, ctx host.Ctx) (*p2
 	}
 	for _, key := range table.Keys() {
 		resolve, _ := table.Get(key)
-		access := resolve(request, ctx)
+		access, err := resolve(request, ctx)
+		if err != nil {
+			return nil, err
+		}
 		if access == nil {
 			continue
 		}

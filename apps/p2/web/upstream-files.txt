@@ -522,3 +522,5 @@ plugins/coding-tools/cards.ts
 plugins/coding-tools/tui.ts
 plugins/powershell/tui.ts
 plugins/subagents/tui.ts
+plugins/proxy-marker/contract.ts
+plugins/proxy-marker/package.json
