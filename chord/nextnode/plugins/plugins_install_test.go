@@ -421,11 +421,9 @@ func TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOt
 	var group sync.WaitGroup
 	errs := make([]error, 2)
 	for i := range errs {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			_, errs[i] = InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, options)
-		}()
+		})
 	}
 	group.Wait()
 	failed := []error{}

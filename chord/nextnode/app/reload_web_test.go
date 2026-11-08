@@ -1,6 +1,7 @@
 package app
 
 import (
+	"maps"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -70,9 +71,7 @@ func webCounterApp(t *testing.T, web map[string]map[string]string) started {
 		"latch":   latchPlugin(t),
 		"counter": counterPlugin(t, counterCode{Code: "v1", Placement: "worker"}),
 	}
-	for dir, plugin := range web {
-		files[dir] = plugin
-	}
+	maps.Copy(files, web)
 	return startReload(t, files)
 }
 

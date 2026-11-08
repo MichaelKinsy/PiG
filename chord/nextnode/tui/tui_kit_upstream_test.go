@@ -167,12 +167,7 @@ func TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsA
 		t.Fatal(err)
 	}
 	untilMarks(t, s.app, "the edit's dirty mark", func(state plugins.PluginsState) bool {
-		for _, name := range state.Dirty {
-			if name == "@test/lines" {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(state.Dirty, "@test/lines")
 	})
 	result, err := s.app.ApplyChanges(background)
 	if err != nil {

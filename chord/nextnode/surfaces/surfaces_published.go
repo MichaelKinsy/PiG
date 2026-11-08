@@ -87,8 +87,8 @@ func (p *PublishedScripts) Start(ctx context.Context) ([]host.PluginFailure, err
 func (p *PublishedScripts) File(path string) *ServedFile {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	for index := len(p.files) - 1; index >= 0; index-- {
-		if found, ok := p.files[index][path]; ok {
+	for _, v := range slices.Backward(p.files) {
+		if found, ok := v[path]; ok {
 			return &found
 		}
 	}
