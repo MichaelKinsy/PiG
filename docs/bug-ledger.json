@@ -11794,6 +11794,46 @@
       ]
     },
     {
+      "id": "BF-43d5639",
+      "title": "A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's…",
+      "symptom": "A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d563908d",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-43d5639-2",
+      "title": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does…",
+      "symptom": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d563908d",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-448b245",
       "title": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode",
       "symptom": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode.",
@@ -14944,6 +14984,50 @@
       "tests": []
     },
     {
+      "id": "BF-547d589",
+      "title": "A test fixture stops the log redactor reading the credential files of its removed data directories (each line…",
+      "symptom": "A test fixture stops the log redactor reading the credential files of its removed data directories (each line stat'ed the files of every directory ever registered, so a late test of a long-running test binary spent seconds on the stacks of one worker).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A test fixture stops the log redactor reading the credential files of its removed data directories (each line stat'ed the files of every directory ever registered, so a late test of a long-running test binary spent seconds on the stacks of one worker).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "547d5898eb",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/plugins/codemode/calls_test.go::TestAnnounceRemovalTakesTheSettledCallsPanicAndReturnsAnyOther"
+      ]
+    },
+    {
+      "id": "BF-547d589-2",
+      "title": "Removing code mode while a script runs no longer swallows every panic of telling the script why: a call that…",
+      "symptom": "Removing code mode while a script runs no longer swallows every panic of telling the script why: a call that settled meanwhile is still the expected end, anything else is reported on stderr.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Removing code mode while a script runs no longer swallows every panic of telling the script why: a call that settled meanwhile is still the expected end, anything else is reported on stderr.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "547d5898eb",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/plugins/codemode/calls_test.go::TestAnnounceRemovalTakesTheSettledCallsPanicAndReturnsAnyOther"
+      ]
+    },
+    {
       "id": "BF-54a5bf6",
       "title": "The host answers a parsed frontmatter with `\u003c`, `\u003e`, `\u0026` and U+2028 as they are (as `JSON.stringify` writes…",
       "symptom": "The host answers a parsed frontmatter with `\u003c`, `\u003e`, `\u0026` and U+2028 as they are (as `JSON.stringify` writes them) instead of `\\u003c`-style escapes, and a packed cell's helper without a `Context` keeps a live connection when the first extension to start has stopped (Go, Rust and Python SDKs).",
@@ -15824,45 +15908,6 @@
         "coding/cli/strip_leak_gate_test.go::TestStripLeakGate",
         "coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream",
         "coding/model_runtime_injected_credentials_test.go::TestInjectedCredentialStoreAvailabilityReadsProvidersConcurrently"
-      ]
-    },
-    {
-      "id": "BF-58704cf",
-      "title": "p2: PowerShell reads the system of an environment's machine through any environment that reports it…",
-      "symptom": "p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "Windows",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`. \u003c!-- fix: p2-workspace --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "58704cfa78",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "a0309d10ad",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "apps/p2/e2e/prompt_test.go::TestPromptResourcesOnTheWorkerParticipantsOnlyLiveTemplatesExpandWithSkills",
-        "apps/p2/e2e/prompt_test.go::TestPromptResourcesReachTheModelAndApplyLive",
-        "apps/p2/e2e/relocate_worker_test.go::TestAWorkspaceFollowsAMoveMadeWhileItActivatesAndRetriesAFailedReopen",
-        "apps/p2/e2e/relocate_worker_test.go::TestConversationsOnDifferentMachinesRunConcurrentlyOneConnectionPerMachine",
-        "apps/p2/e2e/relocate_worker_test.go::TestDevToolsAndPowerShellDetectAgainAfterARealMove",
-        "apps/p2/e2e/relocate_worker_test.go::TestPowerShellIsOfferedToEachAgentWorkingOnWindowsIndependently",
-        "apps/p2/e2e/relocate_worker_test.go::TestThePrivateDataDirectoryIsDeniedByTheEnvironmentNotTheLocation",
-        "apps/p2/e2e/relocate_worker_test.go::TestTheSessionMovesToAnotherMachineASubagentWithItsOwnLocationStaysOnItsOwn",
-        "apps/p2/plugins/prompt/contract/contract_test.go::TestPromptResourcesFingerprintsAsPi",
-        "apps/p2/plugins/prompt/prompt_test.go::TestARemoteFileAtTheLocalGlobalAgentsPathIsItsOwnFile",
-        "apps/p2/plugins/prompt/prompt_test.go::TestLoaderGlobalThenProjectTemplatesInvalidOnesSkippedEverySkillInvocable",
-        "apps/p2/plugins/prompt/prompt_test.go::TestPisArgumentParsingAndSubstitution",
-        "apps/p2/plugins/prompt/prompt_test.go::TestSkillsFollowPisDiscovery",
-        "apps/p2/plugins/prompt/prompt_test.go::TestTemplatesPisFileFormatExpansionOfTemplatesAndSkillBlocks"
       ]
     },
     {
@@ -26186,7 +26231,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "p2's session archive and copy jobs read their registries once the object composed them, so their first read no longer races the host's loop. \u003c!-- fix: p2-ports --\u003e",
+      "releaseNote": "p2's session archive and copy jobs read their registries once the object composed them, so their first read no longer races the host's loop.",
       "origin": "release note",
       "commits": [
         {
@@ -27357,7 +27402,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "The desktop app's composer row shows Pi's skeleton block while the context window is unknown, \"Choose model\" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs. \u003c!-- fix: p2-welcome --\u003e",
+      "releaseNote": "The desktop app's composer row shows Pi's skeleton block while the context window is unknown, \"Choose model\" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs.",
       "origin": "release note",
       "commits": [
         {
@@ -28768,50 +28813,6 @@
         "ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi",
         "ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset",
         "ai/transport_diagnostic_test.go::TestProviderTransportResetRecordsDiagnosticAndKeepsMessage"
-      ]
-    },
-    {
-      "id": "BF-8f2be35",
-      "title": "A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's…",
-      "symptom": "A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs. \u003c!-- fix: p2-locations --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "a2b80f672e",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "318a2706a1",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "8f2be35581",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "e486a7d418",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "apps/p2/e2e/locations_test.go::TestLocationToolsMainAgentsListAndMoveSubagentsArePlacedAndMoveOnlyWithTheToolGuestsAreRefused",
-        "apps/p2/plugins/locations/contract/contract_test.go::TestContractsFingerprintAsPi",
-        "apps/p2/plugins/locations/tool_test.go::TestEnvsAreListedWithTheirLastTestWhileItTestsTheCurrentConfiguration",
-        "apps/p2/plugins/locations/tool_test.go::TestLocationToolsSchemasAndDefaults",
-        "apps/p2/plugins/locations/tool_test.go::TestSandboxAtIsDecidedByTheConfiguredTypeNeverTheName",
-        "apps/p2/plugins/sessions/restart_race_test.go::TestRestartOverAnExistingCatalogPublishesItsRowsWithoutRacingTheLoop",
-        "apps/p2/plugins/sessions/worker_test.go::TestRenameSessionToolRenamesThroughTheWorkersRoot",
-        "apps/p2/plugins/subagents/server_test.go::TestRestartOverAnExistingChildStorePublishesItsRowsWithoutRacingTheLoop",
-        "apps/p2/runtime/tool_access_test.go::TestAnOwnerOnlyToolRefusesATurnTheOwnerDidNotStartAndAMainOnlyToolOutsideTheMainConversation",
-        "apps/p2/runtime/tool_access_test.go::TestInALockedSessionTheLockDecidesAnOwnerOnlyToolForEveryoneTheOwnerToo",
-        "apps/p2/runtime/tool_access_test.go::TestToolsWithoutRequirementsRunUnchanged"
       ]
     },
     {
@@ -31308,46 +31309,6 @@
       "tests": [
         "coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty",
         "coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne"
-      ]
-    },
-    {
-      "id": "BF-94baf0a",
-      "title": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does…",
-      "symptom": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Lost or altered data",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes. \u003c!-- fix: p2-locations --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "a2b80f672e",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "8f2be35581",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "94baf0a48e",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "e486a7d418",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "apps/p2/plugins/sessions/restart_race_test.go::TestRestartOverAnExistingCatalogPublishesItsRowsWithoutRacingTheLoop",
-        "apps/p2/plugins/sessions/worker_test.go::TestRenameSessionToolRenamesThroughTheWorkersRoot",
-        "apps/p2/plugins/subagents/server_test.go::TestRestartOverAnExistingChildStorePublishesItsRowsWithoutRacingTheLoop",
-        "apps/p2/runtime/tool_access_test.go::TestAnOwnerOnlyToolRefusesATurnTheOwnerDidNotStartAndAMainOnlyToolOutsideTheMainConversation",
-        "apps/p2/runtime/tool_access_test.go::TestInALockedSessionTheLockDecidesAnOwnerOnlyToolForEveryoneTheOwnerToo",
-        "apps/p2/runtime/tool_access_test.go::TestToolsWithoutRequirementsRunUnchanged",
-        "chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges"
       ]
     },
     {
@@ -34658,33 +34619,38 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A message sent to a conversation while its run is between tool calls no longer waits on the host's loop for a read of the subagent registry, and archiving a subagent from the sidebar no longer blocks the worker. \u003c!-- fix: p2-agent-tools --\u003e",
+      "releaseNote": "A message sent to a conversation while its run is between tool calls no longer waits on the host's loop for a read of the subagent registry, and archiving a subagent from the sidebar no longer blocks the worker.",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "4a0c6d011b",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "6ded9540b5",
-          "date": "2026-11-08"
-        },
         {
           "hash": "a21394be5c",
           "date": "2026-11-08"
         }
       ],
       "tests": [
-        "apps/p2/e2e/subagents_test.go::TestSubagentsFakeProvider",
-        "apps/p2/plugins/codemode/contract/contract_test.go::TestFingerprintAsPi",
-        "apps/p2/plugins/codemode/plugin_test.go::TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemoval",
-        "apps/p2/plugins/dev-tools/dev_test.go::TestReloadPluginsAdmitsOnlyARootTurnTheOwnerStartedWorkingOnP2",
-        "apps/p2/plugins/dev-tools/dev_test.go::TestReloadPluginsIsOfferedOnlyInDevModeForASessionOnThisP2Checkout",
-        "apps/p2/plugins/dev-tools/dev_test.go::TestReloadPluginsReturnsARefusalAsAnErrorResultWithoutReplayingIt",
-        "apps/p2/plugins/dev-tools/dev_test.go::TestWorkerFacetRegistersReloadPluginsAndTheOwnerToolUsesOnlyItsOwnPrivateDataDirectoryChannel",
-        "apps/p2/plugins/powershell/contract/contract_test.go::TestFingerprintAsPi",
-        "apps/p2/plugins/powershell/worker_test.go::TestPowerShellIsOfferedByAnAgentsOwnToolSelectionOtherChoicesUntouched",
-        "apps/p2/plugins/subagents/contract/choice_test.go::TestToolsGivenToAgents"
+        "apps/p2/e2e/subagents_test.go::TestSubagentsFakeProvider"
+      ]
+    },
+    {
+      "id": "BF-a21394b-2",
+      "title": "A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the…",
+      "symptom": "A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a21394be5c",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/e2e/subagents_test.go::TestSubagentsFakeProvider"
       ]
     },
     {
@@ -37156,203 +37122,6 @@
       ]
     },
     {
-      "id": "BF-b05192a",
-      "title": "The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused…",
-      "symptom": "The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused with `forbidden` (the terminals plugin's `agent terminals are for session workers`, `terminals are owner-only`) is never one, whatever its message says.",
-      "rootCause": "plugins/artifacts (contract, store, tool, worker, server: the `artifact` tool, the per-agent index document, ArtifactList/ArtifactContent/ArtifactSource, the /artifact route) and plugins/send-file (contract, tool, worker: the send_file tool, SentFiles) ported from Pi, with runtime.WriteChunks/SaveDownload (session-files.ts) and runtime.ToolSchemaOf (the sessions rename tool uses it too). Tests: artifacts.test.ts and send-file.test.ts as e2e (the long preview is saved by a test-binary plugin: the fake provider streams a tool call at 800 characters a second where Pi's script uses codemode), files.test.ts's archived/unknown /artifact assertions, store/preview/version/validation unit tests…",
-      "rootCauseSource": "commit",
-      "userImpact": "Credential or permission exposure",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused with `forbidden` (the terminals plugin's `agent terminals are for session workers`, `terminals are owner-only`) is never one, whatever its message says. The Go filter matched the word `forbidden` in the printed text, which these messages lack, so a refused hold reached the owner's notices (`Server: {activation_failed p2.agent-terminals …}`). \u003c!-- fix: p2-terminals --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "0ef03afb07",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "6f4715f728",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "771c0d996a",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "817f452a05",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "a2b80f672e",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "a6a3cebfe4",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "de3515ac5e",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "10601f39ea",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "1dc26ff60d",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "2735a203f4",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "4a6575c2c7",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "54de7dce61",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "55477b3b6c",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "796d81c365",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "9587c1d428",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "98bf81abcd",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "a653d1cfdd",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "b05192a679",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "b5403711f4",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "ca01a21614",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "apps/p2/e2e/artifacts_test.go::TestArtifactsFakeProvider",
-        "apps/p2/e2e/files_test.go::TestFilesFakeProvider",
-        "apps/p2/e2e/logs_test.go::TestAFailedWorkerStartIsCachedAndRetryRecovers",
-        "apps/p2/e2e/logs_test.go::TestDetachedHostStoresFatalStartupErrorsRedacted",
-        "apps/p2/e2e/logs_test.go::TestOwnerOnlyLogsExposeLivePerSourceStateAndImportBoundedDetachedSnapshots",
-        "apps/p2/e2e/m1_test.go::TestM1WorkingChat",
-        "apps/p2/e2e/m1_test.go::TestMain",
-        "apps/p2/e2e/m1_test.go::TestSmokeCreatesASessionAndGetsAnAnswer",
-        "apps/p2/e2e/send_file_test.go::TestSendFileFakeProvider",
-        "apps/p2/e2e/terminal_tool_test.go::TestTheAgentsTerminalToolOnTheSessionsSharedTerminals",
-        "apps/p2/e2e/terminal_web_test.go::TestADroppedTerminalSocketIsReplacedAndTypingReachesTheShellAgain",
-        "apps/p2/e2e/terminal_web_test.go::TestTerminalInputChangesOfTheTextareaAsBackspacesAndText",
-        "apps/p2/e2e/terminal_web_test.go::TestTouchTerminalALongPressOnABlankSpotIsANativePasteTargetClipboardKeyDenialScrolling",
-        "apps/p2/e2e/terminal_web_test.go::TestTouchTerminalALongPressOnOutputStaysNativeTheSelectionSurvivesOutputCopyJoinsWrappedRows",
-        "apps/p2/e2e/terminals_test.go::TestTerminalsObjectsDenyGuestsBeforeAcquiringADetachedHostResource",
-        "apps/p2/hosts/owner_notice_test.go::TestIsOwnerNoticeGoesByTheErrorClassNotItsText",
-        "apps/p2/hosts/server_test.go::TestChordRefusesAForeignOrigin",
-        "apps/p2/hosts/server_test.go::TestMain",
-        "apps/p2/hosts/server_test.go::TestSecondServerOnTheSameDataDirIsRefused",
-        "apps/p2/hosts/server_test.go::TestServerBootsAndServesChord",
-        "apps/p2/plugins/artifacts/contract/contract_test.go::TestArtifactContractsFingerprintAsPi",
-        "apps/p2/plugins/artifacts/store_test.go::TestInstrumentFindsTheRootTagAsJavaScriptsRegexpDoes",
-        "apps/p2/plugins/artifacts/store_test.go::TestPreviewStopsAtTheLimitInUTF16UnitsNeverInsideAPair",
-        "apps/p2/plugins/artifacts/store_test.go::TestSaveRefusesALargeArtifactBeforeTouchingTheFiles",
-        "apps/p2/plugins/artifacts/store_test.go::TestTextsAreUpstreams",
-        "apps/p2/plugins/artifacts/store_test.go::TestValidationRefusesWhatTheStoreRefuses",
-        "apps/p2/plugins/artifacts/store_test.go::TestVersionOfIsNumberOfASafeIntegerOfAtLeastOne",
-        "apps/p2/plugins/models/config_test.go::TestSummarizeDefaultModelOrder",
-        "apps/p2/plugins/models/config_test.go::TestSummarizeKeepsSettingsThinkingLevelForUnlistedDefault",
-        "apps/p2/plugins/models/config_value_test.go::TestResolveConfigValue",
-        "apps/p2/plugins/models/config_value_test.go::TestResolveConfigValueErrors",
-        "apps/p2/plugins/models/config_value_test.go::TestResolvedProviderKeysAndCustomAuthHeaderCommandsAreRegisteredBeforeLogging",
-        "apps/p2/plugins/models/contract/contract_test.go::TestModelsContractsFingerprintAsPi",
-        "apps/p2/plugins/models/credentials_test.go::TestFileCredentialsCancelledModify",
-        "apps/p2/plugins/models/credentials_test.go::TestFileCredentialsReadListModifyDelete",
-        "apps/p2/plugins/models/credentials_test.go::TestFileCredentialsValidation",
-        "apps/p2/plugins/models/model_store_test.go::TestFileModelsStore",
-        "apps/p2/plugins/models/provider_config_test.go::TestApplyModelConfigDefinesCustomProvider",
-        "apps/p2/plugins/models/provider_config_test.go::TestApplyModelConfigOverridesBuiltInProvider",
-        "apps/p2/plugins/models/provider_config_test.go::TestApplyModelConfigRefusesWhatCannotBeBuilt",
-        "apps/p2/plugins/models/provider_config_test.go::TestMergeCompatAndInputLimits",
-        "apps/p2/plugins/models/provider_config_test.go::TestModelConfigLoad",
-        "apps/p2/plugins/models/resources_test.go::TestResourcesLoadSaveAndNotify",
-        "apps/p2/plugins/models/resources_test.go::TestResourcesModelsJSONFailureKeepsLastModels",
-        "apps/p2/plugins/models/scope_test.go::TestResolveModelScope",
-        "apps/p2/plugins/send-file/contract/contract_test.go::TestSentFilesContractFingerprintsAsPi",
-        "apps/p2/plugins/send-file/worker_test.go::TestPreviewTextKeepsUTF8TextDropsACodePointCutByAPartialReadRefusesNUL",
-        "apps/p2/plugins/send-file/worker_test.go::TestTheToolDescriptionIsUpstreams",
-        "apps/p2/plugins/sessions/lock_worker_test.go::TestAFailedLockMirrorIsReportedToStderrAndDropped",
-        "apps/p2/plugins/sessions/restart_race_test.go::TestRestartOverAnExistingCatalogPublishesItsRowsWithoutRacingTheLoop",
-        "apps/p2/plugins/sessions/server_test.go::TestCreateChecksWhatItTakes",
-        "apps/p2/plugins/sessions/server_test.go::TestRejectsAMoveToAMissingDirectoryAtOnceAndRunsNothing",
-        "apps/p2/plugins/sessions/utf16_test.go::TestUTF16SliceCutsAtCodeUnits",
-        "apps/p2/plugins/sessions/worker_test.go::TestRenameSessionToolRenamesThroughTheWorkersRoot",
-        "apps/p2/plugins/subagents/server_test.go::TestRestartOverAnExistingChildStorePublishesItsRowsWithoutRacingTheLoop",
-        "apps/p2/plugins/terminals/agent_host_test.go::TestTerminalHostTheAgentsCalls",
-        "apps/p2/plugins/terminals/ghostty/ghostty_pi_test.go::TestGhosttyASnapshotOfTheAlternateScreenKeepsItActive",
-        "apps/p2/plugins/terminals/ghostty/ghostty_pi_test.go::TestGhosttyASnapshotReproducesScreenScrollbackAndModes",
-        "apps/p2/plugins/terminals/ghostty/ghostty_pi_test.go::TestGhosttyAnswersLightDarkQueriesAndColorQueriesWithTheConfiguredColors",
-        "apps/p2/plugins/terminals/ghostty/ghostty_pi_test.go::TestGhosttyAnswersQueriesThroughOnReply",
-        "apps/p2/plugins/terminals/ghostty/ghostty_pi_test.go::TestGhosttyEncodesKeysAndPastesInTheTerminalsModes",
-        "apps/p2/plugins/terminals/ghostty/ghostty_pi_test.go::TestGhosttyEncodesMouseEventsInTheProgramsMouseMode",
-        "apps/p2/plugins/terminals/ghostty/ghostty_pi_test.go::TestGhosttyMarksSoftWrappedRows",
-        "apps/p2/plugins/terminals/ghostty/ghostty_pi_test.go::TestGhosttyRendersTextStylesColorsAndTheCursor",
-        "apps/p2/plugins/terminals/ghostty/ghostty_pi_test.go::TestGhosttyScrollsTheViewportThroughScrollback",
-        "apps/p2/plugins/terminals/tool_test.go::TestACallerInASandboxSeesAndDrivesOnlyTheSessionsTerminalsInIt",
-        "apps/p2/plugins/terminals/tool_test.go::TestARerunOfTheSameCallReadsFromTheSameStartAndClosesTheSameWindow",
-        "apps/p2/plugins/terminals/tool_test.go::TestCodeModeOnlyWhileCodeModeIsOnToolSearchReachesItOtherwise",
-        "apps/p2/plugins/terminals/tool_test.go::TestResultsTheScreenOfFullScreenProgramsSkippedOutputTimeoutsWindowsErrors",
-        "apps/p2/plugins/terminals/tool_test.go::TestSendKeysAndReadWaitByDefaultAsDocumentedWAndTOverride",
-        "apps/p2/plugins/terminals/tui/tui_test.go::TestTheCallShowsTheTmuxCommandLine",
-        "apps/p2/plugins/terminals/tui/tui_test.go::TestTheResultShowsTheLastLinesAndExpandsToAll",
-        "apps/p2/runtime/contracts_oracle_test.go::TestContractsFingerprintAsPi",
-        "apps/p2/runtime/entries_test.go::TestIsMessageData",
-        "apps/p2/runtime/entries_test.go::TestPeerAndAgentMessages",
-        "apps/p2/runtime/host_dirs_test.go::TestAssertMigratedRefusesTheOldLayout",
-        "apps/p2/runtime/host_dirs_test.go::TestHostDirectoriesAreLaidOutPrivateWithTheOutboxOff",
-        "apps/p2/runtime/host_dirs_test.go::TestOpenHostStoreTurnsTheOutboxOffOfAStoreThatHadOne",
-        "apps/p2/runtime/leaf_test.go::TestIsInterruptedError",
-        "apps/p2/runtime/leaf_test.go::TestPreviewOf",
-        "apps/p2/runtime/leaf_test.go::TestSafeFileName",
-        "apps/p2/runtime/leaf_test.go::TestShellContextText",
-        "apps/p2/runtime/leaf_test.go::TestShellTailCutsOnACharacterBoundary",
-        "apps/p2/runtime/leaf_test.go::TestShellTailKeepsTheTailWithinTheBashToolsLimits",
-        "apps/p2/runtime/location_test.go::TestLocationHelpers",
-        "apps/p2/runtime/location_test.go::TestParseLocationReadsEnvPathAsTheFooterWritesIt",
-        "apps/p2/runtime/logs_test.go::TestCaptureTeesARedactedCopyWhilePartialWritesBinaryBytesEncodingsAndBackpressureRemainIntact",
-        "apps/p2/runtime/logs_test.go::TestForkedHostsCaptureStdoutAndStderrIncludingFailedStartupDiagnostics",
-        "apps/p2/runtime/logs_test.go::TestLogWritersJoinSplitSecretsAndUTF8BoundPartialLinesAndFlushOnExit",
-        "apps/p2/runtime/logs_test.go::TestLogsRedactProviderCredentialsProxySecretsCookiesAndBasicAuthBeforeStorageBuffersAreBounded",
-        "apps/p2/runtime/logs_test.go::TestNoticesRedactAndBoundMessagesReplaceThePriorSourceNoticeAndTolerateMalformedUnicodeSecrets",
-        "apps/p2/runtime/logs_test.go::TestTestProcessesDoNotInstallStreamCaptureUnlessExplicitlyRequested",
-        "apps/p2/runtime/refs_test.go::TestFollowCallsWithTheValueAtOnceThenWithEachChange",
-        "apps/p2/runtime/refs_test.go::TestLingeringReleasesAfterItsDelay",
-        "apps/p2/runtime/refs_test.go::TestLingeringReleasesLaterAndCapsTheWaiting",
-        "apps/p2/runtime/refs_test.go::TestWhenLive",
-        "apps/p2/runtime/tool_access_test.go::TestAnOwnerOnlyToolRefusesATurnTheOwnerDidNotStartAndAMainOnlyToolOutsideTheMainConversation",
-        "apps/p2/runtime/tool_access_test.go::TestInALockedSessionTheLockDecidesAnOwnerOnlyToolForEveryoneTheOwnerToo",
-        "apps/p2/runtime/tool_access_test.go::TestToolsWithoutRequirementsRunUnchanged",
-        "chord/next/host/host_registry_value_test.go::TestRegistryValueReadsRaceFreeWhileAContributionChanges"
-      ]
-    },
-    {
       "id": "BF-b0608a9",
       "title": "OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL…",
       "symptom": "OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL with media type parameters, an empty media type or a line break in the payload is skipped, and a payload that is not valid base64 is kept instead of dropped.",
@@ -37430,6 +37199,33 @@
         "tui/markdown_marked_lexer_rules_test.go::TestMarkedBlockRulesEqualTheirPatterns",
         "tui/markdown_random_contract_test.go::TestMarkdownRandomDocsMatchPi",
         "tui/markdown_residual_contract_test.go::TestMarkdownResidualDocsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-b0a9e4f",
+      "title": "The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused…",
+      "symptom": "The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused with `forbidden` (the terminals plugin's `agent terminals are for session workers`, `terminals are owner-only`) is never one, whatever its message says.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused with `forbidden` (the terminals plugin's `agent terminals are for session workers`, `terminals are owner-only`) is never one, whatever its message says. The Go filter matched the word `forbidden` in the printed text, which these messages lack, so a refused hold reached the owner's notices (`Server: {activation_failed p2.agent-terminals …}`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b0a9e4fce9",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/e2e/terminal_tool_test.go::TestTheAgentsTerminalToolOnTheSessionsSharedTerminals",
+        "apps/p2/plugins/terminals/agent_host_test.go::TestTerminalHostTheAgentsCalls",
+        "apps/p2/plugins/terminals/contract/contract_test.go::TestTerminalContractsFingerprintAsPi",
+        "apps/p2/plugins/terminals/terminals_host_test.go::TestTerminalsClosingAsksFirstWhileTheShellRunsAJob",
+        "apps/p2/plugins/terminals/terminals_host_test.go::TestTerminalsProgramsSeeTheViewersColorsAndHearAboutLightDarkSwitches",
+        "apps/p2/plugins/terminals/terminals_host_test.go::TestTerminalsRunInTheHostSurviveDisconnectsAndComeBackAsSnapshots"
       ]
     },
     {
@@ -40999,7 +40795,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A send router or read-only check that reads the session (chat mode's router, the tree's earlier-branch check) no longer holds the worker's loop while a tool runs, which dropped the worker's link (\"worker: link lost\"). \u003c!-- fix: p2-chat-tree --\u003e",
+      "releaseNote": "A send router or read-only check that reads the session (chat mode's router, the tree's earlier-branch check) no longer holds the worker's loop while a tool runs, which dropped the worker's link (\"worker: link lost\").",
       "origin": "release note",
       "commits": [
         {
@@ -41007,7 +40803,6 @@
           "date": "2026-11-08"
         }
       ],
-      "commitsFrom": "release note",
       "tests": []
     },
     {
@@ -43815,34 +43610,6 @@
       ]
     },
     {
-      "id": "BF-d54d6ab",
-      "title": "A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the…",
-      "symptom": "A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`).",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`). \u003c!-- fix: p2-agent-tools --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "d54d6ab58e",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "d92788bdbd",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "apps/p2/e2e/artifacts_test.go::TestArtifactsFakeProvider",
-        "apps/p2/plugins/terminals/attach_ready_test.go::TestAnAttachmentIsReadyOnceTheHandlerSawTheHello",
-        "apps/p2/runtime/refs_test.go::TestFollowOfAWatchThatEndedBeforeItsStartHasNothingToFollow"
-      ]
-    },
-    {
       "id": "BF-d60d422",
       "title": "`pi.exec` gives the command PiG's environment unchanged, as Pi does, so a command started in a symlinked…",
       "symptom": "`pi.exec` gives the command PiG's environment unchanged, as Pi does, so a command started in a symlinked directory no longer gets that directory as its `PWD`; `pwd` there now prints the physical directory, as in Pi.",
@@ -44853,36 +44620,6 @@
         "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
         "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
         "coding/piglet/active_source_test.go::TestActiveSourceValue"
-      ]
-    },
-    {
-      "id": "BF-d9ab2d7",
-      "title": "p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits…",
-      "symptom": "p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state (\"Watch is stopped\").",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state (\"Watch is stopped\"). \u003c!-- fix: p2-workspace --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "9d0c1c116a",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "c4b351ceab",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "d9ab2d79c0",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "apps/p2/e2e/relocate_test.go::TestSessionRelocationFakeProvider"
       ]
     },
     {
@@ -48020,7 +47757,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "p2: the status worker's push and the chat's `abortCompaction` read the followed task graph and view in a section of the host's loop, as Pi's synchronous read does, instead of from their own goroutines (a data race with the Durable publication that applies them). `host.InSection` runs work in the loop for a handler that suspended. \u003c!-- fix: p2-status-race --\u003e",
+      "releaseNote": "p2: the status worker's push and the chat's `abortCompaction` read the followed task graph and view in a section of the host's loop, as Pi's synchronous read does, instead of from their own goroutines (a data race with the Durable publication that applies them). `host.InSection` runs work in the loop for a handler that suspended.",
       "origin": "release note",
       "commits": [
         {
@@ -48043,7 +47780,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "p2: a reload of a plugin whose new build fails to start is tested to keep the old revision (the failed build is tried again by the next reload). \u003c!-- fix: p2-reload-rollback --\u003e",
+      "releaseNote": "p2: a reload of a plugin whose new build fails to start is tested to keep the old revision (the failed build is tried again by the next reload).",
       "origin": "release note",
       "commits": [
         {
@@ -54584,6 +54321,52 @@
         "internal/codingagent/migrations_auth_order_test.go::TestMigrateAuthToAuthJSONWritesFilesInPiKeyOrder",
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder",
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace"
+      ]
+    },
+    {
+      "id": "BF-fc0d578",
+      "title": "p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits…",
+      "symptom": "p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state (\"Watch is stopped\").",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state (\"Watch is stopped\").",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fc0d57839f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/plugins/prompt/moves_test.go::TestConversationsWhereTheSessionWorksShareItsLoadsAndOtherLocationsHaveTheirOwn",
+        "apps/p2/plugins/prompt/moves_test.go::TestThePromptLoadsMoveOnlyForANewerMove"
+      ]
+    },
+    {
+      "id": "BF-fc0d578-2",
+      "title": "p2: PowerShell reads the system of an environment's machine through any environment that reports it…",
+      "symptom": "p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fc0d57839f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/plugins/prompt/moves_test.go::TestConversationsWhereTheSessionWorksShareItsLoadsAndOtherLocationsHaveTheirOwn",
+        "apps/p2/plugins/prompt/moves_test.go::TestThePromptLoadsMoveOnlyForANewerMove"
       ]
     },
     {
