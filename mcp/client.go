@@ -288,7 +288,8 @@ func isResourceTemplate(template map[string]json.RawMessage) bool {
 
 func decodeItem[T any](raw json.RawMessage, method string) (T, error) {
 	var out T
-	if err := deepFallback(json.Unmarshal(raw, &out), raw, &out, func(shallow []byte) error { return json.Unmarshal(shallow, &out) }); err != nil {
+	decode := func(data []byte) error { return json.Unmarshal(data, &out) }
+	if err := deepFallback(decode(raw), raw, &out, decode); err != nil {
 		return out, invalidError("Invalid entry in MCP " + method + " result")
 	}
 	return out, nil
