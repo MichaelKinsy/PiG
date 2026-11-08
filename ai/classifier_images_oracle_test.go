@@ -63,7 +63,7 @@ func TestClassifierImagesMatchPi(t *testing.T) {
 		"llama-cpp-classify":               ClassifyLlamaCpp,
 	}
 	for i, probe := range probes {
-		model := ClassifierModel{ID: "m", Name: "M", API: ClassifierAPI(probe.API), Provider: "p", BaseURL: "http://127.0.0.1:1/", Input: probe.Input, ContextWindow: 1000}
+		model := ClassifierModel{ID: "m", Name: "M", API: ClassifierAPI(probe.API), Provider: "p", BaseURL: "http://127.0.0.1:2/", Input: probe.Input, ContextWindow: 1000}
 		request := classifierTestContext()
 		request.Images = make([]ImageContent, probe.Images)
 		for j := range request.Images {
