@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/internal/utf8stream"
@@ -15,6 +16,13 @@ import (
 
 // readStreamChunk is the size of the chunks a streamed read pulls, as the 64 KB chunks fs.createReadStream yields.
 const readStreamChunk = 64 * 1024
+
+// readChunkPool holds the chunk buffers of streamed reads, so a read of a small file does not allocate 64 KB for itself: the selected text is copied out of a chunk
+// before the next read, and nothing holds the buffer once selectLinesFromStream returns.
+var readChunkPool = sync.Pool{New: func() any {
+	buf := make([]byte, readStreamChunk)
+	return &buf
+}}
 
 // maxStreamedLine bounds the offset and limit a streamed read takes: larger values keep the whole-file path.
 const maxStreamedLine = math.MaxInt32
@@ -265,7 +273,9 @@ func selectLinesFromStream(ctx context.Context, stream io.Reader, startLine, lim
 		}
 	}
 
-	buf := make([]byte, readStreamChunk)
+	bufp := readChunkPool.Get().(*[]byte)
+	defer readChunkPool.Put(bufp)
+	buf := *bufp
 	for {
 		if ctx.Err() != nil {
 			return selectedLines{}, errors.New("Operation aborted")
