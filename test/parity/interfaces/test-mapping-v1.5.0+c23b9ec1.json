@@ -2038,9 +2038,7 @@
       "evidence": [
         "ai/validate_probes_upstream_test.go#TestValidationProbesMatchPi",
         "ai/validate_probes_upstream_test.go#TestPiAnswersItsRecordedProbeOutcomes",
-        "ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "ai/validate_probes_upstream_test.go#TestValidationProbesMatchPi",
-        "ai/validate_probes_upstream_test.go#TestPiAnswersItsRecordedProbeOutcomes"
+        "ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven"
       ],
       "rationale": "The 5 case sites expand to 168 outcome expectations, held in ai/testdata/validation-probes.json (regenerated at v1.5.0 by validation_probes_corpus.mjs against TypeBox 1.3.27: byte-identical). TestValidationProbesMatchPi runs all 168 through ai.ValidateToolArguments against Pi's recorded outcome and TestPiAnswersItsRecordedProbeOutcomes checks the same corpus against live Pi; both pass with no skips. One expectation is designed out under the owner's 2026-11-03 JS-only values and mechanics category: the second outcome of 'keeps the validator of a schema object, as before, also when the schema is changed later' (a mutated schema object keeps Pi's WeakMap-by-identity validator); PiG caches validators by schema text, so TestValidateToolArgumentsValidatesTheSchemaItIsGiven asserts the schema a call is given is the one it validates against. Pi c23b9ec1: af79b0c3d (TypeBox parity for extra types) turns four REJECT expectations into conversions (Type.BigInt, Type.Undefined). Go has no bigint or undefined value, so schema/builders.go, checks.go and coerce.go design the conversions out (PORT_MAP rows); the corpus is regenerated from the file at the pin, TestPiAnswersItsRecordedProbeOutcomes holds Pi to the new outcomes for all 168 probes, and ai/validate_probes_upstream_test.go#designedOutProbes lists the four that PiG answers with a rejection. They need owner approval as designed-out cases.",
       "missingCases": [
