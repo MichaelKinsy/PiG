@@ -81,7 +81,7 @@ func mutatedMermaidSources(t *testing.T, corpusFile string, n int, seed int64) [
 	return out
 }
 
-// runMermaidOracle runs a script of test/parity/testdata over the sources through the Pi package's grok-mermaid and returns one JSON line per source.
+// runMermaidOracle runs a script of test/parity/testdata over the sources through the lovely-mermaid package Pi depends on and returns one JSON line per source.
 func runMermaidOracle(t *testing.T, script string, sources []string) []string {
 	t.Helper()
 	if _, err := exec.LookPath("node"); err != nil {
@@ -91,9 +91,8 @@ func runMermaidOracle(t *testing.T, script string, sources []string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	piRoot := filepath.Join(root, "extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent")
-	if _, err := os.Stat(filepath.Join(piRoot, "node_modules/grok-mermaid/dist/parse.js")); err != nil {
-		t.Fatalf("the Pi package with grok-mermaid is not installed (run make parity-deps): %v", err)
+	if !lovelyMermaidInstalled(root) {
+		t.Fatal("lovely-mermaid is not installed (run make upstream-mirror, or set LOVELY_MERMAID_ROOT; see test/parity/testdata/mermaid-oracle.mjs)")
 	}
 	var corpus bytes.Buffer
 	for _, src := range sources {
@@ -107,7 +106,6 @@ func runMermaidOracle(t *testing.T, script string, sources []string) []string {
 	}
 	cmd := exec.CommandContext(t.Context(), "node", filepath.Join(root, "test/parity/testdata", script), path)
 	cmd.Dir = root
-	cmd.Env = append(os.Environ(), "PI_PACKAGE_ROOT="+piRoot)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()
@@ -121,7 +119,7 @@ func runMermaidOracle(t *testing.T, script string, sources []string) []string {
 	return lines
 }
 
-// TestParseMatchesUpstreamOnMutatedSources compares grok-mermaid's own parse functions (run live from the pinned Pi package) with the Go parser over mutated corpus sources: the diagram kind and the parsed model, or the null model of a fallback.
+// TestParseMatchesUpstreamOnMutatedSources compares lovely-mermaid's own parse functions (run live from the lovely-mermaid package Pi depends on) with the Go parser over mutated corpus sources: the diagram kind and the parsed model, or the null model of a fallback.
 func TestParseMatchesUpstreamOnMutatedSources(t *testing.T) {
 	sources := mutatedMermaidSources(t, "testdata/parse-corpus.txt", 3000, 20261010)
 	lines := runMermaidOracle(t, "mermaid-parse-pi.mjs", sources)
@@ -158,7 +156,7 @@ func TestParseMatchesUpstreamOnMutatedSources(t *testing.T) {
 	}
 }
 
-// TestRenderMatchesUpstreamOnMutatedSources compares grok-mermaid's render() with the Go renderer over mutated render-corpus sources: the art (plain rows, styled spans, width, warnings) or a null fallback.
+// TestRenderMatchesUpstreamOnMutatedSources compares lovely-mermaid's render() with the Go renderer over mutated render-corpus sources: the art (plain rows, styled spans, width, warnings) or a null fallback.
 func TestRenderMatchesUpstreamOnMutatedSources(t *testing.T) {
 	sources := mutatedMermaidSources(t, "testdata/corpus.txt", 2000, 20261010)
 	lines := runMermaidOracle(t, "mermaid-pi.mjs", sources)
@@ -190,4 +188,25 @@ func TestRenderMatchesUpstreamOnMutatedSources(t *testing.T) {
 	if rendered < len(sources)/4 {
 		t.Errorf("only %d of %d mutated sources still render", rendered, len(sources))
 	}
+}
+
+// lovelyMermaidInstalled mirrors the lookup of test/parity/testdata/mermaid-oracle.mjs.
+func lovelyMermaidInstalled(root string) bool {
+	candidates := []string{os.Getenv("LOVELY_MERMAID_ROOT")}
+	piRoot := os.Getenv("PI_PACKAGE_ROOT")
+	if piRoot == "" {
+		piRoot = filepath.Join(root, ".upstream/current")
+	}
+	candidates = append(candidates,
+		filepath.Join(piRoot, "node_modules/lovely-mermaid"),
+		filepath.Join(piRoot, "packages/coding-agent/node_modules/lovely-mermaid"))
+	for _, dir := range candidates {
+		if dir == "" {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(dir, "dist/index.js")); err == nil {
+			return true
+		}
+	}
+	return false
 }
