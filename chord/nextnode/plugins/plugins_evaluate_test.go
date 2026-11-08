@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
-// Ports packages/chord/test/next-node/plugins/evaluate.test.ts: plugins written as Pi's tests write them are built by the real
+// Ports packages/chord/test/node/plugins/evaluate.test.ts: plugins written as Pi's tests write them are built by the real
 // BuildFacet and evaluated by Pi's own evaluateFacet, which runs in the Node subprocess. A case that reads a JavaScript
 // object of the evaluated facet (`facet.made instanceof ChordError`, `facet.values`) or calls evaluateFacet directly reads it
 // through the probe (plugins_probe_test.go): an op that calls `evaluate.evaluateFacet(built, { hostPackages, plugin })` with

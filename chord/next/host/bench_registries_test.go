@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/bench/registries.ts: slice 8's registries and writables: a `writable.set` delivered to
+// Ports packages/chord/test/bench/registries.ts: slice 8's registries and writables: a `writable.set` delivered to
 // one watch, a set of the same value (one comparison), and one contribution of N (10, 100) changed while the registry is
 // watched (one table build and one compose per set, over N entries). Pi reports the median µs per operation over bursts,
 // heap allocated per operation and the registry's compose count per set (the cost guard: one); the Go form is

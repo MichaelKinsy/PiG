@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Ports packages/chord/test/next/contracts/declare.test.ts.
+// Ports packages/chord/test/contracts/declare.test.ts.
 //
 // Designed out (no Go input: a declaration is a typed struct): a contract name that is no string; an unknown
 // declaration or variant key; a method placed under `state`; a schema placed under `methods` (the Go form is a nil

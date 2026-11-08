@@ -16,7 +16,7 @@ import (
 )
 
 // pi: packages/chord/src/next/link/channel.ts
-// Ports packages/chord/test/next/link/channel.test.ts at the channel's own level: the handshake, checks, the
+// Ports packages/chord/test/link/channel.test.ts at the channel's own level: the handshake, checks, the
 // heartbeat, trusted links, and in-order handling while a message waits for an asynchronous inflate. The cases that
 // run a host over the channel (the queued messages before the peer's hello, the heartbeat references going loading, one timer
 // per host, the numbers from the host's options, the codec mismatch between two hosts) are in chord/next/host/host_channel_test.go;

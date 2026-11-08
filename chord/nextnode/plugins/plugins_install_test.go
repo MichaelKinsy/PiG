@@ -21,7 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Ports packages/chord/test/next-node/plugins/install.test.ts. Tests of installing (slice 7c §5, slice 12 §2, §5): the npm
+// Ports packages/chord/test/node/plugins/install.test.ts. Tests of installing (slice 7c §5, slice 12 §2, §5): the npm
 // arguments, run in the plugin's real directory, the command overridable; a failure and an abort reject; git dependencies
 // with a ref, a plugin inside a repository of several reached by path; plugins installed from git and npm (a package's
 // chord.plugins manifest, the refusals, claims and cleanup). Git repositories and tarballs are local: no network.

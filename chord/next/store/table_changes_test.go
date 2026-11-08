@@ -11,7 +11,7 @@ import (
 )
 
 // pi: packages/chord/src/next/store/table-changes.ts
-// Ports packages/chord/test/next/store/table-changes.test.ts: a transaction's table writes (slice 6a §6, §7):
+// Ports packages/chord/test/store/table-changes.test.ts: a transaction's table writes (slice 6a §6, §7):
 // staging, and the `tx.get` overlay over committed rows.
 
 func changesEdits(t *testing.T) *TableDefinition {

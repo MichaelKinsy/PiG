@@ -12,7 +12,7 @@ import (
 )
 
 // pi: packages/chord/src/next/store/table-migration.ts
-// Ports packages/chord/test/next/store/table-migration.test.ts: tables brought to their version at activation
+// Ports packages/chord/test/store/table-migration.test.ts: tables brought to their version at activation
 // (slice 6a §9): fresh tables created at the newest version, eager migrations one version at a time in their commits
 // ((A), chunks of 100, (Z)), `rows` and `update` steps, index edits, resumption at `migrating`, and the refusals that
 // leave the data as it was.

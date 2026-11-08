@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/test/next/host/facet.test.ts. `loaded` of upstream's support builds a host and loads one facet
+// Ports packages/chord/test/host/facet.test.ts. `loaded` of upstream's support builds a host and loads one facet
 // named "@test/app"; its setup runs through `setUp`, which is what these cases assert, so each runs setUp directly. The
 // two cases that are TypeScript type-level checks are designed out (owner class a): their Go carriers are named on the
 // tests below and in the lane's rows.

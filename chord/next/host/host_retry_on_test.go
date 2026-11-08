@@ -20,7 +20,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/retry-on.ts
-// Ports packages/chord/test/next/host/retry-on.test.ts. The cases that run a host (the retries of a failed object, the wake
+// Ports packages/chord/test/host/retry-on.test.ts. The cases that run a host (the retries of a failed object, the wake
 // remembered while it activates, wakes while live or parked, the collection of the object's wakes, the contributions
 // leaving) are the TestRetryOn... tests at the end, on a real host as upstream's; the own tests of retrySource and
 // retryWakes on a registry record ("app.models", composing the sum of the contributions, failing for a negative one, as

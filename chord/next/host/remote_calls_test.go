@@ -11,7 +11,7 @@ import (
 
 // pi: packages/chord/src/next/remote/calls.ts
 
-// Ports packages/chord/test/next/remote/calls.test.ts.
+// Ports packages/chord/test/remote/calls.test.ts.
 
 // testCall is a call of hold that records its name in sent when it goes out.
 type testCall struct {

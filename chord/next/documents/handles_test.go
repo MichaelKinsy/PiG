@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/documents/handles.test.ts
+// Ports packages/chord/test/documents/handles.test.ts
 //
 // Pi's `restartable(objects, factory)` host is the harness's object + attempt; `fail()` is attempt.Fail().
 
@@ -51,7 +51,7 @@ func TestKeyedHandlesListKeysInCodePointOrderNotUTF16Order(t *testing.T) {
 
 // TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased runs `it("still read
 // synchronously and from memory; changes and retirements are refused released")` of
-// packages/chord/test/next/documents/handles.test.ts:48. The handles are held as what `self.state` hands out, the
+// packages/chord/test/documents/handles.test.ts:48. The handles are held as what `self.state` hands out, the
 // SingletonHandle and KeyedHandle interfaces: `body.change` and `body.retire` (handles.test.ts:70-71) are
 // SingletonHandle.Change and Retire, `notes.change` and `notes.retire` (handles.test.ts:72-73) KeyedHandle.Change and Retire.
 func TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased(t *testing.T) {

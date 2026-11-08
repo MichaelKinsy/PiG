@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/support.ts (the archive's helpers: ArchiveTables, archiveStore) for archive_test.go,
+// Ports packages/chord/test/support.ts (the archive's helpers: ArchiveTables, archiveStore) for archive_test.go,
 // export_test.go and import_test.go. Names carry the `archive` prefix; the package's shared helpers are
 // support_test.go's.
 

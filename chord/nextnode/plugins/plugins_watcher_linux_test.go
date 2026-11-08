@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports the Linux-only case of packages/chord/test/next-node/plugins/watcher.test.ts (`it.skipIf(process.platform !==
+// Ports the Linux-only case of packages/chord/test/node/plugins/watcher.test.ts (`it.skipIf(process.platform !==
 // "linux")`): as a file named for its platform, it runs where upstream's does.
 
 func TestTheWatcherFixRound1PutsNoWatchOnNodeModulesOrGitOpusN2200PackagesAddNoInotifyWatch(t *testing.T) {

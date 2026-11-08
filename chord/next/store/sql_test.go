@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/store/sql.test.ts: SQL text (slice 6a §8): quoted names, the DDL of tables and
+// Ports packages/chord/test/store/sql.test.ts: SQL text (slice 6a §8): quoted names, the DDL of tables and
 // indexes, and the statements of a table.
 
 func sqlEdits(t *testing.T) *TableDefinition {

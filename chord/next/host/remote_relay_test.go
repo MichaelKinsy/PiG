@@ -21,7 +21,7 @@ import (
 
 // pi: packages/chord/src/next/remote/relay.ts
 
-// Ports packages/chord/test/next/remote/relay.test.ts: relayed holds, with a server routing to raw workers and a raw tab.
+// Ports packages/chord/test/remote/relay.test.ts: relayed holds, with a server routing to raw workers and a raw tab.
 
 // rawRelayHost is a server routing to raw workers, and a raw tab on a link it accepted.
 type rawRelayHost struct {

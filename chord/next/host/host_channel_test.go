@@ -14,7 +14,7 @@ import (
 
 // pi: packages/chord/src/next/link/channel.ts
 
-// Ports the cases of packages/chord/test/next/link/channel.test.ts that run a host over the channel (link/channel_test.go
+// Ports the cases of packages/chord/test/link/channel.test.ts that run a host over the channel (link/channel_test.go
 // has the channel's own equivalents): "the handshake" (a consumer's messages queue until the peer's hello), "a codec
 // mismatch", "the heartbeat" (a silent link pings after 15 s and closes after 30 s without an answer, one timer per
 // host only while it has links, the numbers from the host's options), and "answers each ping with a pong at once; two sides

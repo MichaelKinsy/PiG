@@ -1,4 +1,4 @@
-// Package nexttest ports the helpers of packages/chord/test/next/support.ts that the Chord v2 foundation tests share:
+// Package nexttest ports the helpers of packages/chord/test/support.ts that the Chord v2 foundation tests share:
 // counting contexts, metered contexts and watch collectors. Later lanes add the host, link and store helpers here.
 //
 // WeakRef/FinalizationRegistry collection helpers (expectCollected, settledHeap) have no Go form: Go has no weak

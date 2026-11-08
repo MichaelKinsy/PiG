@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next/link/message.test.ts: round trips of every kind through both codecs, the byte layout
+// Ports packages/chord/test/link/message.test.ts: round trips of every kind through both codecs, the byte layout
 // of the binary codec, the tuples of the text codec, and the envelope check.
 
 const fingerprint = "0123456789abcdef"

@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
-// Ports packages/chord/test/next-node/plugins/runtime.test.ts. Tests of the plugin runtime (slice 10 §3, D11): loading and
+// Ports packages/chord/test/node/plugins/runtime.test.ts. Tests of the plugin runtime (slice 10 §3, D11): loading and
 // reloading hosts with complete sets of shipped scripts (unchanged digests kept as the same facet, removed = loaded minus
 // shipped, failed builds and evaluations kept old), a required root's failed plugin rejecting `load`, and that importing it
 // loads no esbuild. The runtime runs, as Pi's own

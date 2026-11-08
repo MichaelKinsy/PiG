@@ -1,6 +1,6 @@
 package documents
 
-// Ports packages/chord/test/next/documents/definition.test.ts
+// Ports packages/chord/test/documents/definition.test.ts
 
 import (
 	"math"

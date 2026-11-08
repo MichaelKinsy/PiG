@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/store/engine.test.ts: the engine (slice 6a §10, §11, slice 6b §1.5): documents as
+// Ports packages/chord/test/store/engine.test.ts: the engine (slice 6a §10, §11, slice 6b §1.5): documents as
 // bases and deltas, their keys in code point order, the history rules at a new base and at retirement (R1), reads at a
 // point, records inserted as they are.
 

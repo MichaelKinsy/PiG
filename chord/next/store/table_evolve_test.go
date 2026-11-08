@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Ports packages/chord/test/next/store/table-evolve.test.ts: `evolveTable` (slice 6a §9): versions appended and
+// Ports packages/chord/test/store/table-evolve.test.ts: `evolveTable` (slice 6a §9): versions appended and
 // materialized at declaration, the edits recorded before and after the data step, their checks, the editor rule
 // shared with contracts, and the types along the chain.
 //

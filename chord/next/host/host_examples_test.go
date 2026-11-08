@@ -20,7 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/test/next/examples/01-objects.ts .. 32-startup.ts (there is no 26 and 27). Pi's examples are
+// Ports packages/chord/test/examples/01-objects.ts .. 32-startup.ts (there is no 26 and 27). Pi's examples are
 // scripts that print what they observe; each Go test runs the same scenario with the same inputs and asserts exactly
 // what the script prints (`console.log` lines become expectations in the order Pi prints them; `console.error` lines,
 // which Pi prints for background errors that must not happen, become an assertion that `onError` got nothing).

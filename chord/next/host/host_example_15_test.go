@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/15-revocation.ts
+// pi: packages/chord/test/examples/15-revocation.ts
 
 import (
 	"context"

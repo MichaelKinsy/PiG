@@ -28,7 +28,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/test/next/examples/35-plugins, 36-plugin-failures, 37-plugin-imports, 38-watch-and-rollout,
+// Ports packages/chord/test/examples/35-plugins, 36-plugin-failures, 37-plugin-imports, 38-watch-and-rollout,
 // 39-browser-build, 49-plugin-api, 50-plugin-imports and 51-single-file-plugin. Pi's examples are scripts that print what they observe; each Go test runs the same scenario, with the
 // same edits, on the REAL esbuild build and REAL Node hosts (the example's own plugin directories, byte for byte, under
 // testdata/examples/<example>), and asserts what the script prints as structured values. What the script reads with

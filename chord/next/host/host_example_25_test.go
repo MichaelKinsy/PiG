@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/25-export-import.ts
+// pi: packages/chord/test/examples/25-export-import.ts
 
 import (
 	"context"
@@ -17,9 +17,9 @@ import (
 
 // --- 25-export-import.ts -------------------------------------------------------------------------------------------
 
-// Ports packages/chord/test/next/examples/25-export-import.ts: the factory declares its table with `self.table(Visits)`
+// Ports packages/chord/test/examples/25-export-import.ts: the factory declares its table with `self.table(Visits)`
 // (25-export-import.ts:49, StoreSelf.Table), the original store's `lastSeq` is read at 25-export-import.ts:89 and the
-// store closed at packages/chord/test/next/examples/25-export-import.ts:90, all through the store.Store interface.
+// store closed at packages/chord/test/examples/25-export-import.ts:90, all through the store.Store interface.
 func TestExample25ExportImport(t *testing.T) {
 	visits, err := store.DefineTable("visits", store.TableOptions{
 		Version: 1, Columns: []store.ColumnProp{store.Col("page", store.Str()), store.Col("count", store.Int())}, Key: []string{"page"},

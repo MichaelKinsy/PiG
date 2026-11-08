@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/test/next/state/derive.test.ts, the describe "mapShared". Every other block runs derives on a
+// Ports packages/chord/test/state/derive.test.ts, the describe "mapShared". Every other block runs derives on a
 // ChordHost through self.derive, defineState and references; derive_own_test.go runs the same scenarios on Derive
 // itself, and the host variants wait for the host, contracts and documents packages.
 

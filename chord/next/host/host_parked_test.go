@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next/host/parked.test.ts for the part that needs no host. Every case of upstream's file runs a
+// Ports packages/chord/test/host/parked.test.ts for the part that needs no host. Every case of upstream's file runs a
 // host: a served `Gated` type whose open waits on a gate, calls through `ref.log(...)` on a loading local reference, and a
 // raw provider or parent peer for the remote ones. They belong to the host core (reference.ts, object.ts) and the remote
 // lane. These are own tests of parkedCalls on a fake loop with the sends of a reference replaced by a recording function,

@@ -21,7 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/support.ts (the helpers the documents tests use).
+// Ports packages/chord/test/support.ts (the helpers the documents tests use).
 //
 // Shared test helpers of package documents. Pi's documents tests reach their objects through a `createHost` host
 // (`loaded`, `restartable`, `storeRestartable`, `host.get`), which lives in another package (D5). The Go counterpart

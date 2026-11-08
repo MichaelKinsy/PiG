@@ -23,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/test/next-node/plugins/plugins.test.ts (all but "end to end: a server and a worker", which is
+// Ports packages/chord/test/node/plugins/plugins.test.ts (all but "end to end: a server and a worker", which is
 // plugins_endtoend_test.go). Tests of the plugins component (slice 7c §4, §5, §7): per plugin at startup and reload (a failing
 // build, evaluation, setup; unchanged plugins untouched; added and removed plugins; the closure rule through builds),
 // `rollout` (order, stopping at a rejecting step, marks), installs through the component, the app's API and required roots

@@ -21,7 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
-// Ports packages/chord/test/next-node/workers/support.ts: a server routing `Session` to forked fixture workers, the
+// Ports packages/chord/test/node/workers/support.ts: a server routing `Session` to forked fixture workers, the
 // fixture plugins copied into a temporary root, each address's start data (its behaviour) chosen by the test.
 
 var background = chordctx.Background()

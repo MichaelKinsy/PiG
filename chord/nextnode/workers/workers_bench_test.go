@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
-// Ports packages/chord/test/next/bench/workers.ts as Go benchmarks, run by hand (`go test -run '^$' -bench . ./chord/nextnode/workers`;
+// Ports packages/chord/test/bench/workers.ts as Go benchmarks, run by hand (`go test -run '^$' -bench . ./chord/nextnode/workers`;
 // Pi's run is pinned to one CPU): a worker's cold start with shipped scripts (fork to `started`, fork to `ready`, the
 // median over the runs) and the server's memory per idle worker (heap after a GC, 20 workers running idle).
 

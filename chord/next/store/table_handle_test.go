@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/test/next/store/table-handle.test.ts: table handles (slice 6a §7): reads outside a
+// Ports packages/chord/test/store/table-handle.test.ts: table handles (slice 6a §7): reads outside a
 // transaction, and cells the code cannot read.
 
 func handleEdits(t *testing.T) *TableDefinition {

@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/data/errors.test.ts.
+// Ports packages/chord/test/data/errors.test.ts.
 //
 // Designed out (type level): the
 // expectTypeOf assertions of "narrowing on code narrows reason" and "invalid builds an invalid error ...". Go's

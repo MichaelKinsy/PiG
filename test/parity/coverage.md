@@ -828,37 +828,37 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/next/remote/replica.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestReplicasFailOncePerEpisodeASecondFailureWhileFailedGivesNoCallARetirementMeanwhileWaitsForTheValue) | not run | ./chord/next/host:TestReplicasFailOncePerEpisodeASecondFailureWhileFailedGivesNoCallARetirementMeanwhileWaitsForTheValue |
 | `packages/chord/src/next/remote/internal.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/next/jobs/job.ts` | ✅ | 0 | 2 (unit:./chord/next/host:TestFinishThrowingIsRetriedAfter1SDoublingEachFailureReportedALaterSuccessFinishesTheRun, unit:./chord/next/host:TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheNextLiveAttempt) | not run | ./chord/next/host:TestFinishThrowingIsRetriedAfter1SDoublingEachFailureReportedALaterSuccessFinishesTheRun, ./chord/next/host:TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheNextLiveAttempt |
-| `packages/chord/test/next/examples/01-objects.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample01Objects) | not run | ./chord/next/host:TestExample01Objects |
-| `packages/chord/test/next/examples/02-documents.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample02Documents) | not run | ./chord/next/host:TestExample02Documents |
-| `packages/chord/test/next/examples/03-derives.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample03Derives) | not run | ./chord/next/host:TestExample03Derives |
-| `packages/chord/test/next/examples/04-watches.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample04Watches) | not run | ./chord/next/host:TestExample04Watches |
-| `packages/chord/test/next/examples/05-errors.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample05Errors) | not run | ./chord/next/host:TestExample05Errors |
-| `packages/chord/test/next/examples/06-natives.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample06Natives) | not run | ./chord/next/host:TestExample06Natives |
-| `packages/chord/test/next/examples/07-failures.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample07Failures) | not run | ./chord/next/host:TestExample07Failures |
-| `packages/chord/test/next/examples/08-remote.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample08Remote) | not run | ./chord/next/host:TestExample08Remote |
-| `packages/chord/test/next/examples/09-calls.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample09Calls) | not run | ./chord/next/host:TestExample09Calls |
-| `packages/chord/test/next/examples/10-drops.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample10Drops) | not run | ./chord/next/host:TestExample10Drops |
-| `packages/chord/test/next/examples/11-linger-and-retry.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample11LingerAndRetry) | not run | ./chord/next/host:TestExample11LingerAndRetry |
-| `packages/chord/test/next/examples/12-routes.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample12Routes) | not run | ./chord/next/host:TestExample12Routes |
-| `packages/chord/test/next/examples/13-relay.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample13Relay) | not run | ./chord/next/host:TestExample13Relay |
-| `packages/chord/test/next/examples/14-flow-control.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample14FlowControl) | not run | ./chord/next/host:TestExample14FlowControl |
-| `packages/chord/test/next/examples/15-revocation.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample15Revocation) | not run | ./chord/next/host:TestExample15Revocation |
-| `packages/chord/test/next/examples/16-presence-and-activity.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample16PresenceAndActivity) | not run | ./chord/next/host:TestExample16PresenceAndActivity |
-| `packages/chord/test/next/examples/17-limits-and-compression.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample17LimitsAndCompression) | not run | ./chord/next/host:TestExample17LimitsAndCompression |
-| `packages/chord/test/next/examples/18-routines.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample18Routines) | not run | ./chord/next/host:TestExample18Routines |
-| `packages/chord/test/next/examples/19-jobs.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample19Jobs) | not run | ./chord/next/host:TestExample19Jobs |
-| `packages/chord/test/next/examples/20-tables.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample20Tables) | not run | ./chord/next/host:TestExample20Tables |
-| `packages/chord/test/next/examples/21-persisted-documents.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample21PersistedDocuments) | not run | ./chord/next/host:TestExample21PersistedDocuments |
-| `packages/chord/test/next/examples/22-migrations.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample22Migrations) | not run | ./chord/next/host:TestExample22Migrations |
-| `packages/chord/test/next/examples/23-keyed-watches.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample23KeyedWatches) | not run | ./chord/next/host:TestExample23KeyedWatches |
-| `packages/chord/test/next/examples/24-keyed-members.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample24KeyedMembers) | not run | ./chord/next/host:TestExample24KeyedMembers |
-| `packages/chord/test/next/examples/25-export-import.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample25ExportImport) | not run | ./chord/next/host:TestExample25ExportImport |
-| `packages/chord/test/next/examples/28-persisted-jobs.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample28PersistedJobs) | not run | ./chord/next/host:TestExample28PersistedJobs |
-| `packages/chord/test/next/examples/29-registries.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample29Registries) | not run | ./chord/next/host:TestExample29Registries |
-| `packages/chord/test/next/examples/30-host-root.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample30HostRoot) | not run | ./chord/next/host:TestExample30HostRoot |
-| `packages/chord/test/next/examples/31-parked-dependencies.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample31ParkedDependencies) | not run | ./chord/next/host:TestExample31ParkedDependencies |
-| `packages/chord/test/next/examples/32-startup.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample32Startup) | not run | ./chord/next/host:TestExample32Startup |
-| `packages/chord/test/next/support.ts` | n/a | 0 | 3 (unit:./chord/next/host:TestExample08Remote, unit:./chord/next/host:TestExample12Routes, unit:./chord/next/host:TestExample12Routes) | not run | ./chord/next/host:TestExample08Remote, ./chord/next/host:TestExample12Routes, ./chord/next/host:TestExample12Routes |
+| `packages/chord/test/examples/01-objects.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample01Objects) | not run | ./chord/next/host:TestExample01Objects |
+| `packages/chord/test/examples/02-documents.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample02Documents) | not run | ./chord/next/host:TestExample02Documents |
+| `packages/chord/test/examples/03-derives.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample03Derives) | not run | ./chord/next/host:TestExample03Derives |
+| `packages/chord/test/examples/04-watches.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample04Watches) | not run | ./chord/next/host:TestExample04Watches |
+| `packages/chord/test/examples/05-errors.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample05Errors) | not run | ./chord/next/host:TestExample05Errors |
+| `packages/chord/test/examples/06-natives.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample06Natives) | not run | ./chord/next/host:TestExample06Natives |
+| `packages/chord/test/examples/07-failures.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample07Failures) | not run | ./chord/next/host:TestExample07Failures |
+| `packages/chord/test/examples/08-remote.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample08Remote) | not run | ./chord/next/host:TestExample08Remote |
+| `packages/chord/test/examples/09-calls.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample09Calls) | not run | ./chord/next/host:TestExample09Calls |
+| `packages/chord/test/examples/10-drops.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample10Drops) | not run | ./chord/next/host:TestExample10Drops |
+| `packages/chord/test/examples/11-linger-and-retry.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample11LingerAndRetry) | not run | ./chord/next/host:TestExample11LingerAndRetry |
+| `packages/chord/test/examples/12-routes.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample12Routes) | not run | ./chord/next/host:TestExample12Routes |
+| `packages/chord/test/examples/13-relay.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample13Relay) | not run | ./chord/next/host:TestExample13Relay |
+| `packages/chord/test/examples/14-flow-control.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample14FlowControl) | not run | ./chord/next/host:TestExample14FlowControl |
+| `packages/chord/test/examples/15-revocation.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample15Revocation) | not run | ./chord/next/host:TestExample15Revocation |
+| `packages/chord/test/examples/16-presence-and-activity.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample16PresenceAndActivity) | not run | ./chord/next/host:TestExample16PresenceAndActivity |
+| `packages/chord/test/examples/17-limits-and-compression.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample17LimitsAndCompression) | not run | ./chord/next/host:TestExample17LimitsAndCompression |
+| `packages/chord/test/examples/18-routines.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample18Routines) | not run | ./chord/next/host:TestExample18Routines |
+| `packages/chord/test/examples/19-jobs.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample19Jobs) | not run | ./chord/next/host:TestExample19Jobs |
+| `packages/chord/test/examples/20-tables.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample20Tables) | not run | ./chord/next/host:TestExample20Tables |
+| `packages/chord/test/examples/21-persisted-documents.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample21PersistedDocuments) | not run | ./chord/next/host:TestExample21PersistedDocuments |
+| `packages/chord/test/examples/22-migrations.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample22Migrations) | not run | ./chord/next/host:TestExample22Migrations |
+| `packages/chord/test/examples/23-keyed-watches.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample23KeyedWatches) | not run | ./chord/next/host:TestExample23KeyedWatches |
+| `packages/chord/test/examples/24-keyed-members.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample24KeyedMembers) | not run | ./chord/next/host:TestExample24KeyedMembers |
+| `packages/chord/test/examples/25-export-import.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample25ExportImport) | not run | ./chord/next/host:TestExample25ExportImport |
+| `packages/chord/test/examples/28-persisted-jobs.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample28PersistedJobs) | not run | ./chord/next/host:TestExample28PersistedJobs |
+| `packages/chord/test/examples/29-registries.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample29Registries) | not run | ./chord/next/host:TestExample29Registries |
+| `packages/chord/test/examples/30-host-root.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample30HostRoot) | not run | ./chord/next/host:TestExample30HostRoot |
+| `packages/chord/test/examples/31-parked-dependencies.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample31ParkedDependencies) | not run | ./chord/next/host:TestExample31ParkedDependencies |
+| `packages/chord/test/examples/32-startup.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample32Startup) | not run | ./chord/next/host:TestExample32Startup |
+| `packages/chord/test/support.ts` | n/a | 0 | 3 (unit:./chord/next/host:TestExample08Remote, unit:./chord/next/host:TestExample12Routes, unit:./chord/next/host:TestExample12Routes) | not run | ./chord/next/host:TestExample08Remote, ./chord/next/host:TestExample12Routes, ./chord/next/host:TestExample12Routes |
 | `packages/chord/src/next-node/http/admission.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/next-node/http/authenticate.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/next-node/http/cookies.ts` | ✅ | **0 (untested)** | **0** | not run |  |

@@ -508,7 +508,7 @@ SPDX-FileCopyrightText = "Copyright the JSON Schema organization"
 SPDX-License-Identifier = "BSD-3-Clause"
 
 # The schema-switch fixtures of Chord v2 (chord/next/host/testdata/schema-switch) are Pi's test files, byte for byte
-# (packages/chord/test/next/schema at b556cfe5): the recorded fingerprints and the stored SQLite store and archive.
+# (packages/chord/test/schema at b556cfe5): the recorded fingerprints and the stored SQLite store and archive.
 [[annotations]]
 path = "chord/next/host/testdata/schema-switch/**"
 precedence = "closest"

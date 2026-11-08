@@ -14,7 +14,7 @@ import (
 )
 
 // pi: packages/chord/src/next/data/validator.ts
-// Ports packages/chord/test/next/data/validator.test.ts.
+// Ports packages/chord/test/data/validator.test.ts.
 //
 // Designed out: "leave nothing in TypeBox's build accumulators" (pi-schema, and its Go port, keep no module-level build
 // state; Pi deleted the case). "are collected with their schema owner, the check function too": a Go func has no weak
