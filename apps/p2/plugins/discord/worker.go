@@ -139,6 +139,10 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			if err != nil {
 				return nil, err
 			}
+			_, snapErr := durable.Snapshot(ctx, durableSession, p2runtime.SessionLockDoc)
+			dbg(fmt.Sprint("snapshot done ", snapErr))
+			_, commitErr := durableSession.Commit(ctx, func(tx durable.Tx) (any, error) { return nil, nil })
+			dbg(fmt.Sprint("empty commit done ", commitErr))
 			dbg("MirrorLock")
 			if err := sessions.MirrorLock(ctx, durableSession, in.Value("lock")); err != nil {
 				return nil, err
