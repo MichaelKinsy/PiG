@@ -10,9 +10,11 @@ package e2e_test
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -166,6 +168,12 @@ func TestCodeModeFakeProvider(t *testing.T) {
 			return state != nil && state.Value("running") == true && state.Value("pid") != nil
 		})
 		pid := int(object(object(states).Value(f.Session)).Value("pid").(float64))
+		// The script's `sleep 5; echo two >> codemode.log` is a child of the worker and outlives its SIGKILL: its late `two`
+		// would land in the log the last case reads (Pi's run is fast enough to read it first). The kill takes the children
+		// along, as the worker's death does where its tools run in its process group.
+		if err := exec.Command("pkill", "-KILL", "-P", strconv.Itoa(pid)).Run(); err != nil {
+			t.Fatal(err)
+		}
 		if err := syscall.Kill(pid, syscall.SIGKILL); err != nil {
 			t.Fatal(err)
 		}
