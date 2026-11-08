@@ -19,7 +19,11 @@ func count(plural, one string) MessageFunc {
 		if n == 1 {
 			return one, nil
 		}
-		return fmt.Sprintf("%s %s", FormatNumber(lang, n, nil), plural), nil
+		formatted, err := FormatNumber(lang, n, nil)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s %s", formatted, plural), nil
 	}
 }
 
