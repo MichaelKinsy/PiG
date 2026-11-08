@@ -23,6 +23,9 @@ const (
 	// requestSpliceCacheBytes bounds the bytes the cache retains: each entry's source string and its encoding.
 	// pig additive (D112): see requestSpliceMinBytes.
 	requestSpliceCacheBytes = 64 << 20
+	// requestSpliceMaxCopies bounds the equal copies of one string whose address an entry remembers beyond its source. A conversation that reads one file again and again holds one equal copy per read; each is found by identity, so a request that sends them all hashes and compares none. Past the bound the oldest copies are forgotten, so a request that carries more equal copies than the bound finds them by content.
+	// pig additive (D112): see requestSpliceMinBytes.
+	requestSpliceMaxCopies = 256
 	// requestSpliceKeepRequests is how many request builds an entry outlives unused. A build re-sends the conversation, so an entry the last
 	// builds did not use belongs to history that a compaction, /new, /resume or branch switch left behind. Two keep a second session or a
 	// subagent that alternates with the first warm.
@@ -38,7 +41,11 @@ type quotedStringKey struct {
 type quotedString struct {
 	key    quotedStringKey
 	source string
-	quoted []byte
+	// copies are strings equal to source that earlier requests carried at other addresses, oldest first. The entry keeps them alive, like source, so their addresses stay theirs.
+	copies []string
+	// copyBytes is the length of every string in copies.
+	copyBytes int
+	quoted    []byte
 	// gen is the request build that last used the entry.
 	gen uint64
 }
@@ -49,7 +56,7 @@ type quotedStringCache struct {
 	limit   int
 	mu      sync.Mutex
 	entries map[quotedStringKey]*list.Element
-	// bySource indexes the same entries by the address and length of their source string. A Go string never changes and the entry keeps its source alive, so a string at that address with that length is the source: a request that re-sends the message strings of the previous one finds their encodings without hashing or comparing them.
+	// bySource indexes the same entries by the address and length of their source string and of its copies. A Go string never changes and the entry keeps each of them alive, so a string at that address with that length is that string: a request that re-sends the message strings of the previous one finds their encodings without hashing or comparing them.
 	bySource map[stringIdentity]*list.Element
 	// byData indexes the same entries by the first byte of their encoding, so a request that carries an encoding as raw JSON can be recognized.
 	byData map[*byte]*list.Element
@@ -80,7 +87,7 @@ func newQuotedStringCache(limit int) *quotedStringCache {
 // requestStrings is the process-wide cache: each request builds a new provider, so a per-provider cache would never be reused.
 var requestStrings = newQuotedStringCache(requestSpliceCacheBytes)
 
-func (entry *quotedString) size() int { return len(entry.source) + len(entry.quoted) }
+func (entry *quotedString) size() int { return len(entry.source) + entry.copyBytes + len(entry.quoted) }
 
 // quote returns the JSON.stringify encoding of s, as marshalRequestBody writes it.
 func (c *quotedStringCache) quote(s string) []byte {
@@ -118,9 +125,6 @@ func (c *quotedStringCache) sourced(s string) []byte {
 		return nil
 	}
 	entry := element.Value.(*quotedString)
-	if identityOf(entry.source) != identityOf(s) {
-		return nil
-	}
 	c.recency.MoveToFront(element)
 	entry.gen = c.gen
 	return entry.quoted
@@ -132,7 +136,7 @@ func (c *quotedStringCache) known(s string) ([]byte, bool) {
 	return quoted, quoted != nil
 }
 
-// lookup returns the encoding of the entry with key whose source equals s, or nil. A hit by an equal copy makes the copy the entry's source, so the next request that re-sends the copy finds it by identity.
+// lookup returns the encoding of the entry with key whose source equals s, or nil. A hit by an equal copy at another address makes the entry remember that address too, so the next request that re-sends the copy finds it by identity, and so does each other copy the conversation holds.
 func (c *quotedStringCache) lookup(key quotedStringKey, s string) []byte {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -146,12 +150,33 @@ func (c *quotedStringCache) lookup(key quotedStringKey, s string) []byte {
 	}
 	c.recency.MoveToFront(element)
 	entry.gen = c.gen
-	if identityOf(entry.source) != identityOf(s) {
-		c.unindexSource(element)
-		entry.source = s
-		c.bySource[identityOf(s)] = element
+	if _, indexed := c.bySource[identityOf(s)]; !indexed {
+		c.addCopy(element, entry, s)
 	}
 	return entry.quoted
+}
+
+// addCopy makes the address of s, which equals entry's source, an address the entry finds by identity. The entry remembers requestSpliceMaxCopies of them: the oldest is forgotten for the next. c.mu must be held.
+func (c *quotedStringCache) addCopy(element *list.Element, entry *quotedString, s string) {
+	if len(entry.copies) >= requestSpliceMaxCopies {
+		oldest := entry.copies[0]
+		if c.bySource[identityOf(oldest)] == element {
+			delete(c.bySource, identityOf(oldest))
+		}
+		entry.copyBytes -= len(oldest)
+		c.held -= len(oldest)
+		last := len(entry.copies) - 1
+		copy(entry.copies, entry.copies[1:])
+		entry.copies[last] = ""
+		entry.copies = entry.copies[:last]
+	}
+	entry.copies = append(entry.copies, s)
+	entry.copyBytes += len(s)
+	c.held += len(s)
+	c.bySource[identityOf(s)] = element
+	for c.held > c.limit && c.recency.Len() > 1 {
+		c.forget(c.recency.Back())
+	}
 }
 
 // encode encodes s, which no entry holds, and keeps the encoding.
@@ -211,16 +236,20 @@ func (c *quotedStringCache) release() {
 func (c *quotedStringCache) forget(element *list.Element) {
 	entry := c.recency.Remove(element).(*quotedString)
 	delete(c.entries, entry.key)
-	c.unindexSource(element)
+	c.unindexSource(entry, element)
 	delete(c.byData, &entry.quoted[0])
 	c.held -= entry.size()
 }
 
-// unindexSource removes the identity index of element's source, unless the index names another entry.
-func (c *quotedStringCache) unindexSource(element *list.Element) {
-	identity := identityOf(element.Value.(*quotedString).source)
-	if c.bySource[identity] == element {
+// unindexSource removes the identity index of entry's source and copies, unless an index names another entry.
+func (c *quotedStringCache) unindexSource(entry *quotedString, element *list.Element) {
+	if identity := identityOf(entry.source); c.bySource[identity] == element {
 		delete(c.bySource, identity)
+	}
+	for _, s := range entry.copies {
+		if identity := identityOf(s); c.bySource[identity] == element {
+			delete(c.bySource, identity)
+		}
 	}
 }
 
@@ -268,7 +297,7 @@ func (b *requestBody) prepare(request *http.Request) {
 		return
 	}
 	request.ContentLength = int64(b.size)
-	request.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(b.reader()), nil }
+	request.GetBody = func() (io.ReadCloser, error) { return &requestBodyReader{segments: b.segments}, nil }
 }
 
 // requestBodyReader reads a requestBody. WriteTo lets io.Copy hand each segment to the connection without an intermediate copy.
@@ -277,6 +306,9 @@ type requestBodyReader struct {
 	index    int
 	offset   int
 }
+
+// Close does nothing. It makes the reader an io.ReadCloser, so http.NewRequest uses it as the body and the transport hands it to idleTimeoutConn.ReadFrom unwrapped.
+func (r *requestBodyReader) Close() error { return nil }
 
 func (r *requestBodyReader) Read(p []byte) (int, error) {
 	n := 0
