@@ -39881,6 +39881,17 @@
       "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#errFetchBadPort",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "errFetchBadPort",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "error"
+      },
+      "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#errJSChainingCycle",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "errJSChainingCycle",
@@ -40550,6 +40561,17 @@
         "type": "func(ctx context.Context) error"
       },
       "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#fetchBadPorts",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "fetchBadPorts",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[82]int"
+      },
+      "shapeHash": "sha256:5bfbba65cde3de2f6ede7d293888b2420269e82bad05af99cadf5db2829b8173"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#fetchBodyReadError",
@@ -43962,6 +43984,17 @@
       "shapeHash": "sha256:666e8191ee239d48499b5cb32e26e81e17f611512876c9c2dc332f4aed8abd6f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#isFetchBadPort",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "isFetchBadPort",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(u *net/url.URL) bool"
+      },
+      "shapeHash": "sha256:00e7a4948addc6b411a7f58d5a0024d003ebad484126bbc5a445657683122755"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#isGemini3Flash",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "isGemini3Flash",
@@ -44356,6 +44389,17 @@
         "type": "func(x int) bool"
       },
       "shapeHash": "sha256:666e8191ee239d48499b5cb32e26e81e17f611512876c9c2dc332f4aed8abd6f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#isServerClosedIdle",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "isServerClosedIdle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) bool"
+      },
+      "shapeHash": "sha256:4a5055322e6f75d7ee10cc59b4814e22cbd33d6a19d2b99d3e00212a527e3abf"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#isStrictToolLimitErrorMessage",
@@ -50516,6 +50560,17 @@
         "type": "func(s string, from int, c byte) int"
       },
       "shapeHash": "sha256:cddb1ee8cfec2c074f4a3710bf908c049ec5c381cd80b075fd8e74360897fe55"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#nodeBodyFailure",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "nodeBodyFailure",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cause error) (message string, code string)"
+      },
+      "shapeHash": "sha256:1bb9c984db81d4e0dfe410c3e304f1b7b58d78960dbc4e0d77f7db999c51e1f4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#nodeConnectionFailure",

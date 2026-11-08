@@ -628,6 +628,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/anthropic-message-threads.test.ts",
+      "upstreamTestHash": "sha256:c3c9855ef1f514fe9246f75f7a9acec233b6a6b7cad68c228bee9dc80d43a18b",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
       "path": "packages/ai/test/anthropic-mid-conversation-effort.test.ts",
       "upstreamTestHash": "sha256:41c4e19ce197243044d203cfb7e2e0de6b5f185121ab9ae2806bc9b9af402767",
       "area": "providers",
@@ -882,6 +891,15 @@
     {
       "path": "packages/ai/test/cache-retention.test.ts",
       "upstreamTestHash": "sha256:12c858b08949b9e939c833e8a7ea0a2668d2f12f4b31d16071ab581d41cc4044",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/ai/test/clamp-max-tokens.test.ts",
+      "upstreamTestHash": "sha256:df80896bb514f1dfc0f4b4f3bb16027dc1b746741345597e666b09239f93691e",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1492,6 +1510,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/openai-completions-non-null-assistant-content.test.ts",
+      "upstreamTestHash": "sha256:ab06a46cee61291d8793a1b904cc201f902b09dc5ec19efef7e9e4fe2da25f05",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
       "path": "packages/ai/test/openai-completions-prompt-cache.test.ts",
       "upstreamTestHash": "sha256:276535dc7e725b031e734fd3595cb644e1728a7e12520e0bf0aa8274c7fe8a01",
       "area": "providers",
@@ -1674,6 +1701,15 @@
     {
       "path": "packages/ai/test/openai-responses-partial-json-cleanup.test.ts",
       "upstreamTestHash": "sha256:ad44bf0cb7726e895b13b64e59070579a2a42ab84df0c6cc6117376bcf7ad7e9",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/ai/test/openai-responses-prompt-cache.test.ts",
+      "upstreamTestHash": "sha256:17de0ec9bf7c1fabd7882e6a0522684c785142c811c040111e3eb06243164827",
       "area": "providers",
       "tags": [
         "hot-path"

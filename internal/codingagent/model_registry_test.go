@@ -965,3 +965,38 @@ func TestModelsJSONModelWithoutAnAPIIsRejected(t *testing.T) {
 		}
 	}
 }
+
+// packages/coding-agent/test/model-registry.test.ts "custom models inherit and override prompt cache key mode independently of long retention".
+func TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode(t *testing.T) {
+	dir := t.TempDir()
+	config := `{"providers":{"demo":{"baseUrl":"https://proxy.example.com/v1","api":"openai-completions","compat":{"promptCacheKeyMode":"enabled","supportsLongCacheRetention":false},"models":[{"id":"inherited"},{"id":"disabled","compat":{"promptCacheKeyMode":"disabled"}}]}}}`
+	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	registry := NewModelRegistry(dir)
+	for id, want := range map[string]ai.PromptCacheKeyMode{"inherited": ai.PromptCacheKeyEnabled, "disabled": ai.PromptCacheKeyDisabled} {
+		entry, ok := registry.Resolve("demo", id)
+		if !ok || entry.Compat == nil {
+			t.Fatalf("demo/%s resolved = %v, compat %v", id, ok, entry.Compat)
+		}
+		if entry.Compat.PromptCacheKeyMode != want || entry.Compat.SupportsLongCacheRetention == nil || *entry.Compat.SupportsLongCacheRetention {
+			t.Fatalf("demo/%s compat = mode %q, long %v; want %q, false", id, entry.Compat.PromptCacheKeyMode, entry.Compat.SupportsLongCacheRetention, want)
+		}
+	}
+}
+
+// model-registry.test.ts "built-in models inherit prompt cache key support unless overridden".
+func TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode(t *testing.T) {
+	dir := t.TempDir()
+	config := `{"providers":{"openai":{"baseUrl":"https://proxy.example.com/v1","compat":{"promptCacheKeyMode":"enabled"},"modelOverrides":{"gpt-4o-mini":{"compat":{"promptCacheKeyMode":"disabled"}}}}}}`
+	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	registry := NewModelRegistry(dir)
+	for id, want := range map[string]ai.PromptCacheKeyMode{"gpt-4o": ai.PromptCacheKeyEnabled, "gpt-4o-mini": ai.PromptCacheKeyDisabled} {
+		entry, ok := registry.Resolve("openai", id)
+		if !ok || entry.Compat == nil || entry.Compat.PromptCacheKeyMode != want {
+			t.Fatalf("openai/%s resolved = %v, compat %+v; want mode %q", id, ok, entry.Compat, want)
+		}
+	}
+}
