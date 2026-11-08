@@ -124,6 +124,8 @@ func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScr
 		"tui.ts":   "import icon from \"./icon.svg?url\";\nexport default { setup: () => icon };",
 		"icon.svg": "<svg/>",
 	})
+	// The watcher noticed the new plugin once the plugin set is marked: then the build discovers it.
+	untilMarks(t, s.app, "the plugin set's mark", func(state plugins.PluginsState) bool { return state.Set })
 	built, err := s.app.Plugins.Build([]string{"@test/pictured"}, background)
 	if err != nil {
 		t.Fatal(err)

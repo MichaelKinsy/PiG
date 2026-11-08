@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -40,4 +41,26 @@ func TestTheFilesTheSandboxMayFetchAreTheTerminalSurfacesAfterDotSegmentsAndEnco
 			t.Fatalf("%q: error = %v, want no terminal file", path, err)
 		}
 	}
+}
+
+// FuzzTerminalFile: whatever path the sandbox asks for, an answer is a path of the terminal surface's files on the server itself
+// (no dot segment, no query, no other directory, no other origin), and nothing panics.
+func FuzzTerminalFile(f *testing.F) {
+	for _, seed := range []string{
+		"/_chord/tui/base.abc.js", "/_chord/tui/plugin/@test~lines.abc.js", "/_chord/tui/../chord", "/_chord/tui/%2e%2e/x",
+		"/_chord/tui/a?b=c", "//evil.example/_chord/tui/x", "http://127.0.0.1:9/_chord/tui/x", "/_chord/tui/", "\x00", "/_chord/tui/a b",
+	} {
+		f.Add(seed)
+	}
+	const server = "http://127.0.0.1:9"
+	f.Fuzz(func(t *testing.T, path string) {
+		got, err := TerminalFile(path, server)
+		if err != nil {
+			return
+		}
+		if !strings.HasPrefix(got, "/_chord/tui/") || slices.ContainsFunc(strings.Split(got, "/"), func(segment string) bool { return segment == "." || segment == ".." }) ||
+			strings.ContainsAny(got, "?#%\\") || got != strings.TrimSpace(got) {
+			t.Fatalf("TerminalFile(%q) = %q: not a terminal surface file", path, got)
+		}
+	})
 }

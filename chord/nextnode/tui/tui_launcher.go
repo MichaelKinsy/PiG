@@ -77,6 +77,9 @@ const terminalPrefix = "/_chord/tui/"
 // terminalFilePattern is a terminal surface file's path, as the sandbox may ask for it.
 var terminalFilePattern = regexp.MustCompile(`^/_chord/tui/(?:plugin/)?[\w.~@-]+$`)
 
+// localeSuffix is what follows a locale name: its encoding or modifier (`de_DE.UTF-8@euro`).
+var localeSuffix = regexp.MustCompile(`[.@].*$`)
+
 // TerminalFile is path resolved on the server `server` when it names one of the terminal surface's files (dot segments and
 // encodings resolved first: Opus M2, Fable L1); it fails otherwise: the sandbox reaches nothing else of the server through the
 // launcher's token.
@@ -277,8 +280,14 @@ func (l *Launcher) start(ctx context.Context) error {
 		_ = l.term.SetRaw(true)
 	}
 	go l.readInput()
-	l.stopResize = l.term.OnResize(func() { l.post(l.onResize) })
-	l.restoreSig = ignoreInspectorSignal()
+	// On the loop: a finish (the sandbox exited meanwhile) reads both, and must not see them half set, nor miss them.
+	l.sync(func() {
+		if l.finished {
+			return
+		}
+		l.stopResize = l.term.OnResize(func() { l.post(l.onResize) })
+		l.restoreSig = ignoreInspectorSignal()
+	})
 	return nil
 }
 
@@ -538,7 +547,7 @@ func (l *Launcher) openSocket(id int) {
 	sandbox := l.sandbox
 	headers := http.Header{"Authorization": {"Bearer " + l.token}}
 	go func() {
-		conn, _, err := websocket.DefaultDialer.DialContext(l.ctx, target.String(), headers)
+		conn, _, err := websocket.DefaultDialer.DialContext(l.ctx, target.String(), headers) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
 		closed := func() {
 			l.post(func() {
 				if l.sockets[id] != socket {
@@ -628,6 +637,15 @@ func (l *Launcher) answer(id int, request BridgeRequest) {
 		sandbox.Post(LauncherMessage{Kind: "refused", ID: id, Message: "terminal: too many requests at once"})
 		return
 	}
+	// A request that asks the user claims the prompt here, on the loop, in the order the sandbox sent: the frames it wrote after
+	// the request are held, not drawn before the prompt appears (Fable H1).
+	if request.Kind != "fetch" && request.Kind != "base" {
+		if l.confirming {
+			sandbox.Post(LauncherMessage{Kind: "refused", ID: id, Message: "terminal: a prompt is open"})
+			return
+		}
+		l.confirming = true
+	}
 	l.requests++
 	go func() {
 		reply, err := l.reply(id, request)
@@ -685,17 +703,9 @@ func (l *Launcher) reply(id int, request BridgeRequest) (LauncherMessage, error)
 	return LauncherMessage{Kind: "reply", ID: id, Value: done}, err
 }
 
-// confirm runs the action run (it asks the user), one at a time: a second is refused while one runs. Afterwards the held frames
-// are written and the sandbox asked to redraw.
+// confirm runs the action run (it asks the user); the request claimed the prompt (`answer`, one at a time). Afterwards the held
+// frames are written and the sandbox asked to redraw.
 func (l *Launcher) confirm(run func() error) error {
-	var busy bool
-	l.sync(func() {
-		busy = l.confirming
-		l.confirming = true
-	})
-	if busy {
-		return errors.New("terminal: a prompt is open")
-	}
 	err := run()
 	l.sync(func() {
 		l.confirming = false
@@ -835,7 +845,6 @@ func (l *Launcher) get(ctx context.Context, path string) (string, error) {
 // systemLocales are the system's languages: `LANGUAGE` (a colon list), then `LC_ALL`, `LC_MESSAGES`, `LANG` (`de_DE.UTF-8` is
 // `de-DE`; `C` and `POSIX` name none), then the runtime's default locale.
 func systemLocales() []string {
-	suffix := regexp.MustCompile(`[.@].*$`)
 	values := append(strings.Split(os.Getenv("LANGUAGE"), ":"), os.Getenv("LC_ALL"), os.Getenv("LC_MESSAGES"), os.Getenv("LANG"))
 	var locales []string
 	seen := map[string]bool{}
@@ -846,7 +855,7 @@ func systemLocales() []string {
 		}
 	}
 	for _, value := range values {
-		add(strings.ReplaceAll(suffix.ReplaceAllString(value, ""), "_", "-"))
+		add(strings.ReplaceAll(localeSuffix.ReplaceAllString(value, ""), "_", "-"))
 	}
 	add(next.PlatformLocale())
 	return locales

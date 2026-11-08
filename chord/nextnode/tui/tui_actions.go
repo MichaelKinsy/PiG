@@ -291,6 +291,7 @@ func reservedDevice(segment string) bool {
 	case "con", "prn", "aux", "nul", "conin$", "conout$":
 		return true
 	}
+	//portlint:allow utf16units a 4-byte name after a "com"/"lpt" prefix has an ASCII fourth character (a non-ASCII one makes it longer than 4 bytes), so the byte index is the UTF-16 index, as Pi's /^(com|lpt)[0-9]$/
 	if len(name) == 4 && (strings.HasPrefix(name, "com") || strings.HasPrefix(name, "lpt")) && name[3] >= '0' && name[3] <= '9' {
 		return true
 	}
@@ -346,7 +347,7 @@ func OpenerCommand(target, goos string) (string, []string) {
 func platformOpener(target string) error {
 	command, args := OpenerCommand(target, runtime.GOOS)
 	// The root as its directory: no opener needs the launcher's (a WSL path too long for explorer.exe, pi #11592).
-	cmd := exec.Command(command, args...)
+	cmd := exec.Command(command, args...) //nolint:gosec // G204: the platform's own opener (OpenerCommand) with the URL the user confirmed as one argument, never through a shell
 	cmd.Dir = string(os.PathSeparator)
 	detach(cmd)
 	if err := cmd.Start(); err != nil {
