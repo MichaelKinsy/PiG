@@ -4,9 +4,13 @@ package schema
 //
 // Schema builders: short functions that return plain JSON Schema objects. The objects are ordinary data: they serialize as JSON and compile with Compile like any other schema.
 //
-// Options are applied in call order, so the members of a schema appear in the order the caller wrote them, as the members of the options object Pi's builders spread do. Each builder takes the options that apply to its type: the annotations (Title, Description, Examples, Deprecated, Default) fit every builder, MinLength and MaxLength fit Str and Bytes, Pattern and Format fit Str, the number bounds fit Num and Int, the item bounds fit Arr and Open fits Obj. A misplaced option is a compile error, as an excess property of Pi's option types is.
+// Options are applied in call order, so the members of a schema appear in the order the caller wrote them, as the members of the options object Pi's builders spread do. Each builder takes the options that apply to its type: the annotations (Title, Description, Examples, Deprecated, Default) fit every builder, MinLength and MaxLength fit Str and Bytes, Pattern and Format fit Str, the number bounds fit Num and Int, the bigint bounds fit BigInt, the item bounds fit Arr and Open fits Obj. A misplaced option is a compile error, as an excess property of Pi's option types is.
 
-import "github.com/MichaelKinsy/PiG/internal/chord/chordjson"
+import (
+	"math/big"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
+)
 
 // Schema is a JSON Schema object returned by a builder.
 type Schema = *Object
@@ -20,6 +24,7 @@ type keywordOption interface {
 type AnnotationOption interface {
 	StrOption
 	NumberOption
+	BigIntOption
 	ArrayOption
 	BytesOption
 	ObjectOption
@@ -42,6 +47,12 @@ type StrOption interface {
 type NumberOption interface {
 	keywordOption
 	forNumber()
+}
+
+// BigIntOption is an option of BigInt.
+type BigIntOption interface {
+	keywordOption
+	forBigInt()
 }
 
 // ArrayOption is an option of Arr.
@@ -72,6 +83,7 @@ func (a annotation) keyword() (string, any) { return a.name, a.value }
 func (annotation) annotation()              {}
 func (annotation) forStr()                  {}
 func (annotation) forNumber()               {}
+func (annotation) forBigInt()               {}
 func (annotation) forArray()                {}
 func (annotation) forBytes()                {}
 func (annotation) forObject()               {}
@@ -100,6 +112,15 @@ type numberBound struct {
 
 func (b numberBound) keyword() (string, any) { return b.name, b.value }
 func (numberBound) forNumber()               {}
+
+// bigIntBound is a bound of a bigint: TypeBox's `Type.BigInt` writes its bounds as bigints.
+type bigIntBound struct {
+	name  string
+	value *big.Int
+}
+
+func (b bigIntBound) keyword() (string, any) { return b.name, b.value }
+func (bigIntBound) forBigInt()               {}
 
 // itemKeyword is a bound of an array.
 type itemKeyword struct {
@@ -176,6 +197,21 @@ func ExclusiveMaximum(n float64) NumberOption { return numberBound{"exclusiveMax
 // MultipleOf sets `multipleOf` of a number.
 func MultipleOf(n float64) NumberOption { return numberBound{"multipleOf", n} }
 
+// BigMinimum sets `minimum` of a BigInt.
+func BigMinimum(n *big.Int) BigIntOption { return bigIntBound{"minimum", n} }
+
+// BigMaximum sets `maximum` of a BigInt.
+func BigMaximum(n *big.Int) BigIntOption { return bigIntBound{"maximum", n} }
+
+// BigExclusiveMinimum sets `exclusiveMinimum` of a BigInt.
+func BigExclusiveMinimum(n *big.Int) BigIntOption { return bigIntBound{"exclusiveMinimum", n} }
+
+// BigExclusiveMaximum sets `exclusiveMaximum` of a BigInt.
+func BigExclusiveMaximum(n *big.Int) BigIntOption { return bigIntBound{"exclusiveMaximum", n} }
+
+// BigMultipleOf sets `multipleOf` of a BigInt.
+func BigMultipleOf(n *big.Int) BigIntOption { return bigIntBound{"multipleOf", n} }
+
 // MinItems sets `minItems` of an array.
 func MinItems(n int) ArrayOption { return itemKeyword{"minItems", float64(n)} }
 
@@ -205,6 +241,11 @@ func Num(options ...NumberOption) Schema { return with(chordjson.ObjectOf("type"
 
 // Int is an integer within optional bounds.
 func Int(options ...NumberOption) Schema { return with(chordjson.ObjectOf("type", "integer"), options) }
+
+// BigInt is a bigint (`{"type":"bigint"}`, as TypeBox's `Type.BigInt`) within optional bounds: an extension of JSON Schema for values that never pass through JSON, such as the 64-bit integers a Parquet reader decodes. Its values are *big.Int.
+func BigInt(options ...BigIntOption) Schema {
+	return with(chordjson.ObjectOf("type", "bigint"), options)
+}
 
 // Bool is a boolean.
 func Bool(options ...AnnotationOption) Schema {
