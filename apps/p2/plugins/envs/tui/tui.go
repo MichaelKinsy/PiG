@@ -104,7 +104,8 @@ func openEnvs(ctx runtime.TuiContext) error {
 	failureRead := chordtui.WatchMember(scope, ref.Member("failure"))
 	status := ""
 	place := func() *runtime.TuiSessionPlace {
-		table, ok := places()
+		value, ok := places()
+		table, _ := value.(*p2runtime.KeyedTable[runtime.TuiSessionPlace])
 		if !ok || table == nil || table.Len() == 0 {
 			return nil
 		}
