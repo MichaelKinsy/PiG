@@ -699,11 +699,7 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 	}
 	samples := make(map[string]string, len(callable))
 	for _, tool := range callable {
-		sample, err := sandbox.RenderToolSample(toDeclaration(tool, guidelines[tool.Name]), sandbox.ToolRenderOptions{})
-		if err != nil {
-			return agent.AgentToolResult{}, err
-		}
-		samples[tool.Name] = sample
+		samples[tool.Name] = sandbox.RenderToolSample(toDeclaration(tool, guidelines[tool.Name]), sandbox.ToolRenderOptions{})
 	}
 	sandboxTools := make([]sandbox.Tool, len(callable))
 	for i, tool := range callable {
