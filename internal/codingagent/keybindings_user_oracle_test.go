@@ -106,18 +106,6 @@ func TestUserKeybindingsMatchPi(t *testing.T) {
 			}
 		}
 		km := NewKeybindingsManagerFromBindings(user, "")
-		// pig divergence (D241): Windows and WSL hosts default app.clipboard.pasteImage to alt+v and ctrl+v, Pi 1.5.0 to alt+v. The definition's default keys
-		// do not depend on the user's bindings; the resolved keys do.
-		if d241Applies() {
-			def := want[i].Defs[pasteImageAction]
-			piDefault, _ := def.DefaultKeys.(string)
-			def.DefaultKeys = d241PasteKeys(t, []string{piDefault})
-			want[i].Defs[pasteImageAction] = def
-			if _, bound := config[pasteImageAction]; !bound {
-				piResolved, _ := want[i].Resolved[pasteImageAction].(string)
-				want[i].Resolved[pasteImageAction] = d241PasteKeys(t, []string{piResolved})
-			}
-		}
 		for _, action := range actions {
 			keys := []string{}
 			for _, key := range km.GetKeys(action) {

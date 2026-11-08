@@ -3603,8 +3603,8 @@ rationale = ""
 path = "packages/coding-agent/src/core/keybindings.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:internal/codingagent/app_keybindings_oracle_test.go#TestAppKeybindingsManagerMatchesPi"]
-rationale = "Pi: app.clipboard.pasteImage defaults to alt+v and ctrl+v where Windows defaults apply; internal/codingagent matches it (D241)."
+evidence = ["test:internal/codingagent/keybindings_platform_test.go#TestKeybindingDefinitionsApplyPlatformDefaults"]
+rationale = "Pi: app.clipboard.pasteImage defaults to alt+v and ctrl+v where Windows defaults apply; internal/codingagent matches it."
 
 [[files]]
 path = "packages/coding-agent/src/core/mcp-servers.ts"
@@ -3666,7 +3666,7 @@ rationale = ""
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:coding/runtime_close_credential_writes_test.go#TestRuntimeSettleCredentialWritesReturnsTheCancellationCause", "test:coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved"]
+evidence = ["test:coding/runtime_close_credential_writes_test.go#TestRuntimeSettleCredentialWritesReturnsTheCancellationCause", "test:coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved", "test:ai/runtime_credentials_settled_test.go#TestRuntimeCredentialsSettledResolvesAfterAPendingModificationFails"]
 rationale = "Pi b2cb62923 (#11692): pending credential modifications are tracked and settled before exit."
 
 [[files]]
@@ -3918,7 +3918,7 @@ rationale = "Pi (#11752): the signal handlers stay until the final disposal is d
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand"]
+evidence = ["test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand", "test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownFromSessionStartExits", "test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown", "test:coding/cli/rpc_repeated_signal_test.go#TestRPCRepeatedSignalDuringShutdownExitsAtOnce"]
 rationale = "Pi: an extension shutdown request on an idle session exits without another command; a repeated signal skips cleanup."
 
 [[files]]
@@ -3953,7 +3953,7 @@ rationale = ""
 path = "packages/coding-agent/src/utils/web-url.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginOpensOnlyWebURLs"]
+evidence = ["test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginOpensOnlyWebURLs", "test:tui/login_dialog_device_code_test.go#TestLoginURLsOpenOnlyHTTPSignInURLs"]
 rationale = "Pi: only http(s) sign-in URLs are opened (tui LoginBrowserTarget)."
 
 [[files]]
@@ -4625,7 +4625,7 @@ rationale = "Pi 378d45a0: the span snapshot documents microsecond times and inde
 path = "packages/telemetry/src/memory.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:telemetry/telemetry_now_test.go#TestInMemoryStampsStartsWithTelemetryNowToTheMicrosecondInTheirOrder", "test:telemetry/telemetry_now_test.go#TestTelemetryNowFollowsAStepOfTheWallClockPast10ms"]
+evidence = ["test:telemetry/telemetry_now_test.go#TestInMemoryStampsStartsWithTelemetryNowToTheMicrosecondInTheirOrder", "test:telemetry/telemetry_now_test.go#TestTelemetryNowFollowsAStepOfTheWallClockPast10ms", "test:telemetry/telemetry_now_test.go#TestInMemoryRoundsEventAndEndTimesToTheMicrosecond"]
 rationale = "Pi 378d45a0: span starts use telemetryNow and event and end times round to the microsecond (telemetry/memory.go, memory_now.go), tested with a mocked Date.now and performance.now as Pi does."
 
 [[files]]
