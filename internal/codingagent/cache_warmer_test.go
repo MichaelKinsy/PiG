@@ -331,7 +331,7 @@ func TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions(t *testing.T) 
 		}
 		record := f.snapshot()
 		call := record.calls[0]
-		if call.model != models.adaptive || call.options.Thinking != ai.ThinkingLevelHigh || call.options.SessionID != "s" || call.options.TransformHeaders == nil || call.options.MaxTokens != 1 {
+		if call.model != models.adaptive || call.options.Thinking != ai.ThinkingLevelHigh || call.options.SessionID != "s" || call.options.TransformHeaders == nil || call.options.MaxTokens != 1 || !call.options.DisableContinuation {
 			t.Fatalf("warm request = %+v", call.options)
 		}
 		headers, err := call.options.TransformHeaders(call.ctx, nil)

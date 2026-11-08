@@ -238,3 +238,27 @@ func TestModelRegistryCustomModelsUpstream(t *testing.T) {
 		})
 	}
 }
+
+// pi: model-registry.test.ts "custom models inherit and override prompt cache key mode independently of long retention" (Pi main 0f4d5e96, #9442).
+func TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyModeIndependentlyOfLongRetention(t *testing.T) {
+	s := registryFromJSON(t, `{"demo":{"baseUrl":"https://proxy.example.com/v1","apiKey":"DEMO_KEY","api":"openai-completions","compat":{"promptCacheKeyMode":"enabled","supportsLongCacheRetention":false},"models":[{"id":"inherited"},{"id":"disabled","compat":{"promptCacheKeyMode":"disabled"}}]}}`)
+	assertRegistryNoError(t, s)
+	for id, want := range map[string]ai.PromptCacheKeyMode{"inherited": ai.PromptCacheKeyEnabled, "disabled": ai.PromptCacheKeyDisabled} {
+		compat := mustRegistryModel(t, s, "demo", id).ProviderMeta.Compat
+		if compat == nil || compat.PromptCacheKeyMode != want || compat.SupportsLongCacheRetention == nil || *compat.SupportsLongCacheRetention {
+			t.Fatalf("%s compat = %+v, want promptCacheKeyMode %q and supportsLongCacheRetention false", id, compat, want)
+		}
+	}
+}
+
+// pi: model-registry.test.ts "built-in models inherit prompt cache key support unless overridden" (Pi main 0f4d5e96, #9442).
+func TestModelRegistryBuiltInModelsInheritPromptCacheKeySupportUnlessOverridden(t *testing.T) {
+	s := registryFromJSON(t, `{"openai":{"baseUrl":"https://proxy.example.com/v1","compat":{"promptCacheKeyMode":"enabled"},"modelOverrides":{"gpt-4o-mini":{"compat":{"promptCacheKeyMode":"disabled"}}}}}`)
+	assertRegistryNoError(t, s)
+	for id, want := range map[string]ai.PromptCacheKeyMode{"gpt-4o": ai.PromptCacheKeyEnabled, "gpt-4o-mini": ai.PromptCacheKeyDisabled} {
+		compat := mustRegistryModel(t, s, "openai", id).ProviderMeta.Compat
+		if compat == nil || compat.PromptCacheKeyMode != want {
+			t.Fatalf("%s compat = %+v, want promptCacheKeyMode %q", id, compat, want)
+		}
+	}
+}
