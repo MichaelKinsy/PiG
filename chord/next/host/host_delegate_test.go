@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Own tests of Host.Delegate (D603; no Pi counterpart: Pi's server serves its plugins in its own host, the Go kit's plugins run in a
+// Own tests of Host.Delegate (D605; no Pi counterpart: Pi's server serves its plugins in its own host, the Go kit's plugins run in a
 // Node subprocess behind the server host). A host with a delegate serves the union of its types and the delegate's: remote types
 // placed on it that it does not serve itself go over the delegate, as a route's holds do; what it serves stays, whatever the state of
 // the object; nothing changes for a host without one.
