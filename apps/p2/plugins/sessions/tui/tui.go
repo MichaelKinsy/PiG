@@ -167,24 +167,7 @@ func applyRow(rows []contract.Session, guess rowGuess) []contract.Session {
 	return out
 }
 
-func sessionOf(value any) contract.Session {
-	session := contract.Session{
-		ID: p2tui.JStr(p2tui.JField(value, "id")), Cwd: p2tui.JStr(p2tui.JField(value, "cwd")), Title: p2tui.JStr(p2tui.JField(value, "title")),
-		CreatedAt: int64(p2tui.JNum(p2tui.JField(value, "createdAt"))), UpdatedAt: int64(p2tui.JNum(p2tui.JField(value, "updatedAt"))),
-		Pinned: p2tui.JBool(p2tui.JField(value, "pinned")), Main: int(p2tui.JNum(p2tui.JField(value, "main"))),
-	}
-	if env, ok := p2tui.JField(value, "env").(string); ok {
-		session.Env = &env
-	}
-	if archived, ok := p2tui.JField(value, "archivedAt").(float64); ok {
-		at := int64(archived)
-		session.ArchivedAt = &at
-	}
-	if session.Main == 0 {
-		session.Main = 1
-	}
-	return session
-}
+func sessionOf(value any) contract.Session { return contract.SessionFromJSON(value) }
 
 func operationOf(value any) operation {
 	op := operation{
