@@ -258,3 +258,26 @@ func TestComposeBeforeAnyGoodCompositionTheValueThrowsTheErrorAndHostRegistryRej
 	}
 	must(t, host.Close(background))
 }
+
+// rvServed is a registry its plugin serves: never listed as undeclared.
+var rvServed = rvRegistryOf("app.served", 1)
+
+// Ports record.test.ts `describe("registries without a provider (slice 12 §6, testPlugin)")`.
+func TestRegistriesWithoutAProviderListsARegistryWithContributionsAndNoProviderWithTheNewestVersionContributed(t *testing.T) {
+	older := rvRegistryOf("app.names", 1)
+	newer := rvRegistryOf("app.names", 3)
+	host, _ := rvPlugins(t, HostOptions{},
+		rvPlugin("a", func(_ FacetHost, self FacetSelf) error { return self.Contribute(older, "a") }),
+		rvPlugin("b", func(_ FacetHost, self FacetSelf) error { return self.Contribute(newer, "b") }),
+		rvPlugin("c", func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(rvServed, registries.RegistryProvider[any, any]{
+				Compose: func(registries.RegistryTable[any], registries.ComposeContext) (any, error) { return []string{}, nil },
+			}, ServeOptions{})
+		}),
+	)
+	got := host.(*chordHost).UndeclaredRegistries()
+	if want := []UndeclaredRegistry{{Name: "app.names", Version: 3}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("undeclaredRegistries = %v, want %v", got, want)
+	}
+	must(t, host.Close(background))
+}

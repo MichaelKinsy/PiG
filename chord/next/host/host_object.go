@@ -368,6 +368,14 @@ func (o *chordObject) refState() *RefState {
 // state is the object's state as its references show it (Pi's `state` getter).
 func (o *chordObject) state() *RefState { return o.refState() }
 
+// Activating is whether an activation is under way: waiting for its previous instance's teardown, or activating and
+// showing `loading` (its factory, its natives' opens, a dependency still loading); a parked wait (`failed { waiting }`)
+// is not.
+func (o *chordObject) Activating() bool {
+	st := o.phase
+	return st.kind == objectWaiting || (st.kind == objectActivating && st.shown.Kind == RefStateLoading)
+}
+
 // hydrated is whether its state members have values: once live (a local object stays live until it ends).
 func (o *chordObject) hydrated() bool { return o.phase.kind == objectLive }
 

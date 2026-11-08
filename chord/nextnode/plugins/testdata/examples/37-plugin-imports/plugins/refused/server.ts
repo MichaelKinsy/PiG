@@ -2,7 +2,7 @@
 // A script is evaluated with no module identity: no `import.meta` (a file of the plugin is read through `pluginFile`),
 // no literal dynamic `import()`; and base code is reached through a host package, not by its path.
 
-import { defineFacet } from "@earendil-works/chord/next";
+import { defineFacet } from "@earendil-works/chord";
 import app from "../../app/index.ts";
 
 export default defineFacet(() => {

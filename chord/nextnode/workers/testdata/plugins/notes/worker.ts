@@ -1,6 +1,6 @@
 // Fixture plugin (slice 10): the worker facet, serving `Notes` at the worker's address with the label of `label.ts`.
 
-import { constant, defineFacet, hostKind, remote, str } from "@earendil-works/chord/next";
+import { constant, defineFacet, hostKind, remote, str } from "@earendil-works/chord";
 import { label } from "./label.ts";
 
 const Session = hostKind("session", { id: str() });
