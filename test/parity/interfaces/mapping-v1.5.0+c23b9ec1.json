@@ -34422,7 +34422,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -34444,7 +34444,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -34464,6 +34464,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -34484,6 +34485,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -34491,7 +34493,7 @@
       "id": "pkg:ai/.#ToolCallArgumentsStream::property:finish",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e0474332f3d836d10bacaf8fd26d598d6e61d1995f1728e05c97850fa57ca050",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -34504,14 +34506,14 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
       "id": "pkg:ai/.#ToolCallArgumentsStream::property:finish::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3fc6833bd40efb792cf24d7bacb5e571605dd8e673d6c7d41ad0856f5a5aba75",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -34524,7 +34526,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -34911,8 +34913,8 @@
       ],
       "evidence": [
         "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream",
-        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript",
-        "test:ai/transcript_resolve_equivalence_test.go#TestResolveTranscriptToolsMatchesTheCopyingReference"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports",
+        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript"
       ]
     },
     {
@@ -46101,7 +46103,7 @@
       "id": "pkg:ai/api/openai-responses-shared#getResponsesToolSupport",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b024d3699bbe3b5ba908f49264e9044519f9b3e709f0e266983c70daad4eab97",
-      "rationale": "Derived by the interface gap detector: getResponsesToolSupport is Go ai/openai_responses.go#GetResponsesToolSupport (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getResponsesToolSupport is Go ai/openai_responses.go#GetResponsesToolSupport (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/openai_responses.go#GetResponsesToolSupport"
       ],
@@ -46114,14 +46116,14 @@
         "call:ai/openai_responses.go#GetResponsesToolSupport"
       ],
       "evidence": [
-        "reach:ai/openai_responses.go#GetResponsesToolSupport"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports"
       ]
     },
     {
       "id": "pkg:ai/api/openai-responses-shared#getResponsesToolSupport::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:018a5dea1e84eedaa8cbff81c6e0750932dc155ff3a527be1d4a64d096b28cca",
-      "rationale": "Derived by the interface gap detector: getResponsesToolSupport::call:0 is Go ai/openai_responses.go#GetResponsesToolSupport (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getResponsesToolSupport::call:0 is Go ai/openai_responses.go#GetResponsesToolSupport (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/openai_responses.go#GetResponsesToolSupport"
       ],
@@ -46134,7 +46136,7 @@
         "call:ai/openai_responses.go#GetResponsesToolSupport"
       ],
       "evidence": [
-        "reach:ai/openai_responses.go#GetResponsesToolSupport"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports"
       ]
     },
     {
@@ -48802,7 +48804,7 @@
       "id": "pkg:ai/api/transform-messages#SplitErrorToolResult",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0bee1544969169fdc88e2fdf13498fe1014cb45530b657ac4cf921948915679e",
-      "rationale": "Derived by the interface gap detector: SplitErrorToolResult is Go ai/transform_messages.go#SplitErrorToolResult (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SplitErrorToolResult is Go ai/transform_messages.go#SplitErrorToolResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResult"
       ],
@@ -48815,14 +48817,14 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "reach:ai/anthropic.go#anthConvertMessagesDetailed"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#SplitErrorToolResult::property:caption",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fdb691e5b562ee12d9f9393c9969df5770741ce19cdc0cac077be8dd0ca1792e",
-      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:caption is Go ai/transform_messages.go#SplitErrorToolResult.Caption (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:caption is Go ai/transform_messages.go#SplitErrorToolResult.Caption (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResult.Caption"
       ],
@@ -48835,14 +48837,14 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "reach:ai/anthropic.go#anthConvertMessagesDetailed"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#SplitErrorToolResult::property:content",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2fbfcf8eedda04bd4e5ed8866dd231af07ace38f5e2695f1972ce0e2e10cd386",
-      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:content is Go ai/transform_messages.go#SplitErrorToolResult.Content (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:content is Go ai/transform_messages.go#SplitErrorToolResult.Content (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResult.Content"
       ],
@@ -48855,14 +48857,14 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "reach:ai/anthropic.go#anthConvertMessagesDetailed"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#SplitErrorToolResult::property:images",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:91b62dfa13a84d8b5132065ce4fadcb383ed46330b779d68362780629eefdd2c",
-      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:images is Go ai/transform_messages.go#SplitErrorToolResult.Images (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SplitErrorToolResult::property:images is Go ai/transform_messages.go#SplitErrorToolResult.Images (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResult.Images"
       ],
@@ -48875,14 +48877,14 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "reach:ai/anthropic.go#anthConvertMessagesDetailed"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#splitErrorToolResultImages",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cfd0c00d7da8c98697528f95ac240316a17d94e5217222fc713cd9c2b3a31fca",
-      "rationale": "Derived by the interface gap detector: splitErrorToolResultImages is Go ai/transform_messages.go#SplitErrorToolResultImages (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: splitErrorToolResultImages is Go ai/transform_messages.go#SplitErrorToolResultImages (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResultImages"
       ],
@@ -48895,14 +48897,14 @@
         "call:ai/transform_messages.go#SplitErrorToolResultImages"
       ],
       "evidence": [
-        "reach:ai/transform_messages.go#SplitErrorToolResultImages"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
       "id": "pkg:ai/api/transform-messages#splitErrorToolResultImages::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:06800dc661dd1cdea93b0bd031d5e79510c4daf853185240833cdeb6f938f318",
-      "rationale": "Derived by the interface gap detector: splitErrorToolResultImages::call:0 is Go ai/transform_messages.go#SplitErrorToolResultImages (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: splitErrorToolResultImages::call:0 is Go ai/transform_messages.go#SplitErrorToolResultImages (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/transform_messages.go#SplitErrorToolResultImages"
       ],
@@ -48915,7 +48917,7 @@
         "call:ai/transform_messages.go#SplitErrorToolResultImages"
       ],
       "evidence": [
-        "reach:ai/transform_messages.go#SplitErrorToolResultImages"
+        "test:ai/proof_core_test.go#TestSplitErrorToolResultImagesSplitsOnlyErrorResultsThatHoldImages"
       ]
     },
     {
@@ -80707,7 +80709,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -80729,7 +80731,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -80749,6 +80751,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -80769,6 +80772,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -80776,7 +80780,7 @@
       "id": "pkg:ai/compat#ToolCallArgumentsStream::property:finish",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e0474332f3d836d10bacaf8fd26d598d6e61d1995f1728e05c97850fa57ca050",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -80789,14 +80793,14 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
       "id": "pkg:ai/compat#ToolCallArgumentsStream::property:finish::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3fc6833bd40efb792cf24d7bacb5e571605dd8e673d6c7d41ad0856f5a5aba75",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -80809,7 +80813,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -81196,8 +81200,8 @@
       ],
       "evidence": [
         "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream",
-        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript",
-        "test:ai/transcript_resolve_equivalence_test.go#TestResolveTranscriptToolsMatchesTheCopyingReference"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports",
+        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript"
       ]
     },
     {
@@ -101710,7 +101714,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -101732,7 +101736,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -101752,6 +101756,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -101772,6 +101777,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments",
         "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
@@ -101779,7 +101785,7 @@
       "id": "pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:finish",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e0474332f3d836d10bacaf8fd26d598d6e61d1995f1728e05c97850fa57ca050",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -101792,14 +101798,14 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
       "id": "pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:finish::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3fc6833bd40efb792cf24d7bacb5e571605dd8e673d6c7d41ad0856f5a5aba75",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:finish::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
@@ -101812,7 +101818,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
+        "test:ai/proof_core_test.go#TestToolCallArgumentsStreamFinishParsesTheWholeTextAndReportsMalformedArguments"
       ]
     },
     {
@@ -102901,8 +102907,8 @@
       ],
       "evidence": [
         "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream",
-        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript",
-        "test:ai/transcript_resolve_equivalence_test.go#TestResolveTranscriptToolsMatchesTheCopyingReference"
+        "test:ai/proof_core_test.go#TestGetResponsesToolSupportFollowsWhatTheTransportSupports",
+        "test:ai/transcript_messages_declared_test.go#TestResolveTranscriptToolsOverACustomRoleTranscript"
       ]
     },
     {
@@ -182005,6 +182011,7 @@
       ],
       "evidence": [
         "test:tui/keybinding_hints_oracle_test.go#TestKeybindingHintsMatchPi",
+        "test:coding/extension/proof_core_test.go#TestKeybindingHintsOfEveryRenderOptionFormatTheHostKeys",
         "test:tui/tree_label_key_hints_test.go#TestTreeLabelHintsResolveConfiguredKeys"
       ]
     },
@@ -182026,6 +182033,7 @@
       ],
       "evidence": [
         "test:tui/keybinding_hints_oracle_test.go#TestKeybindingHintsMatchPi",
+        "test:coding/extension/proof_core_test.go#TestKeybindingHintsOfEveryRenderOptionFormatTheHostKeys",
         "test:tui/tree_label_key_hints_test.go#TestTreeLabelHintsResolveConfiguredKeys"
       ]
     },
@@ -182047,6 +182055,7 @@
       ],
       "evidence": [
         "test:tui/keybinding_hints_oracle_test.go#TestKeybindingHintsMatchPi",
+        "test:coding/extension/proof_core_test.go#TestKeybindingHintsOfEveryRenderOptionFormatTheHostKeys",
         "test:tui/keybinding_hints_test.go#TestActionKeyTextJoinsBoundKeysWithoutCapitalizing"
       ]
     },
@@ -182068,6 +182077,7 @@
       ],
       "evidence": [
         "test:tui/keybinding_hints_oracle_test.go#TestKeybindingHintsMatchPi",
+        "test:coding/extension/proof_core_test.go#TestKeybindingHintsOfEveryRenderOptionFormatTheHostKeys",
         "test:tui/keybinding_hints_test.go#TestActionKeyTextJoinsBoundKeysWithoutCapitalizing"
       ]
     },
@@ -302003,7 +302013,7 @@
       "id": "pkg:tui/.#TuiAltScreen::property:%5BSymbol.VIEWPORT_TUI%5D",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ba15dd02339a17c5b56d26db293b3be608f50675304afb31dc6769537d3aa3c5",
-      "rationale": "[VIEWPORT_TUI] is a Symbol.for brand (tui.ts:484, tui-alt-screen.ts:204) that isViewportTUI reads (tui.ts:491) to tell the alt-screen renderer from the main-screen one. A Go value has no Symbol-keyed members; PiG answers the same question by ViewportTUI interface membership in tui.IsViewportTUI (tui/tui_alt_screen.go:57), the language-mechanics case AGENTS.md lists (no Symbol.for). Designed out with that citation.",
+      "rationale": "[VIEWPORT_TUI] is a Symbol.for brand (tui.ts:484, tui-alt-screen.ts:204) that isViewportTUI reads (tui.ts:491) to tell the alt-screen renderer from the main-screen one. A Go value has no Symbol-keyed members; PiG answers the same question by ViewportTUI interface membership in tui.IsViewportTUI (tui/tui_alt_screen.go:57), the language-mechanics case AGENTS.md lists (no Symbol.for). Designed out with that citation. Intention check (probe: read Pi tui.ts:501-509 and tui-alt-screen.ts:205, where the brand only answers isViewportTUI; Go's interface membership gives the same answer, pinned by the tui alt-screen tests).",
       "pigTargets": [
         "tui/tui_alt_screen.go#IsViewportTUI"
       ]
@@ -306072,7 +306082,7 @@
       "id": "pkg:tui/.#ViewportTUI::property:%5BSymbol.VIEWPORT_TUI%5D",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ba15dd02339a17c5b56d26db293b3be608f50675304afb31dc6769537d3aa3c5",
-      "rationale": "[VIEWPORT_TUI] is a Symbol.for brand (tui.ts:484, tui-alt-screen.ts:204) that isViewportTUI reads (tui.ts:491) to tell the alt-screen renderer from the main-screen one. A Go value has no Symbol-keyed members; PiG answers the same question by ViewportTUI interface membership in tui.IsViewportTUI (tui/tui_alt_screen.go:57), the language-mechanics case AGENTS.md lists (no Symbol.for). Designed out with that citation.",
+      "rationale": "[VIEWPORT_TUI] is a Symbol.for brand (tui.ts:484, tui-alt-screen.ts:204) that isViewportTUI reads (tui.ts:491) to tell the alt-screen renderer from the main-screen one. A Go value has no Symbol-keyed members; PiG answers the same question by ViewportTUI interface membership in tui.IsViewportTUI (tui/tui_alt_screen.go:57), the language-mechanics case AGENTS.md lists (no Symbol.for). Designed out with that citation. Intention check (probe: read Pi tui.ts:501-509 and tui-alt-screen.ts:205, where the brand only answers isViewportTUI; Go's interface membership gives the same answer, pinned by the tui alt-screen tests).",
       "pigTargets": [
         "tui/tui_alt_screen.go#IsViewportTUI"
       ]
