@@ -1,21 +1,21 @@
 # Behavior family: interactive-rendering
 # Surface: Mermaid diagrams in assistant markdown (mermaid.ts transformer +
-# markdown-transform.ts application + grok-mermaid render engine). The faux
+# markdown-transform.ts application + lovely-mermaid render engine). The faux
 # provider returns a ```mermaid flowchart block; pi and pig both replace it with
 # the same Unicode box-drawing diagram in the interactive TUI.
 #
 # Upstream evidence (pi v0.84.0):
 #   createMermaidMarkdownTransformer (mermaid.ts) lexes the assistant markdown,
-#   finds the ```mermaid code token, calls grok-mermaid render(), and rewrites it
+#   finds the ```mermaid code token, calls lovely-mermaid render(), and rewrites it
 #   into codeSpan lines. The asserted crop contains the rendered node labels
 #   ("Start"/"End") and box-drawing glyphs, exercising the transformer, the
 #   markdown-transform application seam, and the render engine: not just startup.
 #
 #   ANSI is stripped by output_normalized_equal, so pig's theme colours and pi's
 #   differ harmlessly; the plain box-drawing art is byte-identical because pig's
-#   engine is a faithful port of the same grok-mermaid@0.2.2 pi bundles. The
-#   internal/mermaid engine differential (71 sources) and the internal/codingagent
-#   transformer differential (29 cases vs pi's real transformer) prove the
+#   engine is a faithful port of the same lovely-mermaid@0.3.3 pi bundles. The
+#   internal/mermaid engine differential (the render corpus and mutated sources) and the internal/codingagent
+#   transformer differential (its corpus vs pi's real transformer) prove the
 #   byte-faithfulness broadly; this scenario proves the same rendering fires in a
 #   live interactive session identically to pi.
 
