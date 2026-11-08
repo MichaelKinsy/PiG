@@ -65,6 +65,7 @@ func CreateMarkdownTransform(messageType MessageType, isStreaming bool, transfor
 // applyTransformer keeps the current text when the transformer panics (pi: `catch {}`).
 func applyTransformer(transformer MarkdownTransformer, markdown string, context MarkdownTransformContext) (result string) {
 	result = markdown
+	// upstream: apps/p2/src/runtime/tui-renderers.ts:createMarkdownTransform
 	defer func() { _ = recover() }()
 	return transformer(markdown, context)
 }

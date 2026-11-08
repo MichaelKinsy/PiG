@@ -229,6 +229,7 @@ func (c *ToolExecutionComponent) Render(width int) []string {
 // callOf runs renderCall; a panic is the TypeScript's caught throw (nil).
 func (c *ToolExecutionComponent) callOf() (call tui.Component) {
 	defer func() {
+		// upstream: apps/p2/src/tui/components/tool-execution.ts:renderCall
 		if recover() != nil {
 			c.callRendererComponent, call = nil, nil
 		}
@@ -241,6 +242,7 @@ func (c *ToolExecutionComponent) callOf() (call tui.Component) {
 // resultOf runs renderResult; a panic falls back to the generic result.
 func (c *ToolExecutionComponent) resultOf(result *tools.ToolResultView) (component tui.Component) {
 	defer func() {
+		// upstream: apps/p2/src/tui/components/tool-execution.ts:renderResult
 		if recover() != nil {
 			c.resultRendererComponent = nil
 			component = c.createResultFallback(result)
