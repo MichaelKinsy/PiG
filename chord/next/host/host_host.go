@@ -1381,6 +1381,7 @@ func (h *chordHost) startTicking() {
 		late := float64(now-last) - float64(interval)/float64(time.Millisecond)
 		var paused int64
 		if late >= float64(interval)/float64(time.Millisecond) {
+			//portlint:allow numbers late is the difference of two finite millisecond counters, so the conversion is of a finite number; truncation to whole milliseconds is the host clock's resolution
 			paused = int64(late)
 		}
 		last = now
