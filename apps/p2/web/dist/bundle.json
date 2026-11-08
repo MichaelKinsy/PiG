@@ -1,17 +1,22 @@
 {
-	"version": "c1ab0293cdff6127be977af786cb4d7b47667dee990fdd7198780f8dd090834a",
-	"script": "app-QM3RQZUN.js",
-	"style": "app-LW6MBZOS.css",
+	"version": "ee3260a399fa59541931ed84d7c97c455121aa8e8040e6ff257628dbfd61674d",
+	"script": "app-B6ENQ4RV.js",
+	"style": "app-SEMZFZAE.css",
 	"plugins": [
 		"artifacts",
 		"chat",
+		"coding-tools",
+		"devices",
+		"discord",
 		"envs",
 		"login",
 		"logs",
+		"ports",
 		"send-file",
 		"sessions",
 		"sharing",
 		"subagents",
+		"terminals",
 		"web-shell"
 	],
 	"files": [
@@ -46,28 +51,34 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-LW6MBZOS.css",
-			"type": "text/css; charset=utf-8",
-			"size": 343524,
-			"sha256": "dc7c47f6bf5d38291f40585606175b0047fa14aadabd0badbeb9fab5ccae41df"
-		},
-		{
-			"name": "app-LW6MBZOS.css.map",
-			"type": "application/json",
-			"size": 617673,
-			"sha256": "2476317c09af490720fed4a31bd27f32943b5e5b970dbc338686fa8ed94462c3"
-		},
-		{
-			"name": "app-QM3RQZUN.js",
+			"name": "app-B6ENQ4RV.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1132690,
-			"sha256": "ed0517016825f941d91b7eeb5682ca238b0ff816e9918ab831f55e49d9424ea7"
+			"size": 1215324,
+			"sha256": "a1423461942af294196006d7b50797ad2d4301a9c0df138dc4d7da0c83ab5485"
 		},
 		{
-			"name": "app-QM3RQZUN.js.map",
+			"name": "app-B6ENQ4RV.js.map",
 			"type": "application/json",
-			"size": 5443389,
-			"sha256": "56d3d40e9d1d22cabdbd921fc3277f2cb2f387e9800ea27498e2baaa51a251a9"
+			"size": 5741709,
+			"sha256": "1848bcbc975b6c60b34a48c774991ec461a7460287bb522db33d5e35ed8cd463"
+		},
+		{
+			"name": "app-SEMZFZAE.css",
+			"type": "text/css; charset=utf-8",
+			"size": 344527,
+			"sha256": "bfc7dd622abd6c264a387702e682f6713ec8624c613d8d646cc597ca8c88b01c"
+		},
+		{
+			"name": "app-SEMZFZAE.css.map",
+			"type": "application/json",
+			"size": 620045,
+			"sha256": "3041b1f90f9c6f78caa0992dd9f958d34169910ec74620b81be69b2b6a4e34c6"
+		},
+		{
+			"name": "ghostty-vt-BNEKZYKQ.wasm",
+			"type": "application/wasm",
+			"size": 702329,
+			"sha256": "ba4dfb2cdb5dfb1c9924552983e04af18d36a9b98de41a6aef74bed6d0202db2"
 		}
 	],
 	"brand": {
@@ -76,7 +87,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "f977f3b73b74c9a36f605bb15ae484d1f7efaf0838f99a0bff0d2c6e3d57986a",
+		"upstreamVersion": "4583c37c53c9b07cba794fe932cb1e321b41799888aaf379455edba5dbdd8097",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",
