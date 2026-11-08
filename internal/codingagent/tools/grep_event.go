@@ -242,8 +242,8 @@ func (s *grepScanner) object(member func(key []byte) bool) bool {
 		}
 		key := name.raw
 		if name.escaped {
-			// A name with an escape is none of the names that are looked for.
-			key = nil
+			// Rare: rg writes plain names, but an escaped one still names the same member.
+			key = unescapeJSONString(nil, key)
 		}
 		s.skipSpace()
 		if s.i >= len(s.b) || s.b[s.i] != ':' {

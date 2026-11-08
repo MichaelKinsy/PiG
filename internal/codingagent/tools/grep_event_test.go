@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -95,6 +96,7 @@ var grepEventLines = []string{
 	`{"type":"match","data":{"path":{"text":"a"},"lines":{"text":"x"},"line_number":1,"extra":[1,{"k":[true,false,null,"s",-1.5e3]},[]],"more":{}}}`,
 	`{"type":"match","data":{"path":{"text":"a"},"lines":{"text":"x"},"line_number":1,"extra":[1,]}}`,
 	`{"type":"match","data":{"path":{"text":"a"},"lines":{"text":"x"},"line_number":1,"extra":{"a":1,}}}`,
+	`{"t\u0079pe":"match","d\u0061ta":{"p\u0061th":{"t\u0065xt":"a"},"line_number":1}}`,
 	`{"type":7,"data":{}}`,
 	`{"type":"match","data":[]}`,
 	`[]`,
@@ -157,7 +159,18 @@ func FuzzGrepEventParserMatchesEncodingJSON(f *testing.F) {
 		if !bytes.Equal([]byte(strings.ToValidUTF8(line, "\uFFFD")), []byte(line)) {
 			t.Skip()
 		}
+		// encoding/json matches a name without regard to case, as JSON.parse's property access never does: the scanner is exact, so a
+		// name that only folds to one of rg's names has no reference.
+		for _, key := range grepEventKeyPattern.FindAllStringSubmatch(line, -1) {
+			for _, name := range []string{"type", "data", "path", "lines", "text", "bytes", "line_number"} {
+				if key[1] != name && strings.EqualFold(key[1], name) {
+					t.Skip()
+				}
+			}
+		}
 		var parser grepEventParser
 		checkGrepEvent(t, &parser, line)
 	})
 }
+
+var grepEventKeyPattern = regexp.MustCompile(`"([^"\\]*)"\s*:`)
