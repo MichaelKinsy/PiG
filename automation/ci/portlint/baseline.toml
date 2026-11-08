@@ -141,7 +141,7 @@ snippet = "_, err = refresh.Publish(ModelsPublication{Persist: &ModelsStoreEntry
 check = "clock"
 file = "ai/models_runtime_stream.go"
 func = "pushModelsSetupError"
-snippet = "message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: time.Now().UnixMilli()}"
+snippet = "message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: reason, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: time.Now().UnixMilli()}"
 
 [[hit]]
 check = "clock"
@@ -4851,13 +4851,13 @@ count = 2
 [[hit]]
 check = "utf16units"
 file = "internal/codingagent/mermaid_transform.go"
-func = "transformMermaidBlocks"
+func = "ReplaceMermaidFences"
 snippet = "out.WriteString(markdown[offset:fence.start])"
 
 [[hit]]
 check = "utf16units"
 file = "internal/codingagent/mermaid_transform.go"
-func = "transformMermaidBlocks"
+func = "ReplaceMermaidFences"
 snippet = "out.WriteString(markdown[offset:])"
 
 [[hit]]
@@ -5784,12 +5784,6 @@ check = "ctxbackground"
 file = "coding/model.go"
 func = "buildLeafProviderForEntry"
 snippet = "if apiKey, err = resolveAPIKey(context.Background()); err != nil {"
-
-[[hit]]
-check = "ctxbackground"
-file = "coding/model_runtime_typed.go"
-func = "ModelRuntime.failedStream"
-snippet = "runtime.fail(context.Background(), outer, model, err)"
 
 [[hit]]
 check = "ctxbackground"

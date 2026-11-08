@@ -127,6 +127,13 @@ func (p *mermaidPlainText) forget() {
 
 // transformMermaidBlocks selects direct document code tokens, as Pi mermaid.ts:72-76 does with Marked. Non-code containers retain their raw text; only the selected fence bodies reach the diagram renderer.
 func transformMermaidBlocks(markdown string, context extension.MarkdownTransformContext, theme *tui.Theme) string {
+	return ReplaceMermaidFences(markdown, func(raw, text string) string {
+		return renderMermaidToken(raw, text, context, theme)
+	})
+}
+
+// ReplaceMermaidFences replaces every top-level Mermaid code block of markdown (Marked's token boundaries) with replace(raw, text), where raw is the block's source and text its fence body with the fence indent removed. Line endings are normalized first, as Marked's lexer does; markdown without a Mermaid block is returned normalized.
+func ReplaceMermaidFences(markdown string, replace func(raw, text string) string) string {
 	// Marked's lexer normalizes line endings before producing raw tokens.
 	markdown = strings.ReplaceAll(strings.ReplaceAll(markdown, "\r\n", "\n"), "\r", "\n")
 	// A fence is selected only when its info string's first word equals "mermaid" ignoring case (isMermaidInfo), so text with no such
@@ -154,7 +161,7 @@ func transformMermaidBlocks(markdown string, context extension.MarkdownTransform
 			}
 			body = strings.Join(lines, "\n")
 		}
-		out.WriteString(renderMermaidToken(markdown[fence.start:fence.end], body, context, theme))
+		out.WriteString(replace(markdown[fence.start:fence.end], body))
 		offset = fence.end
 	}
 	out.WriteString(markdown[offset:])

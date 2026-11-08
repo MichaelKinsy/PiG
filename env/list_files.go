@@ -113,6 +113,10 @@ var (
 	_ durableenv.ExecutionEnv = (*LocalExecutionEnv)(nil)
 )
 
+// Connection is the daemon connection the environment's operations go through, which reports the machine's system; nil
+// without one.
+func (e *LocalExecutionEnv) Connection() *Connection { return e.connection }
+
 // NewLocalExecutionEnv returns the environment of options.
 func NewLocalExecutionEnv(options LocalExecutionEnvOptions) *LocalExecutionEnv {
 	local := &LocalExecutionEnv{NodeExecutionEnv: node.NewNodeExecutionEnv(options.NodeExecutionEnvOptions), connection: options.Connection}
