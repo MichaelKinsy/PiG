@@ -6,7 +6,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/chord/next/telemetryingest"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -25,11 +24,12 @@ func TestTheAppsHookStampsTheServerHostsOwnSpans(t *testing.T) {
 		}
 	})
 	_, err := s.app.Host.Root(func(ctx host.Ctx) (any, error) {
-		page, err := ctx.Get(telemetryingest.PageTelemetry, delta.NewJsonObject(0), host.GetOptions{})
+		sessions, err := ctx.Get(Sessions, delta.NewJsonObject(0), host.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		return page.Call("ingest", delta.JsonObjectOf("spans", []any{}), ctx)
+		// `verify` is a traced method call of the kit's sessions object, made as the owner: its `chord.method` span carries the hook's attributes.
+		return sessions.Call("verify", "no-such-token", ctx)
 	}, background, host.RootOptions{Principal: testOwner})
 	if err != nil {
 		t.Fatal(err)
