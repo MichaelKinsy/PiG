@@ -132,6 +132,11 @@ func ValidKey(units []uint16) string { return string(utf16.Decode(units)) }
 // escaped surrogate or ill-formed UTF-8 in a name. The ordered-object readers key a repeated name on the JavaScript key (jsonopts.ReadName),
 // so on such a document they differ from the v1 walkers they replaced on purpose; TestOrderedObjectReadersMatchNode and the jsonopts name
 // table hold them to Node there. Every other document, including ill-formed UTF-8 in a value, still compares.
+//
+// Intention check (what the v1 comparison guards and whether PiG can test it for these documents): it guards that a converted reader
+// returns what the walker it replaced did, so no document changes meaning by accident. For a name JSON.parse reads differently from v1,
+// "what v1 did" is the wrong answer and the intention is "what JSON.parse does"; PiG can observe that directly, so the Node-backed
+// tables (NodeDocuments, NodeMembers) port it at the jsonopts, ai and orderedjson readers instead of leaving those documents unchecked.
 func SkipJSKeys(t *testing.T, data []byte) {
 	t.Helper()
 	d := jsontext.NewDecoder(bytes.NewReader(data), jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true))
