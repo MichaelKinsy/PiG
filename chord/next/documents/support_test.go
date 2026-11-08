@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -225,6 +226,12 @@ func (o *object) Telemetry() telemetry.TelemetryContext {
 		return o.telemetry
 	}
 	return telemetry.NoopTelemetryContext
+}
+func (o *object) Metrics() *chordtelemetry.Instruments {
+	if o.telemetry != nil {
+		return chordtelemetry.Metrics(o.telemetry.Metrics())
+	}
+	return chordtelemetry.Metrics(nil)
 }
 func (o *object) Do(work func()) { o.loop.do(work) }
 func (o *object) Now() int64     { return o.clock.Now() }

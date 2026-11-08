@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/remote/provider.ts. The provider side of one origin on a link (§3, §22, W1; decision
@@ -443,7 +444,7 @@ func (p *providerSide) hold(message *link.HoldMessage) error {
 	// Whom it acts for is decided here once (callerOf), never passed on: a relay names it only on a route link.
 	request := holdRequest{
 		Type: message.Type, Version: message.Version, Fingerprint: message.Fingerprint, Params: message.Params,
-		Address: message.Address, Trace: message.Trace,
+		Address: message.Address, Trace: message.Trace, TraceOrder: message.TraceOrder,
 	}
 	if message.Chain != nil && l.trusted {
 		request.Chain = message.Chain
@@ -574,20 +575,23 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 		scope = asRemoteOldWork(scope)
 		p.link.host.oldWork.open()
 	}
-	// The caller's span over the link: its carrier with this host's adapter (absent or unknown: the adapter's root).
-	if parent := chordtelemetry.ParentOf(message.Trace, p.link.host.telemetry); !chordtelemetry.Untraced(parent) {
-		scope = chordctx.WithTelemetry(scope, chordtelemetry.AsSpan(parent))
+	// The caller's span over the link: its carrier with this host's adapter (absent or unknown: the adapter's root), the no-op
+	// parent without one. It is the call's parent, not its scope: the handler's ctx stays the link's (Pi's `call(method, args,
+	// parent, context)`), so an untraced type's handler records nothing.
+	parent := telemetry.NoopTelemetryContext
+	if extracted := chordtelemetry.ParentOf(message.Trace, p.link.host.telemetry); !chordtelemetry.Untraced(extracted) {
+		parent = chordtelemetry.AsSpan(extracted)
 	}
 	// A link's context has no abort signal, so this is the call's own signal: no combined signal per call.
-	p.run(message.Call, call, name, args, chordctx.WithAbortSignal(scope, signal), old)
+	p.run(message.Call, call, name, args, chordctx.WithAbortSignal(scope, signal), parent, old)
 	return nil, nil
 }
 
 // run starts a call's handler, in this section and so in message order (Pi's `#run` starts it synchronously), and sends its
 // result (absent when nil) or error when it settled, unless it was aborted, released or gone meanwhile. A result that
 // cannot be encoded is sent as its error. Nobody waits for it: the reaction is a microtask of the host's loop.
-func (p *providerSide) run(id int, call *runningCall, method string, args any, ctx context.Context, old bool) {
-	result := call.served.call(method, args, ctx)
+func (p *providerSide) run(id int, call *runningCall, method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, old bool) {
+	result := call.served.call(method, args, ctx, parent)
 	result.then(p.link.host.loop(), func(value any, err error) {
 		if old {
 			p.link.host.oldWork.close()

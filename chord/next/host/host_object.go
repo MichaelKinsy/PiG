@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -341,6 +342,7 @@ func (d *objectDocuments) TransactionCancelled(cause error) {
 
 // Telemetry is the host's telemetry adapter.
 func (d *objectDocuments) Telemetry() telemetry.TelemetryContext { return d.object.host.telemetry }
+func (d *objectDocuments) Metrics() *chordtelemetry.Instruments { return d.object.host.metrics }
 
 // Store is the host's store and the object's owner name in it, when the host has one.
 func (d *objectDocuments) Store() (*store.ChordStore, string, bool) {
@@ -542,14 +544,14 @@ func (o *chordObject) retryOn(sources []retrySourceType) {
 // call calls a method of the live object for from, bound at version (an older one maps its arguments and result, Q10). While
 // an attempt activates (a reload's restart, a retry), new work waits for its outcome (the gate); old work runs on a restart's
 // open old attempt. A refusal (not live, ended, failed) rejects the result.
-func (o *chordObject) call(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
+func (o *chordObject) call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, from caller, version int) *parkedCallResult {
 	if o.phase.kind == objectActivating {
 		// Old work runs on the open old attempt (rule 2): work begun before the reload finishes on old code, and a restart's
 		// drain never waits on itself. The old attempt checks the call's version against its own contract.
 		if old := o.openOldAttempt(); old != nil && o.host.oldWork.of(ctx) {
-			return old.call(method, args, ctx, from, version)
+			return old.call(method, args, ctx, parent, from, version)
 		}
-		return o.gated(method, args, ctx, from, version)
+		return o.gated(method, args, ctx, parent, from, version)
 	}
 	live, err := o.live()
 	if err != nil {
@@ -557,7 +559,7 @@ func (o *chordObject) call(method string, args any, ctx context.Context, from ca
 		result.settle(nil, err)
 		return result
 	}
-	return live.call(method, args, ctx, from, version)
+	return live.call(method, args, ctx, parent, from, version)
 }
 
 // gated is a call that waits while an attempt activates until the object is live, failed or ended (`live` then calls or
@@ -566,7 +568,7 @@ func (o *chordObject) call(method string, args any, ctx context.Context, from ca
 // a restart's old attempt is open, so its consumer sees `live` and sends calls that arrive here: new work waits for the new
 // attempt, never `not_ready`. Old work that found no open old attempt (else it was routed in `call`) waits as old work: cut at
 // once when it cycles through its own drain.
-func (o *chordObject) gated(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
+func (o *chordObject) gated(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, from caller, version int) *parkedCallResult {
 	result := newParkedCallResult()
 	loop := o.host.loop()
 	o.host.waitAsOldWork(o.openerGate(ctx), o, o.served.contract, ctx).then(func(_ struct{}, err error) {
@@ -579,7 +581,7 @@ func (o *chordObject) gated(method string, args any, ctx context.Context, from c
 			result.settle(nil, liveErr)
 			return
 		}
-		live.call(method, args, ctx, from, version).then(loop, result.settle)
+		live.call(method, args, ctx, parent, from, version).then(loop, result.settle)
 	})
 	return result
 }

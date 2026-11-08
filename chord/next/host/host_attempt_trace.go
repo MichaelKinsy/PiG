@@ -60,7 +60,7 @@ func (a *attempt) parkedOn(shown *RefState) {
 	}
 	cause := "loading"
 	if shown.Kind == RefStateFailed {
-		cause = chordtelemetry.Capped(shown.Cause.Error.Error())
+		cause = chordtelemetry.Message(shown.Cause.Error.Error())
 	}
 	activation.Span().AddEvent("chord.park", telemetry.SpanAttributes{telemetry.Attr("cause", cause)})
 	activation.SetOutcome("parked")
@@ -71,9 +71,7 @@ func (a *attempt) parkEnded() {
 	if a.parkedAt.IsZero() {
 		return
 	}
-	host := a.object.host
-	chordtelemetry.Metrics(host.telemetry.Metrics()).Histogram("chord.park.duration").
-		Record(float64(time.Since(a.parkedAt))/float64(time.Millisecond), nil, chordctx.Telemetry(a.opening))
+	a.object.host.metrics.Histogram("chord.park.duration").Record(float64(time.Since(a.parkedAt))/float64(time.Millisecond), nil, nil)
 	a.parkedAt = time.Time{}
 }
 
