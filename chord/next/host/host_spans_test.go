@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -314,5 +315,108 @@ func TestCtxTraceGivesFnTheHandlersOwnCtxWhenNothingRecords(t *testing.T) {
 	}
 	if inner != outer {
 		t.Errorf("fn got another ctx than the handler's")
+	}
+}
+
+// --- natives (native.test.ts "spans (slice 9)") ---------------------------------------------------------------------------------
+
+func allSettled(recorder *telemetry.InMemoryTelemetryContext, names ...string) bool {
+	for _, name := range names {
+		found := spansNamed(recorder, name)
+		if len(found) == 0 {
+			return false
+		}
+		for _, span := range found {
+			if !span.Settled {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func TestNativeSpansOpenEachNativeInAChordOpenSpanOfItsAttemptsAndCloseItInAChordCloseRoot(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	host, _ := loaded(t, serveRes(func(_ float64, self Self) {
+		self.Open(func(opening context.Context) (any, error) {
+			_ = chordctx.Telemetry(opening).StartSpan(telemetry.SpanOptions{Name: "app.connect"}, func(telemetry.TelemetrySpan) error { return nil })
+			return 1, nil
+		}, func(any, NativeCloseReason, context.Context) error { return nil })
+		self.Open(func(context.Context) (any, error) { return nil, errors.New("no socket") },
+			func(any, NativeCloseReason, context.Context) error { return nil })
+	}), loadedOptions{Telemetry: recorder})
+	ready := 50 * time.Millisecond
+	if _, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: &ready}); err == nil {
+		t.Fatal("the get succeeded")
+	}
+	scopeEventually(t, "the spans to settle", func() bool { return allSettled(recorder, "chord.open", "chord.close") })
+	activation := spanWhere(t, recorder, "chord.activate", nil)
+	opens := spansNamed(recorder, "chord.open")
+	if len(opens) < 2 {
+		t.Fatalf("opens = %d, want the two natives'", len(opens))
+	}
+	for index, want := range []struct {
+		native float64
+		status telemetry.SpanStatusCode
+	}{{1, "ok"}, {2, "error"}} {
+		native, _ := opens[index].Attributes.Get("native")
+		if native != want.native || !childOf(opens[index], activation) || opens[index].Status.Status != want.status {
+			t.Errorf("open %d: native %v, child of the activation %v, status %v; want native %v, child, %v", index, native, childOf(opens[index], activation), opens[index].Status.Status, want.native, want.status)
+		}
+	}
+	if status := opens[1].Status; status.Error == nil || status.Error.Name != "open_failed" || status.Error.Message != "no socket" {
+		t.Errorf("the failed open's status = %+v", status)
+	}
+	if connect := spanWhere(t, recorder, "app.connect", nil); !childOf(connect, opens[0]) {
+		t.Errorf("the opener's span is not a child of chord.open")
+	}
+	closed := spanWhere(t, recorder, "chord.close", nil)
+	if closed.ParentID != nil {
+		t.Errorf("chord.close has a parent")
+	}
+	spanAttributesAre(t, closed, telemetry.SpanAttributes{
+		telemetry.Attr("chord.host", "client"), telemetry.Attr("type", "app.res"), telemetry.Attr("native", float64(1)), telemetry.Attr("reason", "end"),
+	})
+	closeHosts(t, host)
+}
+
+func TestNativeSpansKeepAnOpenItsAttemptAbandonedCancelledOk(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	opening := make(chan struct{})
+	host, _ := loaded(t, serveRes(func(_ float64, self Self) {
+		self.Open(func(ctx context.Context) (any, error) {
+			close(opening)
+			<-ctx.Done()
+			return nil, context.Cause(ctx)
+		}, func(any, NativeCloseReason, context.Context) error { return nil })
+	}), loadedOptions{Telemetry: recorder, ReadyTimeout: new(30 * time.Millisecond)})
+	if _, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(100 * time.Millisecond)}); err == nil {
+		t.Fatal("the get succeeded")
+	}
+	scopeEventually(t, "the open to settle", func() bool { return allSettled(recorder, "chord.open") })
+	open := spanWhere(t, recorder, "chord.open", nil)
+	if !open.Settled || open.Status.Status != telemetry.SpanStatusCodeOK || open.Status.Error != nil {
+		t.Errorf("open: settled %v, status %+v, want settled and ok", open.Settled, open.Status)
+	}
+	closeHosts(t, host)
+}
+
+func TestNativeSpansMarkACloseThatFailedFailed(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	host, _ := loaded(t, serveRes(func(_ float64, self Self) {
+		self.Open(func(context.Context) (any, error) { return 1, nil },
+			func(any, NativeCloseReason, context.Context) error { return errors.New("stuck") })
+	}), loadedOptions{Telemetry: recorder})
+	if _, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	_ = host.Close(background)
+	scopeEventually(t, "the close to settle", func() bool { return allSettled(recorder, "chord.close") })
+	closed := spanWhere(t, recorder, "chord.close", nil)
+	if reason, _ := closed.Attributes.Get("reason"); reason != "close" {
+		t.Errorf("reason = %v, want close", reason)
+	}
+	if status := closed.Status; status.Error == nil || status.Error.Name != "close_failed" || status.Error.Message != "stuck" {
+		t.Errorf("status = %+v, want error close_failed: stuck", status)
 	}
 }
