@@ -3990,6 +3990,158 @@ Evidence: `TestLiveQuery*` (`chord/next/host/host_live_query_test.go`), `TestQue
 
 Parity allowance: Go limits are int64: Pi's fractional and absent limits cannot be written.
 
+## D460 The app kit's facets are Go core facets beside the plugins' Node host
+
+What: Pi loads the kit's facets and the plugins into one host. PiG's plugins run in a Node subprocess (`docs/plan/chord-plugins-node-evaluator.md`), so `StartServer`/`StartWorker` load the kit's facets (info, sessions, owner, pairing, files, themes, translations, telemetry ingest, the HTTP facet) as Go core facets on the server's Go host (a relay without an address on a worker); the plugins' `NodeHost` is a child link (`Accept` on the server, `WorkerPlugins.Load` on a worker). The local types plugins use (`AppInfo`, `Sessions`, `WorkerInfo`) reach the Go objects through `plugins.BridgedFacet`. `HostData` must be served at the worker's address, which the NodeHost serves, so it is a JavaScript core facet (`host_data.mjs`, written per start with the server's principal and a secret token) forwarding `exportTo` to the bridged Go local `chord.app.data.export`; plugins can see the bridged type but cannot call it without the token (in Pi they cannot reach the facet at all).
+
+Why: the plugin runtime is Node; the facets are Go because the kit is a Go port. Moving them to the Node host would port the kit to JS; serving HostData from Go needs the Go relay to answer for its child's address, which a chord host does not do.
+
+Scope: `chord/nextnode/app`, `chord/nextnode/plugins` (bridge).
+
+Pi bug: Not a Pi bug.
+
+Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08, OWNER-DECISIONS #19.
+
+Remove when: the plugins' host and the kit's facets run in one process (the plugin runtime is not a subprocess), or a chord host can answer for its child's address so `HostData` needs no JavaScript module.
+
+Call-site markers: `chord/nextnode/app/app.go` (`start`), `chord/nextnode/app/worker.go` (`runWorker`), `chord/nextnode/app/data.go` (`hostDataModuleText`).
+
+Evidence: `app_test.go`, `app_workers_test.go`, `app_export_test.go`.
+
+Parity allowance: none needed beyond the evidence above.
+
+SCRUTINIZED:approved 2026-11-08
+
+## D461 `Files` and `FilesFolder` are not reachable from TypeScript plugins
+
+What: `Files` has a keyed member (`summary`), and the plugin bridge refuses contracts with keyed members, so a TS plugin cannot `get` a host's files; Go code can. The bridge could forward it only by mirroring the Go documents into a non-persisted keyed document handle of the proxy object (a JS keyed member is a document handle or a reference's keyed member; the Go reference's `Keyed.Get/Watch` exist, the proxy side does not), which means an invented key-pin protocol between two hosts; not done.
+
+Why: the plugins' proxy facets (`plugins/node/proxy.mjs`) forward state members and methods to the Go object; a JS keyed member must be a keyed document handle or a reference's keyed member, and the proxy has neither for an object on another host. Pi has the kit and the plugins in one host, so `self.get(Files, {})` works there.
+
+Scope: `chord/nextnode/app` (the Files facet), `chord/nextnode/plugins` (the bridge refuses a contract with a keyed member at start). Observable: a TypeScript plugin loses Pi's public `chord/app/files` API (`Files`, `FilesFolder`); Go code and the kit's own routes keep them. Pi's own p2 plugins call `self.get(Files, {})`; PiG's p2 lane ports them to Go, so p2 itself is not affected.
+
+Pi bug: Not a Pi bug.
+
+Owner decision: accepted for 0.8.0 by the owner (Michael Kinsy) on 2026-11-08, OWNER-DECISIONS #19: the limitation stands.
+
+Remove when: the plugin bridge forwards a contract with a keyed member (a keyed-handle proxy between hosts), or the plugins run in the kit's host.
+
+Call-site markers: `chord/nextnode/app/app.go` (`start`), `chord/nextnode/app/worker.go` (`runWorker`).
+
+Evidence: `plugins_node_bridged_keyed_test.go` (the refusal); `files_test.go` (the facet from Go).
+
+Parity allowance: none needed beyond the evidence above.
+
+SCRUTINIZED:approved 2026-11-08 (accepted limitation for 0.8.0)
+
+## D462 The server and each worker have two stores, not one
+
+What: Pi's host has one store and one commit queue. PiG has two hosts per server or worker (the Go host, the plugins' NodeHost), and a store has one writer (a singleton meta row: `last_seq`, `next_id`), so each has its own: the kit's (`kit.sqlite`, `store.sqlite` on a server) and the plugins' (`store.sqlite`, `plugins.sqlite` on a server). Nothing commits across them. Archives carry an optional `kit.archive` beside `store.archive`. A running worker's export (`PackRunning`) takes the kit's commit queue (its export's first part), then has SQLite copy the plugins' file at one instant (`VACUUM INTO` over a read-only connection, a read transaction the NodeHost's writes do not disturb) and exports the copy, so the two archives are one point; the kit's writes wait for its archive, the plugins' writes proceed meanwhile and are not in the archive. Pi holds its one store's commit queue. The copy costs the plugins' store's size in temporary space beside the archive.
+
+Archive interop, both directions (accepted incompatibilities; owner to decide whether to build a converter): PiG to Pi: Pi's `unpackEntries` refuses any entry besides the manifest, `store.archive` and `files/`, so Pi cannot import a PiG app-kit archive that has `kit.archive`. Pi to PiG: a Pi archive's single `store.archive` holds the kit's Files tables beside the plugins' records and is imported into the plugins' store; the Go Files facet reads the kit store, which stays empty, so the files arrive (`files/`) but their index does not. [INFERENCE: the second direction is read from the code, not run with a Pi-made archive.] Options if the owner wants interop: split the kit-owned tables into `kit.sqlite` on import, or export a single Pi-compatible archive.
+
+Why: the node-evaluator design (`docs/plan/chord-plugins-node-evaluator.md` §store): the Go store is an in-process engine and a store is not shared over the link; sharing one sqlite file between two engines would corrupt the id allocator.
+
+Pi bug: Not a Pi bug.
+
+Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08, OWNER-DECISIONS #19.
+
+Remove when: the plugins run in the server's (or worker's) own host process with one store, or one store file can be shared by two hosts.
+
+Call-site markers: `chord/nextnode/app/app.go` (`openServer`), `chord/nextnode/app/worker.go` (`runWorker`), `chord/nextnode/app/archive.go` (`PackRunning`).
+
+Evidence: `app_export_test.go`, `archive_upstream_test.go` (PiG round trip only), `data_export_test.go` (both stores written during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more).
+
+Parity allowance: none needed beyond the evidence above.
+
+SCRUTINIZED:approved 2026-11-08
+
+## D464 FormatNumber and FormatTime take closed option types and return errors (P1-3)
+
+What: Pi passes `Intl.NumberFormatOptions` / `Intl.DateTimeFormatOptions` through to `Intl`. Go has no ICU, so the output comes from tables generated by running the pinned Node (v24.22.1, ICU 78.3, CLDR 48) over every locale ICU has data for (`automation/gen/generate-intl-tables.mjs`, `make intl-tables`, part of `pin-bump`; `chord/next/surfaces/intl_gen.go`). The tables cover a closed set: `NumberOptions` (minimum/maximum fraction digits, 0 to 100) and `TimeOptions` (`timeStyle` short|medium, or any of hour/minute/second numeric|2-digit, with optional `hour12`): what Pi's call sites pass (none, `{timeStyle: "short"}`, `{hour: "numeric"}`) and their siblings. Anything else (time zone, zone names, calendars, eras, fractional seconds, day periods, `hourCycle`, currency/percent/compact/unit, significant digits, rounding modes, Unicode locale extensions such as `-u-nu-arab`) cannot be expressed; a Unicode extension in the language's locale returns `ErrLocale`. Both functions return `(string, error)` for what Intl throws a RangeError/TypeError for (min > max fraction digits, an option out of range, an ill-formed tag, an empty option set that would print a date, a style with fields) as `ErrOption` / `ErrLocale`; before, min > max was silently coerced. An unavailable or aliased locale resolves as Intl does (CLDR aliases, a measured exceptions table, BestAvailableLocale, then the platform default).
+
+Why: a hand table or x/text would be a different function: x/text is CLDR 32 and half-even (312 differing outputs in the review's probe, 75 with no options), and has no date patterns. The generator derives symbols, affixes, grouping (including minimumGroupingDigits), numbering system digits, hour cycle, padding and day periods from `formatToParts` and refuses to emit unless its renderer reproduces `format()` byte for byte over a corpus (942 number locales x 10 option sets x 59 values; every time locale x every shape x 24 hours x 6 minute/second pairs).
+
+Root data and aliases (RevChordIntl P3-3, P3-4): when neither a tag nor the platform's locale has data, ICU formats in its root locale. The generator observes it in child Nodes under `LANG=xx_<REGION>` and `LC_ALL=` (the process's default locale is read from the environment): the numbers equal en-US's (checked over the same corpus), the times follow the region's hour cycle (221 regions have a row of their own, the rest and no region share another) and a variable set to the empty string is the locale `und` with its own row. Compound legacy aliases (`hy-arevmda` is `hyw`, `zh-hakka` is `hak`, `zh-xiang` is `hsn`) are probed from `Intl.getCanonicalLocales` over language x variant. Not modeled: root data for a platform tag that carries a script or variant with its own cycle, and `-u-` value aliases.
+
+Scope: `chord/next/surfaces`.
+
+Pi bug: Not a Pi bug.
+
+Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08 (OWNER-DECISIONS #7, after the review's wording fixes).
+
+Remove when: Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).
+
+Call-site markers: `chord/next/surfaces/surfaces_format.go` (`FormatNumber`), `chord/next/surfaces/intl_time.go` (`FormatTime`).
+
+Evidence: `TestNumbersMatchNode`, `TestTimesMatchNode` (random corpus against a live Node, errors included; `INTL_DRIFT_CASES`, `INTL_DRIFT_SEED`), `TestFormatsNumbersLikeTheOracle`, `FuzzFormatNumber` (against an independent decimal reference), `FuzzFormatTime`, benchstat in the READY line.
+
+Parity allowance: none needed beyond the evidence above.
+
+SCRUTINIZED:approved 2026-11-08
+
+## D465 FormatTime takes a time.Time, not `Date | number | string`
+
+What: Pi's `new Date(at)` accepts a `Date`, epoch milliseconds or an ISO/date string (`new Date(string)`'s parser, with its engine-defined formats). Go takes a `time.Time`; a caller converts milliseconds (`time.UnixMilli`) or parses its own string. The zone is `time.Local` (the process's TZ, as a `Date`'s default is), whatever location `at` carries. An invalid `Date` (a RangeError in Pi) cannot be expressed, and an instant outside the JS Date range (±8.64e15 ms), a RangeError in Pi, is formatted. Zone data: Go reads the system zoneinfo (or the embedded `time/tzdata`), Node uses ICU's bundled tz data with backzone history. Instants before 1970 in zones that tzdata links to another (Europe/Amsterdam before 1937: Go prints Brussels' LMT, Node Amsterdam's) and a host whose tzdata release differs from Node's bundled one can print different clock times (RevChordIntl P3-5: 0 mismatches in 19 other zones around every 2025-2027 transition).
+
+Scope: `chord/next/surfaces`.
+
+Pi bug: Not a Pi bug.
+
+Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08 (OWNER-DECISIONS #7, after the review's wording fixes).
+
+Remove when: never for the `time.Time` parameter (it is the Go form of a `Date`); the zone-data difference goes when Go's tzdata and the pinned Node's ICU zone data agree.
+
+Call-site markers: `chord/next/surfaces/intl_time.go` (`FormatTime`).
+
+Evidence: `TestFormatTimeShowsTheInstantInTheProcessZone`.
+
+Parity allowance: none needed beyond the evidence above.
+
+SCRUTINIZED:approved 2026-11-08
+
+## D466 No per-language formatter cache
+
+What: Pi keeps a language's default `Intl.DateTimeFormat`/`NumberFormat` in a `WeakMap<Language, Formatters>` because a formatter costs far more than a format. Go formats from static tables with a binary search per call (no formatter object), so the "are collected with the language" case has nothing to test and is designed out. A canonical tag (what `Language.Locale` holds) allocates only the result string (one allocation per call); a non-canonical tag or the platform default locale allocates up to six times to canonicalize it (`EN-us` 5, `sh-RS` 3, `de-DE-1996` 2, the platform default under LANG=de_DE.UTF-8 6, measured by RevChordIntl P3-6).
+
+Scope: `chord/next/surfaces`.
+
+Pi bug: Not a Pi bug.
+
+Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08 (OWNER-DECISIONS #7, after the review's wording fixes).
+
+Remove when: never: Go has no formatter object to cache; it goes if a format stops being a table lookup.
+
+Call-site markers: `chord/next/surfaces/surfaces_format.go` (`FormatNumber`).
+
+Evidence: `TestFormatsAllocateOnlyTheResultForCanonicalTags`.
+
+Parity allowance: none needed beyond the evidence above.
+
+SCRUTINIZED:approved 2026-11-08
+
+## D501 `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print
+
+What: Pi's install reads `const [tarball] = JSON.parse(output)`, the list of packed tarballs npm 10 and 11 print. Newer npm (12) prints an object keyed by package name, which that destructuring cannot read: with npm 12 Pi's packing fails. PiG's `unpack` reads the first member of such an object the same way it reads the first element of the list, so an install works with either npm.
+
+Why: a plugin install that fails on a current npm for a reason of output shape only is worse than Pi's behavior and costs nothing to avoid; the list form, the empty-output errors and the `filename` read are Pi's.
+
+Pi bug: With npm 12 Pi's `installPlugin` fails on the object output; to be filed upstream with the repro (`npm pack --json` of any package under npm 12).
+
+Scope: `chord/nextnode/plugins` (`packedTarball`, used by `unpack`).
+
+Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08 (OWNER-DECISIONS #2).
+
+Remove when: Pi's install reads the object form.
+
+Call-site markers: `chord/nextnode/plugins/plugins_install.go` (`packedTarball`).
+
+Evidence: `chord/nextnode/plugins/plugins_install_test.go` (`TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints`).
+
+Parity allowance: observable only with npm 12, where Pi's packing fails.
+
+SCRUTINIZED:approved 2026-11-08
+
 ## D502 `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go facets, not JavaScript values handed to one in-process host
 
 What: Pi's `testPlugin(dir, { kind, modules, stubs, ... })` (`packages/chord/src/node/plugins/testing.ts`) builds the plugin, evaluates it in the test's own process with live JavaScript `modules`, loads it with live `stubs` (`PluginFacet[]`) on one new in-memory host and returns that host. PiG's `TestPlugin` (`chord/nextnode/plugins/plugins_testing.go`) builds with the same `BuildFacet` and options and the same discovery, but a plugin evaluates only in the Node subprocess (AGENTS.md: no embedded JavaScript runtime; `docs/plan/chord-plugins-node-evaluator.md`), so: `Modules` are files the subprocess imports (the app's API as modules on disk, as a production host's `HostPackages`), not instances; a stub is a Go facet on a Go host (`TestPluginOptions.Stubs`, bridged to the plugin's host as `BridgedFacet` is, so it serves local types without keyed members) or a JavaScript module (`TestPluginOptions.Core`, which may also serve or contribute to registries and serve remote types); the result holds two hosts, the plugin's `NodeHost` (`TestedPlugin.Host`, reached through `NodeHost.Get` and `NodeHost.Hold`, the Go forms of `host.get` and `host.hold` for a local type) and the stubs' Go host (`TestedPlugin.Stubs`).

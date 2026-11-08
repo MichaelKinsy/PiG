@@ -5,8 +5,6 @@ import (
 	"crypto/subtle"
 	_ "embed"
 	"encoding/json"
-	"errors"
-	"path/filepath"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -14,7 +12,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
-	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
@@ -24,6 +21,10 @@ import (
 // server exports the worker's data without stopping it. The worker packs its own open store (its export holds the commit queue while
 // it reads: one consistent point) and its finished files into the archive at the path the server names. Only the server may ask (its
 // principal); the worker's plugins never see it.
+//
+// The worker has two stores (D462): the kit's own, which its Go host holds, and the plugins', which its NodeHost's process holds, so the
+// worker's export holds the kit's commit queue and reads the plugins' file from a snapshot taken meanwhile (PackRunning): both
+// archives are one point, as Pi's one store's export is.
 //
 // Go forced differences (D460): the generic principal parameter is designed out (a principal is a JSON object). The worker's plugins run in a
 // Node subprocess that serves the worker's address, so HostData is a JavaScript core facet (host_data.mjs) forwarding to a Go local
@@ -97,6 +98,8 @@ var HostDataExport = mustLocal("chord.app.data.export", contracts.LocalDeclarati
 
 // hostDataModuleText is the module of the worker's NodeHost serving HostData (hostDataModule's template).
 //
+// pig divergence (D460): HostData is a JavaScript core facet on the worker's NodeHost (which serves the worker's address) forwarding to a Go object.
+//
 //go:embed host_data.mjs
 var hostDataModuleText string
 
@@ -125,18 +128,9 @@ func HostDataFacet(dir string, kit store.Store, token string) host.Facet {
 						if err := json.Unmarshal([]byte(object.Value("manifest").(string)), &manifest); err != nil {
 							return nil, err
 						}
-						// The plugins' store is the NodeHost's own file (store.sqlite): a store opened on it now reads its state at this point, beside
-						// the Go kit's (kit.sqlite).
-						database, err := node.OpenNodeSqliteDatabase(filepath.Join(dir, archiveStore), node.NodeSqliteDatabaseOptions{})
-						if err != nil {
-							return nil, err
-						}
-						plugins, err := store.OpenStore(store.SqliteBackend(database), ctx, store.StoreOptions{})
-						if err != nil {
-							return nil, errors.Join(err, database.Close())
-						}
-						packed := PackStore(ctx, plugins, kit, filepath.Join(dir, "files"), manifest, object.Value("path").(string))
-						return nil, errors.Join(packed, plugins.Close(ctx))
+						// The plugins' store is the NodeHost's own file (store.sqlite), read from a snapshot taken while the kit's store (kit.sqlite) is
+						// held: PackRunning.
+						return nil, PackRunning(ctx, dir, kit, manifest, object.Value("path").(string))
 					},
 				},
 			}}, nil

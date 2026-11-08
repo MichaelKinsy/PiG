@@ -14,6 +14,8 @@ package surfaces
 // returns the errors `Intl` throws (an option out of range, minimum fraction digits above the maximum, a tag that is
 // not a language tag) as ErrOption / ErrLocale.
 func FormatNumber(lang *Language, value float64, options *NumberOptions) (string, error) {
+	// pig divergence (D464): a closed option type and tables generated from the pinned Node's Intl, not Intl's open options.
+	// pig divergence (D466): no per-language formatter cache; a format is a table lookup.
 	minFD, maxFD, err := options.fractionDigits()
 	if err != nil {
 		return "", err

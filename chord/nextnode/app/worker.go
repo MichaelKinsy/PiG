@@ -100,7 +100,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 	if err := PrivateDirectory(kit.Dir); err != nil {
 		return nil, err
 	}
-	// Two stores, as two chord stores cannot share a file (each allocates document ids): `store.sqlite` is the plugins' (the NodeHost opens
+	// pig divergence (D462): two stores, as two chord stores cannot share a file (each allocates document ids): `store.sqlite` is the plugins' (the NodeHost opens
 	// it: StoreOptions), `kit.sqlite` the Go kit's (Files). An export packs both.
 	storePath := filepath.Join(kit.Dir, archiveStore)
 	if err := PrivateStore(storePath); err != nil {
@@ -159,8 +159,17 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 	if err := os.WriteFile(dataModule, []byte(hostDataModule(kit.Server, token)), 0o600); err != nil {
 		return nil, err
 	}
+	// The module holds this start's token: gone with the worker (Pi has no such file: its data facet is a closure).
+	start.OnClose(func(context.Context) error {
+		if err := os.Remove(dataModule); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil
+	})
+	// pig divergence (D460): the kit's worker facets are Go core facets on the worker's relay host, beside the plugins' NodeHost.
 	goCore := []host.HostFacet{
 		{Name: "chord.app.worker-info", Facet: WorkerInfoFacet(WorkerInfoValues{Kind: start.Address.Kind, Key: start.Address.Key, Params: start.Address.Params, Start: app})},
+		// pig divergence (D461): Files is not bridged to the plugins (its keyed member cannot be forwarded).
 		{Name: "chord.app.files", Facet: FilesFacet(files, kit.Files, kit.Uploads)},
 		{Name: "chord.app.data.export", Facet: HostDataFacet(kit.Dir, opened, token)},
 	}
