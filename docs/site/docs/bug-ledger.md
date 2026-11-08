@@ -1201,9 +1201,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D501](#bf-d501) | `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D520](#bf-d520) | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D540](#bf-d540) | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D600](#bf-d600) | A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D601](#bf-d601) | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D604](#bf-d604) | A link's upgrade waits for the bases to be built (Pi's links connect at once) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
@@ -18275,21 +18273,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `018a05add9` (2026-11-07), `0bbbe98158` (2026-11-07)
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry`
 
-### BF-D600
-
-**A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D600)
-- **Symptom:** Not a Pi bug.
-- **Root cause:** a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins ("a worker started after an edit of the entry's imported source runs the code the base was built with"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** PiG's worker is a Node entry again.
-- **Fix commits:** `70b2b7bf42` (2026-11-07), `23978e4efb` (2026-11-08), `981a62878f` (2026-11-08), `d6646c05d7` (2026-11-08)
-- **Tests:** `chord/nextnode/app/app_changes_test.go::TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes`, `chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks`, `chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs`, `chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith`, `chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose`
-
 ### BF-D601
 
 **The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript…**
@@ -18304,21 +18287,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** PiG runs the browser page or the terminal sandbox from Go-authored code.
 - **Fix commits:** `9ca9bbb711` (2026-11-07), `1c0169d935` (2026-11-08)
 - **Tests:** `chord/nextnode/app/app_web_browser_test.go::TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount`, `chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick`, `chord/nextnode/surfaces/surfaces_react_test.go::TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable`
-
-### BF-D604
-
-**A link's upgrade waits for the bases to be built (Pi's links connect at once)**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D604)
-- **Symptom:** Not a Pi bug.
-- **Root cause:** the Go server listens before the plugins' Node host has loaded (about 0.5 s), and a page of a restarted server reconnects in that gap, before the bases have started. It then holds the empty set, its base differs from the page's, and the page reloads (`Outdated`): a seamless reconnect becomes a reload, and Pi's ported test of a failed plugin script tried again at a reconnect fails every time. Pi's build takes about 100 ms after a start of a few milliseconds, so the window is rarely open there.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the Go server's start no longer leaves a window (the plugins' host loads before the listen), or the scripts objects wait for the build themselves.
-- **Fix commits:** `7fe095c5d0` (2026-11-08)
-- **Tests:** `chord/nextnode/app/app_bases_linux_test.go::TestAppHoldsALinkUntilTheBasesAreBuilt`, `chord/nextnode/app/app_web_styles_test.go::TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsStylesheetNeverOneWithoutTheOther`
 
 ### BF-D605
 
@@ -27582,9 +27550,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D503 | `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript… | deliberate difference |
 | D520 | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | [BF-D520](#bf-d520) |
 | D540 | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | [BF-D540](#bf-d540) |
-| D600 | A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no… | [BF-D600](#bf-d600) |
 | D601 | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | [BF-D601](#bf-d601) |
-| D604 | A link's upgrade waits for the bases to be built (Pi's links connect at once) | [BF-D604](#bf-d604) |
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
 | D608 | A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and… | deliberate difference |

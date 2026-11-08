@@ -4,11 +4,11 @@ Generated from `1135` PORT_MAP entries and `873` parity scenarios.
 
 ## Status
 
-- **Porting:** 927 / 1031 intended-portable entries ✅ (89.9%).
-- **Behavior verification:** 814 / 927 ported entries (87.8%); 0 weak-only, 113 untested.
-- **Upstream test porting:** 710 ported / 8 partial / 255 pending (8 other dispositions; [file mapping](interfaces/test-mapping-v1.5.0+c23b9ec1.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.0+c23b9ec1.json) (`deferred-0.3.x`).
+- **Porting:** 965 / 1021 intended-portable entries ✅ (94.5%).
+- **Behavior verification:** 814 / 965 ported entries (84.4%); 0 weak-only, 151 untested.
+- **Upstream test porting:** 838 ported / 6 partial / 126 pending (11 other dispositions; [file mapping](interfaces/test-mapping-v1.5.0+c23b9ec1.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.0+c23b9ec1.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1135. Breakdown: 104 n/a (designed out) · 19 🟡 partial · 85 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 20 🟡 partial · 36 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -16,7 +16,7 @@ Raw PORT_MAP rows: 1135. Breakdown: 104 n/a (designed out) · 19 🟡 partial ·
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 270 | 22 | 248 | 246 | 0 | 2 | 99.2% | 97.6% |
-| `chord` | 323 | 29 | 294 | 208 | 6 | 80 | 70.7% | 77.9% |
+| `chord` | 323 | 39 | 284 | 246 | 7 | 31 | 86.6% | 65.9% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
 | `coding-agent` | 263 | 27 | 236 | 235 | 1 | 0 | 99.6% | 96.6% |
 | `durable` | 100 | 10 | 90 | 76 | 11 | 3 | 84.4% | 98.7% |
@@ -29,8 +29,8 @@ Raw PORT_MAP rows: 1135. Breakdown: 104 n/a (designed out) · 19 🟡 partial ·
 
 - **Four core packages (agent, ai, coding-agent, tui):** 531 / 534 intended-portable files ✅ (99.4%) from 585 rows; 517 behavioral (97.4%), 0 weak-only, 14 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 616 / 619 intended-portable files ✅ (99.5%) from 681 rows; 552 behavioral (89.6%), 0 weak-only, 64 untested.
-- **Whole monorepo (12 packages):** 927 / 1031 intended-portable files ✅ (89.9%) from 1135 rows; 814 behavioral (87.8%), 0 weak-only, 113 untested.
-- **Interface closure:** 13943 of 15012 semantic interface IDs closed (295 designed-out, 1069 pending, 13648 ported). A file-level ✅ does not close an interface ID.
+- **Whole monorepo (12 packages):** 965 / 1021 intended-portable files ✅ (94.5%) from 1135 rows; 814 behavioral (84.4%), 0 weak-only, 151 untested.
+- **Interface closure:** 14901 of 15012 semantic interface IDs closed (507 designed-out, 111 pending, 14394 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
@@ -804,7 +804,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/host/destination.ts` | ✅ | 0 | 4 (unit:./chord/next/host:TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone, unit:./chord/next/host:TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone, unit:./chord/next/host:TestDestinationMisplacedIsNilWhenTheObjectLivesHereElseInvalidHostAddressNamingBothHosts, unit:./chord/next/host:TestSameAddressNamesTheHostWithTheSameKindAndTheSameValueForEachParam) | not run | ./chord/next/host:TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone, ./chord/next/host:TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone, ./chord/next/host:TestDestinationMisplacedIsNilWhenTheObjectLivesHereElseInvalidHostAddressNamingBothHosts, ./chord/next/host:TestSameAddressNamesTheHostWithTheSameKindAndTheSameValueForEachParam |
 | `packages/chord/src/host/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/host/internal.ts` | n/a | 0 | 0 | not run |  |
-| `packages/chord/src/host/host.ts` | ✅ | 0 | 2 (unit:./chord/next/host:TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose, unit:./chord/next/host:TestHostRevokeNeverRevokesTheHostsOwnPrincipal) | not run | ./chord/next/host:TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose, ./chord/next/host:TestHostRevokeNeverRevokesTheHostsOwnPrincipal |
+| `packages/chord/src/host/host.ts` | ✅ | 0 | 3 (unit:./chord/next/host:TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad, unit:./chord/next/host:TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose, unit:./chord/next/host:TestHostRevokeNeverRevokesTheHostsOwnPrincipal) | not run | ./chord/next/host:TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad, ./chord/next/host:TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose, ./chord/next/host:TestHostRevokeNeverRevokesTheHostsOwnPrincipal |
 | `packages/chord/src/host/attempt.ts` | ✅ | 0 | 3 (unit:./chord/next/host:TestAttemptEndingRejectsACallWhoseCallersContextIsAlreadyAbortedBeforeTheHandlerRuns, unit:./chord/next/host:TestAttemptReleasesTheReferencesItAcquired, unit:./chord/next/host:TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNativesCloseWhichIsReported) | not run | ./chord/next/host:TestAttemptEndingRejectsACallWhoseCallersContextIsAlreadyAbortedBeforeTheHandlerRuns, ./chord/next/host:TestAttemptReleasesTheReferencesItAcquired, ./chord/next/host:TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNativesCloseWhichIsReported |
 | `packages/chord/src/host/object.ts` | ✅ | 0 | 4 (unit:./chord/next/host:TestObjectCyclesAcrossHostsKeepTheLast32EntriesOfALongerChainTheOldestIsDroppedALongerCycleGoesUndetected, unit:./chord/next/host:TestObjectLingerKeepsALiveObjectLiveForLingerAfterItsLastReleaseAGetWithinItReusesItWithItsDocuments, unit:./chord/next/host:TestObjectRefRetrySkipsATransientFailuresBackoffWindowAnAttemptNow, unit:./chord/next/host:TestObjectRefRetryStartsAnObjectWaitingForItsIdentitysBackoffWindowAtOnce) | not run | ./chord/next/host:TestObjectCyclesAcrossHostsKeepTheLast32EntriesOfALongerChainTheOldestIsDroppedALongerCycleGoesUndetected, ./chord/next/host:TestObjectLingerKeepsALiveObjectLiveForLingerAfterItsLastReleaseAGetWithinItReusesItWithItsDocuments, ./chord/next/host:TestObjectRefRetrySkipsATransientFailuresBackoffWindowAnAttemptNow, ./chord/next/host:TestObjectRefRetryStartsAnObjectWaitingForItsIdentitysBackoffWindowAtOnce |
 | `packages/chord/src/host/reference.ts` | ✅ | 0 | 2 (unit:./chord/next/host:TestKeyedStateMembersRefMemberGetAndWatchWorkAnywhereAtKeyOnlyInAFactory, unit:./chord/next/host:TestReferencesThrowReleasedOnEveryUseAfterReleaseWhichIsIdempotent) | not run | ./chord/next/host:TestKeyedStateMembersRefMemberGetAndWatchWorkAnywhereAtKeyOnlyInAFactory, ./chord/next/host:TestReferencesThrowReleasedOnEveryUseAfterReleaseWhichIsIdempotent |
@@ -867,7 +867,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/node/http/http.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/incoming.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/index.ts` | n/a | 0 | 0 | not run |  |
-| `packages/chord/src/node/http/node.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/http/node.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/node/http/request.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/response.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/router.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -891,73 +891,73 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/node/workers/main.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/workers/process.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/workers/workers.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/host/old-work.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/host/readiness.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/host/reload-cycle.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/host/old-work.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/host/readiness.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/host/reload-cycle.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/host/unbound-clock.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/app.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/archive.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/app.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/archive.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/blobs.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/data.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/ephemeral-sessions.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/ephemeral.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/ephemeral-sessions.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/ephemeral.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/files-copy.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/files-entry.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/node/app/files-index.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/files.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/folder-views.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/node/app/index.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/info.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/invite.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/index.ts` | n/a | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/info.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/invite.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/layout.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/node/app/owner.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/pairing.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/owner.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/pairing.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/secrets.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/node/app/sessions.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/tar.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/sessions.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/tar.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/app/uploads.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/node/app/users.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/app/worker.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/plugins/base-inputs.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/plugins/css-modules.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/plugins/testing.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/bundle.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/current.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/index.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/published.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/served.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/tui.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/web.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/app/users.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/app/worker.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/plugins/base-inputs.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/plugins/css-modules.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/plugins/testing.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/surfaces/bundle.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/surfaces/current.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/surfaces/index.ts` | n/a | 0 | 0 | not run |  |
+| `packages/chord/src/node/surfaces/published.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/surfaces/served.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/surfaces/tui.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/surfaces/web.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/tui/actions.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/credentials.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/filter.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/tui/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/tui/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/launcher.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/pipe.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/node/tui/sandbox.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/workers/base.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/node/workers/child.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/node/workers/base.ts` | n/a | 0 | 0 | not run |  |
+| `packages/chord/src/node/workers/child.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/react/hooks.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/react/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/react/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/react/stores.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/store/live-query.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/surfaces/active-language.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/active-theme.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/client.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/connection.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/format.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/index.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/language.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/surfaces/active-language.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/active-theme.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/client.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/connection.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/format.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/index.ts` | n/a | 0 | 0 | not run |  |
+| `packages/chord/src/surfaces/language.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/loaded.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/locale-choice.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/messages.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/page-state.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/preference.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/registered.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/surfaces/locale-choice.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/messages.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/page-state.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/preference.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/registered.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/scripts.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/surfaces/theme-choice.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/themes.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/surfaces/translations.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/surfaces/themes.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/translations.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/sync/batch.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/sync/client.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/sync/files.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -968,22 +968,22 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/sync/state.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/telemetry-ingest/batch.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/telemetry-ingest/facet.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/telemetry-ingest/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/telemetry-ingest/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/telemetry-ingest/recorder.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/telemetry-ingest/sender.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/telemetry-ingest/sender.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/telemetry-sqlite/node.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/telemetry-sqlite/schema.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/telemetry.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/tui/bridge.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/tui/channel.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/tui/frames.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/tui/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/tui/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/tui/runtime.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/tui/scope.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/tui/scope.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/tui/terminal.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/tui/theme.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/web/environment.ts` | ⬜ | 0 | 0 | not run |  |
-| `packages/chord/src/web/index.ts` | ⬜ | 0 | 0 | not run |  |
+| `packages/chord/src/web/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/web/language.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/web/page.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/chord/src/web/scripts.ts` | ⬜ | 0 | 0 | not run |  |

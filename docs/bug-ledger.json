@@ -33275,45 +33275,6 @@
       ]
     },
     {
-      "id": "BF-D600",
-      "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
-      "symptom": "Not a Pi bug.",
-      "rootCause": "a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins (\"a worker started after an edit of the entry's imported source runs the code the base was built with\"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D600",
-      "removeWhen": "PiG's worker is a Node entry again.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "70b2b7bf42",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "23978e4efb",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "981a62878f",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "d6646c05d7",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/app/app_changes_test.go::TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes",
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks",
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs",
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith",
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose"
-      ]
-    },
-    {
       "id": "BF-D601",
       "title": "The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript…",
       "symptom": "Not a Pi bug.",
@@ -33340,30 +33301,6 @@
         "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount",
         "chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick",
         "chord/nextnode/surfaces/surfaces_react_test.go::TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable"
-      ]
-    },
-    {
-      "id": "BF-D604",
-      "title": "A link's upgrade waits for the bases to be built (Pi's links connect at once)",
-      "symptom": "Not a Pi bug.",
-      "rootCause": "the Go server listens before the plugins' Node host has loaded (about 0.5 s), and a page of a restarted server reconnects in that gap, before the bases have started. It then holds the empty set, its base differs from the page's, and the page reloads (`Outdated`): a seamless reconnect becomes a reload, and Pi's ported test of a failed plugin script tried again at a reconnect fails every time. Pi's build takes about 100 ms after a start of a few milliseconds, so the window is rarely open there.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D604",
-      "removeWhen": "the Go server's start no longer leaves a window (the plugins' host loads before the listen), or the scripts objects wait for the build themselves.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "7fe095c5d0",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/app/app_bases_linux_test.go::TestAppHoldsALinkUntilTheBasesAreBuilt",
-        "chord/nextnode/app/app_web_styles_test.go::TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsStylesheetNeverOneWithoutTheOther"
       ]
     },
     {
@@ -54230,19 +54167,9 @@
       "entry": "BF-D540"
     },
     {
-      "id": "D600",
-      "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
-      "entry": "BF-D600"
-    },
-    {
       "id": "D601",
       "title": "The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript…",
       "entry": "BF-D601"
-    },
-    {
-      "id": "D604",
-      "title": "A link's upgrade waits for the bases to be built (Pi's links connect at once)",
-      "entry": "BF-D604"
     },
     {
       "id": "D605",
