@@ -219,3 +219,5 @@ func mustURL(text string) *url.URL {
 	}
 	return u
 }
+
+func strconvItoa(n int) string { return strconv.Itoa(n) }
