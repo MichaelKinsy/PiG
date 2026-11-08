@@ -724,6 +724,13 @@ func (queue *heldQueue) drain() {
 	}
 }
 
+// pending is the number of jobs posted and not run yet.
+func (queue *heldQueue) pending() int {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	return len(queue.jobs)
+}
+
 // hold stops the queue before its next job.
 func (queue *heldQueue) hold() {
 	queue.mu.Lock()
@@ -1480,6 +1487,9 @@ type relayedOptions struct {
 	TabCodec, RouteCodec link.Codec
 	Server               func(host FacetHost) error
 	Worker               func(host FacetHost) error
+	// RoutePair makes each route link (the server's end first); nil is link.MemoryLinkPair. A test that holds its
+	// queue takes Pi's microtask order by hand: what the hosts post waits until it releases (see heldQueue).
+	RoutePair func() (*link.MemoryLink, *link.MemoryLink)
 	// Resolve wraps the default one (`worker()` makes the worker).
 	Resolve func(address contracts.Address, worker func() resolved, ctx context.Context) (resolved, error)
 	Context context.Context
@@ -1525,7 +1535,11 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 		result.mu.Lock()
 		result.resolves = append(result.resolves, address.Key)
 		result.mu.Unlock()
-		a, b := link.MemoryLinkPair()
+		makePair := options.RoutePair
+		if makePair == nil {
+			makePair = link.MemoryLinkPair
+		}
+		a, b := makePair()
 		session, _ := address.Params.Value("id").(string)
 		principal := workerPrincipal(session)
 		host := newHost(t, HostOptions{
