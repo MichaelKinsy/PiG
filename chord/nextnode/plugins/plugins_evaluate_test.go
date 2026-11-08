@@ -21,7 +21,7 @@ import (
 // of a plugin's load is also read in the LoadReport of the real load (`*NodeError`.Message and .Stack).
 
 // evaluateHostPackages is the keys of evaluate.test.ts's `HOSTS`: what its builds name as host packages.
-var evaluateHostPackages = []string{"@earendil-works/chord/next", "esm-host", "cjs-host"}
+var evaluateHostPackages = []string{"@earendil-works/chord", "esm-host", "cjs-host"}
 
 // evaluateOpsPrelude is the probe ops shared by the evaluate and the stack tests. `packages` is Pi's `HOSTS` (hosts: "all"),
 // support.ts's `HOST_PACKAGES` ("chord") or `{}` ("none"); `run` is `evaluateFacet(script, { hostPackages, plugin })`;
@@ -29,7 +29,7 @@ var evaluateHostPackages = []string{"@earendil-works/chord/next", "esm-host", "c
 const evaluateOpsPrelude = `
 	packages: async (a) => {
 		if (a.hosts === "none") return {};
-		const chord = { "@earendil-works/chord/next": next };
+		const chord = { "@earendil-works/chord": next };
 		if (a.hosts === "chord") return chord;
 		return { ...chord, "esm-host": await import(a.esm), "cjs-host": (await import(a.cjs)).default };
 	},
@@ -93,6 +93,18 @@ const evaluateOps = evaluateOpsPrelude + `
 			outside = error.message;
 		}
 		return { escape, outside };
+	},
+	evaluated: async (a) => {
+		const facet = evaluate.evaluateFacet(a.script.built, { hostPackages: a.packages, plugin: a.script.plugin });
+		const out = {};
+		for (const method of a.methods) {
+			try {
+				out[method] = { value: await facet[method]() };
+			} catch (error) {
+				out[method] = { threw: error.message };
+			}
+		}
+		return out;
 	},
 	outcome: async (a) => {
 		const hostPackages = await ops.packages(a);
@@ -159,7 +171,7 @@ func evaluateProbe(t *testing.T, ops string, execArgv ...string) *probe {
 // packages are hostPackages) and returns the script with its plugin.
 func evaluateBuilt(t *testing.T, root, name, kind string, hostPackages []string) PluginScript {
 	t.Helper()
-	discovery, err := DiscoverPlugins([]string{root}, DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := DiscoverPlugins([]PluginRoot{{Path: root}}, DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +256,7 @@ func TestEvaluateGivesHostPackagesAsTheHostsInstances(t *testing.T) {
 	root := tempRoot(t)
 	writePlugin(t, root, "p", "@test/p", map[string]string{
 		"worker.ts": strings.Join([]string{
-			`import { ChordError, defineFacet } from "@earendil-works/chord/next";`,
+			`import { ChordError, defineFacet } from "@earendil-works/chord";`,
 			"const facet = defineFacet(() => {});",
 			`export default { ...facet, made: new ChordError({ code: "unavailable", message: "m" }), is: (e: unknown) => e instanceof ChordError };`,
 		}, "\n"),
@@ -305,7 +317,7 @@ func TestEvaluateGivesEachFacetPluginFileForItsOwnPluginsDirectoryAndRefusesDotD
 		t.Fatalf("text = %v", got)
 	}
 	writePlugin(t, root, "escape", "@test/escape", map[string]string{
-		"worker.ts": "import { pluginFile } from \"@earendil-works/chord/next/plugins\";\nexport default { setup: () => {}, escape: () => pluginFile(\"../files/assets/data.txt\") };",
+		"worker.ts": "import { pluginFile } from \"@earendil-works/chord/plugins\";\nexport default { setup: () => {}, escape: () => pluginFile(\"../files/assets/data.txt\") };",
 	}, nil)
 	escaping := evaluateBuilt(t, root, "@test/escape", "worker", evaluateHostPackages)
 	got := asMap(t, p.must("pluginFiles", evaluateArgs(t, escaping, "all")))
@@ -315,6 +327,101 @@ func TestEvaluateGivesEachFacetPluginFileForItsOwnPluginsDirectoryAndRefusesDotD
 	// Outside an evaluated facet it has none.
 	if want := "only a plugin's facet script"; !strings.Contains(got["outside"].(string), want) {
 		t.Errorf("pluginFile outside threw %v, want %q", got["outside"], want)
+	}
+}
+
+// evaluate.test.ts › refuses pluginFile in a single-file plugin: it has no directory of its own (slice 12 §4) (read through the
+// probe's `evaluateFacet`).
+func TestEvaluateRefusesPluginFileInASingleFilePluginItHasNoDirectoryOfItsOwn(t *testing.T) {
+	root := tempRoot(t)
+	writeFiles(t, root, map[string]string{
+		"lone.worker.ts": "import { pluginFile } from \"@earendil-works/chord/plugins\";\nexport default { setup: () => {}, read: () => pluginFile(\"x.txt\") };",
+	})
+	script := evaluateBuilt(t, root, "lone", "worker", evaluateHostPackages)
+	p := evaluateProbe(t, evaluateOps)
+	args := evaluateArgs(t, script, "all")
+	args["packages"] = map[string]any{}
+	args["methods"] = []string{"read"}
+	got := asMap(t, asMap(t, p.must("evaluated", args))["read"])
+	if want := `pluginFile("x.txt"): single-file plugin "lone" has no directory of its own`; !strings.Contains(got["threw"].(string), want) {
+		t.Fatalf("read = %v, want a throw containing %q", got, want)
+	}
+}
+
+// evaluate.test.ts › a computed require refuses what the build refuses (slice 12 fix round 1, Sol) › refuses another version
+// of the app's API, Chord itself, and builtins in a single-file plugin (each read through the probe's `evaluateFacet`).
+func TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAppsAPIChordItselfAndBuiltinsInASingleFilePlugin(t *testing.T) {
+	root := tempRoot(t)
+	api := &AppApi{Name: "@acme/app", Versions: []string{"v3", "v2"}}
+	packages := map[string]any{"@acme/app/v3": map[string]any{"value": 3}, "@acme/app/v2": map[string]any{"value": 2}, "@earendil-works/chord": map[string]any{}}
+	hostPackages := []string{"@acme/app/v3", "@acme/app/v2", "@earendil-works/chord"}
+	join := func(parts ...string) string {
+		quoted := make([]string, len(parts))
+		for i, part := range parts {
+			quoted[i] = pcJSON(t, part)
+		}
+		return "[" + strings.Join(quoted, ", ") + `].join("/")`
+	}
+	writePlugin(t, root, "mixed", "@test/mixed", map[string]string{
+		"worker.ts": strings.Join([]string{
+			`import { value } from "@acme/app/v3";`,
+			"export default { setup: () => {}, other: () => require(" + join("@acme/app", "v2") + "), chord: () => require(" + join("@earendil-works", "chord", "next") + "), same: () => require(" + join("@acme/app", "v3") + ").value + value };",
+		}, "\n"),
+	}, nil)
+	writeFiles(t, root, map[string]string{
+		"lone.worker.ts": `export default { setup: () => {}, builtin: () => require(["node", "path"].join(":")) };`,
+	})
+	p := evaluateProbe(t, evaluateOps)
+	evaluated := func(name string, methods ...string) map[string]any {
+		t.Helper()
+		discovery, err := DiscoverPlugins([]PluginRoot{{Path: root}}, DiscoveryOptions{Kinds: kinds}, background)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, plugin := range discovery.Plugins {
+			if plugin.Name != name {
+				continue
+			}
+			built, err := BuildFacet(plugin, "worker", BuildOptions{HostPackages: hostPackages, Platform: PlatformNode, Api: api, Kinds: kinds, Plugins: discovery.Plugins}, background)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if built.Kind == BuiltFacetFailed {
+				t.Fatal(strings.Join(built.Errors, "\n"))
+			}
+			args := evaluateArgs(t, PluginScript{Plugin: plugin, Built: built}, "none")
+			args["packages"], args["methods"] = packages, methods
+			return asMap(t, p.must("evaluated", args))
+		}
+		t.Fatalf("no plugin %q", name)
+		return nil
+	}
+	threw := func(result map[string]any, method string) string {
+		t.Helper()
+		text, _ := asMap(t, result[method])["threw"].(string)
+		return text
+	}
+	mixed := evaluated("@test/mixed", "same", "other", "chord")
+	if got := asMap(t, mixed["same"])["value"]; got != float64(6) {
+		t.Fatalf("same = %v, want 6", got)
+	}
+	if want := `"@acme/app/v2": this script uses @acme/app/v3: one facet uses one version of the API`; !strings.Contains(threw(mixed, "other"), want) {
+		t.Fatalf("other = %v, want a throw containing %q", mixed["other"], want)
+	}
+	if want := "plugins import Chord through the app's API"; !strings.Contains(threw(mixed, "chord"), want) {
+		t.Fatalf("chord = %v, want a throw containing %q", mixed["chord"], want)
+	}
+	// Without a static import the first version required pins the facet's (Opus N3).
+	writePlugin(t, root, "computed", "@test/computed", map[string]string{
+		"worker.ts": "export default { setup: () => {}, both: () => [require(" + join("@acme/app", "v3") + ").value, require(" + join("@acme/app", "v2") + ").value] };",
+	}, nil)
+	computed := evaluated("@test/computed", "both")
+	if want := `"@acme/app/v2": this script uses @acme/app/v3: one facet uses one version of the API`; !strings.Contains(threw(computed, "both"), want) {
+		t.Fatalf("both = %v, want a throw containing %q", computed["both"], want)
+	}
+	lone := evaluated("lone", "builtin")
+	if want := `"node:path": a single-file plugin requires only host packages`; !strings.Contains(threw(lone, "builtin"), want) {
+		t.Fatalf("builtin = %v, want a throw containing %q", lone["builtin"], want)
 	}
 }
 
@@ -359,7 +466,7 @@ func TestEvaluateRunsAComputedImportThroughTheFacetsRequire(t *testing.T) {
 	root := tempRoot(t)
 	writePlugin(t, root, "dynamic", "@test/dynamic", map[string]string{
 		"worker.ts": strings.Join([]string{
-			`import { defineFacet } from "@earendil-works/chord/next";`,
+			`import { defineFacet } from "@earendil-works/chord";`,
 			"const later = (specifier: string) => import(specifier);",
 			"export default { ...defineFacet(() => {}), later };",
 		}, "\n"),
