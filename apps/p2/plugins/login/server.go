@@ -57,7 +57,7 @@ func serveLoginService(holders state.SourceHandle) host.LocalFactory {
 				if err != nil {
 					return nil, err
 				}
-				return NewLogins(current.Directory(), resources), nil
+				return NewLogins(current.Directory()), nil
 			},
 			func(value any, _ host.NativeCloseReason, _ context.Context) error {
 				value.(*Logins).Close()
@@ -125,8 +125,12 @@ func serveLoginService(holders state.SourceHandle) host.LocalFactory {
 			State: map[string]chord.Watchable[delta.JsonValue]{"login": member("login"), "owner": member("owner")},
 			Methods: map[string]contracts.MethodFunction{
 				"start": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+					current, err := resources()
+					if err != nil {
+						return nil, err
+					}
 					remote, _ := objectOf(args).Value("remote").(bool)
-					id, err := logins().Start(text(args, "owner"), text(args, "providerId"), ai.AuthType(text(args, "authType")), remote)
+					id, err := logins().Start(current, text(args, "owner"), text(args, "providerId"), ai.AuthType(text(args, "authType")), remote)
 					if err != nil {
 						return nil, err
 					}
@@ -143,12 +147,21 @@ func serveLoginService(holders state.SourceHandle) host.LocalFactory {
 					return nil, nil
 				},
 				"logout": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					// The registry is read on the loop, then the loop is given up for the work.
+					current, err := resources()
+					if err != nil {
+						return nil, err
+					}
 					chordctx.Suspend(ctx)
-					return nil, logins().Logout(ctx, text(args, "providerId"))
+					return nil, logins().Logout(ctx, current, text(args, "providerId"))
 				},
 				"refresh": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					current, err := resources()
+					if err != nil {
+						return nil, err
+					}
 					chordctx.Suspend(ctx)
-					count, err := logins().Refresh(ctx, text(args, "providerId"))
+					count, err := logins().Refresh(ctx, current, text(args, "providerId"))
 					if err != nil {
 						return nil, err
 					}
