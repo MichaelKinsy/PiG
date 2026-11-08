@@ -133,3 +133,67 @@ func TestSessionReplicatedStateObserversStopAndCostNothingWhenIdle(t *testing.T)
 		t.Fatalf("a stopped observer was told of %d changes", got-before)
 	}
 }
+
+// A change of the model, session id or name is bracketed: begin runs while the old state is still the Session's, end after the report that follows the change, in pairs. The extension host flushes its state before it replies to a call between the two, because a call can read the new state before the owner reports it.
+func TestSessionBracketsEveryChangeOfIdentityState(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{})
+	s := h.session
+	var mu sync.Mutex
+	var begun, ended, reported int
+	var atBegin, atEnd []string
+	read := func() string { return s.Model().ID + "|" + s.SessionName() + "|" + s.ID() }
+	stopState := s.ObserveReplicatedState(func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if ended != begun-1 {
+			t.Errorf("a report ran outside a bracket (begun %d, ended %d)", begun, ended)
+		}
+		reported++
+	})
+	t.Cleanup(stopState)
+	stop := s.ObserveReplicatedStateScope(func() {
+		mu.Lock()
+		defer mu.Unlock()
+		begun++
+		atBegin = append(atBegin, read())
+	}, func() {
+		mu.Lock()
+		defer mu.Unlock()
+		ended++
+		atEnd = append(atEnd, read())
+	})
+	t.Cleanup(stop)
+	other := *s.Model()
+	other.ID, other.DisplayName = "faux-2", "faux-2"
+
+	for _, step := range []struct {
+		name   string
+		change func() error
+	}{
+		{"SetModel", func() error { return s.SetModel(&other) }},
+		{"SetSessionName", func() error { return s.SetSessionName("renamed") }},
+		{"ReplaceInner", func() error {
+			s.ReplaceInner(icodingagent.NewSession("replacement", t.TempDir()))
+			return nil
+		}},
+	} {
+		mu.Lock()
+		before := begun
+		old := read()
+		mu.Unlock()
+		if err := step.change(); err != nil {
+			t.Fatalf("%s: %v", step.name, err)
+		}
+		mu.Lock()
+		if begun != before+1 || ended != begun || reported < begun {
+			t.Errorf("%s: begun %d ended %d reported %d, want one bracket and a report in it", step.name, begun, ended, reported)
+		}
+		if atBegin[before] != old {
+			t.Errorf("%s: begin saw %q, want the state before the change %q", step.name, atBegin[before], old)
+		}
+		if atEnd[before] == old {
+			t.Errorf("%s: end saw the state before the change %q", step.name, old)
+		}
+		mu.Unlock()
+	}
+}

@@ -8,6 +8,24 @@
 (defun core-schema (&rest members) (apply #'pig:obj "type" "object" members))
 (defun core-json (text) (pig:from-json text))
 (defun core-dialog-text (value) (if (stringp value) value ""))
+;;; The model object of the wire as the Go SDK's ModelInfo.UnmarshalJSON normalizes it, or :null for no model.
+(defun core-normalized-model (model)
+  (if (null model)
+      :null
+      (flet ((text (&rest keys) (or (loop for key in keys for v = (pig:jget model key) when (and (stringp v) (plusp (length v))) return v) ""))
+             (number-of (v) (if (realp v) v 0))
+             (cost (flat nested)
+               (let ((top (let ((v (pig:jget model flat))) (if (realp v) v 0))) (cost (pig:jget model "cost")))
+                 (if (and (zerop top) (hash-table-p cost)) (let ((v (pig:jget cost nested))) (if (realp v) v 0)) top))))
+        (let ((provider (pig:jget model "provider")))
+          (pig:obj "id" (text "id" "modelId") "name" (text "name" "displayName")
+                   "provider" (let ((id (if (hash-table-p provider) (pig:jget provider "id") provider))) (if (stringp id) id ""))
+                   "contextWindow" (number-of (pig:jget model "contextWindow"))
+                   "maxOutputTokens" (let ((v (number-of (pig:jget model "maxOutputTokens")))) (if (zerop v) (number-of (pig:jget model "maxTokens")) v))
+                   "reasoning" (if (eq (pig:jget model "reasoning") t) t :false)
+                   "inputCostPer1M" (cost "inputCostPer1M" "input") "outputCostPer1M" (cost "outputCostPer1M" "output")
+                   "cacheReadCostPer1M" (cost "cacheReadCostPer1M" "cacheRead") "cacheWriteCostPer1M" (cost "cacheWriteCostPer1M" "cacheWrite"))))))
+
 (defun core-join (list &optional (separator ",")) (format nil (concatenate 'string "~{~A~^" separator "~}") list))
 (defun core-sleep-until (predicate seconds)
   (loop with deadline = (+ (get-internal-real-time) (* seconds internal-time-units-per-second))
@@ -278,6 +296,27 @@
   (pig:command ext "liveness_user_call" "Exercise an interactive host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-input ctx "Question" :placeholder "Answer")))
   (pig:command ext "liveness_fire_call" "Exercise a no-result UI host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-title ctx "Conformance title")))
   (pig:command ext "usage-probe" "Report context usage" (lambda (ctx args) (declare (ignore args)) (core-info ctx (pig:to-json (or (pig:ctx-get-context-usage ctx) :null)))))
+  (pig:command ext "replica-probe" "Report the replicated model, session id, name, file and context usage"
+               (lambda (ctx args)
+                 (when (and (> (length args) 10) (string= "set-model:" args :end2 10)) (pig:ctx-set-model ctx (subseq args 10)))
+                 (let ((manager (pig:ctx-session-manager ctx)))
+                   (flet ((text-or-null (value) (if (and (stringp value) (plusp (length value))) value :null)))
+                     (core-info ctx (pig:to-json (pig:obj "model" (core-normalized-model (pig:ctx-get-model-info ctx))
+                                                          "sessionId" (pig:ctx-get-session-id ctx)
+                                                          "managerSessionId" (pig:session-get-session-id manager)
+                                                          "sessionName" (text-or-null (pig:ctx-get-session-name ctx))
+                                                          "sessionFile" (text-or-null (pig:ctx-get-session-file ctx))
+                                                          "managerSessionName" (text-or-null (pig:session-get-session-name manager))
+                                                          "managerSessionFile" (text-or-null (pig:session-get-session-file manager))
+                                                          "usage" (or (pig:ctx-get-context-usage ctx) :null))))))))
+  (pig:command ext "registry-model-probe" "Register the active model's provider with a new name, then read the model"
+               (lambda (ctx args)
+                 (pig:register-provider ext "replica-reg"
+                                        (pig:obj "baseUrl" "https://probe.invalid/v1" "api" "openai-completions" "apiKey" "probe-key"
+                                                 "models" (vector (pig:obj "id" "m" "name" args "reasoning" :false "input" (vector "text")
+                                                                           "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
+                                                                           "contextWindow" 1000 "maxTokens" 100))))
+                 (core-info ctx (format nil "regname=~A" (let ((info (pig:ctx-get-model-info ctx))) (if info (let ((n (pig:jget info "name"))) (if (stringp n) n "")) ""))))))
   (pig:command ext "scoped-models-probe" "Report the model scope"
                (lambda (ctx args) (declare (ignore args)) (core-info ctx (pig:to-json (pig:ctx-get-scoped-models ctx)))))
   (pig:command ext "session-log-probe" "Read a paged session log"
@@ -648,6 +687,18 @@
                (lambda (ctx args)
                  (let* ((request (pig:from-json args)) (kind (pig:jget request "kind")) (directory (pig:jget request "dir"))
                         (read (cond ((equal kind "model") (lambda () (pig:ctx-model ctx)))
+                                    ((equal kind "model-name")
+                                     (lambda () (let ((info (pig:ctx-get-model-info ctx))) (if info (let ((n (pig:jget info "name"))) (if (stringp n) n "")) ""))))
+                                    ((equal kind "session-id") (lambda () (pig:ctx-get-session-id ctx)))
+                                    ((equal kind "usage-then-id")
+                                     (lambda () (let ((usage (pig:ctx-get-context-usage ctx)))
+                                                  (let ((tokens (and usage (pig:jget usage "tokens"))))
+                                                    (cond ((not (integerp tokens)) "none")
+                                                          ((= tokens 250) (format nil "tokens=250,id=~A" (pig:ctx-get-session-id ctx)))
+                                                          (t (format nil "tokens=~A" tokens)))))))
+                                    ((equal kind "context-usage")
+                                     (lambda () (let ((usage (pig:ctx-get-context-usage ctx)))
+                                                  (if usage (let ((tokens (pig:jget usage "tokens"))) (format nil "tokens=~A" (if (integerp tokens) tokens ""))) "none"))))
                                     ((equal kind "session-name") (lambda () (pig:ctx-session-name ctx)))
                                     ((and (> (length kind) 9) (string= "settings:" kind :end2 9))
                                      (lambda () (pig:to-json (or (pig:jget (pig:ctx-get-settings ctx) (subseq kind 9)) :null))))
@@ -767,6 +818,29 @@
                                (core-info hctx (format nil "rw_idle_in_settled=~A" (if (pig:ctx-is-idle-p hctx) "true" "false"))))
                              nil))))))
 
+(def-fixture "core-console" (ext)
+  (pig:command ext "console-probe" "Write console lines to stdout and stderr"
+               (lambda (ctx args) (declare (ignore ctx))
+                 (dolist (n '(1 2))
+                   (unless (equal args "stderr")
+                     (format *standard-output* "probe-out-~D~%" n)
+                     (finish-output *standard-output*))
+                   (format *error-output* "probe-err-~D~%" n)
+                   (finish-output *error-output*)))))
+
+;; panic-probe and the on-loaded handler signal after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+(def-fixture "core-panic" (ext)
+  (pig:on-loaded ext (lambda (ctx) (declare (ignore ctx))
+                       (when (plusp (length (sb-posix:getenv "PIG_FIXTURE_PANIC_PROBE")))
+                         (format *error-output* "probe-err-loaded~%")
+                         (finish-output *error-output*)
+                         (error "probe-panic-boom"))))
+  (pig:command ext "panic-probe" "Signal after an stderr line of the extension's own"
+               (lambda (ctx args) (declare (ignore ctx args))
+                 (format *error-output* "probe-err-command~%")
+                 (finish-output *error-output*)
+                 (error "probe-panic-boom"))))
+
 (def-fixture "core-context" (ext)
   (pig:command ext "context-probe" "Report ctx.mode + ctx.getSystemPromptOptions()"
                (lambda (ctx args) (declare (ignore args))
@@ -828,6 +902,21 @@
               (let ((tag (pig:jget params "tag")))
                 (pig:with-file-mutation-queue
                  (pig:jget params "file")
+                 (lambda ()
+                   (with-open-file (out (pig:jget params "file") :direction :output :if-exists :append :if-does-not-exist :create :external-format :utf-8)
+                     (write-string tag out) (write-char #\Newline out))))
+                (pig:obj "content" (concatenate 'string "mutated " tag))))))
+
+(def-fixture "core-mutation-order-ctx" (ext)
+  ;; makes CALLS getter calls, then takes the queue through its context and appends its tag (TestFileMutationOrderOfTheContextFormAcrossSDKs)
+  (pig:tool ext "mutation_order_ctx_probe" "Make getter calls, take the queue through the context and append a tag"
+            (core-schema "properties" (pig:obj "file" (pig:obj "type" "string") "tag" (pig:obj "type" "string") "calls" (pig:obj "type" "number")))
+            (lambda (ctx params)
+              (let ((tag (pig:jget params "tag"))
+                    (calls (pig:jget params "calls")))
+                (dotimes (i (if (integerp calls) calls 0)) (pig:ctx-get-context-usage ctx))
+                (pig:ctx-with-file-mutation-queue
+                 ctx (pig:jget params "file")
                  (lambda ()
                    (with-open-file (out (pig:jget params "file") :direction :output :if-exists :append :if-does-not-exist :create :external-format :utf-8)
                      (write-string tag out) (write-char #\Newline out))))

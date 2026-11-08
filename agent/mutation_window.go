@@ -44,17 +44,34 @@ func newStartWindow() *StartWindow {
 // Close ends the window. It is idempotent.
 func (w *StartWindow) Close() { w.closed.Release() }
 
+// AwaitClosed returns once the window is closed: the call's synchronous prefix is over, or the call ended.
+func (w *StartWindow) AwaitClosed() { jsloop.After(w.closed).Wait() }
+
 // AwaitSettled returns once every call that waited for the window registered (at once when none did, once the dispatcher has prepared its batch).
 func (w *StartWindow) AwaitSettled() { jsloop.After(w.settled).Wait() }
 
 type startWindowOf struct {
 	toolCallID string
 	window     *StartWindow
+	// earlier are the start windows of the extension tools before the call in its batch, in call order.
+	earlier []*StartWindow
 }
 
-// withStartWindow carries to the call toolCallID the window its tool closes when the call's synchronous prefix is over.
-func withStartWindow(ctx context.Context, toolCallID string, window *StartWindow) context.Context {
-	return context.WithValue(ctx, startWindowKey{}, startWindowOf{toolCallID: toolCallID, window: window})
+// withStartWindow carries to the call toolCallID the window its tool closes when the call's synchronous prefix is over, and the windows of the extension tools
+// before it.
+func withStartWindow(ctx context.Context, toolCallID string, window *StartWindow, earlier []*StartWindow) context.Context {
+	return context.WithValue(ctx, startWindowKey{}, startWindowOf{toolCallID: toolCallID, window: window, earlier: earlier})
+}
+
+// ToolEarlierStartWindowsFromContext returns the start windows of the extension tools that precede the call toolCallID in its parallel batch, for a tool that
+// MayTakeFileMutationQueue: Pi runs their synchronous prefixes, which may take the queue, before this call's (agent-loop.ts:646-648), so the call's own
+// registration in the queue waits for each of them to close. It returns nil for a call with no extension tool before it.
+func ToolEarlierStartWindowsFromContext(ctx context.Context, toolCallID string) []*StartWindow {
+	window, ok := ctx.Value(startWindowKey{}).(startWindowOf)
+	if !ok || window.toolCallID != toolCallID {
+		return nil
+	}
+	return window.earlier
 }
 
 // ToolStartWindowFromContext returns the window of the call toolCallID, for a tool that MayTakeFileMutationQueue. The tool closes it when its synchronous prefix is
@@ -102,8 +119,8 @@ type registrationOrder struct {
 // late, the turn the call takes before its tool starts, so the registration of an earlier edit or write precedes whatever the extension tool registers.
 func (o *registrationOrder) extensionTool(ctx context.Context, toolCallID string) context.Context {
 	window := newStartWindow()
+	ctx = withStartWindow(ctx, toolCallID, window, o.windows[:len(o.windows):len(o.windows)])
 	o.windows = append(o.windows, window)
-	ctx = withStartWindow(ctx, toolCallID, window)
 	if o.late {
 		ctx = withRegistrationTurn(ctx, registrationTurn{toolCallID: toolCallID, place: o.turns.Reserve()})
 	}

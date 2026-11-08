@@ -58,7 +58,7 @@ A `Default` is an annotation; validation never inserts it. `Obj` takes its prope
 
 `Recursive(id, func(self Schema) Schema)` builds a schema that contains itself (a tree): `self` is `{"$ref": id}`, the result is the built schema with `$id` set to `id`, which must be unique among the recursive schemas within one schema. `Equal(a, b)` is JSON equality as `const`, `enum` and `uniqueItems` compare.
 
-The static types of Pi's builders (`Static<S>`), `unsafe<T>()` (it only types a schema) and the TypeBox `Enum`, `Tuple`, `BigInt` and `Undefined` static types are TypeScript compile-time types and have no Go form.
+The static types of Pi's builders (`Static<S>`), and the TypeBox `Enum`, `Tuple`, `BigInt` and `Undefined` static types are TypeScript compile-time types and have no Go form.
 
 ### Coercion
 

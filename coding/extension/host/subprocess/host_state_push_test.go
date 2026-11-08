@@ -203,3 +203,67 @@ func BenchmarkHostStateChanged(b *testing.B) {
 		bridge.HostStateChanged()
 	}
 }
+
+// A change of the Session's identity state is visible to a host call before the owner reports it (HostStateChanged raises the epoch after the change), so
+// the owner brackets it: while one is in flight a reply flushes the host's state first, as one after the report does, and a reply with no change pending
+// sends nothing.
+func TestAReplyFlushesTheStateWhileAChangeIsInFlight(t *testing.T) {
+	rig := newPushRig(t)
+	rig.push(t)
+	rig.nextState(t)
+	reply := func() {
+		t.Helper()
+		result := &CallResultPayload{Result: json.RawMessage(`{}`)}
+		rig.h.replyToCall(rig.me, rig.conn, "call-1", &CallPayload{Method: "getContextUsage"}, t.Context(), result, nil)
+	}
+
+	reply()
+	rig.expectNoFrame(t, "a reply with no change pending")
+
+	rig.prompt.Store("changed in flight")
+	rig.bridge.HostStateChanging()
+	reply()
+	if got := string(rig.nextState(t)["systemPrompt"]); got != `"changed in flight"` {
+		t.Fatalf("the reply during the change flushed %s", got)
+	}
+	rig.prompt.Store("changed again")
+	reply()
+	if got := string(rig.nextState(t)["systemPrompt"]); got != `"changed again"` {
+		t.Fatalf("the second reply during the change flushed %s", got)
+	}
+	rig.bridge.HostStateChanged()
+	rig.bridge.HostStateSettled()
+	rig.h.drainTasks.Wait()
+	rig.expectNoFrame(t, "the report of a change whose state the replies already pushed")
+
+	rig.prompt.Store("after the change")
+	reply()
+	rig.expectNoFrame(t, "a reply after the change settled, with no report pending")
+}
+
+// A watchSessionLog call holds the extension's cursor lock from its read of the log to its reply, and the flush takes the same lock: it must run under the call's hold, not wait for it, so the log a reply carries is never newer than the state that names its Session.
+func TestAWatchSessionLogReplyFlushesUnderItsCursorLock(t *testing.T) {
+	rig := newPushRig(t)
+	rig.push(t)
+	rig.nextState(t)
+
+	rig.prompt.Store("replaced session")
+	rig.bridge.HostStateChanging()
+	defer rig.bridge.HostStateSettled()
+	rig.me.entryCursorMu.Lock()
+	defer rig.me.entryCursorMu.Unlock()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		result := &CallResultPayload{Result: json.RawMessage(`{"entries":[]}`)}
+		rig.h.replyToCall(rig.me, rig.conn, "call-1", &CallPayload{Method: "watchSessionLog"}, t.Context(), result, nil)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the reply of a watchSessionLog call waited for the cursor lock its own call holds")
+	}
+	if got := string(rig.nextState(t)["systemPrompt"]); got != `"replaced session"` {
+		t.Fatalf("the watchSessionLog reply flushed %s", got)
+	}
+}

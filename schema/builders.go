@@ -260,6 +260,14 @@ func Nul(options ...AnnotationOption) Schema {
 // Unknown is any value.
 func Unknown(options ...AnnotationOption) Schema { return with(&Object{}, options) }
 
+// Unsafe is a schema typed as given, as Pi's `unsafe<T>(schema = {})`: it returns schema as it is, or the unconstrained schema `{}` when none is given. Nothing checks that the values the schema accepts are of the type the caller has in mind.
+func Unsafe(schema ...Schema) Schema {
+	if len(schema) > 0 {
+		return schema[0]
+	}
+	return &Object{}
+}
+
 // Lit is exactly value (a string, number, boolean or nil).
 func Lit(value any, options ...AnnotationOption) Schema {
 	return with(chordjson.ObjectOf("const", scalar(value)), options)
