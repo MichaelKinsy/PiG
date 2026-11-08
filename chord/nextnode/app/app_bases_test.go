@@ -54,6 +54,7 @@ func TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKind
 		worker.Entry = filepath.Join(dir, "no-such-worker")
 		o.Workers = []AppWorkerKind{worker}
 	})
+	s.errors.expect()
 	s.errors.mu.Lock()
 	reported := slices.Clone(s.errors.list)
 	s.errors.mu.Unlock()
