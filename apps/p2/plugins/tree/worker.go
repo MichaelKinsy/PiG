@@ -70,22 +70,22 @@ var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error
 		if who, err := p2runtime.FromChord(principal); err != nil || !p2runtime.IsOwner(who) {
 			return contracts.Implementation{}, p2runtime.Forbidden("the tree is the owner's")
 		}
-		parts := p2runtime.HarnessOf(self)
-		worker := p2runtime.WorkerOf(self)
+		parts := p2runtime.Cached(p2runtime.HarnessOf(self))
+		worker := p2runtime.Cached(p2runtime.WorkerOf(self))
 		// call runs fn as one active call of the worker, with the Harness; the calls wait for the followed Durable session, so
-		// they park the section that admitted them first.
+		// they park the section that admitted them first. The worker's natives are read before: they are the section's.
 		call := func(ctx context.Context, fn func(d harness.Harness) (delta.JsonValue, error)) (delta.JsonValue, error) {
-			chordctx.Suspend(ctx)
 			process, err := worker()
 			if err != nil {
 				return nil, err
 			}
+			d, err := durableOf(parts)
+			if err != nil {
+				return nil, err
+			}
+			chordctx.Suspend(ctx)
 			var result delta.JsonValue
-			err = process.Liveness.Call(func() error {
-				d, err := durableOf(parts)
-				if err != nil {
-					return err
-				}
+			err = process.Liveness.Call(func() (err error) {
 				result, err = fn(d)
 				return err
 			})
@@ -134,7 +134,7 @@ var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error
 
 // serveBranches is the object that makes earlier branches read-only and keeps the catalog's branches current.
 func serveBranches(self host.StoreSelf) error {
-	parts := p2runtime.HarnessOf(self)
+	parts := p2runtime.Cached(p2runtime.HarnessOf(self))
 	// Only the current main conversation takes input: an earlier branch shows its history, and a run it still has goes on in
 	// the background (Stop stays allowed).
 	p2runtime.ContributeKeyed(self, p2runtime.ReadOnlyConversations, p2runtime.Entry("tree", p2runtime.ReadOnlyCheck(
@@ -158,11 +158,12 @@ func serveBranches(self host.StoreSelf) error {
 	// before they answer (`reportTree`); at start the worker pushes it once, which also covers a worker that stopped between a
 	// change and its push. Nothing else changes `p2.main`.
 	self.OnLive(func(ctx host.Ctx) *host.Handled {
+		// The Harness is read here, in the routine's section; the work waits for Durable off the loop.
+		d, err := durableOf(parts)
+		if err != nil {
+			return host.Threw(err)
+		}
 		return host.AwaitingCtx(ctx, func() error {
-			d, err := durableOf(parts)
-			if err != nil {
-				return err
-			}
 			if err := fillLabels(ctx, d); err != nil {
 				return err
 			}

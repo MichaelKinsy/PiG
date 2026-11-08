@@ -17,7 +17,14 @@ import (
 // Worker is the history plugin's worker facet.
 var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.history-tools", func(self host.StoreSelf) error {
-		worker := p2runtime.WorkerOf(self)
+		worker := p2runtime.Cached(p2runtime.WorkerOf(self))
+		// The worker's natives are read in a section of the host (here, and once it is live), the tools' calls take the kept
+		// value off the loop.
+		_, _ = worker()
+		self.OnLive(func(host.Ctx) *host.Handled {
+			_, _ = worker()
+			return nil
+		})
 		search := func(ctx context.Context, query Query) (Hits, error) {
 			parts, err := worker()
 			if err != nil {
