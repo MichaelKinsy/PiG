@@ -18,5 +18,5 @@ func FuzzDecodeAttributesMatchesV1(f *testing.F) {
 
 func BenchmarkDecodeAttributes(b *testing.B) {
 	doc := []byte(`{"http.method":"GET","http.url":"https://example.test/x","retry":true,"tags":["a","b","c"],"ok":[true,false],"n":null,"user":"u"}`)
-	jsonseed.Bench(b, doc, func(d []byte) { decodeAttributesV1(string(d)) }, func(d []byte) { decodeAttributes(string(d)) })
+	jsonseed.Bench(b, doc, func(d []byte) { _, _ = decodeAttributesV1(string(d)) }, func(d []byte) { _, _ = decodeAttributes(string(d)) })
 }
