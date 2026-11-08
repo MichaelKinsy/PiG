@@ -4,6 +4,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -342,5 +343,19 @@ func TestTestPluginTakesNoKindFromTestAndDeclarationFilesOpusN6(t *testing.T) {
 	}
 	if !slices.Equal(kinds, []string{"worker"}) {
 		t.Fatalf("facets = %v, want [worker]", kinds)
+	}
+}
+
+// testing.ts evaluates the facet before it loads it (`evaluateFacet`): a script that throws while it evaluates rejects testPlugin
+// with that error as it is, where a setup that throws is `testPlugin: setup failed: ...` (the case above). D502 had the first
+// wrapped too; the evaluation's own error is returned, as a *NodeError of the Node host's throw.
+func TestTestPluginRejectsAScriptThatThrowsWhileItEvaluatesWithItsOwnError(t *testing.T) {
+	dir := writePlugin(t, t.TempDir(), "boom", "@acme/boom", map[string]string{
+		"worker.ts": "import { defineFacet } from \"@acme/app/v3\";\nthrow new Error(\"boom\");\nexport default defineFacet(() => {});",
+	}, nil)
+	_, err := TestPlugin(dir, tpOpts(t, t.TempDir()), background)
+	var thrown *NodeError
+	if !errors.As(err, &thrown) || thrown.Message != "boom" || err.Error() != "boom" {
+		t.Fatalf("evaluation: %v, want the evaluation's own *NodeError \"boom\"", err)
 	}
 }
