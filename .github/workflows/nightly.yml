@@ -137,6 +137,29 @@ jobs:
           CI: '1'
         run: make test-oracle-sweeps-nightly
 
+  p2-web:
+    name: p2 web pipeline / bundle, brand overlay, browser e2e
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      # apps/p2/web/gate.sh: web/dist equals the rebuild of the vendored sources and the brand overlay, the bundles test, and Pi's
+      # client in headless Chromium against the Go server. Pi's own buildWebBundle comparison needs a Pi checkout (P2_PI_TREE):
+      # run by hand until the pinned Pi tree is available to CI.
+      - name: Run the web gate
+        env:
+          CI: '1'
+        run: make -C apps/p2 web-gate
+
   allocations:
     name: Allocation ratchet / allocs per op
     runs-on: ubuntu-24.04

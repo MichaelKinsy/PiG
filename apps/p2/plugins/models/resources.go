@@ -515,3 +515,8 @@ func (resources *Resources) Close(context.Context) error {
 	resources.mu.Unlock()
 	return nil
 }
+
+// DeleteStoredModels removes providerID's persisted model catalog (a logout drops it with the credentials).
+func (resources *Resources) DeleteStoredModels(ctx context.Context, providerID string) error {
+	return resources.modelStore.Delete(ctx, providerID)
+}
