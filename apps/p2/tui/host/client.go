@@ -911,7 +911,6 @@ func (c *Client) setup() error {
 	h, err := p2runtime.NewHost(host.HostOptions{OnError: func(failure host.HostError) {
 		// A server that speaks a newer link protocol was updated: this build is outdated. Pi loads the server's current bundle into a fresh worker; the
 		// facets are compiled into this executable, so the visitor is told to update it (D611).
-		println("DIAG", failure.Kind, fmt.Sprint(failure.Error))
 		if host.NewerPeerProtocol(failure) {
 			go c.fail(OutdatedBuildMessage)
 			return
@@ -1058,7 +1057,6 @@ func (c *Client) connect(attempt int) {
 	var current Socket
 	current = c.transport.Socket("/chord", SocketEvents{
 		Open: func() {
-			println("DIAG open")
 			c.mu.Lock()
 			if c.closed || c.socket != current {
 				c.mu.Unlock()
@@ -1086,7 +1084,6 @@ func (c *Client) connect(attempt int) {
 		},
 		Message: func(data []byte, binary bool) {
 			c.mu.Lock()
-			println("DIAG message", len(data), c.socket != current, c.closed)
 			stale := c.socket != current || c.closed
 			l := c.link
 			c.mu.Unlock()

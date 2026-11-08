@@ -55,11 +55,16 @@ func TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect(t *testing.T) {
 			Keybindings: pitui.KeybindingsConfig{"app.model.select": {"f2"}}, Theme: "mine", Settings: prefs.TuiSettings{},
 			Themes: map[string]theme.ThemeJSON{"mine": mine}, Problems: []string{},
 		},
+		actionOptions: func(options *host.LauncherActionOptions) {
+			options.ReadClipboard = &host.ClipboardReaders{Files: func() []string { return nil }, Image: func() *host.ClipboardImage { return nil }, Text: func() string { return "" }}
+		},
+	}, func(options *hosts.ServerOptions) {
+		options.DataDir = t.TempDir()
+		if err := os.WriteFile(filepath.Join(options.DataDir, "tui.json"), []byte(`{"keybindings":{"app.model.select":"ctrl+g","app.clipboard.pasteImage":"f3"},"theme":"light"}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	})
 	fixture := l.fixture
-	if err := os.WriteFile(filepath.Join(fixture.DataDir, "tui.json"), []byte(`{"keybindings":{"app.model.select":"ctrl+g","app.clipboard.pasteImage":"f3"},"theme":"light"}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	noFailures := func() {
 		failMu.Lock()
 		defer failMu.Unlock()
@@ -76,6 +81,8 @@ func TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect(t *testing.T) {
 	if contains(l.terminal.screen(), "Choose default model") {
 		t.Fatal("local F2 overrides the server's Ctrl+G")
 	}
+	// Ctrl+G is the launcher's own external-editor key: its notice ("No external editor") holds the keys until it goes.
+	l.until(10*time.Second, "the launcher's notice gone", func() bool { return !contains(l.terminal.screen(), "No external editor") })
 	l.terminal.SendInput("\x1bOQ")
 	l.waitScreen(10*time.Second, "Choose default model")
 	l.terminal.SendInput(keyEsc)
@@ -275,7 +282,7 @@ func TestAServerOnANewerLinkProtocolIsReportedAsAnOutdatedBuildNotRetriedForever
 		options.OnExit = func() { exited.Store(true) }
 	}})
 	_ = l
-	(<-newer.sockets).fire()
+	(<-newer.sockets).fire(t)
 	pollFor(t, 20*time.Second, exited.Load)
 	failMu.Lock()
 	defer failMu.Unlock()
@@ -304,11 +311,13 @@ type newerSocket struct {
 	once   sync.Once
 }
 
-func (s *newerSocket) fire() {
-	s.events.Open()
-	if hello, err := link.BinaryCodec.Encode(&link.HelloMessage{Protocol: data.ProtocolVersion + 1, Incarnation: "newer", Calls: 256}); err == nil {
-		s.events.Message(hello, true)
+func (s *newerSocket) fire(t *testing.T) {
+	hello, err := link.BinaryCodec.Encode(&link.HelloMessage{Protocol: data.ProtocolVersion + 1, Incarnation: "00000000-0000-7000-8000-000000000001", Calls: 256})
+	if err != nil {
+		t.Fatal(err)
 	}
+	s.events.Open()
+	s.events.Message(hello, true)
 }
 func (*newerSocket) Open() bool        { return true }
 func (*newerSocket) Send([]byte) error { return nil }
@@ -390,7 +399,7 @@ func TestLauncherClipboardIsWrittenOnlyAfterTheCopyKeyOrAConfirmationTheEditorRe
 	}
 	l.terminal.clear()
 	l.terminal.SendInput("r")
-	pollFor(t, 10*time.Second, func() bool { return contains(l.terminal.written(), "requested text") })
+	l.until(10*time.Second, "the second consent prompt", func() bool { return contains(l.terminal.written(), "requested text") })
 	l.terminal.SendInput("y")
 	poll(t, func() bool { return len(l.copied()) == 2 })
 	if got := awaitAnswer(t, surface.answers); !got.OK {
