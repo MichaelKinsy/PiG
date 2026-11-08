@@ -88,21 +88,58 @@ func TestAppDoesNotCompareAnExecutableUnderTheGoBuildCache(t *testing.T) {
 	for path, want := range map[string]bool{
 		"/tmp/go-build123456/b001/exe/server":       true,
 		"/var/folders/x/T/go-build99/b001/app.test": true,
+		"/tmp/go-build/b001/server":                 true,
 		"/usr/local/bin/server":                     false,
+		"/opt/go-builds/server":                     false,
+		"/opt/go-build-tools/server":                false,
 	} {
 		if got := inGoBuildCache(path); got != want {
 			t.Errorf("inGoBuildCache(%q) = %v, want %v", path, got, want)
 		}
 	}
-	exe, err := os.Executable()
-	if err != nil {
+	// End to end: an executable under such a directory is not compared. The barrier is a plugin edit: the watcher handles events in
+	// order, so once it shows the plugin dirty it has seen the executable's rewrite too.
+	built := filepath.Join(t.TempDir(), "go-build123", "b001", "server")
+	if err := os.MkdirAll(filepath.Dir(built), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if !inGoBuildCache(exe) {
-		t.Skipf("this test binary %s is not under a go-build directory (go test -c)", exe)
+	if err := os.WriteFile(built, []byte("v1"), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	s := startTestApp(t, nil, nil)
+	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, func(o *AppOptions) {
+		o.executable = func() (string, error) { return built, nil }
+	})
+	if err := os.WriteFile(built, []byte("v2"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	editEcho(t, s.root, "barrier")
+	untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
+	if s.app.Plugins.Marks().Base {
+		t.Fatal("base is marked by an edit of an executable under the go-build cache")
+	}
 	if got := s.errors.kinds(); len(got) != 0 {
 		t.Fatalf("reported %v", got)
+	}
+}
+
+// Something that is no regular file, and a file that cannot be opened, are the server's code that cannot be read: reported.
+func TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened(t *testing.T) {
+	unreadable := filepath.Join(t.TempDir(), "server")
+	if err := os.WriteFile(unreadable, []byte("x"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]string{"a directory": t.TempDir()}
+	if file, err := os.Open(unreadable); err != nil {
+		cases["a file with no permission"] = unreadable
+	} else {
+		_ = file.Close() // root, or a system without modes: nothing is unreadable
+	}
+	for name, path := range cases {
+		t.Run(name, func(t *testing.T) {
+			s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return path, nil } })
+			if got := s.errors.kinds(); len(got) != 1 || got[0] != AppErrorServerScan {
+				t.Fatalf("reported %v, want [server_scan]", got)
+			}
+		})
 	}
 }
