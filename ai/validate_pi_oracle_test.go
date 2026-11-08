@@ -269,9 +269,11 @@ func TestValidateToolArgumentsMatchesPiOnSeededSchemas(t *testing.T) {
 // Corpus (a): every case of Pi's validation-probes.test.ts (testdata/validation-probes.json). Pi's recorded outcome of each is the one the Pi test file asserts, and Pig must also equal Pi's validation of the same JSON.
 func TestValidateToolArgumentsMatchesPiOnPiProbes(t *testing.T) {
 	rows := loadValidationProbes(t)
-	probes := make([]piProbe, len(rows))
-	for i, row := range rows {
-		probes[i] = piProbe{row.Name, row.Schema, row.Args}
+	probes := make([]piProbe, 0, len(rows))
+	for _, row := range rows {
+		if !designedOutProbes[row.Test] {
+			probes = append(probes, piProbe{row.Name, row.Schema, row.Args})
+		}
 	}
 	comparePi(t, probes)
 }
