@@ -75,7 +75,7 @@
      (pv-hints-line (lambda (id) (pig:entry-render-options-key-text options id))
                     (lambda (id description) (pig:entry-render-options-key-hint options id description))
                     (pig:jget entry "data"))))
-  (pig:markdown-transformer ext #'pv-transform-markdown)
+  (pig:markdown-transformer ext #'pv-transform-markdown :message-types '("user" "assistant" "assistant-thinking" "custom" "summary" "changelog"))
   (pig:tool-renderer ext #'pv-resolve-tool)
   (pig:command ext "late_tool_renderer" "Register a tool renderer resolver after loading"
                (lambda (ctx args)

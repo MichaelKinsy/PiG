@@ -1670,7 +1670,7 @@ def new_extension() -> pig_sdk.Extension:
                     trace.write("returned first\n")
         return "md:%s:%s:streaming=%s:width=%d" % (markdown, context.get("messageType", ""), str(bool(context.get("isStreaming"))).lower(), int(context.get("availableWidth") or 0))
 
-    ext.markdown_transformer(transform_markdown)
+    ext.markdown_transformer(transform_markdown, message_types=["user", "assistant", "assistant-thinking", "custom", "summary", "changelog"])
     def resolved_line(prefix: str, tool: str):
         return lambda _ctx, args, _render, _width: ["%s:%s:%s" % (prefix, tool, args.get("q"))]
 

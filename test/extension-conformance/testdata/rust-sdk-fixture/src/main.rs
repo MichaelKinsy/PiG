@@ -2432,7 +2432,7 @@ fn main() {
     ext.entry_view_renderer("kit-entry", |_ctx, _entry, _options, _width| {
         Ok(kit_probe_view())
     });
-    ext.markdown_transformer(|markdown, context| {
+    ext.markdown_transformer_with_options(|markdown, context| {
         // "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists.
         if let Some(rest) = markdown.strip_prefix("trace:") {
             // The name is the last field: a Windows <dir> contains a drive colon.
@@ -2459,6 +2459,8 @@ fn main() {
             "md:{markdown}:{}:streaming={}:width={}",
             context.message_type, context.is_streaming, context.available_width
         ))
+    }, pig_sdk::MarkdownTransformerOptions {
+        message_types: Some(["user", "assistant", "assistant-thinking", "custom", "summary", "changelog"].map(String::from).to_vec()),
     });
     fn resolved_line(prefix: &'static str, tool: &str) -> pig_sdk::ToolRendererSet {
         let tool = tool.to_string();

@@ -67,8 +67,12 @@ func (r *registrationReference) RegisterToolRenderer(resolver extension.ToolRend
 	r.ext.ToolRenderers = append(r.ext.ToolRenderers, resolver)
 }
 
-func (r *registrationReference) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer) {
+func (r *registrationReference) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer, options ...extension.MarkdownTransformerOptions) {
 	r.ext.MarkdownTransformer = transformer
+	r.ext.MarkdownMessageTypes = nil // the default types
+	if len(options) > 0 {
+		r.ext.MarkdownMessageTypes = options[0].MessageTypes
+	}
 }
 
 // registrationView is what the production Runner reports about the registrations the conformance fixtures make: the SDKs and the Go reference register

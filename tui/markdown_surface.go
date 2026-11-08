@@ -1,6 +1,5 @@
 package tui
 
-// pig divergence (D313): Pi eebd5d90 passes the Markdown transformers to these message components; Pi 1.5.0 renders their body untransformed.
 // markdownSurface is the display-only Markdown transform of a message component whose body Pi renders from a Markdown source with a header of its own
 // (custom messages, skill blocks, branch and compaction summaries). The component's owner installs the transform and the state it reads, as Pi hands the
 // component markdownTransformers, messageId and timestamp (createMarkdownTransform(type, false, markdownTransformers, messageId, timestamp)).
