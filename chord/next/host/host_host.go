@@ -218,6 +218,19 @@ type Host interface {
 	// ctx is the parent of the route's work, aborted for it when this host closes. It returns the RouteHandle: the app's
 	// controls of the route's addresses.
 	Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error)
+	// Delegate is the route of this host's own address kind (kind must be it; called before `Load`, once): the remote types
+	// placed on this host that it does not serve itself go over it, as a route's holds do (Authorize admits them, Resolve makes
+	// the link, which is re-resolved once after a drop; a rejected Resolve fails its holders `failed { waiting }`), so the host
+	// serves the union of its own types and those the delegate serves, as one host. What this host serves stays here: the
+	// decision is taken at placement by the published table, not by an object's liveness, so a restarting or parked type never
+	// moves to the delegate. A hold the delegate's own link asks for and no host serves is not sent back to it
+	// (`unavailable`, not served here). pig divergence (D605): Pi's server runs its plugins in its own host; the Go kit's plugins
+	// run in a Node subprocess behind this host.
+	Delegate(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error)
+	// Serves is whether this host serves a type under name (its published table, by which Delegate decides: a restarting or
+	// parked type is still served). The delegate's host asks it to hand this host the types placed on its own address that
+	// it does not serve itself (D605: the delegation goes both ways, as Pi's one host serves the union).
+	Serves(name string) bool
 	// Revoke revokes revocation (§4, R10, R11), synchronously: every remote object whose principal it revokes (`RevokedBy`)
 	// ends at once, whatever references remain (holders get `forbidden`, running calls are aborted, an activation is
 	// abandoned); every child link whose principal it revokes closes (never the parent, never this host's own principal);
@@ -507,7 +520,7 @@ func createHost(options HostOptions) (*chordHost, error) {
 	h.routing, h.routingCancel = chordctx.WithCancel(chordctx.Background())
 	h.parent = newPath(func(pathEvent) {})
 	h.unplaced = newPath(func(pathEvent) {})
-	h.destination = newDestination(h.address, h.routes, h.parent)
+	h.destination = newDestination(h.address, h.routes, h.parent, func(name string) bool { return h.served(name) != nil })
 	h.roots = newRootScopes(h)
 	if options.Store != nil {
 		// Chord's own: `openStore` made it.
@@ -764,6 +777,17 @@ func (h *chordHost) Connect(l link.Link, options LinkOptions, ctx context.Contex
 
 // Route implements Host.
 func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error) {
+	return h.addRoute("route", kind, options, ctx, false)
+}
+
+// Delegate implements Host.
+func (h *chordHost) Delegate(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error) {
+	return h.addRoute("delegate", kind, options, ctx, true)
+}
+
+// addRoute is Route and Delegate: a delegate is the route of the host's own address kind, which its destination consults for the
+// types the host does not serve.
+func (h *chordHost) addRoute(what string, kind *contracts.HostKind, options RouteOptions, ctx context.Context, delegate bool) (RouteHandle, error) {
 	var err error
 	var handle RouteHandle
 	h.enter(func() {
@@ -771,11 +795,15 @@ func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx co
 			return
 		}
 		if h.state != hostNew {
-			err = errors.New("route: routes are declared before load")
+			err = fmt.Errorf("%s: routes are declared before load", what)
+			return
+		}
+		if delegate && (h.address == nil || h.address.Kind != kind.Kind) {
+			err = fmt.Errorf("delegate: %s is not this host's address kind", kind.Kind)
 			return
 		}
 		if _, ok := h.routes[kind.Kind]; ok {
-			err = fmt.Errorf("route: %s is routed already", kind.Kind)
+			err = fmt.Errorf("%s: %s is routed already", what, kind.Kind)
 			return
 		}
 		// The parent of the route's work: its `resolve`s and the holds and calls on its links, aborted when it closes
@@ -789,6 +817,9 @@ func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx co
 		}
 		h.routes[kind.Kind] = made
 		h.routeKinds = append(h.routeKinds, kind.Kind)
+		if delegate {
+			h.destination.delegating = true
+		}
 		handle = RouteHandle{
 			Retry: func(address contracts.Address) bool {
 				started := false
@@ -1023,6 +1054,13 @@ func (h *chordHost) counted(ctx context.Context) context.Context {
 		return ctx
 	}
 	return chordctx.WithTelemetry(ctx, h.counting)
+}
+
+// Serves implements Host.
+func (h *chordHost) Serves(name string) bool {
+	served := false
+	h.enter(func() { served = h.served(name) != nil })
+	return served
 }
 
 // UnservedNames are the names requests here wait for unbound that no plugin here serves (types and registries:
@@ -2277,8 +2315,9 @@ func (h *chordHost) unboundRequest(table *staged, request request, failed *named
 		if entry != nil && !failed.has(provider) {
 			return ""
 		}
-		// A remote type the object reaches on another host: placed by the rollout's rules, not this host's.
-		if !h.placedHere(contract, request.params) {
+		// A remote type the object reaches on another host, or the delegate's (what the staged table does not serve): placed by the
+		// rollout's rules, not this host's.
+		if !h.placedHere(table, contract, request.params) {
 			return ""
 		}
 		if entry != nil && h.wouldBind(entry, contract, request.params) {
@@ -2327,10 +2366,10 @@ func (h *chordHost) wouldBind(entry *served, typ *contracts.Contract, params *de
 	return err == nil && cause == nil
 }
 
-// placedHere reports whether a request for typ with params goes here; a `hostAddress` that fails: not here (it fails at
-// bind).
-func (h *chordHost) placedHere(typ *contracts.Contract, params *delta.JsonObject) bool {
-	here, err := h.destination.placedHere(typ, params)
+// placedHere reports whether a request for typ with params goes here, by what table serves (the delegate takes what it does not); a
+// `hostAddress` that fails: not here (it fails at bind).
+func (h *chordHost) placedHere(table *staged, typ *contracts.Contract, params *delta.JsonObject) bool {
+	here, err := h.destination.placedHere(typ, params, table.types.has)
 	return err == nil && here
 }
 
