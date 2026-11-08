@@ -187,34 +187,21 @@
       "title": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248)",
       "symptom": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).",
       "rootCause": "",
-      "rootCauseSource": "divergence record",
+      "rootCauseSource": "",
       "userImpact": "Wrong display",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D248",
-      "removeWhen": "the pin reaches a Pi release containing 2cfab7c26.",
+      "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).",
       "origin": "release note",
       "commits": [
         {
-          "hash": "00d787634a",
-          "date": "2026-11-05"
-        },
-        {
           "hash": "01a63b933a",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "5b637b1097",
           "date": "2026-11-05"
         }
       ],
       "tests": [
         "internal/codingagent/selector_focus_test.go::TestEditorSlotTreeSelectorTakesAndReturnsFocus",
-        "internal/codingagent/tree_selector_contract_test.go::TestTreeListHandleInputContractsMatchPi",
-        "internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi",
-        "internal/codingagent/tree_selector_render_contract_test.go::TestTreeLabelInputRenderMatchesPi",
         "tui/tree_select_empty_state_test.go::TestTreeSelectSearchCursor"
       ]
     },
@@ -2025,6 +2012,27 @@
       "tests": [
         "coding/session_bash_persistence_upstream_test.go::TestUpstreamBashEscapeSequencesSplitAcrossChunks",
         "internal/codingagent/tools/sanitize_split_ansi_test.go::TestExecuteBashWithOperationsFlushesPendingANSIAtExit"
+      ]
+    },
+    {
+      "id": "BF-0c44f84",
+      "title": "fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check",
+      "symptom": "fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check",
+      "rootCause": "Pi renews the watches under an entry on the way to base code only when its identity (inode and birth time) differs from the one it had when watched. PiG renewed on every create, remove or rename, so a directory moved away and back was compared again and an edit made through a hardlink, which no watch sees, was found; and a create event of a directory that arrived after the watcher had anchored it renewed it. identityOf is statx (ino, btime) on Linux, lstat (ino, birthtimespec) on darwin and freebsd, the file index and creation time on Windows. Where a system has no birth time Go's syscall package gives (other unixes) the inode alone. A watch that fsnotify drops with the move (kqueue) is put…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0c44f84f21",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry"
       ]
     },
     {
@@ -16575,6 +16583,32 @@
       ]
     },
     {
+      "id": "BF-5d04c3c",
+      "title": "fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's",
+      "symptom": "fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's",
+      "rootCause": "Pi runs esbuild's mapping module in a vm context and spreads its default export. PiG read esbuild's object literal with a parser of its own, which failed on a template literal, kept a __proto__ class, kept esbuild's order of integer-like keys, and escaped U+2028 and U+2029. The module (CommonJS, as Pi builds it) now runs in a Node subprocess of the Node that hosts the plugins, the same Script, spread and JSON.stringify, and the facet's module embeds that text. One process per facet build with a CSS module, ended with the build; its reads are bounded by ctx and NodeOptions.ReadyTimeout, and a ctx that ends it aborts the build. ScopeCSSModule takes the Node options and ctx; ScopedCSS.Classes…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5d04c3c06c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::FuzzScopeCSSModuleMatchesNode",
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorKillsAProcessThatDoesNotAnswer",
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorReportsAModuleThatDoesNotEvaluateAndGoesOn",
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestScopeCSSModuleGivesWhatNodeGivesForEsbuildsMappingModuleOverGeneratedCases",
+        "chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase",
+        "chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleStartsANodeOfItsOwnForTheOneModule"
+      ]
+    },
+    {
       "id": "BF-5d36a58",
       "title": "fix(agent): end the tool flow at custom user messages and hold system messages mid-flow",
       "symptom": "fix(agent): end the tool flow at custom user messages and hold system messages mid-flow",
@@ -22386,6 +22420,27 @@
       ]
     },
     {
+      "id": "BF-6c74cb8",
+      "title": "fix(chord): a late kill of a finished evaluation never lands on the next one",
+      "symptom": "fix(chord): a late kill of a finished evaluation never lands on the next one",
+      "rootCause": "A kill now counts only while its ask is live (a guard taken by the kill and by the end of the ask); a process killed during the ask is ended before ask returns, so the next evaluation starts another.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6c74cb8a4c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne"
+      ]
+    },
+    {
       "id": "BF-6c7b377",
       "title": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the…",
       "symptom": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the PiG-only selectors",
@@ -23033,6 +23088,25 @@
         "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsTheSameOne",
         "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName"
       ]
+    },
+    {
+      "id": "BF-6fdf59f-2",
+      "title": "fix(chord): kqueue watches of a base directory moved away and back are put back, and an entry that cannot be…",
+      "symptom": "fix(chord): kqueue watches of a base directory moved away and back are put back, and an entry that cannot be watched no longer fails the watcher",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6fdf59fc08",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-7008884",
@@ -36395,6 +36469,27 @@
       ]
     },
     {
+      "id": "BF-ad88391-2",
+      "title": "fix(chord): the watcher closes the system watcher outside the host's lock",
+      "symptom": "fix(chord): the watcher closes the system watcher outside the host's lock",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ad883911f0",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_watcher_test.go::TestTheWatcherClosesTheSystemWatcherOutsideTheHostsLockAndJoinWaitsForIt"
+      ]
+    },
+    {
       "id": "BF-ad9ed64",
       "title": "Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an…",
       "symptom": "Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an extension's details object) no longer parses the session record it has just written.",
@@ -36655,6 +36750,25 @@
         "env/daemon_wire_exec_oracle_test.go::TestDaemonExecMatchesPisDaemon",
         "env/daemon_wire_exec_oracle_test.go::TestDaemonWatchMatchesPisDaemon"
       ]
+    },
+    {
+      "id": "BF-aec5a31",
+      "title": "fix(chord): a chmod of a recorded base file is compared like a write",
+      "symptom": "fix(chord): a chmod of a recorded base file is compared like a write",
+      "rootCause": "Pi passes every event of a recorded file to mark, so a file made unreadable differs and one readable again with its bytes clears. baseEvent returned on a Chmod before it looked at the file. A Chmod still renews nothing on the way to base code (the Create, Remove and Rename mask).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "aec5a318db",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-af1fe1a",
@@ -37668,6 +37782,37 @@
       "tests": [
         "tui/complexity_scaling_norace_test.go::TestScalingBracketedPaste",
         "tui/stdin_buffer_paste_chunks_test.go::TestPasteOverManyReadsEqualsOnePasteBuffer"
+      ]
+    },
+    {
+      "id": "BF-b50a5ab",
+      "title": "A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that…",
+      "symptom": "A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that still pointed into the whole message, so a 4 MB error body stayed in memory for as long as the recorded span did.",
+      "rootCause": "ai: the telemetry span status kept a 500-character cut of the provider's error message that still pointed into the whole message (the hazard Pi #9265 fixed); the cut is cloned now, and a runtime.MemStats test fails without it. ai: the streaming-json and streaming-tool-arguments release cases run on weak pointers. telemetry: the no-op instruments and span are asserted to hold no state (Go form of Object.isFrozen), and the span shares the no-op metrics and propagation. codemode: the worker host's path and missing-file cases run against SandboxOptions.Wasm, PiG's analogue of the worker file. configschema: RenderReferences ports generate-references.ts; docs/site/docs/models-configuration.md is…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that still pointed into the whole message, so a 4 MB error body stayed in memory for as long as the recorded span did. The cut is copied now.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b50a5abb5c",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "ai/streaming_json_parser_cost_test.go::TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt",
+        "ai/streaming_tool_arguments_upstream_test.go::TestStreamingToolArgumentsReleaseTheStreamAndItsPartialMessagesOnceTheCallerDropsThem",
+        "ai/telemetry_upstream_test.go::TestAITelemetryKeepsABoundedErrorMessageThatDoesNotHoldTheProvidersWholeMessageAliveUpstream",
+        "codemode/sandbox_test.go::TestWorkerHostAcceptsAModuleFromAFilePath",
+        "codemode/sandbox_test.go::TestWorkerHostReportsAMissingModuleFileAsASandboxError",
+        "internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesTheCommittedPage",
+        "internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesThePinnedPiPage",
+        "internal/codingagent/configschema/references_test.go::TestReferencesRenderTheModelsConfigurationPageOnly",
+        "telemetry/metrics_upstream_test.go::TestMetricsUpstream",
+        "telemetry/telemetry_upstream_test.go::TestTelemetryUpstream"
       ]
     },
     {
@@ -43214,6 +43359,28 @@
       ],
       "tests": [
         "mcp/review_regression_test.go::TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody"
+      ]
+    },
+    {
+      "id": "BF-d4ef260",
+      "title": "fix(chord): a CSS module is decoded as UTF-8 like TextDecoder before it is scoped",
+      "symptom": "fix(chord): a CSS module is decoded as UTF-8 like TextDecoder before it is scoped",
+      "rootCause": "build.ts hands scopeCssModule new TextDecoder().decode(contents): a byte that is not UTF-8 is U+FFFD, one per maximal subpart, and a leading byte order mark goes. decodeUTF8 is that decoder; checked against Node's over every byte string of up to three bytes from 26 telling bytes and 3000 random ones.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d4ef260d38",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_cssmodules_decode_test.go::TestDecodeUTF8GivesTheWHATWGDecodersMaximalSubpartReplacements",
+        "chord/nextnode/plugins/plugins_cssmodules_decode_test.go::TestDecodeUTF8GivesWhatNodesTextDecoderGivesForEveryShortSequenceAndRandomOnes"
       ]
     },
     {
@@ -55119,11 +55286,6 @@
       "id": "D245",
       "title": "The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and…",
       "entry": "BF-3b696c8"
-    },
-    {
-      "id": "D248",
-      "title": "The /tree search line draws a cursor while the selector is focused",
-      "entry": "BF-01a63b9"
     },
     {
       "id": "D249",

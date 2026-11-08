@@ -41,7 +41,7 @@ func TestModelsConfigurationReferenceMatchesThePinnedPiPage(t *testing.T) {
 	}
 	withoutComment := func(page string) string {
 		var kept []string
-		for _, line := range strings.Split(page, "\n") {
+		for line := range strings.SplitSeq(page, "\n") {
 			if !strings.HasPrefix(line, "<!-- This file is generated ") {
 				kept = append(kept, line)
 			}
