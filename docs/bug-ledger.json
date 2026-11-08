@@ -1523,6 +1523,45 @@
       ]
     },
     {
+      "id": "BF-0a8ecd3",
+      "title": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller…",
+      "symptom": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering.",
+      "rootCause": "Go code that reads a singleton's value from a job's goroutine (p2's environment-restart and sharing-archive jobs) raced the object's own commits and its seal on close; the red test fails under -race without the change. The benchmarks measure a read from a goroutine and from inside a section.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering. \u003c!-- fix: chord-registry-value-section --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "714e251284",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "a79074ec58",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "0a8ecd3702",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "d80cb241f7",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_registry_value_test.go::TestRegistryValueReadsRaceFreeWhileAContributionChanges",
+        "chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges",
+        "chord/next/host/remote_hold_gate_test.go::TestReloadARecordedFactoryMayPinAKeyOnItsInertReference",
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind",
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay",
+        "chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop"
+      ]
+    },
+    {
       "id": "BF-0aa31c4",
       "title": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node…",
       "symptom": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).",
@@ -41786,6 +41825,106 @@
         "internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode",
         "internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL",
         "tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput"
+      ]
+    },
+    {
+      "id": "BF-d80cb24",
+      "title": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does…",
+      "symptom": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine no longer races the object's own commits and its seal when the host closes.",
+      "rootCause": "Go code that reads a singleton's value from a job's goroutine (p2's environment-restart and sharing-archive jobs) raced the object's own commits and its seal on close; the red test fails under -race without the change. The benchmarks measure a read from a goroutine and from inside a section.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine no longer races the object's own commits and its seal when the host closes. \u003c!-- fix: chord-singleton-value --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "714e251284",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "9ea6021b5f",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "d892104fad",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "d80cb241f7",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/data/failure_test.go::TestWaitingCauseKeepsAVersionRefusal",
+        "chord/next/host/host_adapted_test.go::TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedRestartHasANewerReferenceReadNothingDuringAParkedRestartItsWatchWaitingThenTheNewInstancesValues",
+        "chord/next/host/host_adapted_test.go::TestReloadAnOlderConsumersFirstReadDuringAParkedRestartMapsWithTheProviderWhoseAttemptIsShownUntilTheNewOneGoesLive",
+        "chord/next/host/host_ctx_test.go::TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
+        "chord/next/host/host_example_63_test.go::TestExample63OptimisticAnswers",
+        "chord/next/host/host_example_64_test.go::TestExample64OldWork",
+        "chord/next/host/host_object_reload_test.go::TestReloadAReferenceDetachingFromAParkedRestartsOldAttemptFollowsTheOldInstanceWhileItsCallDrainsThenKeepsItsLastValueWithTheFailureOnce",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADependencyHeldOnlyByItNeverEnds",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallWaitsAtTheGateForTheNewCode",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartOldWorkWritesADocumentWhoseVersionTheReloadRaisesTheNewCodeMigratesWhatItWrote",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartReBindsMembersByNameOneFrameFromTheLastValueAndRebuildsInternalDerives",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart",
+        "chord/next/host/host_object_reload_test.go::TestReloadAStuckRoutineCallPastTheDrainAnOldRoutineCallStuckPastTheReloadDrainBoundDrainTimeoutTheOldAttemptSealedItsCommitRefused",
+        "chord/next/host/host_object_reload_test.go::TestReloadDrainBoundCutsACallStillRunningAtReloadDrainTimeoutReleasedReportsDrainTimeoutThenTheNewCodeServes",
+        "chord/next/host/host_object_reload_test.go::TestReloadDrainBoundIsAtMostCloseTimeout",
+        "chord/next/host/host_object_reload_test.go::TestReloadFatesRestartsALiveObjectItsDocumentsKeptNewCodeForNewCalls",
+        "chord/next/host/host_object_reload_test.go::TestReloadFatesShowsTheOldAttemptLiveWhileItDrainsClosesItsNativesWithReasonReloadThenOpensTheNewOnes",
+        "chord/next/host/host_object_reload_test.go::TestReloadGCCollectsARestartsOldAttemptAndItsClosuresOnceItEnded",
+        "chord/next/host/host_object_reload_test.go::TestReloadOldWorkStartsAJobWritesDocumentsAndTablesAndReadsOnTheOldCodeTheNewFactoryRunsAfter",
+        "chord/next/host/host_object_reload_test.go::TestReloadReadinessShowsAFailedRequestWhileItLastsARequestThatRecoversShowsTheObjectLiveAgainNewCallsWait",
+        "chord/next/host/host_object_reload_test.go::TestReloadTwoReloadsInARowTheSecondDoesNotWaitForTheFirstsOldCallWhichFinishesOnItsOldCodeTheLastCodeServes",
+        "chord/next/host/host_old_work_test.go::TestAsRemoteOldWorkHasNoAttemptOfThisHostInItsChainAReloadCycleCannotPassThroughAnotherHostsDrain",
+        "chord/next/host/host_old_work_test.go::TestAsRemoteOldWorkIsOldWorkWhileCountedWhateverChainItHad",
+        "chord/next/host/host_old_work_test.go::TestChainAttemptsCollectsEachAttemptOnceDrainingOrNot",
+        "chord/next/host/host_old_work_test.go::TestOldWorkACallRoutedToAnOldAttemptAfterItsDrainBeganJoinsTheDrainItIsNotCutAtTheSeal",
+        "chord/next/host/host_old_work_test.go::TestOldWorkAChainOfThreeTheWorkReachesAnObjectWhoseNewAttemptNeedsTheDependentWhichNeedsTheProvider",
+        "chord/next/host/host_old_work_test.go::TestOldWorkAProvidersRunningCallReachesItsDependentThroughCtxGetWhileBothRestartNoStall",
+        "chord/next/host/host_old_work_test.go::TestOldWorkARootGivenTheMethodsCtxWithoutItsSignalIsOldWorkOneWithoutItIsNewWork",
+        "chord/next/host/host_old_work_test.go::TestOldWorkAskingForAVersionTheNewCodeDroppedWithNoOldAttemptServingItFailsAtOnce",
+        "chord/next/host/host_old_work_test.go::TestOldWorkBothVersionsRaisedWithAcceptsOldWorksGetterAtTheOldVersionBindsTheDependentsOpenOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestOldWorkCreatingAnObjectThatDidNotExistItStartsOnTheNewCodeAndBindsTheProvidersOpenOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestOldWorkMutualDrainsTheProvidersCallReachesTheDependentWhileTheDependentsCallReachesTheProvider",
+        "chord/next/host/host_old_work_test.go::TestOldWorkOfFindsADrainingAttemptAnywhereUpTheCallChain",
+        "chord/next/host/host_old_work_test.go::TestOldWorkOfWalksNoChainWhileTheHostHasNoOldWorkOpenNoCostOutsideReloads",
+        "chord/next/host/host_old_work_test.go::TestOldWorkReEntryWorkDependentTheProviderAgainRunsOnTheProvidersOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestOldWorkSelfReEntryWorkCtxGetOfItsOwnObjectRunsOnItsOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestOldWorkTheReloadRaisesTheProvidersVersionAndTheDependentsNewCodeNeedsItTheWorkRunsOnTheDependentsOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleACutWaitKeepsNeitherItsTargetNorTheOldAttemptItRanOn",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleAWaitOfOldWorkFailsAtOnceWhenOldWorkCreatesAnObjectWhoseNewCodeNeedsTheProvidersRaisedContract",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleAnOpenersGateWaitLeavesNoWaitEdgeOnceItEndedNorKeepsTheOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleDoesNotFailAWaitWhoseTargetWaitsOnAnotherObjectsDrainOnlyNoCycleThroughThisWork",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleFailsOnceALaterWaitClosesTheCycleTheNewAttemptsOpenerCallsTheProviderOldWorkWaitsOn",
+        "chord/next/host/host_readiness_test.go::TestReadinessCountsARequestFailedOnThisHostAsReadyTheReloadReportsItAsWhatTheSuccessorWaitsFor",
+        "chord/next/host/host_readiness_test.go::TestReadinessDoesNotWaitForRegistryRequestsTheOldAttemptsContributionsKeepThemUntilItsSeal",
+        "chord/next/host/host_readiness_test.go::TestReadinessKeepsItsBindingsOutOfPresenceListsTheyAreNoConsumersOfTheirOwn",
+        "chord/next/host/host_readiness_test.go::TestReadinessMemoryIsCollectedWithItsBindingsOnceTheRestartsSuccessorIsLive",
+        "chord/next/host/host_readiness_test.go::TestReadinessReleaseEndsAWaitStillRunningReadyResolvesAtOnce",
+        "chord/next/host/host_readiness_test.go::TestReadinessReleaseLetsGoOfItsBindingsAnObjectHeldOnlyByThemEnds",
+        "chord/next/host/host_readiness_test.go::TestReadinessResolvesAtItsBoundWhenARequestNeverGetsReady",
+        "chord/next/host/host_readiness_test.go::TestReadinessShowsARequestsFailureAndNoneOnceTheRequestRecovered",
+        "chord/next/host/host_readiness_test.go::TestReadinessWaitsForARequestStillLoadingAndResolvesOnceItIsLive",
+        "chord/next/host/host_readiness_test.go::TestReadinessWaitsForNothingBeforeItStartedTheRequestsBindOnlyOnceEveryFateStarted",
+        "chord/next/host/host_readiness_test.go::TestReadinessWaitsUpToItsBoundForARequestAnotherHostRefusesForItsVersionThatHostsReloadHealsIt",
+        "chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges",
+        "chord/next/host/jobs_records_test.go::TestRecordsJobsAcrossAReloadAnOlderInMemoryRunIsCutAtTheRestartsSealItsFinishRunsOnTheNewCodeMappedForwardsOnce",
+        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsABackCallFromTheDependentOnTheServerRunsOnTheWorkerProvidersOpenOldAttempt",
+        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsABackCallFromTheDependentOnTheWorkerRunsOnTheServerProvidersOpenOldAttempt",
+        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsTheProvidersVersionRaisedWhichTheDependentsNewCodeNeedsTheWorkRunsOnTheDependentsOldAttempt",
+        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsTheSameWithTheDependentsHostReloadedFirstItsReadinessWaitsOutTheOtherHostsVersionRefusal",
+        "chord/next/host/remote_hold_gate_test.go::TestCallsOverALinkWhileARestartWaitsACallArrivingWhileTheOldAttemptDrainsAndTheSuccessorsRequestOpensWaitsForTheNewCodeNeverNotReady",
+        "chord/next/host/remote_hold_reload_test.go::TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsEndBindsSafely",
+        "chord/next/host/remote_provider_test.go::TestProviderAnswerAfterItsState",
+        "chord/next/host/remote_provider_test.go::TestProviderOldWorkFromAnotherHost",
+        "chord/next/host/remote_relay_test.go::TestRelayForwardACallsOldWorkFlagFromATrustedDownstreamLinkOnlyAPageCannotClaimOldWork",
+        "chord/next/host/remote_relay_test.go::TestRelayForwardsAWorkersResultAfterTheStateTheRelaysOwnObjectsKeepWaitingForTheTabEveryAckReachesItsSender",
+        "chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop"
       ]
     },
     {
