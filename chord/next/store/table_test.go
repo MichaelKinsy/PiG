@@ -15,7 +15,7 @@ import (
 // Also the helpers of the query lane's tests (table, expression, evaluate, query, history, evolve and migration
 // tests): qDefine, qEvolve, qEqual, qFails, qJSON.
 //
-// Designed out: nothing (every case is ported; the type-level `@ts-expect-error` and `expectTypeOf` lines of the
+// Designed out: nothing (every case is ported, the `keys` case as a run-time check; the type-level `@ts-expect-error` and `expectTypeOf` lines of the
 // other files are noted there).
 
 // qDefine is DefineTable, failing the test on its error.
@@ -148,4 +148,33 @@ func TestDefineTable(t *testing.T) {
 			t.Fatalf("another json schema keeps the fingerprint")
 		}
 	})
+}
+
+// Ports packages/chord/test/store/table.test.ts "keys › type an int() key column as a number and a str() one as a string
+// (tutorial, 2026-11-03)". Pi checks it with the types (KeyOf); a Go key is a Row, so the codec checks it when the key is
+// used: an int() column takes a number, a str() one a string, and each refuses the other.
+func TestKeysTypeAnIntKeyColumnAsANumberAndAStrOneAsAString(t *testing.T) {
+	byNumber := qDefine(t, "by_number", TableOptions{
+		Version: 1, Columns: []ColumnProp{Col("id", Int()), Col("text", Str())}, Key: []string{"id"},
+	})
+	key, err := byNumber.Rows.Key(Row{"id": 7}, "get")
+	if err != nil {
+		t.Fatalf("Key({id: 7}) on an int() key: %v", err)
+	}
+	qEqual(t, key.ID, "[7]")
+	_, err = byNumber.Rows.Key(Row{"id": "7"}, "get")
+	qFails(t, err, `key column "id"`)
+
+	mixed := qDefine(t, "mixed", TableOptions{
+		Version: 1, Columns: tableColumns(), Key: []string{"id", "at"},
+	})
+	key, err = mixed.Rows.Key(Row{"id": "a", "at": 1}, "get")
+	if err != nil {
+		t.Fatalf("Key({id: a, at: 1}) on a str() and an int() key: %v", err)
+	}
+	qEqual(t, key.ID, `["a",1]`)
+	_, err = mixed.Rows.Key(Row{"id": 1, "at": 1}, "get")
+	qFails(t, err, `key column "id"`)
+	_, err = mixed.Rows.Key(Row{"id": "a", "at": "1"}, "get")
+	qFails(t, err, `key column "at"`)
 }

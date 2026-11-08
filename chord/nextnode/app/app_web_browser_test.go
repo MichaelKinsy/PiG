@@ -1,19 +1,25 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/browsertest"
+	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
+	"github.com/MichaelKinsy/PiG/chord/telemetrysqlite"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/test/node/react/hooks.test.ts, web/language.test.ts and the first two cases of web/page.test.ts (Pi main
 // c23b9ec1) over a real Chromium (the DevTools driver, chord/nextnode/internal/browsertest; skipped without one: `CHROMIUM_BIN`).
-// The page's third case (a click as the root of one trace) (a click as the root of one trace) waits on T6 (`ctx.trace`) and is not ported here; web/styles.test.ts in
-// app_web_styles_test.go.
+// The page's third case (a click as the root of one trace through the server into the worker) runs the vendored fixture web/telemetry.ts
+// against the app's SQLite telemetry store; web/styles.test.ts in app_web_styles_test.go.
 //
 // Forced differences: the browser is driven from Go over the DevTools protocol (Pi's `ws` driver, ported as the Go driver); the
 // tests wait on the plugins' state through its watch (Pi polls it every 10 ms).
@@ -190,4 +196,88 @@ func TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle(t *testing.T) {
 	browser.Wait(`globalThis.version === "2" && globalThis.connection === "connected"`, time.Minute)
 	// The panel follows the connection by a frame or two (Opus L6).
 	browser.Wait(`document.querySelector(".panel")?.textContent === "Notes"`)
+}
+
+var (
+	traceDuration = regexp.MustCompile(` \(\+?[\d.]+ms\)`)
+	clickSpanID   = regexp.MustCompile(`^browser:[0-9a-f-]{36}:\d+$`)
+)
+
+func TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer(t *testing.T) {
+	browser := browsertest.Start(t)
+	db, err := node.OpenNodeSqliteDatabase(filepath.Join(t.TempDir(), "t.sqlite"), node.NodeSqliteDatabaseOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := telemetrysqlite.CreateSqliteTelemetry(db, telemetrysqlite.SqliteTelemetryOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	s := webBrowserApp(t, surfacesFixture(t, "web", "telemetry.ts"), freePort(t), map[string]map[string]string{"notes": notesPlugin}, func(o *AppOptions) {
+		o.Workers = []AppWorkerKind{testWorker(t, project, "")}
+		o.Telemetry = store
+	})
+	signIn(browser, s.app.OwnerLink())
+	browser.Run(`document.getElementById("write").click()`)
+	browser.Wait(`globalThis.written === 1`)
+	// The page sends every few seconds, the worker every second, the server writes every second.
+	name := "page.write"
+	var spans []telemetry.StoredSpan
+	err = browsertest.Poll(context.Background(), 30*time.Second, "the click's trace", func(context.Context) (bool, error) {
+		if err := store.Flush(); err != nil {
+			return false, err
+		}
+		found, err := store.FindTraces(telemetry.TraceQuery{Name: &name})
+		if err != nil || len(found.Traces) == 0 {
+			return false, err
+		}
+		spans = found.Traces[0].Spans
+		for _, span := range spans {
+			if kind, _ := span.Attributes.Get("type"); kind == "test.store" {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	shown := make([]telemetry.StoredSpan, len(spans))
+	for index, span := range spans {
+		host, ok := span.Attributes.Get("chord.host")
+		if !ok {
+			host = "?"
+		}
+		shown[index] = span
+		shown[index].Attributes = telemetry.SpanAttributes{{Name: "host", Value: host}}
+	}
+	var tree []string
+	for _, line := range strings.Split(traceDuration.ReplaceAllString(telemetry.RenderTrace(shown), ""), "\n") {
+		if !strings.Contains(line, "·") {
+			tree = append(tree, line)
+		}
+	}
+	want := []string{
+		`page.write host="browser"`,
+		`  chord.call host="browser"`,
+		`    chord.relay host="server"`,
+		`      chord.method host="project|p1"`,
+		`        chord.method host="project|p1"`,
+	}
+	if !reflect.DeepEqual(tree, want) {
+		t.Fatalf("the click's trace =\n%s\nwant\n%s", strings.Join(tree, "\n"), strings.Join(want, "\n"))
+	}
+	click := spans[0]
+	if !clickSpanID.MatchString(click.ID) {
+		t.Fatalf("the click's span id = %q, want browser:<uuid>:<n>", click.ID)
+	}
+	if principal, _ := click.Attributes.Get("chord.principal"); principal != `{"kind":"owner"}` {
+		t.Fatalf("chord.principal = %v, want {\"kind\":\"owner\"}", principal)
+	}
+	for _, span := range spans {
+		if span.TraceID != click.ID {
+			t.Fatalf("span %s %q is in trace %q, want the click's %q", span.ID, span.Name, span.TraceID, click.ID)
+		}
+	}
 }
