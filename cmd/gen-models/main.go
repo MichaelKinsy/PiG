@@ -76,6 +76,8 @@ type ModelCompat struct {
 	RequiresToolResultName                      *bool                      `json:"requiresToolResultName,omitempty"`
 	RequiresAssistantAfterToolResult            *bool                      `json:"requiresAssistantAfterToolResult,omitempty"`
 	RequiresNonNullAssistantContent             *bool                      `json:"requiresNonNullAssistantContent,omitempty"`
+	RequiresToolsWithToolHistory                *bool                      `json:"requiresToolsWithToolHistory,omitempty"`
+	PromptCacheKeyMode                          string                     `json:"promptCacheKeyMode,omitempty"`
 	RequiresThinkingAsText                      *bool                      `json:"requiresThinkingAsText,omitempty"`
 	RequiresReasoningContentOnAssistantMessages *bool                      `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
 	ThinkingFormat                              string                     `json:"thinkingFormat,omitempty"`
@@ -1124,6 +1126,9 @@ func compatLiteral(jsonText string) string {
 	if compat.RequiresNonNullAssistantContent != nil {
 		fields = append(fields, fmt.Sprintf("RequiresNonNullAssistantContent:%s", boolPtrLit(*compat.RequiresNonNullAssistantContent)))
 	}
+	if compat.RequiresToolsWithToolHistory != nil {
+		fields = append(fields, fmt.Sprintf("RequiresToolsWithToolHistory:%s", boolPtrLit(*compat.RequiresToolsWithToolHistory)))
+	}
 	if compat.RequiresThinkingAsText != nil {
 		fields = append(fields, fmt.Sprintf("RequiresThinkingAsText:%s", boolPtrLit(*compat.RequiresThinkingAsText)))
 	}
@@ -1197,6 +1202,9 @@ func compatLiteral(jsonText string) string {
 	}
 	if compat.SessionAffinityFormat != "" {
 		fields = append(fields, fmt.Sprintf("SessionAffinityFormat:%q", compat.SessionAffinityFormat))
+	}
+	if compat.PromptCacheKeyMode != "" {
+		fields = append(fields, fmt.Sprintf("PromptCacheKeyMode:%q", compat.PromptCacheKeyMode))
 	}
 	if compat.SupportsToolSearch != nil {
 		fields = append(fields, fmt.Sprintf("SupportsToolSearch:%s", boolPtrLit(*compat.SupportsToolSearch)))
