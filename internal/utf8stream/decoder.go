@@ -24,6 +24,19 @@ type Decoder struct {
 	upper       byte
 }
 
+// Passthrough reports whether data decodes to itself, and if so takes it as decoded, so the caller uses data as the text without a copy.
+// It does not when a character is pending from an earlier chunk, when data is not well-formed UTF-8 (a character split at its end
+// included) or when the leading BOM would be stripped; AppendDecode then decodes it.
+func (d *Decoder) Passthrough(data []byte) bool {
+	if d.bytesNeeded != 0 || (d.StripBOM && !d.started) || !utf8.Valid(data) {
+		return false
+	}
+	if len(data) > 0 {
+		d.started = true
+	}
+	return true
+}
+
 // Decode returns the decoding of data. Well-formed UTF-8 decodes to itself, so it is copied once; anything else runs the decoder.
 func (d *Decoder) Decode(data []byte, stream bool) string {
 	if d.bytesNeeded == 0 && utf8.Valid(data) {
