@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
@@ -211,7 +212,27 @@ func agentSessionRuntimeScript(ctx sdk.Context, args map[string]any) map[string]
 	if err := runtime.Session().RefreshContext(); err != nil {
 		panic(err)
 	}
+	// dispose settles a run in flight before it emits session_shutdown; the model never ends this run, so only the abort can end it.
+	observeFile := filepath.Join(cwd, "observe-run")
+	if err := os.WriteFile(observeFile, nil, 0o644); err != nil {
+		panic(err)
+	}
+	running := make(chan error, 1)
+	hung := runtime.Session()
+	go func() { running <- hung.Prompt(context.Background(), "hang-forever") }()
+	for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+		if logged, _ := os.ReadFile(logFile); strings.Contains(string(logged), "agent_start") {
+			break
+		}
+		if time.Now().After(deadline) {
+			panic("the run never started")
+		}
+	}
 	if err := runtime.Dispose(); err != nil {
+		panic(err)
+	}
+	<-running
+	if err := os.Remove(observeFile); err != nil {
 		panic(err)
 	}
 	reasons := []string{}

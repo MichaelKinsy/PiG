@@ -122,7 +122,7 @@ Do not start processes, sockets, watchers, or timers in the factory because some
 Start long-lived resources from `session_start` or from the command or tool that needs them.
 Close session-scoped resources from an idempotent `session_shutdown` handler.
 
-`ctx.shutdown()` requests a graceful shutdown. Interactive mode defers it until the agent is idle after its queued steering and follow-up messages. RPC mode runs it right away when the session is idle and no command is being handled, and otherwise once the current command has finished (including its response) or the active run settles; a request made while an extension-started compaction runs waits for the next command or run to finish. Print mode ignores it and exits when all prompts are processed. RPC follows Pi main 1708b4788 (D231); Pi 1.5.0 waits for the next command.
+`ctx.shutdown()` requests a graceful shutdown. Interactive mode defers it until the agent is idle after its queued steering and follow-up messages. RPC mode runs it right away when the session is idle and no command is being handled, and otherwise once the current command has finished (including its response) or the active run settles; a request made while an extension-started compaction runs waits for the next command or run to finish. Print mode ignores it and exits when all prompts are processed.
 
 A normal prompt follows this hook sequence:
 

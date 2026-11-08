@@ -93,7 +93,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0bc05bf](#bf-0bc05bf) | Fixed `!` and RPC `bash` output keeping fragments of color codes, such as a stray `m`, when a code was split… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0c44f84](#bf-0c44f84) | fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check | PiG's own defect | All platforms | Unreleased |
 | [BF-0c7d23f](#bf-0c7d23f) | A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi… | PiG's own defect | Windows | Unreleased |
-| [BF-0cced6a](#bf-0cced6a) | RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
+| [BF-0cced6a](#bf-0cced6a) | RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-0cd1934](#bf-0cd1934) | fix(env): a native watch ignores the nameless event kqueue sends after a watched directory is removed | PiG's own defect | All platforms | Unreleased |
 | [BF-0ce459e](#bf-0ce459e) | `/login` offers a provider object's own login methods (Pi's `registerNativeProvider`, the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d0a3ef](#bf-0d0a3ef) | A turn through OpenRouter (Chat Completions or Anthropic Messages) now reports the cost OpenRouter billed… | PiG's own defect | All platforms | 0.5.0 |
@@ -580,7 +580,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5b15407](#bf-5b15407) | In-process extensions that call `pi.getCommands()` now receive the extension commands, prompt templates and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b1d5b1](#bf-5b1d5b1) | A resource pattern that starts with `~` (`!~/claude-backup/skills/pdf`, `+~/…`, `-~/…`, wildcards) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b4a3d3](#bf-5b4a3d3) | A lazy line no longer continues a quote whose last quoted line is empty (`>\nnext` is an empty quote then a… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-5b8189f](#bf-5b8189f) | In RPC and print mode, a shutdown that has started now finishes | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-5b8189f](#bf-5b8189f) | In RPC and print mode, a shutdown that has started now finishes | PiG's own defect | All platforms | Unreleased |
 | [BF-5bc4773](#bf-5bc4773) | RPC `set_model` applies after its auth check, as Pi's awaited `setModel` does, so a `cycle_model` in the same… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5bf0d4a](#bf-5bf0d4a) | Durable partial commits of a streamed answer no longer compare every growing text, thinking and tool-call… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-5bf0d4a-2](#bf-5bf0d4a-2) | An append op whose text starts with the low half of a surrogate pair joins the high half that ends the string… | PiG's own defect | All platforms | 0.7.0 |
@@ -751,6 +751,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-65932e6](#bf-65932e6) | fix(extensions): run a tick call after the tool_execution_end of the tool call that queued its callback… | PiG's own defect | All platforms | Unreleased |
 | [BF-65932e6-2](#bf-65932e6-2) | A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-65ba6b5](#bf-65ba6b5) | A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-65d2ac1](#bf-65d2ac1) | A build with `pig_strip_codemode` no longer links the codemode engine through tool search | PiG's own defect | All platforms | Unreleased |
 | [BF-663e84b](#bf-663e84b) | The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-663e84b-2](#bf-663e84b-2) | The built-in models page documents the `models.json` provider and model fields (`models[]`, `contextWindow`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-663e84b-3](#bf-663e84b-3) | The built-in docs gain the compaction summary format, branch summaries and extension hooks, the RPC, JSON… | PiG's own defect | All platforms | 0.5.0 |
@@ -1159,6 +1160,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-98666df](#bf-98666df) | Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9883d4b](#bf-9883d4b) | Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-98f0403](#bf-98f0403) | `AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in… | PiG's own defect | All platforms | Unreleased |
+| [BF-98f0403-2](#bf-98f0403-2) | `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when… | PiG's own defect | All platforms | Unreleased |
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99d6e28](#bf-99d6e28) | Resizing an image no longer differs from Photon's by one in a channel of a rare pixel | PiG's own defect | All platforms | 0.7.0 |
@@ -2931,16 +2934,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D231)
+- **Source:** PiG's own defect
 - **Symptom:** RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command.
-- **Root cause:** The owner asked for the fix to ship in 0.7.0.
+- **Root cause:** Not recorded.
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing 1708b4788.
-- **Fix commits:** `0cced6a687` (2026-11-03), `873466a467` (2026-11-03), `8c1d4804b8` (2026-11-04)
-- **Tests:** `coding/cli/rpc_go_idle_shutdown_test.go::TestRPCGoSDKIdleShutdownReturnsBeforeSessionShutdown`, `coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown`, `coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownFromSessionStartExits`, `coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWaitsForCommandOfSameChunk`, `coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand`, `coding/cli/rpc_shutdown_gate_test.go::TestRPCShutdownGate`, `coding/cli/rpc_shutdown_regression_test.go::TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder`, `coding/cli/rpc_shutdown_test.go::TestRPCExtensionShutdownRequestExits`
+- **Fix commits:** `0cced6a687` (2026-11-03)
+- **Tests:** `coding/cli/rpc_shutdown_gate_test.go::TestRPCShutdownGate`
 - **Release note:** RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command. A request made during startup (for example from `session_start`) is handled once input is attached, and a shutdown requested by an extension command waits until the command's `prompt` response is written. Pi 1.5.0 behaves as before; PiG follows Pi main 1708b4788 (Pi #11599, D231).
 
 ### BF-0cd1934
@@ -9652,16 +9653,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **In RPC and print mode, a shutdown that has started now finishes**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D234)
+- **Source:** PiG's own defect
 - **Symptom:** In RPC and print mode, a shutdown that has started now finishes.
 - **Root cause:** Two signals delivered back to back can reach PiG as one, because the Go runtime merges a pending signal; send a forcing second signal a short moment after the first.
 - **User impact:** Lost or altered data
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing ace560c30. Then the call-site markers and this record go, and the Go signal limit stays as a note in the RPC documentation.
-- **Fix commits:** `05102adc73` (2026-11-05), `5b8189f98a` (2026-11-05), `915c41f36e` (2026-11-05), `caae28ae1c` (2026-11-05), `dd6ac93271` (2026-11-05)
-- **Tests:** `coding/cli/exit_restore_paths_test.go::TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal`, `coding/cli/print_final_disposal_signal_test.go::TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce`, `coding/cli/print_final_disposal_signal_test.go::TestPrintModeSignalDuringFinalDisposalWaitsForIt`, `coding/cli/rpc_exit_once_test.go::TestRPCExitRunsItsStepsOnce`, `coding/cli/rpc_repeated_signal_test.go::TestRPCInputEndDuringSignalShutdownLetsItFinish`, `coding/cli/rpc_repeated_signal_test.go::TestRPCRepeatedSignalDuringShutdownExitsAtOnce`, `coding/cli/rpc_repeated_signal_test.go::TestRPCSingleSignalDuringInputEndShutdownLetsItFinish`, `coding/cli/rpc_shutdown_exitlog_linux_test.go::TestRPCIgnoredSignalThenStdoutFailureLeavesAnExitLogLine` and 13 more in docs/bug-ledger.json
+- **Fix commits:** `5b8189f98a` (2026-11-05)
+- **Tests:** `coding/cli/exit_restore_paths_test.go::TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal`, `coding/cli/print_final_disposal_signal_test.go::TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce`, `coding/cli/print_final_disposal_signal_test.go::TestPrintModeSignalDuringFinalDisposalWaitsForIt`, `coding/cli/rpc_repeated_signal_test.go::TestRPCInputEndDuringSignalShutdownLetsItFinish`, `coding/cli/rpc_repeated_signal_test.go::TestRPCRepeatedSignalDuringShutdownExitsAtOnce`, `coding/cli/rpc_repeated_signal_test.go::TestRPCSingleSignalDuringInputEndShutdownLetsItFinish`, `coding/cli/rpc_shutdown_retire_test.go::TestRPCInputEndAfterCommandReplacementKeepsPendingQuitShutdownQuiet`, `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndSettlesBeforeShutdownStarts` and 2 more in docs/bug-ledger.json
 - **Release note:** In RPC and print mode, a shutdown that has started now finishes. Closing standard input and sending SIGTERM or SIGHUP together, as a supervisor does, no longer kills PiG in the middle of the dispose (a pending MCP token refresh was lost); a later stdin end, `ctx.shutdown()` request or single signal does nothing, and the process exits with the code of the first trigger. A second signal exits at once with 128 plus its number. Print mode keeps its signal handlers through the final cleanup. This follows Pi main ace560c30 (D234). Two signals delivered back to back can reach PiG as one, because the Go runtime merges a pending signal; send a forcing second signal a short moment after the first.
 
 ### BF-5bc4773
@@ -12026,6 +12025,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `65ba6b5bec` (2026-10-30, #11630)
 - **Tests:** `extensions/sdk/keybinding_hints_test.go::TestRenderHintsReadTheHostKeybindings`, `test/extension-conformance/keybinding_hints_test.go::TestKeybindingHintsAcrossSDKs`
 - **Release note:** A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings. The hints on the render context and options read the host's keybindings. From Pi 9376c8d1 (earendil-works/pi#4748).
+
+### BF-65d2ac1
+
+**A build with `pig_strip_codemode` no longer links the codemode engine through tool search**
+
+- **Source:** PiG's own defect
+- **Symptom:** A build with `pig_strip_codemode` no longer links the codemode engine through tool search.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `65d2ac1eee` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** A build with `pig_strip_codemode` no longer links the codemode engine through tool search.
 
 ### BF-663e84b
 
@@ -17686,6 +17699,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `98a21dfb02` (2026-10-30, #11604)
 - **Tests:** `chord/output/output_test.go::TestToolOutputBounds`, `durable/core/host/cf/test/output-sanitize.test.ts`, `durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences`
 - **Release note:** Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape sequences (strings up to BEL or ST, CSI, short `ESC x` forms), not only their ESC bytes, which left `[31m` in transcripts; a sequence split across chunks goes too. Carried forward from Pi 50d9f823 (earendil-works/pi#11604), past the 1.4.0+b3a29f11 pin.
+
+### BF-98f0403
+
+**`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in flight (it aborts the current session first) before it emits `session_shutdown`, as Pi's `dispose` does; the run's `agent_end` reaches the extension before the shutdown.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `98f0403ec4` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** `AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in flight (it aborts the current session first) before it emits `session_shutdown`, as Pi's `dispose` does; the run's `agent_end` reaches the extension before the shutdown.
+
+### BF-98f0403-2
+
+**`pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when `codemode` is stripped.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `98f0403ec4` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when `codemode` is stripped.
 
 ### BF-992f3cb
 
@@ -28129,9 +28170,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D227 | A suspended session resumed in the background stays parked until `fg` | [BF-b65e288](#bf-b65e288) |
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D230 | `pig config` lists declared Package members that are missing from disk, marked `missing` | [BF-825b4ab](#bf-825b4ab) |
-| D231 | PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()` | [BF-0cced6a](#bf-0cced6a) |
 | D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
-| D234 | PiG follows Pi main ace560c30 ahead of the v1.5.0 pin: a started RPC or print shutdown finishes, and only a… | [BF-5b8189f](#bf-5b8189f) |
 | D235 | A session-graph client's two live runs with no "no run" read between them are one context | [BF-D235](#bf-d235) |
 | D236 | The auth lock follows the symlinks of auth.json to the real file | [BF-1724c9e](#bf-1724c9e) |
 | D237 | Exit waits for a started OAuth refresh to be saved | [BF-7febcec](#bf-7febcec) |
