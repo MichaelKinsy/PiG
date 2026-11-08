@@ -53,6 +53,9 @@ type LinksOptions struct {
 	Options LinkOptions
 	// OptionsFunc is per request and principal; an error is reported `hook_failed` and refuses the upgrade (403).
 	OptionsFunc func(request HttpRequest, principal data.Principal) (LinkOptions, error)
+	// Opened runs once a link is accepted (`links.opened`), with the request and the principal it acts as; the function it returns
+	// runs when the socket closes. An error is reported `hook_failed` and the link stays.
+	Opened func(request HttpRequest, principal data.Principal) (closed func(), err error)
 }
 
 // HttpErrorKind tells what an HttpError reports.
@@ -73,6 +76,7 @@ const (
 	HookAuthenticate HookName = "authenticate"
 	HookRelay        HookName = "relay"
 	HookLinksOptions HookName = "links.options"
+	HookLinksOpened  HookName = "links.opened"
 )
 
 // HttpError is what the component reports: route_failed (Pattern, Plugin), wrap_failed (Name, Plugin), socket_failed
@@ -700,7 +704,18 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 			return
 		}
 		defer c.upgrades.release()
-		c.upgrades.Link(w, r, admission2, options, c.host, c.ctx, router)
+		opened := func() func() {
+			if links.Opened == nil {
+				return nil
+			}
+			closed, err := tryOpened(links.Opened, webRequest, principal)
+			if err != nil {
+				c.hookFailed(HookLinksOpened, "", err)
+				return nil
+			}
+			return closed
+		}
+		c.upgrades.Link(w, r, admission2, options, c.host, c.ctx, router, opened)
 		return
 	}
 	match, status := router.Socket(webRequest.Path())
@@ -887,4 +902,10 @@ func panicError(recovered any) error {
 		return err
 	}
 	return fmt.Errorf("%v", recovered)
+}
+
+// tryOpened is the `links.opened` hook as a call that cannot panic: a panic is its error (a thrown error of Pi's).
+func tryOpened(hook func(HttpRequest, data.Principal) (func(), error), request HttpRequest, principal data.Principal) (closed func(), err error) {
+	defer recoverAs(&err)
+	return hook(request, principal)
 }

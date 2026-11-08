@@ -181,8 +181,9 @@ func NewUpgrades() *Upgrades {
 }
 
 // Link upgrades request to the links endpoint: `host.accept` over the socket (its output capped) as the admitted principal,
-// with options' limits; ctx is the parent of the work on the link. checked is the router the check read.
-func (u *Upgrades) Link(w nethttp.ResponseWriter, request *nethttp.Request, admission UpgradeAdmission, options LinkOptions, h host.Host, ctx context.Context, checked *Router) {
+// with options' limits; ctx is the parent of the work on the link. checked is the router the check read. opened is `links.opened`: it
+// runs once the link is accepted and what it returns runs when the socket closes.
+func (u *Upgrades) Link(w nethttp.ResponseWriter, request *nethttp.Request, admission UpgradeAdmission, options LinkOptions, h host.Host, ctx context.Context, checked *Router, opened func() func()) {
 	maxPayload := options.MaxPayload
 	if maxPayload == 0 {
 		maxPayload = defaultLinkPayload
@@ -193,6 +194,9 @@ func (u *Upgrades) Link(w nethttp.ResponseWriter, request *nethttp.Request, admi
 		u.keep(connection)
 		if err := h.Accept(end, host.LinkOptions{Principal: admission.Principal, Limits: options.Limits}, ctx); err != nil {
 			socket.Terminate()
+		}
+		if closed := opened(); closed != nil {
+			socket.OnceClose(func(CloseEvent) { closed() })
 		}
 		socket.Start()
 		u.recheck(connection)
