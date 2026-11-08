@@ -19,6 +19,47 @@ const ptyExitGrace = 100 * time.Millisecond
 // maxCells is the largest terminal size accepted, in cells.
 const maxCells = 4096
 
+// parseArgv is the `argv` of a request: nil when absent, else a non-empty array of strings.
+func parseArgv(request Object) ([]string, *Failure) {
+	invalid := newFailure("EINVAL", "argv must be a non-empty array of strings")
+	switch value := request["argv"].(type) {
+	case nil:
+		return nil, nil
+	case []any:
+		argv := make([]string, 0, len(value))
+		for _, item := range value {
+			text, isString := item.(string)
+			if !isString {
+				return nil, invalid
+			}
+			argv = append(argv, text)
+		}
+		if len(argv) == 0 {
+			return nil, invalid
+		}
+		return argv, nil
+	default:
+		return nil, invalid
+	}
+}
+
+// requestEnvironment is the `env` of a request, its string values, and `inheritEnv`, which defaults to true.
+func requestEnvironment(request Object) (map[string]string, bool) {
+	result := map[string]string{}
+	if environment, ok := request["env"].(Object); ok {
+		for key, value := range environment {
+			if text, isString := value.(string); isString {
+				result[key] = text
+			}
+		}
+	}
+	inherit := true
+	if value, ok := request["inheritEnv"].(bool); ok {
+		inherit = value
+	}
+	return result, inherit
+}
+
 type ptyRequest struct {
 	argv       []string
 	hasArgv    bool
@@ -37,40 +78,18 @@ func ptySize(request Object, key string) (uint16, *Failure) {
 }
 
 func parsePtyRequest(request Object) (*ptyRequest, *Failure) {
-	result := &ptyRequest{inheritEnv: true, env: map[string]string{}}
-	switch value := request["argv"].(type) {
-	case nil:
-	case []any:
-		for _, item := range value {
-			text, isString := item.(string)
-			if !isString {
-				return nil, newFailure("EINVAL", "argv must be a non-empty array of strings")
-			}
-			result.argv = append(result.argv, text)
-		}
-		result.hasArgv = len(result.argv) > 0
-		if !result.hasArgv {
-			return nil, newFailure("EINVAL", "argv must be a non-empty array of strings")
-		}
-	default:
-		return nil, newFailure("EINVAL", "argv must be a non-empty array of strings")
+	result := &ptyRequest{}
+	var failure *Failure
+	if result.argv, failure = parseArgv(request); failure != nil {
+		return nil, failure
 	}
+	result.hasArgv = result.argv != nil
 	cwd, ok := request["cwd"].(string)
 	if !ok {
 		return nil, newFailure("EINVAL", "pty needs cwd")
 	}
 	result.cwd = cwd
-	if environment, ok := request["env"].(Object); ok {
-		for key, value := range environment {
-			if text, isString := value.(string); isString {
-				result.env[key] = text
-			}
-		}
-	}
-	if inherit, ok := request["inheritEnv"].(bool); ok {
-		result.inheritEnv = inherit
-	}
-	var failure *Failure
+	result.env, result.inheritEnv = requestEnvironment(request)
 	if result.cols, failure = ptySize(request, "cols"); failure != nil {
 		return nil, failure
 	}
@@ -87,6 +106,8 @@ type inputQueue struct {
 	cond   *sync.Cond
 	chunks [][]byte
 	closed bool
+	// finishing ends the queue once the chunks queued before are taken; input queued after it is dropped.
+	finishing bool
 }
 
 func newInputQueue() *inputQueue {
@@ -102,8 +123,22 @@ func (q *inputQueue) push(chunk []byte) bool {
 	if q.closed {
 		return false
 	}
-	q.chunks = append(q.chunks, chunk)
-	q.cond.Signal()
+	if !q.finishing {
+		q.chunks = append(q.chunks, chunk)
+		q.cond.Signal()
+	}
+	return true
+}
+
+// finish ends the queue after the input queued before it; false once the queue ended.
+func (q *inputQueue) finish() bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.closed {
+		return false
+	}
+	q.finishing = true
+	q.cond.Broadcast()
 	return true
 }
 
@@ -111,10 +146,10 @@ func (q *inputQueue) push(chunk []byte) bool {
 func (q *inputQueue) next() ([]byte, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	for len(q.chunks) == 0 && !q.closed {
+	for len(q.chunks) == 0 && !q.closed && !q.finishing {
 		q.cond.Wait()
 	}
-	if q.closed {
+	if q.closed || len(q.chunks) == 0 {
 		return nil, false
 	}
 	chunk := q.chunks[0]
@@ -136,23 +171,25 @@ type terminal struct {
 	proc  *ptyProcess
 }
 
-func (s *server) findTerminal(request Object) (*terminal, *Failure) {
+// findRunning is the running request a follow-up request names in `target` (`ptyWrite`, `processWrite`, ...); what names its
+// kind in the error.
+func findRunning[T any](s *server, table map[uint32]*T, request Object, what string) (*T, *Failure) {
 	target, ok := unsignedNumber(request["target"])
 	if !ok {
 		return nil, newFailure("EINVAL", "missing field target")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	found := s.terminals[uint32(target)]
+	found := table[uint32(target)]
 	if found == nil {
-		return nil, newFailure("EBADF", "no running terminal with this id")
+		return nil, newFailure("EBADF", "no running "+what+" with this id")
 	}
 	return found, nil
 }
 
 // ptyWrite queues input for the terminal.
 func (s *server) ptyWrite(request Object, payload []byte) (Object, *Failure) {
-	found, failure := s.findTerminal(request)
+	found, failure := findRunning(s, s.terminals, request, "terminal")
 	if failure != nil {
 		return nil, failure
 	}
@@ -164,7 +201,7 @@ func (s *server) ptyWrite(request Object, payload []byte) (Object, *Failure) {
 
 // ptyResize changes the terminal's size; the program receives SIGWINCH.
 func (s *server) ptyResize(request Object) (Object, *Failure) {
-	found, failure := s.findTerminal(request)
+	found, failure := findRunning(s, s.terminals, request, "terminal")
 	if failure != nil {
 		return nil, failure
 	}
@@ -185,7 +222,7 @@ func (s *server) ptyResize(request Object) (Object, *Failure) {
 // ptyForeground is the process group in the terminal's foreground when it is not the program's own: a job a shell
 // started, such as an editor. `{ foreground: null }` while the program itself is in front (a shell at its prompt).
 func (s *server) ptyForeground(request Object) (Object, *Failure) {
-	found, failure := s.findTerminal(request)
+	found, failure := findRunning(s, s.terminals, request, "terminal")
 	if failure != nil {
 		return nil, failure
 	}

@@ -149,9 +149,7 @@ emit(out);`
 					status.NextWarmAt = *in.Status.NextWarm
 				}
 				got.Status = FormatCacheWarmingStatus(status, now)
-				entry := UsageEntry{Note: in.UsageNote}
-				entry.Usage.Cost.Total = in.UsageCost
-				got.Usage = FormatCacheWarmingUsage(entry)
+				got.Usage = FormatCacheWarmingUsage(in.UsageCost, in.UsageNote)
 				if !reflect.DeepEqual(got, want[i]) {
 					failures++
 					if failures <= 5 {

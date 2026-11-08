@@ -143,6 +143,14 @@ func TestSupportsXHighUpstream(t *testing.T) {
 			t.Errorf("levels = %v, want %v", got, want)
 		}
 	})
+	// .upstream/current/packages/ai/test/supports-xhigh.test.ts (b317575f, #11781)
+	for _, id := range []string{"gpt-6-astra", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-sol", "gpt-6.1-terra"} {
+		t.Run("uses the Azure Foundry 1.05M context window for "+id, func(t *testing.T) {
+			if got := upstreamThinkingModel(t, "azure/"+id).Capabilities.ContextWindow; got != 1050000 {
+				t.Errorf("context window = %d, want 1050000", got)
+			}
+		})
+	}
 	// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:113 (OpenAI and Codex reject reasoning.effort "none" for GPT-6.1 Sol)
 	t.Run("does not support off for GPT-6.1 Sol", func(t *testing.T) {
 		for _, tc := range []struct {
