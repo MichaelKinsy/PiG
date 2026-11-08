@@ -8,6 +8,7 @@ package components
 
 import (
 	"strings"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/render"
@@ -42,6 +43,8 @@ type ToolExecutionComponent struct {
 	ctx                     ToolCardContext
 	hideComponent           bool
 	themeVersion            int
+	// invalidated is a renderer's invalidation (its timer's goroutine) that the next render rebuilds the display for.
+	invalidated atomic.Bool
 	// nested are the calls `calls` read last, for the view they were read from.
 	nested     []transcript.NestedCall
 	nestedRead bool
@@ -139,8 +142,11 @@ func (c *ToolExecutionComponent) renderContext(last tui.Component) *tools.ToolRe
 	context := &tools.ToolRenderContext{
 		Args:       c.tool.Args,
 		ToolCallID: c.tool.ID,
+		// A renderer's timer (a running command's elapsed time) invalidates from its own goroutine: the caches drop at once (the container's lock), the card
+		// rebuilds its display at its next render, on the owner loop, which also reads it.
 		Invalidate: func() {
-			c.Invalidate()
+			c.Container.Invalidate()
+			c.invalidated.Store(true)
 			c.ctx.RequestRender()
 		},
 		LastComponent:    last,
@@ -208,6 +214,9 @@ func (c *ToolExecutionComponent) Invalidate() {
 
 // Render renders the card.
 func (c *ToolExecutionComponent) Render(width int) []string {
+	if c.invalidated.Swap(false) {
+		c.Invalidate()
+	}
 	// Colors are baked into the content: rebuild after a theme swap (section 5.4).
 	if c.themeVersion != c.ctx.Theme().Version {
 		c.themeVersion = c.ctx.Theme().Version
