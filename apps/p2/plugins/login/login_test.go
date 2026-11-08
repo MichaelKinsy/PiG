@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	"github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/login/contract"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
@@ -402,18 +403,20 @@ func TestCancelAndLeavingEndsAnUnfinishedLogin(t *testing.T) {
 	until(t, second, "login", "the prompt", promptIs("select"))
 	second.Release()
 	ref.Release()
-	// A new hold of the sheet makes the owner present again; the login ended while nobody held it.
-	var ended delta.JsonValue
-	if err := p2test.Poll(func() (bool, error) {
-		again, err := p2test.HoldIn(fixture.Browser(), contract.ProviderLogin, delta.NewJsonObject(0), "owner")
-		if err != nil {
-			return false, err
-		}
-		defer again.Release()
-		ended, _ = again.Member("login").Value()
-		return field(ended, "attemptId") == field(restarted, "attemptId") && field(ended, "status") == "cancelled", nil
-	}, 10*time.Second, "the login to end with its owner"); err != nil {
-		t.Fatalf("%v: %v", err, ended)
+	// The server's own service shows it (a new hold of the sheet would make the owner present again).
+	service, err := fixture.Server.Host.Hold(p2test.Background, contract.LoginService, delta.NewJsonObject(0), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer service.Release()
+	if err := p2runtime.WhenLive(p2test.Background, service); err != nil {
+		t.Fatal(err)
+	}
+	ended, err := p2test.Until(service.Member("login"), func(v delta.JsonValue) bool {
+		return field(v, "attemptId") == field(restarted, "attemptId") && field(v, "status") == "cancelled"
+	}, 15*time.Second)
+	if err != nil {
+		t.Fatalf("the login did not end with its owner: %v (%v)", err, ended)
 	}
 }
 
@@ -488,6 +491,260 @@ func TestALoginBelongsToTheOwnerThatStartedIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	until(t, device, "login", "cancelled", loginIs("cancelled"))
+}
+
+func authJSON(t *testing.T, fixture *p2test.Fixture) map[string]any {
+	t.Helper()
+	out := map[string]any{}
+	content, err := os.ReadFile(filepath.Join(fixture.DataDir, "auth.json"))
+	if err == nil {
+		_ = json.Unmarshal(content, &out)
+	}
+	return out
+}
+
+func credentialType(t *testing.T, fixture *p2test.Fixture, provider string) any {
+	t.Helper()
+	if credential, ok := authJSON(t, fixture)[provider].(map[string]any); ok {
+		return credential["type"]
+	}
+	return nil
+}
+
+// remoteModels is Pi's remote-login fixture: the OAuth flow selects a login method (when method is set) or waits for a pasted
+// code, then asks for an account.
+func remoteModels(method string, selected, pasted *[]string, mu *sync.Mutex) func(ai.CredentialStore, ai.ModelsStore) (*ai.MutableModels, error) {
+	return func(credentials ai.CredentialStore, store ai.ModelsStore) (*ai.MutableModels, error) {
+		models := ai.CreateModels(ai.CreateModelsOptions{Credentials: credentials, ModelsStore: store})
+		faux := ai.NewFauxProvider(ai.FauxConfig{API: "test-remote-login"})
+		provider := *faux.Provider()
+		provider.Auth = ai.ProviderAuth{
+			APIKey: &ai.APIKeyAuth{
+				Name: "Fixture key",
+				Login: func(ctx context.Context, interaction ai.AuthInteraction) (ai.Credential, error) {
+					key, err := interaction.Prompt(ctx, ai.AuthSecretPrompt{Message: "Fixture key"})
+					return ai.Credential{Type: ai.CredentialAPIKey, Key: key}, err
+				},
+				Resolve: func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) { return nil, nil },
+			},
+			OAuth: &ai.OAuthAuth{
+				Name: "Fixture OAuth",
+				Login: func(ctx context.Context, interaction ai.AuthInteraction, _ ai.LoginOptions) (ai.Credential, error) {
+					if method != "" {
+						choice, err := interaction.Prompt(ctx, ai.AuthSelectPrompt{Message: "Login method", Options: []ai.AuthSelectOption{{ID: "browser", Label: "Browser"}, {ID: method, Label: "Device code"}}})
+						if err != nil {
+							return ai.Credential{}, err
+						}
+						mu.Lock()
+						*selected = append(*selected, choice)
+						mu.Unlock()
+						interaction.Notify(ai.AuthDeviceCodeEvent{UserCode: "FIXTURE", VerificationURI: "https://example.test/verify"})
+					} else {
+						interaction.Notify(ai.AuthURLEvent{URL: "https://example.test/login"})
+						code, err := interaction.Prompt(ctx, ai.AuthManualCodePrompt{Message: "Paste code or final redirect URL"})
+						if err != nil {
+							return ai.Credential{}, err
+						}
+						mu.Lock()
+						*pasted = append(*pasted, code)
+						mu.Unlock()
+					}
+					if _, err := interaction.Prompt(ctx, ai.AuthSelectPrompt{Message: "Account", Options: []ai.AuthSelectOption{{ID: "account", Label: "Account"}}}); err != nil {
+						return ai.Credential{}, err
+					}
+					return ai.Credential{Type: ai.CredentialOAuth, Access: "private-fixture-access", Refresh: "private-fixture-refresh", Expires: time.Now().Add(10 * time.Minute).UnixMilli()}, nil
+				},
+				Refresh: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil },
+				ToAuth: func(credential ai.Credential) (ai.ModelAuth, error) {
+					return ai.ModelAuth{APIKey: credential.Access}, nil
+				},
+			},
+		}
+		models.SetProvider(&provider)
+		return models, nil
+	}
+}
+
+// Pi's remote-login.test.ts: a local owner chooses the device-code method itself; a remote one (relay, device) has it chosen
+// for it with a notice; without a device-code option every owner pastes a code. Guests reach no provider action.
+func TestOwnersLoginChooseTheirMethodAndGuestsCannotReachAnyAction(t *testing.T) {
+	accesses := map[string]p2runtime.OwnerPrincipal{
+		"local":  {Access: p2runtime.AccessLocal},
+		"relay":  {Access: p2runtime.AccessRelay},
+		"device": {Access: p2runtime.AccessDevice, Device: "laptop"},
+	}
+	for _, access := range []string{"local", "relay", "device"} {
+		for _, method := range []string{"device_code", "device-code", ""} {
+			name := access + "/" + method
+			if method == "" {
+				name = access + "/manual callback"
+			}
+			t.Run(name, func(t *testing.T) {
+				var mu sync.Mutex
+				var selected, pasted []string
+				fixture := p2test.StartFixture(t, hosts.ServerOptions{
+					Plugins:   []string{"login", "models"},
+					Resources: p2runtime.ServerResourceOptions{CreateModels: remoteModels(method, &selected, &pasted, &mu)},
+				})
+				ref := hold(t, fixture.As(accesses[access]))
+				defer ref.Release()
+				var seen []string
+				watch, err := ref.Member("login").Watch(p2test.Background)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer func() { _, _ = watch.Stop() }()
+				watch.Start(func(_ context.Context, change chord.WatchCall[delta.JsonValue]) error {
+					if text, err := json.Marshal(change.Value); err == nil {
+						mu.Lock()
+						seen = append(seen, string(text))
+						mu.Unlock()
+					}
+					return nil
+				})
+				answerMessage := func(message, value string) {
+					state := until(t, ref, "login", "the "+message+" prompt", func(v delta.JsonValue) bool { return field(field(v, "prompt"), "message") == message })
+					if _, err := call(ref, "answer", delta.JsonObjectOf("attemptId", field(state, "attemptId"), "promptId", object(field(state, "prompt")).Value("id"), "value", value)); err != nil {
+						t.Fatalf("answer %s: %v", message, err)
+					}
+				}
+				if _, err := call(ref, "start", delta.JsonObjectOf("providerId", "faux", "authType", "oauth")); err != nil {
+					t.Fatal(err)
+				}
+				if method != "" && access == "local" {
+					answerMessage("Login method", method)
+				}
+				code := "http://localhost:1455/auth/callback?code=private-pasted-code&state=fixture"
+				if access == "relay" {
+					code = "private-pasted-code"
+				}
+				if method == "" {
+					answerMessage("Paste code or final redirect URL", code)
+				}
+				answerMessage("Account", "account")
+				until(t, ref, "login", "success", loginIs("success"))
+				mu.Lock()
+				wantSelected, wantPasted := []string{}, []string{}
+				if method != "" {
+					wantSelected = []string{method}
+				} else {
+					wantPasted = []string{code}
+				}
+				if fmt.Sprint(append([]string{}, selected...)) != fmt.Sprint(wantSelected) || fmt.Sprint(append([]string{}, pasted...)) != fmt.Sprint(wantPasted) {
+					t.Fatalf("selected %v pasted %v, want %v %v", selected, pasted, wantSelected, wantPasted)
+				}
+				sawMethod := strings.Contains(strings.Join(seen, "\n"), `"message":"Login method"`)
+				mu.Unlock()
+				if sawMethod != (method != "" && access == "local") {
+					t.Fatalf("the method prompt was shown = %v", sawMethod)
+				}
+				if credentialType(t, fixture, "faux") != "oauth" {
+					t.Fatalf("auth.json = %v", authJSON(t, fixture))
+				}
+				if _, err := call(ref, "refresh", delta.JsonObjectOf("providerId", "faux")); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := call(ref, "logout", delta.JsonObjectOf("providerId", "faux")); err != nil {
+					t.Fatal(err)
+				}
+				if credentialType(t, fixture, "faux") != nil {
+					t.Fatalf("auth.json = %v", authJSON(t, fixture))
+				}
+				if _, err := call(ref, "start", delta.JsonObjectOf("providerId", "faux", "authType", "api_key")); err != nil {
+					t.Fatal(err)
+				}
+				answerMessage("Fixture key", "private-fixture-key")
+				until(t, ref, "login", "success", func(v delta.JsonValue) bool {
+					return field(v, "status") == "success" && field(field(v, "prompt"), "id") == nil
+				})
+				if credentialType(t, fixture, "faux") != "api_key" {
+					t.Fatalf("auth.json = %v", authJSON(t, fixture))
+				}
+				mu.Lock()
+				published := strings.Join(seen, "\n")
+				mu.Unlock()
+				if strings.Contains(published, "private-fixture") || strings.Contains(published, "private-pasted-code") {
+					t.Fatalf("a secret reached the client: %s", published)
+				}
+				// A login cancelled while unfinished keeps the credential stored before.
+				done, _ := ref.Member("login").Value()
+				if _, err := call(ref, "dismiss", delta.JsonObjectOf("attemptId", field(done, "attemptId"))); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := call(ref, "start", delta.JsonObjectOf("providerId", "faux", "authType", "api_key")); err != nil {
+					t.Fatal(err)
+				}
+				unfinished := until(t, ref, "login", "the key prompt", func(v delta.JsonValue) bool {
+					return field(v, "status") == "working" && field(field(v, "prompt"), "type") == "secret"
+				})
+				if _, err := call(ref, "cancel", delta.JsonObjectOf("attemptId", field(unfinished, "attemptId"))); err != nil {
+					t.Fatal(err)
+				}
+				until(t, ref, "login", "cancelled", loginIs("cancelled"))
+				if credentialType(t, fixture, "faux") != "api_key" {
+					t.Fatalf("cancel did not preserve the stored credential: %v", authJSON(t, fixture))
+				}
+
+				guest := fixture.As(p2runtime.GuestPrincipal{ID: "g", Name: "Guest", Home: "s", Sessions: map[string]p2runtime.GuestMode{"s": p2runtime.GuestFull}, Revision: 1})
+				denied, err := guest.Hold(p2test.Background, contract.ProviderLogin, delta.NewJsonObject(0), host.GetOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer denied.Release()
+				p2test.ExpectChord(t, p2runtime.WhenLive(p2test.Background, denied), "forbidden")
+				for method, args := range map[string]*delta.JsonObject{
+					"start":   delta.JsonObjectOf("providerId", "faux", "authType", "oauth"),
+					"answer":  delta.JsonObjectOf("attemptId", "none", "promptId", "none", "value", "none"),
+					"cancel":  delta.JsonObjectOf("attemptId", "none"),
+					"logout":  delta.JsonObjectOf("providerId", "faux"),
+					"refresh": delta.JsonObjectOf("providerId", "faux"),
+				} {
+					_, err := denied.Call(method, args, p2test.Background)
+					p2test.ExpectChord(t, err, "forbidden")
+				}
+			})
+		}
+	}
+}
+
+// Pi: a login nobody finishes ends at its deadline (the flow's own context is cancelled, nothing is stored).
+func TestAnUnfinishedLoginEndsAtItsDeadline(t *testing.T) {
+	previous := login.LoginDeadline
+	login.LoginDeadline = 700 * time.Millisecond
+	t.Cleanup(func() { login.LoginDeadline = previous })
+	fixture, _, _ := start(t)
+	ref := hold(t, fixture.Browser())
+	defer ref.Release()
+	if _, err := call(ref, "start", delta.JsonObjectOf("providerId", "faux", "authType", "oauth")); err != nil {
+		t.Fatal(err)
+	}
+	until(t, ref, "login", "the prompt", promptIs("select"))
+	ended := until(t, ref, "login", "the deadline", loginIs("cancelled"))
+	if field(ended, "message") != "Login cancelled." {
+		t.Fatalf("message = %v", field(ended, "message"))
+	}
+}
+
+// Pi redacts what a login shows (codes, auth URLs, pasted codes and keys) from the logs.
+func TestWhatALoginShowsIsRedactedFromTheLogs(t *testing.T) {
+	fixture, _, _ := start(t)
+	ref := hold(t, fixture.Browser())
+	defer ref.Release()
+	if _, err := call(ref, "start", delta.JsonObjectOf("providerId", "faux", "authType", "oauth")); err != nil {
+		t.Fatal(err)
+	}
+	answer(t, ref, "select", "account")
+	answer(t, ref, "manual_code", "private-entered-code")
+	until(t, ref, "login", "success", loginIs("success"))
+	line := "code private-entered-code url https://example.test/login device CODE-1"
+	p2runtime.ProcessLogs.Append("test", p2runtime.LogStdout, line)
+	for _, each := range p2runtime.ProcessLogs.Lines("test") {
+		for _, secret := range []string{"private-entered-code", "CODE-1", "https://example.test/login"} {
+			if strings.Contains(each.Text, secret) {
+				t.Fatalf("%q is not redacted from %q", secret, each.Text)
+			}
+		}
+	}
 }
 
 func TestOnlyOwnersHoldTheProviderLogin(t *testing.T) {

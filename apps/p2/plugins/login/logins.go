@@ -24,8 +24,9 @@ import (
 // Chord; its state changes synchronously with each event and listeners hear of every change (the server's `LoginService`
 // follows it).
 
-// loginDeadline ends a login nobody finished.
-const loginDeadline = 600 * time.Second
+// LoginDeadline ends a login nobody finished.
+// LoginDeadline ends a login nobody finished (Pi: ten minutes; a variable for tests).
+var LoginDeadline = 600 * time.Second
 
 var deviceCodeOption = regexp.MustCompile(`^device[-_]code$`)
 
@@ -80,7 +81,6 @@ type loginsState struct {
 
 // Logins is the provider logins of one server.
 type Logins struct {
-	resources func() (modelscontract.Resources, error)
 	directory string
 
 	lifetime context.Context
@@ -94,10 +94,11 @@ type Logins struct {
 	device    sync.Mutex
 }
 
-// NewLogins is the logins over resources (read at each use) keeping its device identity in directory.
-func NewLogins(directory string, resources func() (modelscontract.Resources, error)) *Logins {
+// NewLogins is the logins keeping their device identity in directory. The resources a method works on come from its caller,
+// read on the host's loop: the registry they live in is not safe to read from the logins' own goroutines.
+func NewLogins(directory string) *Logins {
 	lifetime, stop := context.WithCancel(context.Background())
-	return &Logins{resources: resources, directory: directory, lifetime: lifetime, stop: stop, listeners: map[int]func(){}}
+	return &Logins{directory: directory, lifetime: lifetime, stop: stop, listeners: map[int]func(){}}
 }
 
 // State is the current login and its owner.
@@ -140,13 +141,9 @@ func newID() string {
 }
 
 // Start begins owner's login of providerID with authType and returns its attempt id.
-func (l *Logins) Start(owner, providerID string, authType ai.AuthType, remote bool) (string, error) {
+func (l *Logins) Start(resources modelscontract.Resources, owner, providerID string, authType ai.AuthType, remote bool) (string, error) {
 	if l.lifetime.Err() != nil {
 		return "", errors.New("Server is shutting down")
-	}
-	resources, err := l.resources()
-	if err != nil {
-		return "", err
 	}
 	l.mu.Lock()
 	if running := l.active; running != nil {
@@ -330,7 +327,7 @@ func (l *Logins) finish(a *attempt, status, message string) bool {
 }
 
 func (l *Logins) run(parent context.Context, a *attempt, resources modelscontract.Resources, authType ai.AuthType) {
-	ctx, release := context.WithTimeout(parent, loginDeadline)
+	ctx, release := context.WithTimeout(parent, LoginDeadline)
 	defer release()
 	defer func() {
 		a.cancel() // Withdraw leftover prompts after callback success.
@@ -469,16 +466,12 @@ func (l *Logins) Disconnect(owner string) {
 }
 
 // Logout removes providerID's credentials and stored models.
-func (l *Logins) Logout(ctx context.Context, providerID string) error {
+func (l *Logins) Logout(ctx context.Context, resources modelscontract.Resources, providerID string) error {
 	l.mu.Lock()
 	busy := l.active != nil
 	l.mu.Unlock()
 	if busy {
 		return errors.New("Cancel the active login before removing credentials")
-	}
-	resources, err := l.resources()
-	if err != nil {
-		return err
 	}
 	if err := resources.Models().Logout(ctx, providerID); err != nil {
 		return err
@@ -498,11 +491,7 @@ func (l *Logins) Logout(ctx context.Context, providerID string) error {
 }
 
 // Refresh fetches providerID's current model list and returns how many models it has.
-func (l *Logins) Refresh(ctx context.Context, providerID string) (int, error) {
-	resources, err := l.resources()
-	if err != nil {
-		return 0, err
-	}
+func (l *Logins) Refresh(ctx context.Context, resources modelscontract.Resources, providerID string) (int, error) {
 	if err := resources.RefreshModels(ctx, providerID); err != nil {
 		return 0, err
 	}
