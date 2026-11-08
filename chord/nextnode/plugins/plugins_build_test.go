@@ -564,8 +564,8 @@ func TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals(t *test
 
 // Not upstream's test: the digest is "the same on every machine", and Pi's JavaScript API runs the same esbuild (0.28.2) as
 // the Go API, so the scripts Pi's `buildFacet` makes of the fixture plugins and these are the same bytes: the digests and
-// lengths below are what Pi's own `buildFacet` (build.ts of Pi 9823079ad, run in Node 24 on esbuild 0.28.2) printed for the
-// fixture plugins as they are at that commit (test/next-node/fixtures/plugins, the contract imported by relative path
+// lengths below are what Pi's own `buildFacet` (build.ts of Pi c23b9ec1, run in Node 24 on esbuild 0.28.2) printed for the
+// fixture plugins as they are at that commit (test/node/fixtures/plugins, the contract imported by relative path
 // `../contracts/contract.ts`), built with `hostPackages: ["@earendil-works/chord"]`, `platform: "node"`.
 func TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures(t *testing.T) {
 	root := tempRoot(t, "contracts", "notes", "files")
@@ -578,9 +578,9 @@ func TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures(t *testing.T) {
 		digest string
 		length int
 	}{
-		{"@test/files", "worker"}: {"a6470a1c2ed9ae1beff006680ae77656532e4b8f222f669f04baaa434caa25a1", 2486},
-		{"@test/notes", "server"}: {"b419d92e93a0f2b95d5613c62b6830f160e5282d52e26575180b72d1998d0158", 2217},
-		{"@test/notes", "worker"}: {"9ce9029f0cfc4a5459b16bf3abf1af2406a82b1b87c1ddd983c35e8dc58b841b", 3043},
+		{"@test/files", "worker"}: {"6a76b7e834b8e1c1e467391c1825087a0cfc0d7fcabf6e122c25b9aba016e902", 2475},
+		{"@test/notes", "server"}: {"ec32aefe6f7925a78b7270f8acc8e5658594b83c9ed7101dd295bb56b5398279", 2207},
+		{"@test/notes", "worker"}: {"d512b27c88da03587a0aaddd928fd3d72314a2bd0fd413864b9d6f5205c06969", 3033},
 	}
 	got := 0
 	for _, plugin := range discovery.Plugins {

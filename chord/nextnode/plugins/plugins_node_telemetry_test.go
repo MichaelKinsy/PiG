@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +67,18 @@ func cbRecorded(recorder *telemetry.InMemoryTelemetryContext) map[string]telemet
 	return spans
 }
 
+// pluginSpans are the spans the plugin made (named `plugin.*`): the recorder also holds the `chord.*` spans of Pi's host that
+// runs in the same process (Pi's telemetry, slice 9), which are not what these cases read.
+func pluginSpans(recorder *telemetry.InMemoryTelemetryContext) []telemetry.RecordedTelemetrySpan {
+	var spans []telemetry.RecordedTelemetrySpan
+	for _, span := range recorder.GetSpans() {
+		if strings.HasPrefix(span.Name, "plugin.") {
+			spans = append(spans, span)
+		}
+	}
+	return spans
+}
+
 // cbWithTelemetry starts the probe plugin with ops on a Node host whose adapter is a new recorder.
 func cbWithTelemetry(t *testing.T) (*NodeHost, *probe, *telemetry.InMemoryTelemetryContext) {
 	t.Helper()
@@ -79,7 +92,7 @@ func cbWithTelemetry(t *testing.T) (*NodeHost, *probe, *telemetry.InMemoryTeleme
 func TestTelemetryASpansOfAPluginAreRecordedInTheAppsAdapter(t *testing.T) {
 	node, p, recorder := cbWithTelemetry(t)
 	carrier, _ := p.must("work", nil).(map[string]any)
-	spans := recorder.GetSpans()
+	spans := pluginSpans(recorder)
 	var names []string
 	for _, span := range spans {
 		names = append(names, span.Name)
@@ -141,7 +154,7 @@ func TestTelemetryAThrowingSpanHasPisErrorStatus(t *testing.T) {
 	_, p, recorder := cbWithTelemetry(t)
 	p.must("fails", nil)
 	var got []telemetry.SpanStatus
-	for _, span := range recorder.GetSpans() {
+	for _, span := range pluginSpans(recorder) {
 		got = append(got, span.Status)
 	}
 	want := []telemetry.SpanStatus{
@@ -219,14 +232,14 @@ func TestTelemetryASpanOpenWhenTheProcessEndsEndsWithAnErrorStatus(t *testing.T)
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	node, p := cbStart(t, `open: async (_a, ctx) => ctx.telemetry.startSpan({ name: "plugin.open" }, () => new Promise(() => {})),`, func(load *RuntimeLoad) { load.Telemetry = recorder })
 	go func() { _, _ = p.call("open", nil) }()
-	eventually(t, 15*time.Second, "the open span to start", func() bool { return len(recorder.GetSpans()) == 1 })
+	eventually(t, 15*time.Second, "the open span to start", func() bool { return len(pluginSpans(recorder)) == 1 })
 	node.kill()
 	<-node.Exited()
 	eventually(t, 15*time.Second, "the open span to end", func() bool {
-		spans := recorder.GetSpans()
+		spans := pluginSpans(recorder)
 		return len(spans) == 1 && spans[0].Settled
 	})
-	if status := recorder.GetSpans()[0].Status; status.Status != telemetry.SpanStatusCodeError {
+	if status := pluginSpans(recorder)[0].Status; status.Status != telemetry.SpanStatusCodeError {
 		t.Fatalf("status = %+v, want an error", status)
 	}
 }
