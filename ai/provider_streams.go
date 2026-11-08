@@ -225,17 +225,27 @@ func forwardLazySetup(ctx context.Context, turn *continuationTurn, executor *con
 		awaitContinuation(turn, passthrough)
 	}
 	// lazy.ts createSetupErrorMessage builds the message with errorMessage before timestamp. A failure an API module catches inside its own stream ends the provider's stream instead (for example google.go's request failure).
-	message := &AssistantMessage{Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: outer.startedAt}
+	// lazy.ts:83 `signal?.aborted ? "aborted" : "error"`: ctx carries the request signal.
+	reason := lazySetupStopReason(ctx)
+	message := &AssistantMessage{Content: []AssistantContentBlock{}, StopReason: reason, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: outer.startedAt}
 	if model != nil {
 		message.API = model.ProviderMeta.API
 		message.Provider = modelProviderID(model)
 		message.Model = model.ID
 	}
-	event := ErrorEvent{Reason: StopReasonError, Error: message}
+	event := ErrorEvent{Reason: reason, Error: message}
 	_ = outer.Push(event)
 	observation.onEvent(event)
 	observation.onResult(message)
 }
+// lazySetupStopReason is lazy.ts:83's `signal?.aborted ? "aborted" : "error"` for a setup that rejected.
+func lazySetupStopReason(ctx context.Context) StopReason {
+	if ctx != nil && ctx.Err() != nil {
+		return StopReasonAborted
+	}
+	return StopReasonError
+}
+
 func (stream *AssistantMessageEventStream) isTerminated() bool {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
