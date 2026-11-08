@@ -64,4 +64,8 @@ func platformDialLock(location lockLocation, ctx context.Context) (net.Conn, err
 
 func lockInUse(err error) bool { return errors.Is(err, syscall.EADDRINUSE) }
 
-func lockRefused(err error) bool { return errors.Is(err, syscall.ECONNREFUSED) }
+// lockRefused: a connect's errors that mean nobody accepts on the path: a socket file nobody listens on, or no socket there (a
+// regular file at the path is ENOTSOCK on macOS, ECONNREFUSED on Linux; retrying would spin).
+func lockRefused(err error) bool {
+	return errors.Is(err, syscall.ECONNREFUSED) || errors.Is(err, syscall.ENOTSOCK)
+}
