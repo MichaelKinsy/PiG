@@ -15,7 +15,7 @@ var lastMessageSequence atomic.Uint64
 
 // messageSequences numbers the messages of one Session, so that an extension process can tell which of its payloads Pi shares one object between: the message_start, message_end, turn_end and agent_end events and the session entry message_end persists (agent-session.ts _entryIdsByMessage is its analogue for entry ids). The Session sends each number with the payloads that carry the message and with its entry.
 type messageSequences struct {
-	mu        sync.Mutex
+	mu sync.Mutex
 	// last is the newest number this instance gave, 0 before it numbered anything.
 	last      uint64
 	byMessage map[any]uint64
