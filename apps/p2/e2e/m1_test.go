@@ -36,7 +36,10 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
 )
 
-func TestMain(m *testing.M) { p2test.Main(m) }
+func TestMain(m *testing.M) {
+	detachedChild()
+	p2test.Main(m)
+}
 
 func object(value any) *delta.JsonObject { o, _ := value.(*delta.JsonObject); return o }
 
