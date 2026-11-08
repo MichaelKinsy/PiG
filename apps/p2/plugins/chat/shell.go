@@ -398,16 +398,20 @@ func runCommand(command *delta.JsonObject, parts *p2runtime.HarnessParts, ctx ho
 	writes.Add(1)
 	go func() {
 		defer writes.Done()
+		pause := time.NewTimer(sampleInterval)
+		pause.Stop()
+		defer pause.Stop()
 		for {
 			select {
 			case <-stop:
 				return
 			case <-notify:
 			}
+			pause.Reset(sampleInterval)
 			select {
 			case <-stop:
 				return
-			case <-time.After(sampleInterval):
+			case <-pause.C:
 			}
 			output, truncated := live.snapshot()
 			write(func(draft *delta.Object) error {

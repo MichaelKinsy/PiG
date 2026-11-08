@@ -51,6 +51,7 @@ type Observer struct {
 
 // NewObserver is an observer of files that calls load; Start begins watching.
 func NewObserver(files []ObservedFiles, load ObserverLoad, fallback time.Duration) *Observer {
+	//portlint:allow ctxbackground the observer owns this context for its life: Close cancels it
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Observer{files: files, load: load, fallback: fallback, ctx: ctx, cancel: cancel}
 }
@@ -120,6 +121,7 @@ func stopTimer(timer *time.Timer) {
 
 func stopWatchers(watchers []durableenv.FileWatcher) {
 	for _, watcher := range watchers {
+		//portlint:allow ctxbackground a watcher stop outlives the observer context that ended; the watcher bounds it
 		_ = watcher.Stop(context.Background())
 	}
 }
@@ -204,6 +206,7 @@ func (o *Observer) changed(change durableenv.FileChange) {
 		watchers := o.watchers
 		o.watchers = nil
 		o.mu.Unlock()
+		//portlint:allow golifetime stopWatchers returns once each watcher stopped; nothing else owns them after the failure
 		go stopWatchers(watchers)
 		o.scheduleFallback()
 	}
@@ -217,6 +220,7 @@ func (o *Observer) kickLocked(retrying bool) {
 	}
 	o.running = true
 	o.loop.Add(1)
+	//portlint:allow golifetime joined by o.loop (Close waits for it)
 	go o.run(retrying)
 }
 

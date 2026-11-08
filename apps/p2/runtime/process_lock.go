@@ -14,6 +14,7 @@ import (
 // TakeProcessLock takes the lock name, or fails when another process still holds it after wait (at least 1 ms); the
 // returned function releases it.
 func TakeProcessLock(name string, wait time.Duration) (release func() error, err error) {
+	//portlint:allow ctxbackground the wait is bounded by its argument; Pi's takeProcessLock has no signal either
 	ctx, cancel := context.WithTimeout(context.Background(), max(wait, time.Millisecond))
 	defer cancel()
 	lock, err := workers.ProcessLock(name, ctx)

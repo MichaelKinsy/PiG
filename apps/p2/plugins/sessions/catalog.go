@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/google/uuid"
 	_ "modernc.org/sqlite" // the catalog's driver
 )
@@ -183,7 +184,7 @@ func (c *CatalogDB) Create(ctx context.Context, input NewSession) (contract.Sess
 	if id == "" {
 		id = uuid.NewString()
 	}
-	model, err := json.Marshal(input.Model)
+	model, err := chordjson.Marshal(input.Model)
 	if err != nil {
 		return contract.Session{}, err
 	}
@@ -261,7 +262,7 @@ func (c *CatalogDB) Update(ctx context.Context, id string, change Change) (contr
 	if change.Branches != nil {
 		branches = *change.Branches
 	}
-	modelJSON, err := json.Marshal(model)
+	modelJSON, err := chordjson.Marshal(model)
 	if err != nil {
 		return current, err
 	}
@@ -273,7 +274,7 @@ func (c *CatalogDB) Update(ctx context.Context, id string, change Change) (contr
 	for i, branch := range branches {
 		stored[i] = storedBranch{branch.Conversation, branch.Label}
 	}
-	branchJSON, err := json.Marshal(stored)
+	branchJSON, err := chordjson.Marshal(stored)
 	if err != nil {
 		return current, err
 	}

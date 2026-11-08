@@ -5,7 +5,6 @@ package subagents
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -143,9 +142,14 @@ func serveChildStore(_ *delta.JsonObject, self host.Self) (contracts.Implementat
 				}
 				read.Set(session, converted)
 				if migrate {
-					encoded, _ := json.Marshal(converted)
+					encoded, _ := chordjson.Marshal(converted)
 					updates = append(updates, update{session, string(encoded)})
 				}
+			}
+			if err := stored.Err(); err != nil {
+				_ = stored.Close()
+				_ = db.Close()
+				return nil, err
 			}
 			if err := stored.Close(); err != nil {
 				_ = db.Close()

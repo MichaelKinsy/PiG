@@ -13,6 +13,7 @@ import (
 
 // FetchTransport is an HTTP/1.1-only transport: no h2 in ALPN, gzip decoded.
 func FetchTransport() *http.Transport {
+	//portlint:allow transportperrequest built once per FetchTransport call, which the caller shares
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ForceAttemptHTTP2 = false
 	transport.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}

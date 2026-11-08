@@ -56,8 +56,8 @@ func TestRenameSessionToolRenamesThroughTheWorkersRoot(t *testing.T) {
 		t.Fatalf("tools = %+v", extension.Tools)
 	}
 	// Only top-level conversations may rename the session.
-	if extension.Access["rename_session"].Scope != "main" {
-		t.Fatalf("access = %+v", extension.Access)
+	if extension.Tools[0].Scope != "main" {
+		t.Fatalf("access = %+v", extension.Tools[0].ToolAccess)
 	}
 	run := func(title string) string {
 		t.Helper()

@@ -86,7 +86,8 @@ func credentialOf(entry any) (*ai.Credential, error) {
 		return nil, err
 	}
 	var credential ai.Credential
-	if err := json.Unmarshal(encoded, &credential); err != nil {
+	//perf:ok a stored entry is converted to its typed form when the credential file is read (cold)
+	if err := json.Unmarshal(encoded, &credential); err != nil { //portlint:allow jsonclone a typed value converted from its stored JSON form, cold (see the perf:ok above)
 		return nil, err
 	}
 	return &credential, nil
@@ -289,6 +290,7 @@ func (store *FileCredentials) Modify(ctx context.Context, providerID string, upd
 			if err != nil {
 				return p2runtime.LockResult[modified]{}, err
 			}
+			//perf:ok a credential file write (cold)
 			value, err := chordjson.Decode(encoded)
 			if err != nil {
 				return p2runtime.LockResult[modified]{}, err

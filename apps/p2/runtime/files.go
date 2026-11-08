@@ -29,9 +29,11 @@ func SafeFileName(name string) string {
 	return safe
 }
 
+var slashes = regexp.MustCompile(`[/\\]`)
+
 // splitKeepingEmpty is `name.split(/[/\\]/)`: the pieces between slashes and backslashes, empty ones kept.
 func splitKeepingEmpty(name string) []string {
-	return regexp.MustCompile(`[/\\]`).Split(name, -1)
+	return slashes.Split(name, -1)
 }
 
 // DownloadInfo is a download of the session (`DownloadInfo`).

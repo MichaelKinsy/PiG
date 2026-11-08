@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func write(t *testing.T, path, text string, mode os.FileMode) {
@@ -25,9 +27,7 @@ func TestCopySessionDirectoryCopiesPrivatelyAndLinksBlobs(t *testing.T) {
 	write(t, filepath.Join(from, "files", "index.json"), "index", 0o644)
 	write(t, filepath.Join(from, "files", "blobs", "ab", "blob"), "blob", 0o400)
 	write(t, filepath.Join(from, "files", ".uploads", "partial"), "partial", 0o600)
-	if err := os.Symlink("/etc/passwd", filepath.Join(from, "link")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, "/etc/passwd", filepath.Join(from, "link"))
 
 	if err := CopySessionDirectory(context.Background(), data, "src", "dst"); err != nil {
 		t.Fatal(err)

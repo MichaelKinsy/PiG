@@ -104,8 +104,14 @@ type sessionsFixture struct {
 
 func newSessionsFixture(t *testing.T, extra ...host.Facet) *sessionsFixture {
 	t.Helper()
+	return newSessionsFixtureAt(t, t.TempDir(), extra...)
+}
+
+// newSessionsFixtureAt is the fixture over the data directory dir (a catalog it may already hold).
+func newSessionsFixtureAt(t *testing.T, dir string, extra ...host.Facet) *sessionsFixture {
+	t.Helper()
 	p2test.CheckLeaks(t, 0)
-	fixture := &sessionsFixture{dataDir: t.TempDir(), workers: &recordedWorkers{}}
+	fixture := &sessionsFixture{dataDir: dir, workers: &recordedWorkers{}}
 	fakeModels := models.CreateFakeModels(ai.CreateModelsOptions{})
 	fixture.model = fakeModels.GetModels()[0]
 	neighbours := host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {

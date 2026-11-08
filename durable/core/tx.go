@@ -584,6 +584,8 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 			return nil, err
 		}
 		return float64(latest), nil
+	case "submission":
+		return nilRec(tx.Submission(id))
 	case "submissionByRequest":
 		return nilRec(tx.SubmissionByRequest(session.ID(numOf(op, "conversationId")), strOf(op, "requestId")))
 	case "scanConversations", "scanEntries", "scanTasks":

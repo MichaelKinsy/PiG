@@ -166,3 +166,31 @@ func TestMergeCompatAndInputLimits(t *testing.T) {
 		t.Fatalf("input limits = %s", limits)
 	}
 }
+
+// Model headers override the auth's (Pi's `mergeHeaders(result.auth.headers, headers)`), names compared without case, and
+// of names that differ only in case the last in file order wins, with its spelling, in every run.
+func TestModelHeadersOverrideAuthHeadersAndCaseVariantsResolveToTheLast(t *testing.T) {
+	for range 20 {
+		models := composed(t, `{"providers":{"local":{
+			"baseUrl":"https://llm.example/v1","api":"openai-completions","apiKey":"k","headers":{"X-A":"provider","X-P":"p"},
+			"models":[{"id":"m","headers":{"x-a":"model","X-B":"1","x-b":"2"}}]}}}`, nil)
+		listed := models.GetModels("local")
+		modelAuth, err := models.GetModelAuth(context.Background(), listed[0])
+		if err != nil || modelAuth == nil {
+			t.Fatalf("model auth = %+v, %v", modelAuth, err)
+		}
+		headers := map[string]string{}
+		for name, value := range modelAuth.Auth.Headers {
+			headers[name] = *value
+		}
+		want := map[string]string{"x-a": "model", "X-P": "p", "x-b": "2"}
+		if len(headers) != len(want) {
+			t.Fatalf("headers = %v, want %v", headers, want)
+		}
+		for name, value := range want {
+			if headers[name] != value {
+				t.Fatalf("headers = %v, want %v", headers, want)
+			}
+		}
+	}
+}
