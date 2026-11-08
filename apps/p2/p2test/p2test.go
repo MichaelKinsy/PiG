@@ -330,6 +330,12 @@ func (f *Fixture) Close() {
 		_ = f.Server.Close(Background)
 		f.Server = nil
 		_ = os.RemoveAll(f.root)
+		// A test binary starts hundreds of servers: the redactor stats the credential files of every directory registered, for
+		// every line of every log, so the directories of the servers that are gone are dropped.
+		p2runtime.ProcessLogs.Redactor.RemoveDirectoriesUnder(f.root)
+		if f.DataDir != "" {
+			p2runtime.ProcessLogs.Redactor.RemoveDirectoriesUnder(f.DataDir)
+		}
 	}
 }
 

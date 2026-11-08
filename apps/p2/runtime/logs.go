@@ -168,6 +168,24 @@ func (r *LogRedactor) AddDirectory(directory string) {
 	}
 }
 
+// RemoveDirectoriesUnder stops reading the credential files of the registered directories at root or below it (a server's data
+// directory that is gone): every redaction stats each file of every registered directory, so a process that starts servers one
+// after another (a test binary) would read the files of all it ever started. The secrets already read stay.
+func (r *LogRedactor) RemoveDirectoriesUnder(root string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	prefix := filepath.Clean(root) + string(filepath.Separator)
+	r.directories = slices.DeleteFunc(r.directories, func(directory string) bool {
+		clean := filepath.Clean(directory)
+		return clean == filepath.Clean(root) || strings.HasPrefix(clean, prefix)
+	})
+	for path := range r.fingerprints {
+		if strings.HasPrefix(path, prefix) {
+			delete(r.fingerprints, path)
+		}
+	}
+}
+
 func (r *LogRedactor) collect(value any, sensitive bool) {
 	switch typed := value.(type) {
 	case string:
