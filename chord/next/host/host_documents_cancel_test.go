@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -67,11 +66,9 @@ func TestDocumentsTransactionsTheirContextsEndCancelledAreReportedForACallersCan
 	run := restartable(t, func(_ int, self Self) { list = stateOf(self, attemptListDoc) }, loadedOptions{})
 	gate := make(chan struct{})
 	entered := make(chan struct{})
-	var holding sync.WaitGroup
-	holding.Add(1)
+	held := make(chan error, 1)
 	go func() {
-		defer holding.Done()
-		must(t, list.Change(func(*delta.Object) { close(entered); <-gate }, background))
+		held <- list.Change(func(*delta.Object) { close(entered); <-gate }, background)
 	}()
 	<-entered
 	cancelled, cancel := context.WithCancelCause(background)
@@ -82,7 +79,7 @@ func TestDocumentsTransactionsTheirContextsEndCancelledAreReportedForACallersCan
 	boom := errors.New("caller left")
 	cancel(boom)
 	close(gate)
-	holding.Wait()
+	must(t, <-held)
 	if err := <-waiting; !errors.Is(err, boom) {
 		t.Fatalf("waiting change = %v, want the caller's cause", err)
 	}
