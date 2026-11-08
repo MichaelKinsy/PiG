@@ -118,8 +118,7 @@ func (t *PipeTransport) Start() error {
 	t.pipe = pipe
 	t.mu.Unlock()
 	//portlint:allow asyncorder the exit watcher is the one place Pi awaits `exited` (pipe.ts start): it reports the exit once, and Close joins it through the same Exited call
-	//portlint:allow golifetime the goroutine ends when the program exits, which Close forces by closing stdin and then killing the program after CloseTimeoutMs
-	go func() {
+	go func() { //portlint:allow golifetime the goroutine ends when the program exits, which Close forces by closing stdin and then killing the program after CloseTimeoutMs
 		_, failure := pipe.Exited()
 		t.exit(failure)
 	}()
