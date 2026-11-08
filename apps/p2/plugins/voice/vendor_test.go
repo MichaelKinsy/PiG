@@ -27,8 +27,15 @@ func TestVoiceServerIsPisVerbatim(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != len(voiceServerFiles) {
-		t.Errorf("voice-server holds %d entries, Pi's holds %d", len(entries), len(voiceServerFiles))
+	// test_segmenter_stub.py is PiG's (make voice-segmenter-test), not Pi's: every other entry is.
+	pigEntries := 0
+	for _, entry := range entries {
+		if entry.Name() == "test_segmenter_stub.py" {
+			pigEntries++
+		}
+	}
+	if len(entries)-pigEntries != len(voiceServerFiles) {
+		t.Errorf("voice-server holds %d entries of Pi's, Pi's holds %d", len(entries)-pigEntries, len(voiceServerFiles))
 	}
 	for name, want := range voiceServerFiles {
 		content, err := os.ReadFile(filepath.Join(directory, name))

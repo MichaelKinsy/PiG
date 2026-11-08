@@ -1,7 +1,6 @@
 package codemode
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
