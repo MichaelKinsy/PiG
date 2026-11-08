@@ -53,18 +53,21 @@ type App struct {
 	// toasts are the errors of work off the frame, shown by the next one (guarded by mu).
 	toasts        []string
 	providerQuery string
-	loginAnswer   string
-	providers     *screens.Providers
-	modeChoice    string
-	collapsed     bool
-	showDrawer    bool
-	stopSprite    func()
-	draft         string
-	creating      bool
-	newCwd        string
-	newTitle      string
-	shownErr      string
-	announced     bool
+	// providerSel is the provider whose sheet is open ("": the list); providerResult and providerBusy are its catalog refresh (guarded by mu).
+	providerSel, providerResult string
+	providerBusy                bool
+	loginAnswer                 string
+	providers                   *screens.Providers
+	modeChoice                  string
+	collapsed                   bool
+	showDrawer                  bool
+	stopSprite                  func()
+	draft                       string
+	creating                    bool
+	newCwd                      string
+	newTitle                    string
+	shownErr                    string
+	announced                   bool
 
 	// The chat screen: the open conversation and its scope, its list, the prompt's text, the activity sheet, the markdown
 	// options, and the first message of a session started from the empty state (sent once its chat opens).

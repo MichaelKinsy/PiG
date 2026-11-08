@@ -144,11 +144,20 @@ func TestProvidersSheetFromTheEmptyState(t *testing.T) {
 	if err := tt.Click("Sign in to a provider"); err != nil {
 		t.Fatal(err)
 	}
-	until(t, tt, "the sheet", func() bool { return tt.HasText("Providers") && tt.HasText("Search providers") || tt.HasText("Done") })
-	if err := tt.Click("Done"); err != nil {
+	// The web's Providers: the list with its search, a provider's own sheet behind its row, closed by the X.
+	until(t, tt, "the sheet", func() bool { return tt.HasText("Search providers") && tt.HasText("Anthropic") })
+	if err := tt.Click("Anthropic"); err != nil {
 		t.Fatal(err)
 	}
-	until(t, tt, "the sheet closed", func() bool { return !tt.HasText("Done") })
+	until(t, tt, "the provider's sheet", func() bool { return tt.HasText("Not signed in. Environment keys may still apply. Credentials are stored on the server.") })
+	if err := tt.Click("Back"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the list again", func() bool { return tt.HasText("Search providers") })
+	if err := tt.Click("Close"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the sheet closed", func() bool { return !tt.HasText("Search providers") })
 }
 
 // TestActivityRowOpensItsSheet: a turn with a scripted call (the faux provider's "write") is one activity row, which opens the web's
