@@ -18,7 +18,23 @@ the sign was wrong, so the list never left the end. Fixed in `measure_test.go` (
 | memory | heap 35 MB, process RSS 188 MB (server + worker + UI) |
 | stream frame mean / p95 | 1.9 / 7.23 ms |
 
-Web half at 5000 exchanges: not obtained validly (the run with the corrected harness was cut by the 900 s timeout on the overloaded Mac, and the
-earlier web figures, 12.7 s for 400 steps, mean 31.7 / p95 42.5 ms, browser RSS 1029 MB, came from a run whose native half did not scroll; the web
-half itself did scroll, wheel in the page). Rerun when the Mac is quiet: `smoke/gate/measure.sh /tmp/pd5-fix5k 5000 /tmp/pd5-m5k` (regenerate the fixture
-with the command above). The native half cannot run on Linux: MyGo needs libgobject for text there, so `HasText` never matches.
+## 5000 exchanges (10k messages), native against web, same session, valid run (round 6, xd670, Linux x86-64, container with 16 CPUs, host load 40-55)
+Fixture: generated on xd670 by `TestMakeFixture` (5.5 MB data directory, `SessionTransfer.seed`, Pi's session format through the Durable store), copied
+once and used by one server for both halves. Native half = MyGo's software tester at 1280x812 (`TestMeasureLong`, built in the Go container, run with
+`NATIVE_TEST=<binary> smoke/gate/measure.sh`); web half = Chrome headless shell (playwright chromium-1254, software rendering, no GPU) + `measure.mjs`.
+Chrome's shared libraries were installed as root (`playwright install-deps`), which also made MyGo's text work on Linux, so the native half now runs
+there. Both halves scrolled back through the history (oldest message on screen: native 4175, web 4309, of 4999).
+
+| | native (software tester) | web (Chrome headless shell) |
+|---|---|---|
+| open to newest message | 71 ms | 414 ms |
+| 400 wheel steps, total | 895 ms | 22 304 ms |
+| scroll frame mean / p95 / max | 0.56 / 2.03 / 11.1 ms | 55.8 / 67.6 / 117 ms |
+| stream frame mean / p95 / max | 5.26 / 14.3 / 21.8 ms (27 frames) | 33.7 / 36.9 / 36.9 ms (6 frames) |
+| memory | heap 18 MB, process RSS 94 MB (server + worker + UI) | browser RSS 110 MB (the measured browser process; the server is the native half's process) |
+
+Caveats: the native half is a software tester, not a window with a GPU, and times the build + layout + paint of a frame, not the display's presentation;
+the web half is measured from the wheel event to the second `requestAnimationFrame`, so it includes Chrome's own frame pacing (about one 60 Hz frame
+per step: its floor is near 16 ms, and the 55 ms mean is 3-4 frames of real work per step at 10k messages). The stream rows have few frames
+(a short faux answer). Treat the ratio as direction (native is an order of magnitude cheaper per frame at 10k messages), not as a benchmark; a
+window on a GPU is the real-window rerun for a quiet Mac (locked screen now, load 100+).
