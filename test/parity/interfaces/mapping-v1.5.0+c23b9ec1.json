@@ -107438,25 +107438,8 @@
     },
     {
       "id": "pkg:chord/.#formatNumber",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40",
-      "rationale": "Derived by the interface gap detector: formatNumber is Go chord/next/surfaces/surfaces_format.go#FormatNumber (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/next/surfaces/surfaces_format.go#FormatNumber"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/surfaces/surfaces_format.go#FormatNumber"
-      ],
-      "evidence": [
-        "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode",
-        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData",
-        "test:chord/next/surfaces/intl_root_test.go#TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40"
     },
     {
       "id": "pkg:chord/.#formatNumber::call:0",
@@ -107465,25 +107448,8 @@
     },
     {
       "id": "pkg:chord/.#formatTime",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271",
-      "rationale": "Derived by the interface gap detector: formatTime is Go chord/next/surfaces/intl_time.go#FormatTime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/next/surfaces/intl_time.go#FormatTime"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/surfaces/intl_time.go#FormatTime"
-      ],
-      "evidence": [
-        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode",
-        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData",
-        "test:chord/next/surfaces/intl_root_test.go#TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271"
     },
     {
       "id": "pkg:chord/.#formatTime::call:0",

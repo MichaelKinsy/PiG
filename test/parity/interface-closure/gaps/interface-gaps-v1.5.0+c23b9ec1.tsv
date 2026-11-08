@@ -220,6 +220,10 @@ pkg:chord/.#Tx::property:update::call:0	chord	undecidable	chord/next/documents/t
 pkg:chord/.#Tx::property:updateWhere	chord	child-gap	chord/next/documents/transaction.go#Tx.UpdateWhere
 pkg:chord/.#Tx::property:updateWhere::call:0	chord	undecidable	chord/next/documents/transaction.go#Tx.UpdateWhere
 pkg:chord/.#WhereNode	chord	type-mismatch	chord/next/store/expression.go#WhereNode
+pkg:chord/.#formatNumber	chord	child-gap	chord/next/surfaces/surfaces_format.go#FormatNumber
+pkg:chord/.#formatNumber::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_format.go#FormatNumber
+pkg:chord/.#formatTime	chord	child-gap	chord/next/surfaces/intl_time.go#FormatTime
+pkg:chord/.#formatTime::call:0	chord	signature-mismatch	chord/next/surfaces/intl_time.go#FormatTime
 pkg:chord/.#inArray	chord	child-gap	chord/next/store/expression.go#InArray
 pkg:chord/.#inArray::call:0	chord	undecidable	chord/next/store/expression.go#InArray
 pkg:chord/.#int	chord	child-gap	chord/next/store/columns.go#Int
