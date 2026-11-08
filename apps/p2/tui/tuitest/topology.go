@@ -121,3 +121,13 @@ func (f *Fixture) Screen() string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// Attach is a second runtime on h (a reload's: a new terminal and TUI over the same client host); prepare sets its state before it starts.
+func Attach(t testing.TB, h host.Host, columns int, prepare func(*tuiruntime.TuiRuntime)) *Fixture {
+	t.Helper()
+	f := &Fixture{T: t, queue: make(chan func(), 4096), stop: make(chan struct{})}
+	f.Terminal = vterm.New(columns, 24)
+	f.TUI = pitui.NewTuiAltScreen(f.Terminal, nil, t.TempDir())
+	f.start(h, prepare)
+	return f
+}
