@@ -60,7 +60,7 @@ type WorkerStart struct {
 type WorkerLoad struct {
 	Kind string
 	// Core is the app's own facets that are JavaScript: modules whose default export is the facet, loaded into the NodeHost
-	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord/next`).
+	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord`).
 	Core []plugins.CoreFacet
 	// GoCore are the app's own facets that are Go: they load on the worker's Go host, and the local types the NodeHost's
 	// facets use are named by Bridged.
@@ -79,6 +79,8 @@ type WorkerLoad struct {
 	Store        *plugins.StoreOptions
 	CloseTimeout *time.Duration
 	ReadyTimeout *time.Duration
+	// ReloadDrainTimeout is the NodeHost's `reloadDrainTimeout` (RuntimeLoad's). Nil: the host's default.
+	ReloadDrainTimeout *time.Duration
 }
 
 // BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
@@ -105,6 +107,11 @@ type WorkerMainOptions struct {
 	// Redact is what crosses as `fatal` for an error (never the original message unless this returns it).
 	Redact  func(err any) CrossedError
 	OnError func(err any)
+	// Reload applies a server rollout's scripts (the complete set) in a worker whose plugins are not shipped through
+	// WorkerPlugins.Load: an app whose plugins are compiled in (p2). It is used when no PluginRuntime was loaded; its report
+	// is what the worker answers `reloaded` with, its error a failed reload. Without it such a worker answers that
+	// plugins.load was never called.
+	Reload func(scripts []plugins.PluginScript, ctx context.Context) (host.ReloadReport, error)
 }
 
 // forcedExit is how long a shutdown's closers get before the worker exits anyway: 3 s.
@@ -377,9 +384,13 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 	node, report, err := p.runtime.Load(plugins.RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
-		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout,
+		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout,
 	}, ctx)
 	if err != nil {
+		// A *plugins.PluginError comes with the loaded host (Pi's `host` is the caller's to stop): the worker ends instead.
+		if node != nil {
+			_ = node.Close(context.WithoutCancel(ctx))
+		}
 		return host.LoadReport{}, err
 	}
 	nodeLink.Store(node)
@@ -546,7 +557,7 @@ func (w *worker) applyReloads() {
 		if applying != nil {
 			applying()
 		}
-		if loaded == nil {
+		if loaded == nil && w.options.Reload == nil {
 			failure := CrossedError{Message: "worker: plugins.load was never called"}
 			w.send(FromWorker{Kind: FromWorkerReloaded, Error: &failure})
 			continue
@@ -554,7 +565,11 @@ func (w *worker) applyReloads() {
 		var report host.ReloadReport
 		err := w.safely(func() error {
 			var reloadErr error
-			report, reloadErr = loaded.runtime.Reload(loaded.node, scripts, w.context)
+			if loaded == nil {
+				report, reloadErr = w.options.Reload(scripts, w.context)
+			} else {
+				report, reloadErr = loaded.runtime.Reload(loaded.node, scripts, w.context)
+			}
 			return reloadErr
 		})
 		if err != nil {

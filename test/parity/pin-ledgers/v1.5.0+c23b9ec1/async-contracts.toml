@@ -520,10 +520,10 @@ rationale = "A chord Context's abort signal is Go context cancellation, with the
 
 [[files]]
 path = "packages/chord/src/contracts/accepts.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Promise appears only in the type of a method's call signature (accepts.ts:113, a declaration of the contract's callable shape). The Go chord/next/contracts has no async function: a method call is a blocking Go call that takes a context.Context, so no ordering, cancellation or error contract is added here; calls are contracted where they run (the host and link files). Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Moved from packages/chord/src/next/contracts/accepts.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/contracts/contract.ts"
@@ -548,10 +548,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/documents/handles.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/documents/handles_test.go#TestKeyedHandlesListKeysInCodePointOrderNotUTF16Order", "test:chord/next/documents/handles_test.go#TestSealedHandles"]
+rationale = "thin blocking views over the slots and `Documents.Tx`. Moved from packages/chord/src/next/documents/handles.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/documents/keyed-slot.ts"
@@ -562,10 +562,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/documents/line.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering", "awaited"]
+evidence = ["test:chord/next/documents/line_test.go#TestTheLineHandsItToEachHolderInTheOrderTheyAskedOnceThePreviousOneReleased", "test:chord/next/documents/line_test.go#TestTheLineIgnoresASecondReleaseOfTheSameHolder"]
+rationale = "`Acquire` takes its place under a mutex at the call and blocks until the holder before it released; the release is idempotent (`sync.Once`). Tests wait for `waitingHolders()` to see a place taken. Moved from packages/chord/src/next/documents/line.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/documents/persistence.ts"
@@ -618,10 +618,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/host/members.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Declarations and synchronous source resolution only: the sole Promise in the pinned file is the type of `Method` (`(args, context) => Promise<unknown>`); no function in members.ts awaits, chains or schedules a promise. The Go counterpart is chord/next/host/host_members.go, which resolves members synchronously. Update (Pi 6d4b7443): comment-only change. Moved from packages/chord/src/next/host/members.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/host/native.ts"
@@ -639,10 +639,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/host/parked.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/host_parked_test.go#TestParkedCallsAreQueuedAndSentInTheOrderTheyWereMade", "test:chord/next/host/host_parked_test.go#TestParkedCallResultSettlesOnceAndThenRunsAsAMicrotask", "test:chord/next/host/host_parked_test.go#TestParkedCallsRejectAtTheReadyTimeoutMeasuredFromEachCall", "test:chord/next/host/host_parked_test.go#TestParkedCallsKeepOneDeadlineAcrossReconnects", "test:chord/next/host/host_parked_test.go#TestParkedCallsTheTimeoutInTheMessageIsAJavaScriptNumber", "test:chord/next/host/host_parked_test.go#TestParkedCallsRejectAtOnceWhenTheirCallerCancels", "test:chord/next/host/host_parked_test.go#TestParkedCallsAnAbortedCallerIsNotQueued", "test:chord/next/host/host_parked_test.go#TestParkedCallsKeepTheirOrderAfterManyLeft"]
+rationale = "parked.ts Promise.withResolvers returned by park: `parkedCallResult`: small struct with a `done` channel closed once (settle is once-only), result written before the close; `wait()` is the await (called off the loop). | parked.ts setTimeout(expire, timeout) / clearTimeout: `eventLoop.AfterFunc`; `unavailable/park_timeout`, measured from each call, never renewed. | parked.ts signal.addEventListener(\"abort\", cancel, {once}): `context.AfterFunc(ctx, ...)`; the listener runs on a goroutine of its own, so it enters the host's `Loop.Run` (`sectionLoop.Run`) and no-ops when the call already left the queue (sent, expired, rejected). Rejects with `context.Cause(ctx)` (`signal.reason`); an already-aborted ctx returns that error from `park` (`throwIfAborted`). | parked.ts send(...).then(call.resolve, call.reject): `parkedCallResult.then(loop, f)` runs `f` through `loop.Queue` after the sent call's result settled (also when it was settled already). No goroutine is started; errors propagate as the settled error of the caller's result. Order of the sends in one `flush` is the queue's order, including calls queued while it runs (TestParkedCallsKeepTheirOrderWhenAHandlerCallsWhileTheyAreSent). Moved from packages/chord/src/next/host/parked.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/host/readiness.ts"
@@ -702,10 +702,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/host/sleep.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/host_sleep_test.go#TestSleepRejectsWithTheAbortReasonAndClearsItsTimer", "test:chord/next/host/host_sleep_test.go#TestSleepChainsTimersForDelaysAbove2Pow31Minus1MsAnAbortClearsTheChainedTimer", "test:chord/next/host/host_sleep_test.go#TestUntilAbortedResolvesOnceItsContextIsAbortedAtOnceWhenItAlreadyIs"]
+rationale = "`sleep` is a blocking call returning nil or `context.Cause(ctx)`; the chained timer is cleared on abort (mutex between the wake-up job and the abort); `untilAborted` blocks on `ctx.Done()`. Moved from packages/chord/src/next/host/sleep.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/jobs/job.ts"
@@ -716,10 +716,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/jobs/persisted.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/jobs_persisted_test.go#TestPersistedVersionsWithIncompatibleStateARunOfAnotherVersionIsBlockedBeforeItsStateIsDecoded"]
+rationale = "persisted.ts load, findBlockedState (await ...read/keys/find): Blocking guarded store reads, cancellable by the context. Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Moved from packages/chord/src/next/jobs/persisted.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/jobs/records.ts"
@@ -891,17 +891,17 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/http/authenticate.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/http/authenticate_test.go#TestAuthenticatorsStartNoAuthenticatorOnceTheContextIsAborted", "test:chord/nextnode/http/http_test.go#TestCancellationCloseSettlesARequestWhoseAuthenticatorIgnoresItsSignal503"]
+rationale = "`authenticate` (async, authenticators may return a Promise): blocking `Authenticate`, authenticators asked in contributor order, none started once the context is aborted; a throwing one is reported and skipped; `awaitWithContext(authenticating)` is a goroutine selected against the request context. Moved from packages/chord/src/next-node/http/authenticate.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/node/http/file.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten"]
+rationale = "`handle ??= opened(...)`: a `sync.Once`-opened handle on the first read, closed by `context.AfterFunc` on the scope. Moved from packages/chord/src/next-node/http/file.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/node/http/http.ts"
@@ -912,10 +912,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/http/node.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/http/node_test.go#TestTheRequestsScopeLastsUntilTheResponseIsFlushedCloseWaitsForIt", "test:chord/nextnode/http/node_test.go#TestTheRequestsScopeIsAbortedWhenTheClientDisconnects"]
+rationale = "`write`/`pump` backpressure (`drain`, `res.once(\"close\")`): `ResponseWriter.Write` blocks as the socket drains; the scope's `finished` is a defer. Moved from packages/chord/src/next-node/http/node.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/node/http/request.ts"
@@ -1199,17 +1199,17 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/state/native-source.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/state/native_own_test.go#TestNativeSourceFailing", "test:chord/next/state/watchable_own_test.go#TestSourceWatches"]
+rationale = "NativeSource.watch (native-source.ts:57, 124) opens a watch and resolves with the handle; on a failed source it opens at the last good value and its first call is the failure. chord/next/state/native_source.go Watch is a blocking call over context.Context: a failed call keeps the last value, an aborted context ends the watch aborted, deliveries are one frame per change serialized per watch (the host serializes calls as Pi's single event loop does; collections touched by end/stop/abort paths are locked). Moved from packages/chord/src/next/state/native-source.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/state/watchable.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/state/watchable_own_test.go#TestSourceWatches", "test:chord/next/state/batch_test.go#TestFlushes"]
+rationale = "Watchable.watch (watchable.ts:82, 193) resolves with the Watch of a source. chord/next/state/watchable.go Watch blocks over context.Context: one frame per change, serialized per watch, a failed call keeps the last value, abort ends the watch aborted; deliveries run on chord.DeliveryScheduler, the Go stand-in for the microtask queue (Batch.Soon runs queued work after the current synchronous section in order and panics with no queue). Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Moved from packages/chord/src/next/state/watchable.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/store/adapter.ts"
@@ -1234,17 +1234,17 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/store/catalog.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/catalog_test.go#TestCatalog"]
+rationale = "`ReadCatalog`/`WriteCatalog` are blocking calls run inside the commit step on the queue's goroutine; the in-memory catalog changes only after COMMIT returned (copy-on-write map). Moved from packages/chord/src/next/store/catalog.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/store/engine.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/engine_test.go#TestEngineDocuments", "test:chord/next/store/engine_test.go#TestEngineHistoryRules", "test:chord/next/store/engine_test.go#TestEngineCounters"]
+rationale = "Document reads/writes block on the step's transaction (or a guarded read) in call order on one goroutine; no lock needed inside a step. Moved from packages/chord/src/next/store/engine.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/store/export.ts"
@@ -1262,10 +1262,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/store/jsonl.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/store/jsonl_test.go#TestJsonl"]
+rationale = "Async generators are pull iterators (`Next(ctx)`): one source `Next` per chunk, no read-ahead, an error ends the iterator, `Close` closes the wrapped source; cancellation is the ctx passed to the source. Moved from packages/chord/src/next/store/jsonl.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/store/live-query.ts"
@@ -1276,17 +1276,17 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/store/outbox.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering", "awaited", "cancellable"]
+evidence = ["test:chord/next/store/outbox_test.go#TestOutbox"]
+rationale = "Pi's `#queued` promise chain is a FIFO ticket: Read/Trim run one at a time in arrival order, a settled entry never blocks the next; ctx is checked at the Trim call and guards the read. Moved from packages/chord/src/next/store/outbox.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/store/schema.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/store_test.go#TestStore"]
+rationale = "`applyStoreSchema` is a blocking call with Pi's statement order and returns its error as Pi rejects; no ctx. Moved from packages/chord/src/next/store/schema.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/store/step.ts"
@@ -1304,10 +1304,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/store/table-changes.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/table_changes_test.go#TestTableChanges"]
+rationale = "`Get` does one guarded committed read then replays the overlay in memory; staging is synchronous (returns error). Moved from packages/chord/src/next/store/table-changes.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/store/table-handle.ts"
@@ -1318,10 +1318,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/store/table-migration.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/next/store/table_migration_test.go#TestMigrationResumption", "test:chord/next/store/table_migration_test.go#TestEagerMigrations", "test:chord/next/store/table_migration_test.go#TestFreshTables"]
+rationale = "`PrepareTables`/`MigrationChunk` run reads and commits sequentially in Pi's order; ctx is checked between chunks (`context.Cause`), commits run under `WithoutAbortSignal` so an admitted commit completes and a refused one fails `released`; the macrotask yield (`setImmediate`/MessageChannel) becomes `runtime.Gosched()`; its two JS-timer cases are designed out (no Go test). Update (Pi 6d4b7443): `AnnounceTable` is synchronous under `mu` before the first commit is queued; the withdrawal is deferred so it runs also when a commit fails. Moved from packages/chord/src/next/store/table-migration.ts by the root move (Pi e9c0ff4d8), identical modulo import paths."
 
 [[files]]
 path = "packages/chord/src/store/table-writes.ts"

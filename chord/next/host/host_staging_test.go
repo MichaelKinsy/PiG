@@ -159,9 +159,9 @@ func TestStagingRecordsWithoutActivatingNoNativeOpensNoReferenceBindsNoDocumentI
 	})
 	report, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: facet}}, background, ReloadOptions{})
 	must(t, err)
-	// It opens natives now: a restart, whose activation opened its native once.
-	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadRestarted}}; !reflect.DeepEqual(report.Objects, want) {
-		t.Fatalf("objects = %+v, want %+v", report.Objects, want)
+	// Its readiness binds the recorded request: `Dep` is missing, so the restart is reported parked.
+	if len(report.Objects) != 1 || report.Objects[0].Object != "app.store" || report.Objects[0].Kind != ReloadParked || report.Objects[0].Cause.Kind != data.FailureWaiting {
+		t.Fatalf("objects = %+v, want app.store parked waiting", report.Objects)
 	}
 	// Neither staging nor the restart opened it: the new attempt parks on the missing `Dep` first.
 	state := untilState(t, ref, func(current *RefState) bool { return current.Kind == RefStateFailed })
@@ -216,19 +216,17 @@ func TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure(t *testin
 	if len(report.Failed) != 0 {
 		t.Fatalf("failed = %v, want none: a recorded factory's handles are inert", failedMessages(report.Failed))
 	}
-	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadSwapped}}; !reflect.DeepEqual(report.Objects, want) {
+	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadRestarted}}; !reflect.DeepEqual(report.Objects, want) {
 		t.Fatalf("objects = %+v, want %+v", report.Objects, want)
 	}
-	if label := memberOf(t, ref, "label"); label != "v2" {
-		t.Fatalf("label = %v, want v2", label)
-	}
+	scopeEventually(t, "the new attempt serves", func() bool { return memberOf(t, ref, "label") == "v2" })
 	if runs.Load() != 3 {
-		t.Fatalf("the factory ran %d times, want 3 (the first attempt, staging, the swapped attempt)", runs.Load())
+		t.Fatalf("the factory ran %d times, want 3 (the first attempt, staging, the restart's new attempt)", runs.Load())
 	}
 }
 
-// Ports packages/chord/test/next/host/staging.test.ts:145; the factories declare their table with `self.table(V1)` (staging.test.ts:150, StoreSelf.Table).
-// Mirrors "staging: recorded declarations decide the fate › a table of the new factory at a newer version than the store's restarts the object (its eager migration)".
+// Ports packages/chord/test/host/staging.test.ts:145; the factories declare their table with `self.table(V1)` (staging.test.ts:150, StoreSelf.Table).
+// Mirrors "staging: recorded declarations decide the fate › a table of the new factory at a newer version migrates at the restart's new attempt".
 func TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObject(t *testing.T) {
 	chordStore := memoryStore(t)
 	v1, err := store.DefineTable("items", store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Str()), store.Col("name", store.Str())}, Key: []string{"id"}})
@@ -238,17 +236,23 @@ func TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObje
 	host := newHost(t, HostOptions{Store: chordStore, OnError: noopOnError})
 	defer closeHosts(t, host)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: stagingServeStore("v1", func(self StoreSelf) { self.Table(v1) })}}, background))
-	mustGet(t, host, stagingStore, jsonObject())
+	ref := mustGet(t, host, stagingStore, jsonObject())
 	same, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: stagingServeStore("v2", func(self StoreSelf) { self.Table(v1) })}}, background, ReloadOptions{})
 	must(t, err)
-	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadSwapped}}; !reflect.DeepEqual(same.Objects, want) {
+	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadRestarted}}; !reflect.DeepEqual(same.Objects, want) {
 		t.Fatalf("objects = %+v, want %+v", same.Objects, want)
 	}
+	scopeEventually(t, "the first restart's new attempt serves", func() bool { return memberOf(t, ref, "label") == "v2" })
 	newer, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: stagingServeStore("v3", func(self StoreSelf) { self.Table(v2) })}}, background, ReloadOptions{})
 	must(t, err)
 	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadRestarted}}; !reflect.DeepEqual(newer.Objects, want) {
 		t.Fatalf("objects = %+v, want %+v", newer.Objects, want)
 	}
+	// The table migrates at the restart's new attempt.
+	scopeEventually(t, "the table migrates at the new attempt", func() bool {
+		version, ok := chordStore.TableVersion(store.TableSqlName("app.store", "items"))
+		return ok && version == 2
+	})
 }
 
 // Mirrors "staging: recorded declarations decide the fate › a job declared at its version with another schema is refused at staging".
@@ -382,13 +386,11 @@ func TestStagingPerPluginAFailingPluginKeepsItsOldCodeTheOthersOfTheReloadApply(
 	if got, want := failedMessages(report.Failed), [][2]string{{"@test/notes", `plugin "@test/notes": setup threw`}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("failed = %v, want %v", got, want)
 	}
-	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadSwapped}}; !reflect.DeepEqual(report.Objects, want) {
+	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadRestarted}}; !reflect.DeepEqual(report.Objects, want) {
 		t.Fatalf("objects = %+v, want %+v", report.Objects, want)
 	}
-	turn(host)
-	if got := memberOf(t, store, "label"); got != "v2" {
-		t.Fatalf("label = %v, want v2", got)
-	}
+	// Restarted: the new attempt goes live once the old one ended.
+	scopeEventually(t, "the store's new attempt serves", func() bool { return memberOf(t, store, "label") == "v2" })
 	if got := memberOf(t, counted, "count"); got != float64(1) {
 		t.Fatalf("count = %v, want 1", got)
 	}
@@ -430,10 +432,7 @@ func TestStagingPerPluginAFactoryThrowingInStagingFailsItsPluginAloneAnAddedPlug
 	if got := failedMessages(report.Failed); !reflect.DeepEqual(got, want) {
 		t.Fatalf("failed = %v, want %v", got, want)
 	}
-	turn(host)
-	if got := memberOf(t, counted, "count"); got != float64(2) {
-		t.Fatalf("count = %v, want 2", got)
-	}
+	scopeEventually(t, "the notes' new attempt serves", func() bool { return memberOf(t, counted, "count") == float64(2) })
 }
 
 // Mirrors "staging per plugin › the closure rule: a consumer edited together with a failing provider keeps its old code".
@@ -467,10 +466,7 @@ func TestStagingPerPluginTheClosureRuleAConsumerEditedTogetherWithAFailingProvid
 	if !reflect.DeepEqual(both.Plugins.Changed, []string{"@test/notes", "@test/view"}) || len(both.Failed) != 0 {
 		t.Fatalf("changed %v, failed %v", both.Plugins.Changed, failedMessages(both.Failed))
 	}
-	turn(host)
-	if got := memberOf(t, shown, "label"); got != "new 5" {
-		t.Fatalf("label = %v, want new 5", got)
-	}
+	scopeEventually(t, "both restarted objects serve the new code", func() bool { return memberOf(t, shown, "label") == "new 5" })
 }
 
 // Mirrors "staging per plugin › takes the plugins whose new code failed before staging (`failed`): the closure rule and the report see them".
@@ -599,9 +595,9 @@ func TestStagingPerPluginWithoutAFailingPluginARequestThatDoesNotBindIsAnOrdinar
 	if !reflect.DeepEqual(report.Plugins.Changed, []string{"@test/notes", "@test/view"}) || len(report.Failed) != 0 {
 		t.Fatalf("changed %v, failed %v", report.Plugins.Changed, failedMessages(report.Failed))
 	}
-	if len(report.Objects) != 2 || report.Objects[0] != (ReloadedObject{Object: "app.notes", Kind: ReloadSwapped}) ||
+	if len(report.Objects) != 2 || report.Objects[0] != (ReloadedObject{Object: "app.notes", Kind: ReloadRestarted}) ||
 		report.Objects[1].Object != "app.view" || report.Objects[1].Kind != ReloadParked {
-		t.Fatalf("objects = %+v, want notes swapped and view parked", report.Objects)
+		t.Fatalf("objects = %+v, want notes restarted and view parked", report.Objects)
 	}
 	turn(host)
 	if state := refStateOf(shown); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {

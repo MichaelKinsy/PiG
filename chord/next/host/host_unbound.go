@@ -1,6 +1,10 @@
 package host
 
-import "github.com/MichaelKinsy/PiG/chord/next/data"
+import (
+	"slices"
+
+	"github.com/MichaelKinsy/PiG/chord/next/data"
+)
 
 // Ports packages/chord/src/next/host/unbound.ts. The unbound index (dependency model §1, §4): the requests a host decided
 // cannot bind yet, by the name they wait for. Before the host's first publication every request made here, and every hold
@@ -84,14 +88,17 @@ type unboundIndex struct {
 	byName map[string]*unboundSet[unboundRequest]
 	// names is the names of byName in the order Pi's Map keeps them: the order requests wake in.
 	names unboundSet[string]
+	// clock holds the requests waiting with a cause (after the publication) while they are indexed: reported after 5 s.
+	clock *unboundClock
 }
 
-func newUnboundIndex() *unboundIndex {
-	return &unboundIndex{byName: map[string]*unboundSet[unboundRequest]{}}
+func newUnboundIndex(clock *unboundClock) *unboundIndex {
+	return &unboundIndex{byName: map[string]*unboundSet[unboundRequest]{}, clock: clock}
 }
 
-// add indexes request under name (once; again after a wake).
-func (i *unboundIndex) add(name string, request unboundRequest) {
+// add indexes request under name (once; again after a wake), waiting for the publication (no cause) or for a provider
+// that fits (cause, on the clock).
+func (i *unboundIndex) add(name string, request unboundRequest, cause *data.FailureCause) {
 	requests := i.byName[name]
 	if requests == nil {
 		requests = &unboundSet[unboundRequest]{}
@@ -99,6 +106,16 @@ func (i *unboundIndex) add(name string, request unboundRequest) {
 		i.names.add(name)
 	}
 	requests.add(request)
+	if cause != nil {
+		i.clock.Start(request, name, cause.Error)
+	}
+}
+
+// Names are the names requests wait for, sorted.
+func (i *unboundIndex) Names() []string {
+	names := i.names.items()
+	slices.Sort(names)
+	return names
 }
 
 // delete: request ended or binds: it leaves the index.
@@ -107,6 +124,7 @@ func (i *unboundIndex) delete(name string, request unboundRequest) {
 	if requests == nil || !requests.delete(request) {
 		return
 	}
+	i.clock.Stop(request)
 	if requests.size() == 0 {
 		delete(i.byName, name)
 		i.names.delete(name)
@@ -121,6 +139,9 @@ func (i *unboundIndex) takeAll() []unboundRequest {
 	}
 	i.byName = map[string]*unboundSet[unboundRequest]{}
 	i.names = unboundSet[string]{}
+	for _, request := range all {
+		i.clock.Stop(request)
+	}
 	return all
 }
 
@@ -143,6 +164,9 @@ func (i *unboundIndex) wake(names []string) {
 		delete(i.byName, name)
 		i.names.delete(name)
 		woken = append(woken, requests.items()...)
+	}
+	for _, request := range woken {
+		i.clock.Stop(request)
 	}
 	for _, request := range woken {
 		request.wake()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"slices"
@@ -22,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/test/next/jobs/persisted.test.ts: persisted jobs (slice 6b §4, D5-D8, R3): run records and state
@@ -208,6 +210,16 @@ func openedWith(
 	abandonedRun func(args any, ctx JobCtx) (any, error), declared ...*JobDefinition,
 ) *jobsOpened {
 	t.Helper()
+	return openedRecorded(t, st, nil, run, finish, abandonedRun, declared...)
+}
+
+// openedRecorded is openedWith over a host that records on recorder (nil: no adapter).
+func openedRecorded(
+	t *testing.T, st *store.ChordStore, recorder *telemetry.InMemoryTelemetryContext,
+	run func(args any, ctx JobCtx) (any, error), finish func(outcome Outcome) error,
+	abandonedRun func(args any, ctx JobCtx) (any, error), declared ...*JobDefinition,
+) *jobsOpened {
+	t.Helper()
 	definition := jobImport
 	if len(declared) > 0 {
 		definition = declared[0]
@@ -216,7 +228,11 @@ func openedWith(
 		abandonedRun = func(any, JobCtx) (any, error) { return countResult(0), nil }
 	}
 	result := &jobsOpened{t: t, Store: st, Errors: &hostErrors{}}
-	host := newJobHost(t, HostOptions{Store: st, OnError: result.Errors.push, CloseTimeout: new(200 * time.Millisecond)})
+	options := HostOptions{Store: st, OnError: result.Errors.push, CloseTimeout: new(200 * time.Millisecond)}
+	if recorder != nil {
+		options.Telemetry = recorder
+	}
+	host := newJobHost(t, options)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "notes", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			result.Imports = self.Job(definition, JobImplementation{
@@ -1643,4 +1659,71 @@ func TestStoredRunKeepsTheCountersOfARunAndOfAChange(t *testing.T) {
 	if got.Restarts != 4 || got.FinishFailures != 5 {
 		t.Fatalf("a change's counters = %d restarts, %d finish failures, want 4 and 5", got.Restarts, got.FinishFailures)
 	}
+}
+
+// persisted.test.ts › trace (slice 9) › runs, resumed after a crash in a new attempt and host, and finishes under its
+// start's stored carrier
+func TestPersistedTraceRunsResumedAfterACrashInANewAttemptAndHostAndFinishesUnderItsStartsStoredCarrier(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	open := storeFile(t)
+	jobs := openedRecorded(t, open(), recorder, hang(t), nil, nil)
+	var run Run
+	tracedUnder(t, recorder, "request", func(ctx context.Context) { run = jobStart(t, jobs.Imports, pathArgs("a"), ctx) })
+	eventually(t, "the record to carry its trace", func() bool {
+		stored := record(t, jobs.Store, run.ID())
+		_, ok := stored["trace"]
+		return ok
+	})
+	waitRecord(t, jobs.Store, run.ID(), map[string]any{"phase": "running"})
+	jobs.Crash()
+	jobs = openedRecorded(t, open(), recorder, func(any, JobCtx) (any, error) { return countResult(1), nil }, nil, nil)
+	finished := jobs.expectFinished(1)
+	if finished[0].Kind != OutcomeDone || !nexttest.JSONEqual(finished[0].Result, countResult(1)) {
+		t.Fatalf("finished = %+v, want done {count: 1}", finished)
+	}
+	eventually(t, "the finish span", func() bool {
+		for _, span := range spansNamed(recorder, "chord.job") {
+			if phase, _ := span.Attributes.Get("phase"); phase == "finish" && span.Settled {
+				return true
+			}
+		}
+		return false
+	})
+	request := spanWhere(t, recorder, "request", nil)
+	phases := spansNamed(recorder, "chord.job")
+	if len(phases) != 4 {
+		var seen []string
+		for _, span := range phases {
+			phase, _ := span.Attributes.Get("phase")
+			seen = append(seen, fmt.Sprint(phase, " settled=", span.Settled))
+		}
+		t.Fatalf("chord.job spans = %v, want 4 (intent, cut-off run, rerun, finish)", seen)
+	}
+	intent := phases[0]
+	spanAttributesAre(t, intent, telemetry.SpanAttributes{
+		telemetry.Attr("chord.host", "client"), telemetry.Attr("job", "notes.import"), telemetry.Attr("phase", "intent"),
+		telemetry.Attr("object", "notes.store"), telemetry.Attr("outcome", "ok"), telemetry.Attr("job.id", run.ID()),
+	})
+	if !childOf(intent, request) {
+		t.Errorf("the intent's parent = %v, want the request", intent.ParentID)
+	}
+	// The run cut off by the crash (never settled), the rerun and the finish: one trace, children of the intent.
+	for index, want := range []struct {
+		phase   string
+		settled bool
+	}{{"run", false}, {"run", true}, {"finish", true}} {
+		span := phases[index+1]
+		if phase, _ := span.Attributes.Get("phase"); phase != want.phase || !childOf(span, intent) || span.Settled != want.settled {
+			t.Errorf("span %d = phase %v parent %v settled %v, want %s child of the intent settled %v",
+				index+1, phase, span.ParentID, span.Settled, want.phase, want.settled)
+		}
+	}
+	traces := map[string]bool{}
+	for _, span := range phases {
+		traces[span.Context["pi-memory-trace"]] = true
+	}
+	if len(traces) != 1 {
+		t.Errorf("traces = %v, want one", traces)
+	}
+	jobs.Close()
 }

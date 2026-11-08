@@ -40,4 +40,8 @@ func lockInUse(err error) bool {
 		errors.Is(err, windows.ERROR_PIPE_BUSY)
 }
 
-func lockRefused(err error) bool { return errors.Is(err, windows.WSAECONNREFUSED) }
+// lockRefused: nobody accepts on the path (a socket file nobody listens on, or a regular file there). WSAENOTSOCK (a regular
+// file) has not run on Windows yet: the CI Windows job is its first run.
+func lockRefused(err error) bool {
+	return errors.Is(err, windows.WSAECONNREFUSED) || errors.Is(err, windows.WSAENOTSOCK)
+}

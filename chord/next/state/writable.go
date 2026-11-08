@@ -27,6 +27,19 @@ type WritableOwner interface {
 	AssertUsable() error
 }
 
+// SectionOwner is a WritableOwner whose host runs its code in sections of one loop (Pi's single event loop). Pi's `set`
+// runs on that loop, as every continuation of an `await` does; a Go native's opener and goroutines run off it, so a Set from
+// outside a section enters one. Inside a section Set is the plain call (no closure, no loop entry: the cost of Pi's
+// `set`, and of the same value, is one comparison past the seal check).
+type SectionOwner interface {
+	WritableOwner
+	// InSection reports whether the caller runs in a section of the owner's loop (Do would nest). An owner that cannot
+	// tell answers false: Do nests either way.
+	InSection() bool
+	// Do runs work as one section of the owner's loop.
+	Do(work func())
+}
+
 // WritableSource is a writable: its value, set by its owner's code, delivered through the host's batch. It is a Writable;
 // NewWritableSource makes it.
 type WritableSource[T any] struct {
@@ -35,11 +48,14 @@ type WritableSource[T any] struct {
 	// owner is the running attempt, nil once it ended and ended holds its error (the Go form of Pi's Ownership union).
 	owner WritableOwner
 	ended error
+	// sections is the owner's loop (nil: the owner has none, and the caller is in a section).
+	sections SectionOwner
 }
 
 // NewWritableSource returns a writable holding initial, owned by owner, on batch.
 func NewWritableSource[T any](initial T, owner WritableOwner, batch *Batch) *WritableSource[T] {
 	w := &WritableSource[T]{value: initial, owner: owner}
+	w.sections, _ = owner.(SectionOwner)
 	w.Init(batch, w)
 	return w
 }
@@ -48,8 +64,21 @@ func NewWritableSource[T any](initial T, owner WritableOwner, batch *Batch) *Wri
 func (w *WritableSource[T]) Value() T { return w.value }
 
 // Set sets the value, as Writable.Set says. After the attempt ended it returns the error the attempt ended with, also for
-// the value it has.
+// the value it has. Called outside a section of its owner's loop it enters one (SectionOwner).
 func (w *WritableSource[T]) Set(value T) error {
+	if w.sections != nil && !w.sections.InSection() {
+		return w.setInSection(value)
+	}
+	return w.set(value)
+}
+
+// setInSection is Set from outside a section: the one case that allocates a closure.
+func (w *WritableSource[T]) setInSection(value T) (err error) {
+	w.sections.Do(func() { err = w.set(value) })
+	return err
+}
+
+func (w *WritableSource[T]) set(value T) error {
 	if w.ended != nil {
 		return w.ended
 	}

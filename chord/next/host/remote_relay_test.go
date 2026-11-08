@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"sync"
 	"testing"
@@ -46,11 +47,17 @@ func rawRelay(t testing.TB, options rawRelayOptions) *rawRelayHost {
 // rawTab is a raw tab on a new link the server accepts as principal (owner by default).
 func rawTab(t testing.TB, server Host, principal data.Principal, limits link.PartLimits) *RawPeer {
 	t.Helper()
+	return rawTabOn(t, server, principal, limits, false)
+}
+
+// rawTabOn is rawTab on a link trusted when trusted (`rawTab(server, principal, true)`).
+func rawTabOn(t testing.TB, server Host, principal data.Principal, limits link.PartLimits, trusted bool) *RawPeer {
+	t.Helper()
 	a, b := link.MemoryLinkPair()
 	if principal == nil {
 		principal = ownerPrincipal()
 	}
-	must(t, server.Accept(a, LinkOptions{Principal: principal, Codec: testCodec(), Limits: limits}, background))
+	must(t, server.Accept(a, LinkOptions{Principal: principal, Codec: testCodec(), Limits: limits, Trusted: trusted}, background))
 	return newRawPeer(t, b, rawPeerOptions{})
 }
 
@@ -1275,4 +1282,120 @@ func awaitLive(t testing.TB, ref *Reference) {
 	}
 	<-live
 	_, _ = watch.Stop()
+}
+
+// Ports relay.test.ts "ids and origins › forward a call's old-work flag from a trusted downstream link only (a page cannot claim old work)".
+func TestRelayForwardACallsOldWorkFlagFromATrustedDownstreamLinkOnlyAPageCannotClaimOldWork(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		wait := editorWire(t).Methods["wait"]
+		r := rawRelay(t, rawRelayOptions{})
+		holdPlaced(t, r.Raw, 0)
+		worker := r.Workers.At(t, 0)
+		bindEditor(t, worker, nextHeld(worker))
+		r.Raw.Next("bound")
+		r.Raw.Send(&link.CallMessage{Call: 0, Hold: 0, Method: wait, Old: true})
+		if forwarded := worker.Next("call").(*link.CallMessage); forwarded.Old {
+			t.Fatalf("a call from a page was forwarded old: %+v", forwarded)
+		}
+		trusted := rawTabOn(t, r.Server, nil, link.PartLimits{}, true)
+		holdPlaced(t, trusted, 0)
+		bindEditor(t, worker, nextHeld(worker))
+		trusted.Next("bound")
+		trusted.Send(&link.CallMessage{Call: 0, Hold: 0, Method: wait, Old: true})
+		forwarded := worker.Next("call").(*link.CallMessage)
+		if forwarded.Call != 0 || forwarded.Origin != link.Some(2) || !forwarded.Old {
+			t.Fatalf("forwarded call = %+v, want call 0 under origin 2, old", forwarded)
+		}
+	})
+}
+
+// Ports relay.test.ts 'a relayed answer after the relay's own state › forwards a worker's result after the state the relay's own objects keep waiting for the tab; every ack reaches its sender'.
+func TestRelayForwardsAWorkersResultAfterTheStateTheRelaysOwnObjectsKeepWaitingForTheTabEveryAckReachesItsSender(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		editor := editorWire(t)
+		workers := newRawWorkers(t, rawWorkerOptions{NoAck: true})
+		rel := relay(t, relayedOptions{
+			Server:  func(h FacetHost) error { _, err := serveNotes(h, nil); return err },
+			Resolve: workers.Resolve,
+		})
+		a, b := link.MemoryLinkPair()
+		must(t, rel.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+		tab := newRawPeer(t, b, rawPeerOptions{NoAck: true})
+		spec := specOf(Notes)
+		tab.Send(&link.HoldMessage{
+			Hold: 0, Type: spec.Name, Version: spec.Version, Fingerprint: spec.Fingerprint,
+			Params: mustJSONPart(t, jsonObject("session", "S1")), Address: serverWireAddress,
+		})
+		tab.Next("bound")
+		holdPlaced(t, tab, 1)
+		worker := workers.At(t, 0)
+		held := nextHeld(worker)
+		bindEditor(t, worker, held)
+		tab.Next("bound")
+		// The relay's own window for the tab: its bound and this state; the next commit waits.
+		addNote(t, rel.Server, "S1", "a")
+		addNote(t, rel.Server, "S1", "b")
+		provCall(t, tab, 0, 1, editor.Methods["add"], jsonObject("text", "x"))
+		forwarded := worker.Next("call").(*link.CallMessage)
+		worker.Send(&link.ResultMessage{Origin: held.origin, Call: forwarded.Call, Value: mustJSONPart(t, 1.0)})
+		flushRelay(rel, workers, a, b)
+		requireStrings(t, tab.Kinds(), []string{"hello", "state", "state", "result"})
+		states := stateMessages(tab)
+		waited := states[len(states)-1]
+		if len(waited.Holds) != 1 || waited.Holds[0].Hold != 0 {
+			t.Fatalf("the waiting state = %+v, want one entry for hold 0", waited.Holds)
+		}
+		nexttest.RequireJSONEqual(t, editor.NamedState(t, waited.Holds[0].Members)["count"], []any{[]any{"r", 2.0}})
+		// Four messages in flight to the tab, one of them the worker's: its ack goes to the worker, the others free the relay's
+		// own window (the state past it included).
+		for range 4 {
+			tab.Ack(link.Optional[int]{})
+		}
+		flushRelay(rel, workers, a, b)
+		if acks := countKind(worker, "ack"); acks != 1 {
+			t.Fatalf("worker acks = %d, want 1", acks)
+		}
+		for _, text := range []string{"c", "d", "e"} {
+			addNote(t, rel.Server, "S1", text)
+		}
+		flushRelay(rel, workers, a, b)
+		if states := countKind(tab, "state"); states != 4 {
+			t.Fatalf("tab states = %d, want 4", states)
+		}
+	})
+}
+
+// A relay passes the carrier on as it arrived when it records nothing (relay.ts #holdTrace, and the call's trace): the keys
+// keep the order the tab wrote them in, which a Go map cannot, so the message carries it (TraceOrder).
+var unsortedCarrier = map[string]string{"zeta": "1", "alpha": "2", "mid": "3"}
+var unsortedCarrierOrder = []string{"zeta", "alpha", "mid"}
+
+func TestRelayHoldKeepsTheArrivedCarriersKeyOrderWhenItRecordsNothing(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		r := rawRelay(t, rawRelayOptions{})
+		hold := placedHold(t, 0, "S1")
+		hold.Trace, hold.TraceOrder = unsortedCarrier, unsortedCarrierOrder
+		r.Raw.Send(hold)
+		worker := r.Workers.At(t, 0)
+		forwarded := worker.Next("hold").(*link.HoldMessage)
+		if !maps.Equal(forwarded.Trace, unsortedCarrier) || !slices.Equal(forwarded.TraceOrder, unsortedCarrierOrder) {
+			t.Fatalf("forwarded hold carrier = %v in order %v, want %v in order %v", forwarded.Trace, forwarded.TraceOrder, unsortedCarrier, unsortedCarrierOrder)
+		}
+	})
+}
+
+func TestRelayCallKeepsTheArrivedCarriersKeyOrderWhenItRecordsNothing(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		wait := editorWire(t).Methods["wait"]
+		r := rawRelay(t, rawRelayOptions{})
+		holdPlaced(t, r.Raw, 0)
+		worker := r.Workers.At(t, 0)
+		bindEditor(t, worker, nextHeld(worker))
+		r.Raw.Next("bound")
+		r.Raw.Send(&link.CallMessage{Call: 0, Hold: 0, Method: wait, Trace: unsortedCarrier, TraceOrder: unsortedCarrierOrder})
+		forwarded := worker.Next("call").(*link.CallMessage)
+		if !maps.Equal(forwarded.Trace, unsortedCarrier) || !slices.Equal(forwarded.TraceOrder, unsortedCarrierOrder) {
+			t.Fatalf("forwarded call carrier = %v in order %v, want %v in order %v", forwarded.Trace, forwarded.TraceOrder, unsortedCarrier, unsortedCarrierOrder)
+		}
+	})
 }

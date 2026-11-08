@@ -164,11 +164,17 @@ type reply struct {
 
 func (s *kitServer) send(method, path string, headers map[string]string, body string) reply {
 	s.t.Helper()
+	return sendTo(s.t, s.port, method, path, headers, body)
+}
+
+// sendTo is one request to 127.0.0.1:port (a JSON body when there is one), redirects not followed.
+func sendTo(t testing.TB, port int, method, path string, headers map[string]string, body string) reply {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(background, 30*time.Second)
 	defer cancel()
-	request, err := http.NewRequestWithContext(ctx, method, "http://127.0.0.1:"+strconv.Itoa(s.port)+path, stringsReader(body))
+	request, err := http.NewRequestWithContext(ctx, method, "http://127.0.0.1:"+strconv.Itoa(port)+path, stringsReader(body))
 	if err != nil {
-		s.t.Fatal(err)
+		t.Fatal(err)
 	}
 	for name, value := range headers {
 		request.Header.Set(name, value)
@@ -179,12 +185,12 @@ func (s *kitServer) send(method, path string, headers map[string]string, body st
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	response, err := client.Do(request)
 	if err != nil {
-		s.t.Fatal(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = response.Body.Close() }()
 	text, err := io.ReadAll(response.Body)
 	if err != nil {
-		s.t.Fatal(err)
+		t.Fatal(err)
 	}
 	return reply{status: response.StatusCode, headers: response.Header, body: text}
 }
