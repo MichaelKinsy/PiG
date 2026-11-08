@@ -96,11 +96,12 @@ func (r *run) classifyFailure(req requestInfo, message *jv.Object, settings Sett
 		return
 	}
 	// generation.ts classify reads the agent only for an overflow nothing was compacted for yet; the policy it resolves keeps a
-	// cut or the failure is retried or ended as any.
+	// cut or the failure is retried or ended as any. Past the check above the answer is an overflow, so the closures name its stop
+	// reason and overflow flag as constants: that keeps the two locals off the heap.
 	r.agent(func(agent *Agent) {
 		compaction := settings.CompactionFor(req.model, agent.Compaction)
 		if !compaction.Enabled {
-			r.retryOrFail(req, message, settings, stop, overflow)
+			r.retryOrFail(req, message, settings, "error", true)
 			return
 		}
 		r.context(req.cutoff, func(view *history.View) {
@@ -127,7 +128,7 @@ func (r *run) classifyFailure(req requestInfo, message *jv.Object, settings Sett
 				})
 				return
 			}
-			r.retryOrFail(req, message, settings, stop, overflow)
+			r.retryOrFail(req, message, settings, "error", true)
 		})
 	})
 }

@@ -179,6 +179,11 @@ func (h *handler) txStorageRead(t *hostTx, name string, op *jv.Object, method st
 	}})
 }
 
+// txRecordRead is txStorageRead of a Storage call that takes one record ID.
+func (h *handler) txRecordRead(t *hostTx, name string, op *jv.Object, method string, id float64, done *bool) {
+	h.txStorageRead(t, name, op, method, []any{id}, done)
+}
+
 // requiredConversation is the conversation an operation requires to exist, or 0 when it names none (the operation then reports its own
 // error).
 func requiredConversation(t *hostTx, name string, op *jv.Object) session.ID {
@@ -543,7 +548,7 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 	// transaction.ts #requireConversation: appendEntry, createTask and createSubmission read the conversation from the Storage first,
 	// unless this transaction created it.
 	if conv := requiredConversation(t, name, op); conv != 0 && !t.convDone && h.gated("conversation") && !tx.ConversationCreated(conv) {
-		h.txStorageRead(t, name, op, "conversation", []any{float64(conv)}, &t.convDone)
+		h.txRecordRead(t, name, op, "conversation", float64(conv), &t.convDone)
 		return nil, errTxWaiting
 	}
 	if isMintOp(name) && !t.mintDone && h.gated("mintId") {
@@ -555,11 +560,11 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 	switch name {
 	case "conversation", "entry", "task", "submission", "submissionByRequest":
 		if !t.mintDone && h.gated(name) {
-			args := []any{numOf(op, "id")}
 			if name == "submissionByRequest" {
-				args = []any{numOf(op, "conversationId"), strOf(op, "requestId")}
+				h.txStorageRead(t, name, op, name, []any{numOf(op, "conversationId"), strOf(op, "requestId")}, &t.mintDone)
+			} else {
+				h.txRecordRead(t, name, op, name, numOf(op, "id"), &t.mintDone)
 			}
-			h.txStorageRead(t, name, op, name, args, &t.mintDone)
 			return nil, errTxWaiting
 		}
 	}
