@@ -1884,6 +1884,9 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 	if ovr.RequiresNonNullAssistantContent != nil {
 		merged.RequiresNonNullAssistantContent = ovr.RequiresNonNullAssistantContent
 	}
+	if ovr.RequiresToolsWithToolHistory != nil {
+		merged.RequiresToolsWithToolHistory = ovr.RequiresToolsWithToolHistory
+	}
 	if ovr.RequiresThinkingAsText != nil {
 		merged.RequiresThinkingAsText = ovr.RequiresThinkingAsText
 	}
@@ -1946,6 +1949,9 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 	}
 	if ovr.SessionAffinityFormat != "" {
 		merged.SessionAffinityFormat = ovr.SessionAffinityFormat
+	}
+	if ovr.PromptCacheKeyMode != "" {
+		merged.PromptCacheKeyMode = ovr.PromptCacheKeyMode
 	}
 	if ovr.SupportsToolSearch != nil {
 		merged.SupportsToolSearch = ovr.SupportsToolSearch

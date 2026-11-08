@@ -71,6 +71,32 @@ func TestOpenAICompletionsPromptCacheUpstream(t *testing.T) {
 		{name: "omits prompt cache fields when cacheRetention is none", session: "session-789", retention: CacheRetentionNone},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-prompt-cache.test.ts:143
 		{name: "omits prompt cache fields for non-OpenAI base URLs without compatible long retention", session: "session-proxy", url: "https://proxy.example.com/v1", compat: &OpenAICompat{SupportsLongCacheRetention: new(false)}, retention: CacheRetentionLong},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:154
+		{name: "sends a stable cache key through an opted-in proxy with retention undefined", session: "session-proxy", url: "https://proxy.example.com/v1", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyEnabled, SupportsLongCacheRetention: new(false)}, key: new("session-proxy")},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:154
+		{name: "sends a stable cache key through an opted-in proxy with retention short", session: "session-proxy", url: "https://proxy.example.com/v1", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyEnabled, SupportsLongCacheRetention: new(false)}, retention: CacheRetentionShort, key: new("session-proxy")},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:154
+		{name: "sends a stable cache key through an opted-in proxy with retention long", session: "session-proxy", url: "https://proxy.example.com/v1", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyEnabled, SupportsLongCacheRetention: new(false)}, retention: CacheRetentionLong, key: new("session-proxy")},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:167
+		{name: "preserves default proxy behavior with mode undefined (short)", session: "session-proxy", url: "https://proxy.example.com/v1", compat: nil},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:167
+		{name: "preserves default proxy behavior with mode undefined (long)", session: "session-proxy", url: "https://proxy.example.com/v1", compat: nil, retention: CacheRetentionLong, key: new("session-proxy"), ret: new("24h")},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:167
+		{name: "preserves default proxy behavior with mode auto (short)", session: "session-proxy", url: "https://proxy.example.com/v1", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyAuto}},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:167
+		{name: "preserves default proxy behavior with mode auto (long)", session: "session-proxy", url: "https://proxy.example.com/v1", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyAuto}, retention: CacheRetentionLong, key: new("session-proxy"), ret: new("24h")},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:178
+		{name: "respects disabled caching on an opted-in proxy", session: "session-proxy", url: "https://proxy.example.com/v1", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyEnabled}, env: "long", retention: CacheRetentionNone},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:188
+		{name: "allows disabling cache keys with short retention", session: "session-disabled", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyDisabled}, retention: CacheRetentionShort},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:188
+		{name: "allows disabling cache keys with long retention", session: "session-disabled", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyDisabled}, retention: CacheRetentionLong, ret: new("24h")},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:196
+		{name: "lets a proxy disable cache keys independently of long retention", session: "session-proxy", url: "https://proxy.example.com/v1", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyDisabled, SupportsLongCacheRetention: new(true)}, retention: CacheRetentionLong, ret: new("24h")},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:206
+		{name: "does not invent an identity for an opted-in proxy", url: "https://proxy.example.com/v1", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyEnabled}},
+		// .upstream/current/packages/ai/test/openai-completions-prompt-cache.test.ts:216
+		{name: "clamps proxy cache keys to 64 Unicode characters", session: strings.Repeat("𐐀", 67), url: "https://proxy.example.com/v1", compat: &OpenAICompat{PromptCacheKeyMode: PromptCacheKeyEnabled}, key: new(strings.Repeat("𐐀", 64))},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-prompt-cache.test.ts:154
 		{name: "uses PI_CACHE_RETENTION for direct OpenAI requests", session: "session-env", env: "long", key: new("session-env"), ret: new("24h")},
 		// .upstream/v0.87.1/packages/ai/test/openai-completions-prompt-cache.test.ts:162

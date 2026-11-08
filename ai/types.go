@@ -653,6 +653,20 @@ const (
 	SessionAffinityOpenRouter SessionAffinityFormat = "openrouter"
 )
 
+// PromptCacheKeyMode controls the prompt_cache_key request field on OpenAI-compatible APIs (types.ts PromptCacheKeyMode).
+// Empty string means "auto".
+type PromptCacheKeyMode string
+
+const (
+	// PromptCacheKeyAuto keeps each API's default: Completions sends the key to api.openai.com or with long cache retention
+	// when the provider supports it; Responses sends it whenever caching is active.
+	PromptCacheKeyAuto PromptCacheKeyMode = "auto"
+	// PromptCacheKeyEnabled sends the key whenever caching is active, for compatible proxies.
+	PromptCacheKeyEnabled PromptCacheKeyMode = "enabled"
+	// PromptCacheKeyDisabled never sends the key.
+	PromptCacheKeyDisabled PromptCacheKeyMode = "disabled"
+)
+
 // ThinkingLevel is the reasoning effort a request can ask for (types.ts ThinkingLevel). It has no "off": an omitted level means no reasoning request.
 type ThinkingLevel string
 

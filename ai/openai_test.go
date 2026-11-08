@@ -1661,11 +1661,10 @@ func TestConvertMessages_UserImageIsImageURLDataURL(t *testing.T) {
 
 // TestOpenAICompletionsEmptyTools ports upstream empty-tools handling:
 // packages/ai/test/openai-completions-empty-tools.test.ts. The request `tools`
-// field is omitted when there are no active tools and no tool history, but must
-// be an explicit empty array once the conversation carries tool history so that
-// Anthropic-via-proxy (LiteLLM) backends accept the request.
+// field is omitted when there are no active tools, with or without tool history,
+// unless compat.requiresToolsWithToolHistory asks for the explicit empty array
+// that older LiteLLM in front of Anthropic needs (Pi 7a6bd5a97, #11891).
 func TestOpenAICompletionsEmptyTools(t *testing.T) {
-	p := &openAIProvider{cfg: OpenAIConfig{Model: "gpt-4o-mini", BaseURL: "https://api.openai.com/v1"}}
 	user := UserMessage{Content: UserText("hi")}
 	toolHistory := []Message{
 		user,
@@ -1674,20 +1673,25 @@ func TestOpenAICompletionsEmptyTools(t *testing.T) {
 	}
 	oneTool := []ToolSchema{{Name: "noop", Description: "d", Parameters: map[string]any{"type": "object"}}}
 
+	requiresTools := &OpenAICompat{RequiresToolsWithToolHistory: new(true)}
 	cases := []struct {
 		name      string
+		compat    *OpenAICompat
 		messages  []Message
 		tools     []ToolSchema
 		wantKey   bool
 		wantEmpty bool
 	}{
-		{"empty tools no history omits", []Message{user}, []ToolSchema{}, false, false},
-		{"nil tools no history omits", []Message{user}, nil, false, false},
-		{"empty tools with history emits empty array", toolHistory, []ToolSchema{}, true, true},
-		{"active tools emit populated array", []Message{user}, oneTool, true, false},
+		{"empty tools no history omits", nil, []Message{user}, []ToolSchema{}, false, false},
+		{"nil tools no history omits", nil, []Message{user}, nil, false, false},
+		{"empty tools with history omits by default", nil, toolHistory, []ToolSchema{}, false, false},
+		{"empty tools with history emits empty array when compat.requiresToolsWithToolHistory", requiresTools, toolHistory, []ToolSchema{}, true, true},
+		{"empty tools no history omits even when compat.requiresToolsWithToolHistory", requiresTools, []Message{user}, []ToolSchema{}, false, false},
+		{"active tools emit populated array", nil, []Message{user}, oneTool, true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			p := &openAIProvider{cfg: OpenAIConfig{Model: "gpt-4o-mini", BaseURL: "https://api.openai.com/v1", Compat: tc.compat}}
 			req := oaiRequest{Model: p.cfg.Model, Messages: []oaiMessage{{Role: "user", Content: "hi"}}, Stream: true}
 			tools, terr := p.resolveRequestTools(NormalizeContext(Context{Messages: tc.messages}), tc.tools)
 			if terr != nil {

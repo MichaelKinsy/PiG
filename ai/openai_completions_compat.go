@@ -82,6 +82,7 @@ func detectOpenAICompletionsCompat(providerID, baseURL, modelID string) OpenAICo
 		RequiresToolResultName:                      new(false),
 		RequiresAssistantAfterToolResult:            new(false),
 		RequiresNonNullAssistantContent:             new(false),
+		RequiresToolsWithToolHistory:                new(false),
 		RequiresThinkingAsText:                      new(false),
 		RequiresReasoningContentOnAssistantMessages: new(isDeepSeek),
 		ThinkingFormat:                              thinkingFormat,

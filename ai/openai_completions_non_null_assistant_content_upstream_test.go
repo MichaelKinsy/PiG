@@ -11,13 +11,13 @@ import (
 
 func nonNullAssistantContentTranscript() []Message {
 	return []Message{
-		UserMessage{Content: []UserContentBlock{TextContent{Text: "Run the command"}}},
+		UserMessage{Content: UserText("Run the command")},
 		AssistantMessage{
 			Content:    []AssistantContentBlock{ToolCall{ID: "tool-1", Name: "bash", Arguments: JsonObject{"command": "true"}}},
 			StopReason: StopReasonToolUse,
 		},
-		ToolResultMessage{ToolCallID: "tool-1", ToolName: "bash", Content: []ToolResultContentBlock{TextContent{Text: "ok"}}},
-		UserMessage{Content: []UserContentBlock{TextContent{Text: "Thanks"}}},
+		ToolResultMessage{ToolCallID: "tool-1", ToolName: "bash", Content: []ToolResultMessageContent{TextContent{Text: "ok"}}},
+		UserMessage{Content: UserText("Thanks")},
 	}
 }
 

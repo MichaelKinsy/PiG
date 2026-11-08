@@ -51,6 +51,10 @@ func optionalSessionAffinityFormat(opts ...Opt) Prop {
 	return Optional("sessionAffinityFormat", sessionAffinityFormat(opts...))
 }
 
+func optionalPromptCacheKeyMode(opts ...Opt) Prop {
+	return Optional("promptCacheKeyMode", Union([]*Schema{StringLiteral("auto"), StringLiteral("enabled"), StringLiteral("disabled")}, opts...))
+}
+
 func priceUnion(description string) *Schema {
 	return Union([]*Schema{Number(), String()}, D(description))
 }
@@ -110,6 +114,7 @@ func OpenAICompletionsCompatSchema() *Schema {
 		Optional("requiresToolResultName", Boolean(D("Whether tool results require the name field. Default: auto-detected from URL."))),
 		Optional("requiresAssistantAfterToolResult", Boolean(D("Whether a user message after tool results requires an assistant message in between. Default: auto-detected from URL."))),
 		Optional("requiresNonNullAssistantContent", Boolean(D("Whether replayed assistant messages with no text (e.g. tool-call-only messages) must send \"\" instead of null content. Default: false."))),
+		Optional("requiresToolsWithToolHistory", Boolean(D("Whether requests without tools must send \"tools\": [] when the conversation contains tool calls or tool results. Needed by some proxies in front of Anthropic, such as older LiteLLM versions. Default: false, the field is omitted."))),
 		Optional("requiresThinkingAsText", Boolean(D("Whether thinking blocks must be converted to text blocks with <thinking> delimiters. Default: auto-detected from URL."))),
 		Optional("requiresReasoningContentOnAssistantMessages", Boolean(D("Whether all replayed assistant messages must include an empty reasoning_content field when reasoning is enabled. Default: auto-detected from URL."))),
 		Optional("thinkingFormat", Union(literals("openai", "openrouter", "deepseek", "together", "baseten", "zai", "qwen", "chat-template", "qwen-chat-template", "string-thinking", "ant-ling"),
@@ -128,6 +133,7 @@ func OpenAICompletionsCompatSchema() *Schema {
 		Optional("cacheControlFormat", StringLiteral("anthropic", D("Cache control convention for prompt caching. Anthropic applies cache_control markers to the system prompt, last tool definition, and last user, assistant, or tool-result text content."))),
 		optionalCompatBoolean("sendSessionAffinityHeaders", D("Whether to send session-affinity data from options.sessionId. Default: true for OpenRouter endpoints, false otherwise.")),
 		optionalSessionAffinityFormat(D("Session-affinity header format. openai sends session_id, x-client-request-id, and x-session-affinity; openai-nosession sends x-client-request-id and x-session-affinity; openrouter sends x-session-id. Does not affect prompt_cache_key. Default: auto-detected.")),
+		optionalPromptCacheKeyMode(D("Controls the prompt_cache_key request field. auto sends it to api.openai.com, or with long cache retention when supportsLongCacheRetention is true; enabled sends it whenever caching is active, for compatible proxies; disabled never sends it. Default: auto.")),
 		optionalCompatBoolean("supportsLongCacheRetention", D(`Whether the provider supports long prompt cache retention (prompt_cache_retention: "24h" or Anthropic-style cache_control.ttl: "1h", depending on format). Default: auto-detected from provider and URL.`)),
 		Optional("vllmPriority", Number(D("vLLM scheduler priority sent as the top-level priority request field. Lower values are handled earlier and the server default is 0. Only meaningful with --scheduling-policy priority. Off by default and not set on the generated catalog."))),
 	}, D("Compatibility settings for OpenAI-compatible completions APIs. Use this to override URL-based auto-detection for custom providers."), Opt{"additionalProperties", true})
@@ -138,6 +144,7 @@ func OpenAIResponsesCompatSchema() *Schema {
 		optionalCompatBoolean("supportsDeveloperRole", D("Whether the provider supports the developer role instead of system."), Default(true)),
 		optionalCompatBoolean("supportsMidConvoSystemMessages", D("Whether the exact model accepts developer or system messages after the conversation has started. When false, later system messages are folded into the leading system message. The generated catalog enables this for verified models."), Default(false)),
 		optionalSessionAffinityFormat(D("Session-affinity header format. openai sends session_id and x-client-request-id; openai-nosession sends x-client-request-id; openrouter sends x-session-id. Does not affect prompt_cache_key. Default: auto-detected.")),
+		optionalPromptCacheKeyMode(D("Controls the prompt_cache_key request field. auto and enabled send it whenever caching is active; disabled never sends it, for compatible proxies that reject it. Default: auto.")),
 		optionalCompatBoolean("supportsLongCacheRetention", D(`Whether the provider supports long prompt cache retention. This uses prompt_cache_options.ttl: "30m" on GPT-5.6+ and prompt_cache_retention: "24h" on earlier models.`), Default(true)),
 		optionalCompatBoolean("supportsStrictMode", D("Whether the provider supports strict JSON-schema function tools. Defaults are API-specific; generated OpenAI models enable it explicitly.")),
 		optionalCompatBoolean("supportsOpenAIGrammarTools", D("Whether to emit OpenAI custom tools with Lark or regex grammar formats. When false, grammar-constrained tools fall back to normal function tools. The generated catalog enables this for capable models."), Default(false)),

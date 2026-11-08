@@ -87,6 +87,7 @@ type OpenAICompat struct {
 	RequiresToolResultName                      *bool  `json:"requiresToolResultName,omitempty"`
 	RequiresAssistantAfterToolResult            *bool  `json:"requiresAssistantAfterToolResult,omitempty"`
 	RequiresNonNullAssistantContent             *bool  `json:"requiresNonNullAssistantContent,omitempty"`
+	RequiresToolsWithToolHistory                *bool  `json:"requiresToolsWithToolHistory,omitempty"`
 	RequiresThinkingAsText                      *bool  `json:"requiresThinkingAsText,omitempty"`
 	RequiresReasoningContentOnAssistantMessages *bool  `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
 	SupportsOpenAIGrammarTools                  *bool  `json:"supportsOpenAIGrammarTools,omitempty"`
@@ -139,6 +140,8 @@ type OpenAICompat struct {
 	// x-session-id. Empty = auto-detect (openrouter base URL => "openrouter",
 	// else "openai"). Replaces the pre-0.81 sendSessionIdHeader flag.
 	SessionAffinityFormat SessionAffinityFormat `json:"sessionAffinityFormat,omitempty"`
+	// PromptCacheKeyMode controls the prompt_cache_key request field. Empty = auto (see PromptCacheKeyAuto).
+	PromptCacheKeyMode PromptCacheKeyMode `json:"promptCacheKeyMode,omitempty"`
 	// SupportsToolSearch indicates the model supports client-executed tool
 	// search for deferred tools (OpenAI Responses). Default: false.
 	SupportsToolSearch      *bool `json:"supportsToolSearch,omitempty"`
@@ -1251,7 +1254,7 @@ func (p *openAIProvider) resolveRequestTools(transcript TranscriptContext, tools
 		}
 		return &converted, nil
 	}
-	if hasToolHistory(transcript) {
+	if p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresToolsWithToolHistory }, false) && hasToolHistory(transcript) {
 		return &[]oaiTool{}, nil
 	}
 	return nil, nil
@@ -1673,7 +1676,10 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	// Prompt-cache body fields and session-affinity headers have independent provider gates.
 	cacheRetention := resolveCompletionsCacheRetention(opts.CacheRetention, mergeProviderEnv(p.cfg.Env, opts.Env))
 	longCache := cacheRetention == CacheRetentionLong && p.supportsLongCacheRetention()
-	if opts.SessionID != "" && (isOpenAIDirectURL(p.cfg.BaseURL) && cacheRetention != CacheRetentionNone || longCache) {
+	promptCacheKeyMode := cmp.Or(p.compat().PromptCacheKeyMode, PromptCacheKeyAuto)
+	supportsPromptCacheKey := promptCacheKeyMode == PromptCacheKeyEnabled ||
+		promptCacheKeyMode == PromptCacheKeyAuto && (isOpenAIDirectURL(p.cfg.BaseURL) || longCache)
+	if opts.SessionID != "" && cacheRetention != CacheRetentionNone && supportsPromptCacheKey {
 		sid := ClampOpenAIPromptCacheKey(opts.SessionID)
 		req.PromptCacheKey = &sid
 	}

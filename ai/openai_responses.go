@@ -193,12 +193,14 @@ type responsesCompat struct {
 	SupportsExplicitPromptCacheMode bool
 	SupportsToolSearch              bool
 	SupportsMidConvoEffort          bool
+	PromptCacheKeyMode              PromptCacheKeyMode
 }
 
 func getResponsesCompat(compat *OpenAIResponsesCompat, strictModeDefault bool) responsesCompat {
 	out := responsesCompat{
 		SupportsLongCacheRetention: true,
 		SupportsStrictMode:         strictModeDefault,
+		PromptCacheKeyMode:         PromptCacheKeyAuto,
 	}
 	if compat == nil {
 		return out
@@ -217,6 +219,7 @@ func getResponsesCompat(compat *OpenAIResponsesCompat, strictModeDefault bool) r
 	out.SupportsExplicitPromptCacheMode = compat.SupportsExplicitPromptCacheMode != nil && *compat.SupportsExplicitPromptCacheMode
 	out.SupportsToolSearch = compat.SupportsToolSearch != nil && *compat.SupportsToolSearch
 	out.SupportsMidConvoEffort = compat.SupportsMidConvoEffort != nil && *compat.SupportsMidConvoEffort
+	out.PromptCacheKeyMode = cmp.Or(compat.PromptCacheKeyMode, PromptCacheKeyAuto)
 	return out
 }
 
@@ -1564,7 +1567,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if !p.cfg.Codex {
 		cacheRetention = string(resolveCompletionsCacheRetention(opts.CacheRetention, mergeProviderEnv(p.cfg.Env, opts.Env)))
 	}
-	if opts.SessionID != "" && cacheRetention != "none" {
+	if opts.SessionID != "" && cacheRetention != "none" && (p.cfg.Codex || compat.PromptCacheKeyMode != PromptCacheKeyDisabled) {
 		req.PromptCacheKey = ClampOpenAIPromptCacheKey(opts.SessionID)
 	}
 	// Retention and write policy do not depend on a session-affinity key.
