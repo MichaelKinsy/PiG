@@ -69,7 +69,7 @@ var ServerLocal = mustContract(contracts.Local("p2.server", contracts.LocalDecla
 
 // ServerResourceOptions are overrides of p2's Resources (tests only): CreateModels is a fixture provider.
 type ServerResourceOptions struct {
-	CreateModels func(credentials ai.CredentialStore, modelsStore ai.ModelsStore) (ai.MutableModels, error)
+	CreateModels func(credentials ai.CredentialStore, modelsStore ai.ModelsStore) (*ai.MutableModels, error)
 }
 
 // RelocationSteps are the lifecycle steps of a running worker that the server calls over its route (`WorkerBoundary`).
