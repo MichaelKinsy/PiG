@@ -251,7 +251,7 @@ func TestEvolveChecks(t *testing.T) {
 func TestTableTailEditorTakesTheEditsAfterTheDataStepThroughItsInterface(t *testing.T) {
 	EditsV1 := evolveEditsV1(t)
 	V2 := qEvolve(t, EditsV1, func(e *TableEditor) TableTailEditor {
-		var tail TableTailEditor = e.Add("dir", Str(contracts.Default(""))).Rows(noPatch)
+		tail := e.Add("dir", Str(contracts.Default(""))).Rows(noPatch)
 		tail = tail.DropIndex("by_file")
 		tail = tail.Drop("at")
 		return tail.Index("by_dir", []string{"dir"})
