@@ -1,7 +1,7 @@
 // createSession (src/session/session.ts): the tables-and-documents Session without the Harness. pi-durable's returns a Session at
 // once; the core's cold open is asynchronous, so the Session here opens on first use and every method waits for it. The core
 // opens in `session` mode: no built-in documents, no scheduler.
-import type { Context } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
 import type { Report } from "@earendil-works/pi-durable"
 import type { CommitObservation, CommitObserver } from "./watch-types.ts"
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
@@ -73,7 +73,7 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     return () => { cancelled = true; off?.() }
   }
   const observeLater = later<CommitObserver>((h, o) => { const observation = h.observeCommits(o); return () => observation.detach() })
-  const via = (name: "snapshot" | "snapshotAsOf" | "documentState" | "observeDoc" | "unloadDocuments") => async (...args: unknown[]) => (((await open()) as unknown as Record<string, (...a: unknown[]) => unknown>)[name]!)(...args)
+  const via = (name: "snapshot" | "snapshotAsOf" | "observeDoc" | "unloadDocuments") => async (...args: unknown[]) => (((await open()) as unknown as Record<string, (...a: unknown[]) => unknown>)[name]!)(...args)
   const watchDoc = watchingVia(open, owner)
   const methods = {
     closed: ended.promise,
@@ -102,7 +102,7 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     /** session.ts observeCommits: attached when the core is open; `detach()` before that cancels the attachment. */
     observeCommits: (observer: CommitObserver): CommitObservation => ({ detach: observeLater(observer) }),
     subscribeClose: later<() => void>((h, l) => h.subscribeClose(l)),
-    snapshot: via("snapshot"), snapshotAsOf: via("snapshotAsOf"), documentState: via("documentState"), watchDoc, observeDoc: via("observeDoc"), unloadDocuments: via("unloadDocuments"),
+    snapshot: via("snapshot"), snapshotAsOf: via("snapshotAsOf"), watchDoc, observeDoc: via("observeDoc"), unloadDocuments: via("unloadDocuments"),
   }
   // The descriptors, not the values: documentCacheSizes is a getter.
   return Object.defineProperties(owner, Object.getOwnPropertyDescriptors(methods))

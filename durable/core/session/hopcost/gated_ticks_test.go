@@ -35,17 +35,17 @@ func TestRuntimeCommitMatchesPi(t *testing.T) {
 			"runtime.commit (async, no writes)": runtimeCall + span(Job{Change: RuntimeCommit(0, false, 0), Settle: Settle(0, 0, 0)}, p, nil),
 			"runtime.commit (sync, no writes)":  runtimeCall + span(Job{Change: RuntimeCommit(0, false, 0), Settle: Settle(0, 0, 0)}, p, nil),
 			"runtime.commit (entry)": runtimeCall + span(Job{Change: RuntimeCommit(TxAppendEntry(p, false, CacheHit), false, 0), Settle: Settle(0, 0, 0)}, p,
-				[]Writes{{Tables: 1}}),
+				[]Writes{{Entries: 1}}),
 			// A task replaced in place: the scheduler's membership promise resolves at once.
 			"runtime.commit (next state)": runtimeCall + span(Job{Change: RuntimeCommit(0, true, 0), Settle: Settle(0, 0, taskHit), Membership: Membership(0, 0)}, p,
-				[]Writes{{Tables: 1}}),
+				[]Writes{{Tasks: 1}}),
 			// A child task of the running one: the callback reads the owner (a hit) and the conversation (a hit); the settle awaits the owner's
 			// settled read; the membership walks the chain above the new task.
 			"runtime.commit (child task)": runtimeCall + span(Job{
 				Change:     RuntimeCommit(TxCreateTask(p, true, false, false, CacheHit, false, CacheHit), false, 0),
 				Settle:     Settle(CurrentTask(p, false, true, CacheHit), 0, 0),
 				Membership: Membership(1, 0),
-			}, p, []Writes{{Tables: 1}}),
+			}, p, []Writes{{Tasks: 1}}),
 		}
 		if len(calls) != len(model) {
 			t.Fatalf("%s: %d measured calls, %d modelled", backend, len(calls), len(model))

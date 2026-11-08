@@ -1,6 +1,6 @@
 // Upstream harness/transcript.ts, as the facade exports it (ConversationTranscript is a layer over any ConversationView, so the host
 // uses the reference's own code): only the imports differ.
-import type { Context } from "@earendil-works/chord";
+import type { Context } from "@earendil-works/chord/context";
 import type { ConversationView, ConversationWindow, Cursor, EntryId, EntryQuery, EntryRecord, Page } from "@earendil-works/pi-durable";
 
 /** An ID from its number, as the reference's ids.ts brands it. */

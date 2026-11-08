@@ -33,6 +33,13 @@ install_deps() {
 		cp -r "$tmp/package/dist/providers/data" "$1/packages/ai/src/providers/data"
 		rm -rf "$tmp"
 	fi
+	# Providers added after 1.0.4 import catalogs the 1.0.4 package lacks: the PiG mirror of the pinned Pi has them all.
+	mirror=$here/../../.upstream/current/packages/ai/src/providers/data
+	if [ -d "$mirror" ]; then
+		for catalog in "$mirror"/*.json; do
+			[ -e "$1/packages/ai/src/providers/data/$(basename "$catalog")" ] || cp "$catalog" "$1/packages/ai/src/providers/data/"
+		done
+	fi
 }
 install_deps "$dir"
 # The release the corpus keeps readable (PIN release): a worktree of the same clone with the reference's dependencies shared.
@@ -45,6 +52,17 @@ fi
 for pkg in ai coding-agent durable; do
 	ln -sfn "$dir/packages/$pkg/node_modules" "$old/packages/$pkg/node_modules"
 done
-ln -sfn "$dir/node_modules" "$old/node_modules"
+# The release's dependencies are the reference's except its own Chord: Pi main made Chord v2 the package root (e9c0ff4d), and the release's
+# Durable imports Chord v1's root (copyJson, Context, ...). A directory of links to the reference's entries stands in for the shared
+# node_modules, with @earendil-works/chord linked to the release's package.
+rm -rf "$old/node_modules"
+mkdir -p "$old/node_modules/@earendil-works"
+for entry in "$dir"/node_modules/* "$dir"/node_modules/.bin; do
+	[ "$(basename "$entry")" = "@earendil-works" ] || ln -sfn "$entry" "$old/node_modules/$(basename "$entry")"
+done
+for entry in "$dir"/node_modules/@earendil-works/*; do
+	ln -sfn "$entry" "$old/node_modules/@earendil-works/$(basename "$entry")"
+done
+ln -sfn "$old/packages/chord" "$old/node_modules/@earendil-works/chord"
 [ -d "$old/packages/ai/src/providers/data" ] || cp -r "$dir/packages/ai/src/providers/data" "$old/packages/ai/src/providers/data"
 echo "$dir"

@@ -2,7 +2,8 @@
 // `watch`, and each call builds its own instance where Pi keeps one per Harness. The core mounts the view; this attaches one observer to it,
 // with its own window. An observer that throws is reported through the Harness and the others still get the frame; the Session's close
 // reaches `end` once.
-import type { Context, WatchCall, WatchEnd } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
+import type { WatchCall, WatchEnd } from "@earendil-works/chord/watch"
 import type { ConversationWindow } from "@earendil-works/pi-durable"
 import { Harness } from "../harness.ts"
 

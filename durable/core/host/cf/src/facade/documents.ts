@@ -1,6 +1,6 @@
 // Document tokens and addresses: the pure part of pi-durable's documents.ts (defineDoc, defineDocFamily, resolveAddress,
 // addressId), which a host needs to name a document in an `api` or `tx` request. Storage-side validation stays in the core.
-import type { JsonValue } from "@earendil-works/chord"
+import type { JsonValue } from "@earendil-works/chord/json"
 
 export type DocAddressScope = { kind: "session" } | { kind: "conversation"; conversationId: number } | { kind: "task"; taskId: number }
 export type DocumentAddress = { kind: string; scope: DocAddressScope; key?: string }
