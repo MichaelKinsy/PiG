@@ -385,7 +385,7 @@ func TestAnInvalidMcpJSONKeepsTheLastValidServersAlsoAcrossAReload(t *testing.T)
 	owner.until("errors", func(v delta.JsonValue) bool {
 		return slices.ContainsFunc(errorsText(v), func(line string) bool { return strings.Contains(line, "keeping the last valid servers") })
 	})
-	noError(t, h.f.ReloadFacets(ServerFacet(lingerTest, noEnvironmentsConnector)))
+	noError(t, h.f.ReloadFacets([]nexthost.Facet{ServerFacet(lingerTest, noEnvironmentsConnector)}))
 	after := s1.until("servers", func(v delta.JsonValue) bool { return isUp("files")(v) && len(h.starts()) == 2 })
 	expectEqual(t, instanceList(after)[0].Value("id"), instance.Value("id"))
 	exited(t, pid)
@@ -727,7 +727,7 @@ func TestAReloadOfThePluginKeepsTheLeasesAndTheToolsTheNewSupervisorStartsWhatTh
 	_, err = p2test.Settled(h.manager.Member("instances"), 0, 0)
 	noError(t, err)
 	// A new facet value: a reload, not the same code again.
-	noError(t, h.f.ReloadFacets(ServerFacet(lingerTest, noEnvironmentsConnector)))
+	noError(t, h.f.ReloadFacets([]nexthost.Facet{ServerFacet(lingerTest, noEnvironmentsConnector)}))
 	after := instanceList(s1.until("servers", func(v delta.JsonValue) bool { return isUp("files")(v) && len(h.starts()) == 2 }))[0]
 	_, _ = watch.Stop()
 	expectEqual(t, after.Value("id"), before.Value("id"))
