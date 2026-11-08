@@ -11,6 +11,7 @@ package pig
 
 import (
 	_ "embed"
+	"io"
 	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/internal/zstdblob"
@@ -33,6 +34,15 @@ func decodeChangelog() string {
 	}
 	// The decoded buffer is this call's own and is never written again, so the string takes it without a second copy of the whole changelog.
 	return unsafe.String(unsafe.SliceData(text), len(text)) //nolint:gosec // G103: text is this call's own buffer and is never written again, so the string aliases it without a second 1 MB copy; nothing else holds the slice
+}
+
+// ChangelogReader streams the embedded changelog's decoded text, for a caller that needs only its head: it decodes no further than it is read.
+func ChangelogReader() io.Reader {
+	reader, err := zstdblob.NewReader(changelogFrame)
+	if err != nil {
+		panic("pig: embedded CHANGELOG.md.zst: " + err.Error())
+	}
+	return reader
 }
 
 // Changelog returns the bundled CHANGELOG.md, decoded on each call and not cached. Read by internal/codingagent's
