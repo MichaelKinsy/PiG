@@ -98,7 +98,7 @@ const misspelledCredentialsFlag = "credentails" //nolint:misspell // the typo is
 
 func TestCredentialPrintReportsUnknownAuthOptionsLikePackageCommands(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := runAuthCommandWith([]string{"auth", "check", "--provider", "openai-codex", "--" + misspelledCredentialsFlag}, authRunEnv{stdout: &stdout, stderr: &stderr, agentDir: t.TempDir()})
+	code := runAuthCommandWith([]string{"auth", "check", "--provider", "openai-codex", "--" + misspelledCredentialsFlag}, authRunEnv{ctx: t.Context(), stdout: &stdout, stderr: &stderr, agentDir: t.TempDir()})
 	if !strings.Contains(stderr.String(), `Unknown option --`+misspelledCredentialsFlag+` for "auth check".`) {
 		t.Fatalf("stderr = %q", stderr.String())
 	}
@@ -213,7 +213,7 @@ func writeAuthJSON(t *testing.T, agentDir string, content map[string]ai.Credenti
 func runAuthForTest(t *testing.T, agentDir string, args ...string) (int, string, string) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
-	code := runAuthCommandWith(append([]string{"auth"}, args...), authRunEnv{stdout: &stdout, stderr: &stderr, agentDir: agentDir})
+	code := runAuthCommandWith(append([]string{"auth"}, args...), authRunEnv{ctx: t.Context(), stdout: &stdout, stderr: &stderr, agentDir: agentDir})
 	return code, stdout.String(), stderr.String()
 }
 
@@ -314,7 +314,7 @@ func TestAuthCommandExitCodesAndErrors(t *testing.T) {
 			}
 		})
 	}
-	if code := runAuthCommandWith([]string{"login"}, authRunEnv{agentDir: agentDir}); code != -1 {
+	if code := runAuthCommandWith([]string{"login"}, authRunEnv{ctx: t.Context(), agentDir: agentDir}); code != -1 {
 		t.Fatalf("non-auth command = %d, want -1", code)
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"unicode/utf8"
 
 	"golang.org/x/term"
 
@@ -92,9 +91,7 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 				if chunk[0] == 0x1b {
 					continue
 				}
-				for len(chunk) > 0 {
-					char, size := utf8.DecodeRuneInString(chunk)
-					chunk = chunk[size:]
+				for _, char := range chunk {
 					switch {
 					case char == '\r' || char == '\n':
 						done <- result{value: string(value)}
