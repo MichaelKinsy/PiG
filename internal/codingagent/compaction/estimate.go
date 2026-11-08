@@ -57,11 +57,34 @@ func contentBlocksChars[T any](blocks []T) int {
 func customContentChars(content any) int {
 	if raw, ok := content.(json.RawMessage); ok {
 		// A content array an extension wrote is kept as its JSON text, which holds the members in the order it wrote them.
-		var blocks any
+		var text string
+		if json.Unmarshal(raw, &text) == nil {
+			return jsLength(text)
+		}
+		var blocks []json.RawMessage
 		if json.Unmarshal(raw, &blocks) != nil {
 			return 0
 		}
-		content = blocks
+		chars := 0
+		for _, block := range blocks {
+			var fields map[string]json.RawMessage
+			if json.Unmarshal(block, &fields) != nil {
+				continue
+			}
+			var kind string
+			if json.Unmarshal(fields["type"], &kind) != nil {
+				continue
+			}
+			switch kind {
+			case "text":
+				var blockText string
+				_ = json.Unmarshal(fields["text"], &blockText)
+				chars += jsLength(blockText)
+			case "image":
+				chars += estimatedImageChars
+			}
+		}
+		return chars
 	}
 	switch content := content.(type) {
 	case string:
