@@ -4,17 +4,16 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"syscall"
 	"unicode/utf8"
 
 	"golang.org/x/term"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/terminalquestion"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // AuthOutput is the output shared by the terminal authentication commands.
@@ -59,9 +58,6 @@ func (t processLoginTerminal) Secret(ctx context.Context, message string) (strin
 }
 func (processLoginTerminal) OpenURL(url string) { codingagent.OpenBrowser(url) }
 
-// isEINTR reports whether a termios ioctl error is an interrupted syscall worth retrying.
-func isEINTR(err error) bool { return errors.Is(err, syscall.EINTR) }
-
 // readSecret reads a line from input, a terminal switched to raw mode, without echoing it. A Ctrl+C runs onInterrupt, which is expected to end ctx.
 func readSecret(ctx context.Context, input *os.File, output io.Writer, message string, onInterrupt func()) (string, error) {
 	if ctx.Err() != nil {
@@ -71,17 +67,10 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 	if _, err := io.WriteString(output, message); err != nil {
 		return "", err
 	}
-	var state *term.State
-	for {
-		var err error
-		state, err = term.MakeRaw(fd)
-		if isEINTR(err) {
-			continue // a stop and continue interrupts the termios ioctl; Pi's Node retries it
-		}
-		if err != nil {
-			return "", err
-		}
-		break
+	// A stop and continue interrupts the termios ioctl; MakeRaw retries it, as Pi's Node does.
+	state, err := tui.MakeRaw(fd)
+	if err != nil {
+		return "", err
 	}
 	type result struct {
 		value string
@@ -90,12 +79,7 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 	done := make(chan result, 1)
 	stop := make(chan struct{})
 	finish := func() {
-		for {
-			if err := term.Restore(fd, state); isEINTR(err) {
-				continue
-			}
-			break
-		}
+		_ = tui.RestoreCooked(fd, state)
 		_, _ = io.WriteString(output, "\n")
 	}
 	go func() {
