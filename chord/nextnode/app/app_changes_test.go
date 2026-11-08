@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -20,7 +22,7 @@ import (
 // script (`runStart`): the Go server is this process's binary, its `Base` files are listed by the app (nothing is scanned, so there is
 // no `server_scan` report); the worker kind's built-from files (a worker's entry is an executable, not a script built by the plugins
 // component); the serialization test's `component.build`/`component.rollout` hooks (a Go Plugins has no replaceable methods: the
-// order is observed through the end state instead). The "installs" test waits for `installPlugin` in the Go plugins component (T9).
+// order is observed through the end state instead). The "installs" test is ported below.
 
 // untilMarks returns once the plugins' marks satisfy ok; the state's watch wakes it (no polling).
 func untilMarks(t testing.TB, app *App, what string, ok func(plugins.PluginsState) bool) {
@@ -176,4 +178,60 @@ func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 			untilMarks(t, s.app, "base", func(m plugins.PluginsState) bool { return m.Base })
 		})
 	}
+}
+
+// gitRepository makes a local bare repository `<name>.git` of files, tagged tag, and returns its `file://` URL (no network).
+func gitRepository(t *testing.T, name string, files map[string]string, tag string) string {
+	t.Helper()
+	git := func(cwd string, args ...string) {
+		t.Helper()
+		command := exec.Command("git", append([]string{"-c", "user.email=test@example.com", "-c", "user.name=test"}, args...)...)
+		command.Dir = cwd
+		if out, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	work := t.TempDir()
+	git(work, "init", "--quiet")
+	for file, text := range files {
+		if err := os.WriteFile(filepath.Join(work, file), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git(work, "add", "--all")
+	git(work, "commit", "--quiet", "--message", tag)
+	git(work, "tag", tag)
+	bare := filepath.Join(t.TempDir(), name+".git")
+	git(work, "clone", "--quiet", "--bare", work, bare)
+	return "file://" + bare
+}
+
+func TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt(t *testing.T) {
+	tools := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tools, "npm.mjs"), []byte("process.exit(0);"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	url := gitRepository(t, "echo", map[string]string{"package.json": `{"name":"@bob/echo"}`, "server.ts": echoServer}, "v1")
+	s := startTestApp(t, nil, func(o *AppOptions) { o.Install = plugins.InstallOptions{NpmCommand: []string{node, filepath.Join(tools, "npm.mjs")}} })
+	names, err := s.app.Plugins.InstallPlugin(plugins.PluginSource{Git: url, Ref: "v1"}, filepath.Join(s.dataDir, "plugins"), background)
+	if err != nil || !reflect.DeepEqual(names, []string{"@bob/echo"}) {
+		t.Fatalf("InstallPlugin = %v, %v", names, err)
+	}
+	if got := dirEntries(t, filepath.Join(s.dataDir, "plugins")); !reflect.DeepEqual(got, []string{"echo"}) {
+		t.Fatalf("the user's root = %v, want [echo]", got)
+	}
+	untilMarks(t, s.app, "the set mark", func(m plugins.PluginsState) bool { return m.Set })
+	if _, err := s.app.ApplyChanges(background); err != nil {
+		t.Fatal(err)
+	}
+	served, err := s.app.Node.Get(background, echo, delta.NewJsonObject(0), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer served.Release()
+	untilText(t, served, "echo")
 }
