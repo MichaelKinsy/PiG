@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"strings"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 )
@@ -68,40 +69,41 @@ func NewRelayAccess() *RelayAccess {
 // Secret is the per-process secret that marks the brain's loopback requests.
 func (a *RelayAccess) Secret() string { return a.secret }
 
-// Verify is the relayed request request is, or nil when it is not one this brain made.
-func (a *RelayAccess) Verify(request *http.Request) *RelayedRequest {
+// Verify is the relayed request request is, or nil when it is not one this brain made. A user header the brain never writes is
+// an error: Pi's `JSON.parse` of it throws and the request fails.
+func (a *RelayAccess) Verify(request *http.Request) (*RelayedRequest, error) {
 	if !isLoopbackLocal(request) {
-		return nil
+		return nil, nil
 	}
 	presented := request.Header.Get(RelaySecretHeader)
 	if presented == "" || len(presented) != len(a.secret) || subtle.ConstantTimeCompare([]byte(presented), []byte(a.secret)) != 1 {
-		return nil
+		return nil, nil
 	}
 	publicOrigin := request.Header.Get(RelayOriginHeader)
 	if !originPattern.MatchString(publicOrigin) {
-		return nil
+		return nil, nil
 	}
 	_, hasShell := request.Header[http.CanonicalHeaderKey(RelayShellHeader)]
 	user, hasUser := request.Header[http.CanonicalHeaderKey(RelayUserHeader)]
 	if !hasShell {
 		// Clients are the owner's only; sharing admits people on the brain's UI.
 		if hasUser {
-			return nil
+			return nil, nil
 		}
-		return &RelayedRequest{PublicOrigin: publicOrigin}
+		return &RelayedRequest{PublicOrigin: publicOrigin}, nil
 	}
 	shell := request.Header.Get(RelayShellHeader)
 	if !originPattern.MatchString(shell) {
-		return nil
+		return nil, nil
 	}
 	if !hasUser {
-		return &RelayedRequest{PublicOrigin: publicOrigin, ShellOrigin: shell, HasShell: true}
+		return &RelayedRequest{PublicOrigin: publicOrigin, ShellOrigin: shell, HasShell: true}, nil
 	}
-	decoded, ok := decodeRelayUser(user[0])
-	if !ok {
-		return nil
+	decoded, err := decodeRelayUser(strings.Join(user, ", "))
+	if err != nil {
+		return nil, err
 	}
-	return &RelayedRequest{PublicOrigin: publicOrigin, ShellOrigin: shell, HasShell: true, User: decoded}
+	return &RelayedRequest{PublicOrigin: publicOrigin, ShellOrigin: shell, HasShell: true, User: decoded}, nil
 }
 
 // isLoopbackLocal is whether the connection's local address is 127.0.0.1.
@@ -120,19 +122,33 @@ func EncodeRelayUser(user p2runtime.RelayUser) string {
 	return base64.RawURLEncoding.EncodeToString(encoded)
 }
 
-// decodeRelayUser reads the header value; ok is false for what the brain never writes (Pi's `JSON.parse` of it throws and
-// the request fails: the request is refused).
-func decodeRelayUser(value string) (*p2runtime.RelayUser, bool) {
-	raw, err := base64.RawURLEncoding.DecodeString(value)
+// decodeRelayUser reads the header value as Node's `Buffer.from(value, "base64url")` does (characters outside the alphabet are
+// skipped, padding is optional, `+` and `/` count as `-` and `_`), then as `JSON.parse` does.
+func decodeRelayUser(value string) (*p2runtime.RelayUser, error) {
+	letters := make([]byte, 0, len(value))
+	for i := 0; i < len(value); i++ {
+		switch c := value[i]; {
+		case c == '+':
+			letters = append(letters, '-')
+		case c == '/':
+			letters = append(letters, '_')
+		case c >= 'A' && c <= 'Z', c >= 'a' && c <= 'z', c >= '0' && c <= '9', c == '-', c == '_':
+			letters = append(letters, c)
+		}
+	}
+	if len(letters)%4 == 1 {
+		letters = letters[:len(letters)-1]
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(string(letters))
 	if err != nil {
-		return nil, false
+		return nil, err
 	}
 	var user struct {
 		ID    string `json:"id"`
 		Email string `json:"email"`
 	}
-	if json.Unmarshal(raw, &user) != nil {
-		return nil, false
+	if err := json.Unmarshal(raw, &user); err != nil {
+		return nil, err
 	}
-	return &p2runtime.RelayUser{ID: user.ID, Email: user.Email}, true
+	return &p2runtime.RelayUser{ID: user.ID, Email: user.Email}, nil
 }

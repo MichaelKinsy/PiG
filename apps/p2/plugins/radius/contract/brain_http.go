@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"math"
@@ -44,25 +45,100 @@ func (b *Brain) newLoopbackRequest(ctx context.Context, method, path string, hea
 	return request, nil
 }
 
-// responseHeaders is a response's headers as the relay takes them: name and value pairs, `Location` rewritten by the target.
-// Go gave the names canonical case and dropped the transfer coding (see the file comment of brain.go).
-func responseHeaders(response *http.Response, to target) [][2]string {
-	names := make([]string, 0, len(response.Header))
-	for name := range response.Header {
-		names = append(names, name)
+// headCapture is the head of one loopback response as it crossed the wire: Go's HTTP client folds header names into canonical
+// case, and Pi forwards `response.rawHeaders`, the names as the server wrote them, in wire order.
+type headCapture struct {
+	mu    sync.Mutex
+	buf   []byte
+	done  bool
+	pairs [][2]string
+}
+
+type headCaptureKey struct{}
+
+// feed takes bytes read from the loopback connection until the first final response head is complete.
+func (c *headCapture) feed(data []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.done {
+		return
 	}
-	slices.Sort(names)
-	pairs := make([][2]string, 0, len(names)+1)
-	for _, name := range names {
-		for _, value := range response.Header[name] {
-			if to.location != nil && strings.EqualFold(name, "location") {
-				value = to.location(value)
-			}
-			pairs = append(pairs, [2]string{name, value})
+	c.buf = append(c.buf, data...)
+	for {
+		end := bytes.Index(c.buf, []byte("\r\n\r\n"))
+		if end < 0 {
+			return
 		}
+		head := string(c.buf[:end])
+		c.buf = c.buf[end+4:]
+		lines := strings.Split(head, "\r\n")
+		// An interim response (100 Continue, 103 Early Hints) is not the response: its head is skipped, 101 is final.
+		if fields := strings.Fields(lines[0]); len(fields) >= 2 && strings.HasPrefix(fields[1], "1") && fields[1] != "101" {
+			continue
+		}
+		for _, line := range lines[1:] {
+			colon := strings.IndexByte(line, ':')
+			if colon <= 0 {
+				continue
+			}
+			c.pairs = append(c.pairs, [2]string{line[:colon], strings.Trim(line[colon+1:], " \t")})
+		}
+		c.done, c.buf = true, nil
+		return
 	}
-	if slices.Contains(response.TransferEncoding, "chunked") {
-		pairs = append(pairs, [2]string{"Transfer-Encoding", "chunked"})
+}
+
+type captureConn struct {
+	net.Conn
+	capture *headCapture
+}
+
+func (c captureConn) Read(p []byte) (int, error) {
+	n, err := c.Conn.Read(p)
+	if n > 0 {
+		c.capture.feed(p[:n])
+	}
+	return n, err
+}
+
+// newLoopbackTransport is the transport of loopback requests: one connection per request (the head belongs to its request),
+// reading each response's head into the request's headCapture.
+func newLoopbackTransport() *http.Transport {
+	dialer := &net.Dialer{}
+	return &http.Transport{
+		DisableCompression: true,
+		DisableKeepAlives:  true,
+		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+			conn, err := dialer.DialContext(ctx, network, address)
+			if err != nil {
+				return nil, err
+			}
+			if capture, ok := ctx.Value(headCaptureKey{}).(*headCapture); ok {
+				return captureConn{conn, capture}, nil
+			}
+			return conn, nil
+		},
+	}
+}
+
+// roundTrip sends a loopback request and returns the response with its headers as the server wrote them.
+func (b *Brain) roundTrip(request *http.Request) (*http.Response, *headCapture, error) {
+	capture := &headCapture{}
+	response, err := b.http.RoundTrip(request.WithContext(context.WithValue(request.Context(), headCaptureKey{}, capture)))
+	return response, capture, err
+}
+
+// responseHeaders is a response's headers as the relay takes them: name and value pairs in wire order, `Location` rewritten by
+// the target.
+func responseHeaders(capture *headCapture, to target) [][2]string {
+	capture.mu.Lock()
+	defer capture.mu.Unlock()
+	pairs := make([][2]string, 0, len(capture.pairs))
+	for _, pair := range capture.pairs {
+		if to.location != nil && strings.EqualFold(pair[0], "location") {
+			pair[1] = to.location(pair[1])
+		}
+		pairs = append(pairs, pair)
 	}
 	return pairs
 }
@@ -208,7 +284,7 @@ func (h *httpChannel) roundTrip(body io.ReadCloser) {
 		h.fail()
 		return
 	}
-	response, err := h.b.http.RoundTrip(request)
+	response, capture, err := h.b.roundTrip(request)
 	if err != nil {
 		h.fail()
 		return
@@ -219,7 +295,7 @@ func (h *httpChannel) roundTrip(body io.ReadCloser) {
 	h.mu.Unlock()
 	h.s.sendControl(map[string]any{
 		"version": protocolVersion, "type": "response", "connection_id": h.id,
-		"status": response.StatusCode, "headers": responseHeaders(response, h.to),
+		"status": response.StatusCode, "headers": responseHeaders(capture, h.to),
 	})
 	buffer := make([]byte, 64*1024)
 	for {

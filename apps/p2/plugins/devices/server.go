@@ -108,10 +108,10 @@ func serveDeviceAccess(facet host.FacetHost) error {
 			})))
 		// A valid owner cookie takes precedence over a pre-existing guest cookie. Host checks still apply.
 		p2runtime.ContributeKeyed(store, p2runtime.RequestResolvers, p2runtime.Entry("ownerCookie", p2runtime.RequestResolver(
-			func(request *http.Request, _ host.Ctx) *p2runtime.RequestAccess {
+			func(request *http.Request, _ host.Ctx) (*p2runtime.RequestAccess, error) {
 				value, err := info()
 				if err != nil {
-					return nil
+					return nil, nil
 				}
 				var allowed []string
 				list, _ := value.Value("allowedHosts").([]any)
@@ -121,12 +121,12 @@ func serveDeviceAccess(facet host.FacetHost) error {
 				}
 				origin := hosts.RequestOrigin(request, allowed)
 				if origin == nil || !origin.Remote {
-					return nil
+					return nil, nil
 				}
 				if owner := principal(request, origin.Port); owner != nil {
-					return &p2runtime.RequestAccess{Origin: *origin, Principal: owner}
+					return &p2runtime.RequestAccess{Origin: *origin, Principal: owner}, nil
 				}
-				return nil
+				return nil, nil
 			})))
 		logout := func(response http.ResponseWriter, request *http.Request, access2 p2runtime.RequestAccess, all bool, ctx host.Ctx) error {
 			if !p2runtime.FromOrigin(request, access2.Origin.Origin) || request.Header.Get("Sec-Fetch-Site") == "cross-site" {

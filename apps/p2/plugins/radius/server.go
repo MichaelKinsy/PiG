@@ -113,19 +113,19 @@ func serveRadiusService(_ *delta.JsonObject, self host.Self) (contracts.Implemen
 	}
 	store := self.(host.StoreSelf)
 	p2runtime.ContributeKeyed(store, p2runtime.RequestResolvers, p2runtime.Entry("radius", p2runtime.RequestResolver(
-		func(request *http.Request, _ host.Ctx) *p2runtime.RequestAccess {
+		func(request *http.Request, _ host.Ctx) (*p2runtime.RequestAccess, error) {
 			current := connection()
-			relayed := current.Relay.Verify(request)
-			if relayed == nil {
-				return nil
+			relayed, err := current.Relay.Verify(request)
+			if err != nil || relayed == nil {
+				return nil, err
 			}
 			origin := p2runtime.RequestOrigin{Origin: relayed.PublicOrigin, Remote: true, Port: current.Port, RelayShellOrigin: relayed.ShellOrigin}
 			// Anyone else is whom sharing finds by their email (the sessions shared with them), or nobody.
 			if relayed.User == nil {
-				return &p2runtime.RequestAccess{Principal: p2runtime.OwnerPrincipal{Access: p2runtime.AccessRelay}, Origin: origin}
+				return &p2runtime.RequestAccess{Principal: p2runtime.OwnerPrincipal{Access: p2runtime.AccessRelay}, Origin: origin}, nil
 			}
 			origin.RelayUser = relayed.User
-			return &p2runtime.RequestAccess{Origin: origin}
+			return &p2runtime.RequestAccess{Origin: origin}, nil
 		})))
 	// Radius admits and lists this brain for the emails sessions are shared with.
 	shares := self.Get(sharingcontract.Shares, delta.NewJsonObject(0))

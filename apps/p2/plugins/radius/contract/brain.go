@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -95,13 +96,10 @@ import (
 // sees as this client's origin), then for HTTP the response body as binary messages and a close with 1000; for `websocket`,
 // status 101 turns the channel into the piped loopback socket. Only relays with channel sockets (v5) carry them.
 //
-// Forced Go differences (D-pending). Node's `ws` and `http` become gorilla/websocket and net/http. Go reads a response's
-// headers into a canonical-case map: the names of a response the brain relays (an HTTP channel or a client channel) go back
-// in Go's canonical case and sorted, where Pi forwards the raw names in wire order; no test of Pi's observes the case (they
-// all compare lowercased names), and the values and repetitions are kept. A relay or client is HTTP/1.1 and compares names
-// case-insensitively. `Transfer-Encoding: chunked` is restored where Go removed it. A request header that is not a valid
-// header name is dropped instead of failing the relay message. The message handler Pi wraps in try/catch (an invalid relay
-// message terminates the socket) is the JSON decoder's error here.
+// Go differences. Node's `ws` and `http` become gorilla/websocket and net/http; the loopback client reads each response's raw
+// head (headCapture) because Go's client folds header names into canonical case, so the names, their order and the
+// transfer coding go to the relay as the server wrote them, as Pi's `rawHeaders` do. A message that makes Pi's handler throw
+// (see validRequest) terminates the socket and reconnects, as in Pi.
 
 const (
 	// hostSubprotocols are offered newest first; v3 adds credit flow control for HTTP channels, v4 port forwards, v5 channel
@@ -291,7 +289,7 @@ func NewBrain(options BrainOptions) *Brain {
 		heartbeatTimeout: pick(options.Timing.HeartbeatTimeout, heartbeatTimeout),
 		handshakeTimeout: pick(options.Timing.HandshakeTimeout, handshakeTimeout),
 		ctx:              ctx, cancel: cancel,
-		http:    &http.Transport{DisableCompression: true, MaxIdleConnsPerHost: 8, IdleConnTimeout: 30 * time.Second},
+		http:    newLoopbackTransport(),
 		retry:   retryInitial,
 		replace: true,
 		kick:    make(chan struct{}, 1),
@@ -641,12 +639,16 @@ func (b *Brain) connect(config *Config, owner principal, replace bool) (failure 
 			continue
 		}
 		var message control
-		if err := json.Unmarshal(data, &message); err != nil {
-			fail(errors.New("Invalid Radius relay message"))
+		// `null` parses in Node and fails on its first property.
+		if err := json.Unmarshal(data, &message); err != nil || string(bytes.TrimSpace(data)) == "null" {
+			fail(errInvalidRelayMessage)
 			s.ws.terminate()
 			continue
 		}
-		b.onControl(s, owner, message)
+		if err := b.onControl(s, owner, message); err != nil {
+			fail(err)
+			s.ws.terminate()
+		}
 	}
 	close(stopBeat)
 	_ = conn.Close()
@@ -827,32 +829,36 @@ func (s *session) onData(frame []byte) {
 	}
 }
 
-func (b *Brain) onControl(s *session, owner principal, message control) {
+// errInvalidRelayMessage is what Pi's try/catch around its message handler records before it terminates the socket: a message
+// that makes the handler throw (a request without headers, a header or path Node's http refuses, an origin `new URL` refuses).
+var errInvalidRelayMessage = errors.New("Invalid Radius relay message")
+
+func (b *Brain) onControl(s *session, owner principal, message control) error {
 	switch message.Type {
 	case "ping":
 		s.sendControl(map[string]any{"version": protocolVersion, "type": "pong"})
-		return
+		return nil
 	case "pong":
-		return
+		return nil
 	case "connection_close":
 		// The entry goes first, so the channel's own end does not tell the relay what it just said.
 		if c := s.get(message.ConnectionID); c != nil {
 			s.remove(message.ConnectionID)
 			c.close()
 		}
-		return
+		return nil
 	case "credit":
 		if c := s.get(message.ConnectionID); c != nil {
 			c.credit(int64(message.Bytes))
 		}
-		return
+		return nil
 	}
 	id := message.ConnectionID
 	who := message.Principal
 	isOwner := who != nil && who.Kind == owner.Kind && who.ID == owner.ID && who.OrganizationID == owner.OrganizationID
 	if isOwner && message.Kind == "ws" && message.Request == nil && message.Forward == nil {
 		b.openClientChannel(s, id)
-		return
+		return nil
 	}
 	// Someone a session is shared with, on the brain's UI only: sharing decides what they reach.
 	member := !isOwner && who != nil && who.Kind == "user" && who.Email != "" && message.Forward == nil
@@ -860,9 +866,12 @@ func (b *Brain) onControl(s *session, owner principal, message control) {
 	anonymous := who == nil && message.Forward != nil
 	if message.Kind == "stream" || !(isOwner || member || anonymous) || message.Request == nil || message.PublicOrigin == "" {
 		s.closeChannel(id, 1008)
-		return
+		return nil
 	}
 	head := *message.Request
+	if head.Headers == nil {
+		return errInvalidRelayMessage
+	}
 	window := int64(math.MaxInt64)
 	if s.flow {
 		window = defaultHTTPWindow
@@ -882,7 +891,9 @@ func (b *Brain) onControl(s *session, owner principal, message control) {
 		}
 	}
 	if message.Forward != nil {
-		b.openForward(s, id, message.Kind, *message.Forward, head, headers, message.PublicOrigin, window, anonymous)
+		if err := b.openForward(s, id, message.Kind, *message.Forward, head, headers, message.PublicOrigin, window, anonymous); err != nil {
+			return err
+		}
 	} else {
 		b.remember(message.PublicOrigin, shellOrigin, owner)
 		// The brain's UI authenticates by Radius alone: no browser cookie may make a member the owner.
@@ -894,6 +905,9 @@ func (b *Brain) onControl(s *session, owner principal, message control) {
 			headers[RelayUserHeader] = EncodeRelayUser(p2runtime.RelayUser{ID: who.ID, Email: who.Email})
 		}
 		to := target{host: "127.0.0.1", port: b.port()}
+		if err := validRequest(message.Kind, head, headers); err != nil {
+			return err
+		}
 		if message.Kind == "http" {
 			b.openHTTP(s, id, head, headers, window, to)
 		} else {
@@ -909,12 +923,13 @@ func (b *Brain) onControl(s *session, owner principal, message control) {
 			c.congested(true)
 		}
 	}
+	return nil
 }
 
 // openForward is a channel from a forward's origin, relayed to the forward's port as if the browser had opened
 // `http://localhost:<port>`: dev servers check `Host` and `Origin` against their own address. The `X-Forwarded-*` headers
 // tell frameworks the public address, and make this server refuse the request should a forward ever point at it.
-func (b *Brain) openForward(s *session, id, kind, forwardID string, head requestHead, headers map[string]string, publicOrigin string, window int64, anonymous bool) {
+func (b *Brain) openForward(s *session, id, kind, forwardID string, head requestHead, headers map[string]string, publicOrigin string, window int64, anonymous bool) error {
 	var forward ForwardTarget
 	found := false
 	if b.forwards != nil {
@@ -927,13 +942,12 @@ func (b *Brain) openForward(s *session, id, kind, forwardID string, head request
 		} else {
 			s.closeChannel(id, 1008)
 		}
-		return
+		return nil
 	}
 	local := "localhost:" + strconv.Itoa(forward.Port)
 	parsed, err := url.Parse(publicOrigin)
 	if err != nil {
-		s.closeChannel(id, 1008)
-		return
+		return errInvalidRelayMessage
 	}
 	delete(headers, "x-radius-shell-origin")
 	if headers["origin"] == publicOrigin {
@@ -955,11 +969,56 @@ func (b *Brain) openForward(s *session, id, kind, forwardID string, head request
 		},
 		unavailable: "Nothing is listening on port " + strconv.Itoa(forward.Port) + " of this device.\n",
 	}
+	if err := validRequest(kind, head, headers); err != nil {
+		return err
+	}
 	if kind == "http" {
 		b.openHTTP(s, id, head, headers, window, to)
 	} else {
 		b.openSocket(s, id, head, headers, to)
 	}
+	return nil
+}
+
+// validRequest is what Node's `http.request` checks synchronously (and throws for), which Pi's message handler turns into a
+// terminated socket: the method and the path of an HTTP request, and every header name and value (a WebSocket's too).
+func validRequest(kind string, head requestHead, headers map[string]string) error {
+	if kind == "http" {
+		if head.Method != "" && !validToken(head.Method) {
+			return errInvalidRelayMessage
+		}
+		for _, r := range head.Path {
+			if r < 0x21 || r > 0xff {
+				return errInvalidRelayMessage
+			}
+		}
+	}
+	for name, value := range headers {
+		if !validToken(name) {
+			return errInvalidRelayMessage
+		}
+		for _, r := range value {
+			if r != '\t' && (r < 0x20 || r == 0x7f || r > 0xff) {
+				return errInvalidRelayMessage
+			}
+		}
+	}
+	return nil
+}
+
+// validToken is an HTTP token (Node's `checkIsHttpToken`).
+func validToken(text string) bool {
+	if text == "" {
+		return false
+	}
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.IndexByte("!#$%&'*+-.^_`|~", c) >= 0 {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // remember keeps the brain's Radius addresses, in memory and in radius.json: its origin for forward links, and its page in the
