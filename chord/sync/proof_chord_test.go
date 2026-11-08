@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -25,30 +26,93 @@ func TestIsNotFoundIsTrueOnlyForAMissingFileOrDirectory(t *testing.T) {
 	}
 }
 
-func TestASyncFileReaderReadsAtOffsetsAndClosesOnce(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "body")
-	if err := os.WriteFile(path, []byte("0123456789"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	var files SyncFileSystem = osFiles{}
-	reader, err := files.OpenBinaryReader(context.Background(), path)
+// countingFiles is osFiles whose readers record their offsets and closes: it observes the production body stream
+// (FileSystemSyncRemote's fileBody), the one caller of a SyncFileReader.
+type countingFiles struct {
+	osFiles
+	readers *[]*countingReader
+}
+
+type countingReader struct {
+	SyncFileReader
+	offsets []int64
+	closes  int
+}
+
+func (reader *countingReader) Read(ctx context.Context, offset, length int64) ([]byte, error) {
+	reader.offsets = append(reader.offsets, offset)
+	return reader.SyncFileReader.Read(ctx, offset, length)
+}
+
+func (reader *countingReader) Close(ctx context.Context) error {
+	reader.closes++
+	return reader.SyncFileReader.Close(ctx)
+}
+
+func (files countingFiles) OpenBinaryReader(ctx context.Context, path string) (SyncFileReader, error) {
+	inner, err := files.osFiles.OpenBinaryReader(ctx, path)
 	if err != nil {
+		return nil, err
+	}
+	reader := &countingReader{SyncFileReader: inner}
+	*files.readers = append(*files.readers, reader)
+	return reader, nil
+}
+
+func TestASnapshotBodyStreamsThroughASyncFileReaderAndClosesItOnceAtTheEndOrWhenClosedEarly(t *testing.T) {
+	ctx := context.Background()
+	var readers []*countingReader
+	remote := NewFileSystemSyncRemote(countingFiles{readers: &readers}, t.TempDir())
+	payload := make([]byte, 3*readChunk+5)
+	for index := range payload {
+		payload[index] = byte(index)
+	}
+	if err := remote.PutSnapshot(ctx, "s1", 4, chunked(payload, 1000)); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := reader.Read(context.Background(), 3, 4); err != nil || string(got) != "3456" {
-		t.Fatalf("Read(3, 4) = %q, %v; want 3456", got, err)
+	body, err := remote.GetSnapshot(ctx, "s1", 4)
+	if err != nil || body == nil {
+		t.Fatalf("GetSnapshot = %v, %v", body, err)
 	}
-	if got, err := reader.Read(context.Background(), 8, 10); err != nil || string(got) != "89" {
-		t.Fatalf("Read at the end = %q, %v; want the 2 bytes left", got, err)
+	var got []byte
+	for {
+		chunk, more, err := body.Next(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !more {
+			break
+		}
+		got = append(got, chunk...)
 	}
-	if err := reader.Close(context.Background()); err != nil {
-		t.Fatalf("Close: %v", err)
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("the streamed snapshot has %d bytes, want %d the same", len(got), len(payload))
 	}
-	if _, err := reader.Read(context.Background(), 0, 1); err == nil {
-		t.Fatal("a closed reader still reads")
+	reader := readers[len(readers)-1]
+	if reader.closes != 1 {
+		t.Fatalf("the reader was closed %d times at the end of the body, want once", reader.closes)
 	}
-	if _, err := files.OpenBinaryReader(context.Background(), path+".missing"); !IsNotFound(err) {
-		t.Fatalf("opening a missing file = %v, want not found", err)
+	for index := 1; index < len(reader.offsets); index++ {
+		if reader.offsets[index] <= reader.offsets[index-1] {
+			t.Fatalf("read offsets %v do not grow", reader.offsets)
+		}
+	}
+	if err := body.Close(); err != nil || reader.closes != 1 {
+		t.Fatalf("Close after the end = %v, closes = %d; want no second close", err, reader.closes)
+	}
+	early, err := remote.GetSnapshot(ctx, "s1", 4)
+	if err != nil || early == nil {
+		t.Fatal(err)
+	}
+	if _, more, err := early.Next(ctx); err != nil || !more {
+		t.Fatalf("first chunk = %v, %v", more, err)
+	}
+	second := readers[len(readers)-1]
+	if err := early.Close(); err != nil || second.closes != 1 {
+		t.Fatalf("an early Close = %v, closes = %d; want the reader closed once", err, second.closes)
+	}
+	if missing, err := remote.GetSnapshot(ctx, "s1", 9); err != nil || missing != nil {
+		t.Fatalf("a snapshot nobody put = %v, %v; want none", missing, err)
 	}
 }
 

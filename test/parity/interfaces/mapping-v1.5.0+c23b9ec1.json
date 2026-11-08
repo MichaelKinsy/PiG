@@ -108969,9 +108969,9 @@
         "call:chord/next/surfaces/surfaces_client.go#updates.retryLater"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
       ]
     },
     {
@@ -108991,9 +108991,9 @@
         "call:chord/next/surfaces/surfaces_client.go#updates.retryLater"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
       ]
     },
     {
@@ -109013,9 +109013,9 @@
         "call:chord/next/surfaces/surfaces_client.go#updates.retryLater"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
       ]
     },
     {
@@ -109035,9 +109035,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#attemptEvents.Opened"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
       ]
     },
     {
@@ -109057,9 +109057,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#attemptEvents.Opened"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
       ]
     },
     {
@@ -109079,9 +109079,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#loop.schedule"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
       ]
     },
     {
@@ -109101,9 +109101,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#loop.schedule"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
       ]
     },
     {
@@ -109123,9 +109123,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
       ]
     },
     {
@@ -109145,9 +109145,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
         "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
       ]
     },
     {
@@ -109167,7 +109167,7 @@
         "call:chord/next/surfaces/surfaces_client.go#connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed",
+        "test:chord/next/surfaces/proof_chord_test.go#TestASharedCloseLinkRunsEachCloseListenerOnceAndALateOneAtOnce",
         "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
         "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries"
       ]
@@ -109176,7 +109176,7 @@
       "id": "pkg:chord/.#LoopLink::property:close",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:390ce9a16559f22ff3624a68f5096f1f31e9f637e726d9c0c42528aac152a2c1",
-      "rationale": "Derived by the interface gap detector: LoopLink::property:close is Go chord/next/surfaces/surfaces_connection.go#LoopLink.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: LoopLink::property:close is Go chord/next/surfaces/surfaces_connection.go#LoopLink.Close (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/surfaces/surfaces_connection.go#LoopLink.Close"
       ],
@@ -109189,14 +109189,14 @@
         "call:chord/next/surfaces/surfaces_connection.go#loop.connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed"
+        "reach:chord/next/surfaces/surfaces_connection.go#loop.connect"
       ]
     },
     {
       "id": "pkg:chord/.#LoopLink::property:close::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: LoopLink::property:close::call:0 is Go chord/next/surfaces/surfaces_connection.go#LoopLink.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: LoopLink::property:close::call:0 is Go chord/next/surfaces/surfaces_connection.go#LoopLink.Close (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/surfaces/surfaces_connection.go#LoopLink.Close"
       ],
@@ -109209,14 +109209,14 @@
         "call:chord/next/surfaces/surfaces_connection.go#loop.connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed"
+        "reach:chord/next/surfaces/surfaces_connection.go#loop.connect"
       ]
     },
     {
       "id": "pkg:chord/.#LoopLink::property:onClose",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b0393441552fc0566c0cf0e3ac1b717636f9344553e5a0c51793bc87e018091e",
-      "rationale": "Derived by the interface gap detector: LoopLink::property:onClose is Go chord/next/surfaces/surfaces_connection.go#LoopLink.OnClose (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: LoopLink::property:onClose is Go chord/next/surfaces/surfaces_connection.go#LoopLink.OnClose (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/surfaces/surfaces_connection.go#LoopLink.OnClose"
       ],
@@ -109229,14 +109229,14 @@
         "call:chord/next/surfaces/surfaces_connection.go#loop.connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed"
+        "reach:chord/next/surfaces/surfaces_connection.go#loop.connect"
       ]
     },
     {
       "id": "pkg:chord/.#LoopLink::property:onClose::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:132e5e31cb54b972a7d3a4b3e1b9b0758cbd72dee48b27e5725fc165f9cf3ca8",
-      "rationale": "Derived by the interface gap detector: LoopLink::property:onClose::call:0 is Go chord/next/surfaces/surfaces_connection.go#LoopLink.OnClose (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: LoopLink::property:onClose::call:0 is Go chord/next/surfaces/surfaces_connection.go#LoopLink.OnClose (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/surfaces/surfaces_connection.go#LoopLink.OnClose"
       ],
@@ -109249,7 +109249,7 @@
         "call:chord/next/surfaces/surfaces_connection.go#loop.connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/proof_chord_test.go#TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed"
+        "reach:chord/next/surfaces/surfaces_connection.go#loop.connect"
       ]
     },
     {
@@ -126429,9 +126429,9 @@
         "call:chord/sync/filesystem.go#NewFileSystemSyncRemote"
       ],
       "evidence": [
+        "test:chord/sync/proof_chord_test.go#TestASnapshotBodyStreamsThroughASyncFileReaderAndClosesItOnceAtTheEndOrWhenClosedEarly",
         "test:chord/sync/proof_chord_test.go#TestFileSystemSyncRemoteKeepsASessionsMetaAndRefusesAnEscapingSessionID",
-        "test:chord/sync/sync_test.go#TestHostPieces",
-        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
+        "test:chord/sync/sync_test.go#TestHostPieces"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -126452,9 +126452,9 @@
         "call:chord/sync/filesystem.go#NewFileSystemSyncRemote"
       ],
       "evidence": [
+        "test:chord/sync/proof_chord_test.go#TestASnapshotBodyStreamsThroughASyncFileReaderAndClosesItOnceAtTheEndOrWhenClosedEarly",
         "test:chord/sync/proof_chord_test.go#TestFileSystemSyncRemoteKeepsASessionsMetaAndRefusesAnEscapingSessionID",
-        "test:chord/sync/sync_test.go#TestHostPieces",
-        "test:chord/sync/limits_test.go#TestLineLimit"
+        "test:chord/sync/sync_test.go#TestHostPieces"
       ]
     },
     {
@@ -126631,7 +126631,7 @@
       "id": "pkg:chord/sync#FileSystemSyncRemote::property:getSnapshot",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b398799bf865f3a7eea73b38defda39836c461b0544b66ee0932625e71cf1888",
-      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:getSnapshot is Go chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:getSnapshot is Go chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot"
       ],
@@ -126644,7 +126644,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot"
       ],
       "evidence": [
-        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot"
+        "test:chord/sync/proof_chord_test.go#TestASnapshotBodyStreamsThroughASyncFileReaderAndClosesItOnceAtTheEndOrWhenClosedEarly"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -126652,7 +126652,7 @@
       "id": "pkg:chord/sync#FileSystemSyncRemote::property:getSnapshot::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3e16e21682ec747266b1748570a01c50a2cc862c068e1989fdcce830477cb9c0",
-      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:getSnapshot::call:0 is Go chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:getSnapshot::call:0 is Go chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot"
       ],
@@ -126665,7 +126665,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot"
       ],
       "evidence": [
-        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot"
+        "test:chord/sync/proof_chord_test.go#TestASnapshotBodyStreamsThroughASyncFileReaderAndClosesItOnceAtTheEndOrWhenClosedEarly"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -126801,7 +126801,7 @@
       "id": "pkg:chord/sync#FileSystemSyncRemote::property:putSnapshot",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:519792f4573137896bb64c49d568015bfd325b5181d818ba8717805e90b1f4f9",
-      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:putSnapshot is Go chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:putSnapshot is Go chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot"
       ],
@@ -126814,7 +126814,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot"
       ],
       "evidence": [
-        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot"
+        "test:chord/sync/proof_chord_test.go#TestASnapshotBodyStreamsThroughASyncFileReaderAndClosesItOnceAtTheEndOrWhenClosedEarly"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -126822,7 +126822,7 @@
       "id": "pkg:chord/sync#FileSystemSyncRemote::property:putSnapshot::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:71296fa3f770ec1104a95ba19b48d0e0f6e780607d858139878ec4a53b8acacd",
-      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:putSnapshot::call:0 is Go chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:putSnapshot::call:0 is Go chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot"
       ],
@@ -126835,7 +126835,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot"
       ],
       "evidence": [
-        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot"
+        "test:chord/sync/proof_chord_test.go#TestASnapshotBodyStreamsThroughASyncFileReaderAndClosesItOnceAtTheEndOrWhenClosedEarly"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128194,7 +128194,7 @@
       "id": "pkg:chord/sync#SyncFileReader::property:close",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:857c6cc04d7f06b229c637f4364eada529cc15dfff1940d45931a4c8aa5f19b9",
-      "rationale": "Derived by the interface gap detector: SyncFileReader::property:close is Go chord/sync/files.go#SyncFileReader.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SyncFileReader::property:close is Go chord/sync/files.go#SyncFileReader.Close (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/files.go#SyncFileReader.Close"
       ],
@@ -128207,7 +128207,7 @@
         "call:chord/sync/filesystem.go#fileBody.Close"
       ],
       "evidence": [
-        "test:chord/sync/proof_chord_test.go#TestASyncFileReaderReadsAtOffsetsAndClosesOnce"
+        "reach:chord/sync/filesystem.go#fileBody.Close"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128215,7 +128215,7 @@
       "id": "pkg:chord/sync#SyncFileReader::property:close::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e",
-      "rationale": "Derived by the interface gap detector: SyncFileReader::property:close::call:0 is Go chord/sync/files.go#SyncFileReader.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SyncFileReader::property:close::call:0 is Go chord/sync/files.go#SyncFileReader.Close (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/files.go#SyncFileReader.Close"
       ],
@@ -128228,7 +128228,7 @@
         "call:chord/sync/filesystem.go#fileBody.Close"
       ],
       "evidence": [
-        "test:chord/sync/proof_chord_test.go#TestASyncFileReaderReadsAtOffsetsAndClosesOnce"
+        "reach:chord/sync/filesystem.go#fileBody.Close"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

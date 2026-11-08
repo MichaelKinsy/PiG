@@ -5546,6 +5546,11 @@
    "file": "chord/sync/filesystem.go",
    "old": "\tif !sessionIDPat.MatchString(sessionID) {\n",
    "new": "\tif sessionIDPat.MatchString(sessionID) {\n"
+  },
+  {
+   "file": "chord/sync/filesystem.go",
+   "old": "\tif len(chunk) == 0 {\n\t\treturn nil, false, body.Close()\n",
+   "new": "\tif len(chunk) == 0 {\n\t\treturn nil, false, nil\n"
   }
  ],
  "packages/chord/src/surfaces/connection.ts": [
@@ -5941,6 +5946,25 @@
    "file": "chord/nextnode/app/layout.go",
    "old": "\tfor _, name := range []string{path, path + \"-wal\", path + \"-shm\"} {\n",
    "new": "\tfor _, name := range []string{path, path + \"-shm\"} {\n"
+  }
+ ],
+ "packages/chord/src/delta/diff.ts": [
+  {
+   "file": "chord/delta/diff.go",
+   "old": "\t\td.emit(Op{\"a\", path, strings.Clone(utf16Suffix(after, shared))})\n",
+   "new": "\t\td.emit(Op{\"a\", path, utf16Suffix(after, shared)})\n"
+  },
+  {
+   "file": "chord/delta/diff.go",
+   "old": "\t\td.emit(Op{\"a\", path, strings.Clone(after[len(before):])})\n",
+   "new": "\t\td.emit(Op{\"a\", path, after[len(before):]})\n"
+  }
+ ],
+ "packages/chord/src/surfaces/client.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "\t\ts.mu.Unlock()\n\t\tlistener()\n\t\treturn\n",
+   "new": "\t\ts.mu.Unlock()\n\t\treturn\n"
   }
  ]
 }

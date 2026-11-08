@@ -3,10 +3,13 @@ package surfaces
 import (
 	"errors"
 	"slices"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
@@ -117,14 +120,26 @@ func TestLoadedFacetsLeavesAFailedPluginOutAndReloadsOnlyWhatChanged(t *testing.
 	}
 }
 
-func TestALoopLinkCallsItsCloseListenerOnceWhenItIsClosed(t *testing.T) {
-	world := newFakeWorld()
-	var link LoopLink = world.open(nil)
-	calls := 0
-	link.OnClose(func() { calls++ })
-	link.Close()
-	link.Close()
-	if calls != 1 {
-		t.Fatalf("the close listener ran %d times, want once", calls)
+// sharedClose is the link the surfaces' connection loop and host follow together (surfaces_client.go): over a real link it runs
+// each listener once, and one added after the close at once.
+func TestASharedCloseLinkRunsEachCloseListenerOnceAndALateOneAtOnce(t *testing.T) {
+	a, _ := link.MemoryLinkPair()
+	shared := newSharedClose(a)
+	var _ LoopLink = shared
+	var first, second atomic.Int32
+	done := make(chan struct{})
+	shared.OnClose(func() { first.Add(1) })
+	shared.OnClose(func() { second.Add(1); close(done) })
+	shared.Close()
+	shared.Close()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the close listeners did not run")
+	}
+	var late atomic.Int32
+	shared.OnClose(func() { late.Add(1) })
+	if first.Load() != 1 || second.Load() != 1 || late.Load() != 1 {
+		t.Fatalf("listener runs = %d, %d, %d; want 1, 1 and a late one at once", first.Load(), second.Load(), late.Load())
 	}
 }
