@@ -1069,7 +1069,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9be7181](#bf-9be7181) | Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the… | PiG's own defect | Linux | 0.5.2 |
 | [BF-9c1a0e9](#bf-9c1a0e9) | An OpenAI Responses stream event or output item with a member of an unexpected type is read as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9c98038](#bf-9c98038) | An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
-| [BF-9cf54d7](#bf-9cf54d7) | A Node extension's `message_end` event now carries the same message object that… | PiG's own defect | All platforms | Unreleased |
+| [BF-9cf54d7](#bf-9cf54d7) | fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-9d02a48](#bf-9d02a48) | Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9d2095f](#bf-9d2095f) | fix(durable/core): fewer TinyGo heap sites for deferred commits; a read or host operation that stores held… | PiG's own defect | All platforms | Unreleased |
 | [BF-9d4fe9c](#bf-9d4fe9c) | Selecting a model or cycling models with Ctrl+P no longer freezes the interactive mode when an extension's… | PiG's own defect | All platforms | 0.5.0 |
@@ -1556,6 +1556,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e90f6c8-2](#bf-e90f6c8-2) | Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-e9332c8](#bf-e9332c8) | fix(codingagent): session search re: reads patterns as V8 does | PiG's own defect | All platforms | Unreleased |
 | [BF-e9392fd](#bf-e9392fd) | A Google Generative AI or Vertex request with no `contents` (a history of system messages only, or one user… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e99791b](#bf-e99791b) | A Node extension's `message_end` event now carries the same message object that… | PiG's own defect | All platforms | Unreleased |
 | [BF-e9ca222](#bf-e9ca222) | fix(durable/host/cf): adopt Pi's address-following watches and observers (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-e9e4fc5](#bf-e9e4fc5) | Markdown rendering matches Pi for five more shapes of text | PiG's own defect | All platforms | Unreleased |
 | [BF-e9e9cf8](#bf-e9e9cf8) | An extension that calls a pi-ai function such as `completeSimple` at top level or in its factory no longer… | PiG's own defect | All platforms | 0.5.0 |
@@ -16292,17 +16293,16 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-9cf54d7
 
-**A Node extension's `message_end` event now carries the same message object that…**
+**fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi**
 
 - **Source:** PiG's own defect
-- **Symptom:** A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, where the extensions see the event first and the entry then holds `event.message` itself.
-- **Root cause:** Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.
-- **User impact:** Lost or altered data
+- **Symptom:** fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi
+- **Root cause:** Pi emits message_end to the extensions and then appends event.message to the session, so the entry's message is the event's own object and every handler of the event shares it. The Node runtime received the event and the session log as separate payloads, so an extension that finds an entry by entry.message === message found none. Paseo's Pi integration does exactly that to learn the entry id of the prompt it sent, so through PiG its timeline lacked the user message until a restart and a conversation rewind was refused. The runtime now makes the two one object, matching by role, timestamp and tool call id and then by value, in either arrival order. Regenerated runtime-node.pack and its…
+- **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `9cf54d7b97` (2026-11-07)
 - **Tests:** None recorded.
-- **Release note:** A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, where the extensions see the event first and the entry then holds `event.message` itself. This holds when no `message_end` handler returns a replacement message; Pi's overwrite of the original object in place when one does is not reproduced (D420 draft). An extension that finds an entry with `entry.message === message` found none in PiG. Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.
 
 ### BF-9d02a48
 
@@ -23068,6 +23068,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `532f5728bb` (2026-10-10), `942ecc33e7` (2026-10-10), `e9392fd158` (2026-10-10)
 - **Tests:** `ai/google_empty_contents_test.go::TestGoogleEmptyContentsChecksThePayloadOnPayloadReturned`, `ai/google_empty_contents_test.go::TestGoogleEmptyContentsFailsBeforeSending`, `ai/tool_flow_result_reset_test.go::TestTransformMessagesResultBeforeCallDoesNotAnswerIt`, `ai/transform_messages_allocs_test.go::TestTransformMessagesDoesNotReboxUnchangedMessages`, `test/pipeline-diff/system_only_test.go::TestSystemOnlyHistoryFailsBeforeSendingLikePi`
 - **Release note:** A Google Generative AI or Vertex request with no `contents` (a history of system messages only, or one user message without content) now fails with `contents are required` before it is sent, as Pi's `@google/genai` SDK does, instead of reaching the API and failing with HTTP 400. An `onPayload` hook that adds or removes `contents` is checked as sent.
+
+### BF-e99791b
+
+**A Node extension's `message_end` event now carries the same message object that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object.
+- **Root cause:** Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e99791bd8b` (2026-11-07)
+- **Tests:** `agent/message_identity_test.go::TestIdentityOfAStartEnvelopeIsTheMessageItWasCopiedFrom`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityAcrossAReplacement`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityInOtherEvents`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityPaths`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIsTheSessionEntryMessage`, `coding/extension/host/subprocess/state_push_message_entries_test.go::TestPushStateToSendsMessageEntriesToANodeRuntimeOnce`, `coding/session_message_sequence_test.go::TestMessageSequencesNumberMessagesByIdentity`, `coding/session_message_sequence_test.go::TestSessionNumbersTheMessagesExtensionEventsShare` and 1 more in docs/bug-ledger.json
+- **Release note:** A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object. The `message` of `message_start` (system, user and tool result messages), the `message` and `toolResults` of `turn_end` and the `messages` of `agent_end` are those same objects, and extensions packed in one process hold one object for one message. An extension that finds an entry with `entry.message === message` found none in PiG. Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.
 
 ### BF-e9ca222
 
