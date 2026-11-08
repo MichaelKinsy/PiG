@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/components"
+	tuiruntime "github.com/MichaelKinsy/PiG/apps/p2/tui/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/tuitest"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -151,3 +153,41 @@ var _ = p2runtime.Host
 var _ = context.Background
 
 func containsText(screen, text string) bool { return strings.Contains(screen, text) }
+
+func metaJSON() *delta.JsonObject {
+	return delta.JsonObjectOf("provider", "faux", "modelId", "faux-1", "name", "Faux", "contextWindow", float64(1000), "reasoning", false, "thinkingLevels", []any{"off"})
+}
+
+func emptyView() *delta.JsonObject {
+	return delta.JsonObjectOf("conversation", delta.JsonObjectOf("id", float64(1)), "entries", []any{}, "docs", delta.JsonObjectOf())
+}
+
+func unusedMethod(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+	return nil, errors.New("not in this test")
+}
+
+// chatWorker is the session worker's Chat of the location and project tests: an empty conversation, nothing sent.
+func chatWorker() p2test.Stub {
+	return p2test.Stub{Contract: chatcontract.Chat, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
+		methods := map[string]p2test.StubMethod{
+			"entries": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				return delta.JsonObjectOf("items", []any{}, "more", false), nil
+			},
+		}
+		for _, name := range []string{"send", "stop", "dequeue", "configure", "compact", "abortCompaction", "reset", "shell", "abortShell", "dequeueOwn"} {
+			methods[name] = unusedMethod
+		}
+		return p2test.StubMembers{
+			Variant: "participant",
+			State:   map[string]any{"view": emptyView(), "model": metaJSON(), "liveShell": nil, "stats": nil},
+			Methods: methods,
+		}
+	}}
+}
+
+func roleOf(role string) tuiruntime.TuiRole {
+	if role == "guest" {
+		return tuiruntime.RoleGuest
+	}
+	return tuiruntime.RoleOwner
+}
