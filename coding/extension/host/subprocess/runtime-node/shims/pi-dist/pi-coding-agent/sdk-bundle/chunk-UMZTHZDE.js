@@ -141,7 +141,7 @@ var McpOAuthCredentialStore = class {
   }
 };
 var PI_CLIENT_METADATA_DOCUMENTS = {
-  baseUrl: "https://pi.dev/oauth",
+  baseUrl: "${identity.hostedOrigin}/oauth",
   listsRedirectUrl: isClientMetadataDocumentCallback
 };
 var PI_CLIENT = { clientName: APP_NAME, clientMetadataDocuments: PI_CLIENT_METADATA_DOCUMENTS };

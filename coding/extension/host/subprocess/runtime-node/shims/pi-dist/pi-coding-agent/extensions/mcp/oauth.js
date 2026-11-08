@@ -130,9 +130,9 @@ export class McpOAuthCredentialStore {
         });
     }
 }
-/** pi's Client ID Metadata Documents on pi.dev: `client.json` and `<callback ID>/client.json`. */
+/** PiG's Client ID Metadata Documents on its own origin (D64), Pi's shape: `client.json` and `<callback ID>/client.json`. */
 const PI_CLIENT_METADATA_DOCUMENTS = {
-    baseUrl: "https://pi.dev/oauth",
+    baseUrl: "${identity.hostedOrigin}/oauth",
     listsRedirectUrl: isClientMetadataDocumentCallback,
 };
 /** pi's client identity for sign-in and refresh. */

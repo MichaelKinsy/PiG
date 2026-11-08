@@ -13920,8 +13920,8 @@
       },
       "source": "dist/extensions/mcp/oauth.js",
       "sourceSha256": "60b5c1fde162e01639a712c0f160c7833380dd9c32fc9983aeac688d3890e0e5",
-      "sha256": "051c357e25adcddcd15882da55e9c4307ca6af286c8c7880557b9847fb6cde3d",
-      "rewrite": "module specifiers"
+      "sha256": "1994139630d17c970b5ac33ce6ddddba8ba00360a5d89e76357ae76730d8489b",
+      "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/mcp/resources.js",
@@ -14937,6 +14937,16 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-F5UFZDUR.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.5.0",
+        "integrity": "sha512-xNDZ5kqowO6Z03FS2gwAkPEGk1ssxVcYKQ6qZId84mFEvwACvvyc2l0vAMOS+c5zvxLRMLBE9r4y44IGYkMJaQ=="
+      },
+      "sha256": "7f84bd1c00f35b6bacf1a75b24c7cec2fd8346da456d52ef5d78a2517b982292",
+      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
       "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-FIOAHQVQ.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
@@ -15017,16 +15027,6 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-KHPK5VRF.js",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.5.0",
-        "integrity": "sha512-xNDZ5kqowO6Z03FS2gwAkPEGk1ssxVcYKQ6qZId84mFEvwACvvyc2l0vAMOS+c5zvxLRMLBE9r4y44IGYkMJaQ=="
-      },
-      "sha256": "c90c284523b573783a097be3707b058368692db0d230efd54cd47fea06147a2a",
-      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
       "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-L57ECBVI.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
@@ -15087,6 +15087,16 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-TYZSVWSI.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.5.0",
+        "integrity": "sha512-xNDZ5kqowO6Z03FS2gwAkPEGk1ssxVcYKQ6qZId84mFEvwACvvyc2l0vAMOS+c5zvxLRMLBE9r4y44IGYkMJaQ=="
+      },
+      "sha256": "c418f6d1e62cb362586ee3afe8887f1f6faf2db5b58fa845691ad4b2aab671bf",
+      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
       "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-U2A5FEYY.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
@@ -15097,13 +15107,13 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-UQHOVDJL.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-UMZTHZDE.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.5.0",
         "integrity": "sha512-xNDZ5kqowO6Z03FS2gwAkPEGk1ssxVcYKQ6qZId84mFEvwACvvyc2l0vAMOS+c5zvxLRMLBE9r4y44IGYkMJaQ=="
       },
-      "sha256": "e479dabaa986a9bc1edce1e4843503b02d029f94426a616d8cab889fd8fe9aea",
+      "sha256": "c3c495525b834d9f8a47a057c331a13282885efacac32652f3d3876b12e2eedc",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15117,23 +15127,13 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-YBJ6FXYM.js",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.5.0",
-        "integrity": "sha512-xNDZ5kqowO6Z03FS2gwAkPEGk1ssxVcYKQ6qZId84mFEvwACvvyc2l0vAMOS+c5zvxLRMLBE9r4y44IGYkMJaQ=="
-      },
-      "sha256": "fa0db07637aff9e8de528120723a12ddcad091272caf458e509e047ce265b440",
-      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
       "path": "pi-dist/pi-coding-agent/sdk-bundle/index.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.5.0",
         "integrity": "sha512-xNDZ5kqowO6Z03FS2gwAkPEGk1ssxVcYKQ6qZId84mFEvwACvvyc2l0vAMOS+c5zvxLRMLBE9r4y44IGYkMJaQ=="
       },
-      "sha256": "472db4e7a4456afd956e37251ad87aebd550276426af5232449a113084007337",
+      "sha256": "635b9d825e79e1635d204097d241b60c7d5eca2f43f8c733cdd5a8efded75466",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15143,7 +15143,7 @@
         "version": "1.5.0",
         "integrity": "sha512-xNDZ5kqowO6Z03FS2gwAkPEGk1ssxVcYKQ6qZId84mFEvwACvvyc2l0vAMOS+c5zvxLRMLBE9r4y44IGYkMJaQ=="
       },
-      "sha256": "cc68c23fba0a11c2cf08d8a825d00aed5bfaccfa4ef0686daedba0b3adcdbdd3",
+      "sha256": "63f51905ef3a4c93e741c2ee97eb2e251d2a9bd71e0e835995b7171eedc54114",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
