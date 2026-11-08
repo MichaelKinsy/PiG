@@ -28,6 +28,12 @@ const invitePermissions = (1 << 10) | (1 << 11) | (1 << 14) | (1 << 15) | (1 << 
 const retryAfter = 60 * time.Second
 
 // readyTimeout is how long a login waits for Discord to get ready.
+// The application flags that say the Message Content intent is on (verified or not).
+const (
+	gatewayMessageContent        = 1 << 18
+	gatewayMessageContentLimited = 1 << 19
+)
+
 const readyTimeout = 30 * time.Second
 
 // BotEvent is what a bot hands its fleet: a message it received, or that it (re)connected and may have missed some.
@@ -141,20 +147,6 @@ func (b *Bot) Connect(token string) BotStatus {
 	}
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentMessageContent
 	session.ShouldReconnectOnError = true
-	// discordgo reports the gateway's refusals (close codes 4004, 4014) only in its log.
-	refused := make(chan string, 1)
-	session.Logger = func(level, _ int, format string, args ...any) {
-		text := fmt.Sprintf(format, args...)
-		if level == discordgo.LogError {
-			fmt.Fprintln(os.Stderr, "p2 discord:", strings.TrimSpace(text))
-		}
-		if reason := refusalOf(text); reason != "" {
-			select {
-			case refused <- reason:
-			default:
-			}
-		}
-	}
 	readied := make(chan struct{})
 	var once sync.Once
 	session.AddHandler(func(s *discordgo.Session, _ *discordgo.Ready) {
@@ -188,7 +180,7 @@ func (b *Bot) Connect(token string) BotStatus {
 	}
 	session.AddHandler(func(s *discordgo.Session, e *discordgo.GuildCreate) { refresh(s, e) })
 	session.AddHandler(func(s *discordgo.Session, e *discordgo.GuildDelete) { refresh(s, e) })
-	status, failure := b.login(session, token, readied, refused)
+	status, failure := b.login(session, readied)
 	if failure != nil {
 		_ = session.Close()
 		b.mu.Lock()
@@ -239,7 +231,7 @@ func refusalOf(text string) string {
 }
 
 // login opens the gateway and waits until Discord is ready; the status it then has.
-func (b *Bot) login(session *discordgo.Session, token string, readied <-chan struct{}, refused <-chan string) (BotStatus, error) {
+func (b *Bot) login(session *discordgo.Session, readied <-chan struct{}) (BotStatus, error) {
 	// A token the REST API refuses never gets to the gateway.
 	if _, err := session.User("@me"); err != nil {
 		var rest *discordgo.RESTError
@@ -247,6 +239,15 @@ func (b *Bot) login(session *discordgo.Session, token string, readied <-chan str
 			return BotStatus{}, &refusalError{"Discord refused the token."}
 		}
 		return BotStatus{}, err
+	}
+	// The gateway closes a session whose application lacks the Message Content intent (4014) without a word discordgo gives
+	// back: the application's flags say so beforehand.
+	application, err := session.Application("@me")
+	if err != nil {
+		return BotStatus{}, err
+	}
+	if application.Flags&(gatewayMessageContent|gatewayMessageContentLimited) == 0 {
+		return BotStatus{}, &refusalError{refusalOf("disallowed intent")}
 	}
 	if err := session.Open(); err != nil {
 		if text := refusalOf(err.Error()); text != "" {
@@ -256,8 +257,6 @@ func (b *Bot) login(session *discordgo.Session, token string, readied <-chan str
 	}
 	select {
 	case <-readied:
-	case text := <-refused:
-		return BotStatus{}, &refusalError{text}
 	case <-time.After(readyTimeout):
 		return BotStatus{}, errors.New("Discord did not get ready")
 	}
@@ -498,9 +497,11 @@ func messageOf(session *discordgo.Session, message *discordgo.Message, botID str
 	role := ""
 	if message.GuildID != "" && session.State != nil {
 		if guild, err := session.State.Guild(message.GuildID); err == nil {
-			for _, each := range guild.Roles {
-				if each.Managed && each.Tags != nil && each.Tags.BotID == botID {
-					role = each.ID
+			if me, err := session.State.Member(message.GuildID, botID); err == nil {
+				for _, each := range guild.Roles {
+					if each.Managed && slices.Contains(me.Roles, each.ID) {
+						role = each.ID
+					}
 				}
 			}
 		}
