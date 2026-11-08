@@ -5,6 +5,7 @@
 package e2e_test
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
@@ -20,9 +22,12 @@ import (
 	sharingcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing/contract"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
 	subagentscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
+	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/harness"
 
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
@@ -47,7 +52,9 @@ func (f *agentFixture) statuses() *host.Reference {
 }
 
 // childrenOf are the session's listed children.
-func (f *agentFixture) childrenOf(view delta.JsonValue) []any { return list(object(view).Value(f.Session)) }
+func (f *agentFixture) childrenOf(view delta.JsonValue) []any {
+	return list(object(view).Value(f.Session))
+}
 
 func (f *agentFixture) childNamed(view delta.JsonValue, name string) *delta.JsonObject {
 	for _, each := range f.childrenOf(view) {
@@ -107,7 +114,9 @@ func TestSubagentsFakeProvider(t *testing.T) {
 	t.Run("spawns a configured child and reports its answer once", func(t *testing.T) {
 		f.send("subagent")
 		view := f.until(chatView, func(v delta.JsonValue) bool {
-			return hasText(v, func(s string) bool { return strings.HasPrefix(s, "[answered, no reply needed]") && strings.Contains(s, "Echo: hello helper") })
+			return hasText(v, func(s string) bool {
+				return strings.HasPrefix(s, "[answered, no reply needed]") && strings.Contains(s, "Echo: hello helper")
+			})
 		})
 		spawned := subagentResult(view, "spawn")
 		if spawned == nil || spawned.Value("isError") != false {
@@ -124,8 +133,8 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		}
 		f.send("subagent-answer")
 		answered := f.until(chatView, func(v delta.JsonValue) bool { return subagentResult(v, "answer") != nil })
-		if resultText(subagentResult(answered, "answer")) != "Echo: hello helper" {
-			t.Errorf("answer = %q", resultText(subagentResult(answered, "answer")))
+		if agentResultText(subagentResult(answered, "answer")) != "Echo: hello helper" {
+			t.Errorf("answer = %q", agentResultText(subagentResult(answered, "answer")))
 		}
 		reports := 0
 		for _, text := range textsOf(answered) {
@@ -139,16 +148,19 @@ func TestSubagentsFakeProvider(t *testing.T) {
 	})
 
 	t.Run("configures tools and opens a child's independent transcript", func(t *testing.T) {
-		f.send("subagent-configure")
+		// Pi's flow also chooses the `artifact` tool, which has no Go plugin yet: `read` stands in for it.
+		f.send(`subagent {"action":"configure","name":"helper","model":"faux/faux-1","thinkingLevel":"high","tools":["bash","read"]}`)
 		f.until(children.Member("children"), func(v delta.JsonValue) bool {
 			c := f.childNamed(v, "helper")
-			return c != nil && marshal(t, c.Value("tools")) == `["bash","artifact"]`
+			return c != nil && marshal(t, c.Value("tools")) == `["bash","read"]`
 		})
 		sub := f.hold(child.Value("conversationId").(float64))
-		view := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Echo: hello helper" }) })
+		view := f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return hasText(v, func(s string) bool { return s == "Echo: hello helper" })
+		})
 		// The sidebar lists the chosen tools; the agent also has `team` (`scope: "subagent"`), offered from the start.
 		agent := object(object(object(view).Value("docs")).Value("pi.agent"))
-		if marshal(t, agent.Value("tools")) != `["bash","artifact","team"]` || marshal(t, object(agent.Value("modelTools")).Value("add")) != `["team"]` {
+		if marshal(t, agent.Value("tools")) != `["bash","read","team"]` || marshal(t, object(agent.Value("modelTools")).Value("add")) != `["team"]` {
 			t.Errorf("agent = %s", marshal(t, agent))
 		}
 		if _, err := sub.Call("configure", delta.JsonObjectOf("model", delta.JsonObjectOf("provider", "faux", "modelId", "faux-1"), "thinkingLevel", "off"), p2test.Background); err != nil {
@@ -161,7 +173,9 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		if _, err := sub.Call("send", delta.JsonObjectOf("text", "direct child message", "requestId", "direct"), p2test.Background); err != nil {
 			t.Fatal(err)
 		}
-		f.until(sub.Member("view"), func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Echo: direct child message" }) })
+		f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return hasText(v, func(s string) bool { return s == "Echo: direct child message" })
+		})
 		root := f.until(chatView, func(v delta.JsonValue) bool { return !running(v) })
 		if hasText(root, func(s string) bool { return s == "Echo: direct child message" }) {
 			t.Error("direct child prompts do not auto-report")
@@ -173,7 +187,7 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		}
 		// A failed open leaves its holders waiting (the conversation may appear): the failure names the cause.
 		failure, err := p2test.FailureOf(missing)
-		if err != nil || failure == nil || !strings.Contains(failure.Error(), "Unknown conversation") {
+		if err != nil || failure == nil || !strings.Contains(failure.Error(), "does not exist") && !strings.Contains(failure.Error(), "Unknown conversation") {
 			t.Errorf("open failure = %v, %v", failure, err)
 		}
 		missing.Release()
@@ -188,7 +202,7 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		})
 		f.send("subagent-status")
 		view := f.until(chatView, func(v delta.JsonValue) bool { return subagentResult(v, "status") != nil })
-		if got := resultText(subagentResult(view, "status")); got != "1 archived (status with a name shows one)." {
+		if got := agentResultText(subagentResult(view, "status")); got != "1 archived (status with a name shows one)." {
 			t.Errorf("status = %q", got)
 		}
 		control, err := p2test.HoldIn(f.Owner, subagentscontract.SubagentControl, delta.JsonObjectOf("session", f.Session), "participant")
@@ -226,7 +240,9 @@ func TestSubagentsFakeProvider(t *testing.T) {
 			c := f.childNamed(v, "helper")
 			return c != nil && c.Value("archived") == nil
 		})
-		f.until(sub.Member("view"), func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Echo: hello again" }) })
+		f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return hasText(v, func(s string) bool { return s == "Echo: hello again" })
+		})
 		sub.Release()
 		control.Release()
 	})
@@ -306,7 +322,9 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		// Read-only guests cannot archive (read/write guests can, as the owner).
 		_, err = p2test.HoldIn(guest, subagentscontract.SubagentControl, delta.JsonObjectOf("session", f.Session), "participant")
 		p2test.ExpectChord(t, err, data.CodeForbidden)
-		f.until(sub.Member("view"), func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Echo: hello helper" }) })
+		f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return hasText(v, func(s string) bool { return s == "Echo: hello helper" })
+		})
 		sub.Release()
 		list0.Release()
 		sharing.Release()
@@ -395,11 +413,10 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 		}
 	}
 	// A missing directory fails the spawn and creates nothing; only spawn takes a cwd.
-	t.Cleanup(func() { dumpLogs(t) })
-	t0 := time.Now()
 	spawn(map[string]any{"action": "spawn", "name": "bad", "message": "x", "cwd": "missing"}, "missing")
-	f.until(view, func(v delta.JsonValue) bool { return hasText(v, hasSubstring("cwd missing is not an existing directory")) })
-	t.Log("first", time.Since(t0))
+	f.until(view, func(v delta.JsonValue) bool {
+		return hasText(v, hasSubstring("cwd missing is not an existing directory"))
+	})
 	spawn(map[string]any{"action": "spawn", "name": "file", "message": "x", "cwd": "worktree/marker.txt"}, "file")
 	f.until(view, func(v delta.JsonValue) bool {
 		return hasText(v, hasSubstring("cwd worktree/marker.txt is not an existing directory"))
@@ -410,7 +427,9 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 
 	// A relative cwd resolves against the caller's.
 	spawn(map[string]any{"action": "spawn", "name": "wt", "message": "bash", "cwd": "worktree", "tools": []string{"bash"}}, "spawn")
-	spawned := f.until(view, func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == `<sender kind="subagent" name="wt"/>` }) }, 20*time.Second)
+	spawned := f.until(view, func(v delta.JsonValue) bool {
+		return hasText(v, func(s string) bool { return s == `<sender kind="subagent" name="wt"/>` })
+	}, 20*time.Second)
 	worktree := filepath.Join(project, "worktree")
 	if got := object(subagentResult(spawned, "spawn").Value("details")).Value("cwd"); got != worktree {
 		t.Errorf("spawn cwd = %v", got)
@@ -422,18 +441,20 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 	}
 	// Only spawn and configure take a location; configure places it again (here where it is).
 	spawn(map[string]any{"action": "send", "name": "wt", "message": "x", "cwd": "worktree"}, "send-cwd")
-	f.until(view, func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Only spawn and configure take a location." }) })
+	f.until(view, func(v delta.JsonValue) bool {
+		return hasText(v, func(s string) bool { return s == "Only spawn and configure take a location." })
+	})
 	spawn(map[string]any{"action": "configure", "name": "wt", "tools": []string{"bash"}, "cwd": "worktree"}, "configure")
 	f.until(view, func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Configured wt." }) })
 	spawn(map[string]any{"action": "status"}, "status")
 	status := f.until(view, func(v delta.JsonValue) bool { return subagentResult(v, "status") != nil })
-	if !regexp.MustCompile(regexp.QuoteMeta("· in " + worktree) + `$`).MatchString(resultText(subagentResult(status, "status"))) {
-		t.Errorf("status = %q", resultText(subagentResult(status, "status")))
+	if !regexp.MustCompile(regexp.QuoteMeta("· in "+worktree) + `$`).MatchString(agentResultText(subagentResult(status, "status"))) {
+		t.Errorf("status = %q", agentResultText(subagentResult(status, "status")))
 	}
 	// Its bash ran in the worktree.
 	sub := f.hold(agent.Value("conversationId").(float64))
 	childView := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "bash")) > 0 })
-	if got := resultText(toolResults(childView, "bash")[0]); !regexp.MustCompile(`/worktree\s*$`).MatchString(got) {
+	if got := agentResultText(toolResults(childView, "bash")[0]); !regexp.MustCompile(`/worktree\s*$`).MatchString(got) {
 		t.Errorf("pwd = %q", got)
 	}
 	sub.Release()
@@ -442,7 +463,132 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 // A subagent left with a stale cwd by an earlier move works in the session's cwd again (Pi Mobile 78056b34e): the worker
 // reconciles subagents without their own cwd at every start.
 func TestSubagentWithAStaleCwdWorksInTheSessionsCwdAgain(t *testing.T) {
-	t.Skip("needs the durable storage of a stopped session to be reconfigured from the test: see the sessions lane's storage helper")
+	f := &agentFixture{t: t}
+	p2test.NoLeakedGoroutines(t)
+	f.Fixture = p2test.StartFixture(t, hosts.ServerOptions{})
+	project, err := filepath.EvalSymlinks(f.Fixture.Workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	own := filepath.Join(project, "own")
+	if err := os.Mkdir(own, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f.Owner = f.Fixture.Browser()
+	sessions, err := p2test.HoldIn(f.Owner, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := sessions.Call("create", delta.JsonObjectOf("cwd", project), p2test.Background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Session = object(created).Value("id").(string)
+	f.Chat = f.hold(1)
+	statuses := f.statuses()
+	children := f.children()
+	subagent := func(owner host.Host, args map[string]any, requestId string, echo string) {
+		t.Helper()
+		chat, err := p2test.HoldIn(owner, chatcontract.Chat, delta.JsonObjectOf("session", f.Session, "conversation", float64(1)), "participant")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer chat.Release()
+		text := "subagent " + marshal(t, args)
+		if _, err := chat.Call("send", delta.JsonObjectOf("text", text, "requestId", requestId), p2test.Background); err != nil {
+			t.Fatal(err)
+		}
+		f.until(chat.Member("view"), func(v delta.JsonValue) bool { return strings.Contains(marshal(t, textsOf(v)), "Echo: subagent") }, 30*time.Second)
+	}
+	subagent(f.Owner, map[string]any{"action": "spawn", "name": "old", "message": "hi", "tools": []string{"bash"}}, "old", "")
+	f.quiet(statuses)
+	subagent(f.Owner, map[string]any{"action": "spawn", "name": "own", "message": "hi", "cwd": own, "tools": []string{"bash"}}, "own", "")
+	f.quiet(statuses)
+	listed := f.until(children.Member("children"), func(v delta.JsonValue) bool { return len(f.childrenOf(v)) == 2 })
+	conversations := map[string]float64{}
+	for _, each := range f.childrenOf(listed) {
+		conversations[object(each).Value("name").(string)] = object(each).Value("conversationId").(float64)
+	}
+
+	// What a session moved before subagents tracked their own cwd looks like: the child still holds a path of the machine
+	// the session used to run on, which exists nowhere here.
+	port, dataDir := f.Fixture.Server.Port, f.Fixture.DataDir
+	if err := f.Fixture.Server.Close(p2test.Background); err != nil {
+		t.Fatal(err)
+	}
+	directory, err := p2runtime.SessionDirectory(dataDir, f.Session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := p2runtime.OpenHostStore(p2test.Background, directory, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage, err := p2runtime.DurableStorage(p2test.Background, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened, err := harness.OpenHarness(p2test.Background, storage, harness.HarnessOptions{Models: ai.CreateModels(ai.CreateModelsOptions{}), Registry: harness.CreateRegistry()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = opened.Commit(p2test.Background, func(tx durable.Tx) (any, error) {
+		return nil, harness.Configure(tx, durable.ConversationId(conversations["old"]), harness.AgentChange{Cwd: harness.SetTo("/data/data/elsewhere/pi-private")})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := opened.Close(context.WithoutCancel(p2test.Background)); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(p2test.Background); err != nil {
+		t.Fatal(err)
+	}
+
+	entry, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fake := true
+	restarted, err := hosts.StartServer(hosts.ServerOptions{DataDir: dataDir, Port: &port, Fake: &fake, Entry: entry, ExecArgv: []string{hosts.WorkerArg}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restarted.Close(p2test.Background)
+	conn, err := p2test.Dial(restarted.Port, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner, err := p2test.ClientHost(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close(p2test.Background)
+	restartedStatuses, err := p2test.HoldIn(owner, statuscontract.SessionStatus, delta.NewJsonObject(0), "reader")
+	if err != nil {
+		t.Fatal(err)
+	}
+	subagent(owner, map[string]any{"action": "send", "name": "old", "message": "bash"}, "old-bash", "")
+	f.quiet(restartedStatuses)
+	subagent(owner, map[string]any{"action": "send", "name": "own", "message": "bash"}, "own-bash", "")
+	f.quiet(restartedStatuses)
+	pwd := func(name string) (string, any) {
+		chat, err := p2test.HoldIn(owner, chatcontract.Chat, delta.JsonObjectOf("session", f.Session, "conversation", conversations[name]), "participant")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer chat.Release()
+		view := f.until(chat.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "bash")) > 0 }, 30*time.Second)
+		agent := object(object(object(view).Value("docs")).Value("pi.agent"))
+		return strings.TrimSpace(agentResultText(toolResults(view, "bash")[0])), agent.Value("cwd")
+	}
+	// The session's cwd, not the stale path, the server's process cwd or the app directory.
+	if got, cwd := pwd("old"); got != project || cwd != project {
+		t.Errorf("old: pwd %q, cwd %v, want %q", got, cwd, project)
+	}
+	if got, cwd := pwd("own"); got != own || cwd != own {
+		t.Errorf("a subagent spawned with its own cwd keeps it: pwd %q, cwd %v, want %q", got, cwd, own)
+	}
 }
 
 func TestSubagentTeamMessaging(t *testing.T) {
@@ -491,7 +637,7 @@ func TestSubagentTeamMessaging(t *testing.T) {
 	if fromName(asked) != "asker" || data0.Value("text") != "Which API should I use?" {
 		t.Errorf("asked = %s", marshal(t, data0))
 	}
-	if m := modelOf(asked); !strings.Contains(m, `<sender kind=\"subagent\" name=\"asker\"/>`) || !strings.Contains(m, `[asks; answer with subagent send to asker] Which API`) {
+	if m := modelOf(asked); !strings.Contains(m, `kind=\"subagent\" name=\"asker\"`) || !strings.Contains(m, `[asks; answer with subagent send to asker] Which API`) {
 		t.Errorf("model = %s", m)
 	}
 	// The owner started the turn that spawned it: what it writes records that, so the main agent's turn on it may act for the owner.
@@ -536,8 +682,8 @@ func TestSubagentTeamMessaging(t *testing.T) {
 	askerChat := f.hold(asker.Value("conversationId").(float64))
 	answered := f.until(askerChat.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "team")) >= 3 })
 	teamResults := toolResults(answered, "team")
-	if !strings.Contains(resultText(teamResults[len(teamResults)-1]), "Echo: ") {
-		t.Errorf("the sibling's latest answer: %q", resultText(teamResults[len(teamResults)-1]))
+	if !strings.Contains(agentResultText(teamResults[len(teamResults)-1]), "Echo: ") {
+		t.Errorf("the sibling's latest answer: %q", agentResultText(teamResults[len(teamResults)-1]))
 	}
 	f.quiet(statuses)
 
@@ -604,12 +750,12 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 
 	t.Run("validates tools against the caller's own, session-level ones excluded", func(t *testing.T) {
 		bad := subagent(map[string]any{"action": "spawn", "name": "bad", "message": "x", "tools": []string{"codemode", "bogus"}})
-		if bad.Value("isError") != true || !regexp.MustCompile(`^Unknown tools: bogus\. Choose from your own tools: .*\bcodemode\b`).MatchString(resultText(bad)) {
-			t.Errorf("bad = %q", resultText(bad))
+		if bad.Value("isError") != true || !regexp.MustCompile(`^Unknown tools: bogus\. Choose from your own tools: .*\bcodemode\b`).MatchString(agentResultText(bad)) {
+			t.Errorf("bad = %q", agentResultText(bad))
 		}
 		main := subagent(map[string]any{"action": "spawn", "name": "bad", "message": "x", "tools": []string{"subagent", "rename_session"}})
-		if !strings.HasPrefix(resultText(main), "Unknown tools: subagent, rename_session. ") {
-			t.Errorf("main = %q", resultText(main))
+		if !strings.HasPrefix(agentResultText(main), "Unknown tools: subagent, rename_session. ") {
+			t.Errorf("main = %q", agentResultText(main))
 		}
 		chosen := subagent(map[string]any{"action": "spawn", "name": "chosen", "message": "x", "tools": []string{"bash", "codemode"}})
 		if strings.Join(toolsOf(chosen), ",") != "bash,codemode" {
@@ -631,10 +777,10 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 		}, "\n")
 		spawned := subagent(map[string]any{"action": "spawn", "name": "coder", "message": "codemode " + script})
 		if spawned.Value("isError") != false {
-			t.Fatal(resultText(spawned))
+			t.Fatal(agentResultText(spawned))
 		}
 		given := toolsOf(spawned)
-		for _, each := range []string{"read", "bash", "codemode", "history_search", "location_move"} {
+		for _, each := range []string{"read", "bash", "codemode"} {
 			if !contains(given, each) {
 				t.Errorf("missing %s", each)
 			}
@@ -650,9 +796,9 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 		childView := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "codemode")) > 0 })
 		ran := toolResults(childView, "codemode")[0]
 		if ran.Value("isError") != false {
-			t.Fatal(resultText(ran))
+			t.Fatal(agentResultText(ran))
 		}
-		output := resultText(ran)
+		output := agentResultText(ran)
 		if !strings.HasPrefix(output, "Script completed") {
 			t.Fatalf("output = %q", output)
 		}
@@ -696,8 +842,8 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 				reported(name)
 			}
 		}
-		if refused.Value("isError") != true || !strings.HasPrefix(resultText(refused), "Unknown tools: codemode. Choose from your own tools: ") {
-			t.Fatalf("refused = %q", resultText(refused))
+		if refused.Value("isError") != true || !strings.HasPrefix(agentResultText(refused), "Unknown tools: codemode. Choose from your own tools: ") {
+			t.Fatalf("refused = %q", agentResultText(refused))
 		}
 		given := toolsOf(subagent(map[string]any{"action": "spawn", "name": "plain", "message": "x"}))
 		if !contains(given, "read") || contains(given, "codemode") {

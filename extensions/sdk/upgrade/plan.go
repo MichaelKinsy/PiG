@@ -331,6 +331,9 @@ func (p *filePlanner) run() {
 	// A getter spread into a variadic call compiles, so a file without errors
 	// still has its getters planned.
 	p.planGetters()
+	if len(p.errors) > 0 {
+		p.planGrepReadFile()
+	}
 	if len(p.errors) > 0 || p.legacy {
 		p.planOptionalBools()
 		p.planContextUsage(p.legacy)

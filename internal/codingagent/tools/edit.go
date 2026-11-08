@@ -8,7 +8,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/jsdiff"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
@@ -43,6 +42,9 @@ type EditTool struct {
 	Queue      *FileMutationQueue // serialises concurrent edits
 	Operations *EditOperations
 }
+
+// computeEditDiff is generateEditDiff; tests replace it to fail the diff.
+var computeEditDiff = generateEditDiff
 
 func (t *EditTool) operations() EditOperations {
 	if t.Operations != nil {
@@ -306,28 +308,30 @@ func (t *EditTool) editLocked(ctx context.Context, absPath string, p editParams)
 	}
 	var decoder utf8stream.Decoder
 	bom, content := text.SplitBom(decoder.Decode(data, false))
-	originalEnding := detectLineEnding(content)
 	normalized := normalizeToLF(content)
 	applied, err := applyEditsToNormalizedContent(normalized, p.Edits, p.Path)
 	if err != nil {
 		return editError(err.Error())
 	}
+	// Diff before writing, so diff computation cannot fail after the write.
+	editDiff := computeEditDiff(p.Path, applied.baseContent, applied.newContent, applied.replacements, 4)
 	if aborted() {
 		return editError("Operation aborted")
 	}
-	final := bom + restoreLineEndings(applied.newContent, originalEnding)
+	// Splice into the original text, so untouched lines keep their line endings. Without any CR the original is the normalized text,
+	// and the normalized result is already final.
+	final := bom + applied.newContent
+	if content != normalized {
+		final = bom + applyReplacementsToOriginal(content, applied.replacements)
+	}
 	if err := ops.WriteFile(absPath, final); err != nil {
 		return editError(NodeFSError(err, "open", absPath))
 	}
 	if aborted() {
 		return editError("Operation aborted")
 	}
-	// One line diff serves the display diff and the patch, which upstream computes separately over the same pair.
-	lineDiff := jsdiff.DiffLineRuns(applied.baseContent, applied.newContent)
-	diff, firstChangedLine := diffStringOf(lineDiff, applied.baseContent, applied.newContent, 4)
-	patch := unifiedPatchOf(p.Path, lineDiff, 4)
 	return agent.AgentToolResult{
 		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("Successfully replaced %d block(s) in %s.", len(p.Edits), p.Path)}},
-		Details: &EditToolDetails{Diff: diff, Patch: patch, FirstChangedLine: firstChangedLine},
+		Details: &EditToolDetails{Diff: editDiff.diff, Patch: editDiff.patch, FirstChangedLine: editDiff.firstChangedLine},
 	}
 }

@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"fmt"
-	"os"
 	"runtime/debug"
 )
 
@@ -75,7 +74,7 @@ func (e *Extension) startLoaded() <-chan struct{} {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						fmt.Fprintf(os.Stderr, "extension: recovered from panic in an OnLoaded handler: %v\n%s\n", r, debug.Stack())
+						diagnosticf("extension: recovered from panic in an OnLoaded handler: %v\n%s\n", r, debug.Stack())
 					}
 				}()
 				handler(ctx)

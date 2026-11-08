@@ -87,6 +87,18 @@ portmap-check-8:
 # npm dependencies here: the qualified npm requires a newer Node than Pi does.
 # The matrix selects extension hosting/runtime tests. Go URL-conversion oracle
 # tests stay in the full suite on the qualified Node pin.
+# ci-chord-tui runs the terminal surface's tests under the Node on the PATH, which must be 26.5.1 or later (the sandbox's floor): CI sets
+# CHORD_REQUIRE_TUI_NODE, so a Node that is too old fails them rather than skipping them (Pi skips; the Go suite must not hide them).
+ci-chord-tui:
+	CHORD_TUI_NODE="$$(command -v node)" CHORD_REQUIRE_TUI_NODE=1 go test -count=1 ./chord/nextnode/tui
+
+# ci-chord-web runs the web surface's tests in a real Chromium (the page, React hooks, language, stylesheets) and the React stores under
+# the Node on the PATH. CI sets CHORD_REQUIRE_CHROMIUM, so a missing browser fails them rather than skipping them.
+ci-chord-web:
+	CHROMIUM_BIN="$${CHROMIUM_BIN:-$$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)}" CHORD_REQUIRE_CHROMIUM=1 \
+		go test -count=1 ./chord/nextnode/app -run '^Test(React|ThePagesLanguage|APage)'
+	go test -count=1 ./chord/nextnode/surfaces -run '^TestReact'
+
 ci-node-runtime:
 	go test -tags=parity -count=1 ./coding/extension/host/subprocess -run '^Test(Node|EmbeddedNode|ResolveNode|EnsureNode|Host.*Node|Builder.*Node|BuildExtCommand_Node|PiDiff|PiScrollView|PiTui|VendoredCrossSpawn|TerminalInputNode)'
 	go test -tags=parity -count=1 ./coding/cli -run '^TestRPCStartupMalformedPackageManifests$$'
@@ -98,7 +110,7 @@ ci-node-runtime:
 		-args -pig-parity.results="$$results" && \
 		$(MAKE) -s require-parity-ran RESULTS="$$results"
 
-.PHONY: ci-node-runtime
+.PHONY: ci-node-runtime ci-chord-tui ci-chord-web
 
 test-fast: test-prereqs interface-deps parity-deps durable-interop-deps
 	@./automation/ci/test-grouped.sh fast

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf16"
+	"unicode/utf8"
 	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -1157,8 +1158,35 @@ func markedRightDelimiterMatch(m []rune, pos int, delim rune) (index, end, group
 
 // markedEmailChar is the class [a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-] of the GFM text rule's email lookaheads.
 func markedEmailChar(c rune) bool {
-	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune(".!#$%&'*+/=?_`{|}~-", c)
+	return c < utf8.RuneSelf && markedInlineClass[c]&markedClassEmail != 0
 }
+
+// The classes of the ASCII characters the inline text rule tells apart.
+const (
+	markedClassEmail  = 1 << iota // [a-zA-Z0-9.!#$%&'*+\/=?_`{|}~-]
+	markedClassStop               // [\\<!\[`*~_]: the text run ends before it
+	markedClassScheme             // starts one of http, ftp://, www. (either case but for www.)
+)
+
+var markedInlineClass = func() (class [utf8.RuneSelf]uint8) {
+	for c := 'a'; c <= 'z'; c++ {
+		class[c] |= markedClassEmail
+		class[c-'a'+'A'] |= markedClassEmail
+	}
+	for c := '0'; c <= '9'; c++ {
+		class[c] |= markedClassEmail
+	}
+	for _, c := range ".!#$%&'*+/=?_`{|}~-" {
+		class[c] |= markedClassEmail
+	}
+	for _, c := range "\\<![`*~_" {
+		class[c] |= markedClassStop
+	}
+	for _, c := range "hHfFw" {
+		class[c] |= markedClassScheme
+	}
+	return class
+}()
 
 // markedEmailAhead is the lookahead (?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@) at i.
 func markedEmailAhead(src []rune, i int) bool {
@@ -1214,13 +1242,21 @@ func markedInlineTextLength(src []rune) int {
 		return p
 	}
 	for q := p; ; q++ {
-		if q == len(src) || strings.ContainsRune("\\<![`*~_", src[q]) || markedHasPrefix(src, q, "http", true) || markedHasPrefix(src, q, "ftp://", true) || markedHasPrefix(src, q, "www.", false) {
+		if q == len(src) {
 			return q
 		}
-		if src[q] != ' ' && markedHardBreakAhead(src, q+1) {
+		c := src[q]
+		var class uint8
+		if c < utf8.RuneSelf {
+			class = markedInlineClass[c]
+		}
+		if class&markedClassStop != 0 || class&markedClassScheme != 0 && (markedHasPrefix(src, q, "http", true) || markedHasPrefix(src, q, "ftp://", true) || markedHasPrefix(src, q, "www.", false)) {
+			return q
+		}
+		if c != ' ' && q+1 < len(src) && src[q+1] == ' ' && markedHardBreakAhead(src, q+1) {
 			return q + 1
 		}
-		if !markedEmailChar(src[q]) && markedEmailAhead(src, q+1) {
+		if class&markedClassEmail == 0 && markedEmailAhead(src, q+1) {
 			return q + 1
 		}
 	}

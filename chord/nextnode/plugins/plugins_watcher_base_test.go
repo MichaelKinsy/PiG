@@ -138,6 +138,25 @@ func TestTheBaseMarkFindsAnEditMadeBetweenABaseBuildAndItsWatchWithNoLaterEvent(
 	f.baseIs(true)
 }
 
+// A record arriving after the close watches nothing and marks nothing (Pi 284e63d9 watcher.ts recordBase's closed guard).
+func TestARecordedBaseAfterTheCloseWatchesNothing(t *testing.T) {
+	_, f := based(t, nil)
+	elsewhere := realOf(t, tempRoot(t))
+	writeFiles(t, elsewhere, map[string]string{"entry.ts": "edited after the build"})
+	records := 0
+	f.run(func() { records = len(f.watcher.records) })
+	f.close()
+	f.recordBase(BaseInputs{filepath.Join(elsewhere, "entry.ts"): hashOf("as built")})
+	if f.marks().Base {
+		t.Fatal("base set by a record that arrived after the close")
+	}
+	f.run(func() {
+		if len(f.watcher.records) != records {
+			t.Fatalf("records = %d after the close, want %d", len(f.watcher.records), records)
+		}
+	})
+}
+
 // Ports watcher.test.ts "watches a base directory removed and recreated, and compares its files".
 func TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles(t *testing.T) {
 	parent := realOf(t, tempRoot(t))

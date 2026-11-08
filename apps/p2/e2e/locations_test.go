@@ -205,7 +205,12 @@ func TestLocationToolsMainAgentsListAndMoveSubagentsArePlacedAndMoveOnlyWithTheT
 		}
 		return object(docs.Value("pi.agent")).Value("cwd")
 	}
-	f.until(f.Chat.Member("view"), func(v delta.JsonValue) bool { return agentCwd(v) == next })
+	// The worker clears the move's record once its relocation returned, which is when the move's fence is lifted: the next
+	// message is admitted from then on.
+	f.until(f.Chat.Member("view"), func(v delta.JsonValue) bool {
+		move := object(object(object(v).Value("docs")).Value("p2.location-move"))
+		return agentCwd(v) == next && (move == nil || move.Value("pending") == nil)
+	})
 	f.until(plain.Member("view"), func(v delta.JsonValue) bool { return agentCwd(v) == next })
 	if cwdOf("placed") != other {
 		t.Fatalf("placed cwd = %v", cwdOf("placed"))

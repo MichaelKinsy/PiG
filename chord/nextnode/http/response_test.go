@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/response.ts
+// pi: packages/chord/src/node/http/response.ts
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ import (
 // Tests of responses (slice 10 §2, D5, R6; security baseline (4), (6)): every kind written by a running server, the
 // response's headers over the default ones (an invalid one reported, 500), ranges (206, 416, multi-range), `HEAD`,
 // attachments and inline bodies, safe download names, bodies without `size`, a short or throwing read, a disconnect
-// stopping the reads. Ports packages/chord/test/next-node/http/response.test.ts.
+// stopping the reads. Ports packages/chord/test/node/http/response.test.ts.
 
 // answering is a server answering `GET /r` with response.
 func answering(t *testing.T, response HttpResponse) *testServer {
