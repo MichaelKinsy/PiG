@@ -11,11 +11,13 @@ import (
 // as the contract Pi's module declares, name and version included.
 
 func TestContractsFingerprintAsPi(t *testing.T) {
-	pi := oracle.Fingerprints(t, "src/runtime/access.ts", "src/runtime/notices.ts", "src/runtime/session-worker.ts")
+	pi := oracle.Fingerprints(t, "src/runtime/access.ts", "src/runtime/notices.ts", "src/runtime/session-worker.ts", "src/runtime/file-index.ts")
 	for key, contract := range map[string]*contracts.Contract{
 		"src/runtime/access.ts#Access":                 Access,
 		"src/runtime/notices.ts#LogNotices":            LogNotices,
 		"src/runtime/session-worker.ts#WorkerBoundary": WorkerBoundary,
+		"src/runtime/file-index.ts#FileIndexCache":     FileIndexCache,
+		"src/runtime/file-index.ts#FileIndex":          FileIndex,
 	} {
 		want, ok := pi[key]
 		if !ok {
