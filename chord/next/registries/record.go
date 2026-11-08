@@ -177,18 +177,6 @@ func (r *RegistryRecord) ProvidedVersion() (int, bool) {
 	return r.provider.version, true
 }
 
-// NewestContribution is the newest registry version its contributions were built against; false without contributions.
-func (r *RegistryRecord) NewestContribution() (int, bool) {
-	if len(r.contributions) == 0 {
-		return 0, false
-	}
-	newest := r.contributions[0].Version
-	for _, contribution := range r.contributions[1:] {
-		newest = max(newest, contribution.Version)
-	}
-	return newest, true
-}
-
 // Value is the value readers of version follow; made by the first reader of a version.
 func (r *RegistryRecord) Value(version int) *RegistryValueSource {
 	value, ok := r.values[version]
