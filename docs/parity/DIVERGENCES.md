@@ -3239,28 +3239,6 @@ Evidence: `TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes`, `TestRecordChang
 
 Parity allowance: Pi 1.5.0's oracle differs on exactly the recorded versions the oracle tests skip.
 
-## D247 Quit settles the interrupted run before session_shutdown and disposal
-
-What: PiG ports Pi main 7a53c310a (`fix(coding-agent): settle tool results before disposal`, #9126, fixing #9124), which is not in Pi 1.5.0. `Runtime.EmitQuitShutdown`, the first step of `Runtime.Close` and of the interactive quit, now aborts the current Session and waits until it is idle before it emits `session_shutdown` with reason `quit`. The interrupted tool's result and the final assistant message are persisted first, so extensions see `session_shutdown` after the settled turn. Like Pi's `await this.session.abort()`, and like the replacement path's `teardownCurrent`, the wait has no timeout: a tool that ignores cancellation holds the quit.
-
-Why: Pi 1.5.0 disposes the runtime during a tool without waiting: persistence is disconnected before the turn settles, leaving a stored assistant tool call without its result.
-
-Pi bug: Pi 1.5.0 (`agent-session-runtime.ts` `dispose`), fixed by Pi main 7a53c310a ([#9124](https://github.com/earendil-works/pi/issues/9124)).
-
-Scope: `Runtime.Close` and the interactive quit only; session replacement already awaited the abort. Print mode's signal hook and RPC shutdown (`EmitQuitShutdownContext`) keep Pi 1.5.0's order (no abort wait) until the pin moves past 7a53c310a. Their pinned-Pi oracle tests (`TestPrintModeSignalDisposalRunsLikePisEventLoop`, `TestPrintModeJSONSignalStopsOutputAndPersistence`, `TestRPCInputEnd*`) assert Pi 1.5.0's order, in which the aborted run is not persisted; porting them needs those expectations rewritten and is left open.
-
-Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S5).
-
-SCRUTINIZED:approved
-
-Remove when: the pin reaches a Pi release containing 7a53c310a.
-
-Call-site markers: `coding/runtime_replacement.go` (`EmitQuitShutdown`).
-
-Evidence: `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` (Pi's regression test, plus the order an extension's `session_shutdown` handler observes).
-
-Parity allowance: none needed; the pinned-Pi runtime oracle does not quit during a run.
-
 ## D248 The /tree search line draws a cursor while the selector is focused
 
 What: PiG ports Pi main 2cfab7c26 (`fix(coding-agent): render session tree search cursor`, #9157), which is not in Pi 1.5.0. The "Type to search:" line of the session tree selector ends with `CURSOR_MARKER` and a reverse-video cell in its last column while the selector has focus and no label is being edited (the label input shows the cursor then, and the search line gets it back when the label edit ends). The line also carries a trailing space after "Type to search:" when the query is empty, and renders `[""]` at width 0.
