@@ -105,6 +105,9 @@ func (h *Host) providerStreamCallback(me *managedExt, name string) extension.Pro
 		stream := ai.NewAssistantMessageEventStream()
 		fail := func(err error) {
 			reason := ai.StopReasonError
+			if parent.Err() != nil {
+				reason = ai.StopReasonAborted
+			}
 			_ = stream.Push(ai.ErrorEvent{Reason: reason, Error: &ai.AssistantMessage{API: model.ProviderMeta.API, Provider: model.ProviderMeta.ProviderID, Model: model.ID, Content: []ai.AssistantContentBlock{}, StopReason: reason, ErrorMessage: err.Error()}})
 			cancel()
 		}

@@ -53,6 +53,8 @@ Every active divergence must have:
 
 - D141: Thinking-only messages were truncated in compaction summaries (Pi #9602). Retired by Pi commit `15e7bdc1`, which omits thinking from `serializeConversation`; `compaction.SerializeConversation` does the same (`TestSerializeConversationUpstream` "should omit thinking", `TestRPCCompactionSurvivesThinkingOnlyMessagesTheRequestsOmit`).
 
+- D151: `grep` with context reads a window of each matched file (Pi #9276). Retired by the upstream pin: Pi main 8da141c2a (`packages/coding-agent/src/core/tools/grep.ts`) takes the context lines from ripgrep and no longer reads or caches a matched file, so neither Pi nor PiG loads a whole file for `context`; `GrepOperations.readFile` is gone from Pi and from every SDK. `TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext` and its neighbours (`internal/codingagent/tools/grep_ripgrep_context_test.go`) port Pi's tests of the change. The ID remains reserved.
+
 - D152: codemode joins adjacent text items in one pass. Retired by the Pi 1.4.0 pin: Pi #10678 (`packages/coding-agent/src/extensions/codemode/execute.ts:293-317` `joinAdjacentText`) collects a run of text items in a parts array, separated by a newline unless the text so far is empty or ends with one, and joins it once; `coding/extension/builtin/codemode/execute.go` `joinAdjacentText` does the same in a `strings.Builder` (`TestJoinAdjacentTextIsLinearInTheNumberOfItems`, `TestJoinAdjacentTextMatchesUpstreamOnMixedItems`). The ID remains reserved.
 
 - D154: The read header adds a string offset and limit as numbers (Pi #9887). Retired by the Pi pin `1.2.0+b06c1f2c`: Pi commit `91014991` (#10938) adds `formatReadLineRange` to `packages/coding-agent/src/core/tools/render-utils.ts`, which reads finite numbers and numeric strings and drops a malformed range, and uses it in the read header, the session tree and the HTML export template. `tui.FormatReadLineRange` ports it; the export embeds Pi's template unpatched; `TestFormatReadLineRangeMatchesPi` and `TestExportedViewerFormatsReadLineRangeLikePi` port Pi's `read-line-range-display.test.ts`. The ID remains reserved.
@@ -68,6 +70,12 @@ Every active divergence must have:
 - D188: Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place. Retired by Pi 1.4.0 (npm `@earendil-works/pi-durable` 1.4.0, tag `v1.4.0` at `4a080252`, 2026-10-21), which writes SQLite schema version 2: Pi commit `f75b3240` (feat(durable): durable sleeping state replaces runtime.sleep, `packages/durable/src/storage/sqlite/migrations.ts:91-116`) adds the `sleeping` task status as migration 2, and the pin `1.4.0+b3a29f11` carries it unchanged. A user going back to a released Pi can open an upgraded store, so the copy PiG wrote to `<path>.schema-1.bak` is no longer needed. `durable/internal/schemabackup` and the two call-site markers are gone; `driver.OpenHarness` and `node.OpenNodeSqliteStorage` upgrade a version 1 store in place, as Pi does (`TestOpenHarnessUpgradesAVersionOneStoreInPlace`, `TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace`; Pi's migration test is twinned by `durable/storage/sqlite/sqlite_migrations_test.go`). Pi releases before 1.4.0 still refuse a version 2 store; a user who needs one keeps their own copy.
 
 - D217: Pi bug fixes after the pin that next carried (Pi e7a0df27..e3da248e). Retired by pin 2c8d1feb, which is at or after every carried Pi commit (`86dc686c` through `e3da248e`); its fixes are Pi behavior, and the markers, oracle hooks and allowances are gone.
+
+- D241: Ctrl+V also pastes on Windows and WSL. Retired by the pin `1.5.0+c23b9ec1`, which contains Pi 37b38e9f6 (keep ctrl+v as a paste key on Windows and WSL, #11780): the Windows and WSL default of `app.clipboard.pasteImage` is `alt+v` and `ctrl+v` in the pinned Pi, so the call-site marker and the oracle allowances are gone. `TestKeybindingDefinitionsApplyPlatformDefaults` and `TestAppKeybindingDefinitionsMatchUpstreamInventory` hold the default.
+
+- D242: Reload is rejected while the session is running or compacting. Retired by the upstream pin: Pi main c3b938e3e (`packages/coding-agent/src/core/agent-session.ts` `reload`, #9222) rejects it the same way, with the same messages. `TestSessionReloadRejectedWhileRunningOrCompacting` and `TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive` cover it, and the scenario `reload-rejected-while-running-reaches-the-caller-unchanged` keeps the message identical in every SDK. The ID remains reserved.
+
+- D247: Quit settles the interrupted run before session_shutdown and disposal. Retired by the upstream pin: Pi main 7a53c310a (`agent-session-runtime.ts` `dispose`, #9126) awaits `session.abort()` before it emits `session_shutdown`. `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` ports Pi's regression test. The ID remains reserved.
 
 ## Active divergences
 
@@ -2051,24 +2059,6 @@ Remove when: Pi accepts `--no-stdin` or otherwise lets a caller start with an op
 
 SCRUTINIZED:approved
 
-## D151 `grep` with context reads a window of each matched file (Pi #9276)
-
-What: PiG's `grep` tool with `context` above 0 reads each matched file as a stream and keeps only the lines its matches still need. Pi's `getFileLines` (`packages/coding-agent/src/core/tools/grep.ts`) reads and splits every matched file into one array and caches it.
-
-Why: with `context: 2` over a directory of 100 MB logs, Pi holds each matched file several times over (read string, split array) and exhausts the heap (Pi #9276). Pi has no fix. The output is the same: the window splits lines as `getFileLines` does, keeps the first `GrepMaxLineLength + 1` code points of a line (the rest cannot reach the output), and still prints overlapping context blocks for nearby matches.
-
-Observable effect: memory use of a `grep` call follows the context size, not the file size. A custom `GrepOperations.ReadFile` still returns the whole text, but only the current file is kept. A custom `GrepOperations` without `ReadFile` streams the local file.
-
-Call-site markers: `internal/codingagent/tools/grep.go` (`grepFormatter`, `GrepTool.openFile`), `internal/codingagent/tools/grep_line_window.go`.
-
-Locked by: `TestGrepContextDoesNotLoadTheMatchedFile` (peak heap for a 50 MB file) and `TestGrepLineWindowMatchesTheWholeFileSplit` (the window against upstream's whole-file split for every chunking, line ending, invalid UTF-8, long lines, repeated and overlapping matches, fractional and huge context) in `internal/codingagent/tools/grep_context_memory_test.go`.
-
-Parity allowance: none needed; the tools family compares `grep` output with Pi's.
-
-Remove when: Pi stops loading whole files for grep context.
-
-SCRUTINIZED:approved
-
 ## D153 The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015)
 
 What: when the last line of bash or PowerShell output is over the byte limit, PiG's `[Showing last 50.0KB of line N (line is <size>)...]` notice gives the size of that line. If the output ends with a newline, Pi's `getLastLineBytes` (`packages/coding-agent/src/core/tools/output-accumulator.ts`) returns the bytes after the newline, so Pi's notice reads `line is 0B`.
@@ -2367,17 +2357,21 @@ SCRUTINIZED:approved
 
 What: the Go, Python and Rust extension SDKs keep, for the tool calls of one parallel batch, the orders Pi's one thread gives: the first dialog of each call opens in call order, and calls whose dialogs were answered back to back respond (and end) in the order of the answers. They hold a call to do it. A call's first host call, of any kind, waits until every earlier call of the batch has written its first host call or ended, and writing it passes the call's place on: a call that awaits an `exec` (or any other host call) before its first dialog is overtaken by the later calls' dialogs, as in Pi, where an awaited `exec` yields the thread (proved by a probe under Pi 1.3.0+1402973a: the call that awaits `pi.exec` before its dialog opens it after the later call's, 8 of 8 runs). A call whose dialog was answered holds the responses of the calls answered after it until it returns or makes its next host call. In Pi a call that awaits real work the SDK cannot see before its first host call (a `fetch`, a timer, a child process of its own) also yields the thread, so a later call's dialog opens first; and a continuation that awaits again yields at once. A native handler's blocking work (an HTTP request, a sleep, a wait on a channel) is invisible to the SDK, so the SDK holds the later calls' first host calls until the earlier handler reaches its first host call or its return, and holds the responses of the calls answered after a handler until it makes a host call or returns. The orders equal Pi's single-thread orders whenever the handlers await only host calls; a handler that awaits work the SDK cannot see makes a later call's dialog open after the handler's own, or a later response be written after the handler's, where Pi's thread would have put them first.
 
+The same holds for the file mutation queue: the Context form of `withFileMutationQueue` (`Context.WithFileMutationQueue` in Go, `ctx.with_file_mutation_queue` in Rust and Python, `pig:ctx-with-file-mutation-queue` in Lisp, `ctx.withFileMutationQueue` in Node) names its tool call in `fileMutation.enter` (`FileMutationEnterArgs.Request`), and the host registers it in the queue only after the start windows of the extension tools before that call in its batch closed (`Conn.awaitEarlierWindows`; the windows are the ones row "file mutation queue registration order in a parallel batch" of `docs/extension-api-parity.md` already uses for the edit and write calls). A tool's window is open until its first host call that returns a Promise in Pi (an exec, a dialog, a model call, the enter itself), its answer or its end, so two tools of a batch that make only getter calls before they take the queue (Pi: no await, so both prefixes run in call order) register in call order however many round trips their getters took, and a tool that awaits an `exec` first registers after the one that did not, as in Pi. Pi's free function, which the SDKs keep unchanged, carries no tool call and registers in the order the calls reach the host, which a native SDK's scheduler and round trips decide; a Pi extension that needs Pi's order in a native SDK uses the Context form. The Node runtime is Pi's one thread, where both forms give Pi's order. A native handler that does work of its own, with no host call, before it takes the queue through its Context holds the registrations of the tools behind it for as long as the work lasts (the cost docs/extension-api-parity.md names for the edit and write calls behind a native tool).
+
 Why: Pi runs every extension on one thread, so the order of a batch's synchronous prefixes and of its continuations is a fact of the language, and no hand-off is needed (`agent-loop.ts:586-647`, `rpc-mode.ts:91-130, 771-777`). A native SDK runs each request on a thread of its own, and the OS scheduler decides which first dialog is written first and which of two back-to-back answers a handler resumes on first, so without a gate a port opens its second dialog first and ends its calls in no order. The gate can only be placed at the points the SDK sees: its host calls and the end of the handler. It cannot know that a handler is blocked in its own work, so it cannot release the later calls at the moment Pi's thread would. The owner chose the ordering with this latency cost over leaving the orders to the scheduler.
 
-Scope: the tool calls of one parallel batch whose handlers make a host call (a dialog, `ui.select`, `ui.confirm`, `ui.input`, `ui.editor`, `ui.custom`, or any other), in the Go, Python and Rust SDKs, isolated and packed; only a dialog call opens a response slot, so a batch whose handlers open no dialog has no response gate, and the first host call of any kind takes part in the dialog place. Unchanged: the Node SDK, which one thread orders as Pi's does; a batch whose handlers make no host call (no slot, no queue wait); calls of other batches, other sessions' calls (a subagent's tool calls on the same connection) and nested calls, which take part in no order (the host names the batch on each `tool_call` request, and a request without one is ungated); the start order of the handlers, which the SDKs already kept; and the tool-result messages, which follow call order.
+Scope: the file mutation queue registrations made through the Context form by the tool calls of one parallel batch, in every SDK, isolated, packed and fused; and the tool calls of one parallel batch whose handlers make a host call (a dialog, `ui.select`, `ui.confirm`, `ui.input`, `ui.editor`, `ui.custom`, or any other), in the Go, Python and Rust SDKs, isolated and packed; only a dialog call opens a response slot, so a batch whose handlers open no dialog has no response gate, and the first host call of any kind takes part in the dialog place. Unchanged: the Node SDK, which one thread orders as Pi's does; a batch whose handlers make no host call (no slot, no queue wait); calls of other batches, other sessions' calls (a subagent's tool calls on the same connection) and nested calls, which take part in no order (the host names the batch on each `tool_call` request, and a request without one is ungated); the start order of the handlers, which the SDKs already kept; and the tool-result messages, which follow call order.
 
 Workaround: start the work that blocks as a host call (`exec`, `getFlag`, any call the SDK sees): the first host call passes the call's place on, so the later calls' dialogs open while it runs, as in Pi; or open the dialog before blocking work.
 
-Owner decision: approved by owner Michael Kinsy on 2026-10-20 (choice, not impossibility: the SDK cannot observe a handler's own blocking work; user impact: only the moment a later call's dialog opens or its response is written, never their order unless the handler awaits work the SDK cannot see; parity cost: a native handler that blocks, outside a host call, before its first host call delays the later calls' dialogs of its batch).
+Owner decision: approved by owner Michael Kinsy on 2026-10-20; the file mutation queue extension approved by owner Michael Kinsy on 2026-11-07 (choice, not impossibility: the SDK cannot observe a handler's own blocking work; user impact: only the moment a later call's dialog opens or its response is written, never their order unless the handler awaits work the SDK cannot see; parity cost: a native handler that blocks, outside a host call, before its first host call delays the later calls' dialogs of its batch).
 
-Call-site markers: `extensions/sdk/tool_start_order.go` (`toolStart.beforeCall`, the first-host-call wait, and `toolStart.respond`, the response gate), `extensions/sdk-py/pig_sdk/__init__.py` (`_ToolStart.before_call` and `_ToolStart.respond`), `extensions/sdk-rs/src/tool_start_order.rs` (`ToolStart::before_call` and `ToolStart::respond`).
+Call-site markers: `extensions/sdk/tool_start_order.go` (`toolStart.beforeCall`, the first-host-call wait, and `toolStart.respond`, the response gate), `extensions/sdk-py/pig_sdk/__init__.py` (`_ToolStart.before_call` and `_ToolStart.respond`), `extensions/sdk-rs/src/tool_start_order.rs` (`ToolStart::before_call` and `ToolStart::respond`), and for the queue `coding/extension/host/subprocess/host_file_mutation.go` (`handleFileMutationEnter`).
 
 Evidence: `TestToolBatchDialogsOpenInCallOrderAndResumeInAnswerOrderAcrossSDKs` (`test/extension-conformance`) fails for every native realization without the gates (the Go dialogs open as `[T0 T2 T3 T4 T5 T1]`, the ends follow no answer order) and passes for all nine with them; its last rounds make the first call await an `exec`, held until the other five dialogs are open, and fail for every native realization that keeps the dialog place across it (none of the later dialogs opens while the `exec` runs); the gate tests `TestToolDialogsOpenInCallOrder`, `TestToolFirstHostCallOfAnyKindPassesTheDialogPlace`, `TestToolResponsesFollowTheOrderTheAnswersWereRead` and `TestToolBatchOrdersAreIndependentAcrossBatches` (`extensions/sdk/tool_dialog_order_test.go`), `test_tool_dialog_order.py` (`extensions/sdk-py/tests`) and the `tool_start_order` and `tool_dispatch_wire` tests (`extensions/sdk-rs`) pin the held orders without a sleep and the independence of batches, including that a long call with no host call in one batch never holds another batch's dialog.
+
+Queue evidence: `TestFileMutationOrderOfTheContextFormAcrossSDKs` (`test/extension-conformance`): two calls of one batch, one making four getter calls before it takes the queue through its Context and one none, run through a Session in every realization; it fails for every native realization with the hold removed (the second call registers first) and passes with it.
 
 Parity allowance: none: no Pi scenario asserts the moment a later call's dialog opens while an earlier call blocks.
 
@@ -3159,50 +3153,6 @@ Evidence: `TestAnthropicTemperatureCompatibility/omits_zero_for_Claude_Sonnet_5`
 
 Parity allowance: the generated catalog and `cmd/gen-models/testdata/catalog-generation/golden.sha256` follow Pi main for these records. `TestGeneratedCatalogsMatchPublishedPackage`, `TestCatalogModelJSONMatchesPiForEveryBuiltinModel` and `TestBuiltinCatalogsMatchPinnedProviderDataModules` accept exactly the seven records above with compat.supportsTemperature false added and nothing else (`d240SonnetFiveRecords`; the JSON test adds the member after forceAdaptiveThinking so the bytes are compared in Pi's member order). `TestModelObjectsMatchPisModelObjects` (`coding/extension`) accepts the same seven records with the same member added after forceAdaptiveThinking: the extension-visible model object follows the host catalog, as Pi main's does. `TestCodegenByteIdentical` needs no allowance: it regenerates through the same generator and reproduces the committed bytes.
 
-## D241 Ctrl+V also pastes on Windows and WSL
-
-What: PiG ports Pi main 37b38e9f6 (`fix(coding-agent): keep ctrl+v as a paste key on Windows and WSL`, #11780, fixing #11765), which is not in Pi 1.5.0. The Windows and WSL default of `app.clipboard.pasteImage` is `alt+v` and `ctrl+v` (Pi 1.5.0: `alt+v` only). Other platforms keep `ctrl+v`. The keybindings documentation lists both keys.
-
-Why: Most Windows terminals handle Ctrl+V themselves and send a bracketed paste, but some pass Ctrl+V to the program as the raw `0x16` key. With only `alt+v` bound, nothing happened and no message was shown. In a terminal that handles Ctrl+V itself the program never receives the key, so the extra binding changes nothing there.
-
-Pi bug: 1.5.0 binds no key to `ctrl+v` on Windows and WSL (#11765).
-
-Scope: the Windows and WSL column of `app.clipboard.pasteImage` (`internal/codingagent/keybindings.go`) and its two keybindings tables.
-
-Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL M11).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains 37b38e9f6. Then the call-site markers and this record go.
-
-Call-site markers: `internal/codingagent/keybindings.go` (`appKeybindingRows`), `internal/codingagent/keybindings_inventory_test.go` (the expected Windows keys).
-
-Evidence: `TestKeybindingDefinitionsApplyPlatformDefaults` (red on 989927eff4: `linuxWsl app.clipboard.pasteImage defaults = [alt+v], want [alt+v ctrl+v]`, same for win32; it ports Pi's WSL test and the updated defaults assertion over every platform column), `TestPlatformDivergentControlKeys`.
-
-Parity allowance: `TestAppKeybindingDefinitionsMatchUpstreamInventory` expects the extra `ctrl+v` on the Windows and WSL columns. `TestAppKeybindingsManagerMatchesPi` compares the host platform; on Windows and WSL hosts it pairs each probe that does not bind the action with one that binds `alt+v` and `ctrl+v`, and reads only that action's matches and keys from the pair (Pi bound that way behaves as Pi's later default does); every other action and the conflicts compare unchanged. The other Pi oracle tests of `internal/codingagent` that read this default or send Ctrl+V get the same allowance, and the Windows native job runs them: `TestDelegatedEditorHooksMatchPi` and `TestCustomEditorMatchesPi` send the probes that carry Ctrl+V to Pi with those two keys bound (`d241PiProbes`), and `TestKeybindingsFileLoadingMatchesPi`, `TestRandomKeybindingsFilesMatchPi` and `TestUserKeybindingsMatchPi` replace Pi's default keys for this action, and nothing else, with `alt+v` and `ctrl+v` (`d241PasteKeys`). `d241PasteKeys` first requires Pi's default to be `alt+v` alone, so a pinned Pi that adopts the change fails the test and the allowance goes with D241. Each was red on a Linux host with `WSL_DISTRO_NAME` set, which Pig treats as a Windows host, and is green with the allowance.
-
-## D242 Reload is rejected while the session is running or compacting
-
-What: PiG's `Session.Reload` ports Pi main c3b938e3e (`fix(coding-agent): reject reload while running or compacting`, #9222, fixing #9221), which is not in Pi 1.5.0. While a run is active it fails with `Wait for the current response to finish before reloading.`; while compaction or tree navigation is in flight it fails with `Wait for compaction to finish before reloading.`. The check runs before `session_shutdown` and before any runner invalidation, so the session, its extensions and any running tool are untouched. Pi 1.5.0 reloads anyway.
-
-Why: An extension command (`ctx.reload()` in print or RPC mode) or an SDK caller could reload during a running extension tool. Reload invalidated the tool's runner, the tool's next `ctx` use threw a stale-context error, and the failed tool result entered session history.
-
-Pi bug: 1.5.0 has the TUI's entry checks only in the TUI, not in the core reload method (#9221).
-
-Scope: `Session.Reload` (`coding/session_tool_registry.go`), reached by `ctx.reload()` in print and RPC mode and by direct `Session.Reload` callers. Interactive `/reload` already refuses while a run or compaction is active (`internal/codingagent/interactive_commands.go`) and PiG has no RPC `reload` command, so neither changes. The print and RPC reload closures (`coding/cli/print_mode.go`, `coding/cli/rpc_mode.go`) invalidate the extension host only when the previous runner is stale, so a refused reload (which touched nothing) leaves the running tool's context live. The error reaches every SDK's `ctx.reload()` caller with its message unchanged (Go, Python, Rust, Lisp, Node): scenario row `reload-rejected-while-running-reaches-the-caller-unchanged`, which checks the propagation only (its rig returns the error itself). It does not serialize reload with prompt preflight.
-
-Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL M12).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains c3b938e3e. Then the call-site marker and this record go.
-
-Call-site markers: `coding/session_tool_registry.go` (`Reload`), `coding/cli/print_mode.go` and `coding/cli/rpc_mode.go` (the `SetReload` closures).
-
-Evidence: `TestSessionReloadRejectedWhileRunningOrCompacting` (`coding/session_reload_busy_test.go`; red on 989927eff4: `Reload error = <nil>, want "Wait for the current response to finish before reloading."`, same for compaction), `TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive` (`coding/cli/headless_reload_test.go`, Pi's "command" case over the real binary in print and RPC mode; red with the host invalidated on any reload error: `command pi threw:This extension ctx is stale ...` and `tool:ctx threw:...`), scenario `reload-rejected-while-running-reaches-the-caller-unchanged` in `TestSDKScenarios` for every SDK.
-
-Parity allowance: none needed; Pi 1.5.0 has no test of reload while running.
-
 ## D243 A bash or PowerShell timeout after the shell already exited reports the shell's exit code
 
 What: PiG ports Pi main 06aa6563e (`fix(coding-agent): report the shell exit code when bash times out after the shell exited`, #11813, fixing #11613), which is not in Pi 1.5.0. The local shell backend returns a `*ShellTimeoutError` whose message stays `timeout:<seconds>` (the contract custom operations rely on) and whose `ShellExit` holds the shell's exit code and the seconds it ran when the shell had exited before the deadline. The shell tool then says `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` A shell still running at the deadline keeps the plain `Command timed out after N seconds`.
@@ -3269,27 +3219,27 @@ Evidence: `TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes`, `TestRecordChang
 
 Parity allowance: Pi 1.5.0's oracle differs on exactly the recorded versions the oracle tests skip.
 
-## D247 Quit settles the interrupted run before session_shutdown and disposal
+## D246 OpenAI Responses sends session-id, not session_id
 
-What: PiG ports Pi main 7a53c310a (`fix(coding-agent): settle tool results before disposal`, #9126, fixing #9124), which is not in Pi 1.5.0. `Runtime.EmitQuitShutdown`, the first step of `Runtime.Close` and of the interactive quit, now aborts the current Session and waits until it is idle before it emits `session_shutdown` with reason `quit`. The interrupted tool's result and the final assistant message are persisted first, so extensions see `session_shutdown` after the settled turn. Like Pi's `await this.session.abort()`, and like the replacement path's `teardownCurrent`, the wait has no timeout: a tool that ignores cancellation holds the quit.
+What: PiG's OpenAI Responses request ports Pi main c5d397835 (`fix(ai): send session-id instead of session_id on OpenAI Responses`, #11793, fixing #11639), which is not in Pi 1.5.0. With the default `openai` session-affinity format the Responses path sends the header `session-id` (Pi 1.5.0: `session_id`). `x-client-request-id`, `prompt_cache_key`, the `openai-nosession` and `openrouter` formats, and the Codex path (already `session-id`) are unchanged. The Completions path keeps `session_id` (and `x-session-affinity`), as in Pi.
 
-Why: Pi 1.5.0 disposes the runtime during a tool without waiting: persistence is disconnected before the turn settles, leaving a stored assistant tool call without its result.
+Why: Proxies such as nginx with `underscores_in_headers off` drop an underscored header silently and Envoy can be configured to reject it, so cache affinity was lost.
 
-Pi bug: Pi 1.5.0 (`agent-session-runtime.ts` `dispose`), fixed by Pi main 7a53c310a ([#9124](https://github.com/earendil-works/pi/issues/9124)).
+Pi bug: 1.5.0 sends `session_id` on Responses (#11639).
 
-Scope: `Runtime.Close` and the interactive quit only; session replacement already awaited the abort. Print mode's signal hook and RPC shutdown (`EmitQuitShutdownContext`) keep Pi 1.5.0's order (no abort wait) until the pin moves past 7a53c310a. Their pinned-Pi oracle tests (`TestPrintModeSignalDisposalRunsLikePisEventLoop`, `TestPrintModeJSONSignalStopsOutputAndPersistence`, `TestRPCInputEnd*`) assert Pi 1.5.0's order, in which the aborted run is not persisted; porting them needs those expectations rewritten and is left open.
+Scope: `applyOpenAISessionAffinityHeaders` for the Responses callers (`ai/openai.go`, `ai/openai_responses.go`), including xAI and every other provider on the Responses API with the `openai` format. Not changed: the `sessionAffinityFormat` schema description in `internal/codingagent/configschema/compat_a.go` still says `session_id`; the rendered schemas stay byte-equal to the pinned Pi package until the pin reaches c5d397835.
 
-Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S5).
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL S4).
 
 SCRUTINIZED:approved
 
-Remove when: the pin reaches a Pi release containing 7a53c310a.
+Remove when: the pinned Pi release contains c5d397835. Then the call-site marker and this record go, and the schema description follows the pin.
 
-Call-site markers: `coding/runtime_replacement.go` (`EmitQuitShutdown`).
+Call-site markers: `ai/openai.go` (`applyOpenAISessionAffinityHeaders`), `test/parity/testdata/openai-cache-affinity-pig/main.go` (the allowance).
 
-Evidence: `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` (Pi's regression test, plus the order an extension's `session_shutdown` handler observes).
+Evidence: `TestOpenAIResponsesCompatHeadersUpstream`, `TestOpenAIResponsesCacheAffinityE2EUpstream` and `TestXAIResponsesRequestUpstream` (Pi's three changed tests; red on 989927eff4: `header session-id="" want="session-123"`, `header session_id="session-123" want=""`); `TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat` keeps `session_id` on the Completions path.
 
-Parity allowance: none needed; the pinned-Pi runtime oracle does not quit during a run.
+Parity allowance: three comparisons against the pinned Pi 1.5.0 follow the header rename on the Responses path and nothing else. `TestProviderIdentityHeadersMatchPi/openai-responses` and `TestProviderRequestHeadersMatchPi/openai-responses` rename Pi's `session_id` request header to `session-id` for `openai-responses` only (`d246PiResponsesSessionHeader`, `ai/response_oracle_support_test.go`). Parity scenario `providers-faux-streaming/15-openai-cache-affinity` has its pig probe read the Responses affinity header as `session-id` where Pi's probe reads `session_id`, and reports a Responses request that carries a `session_id` the model did not configure. A `session_id` header the model itself configures is no longer replaced by the affinity header on the Responses path (it is a different header now, as in Pi main), so it reaches the server next to `session-id`; the scenario's `override` case does not report it. The schema description stays at the pinned text (see Scope).
 
 ## D248 The /tree search line draws a cursor while the selector is focused
 

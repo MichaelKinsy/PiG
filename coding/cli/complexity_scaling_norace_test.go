@@ -24,7 +24,7 @@ func TestScalingExtensionEventStatePush(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The snapshot carries getContextUsage. The Session reuses its estimate until the log changes, so an event while the log stands still, such as a message_update per streamed delta, costs O(1) in the history; Pi computes the usage only when an extension calls ctx.getContextUsage() (agent-session.ts getContextUsage). Before the reuse each event projected the whole branch.
+	// The Session reuses its estimate for the ctx.getContextUsage() host call until the log changes, so an event while the log stands still, such as a message_update per streamed delta, costs O(1) in the history; Pi computes the usage only when an extension calls ctx.getContextUsage() (agent-session.ts getContextUsage). Before the reuse each event projected the whole branch.
 	testscaling.Check(t, testscaling.Case{Name: "extension event state push at history n", Size: 50, Bound: testscaling.Constant, Prepare: func(n int) func() {
 		manager, err := coding.NewInMemorySessionManager(t.TempDir())
 		if err != nil {

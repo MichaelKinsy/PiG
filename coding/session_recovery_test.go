@@ -116,8 +116,10 @@ type harnessOptions struct {
 	contextWindow       int
 	maxTokens           int
 	inputLimits         *ai.ModelInputLimits
-	tools               []agent.AgentTool
-	extension           extension.Extension
+	// reasoning makes the model a reasoning model, so the thinking level can be set.
+	reasoning bool
+	tools     []agent.AgentTool
+	extension extension.Extension
 	// extensions are loaded after extension, in order.
 	extensions []extension.Extension
 	resources  *SystemPromptResources
@@ -171,7 +173,7 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 	if contextWindow == 0 {
 		contextWindow = 128_000
 	}
-	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: contextWindow, MaxOutputTokens: opts.maxTokens}, InputLimits: opts.inputLimits}
+	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: contextWindow, MaxOutputTokens: opts.maxTokens}, InputLimits: opts.inputLimits, ProviderMeta: ai.ProviderMetadata{Reasoning: opts.reasoning}}
 	var runner *inproc.Runner
 	if opts.extension.Handlers != nil || len(opts.extensions) > 0 {
 		loaded := opts.extensions
