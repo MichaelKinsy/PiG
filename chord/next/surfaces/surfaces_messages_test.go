@@ -254,3 +254,15 @@ func TestShowsTheKeyOfAMessageWhoseParamsDoNotFitReported(t *testing.T) {
 		t.Errorf("reports = %+v", reports)
 	}
 }
+
+// Pi always sends params: [] (`message(key, ...params)`): a message with no arguments renders and is no unknown.
+func TestAMessageWithNoArgumentsHasEmptyParamsAndRenders(t *testing.T) {
+	notes := notesEnDe(t)
+	message := notes.Message("empty")
+	if message.Params == nil || len(message.Params) != 0 {
+		t.Fatalf("params = %#v, want an empty non-nil slice", message.Params)
+	}
+	if got := notes.Render(message); got != "No notes" {
+		t.Fatalf("render = %q, want %q", got, "No notes")
+	}
+}

@@ -3,7 +3,6 @@ package surfaces
 import (
 	"fmt"
 	"reflect"
-	"slices"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
@@ -94,7 +93,7 @@ func (m *Messages) Render(message MessageData) string { return m.In(nil).Render(
 
 // Message is the message key with its arguments as data, for state that clients render.
 func (m *Messages) Message(key string, params ...any) MessageData {
-	return MessageData{Namespace: m.Namespace, Key: key, Params: slices.Clone(params)}
+	return MessageData{Namespace: m.Namespace, Key: key, Params: append([]any{}, params...)}
 }
 
 // Translator renders the messages of one namespace in one language.

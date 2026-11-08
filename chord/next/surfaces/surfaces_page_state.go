@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
@@ -18,7 +19,10 @@ type PageState[T any] struct {
 }
 
 // Read is the value now.
-func (p PageState[T]) Read() T { return p.state.read().(T) }
+func (p PageState[T]) Read() T {
+	v, _ := p.state.read().(T)
+	return v
+}
 
 // Set sets the value; a new value (by identity: see sameValue) calls every subscriber.
 func (p PageState[T]) Set(value T) { p.state.set(value) }
@@ -92,7 +96,7 @@ func sameValue(a, b any) bool {
 		return false
 	}
 	if ta.Comparable() {
-		return a == b
+		return comparableEqual(a, b)
 	}
 	va, vb := reflect.ValueOf(a), reflect.ValueOf(b)
 	switch ta.Kind() {
@@ -104,25 +108,45 @@ func sameValue(a, b any) bool {
 	return false
 }
 
+// comparableEqual is a == b for two values of one comparable type; a struct or array holding an interface that holds an
+// uncomparable value (a slice) is no `===` of anything: not the same.
+func comparableEqual(a, b any) (same bool) {
+	defer func() {
+		if recover() != nil {
+			same = false
+		}
+	}()
+	return a == b
+}
+
 // pageStates are each client host's page state by key, kept as long as the host.
-var pageStates sync.Map // address of the host (a uintptr: it keeps nothing alive) -> *hostStates
+var pageStates sync.Map // weak.Pointer[byte] to the host's struct (it keeps nothing alive, and never equals a later host's) -> *hostStates
 
 type hostStates struct {
 	mu     sync.Mutex
 	states map[string]*keptState
 }
 
+// pageStateEntry is what the cleanup of a host removes: its key and the entry it was registered with.
+type pageStateEntry struct {
+	key    weak.Pointer[byte]
+	states *hostStates
+}
+
 // PageStateOf is the page state of h at key: what was kept there, or initial when the key is new.
 func PageStateOf[T any](h host.Host, key string, initial T) PageState[T] {
-	owner := reflect.ValueOf(h).Pointer()
+	// The host is a pointer to its own struct, as CreateHost returns it.
+	pointer := (*byte)(reflect.ValueOf(h).UnsafePointer())
+	owner := weak.Make(pointer)
 	loaded, found := pageStates.Load(owner)
 	if !found {
 		var stored bool
-		loaded, stored = pageStates.LoadOrStore(owner, &hostStates{states: map[string]*keptState{}})
+		fresh := &hostStates{states: map[string]*keptState{}}
+		loaded, stored = pageStates.LoadOrStore(owner, fresh)
 		if !stored {
-			// The entry goes with its host: the cleanup runs after the host is unreachable (the key is a uintptr
-			// value, not a reference). The host is a pointer to its own struct, as CreateHost returns it.
-			runtime.AddCleanup((*byte)(reflect.ValueOf(h).UnsafePointer()), func(key uintptr) { pageStates.Delete(key) }, owner)
+			// The entry goes with its host: the cleanup runs after the host is unreachable, and removes only the entry it was
+			// made with (D451).
+			runtime.AddCleanup(pointer, func(entry pageStateEntry) { pageStates.CompareAndDelete(entry.key, entry.states) }, pageStateEntry{owner, fresh})
 		}
 	}
 	states := loaded.(*hostStates)

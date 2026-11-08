@@ -88,7 +88,7 @@ func TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageS
 	if HostLanguage(client).Read() != nil {
 		t.Fatal("a language before a follower")
 	}
-	follower, err := FollowActiveLanguage(client, []string{"de-AT", "en"}, func(l *Language) { mu.Lock(); seen = append(seen, l); mu.Unlock() }, func(MessagesReport) {}, bg)
+	follower, err := FollowActiveLanguage(client, []string{"de-AT", "en"}, func(l *Language) { mu.Lock(); seen = append(seen, l); mu.Unlock(); wakeups.poke() }, func(MessagesReport) {}, bg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,4 +155,43 @@ func TestPassesEachDistinctReportOnOnce(t *testing.T) {
 	if !reflect.DeepEqual(reports, want) {
 		t.Errorf("reports = %+v, want %+v", reports, want)
 	}
+}
+
+// A follower stopped at once, before the server answers its pick watch, ends quietly (Pi: `.then(start, () => {})`).
+func TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly(t *testing.T) {
+	notes := notesEnDe(t)
+	client, closeAll := languageSetup(t, notes)
+	defer closeAll()
+	for range 50 {
+		follower, err := FollowActiveLanguage(client, []string{"en"}, func(*Language) {}, func(MessagesReport) {}, bg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		follower.Stop()
+	}
+}
+
+// Stop and SetDevice from the callback itself do not deadlock (Pi calls changed with no lock held).
+func TestAFollowersCallbackMayStopItAndChangeTheDevice(t *testing.T) {
+	notes := notesEnDe(t)
+	client, closeAll := languageSetup(t, notes)
+	defer closeAll()
+	var follower *LanguageFollower
+	var once sync.Once
+	done := make(chan struct{})
+	made := make(chan struct{})
+	var err error
+	go func() {
+		follower, err = FollowActiveLanguage(client, []string{"en"}, func(*Language) {
+			once.Do(func() {
+				go func() { <-made; follower.SetDevice([]string{"de"}); follower.Stop(); close(done) }()
+			})
+		}, func(MessagesReport) {}, bg)
+		close(made)
+	}()
+	<-made
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-done
 }

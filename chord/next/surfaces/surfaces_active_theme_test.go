@@ -51,7 +51,7 @@ func TestFollowsTheRegistryThePrincipalsPickAndTheMode(t *testing.T) {
 	var mu sync.Mutex
 	var seen []string
 	last := func() string { mu.Lock(); defer mu.Unlock(); return seen[len(seen)-1] }
-	follower, err := FollowActiveTheme(client, "dark", func(active Theme) { mu.Lock(); seen = append(seen, active.ID); mu.Unlock() }, bg)
+	follower, err := FollowActiveTheme(client, "dark", func(active Theme) { mu.Lock(); seen = append(seen, active.ID); mu.Unlock(); wakeups.poke() }, bg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,6 +103,7 @@ func TestThemeChoicesAreKeptPerPrincipal(t *testing.T) {
 	if _, err := choice.Call("choose", delta.JsonObjectOf("dark", "dusk", "light", "paper"), bg); err != nil {
 		t.Fatal(err)
 	}
+	wakeOn(t, choice.Member("pick"))
 	until(t, func() bool { o, ok := pickOf(t, choice).(*delta.JsonObject); return ok && o.Value("dark") == "dusk" })
 	other := connectUser(t, server, "grace")
 	defer other.Close(bg)
@@ -114,4 +115,51 @@ func TestThemeChoicesAreKeptPerPrincipal(t *testing.T) {
 	if !none(pickOf(t, graces)) {
 		t.Errorf("grace's pick = %v, want none", pickOf(t, graces))
 	}
+}
+
+// A follower stopped at once, before the server answers its pick watch, ends quietly (Pi: `.then(start, () => {})`).
+func TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly(t *testing.T) {
+	client := themeClient(t)
+	for range 50 {
+		follower, err := FollowActiveTheme(client, "dark", func(Theme) {}, bg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		follower.Stop()
+	}
+}
+
+// Stop from the callback itself does not deadlock (Pi calls changed with no lock held).
+func TestAThemeFollowersCallbackMayStopIt(t *testing.T) {
+	client := themeClient(t)
+	stopped := make(chan struct{})
+	var follower *ThemeFollower
+	ready := make(chan struct{})
+	var once sync.Once
+	var err error
+	go func() {
+		follower, err = FollowActiveTheme(client, "dark", func(Theme) {
+			once.Do(func() { go func() { <-ready; follower.SetMode("light"); follower.Stop(); close(stopped) }() })
+		}, bg)
+		close(ready)
+	}()
+	<-ready
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-stopped
+}
+
+// themeClient is a client of ada on a theme-choice server with the Themes registry served.
+func themeClient(t *testing.T) host.Host {
+	t.Helper()
+	facet, err := ThemeChoiceFacet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, server, closeAll := serverAndClients(t, ":memory:", facet, "chord.themes.choice")
+	t.Cleanup(closeAll)
+	client := connectUserWith(t, server, "ada", []host.HostFacet{{Name: "chord.themes", Facet: ThemesFacet()}})
+	t.Cleanup(func() { _ = client.Close(bg) })
+	return client
 }
