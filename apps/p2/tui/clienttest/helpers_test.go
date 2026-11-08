@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
@@ -48,7 +49,18 @@ func typed(f *tuitest.Fixture, text string) {
 // pollScreen waits for the screen to satisfy cond.
 func pollScreen(t testing.TB, f *tuitest.Fixture, cond func(screen string) bool) {
 	t.Helper()
-	tuitest.Poll(t, func() bool { return cond(f.Screen()) })
+	last := ""
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		last = f.Screen()
+		if cond(last) {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("poll: the screen never satisfied the condition; last screen:\n%s", last)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 func pollContains(t testing.TB, f *tuitest.Fixture, text string) {
