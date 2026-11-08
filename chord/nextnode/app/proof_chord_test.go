@@ -78,7 +78,7 @@ func TestStartWorkerMakesItsDirectoryAndStoresPrivate(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("modes are not enforced on Windows")
 	}
-	var _ func(WorkerOptions) = StartWorker
+	var _ func(WorkerOptions) = StartWorker //nolint:staticcheck // QF1011: the declared type is the pin: the test asserts the signature
 	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, projectOptions(t))
 	p1 := holdNotes(t, s, "p1")
 	defer p1.Release()

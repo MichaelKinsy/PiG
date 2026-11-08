@@ -158,7 +158,7 @@ func TestExpressionBuildersMakeTheColumnRefAndTheOperationTheCompilerReads(t *te
 		t.Fatalf("NewColumnRef = %+v", ref)
 	}
 	sum := Add(ref, int64(2))
-	var expression *Expression = sum
+	var expression *Expression = sum //nolint:staticcheck // ST1023: the declared type is the pin: the test asserts the symbol has it
 	if expression.Op != ExprAdd || len(expression.Args) != 2 || expression.Args[0] != ref {
 		t.Fatalf("Add = %+v; want an add of the ref and 2", expression)
 	}

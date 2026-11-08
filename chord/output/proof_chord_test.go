@@ -35,7 +35,7 @@ func TestOutputBufferKeepsTheHeadOrTheTailWholeLinesAndCountsWhatItDropped(t *te
 }
 
 func TestOutputBufferJoinsACharacterSplitAcrossByteChunks(t *testing.T) {
-	var buffer *OutputBuffer = NewOutputBuffer(OutputLimits{MaxBytes: 100, MaxLines: 10, Retain: "head"})
+	var buffer *OutputBuffer = NewOutputBuffer(OutputLimits{MaxBytes: 100, MaxLines: 10, Retain: "head"}) //nolint:staticcheck // ST1023: the declared type is the pin: the test asserts the symbol has it
 	buffer.PushBytes([]byte{0xc3})
 	buffer.PushBytes([]byte{0xa9, 'x'})
 	buffer.End()

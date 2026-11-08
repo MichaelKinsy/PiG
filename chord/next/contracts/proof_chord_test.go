@@ -6,7 +6,7 @@ import "testing"
 
 func TestKeyedMemberHoldsItsSchemaAndRefusesAnOptionalOne(t *testing.T) {
 	schema := Str()
-	var member *KeyedMember = Keyed(schema)
+	var member *KeyedMember = Keyed(schema) //nolint:staticcheck // ST1023: the declared type is the pin: the test asserts the symbol has it
 	if member.Schema != schema {
 		t.Fatal("Keyed did not keep its schema")
 	}

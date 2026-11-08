@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -86,7 +87,7 @@ func TestAStreamedBodyReadsAFileInChunksAndReleasesItsReaderOnce(t *testing.T) {
 		chunks++
 		got = append(got, chunk...)
 	}
-	if string(got) != string(content) || chunks != 3 {
+	if !bytes.Equal(got, content) || chunks != 3 {
 		t.Fatalf("read %d bytes in %d chunks, want the file's %d in 3", len(got), chunks, len(content))
 	}
 	if closes != 1 {
@@ -118,7 +119,7 @@ func TestAStreamedBodyReadsAFileInChunksAndReleasesItsReaderOnce(t *testing.T) {
 
 func TestFileSystemSyncRemoteKeepsASessionsMetaAndRefusesAnEscapingSessionID(t *testing.T) {
 	remote := NewFileSystemSyncRemote(osFiles{}, t.TempDir())
-	var _ *FileSystemSyncRemote = remote
+	var _ *FileSystemSyncRemote = remote //nolint:staticcheck // QF1011: the declared type is the pin: the test asserts the constructor's type
 	ctx := context.Background()
 	if meta, err := remote.GetMeta(ctx, "s1"); err != nil || meta != nil {
 		t.Fatalf("GetMeta of a session with none = %v, %v; want nil", meta, err)
@@ -146,7 +147,7 @@ func TestFileSystemSyncRemoteKeepsASessionsMetaAndRefusesAnEscapingSessionID(t *
 func TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted(t *testing.T) {
 	directory := filepath.Join(t.TempDir(), "state")
 	store := NewFileSyncStateStore(osFiles{}, directory)
-	var _ *FileSyncStateStore = store
+	var _ *FileSyncStateStore = store //nolint:staticcheck // QF1011: the declared type is the pin: the test asserts the constructor's type
 	ctx := context.Background()
 	if state, err := store.Get(ctx, "s1"); err != nil || state != nil {
 		t.Fatalf("Get of a session without state = %v, %v; want nil", state, err)
