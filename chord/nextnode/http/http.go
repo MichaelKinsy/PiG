@@ -267,8 +267,7 @@ func newComponent(h host.Host, options HttpOptions, ctx context.Context, after a
 func (c *HttpComponent) Facet() host.Facet { return c.facet }
 
 // Fetch answers a request (an app's own server mounts it); connection is what the server knows of the socket: without
-// LocalAddress and LocalPort no request is local. Requests before the publication wait for it (503 past the host's
-// `readyTimeout`).
+// LocalAddress and LocalPort no request is local. Requests before the publication are answered 503 at once.
 func (c *HttpComponent) Fetch(request *nethttp.Request, connection Connection) *nethttp.Response {
 	served := c.Serve(WebIncoming(request), connection)
 	answer := served.Answer
