@@ -256,7 +256,7 @@ func (l *liveRoutine) sleep() {
 // runs here; after gets how it ended, a microtask after it settled; it never fails. It runs inside a section.
 func call(owner routineOwner, invoke func(ctx Ctx) *Handled, after func(done called)) {
 	loop := owner.host.loop()
-	ctx := newCallContext(owner.context, owner.caller, owner.host)
+	ctx := newCallContext(owner.context, owner.caller, owner.host, nil)
 	settle := owner.admit(ctx.settle)
 	finish := func(done called) {
 		ctx.settle()

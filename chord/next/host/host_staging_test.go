@@ -216,7 +216,7 @@ func TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure(t *testin
 	if len(report.Failed) != 0 {
 		t.Fatalf("failed = %v, want none: a recorded factory's handles are inert", failedMessages(report.Failed))
 	}
-	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadSwapped}}; !reflect.DeepEqual(report.Objects, want) {
+	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadRestarted}}; !reflect.DeepEqual(report.Objects, want) {
 		t.Fatalf("objects = %+v, want %+v", report.Objects, want)
 	}
 	if label := memberOf(t, ref, "label"); label != "v2" {
@@ -241,7 +241,7 @@ func TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObje
 	mustGet(t, host, stagingStore, jsonObject())
 	same, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: stagingServeStore("v2", func(self StoreSelf) { self.Table(v1) })}}, background, ReloadOptions{})
 	must(t, err)
-	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadSwapped}}; !reflect.DeepEqual(same.Objects, want) {
+	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadRestarted}}; !reflect.DeepEqual(same.Objects, want) {
 		t.Fatalf("objects = %+v, want %+v", same.Objects, want)
 	}
 	newer, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: stagingServeStore("v3", func(self StoreSelf) { self.Table(v2) })}}, background, ReloadOptions{})
@@ -382,7 +382,7 @@ func TestStagingPerPluginAFailingPluginKeepsItsOldCodeTheOthersOfTheReloadApply(
 	if got, want := failedMessages(report.Failed), [][2]string{{"@test/notes", `plugin "@test/notes": setup threw`}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("failed = %v, want %v", got, want)
 	}
-	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadSwapped}}; !reflect.DeepEqual(report.Objects, want) {
+	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadRestarted}}; !reflect.DeepEqual(report.Objects, want) {
 		t.Fatalf("objects = %+v, want %+v", report.Objects, want)
 	}
 	turn(host)
@@ -599,7 +599,7 @@ func TestStagingPerPluginWithoutAFailingPluginARequestThatDoesNotBindIsAnOrdinar
 	if !reflect.DeepEqual(report.Plugins.Changed, []string{"@test/notes", "@test/view"}) || len(report.Failed) != 0 {
 		t.Fatalf("changed %v, failed %v", report.Plugins.Changed, failedMessages(report.Failed))
 	}
-	if len(report.Objects) != 2 || report.Objects[0] != (ReloadedObject{Object: "app.notes", Kind: ReloadSwapped}) ||
+	if len(report.Objects) != 2 || report.Objects[0] != (ReloadedObject{Object: "app.notes", Kind: ReloadRestarted}) ||
 		report.Objects[1].Object != "app.view" || report.Objects[1].Kind != ReloadParked {
 		t.Fatalf("objects = %+v, want notes swapped and view parked", report.Objects)
 	}
