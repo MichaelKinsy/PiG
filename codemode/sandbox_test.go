@@ -8,6 +8,8 @@ import (
 	"errors"
 	"maps"
 	"math"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
@@ -24,10 +26,12 @@ import (
 // context.Context, JSON text stands for `unknown`, and a never-settling tool promise becomes a tool that waits for
 // its context, because every goroutine of an execution joins before Execute returns.
 //
-// Not ported: "reports a missing worker file as a sandbox error" (there is no worker file: the VM runs in-process on
-// wazero, docs/specs/builtin-codemode-tool-search.md). TestCorruptWasmModuleIsASandboxError takes its place. Also not
-// ported: 0.99.2 "accepts a worker path string" (#10204): the string form of `workerUrl` names the worker entry of a
-// Bun compiled executable, and this engine has no worker.
+// "worker host" cases: Pi's worker host takes the file that holds the worker (`workerUrl`, a path string or a URL).
+// There is no worker file here, the VM runs in-process on wazero (docs/specs/builtin-codemode-tool-search.md), and the
+// file PiG's worker backend loads is the QuickJS module that SandboxOptions.Wasm supplies. The first two cases run
+// against that: TestWorkerHostAcceptsAModuleFromAFilePath and TestWorkerHostReportsAMissingModuleFileAsASandboxError
+// (the third, a failing module, is TestReportsAFailingWasmModuleAsASandboxError). "ignores Node --watch notifications
+// from the worker" has no Go form: no Node process posts watch notifications.
 
 // sandbox.test.ts runs every behavior test against each place a VM can run (describe.each(BACKENDS)), the in-thread
 // backend with a small interrupt budget so runaway scripts end quickly. The worker backend is the tests themselves; a
@@ -941,6 +945,38 @@ func TestReportsAFailingWasmModuleAsASandboxError(t *testing.T) {
 	t.Cleanup(func() { _ = sandbox.Close() })
 	if e := wantFailure(t, run(t, sandbox, "return 1"), codemode.ErrorSandbox); e.Message != "Failed to load QuickJS: no wasm" {
 		t.Fatalf("message = %q", e.Message)
+	}
+}
+
+// sandbox.test.ts "worker host" > "accepts a worker path string" (#10204, `new CodemodeSandbox({ workerUrl: workerPath })`
+// then `execute("return 1")` is ok with value 1). The analogue of the worker path is a module file named by a path: a
+// supplier that reads the QuickJS module from a file on disk runs the same script to the same result.
+func TestWorkerHostAcceptsAModuleFromAFilePath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "quickjs.wasm")
+	if err := os.WriteFile(path, codemode.QuickJSWasm(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sandbox, err := codemode.NewSandbox(codemode.SandboxOptions{Wasm: func() ([]byte, error) { return os.ReadFile(path) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sandbox.Close() })
+	wantOK(t, run(t, sandbox, "return 1"), "1")
+}
+
+// sandbox.test.ts "worker host" > "reports a missing worker file as a sandbox error" (`workerUrl` names
+// ./does-not-exist.js; the run fails with error kind "sandbox"). A module path that names no file fails the same way:
+// Execute returns a sandbox error that carries the path.
+func TestWorkerHostReportsAMissingModuleFileAsASandboxError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "does-not-exist.wasm")
+	sandbox, err := codemode.NewSandbox(codemode.SandboxOptions{Wasm: func() ([]byte, error) { return os.ReadFile(path) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sandbox.Close() })
+	e := wantFailure(t, run(t, sandbox, "return 1"), codemode.ErrorSandbox)
+	if !strings.HasPrefix(e.Message, "Failed to load QuickJS: ") || !strings.Contains(e.Message, path) {
+		t.Fatalf("message = %q, want the load failure naming %s", e.Message, path)
 	}
 }
 
