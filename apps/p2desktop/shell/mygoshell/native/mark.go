@@ -32,6 +32,22 @@ func (m *markCache) bitmap(v sprite.Variant, scale int) *ui.Bitmap {
 	return b
 }
 
+// banner is v's empty-state banner (the web's login.svg grid) with scale pixels per cell.
+func (m *markCache) banner(v sprite.Variant, scale int) *ui.Bitmap {
+	key := "banner:" + v.ID + "@" + string(rune('0'+scale))
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.known == nil {
+		m.known = map[string]*ui.Bitmap{}
+	}
+	if b, ok := m.known[key]; ok {
+		return b
+	}
+	b := ui.NewBitmap(sprite.Banner(v, scale))
+	m.known[key] = b
+	return b
+}
+
 // mark is the user's sprite as the brand mark, cells of cell DIPs: the width is 16 cells, the height 14.
 func mark(c *ui.Context, v sprite.Variant, cell int) ui.Element {
 	return ui.Image(c, marks.bitmap(v, 2)).Size(float32(16*cell), float32(14*cell)).Fit(ui.Contain)

@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	brandsprite "github.com/MichaelKinsy/PiG/apps/p2/brand/sprite"
 	"net"
 	"os"
 	"path/filepath"
@@ -263,12 +264,22 @@ func (a *App) listen() (*hosts.P2Server, error) {
 		// pig additive (D481): the server serves the desktop surface's scripts object beside its own.
 		options.Facets = append(options.Facets, surfacehost.ServerFacet(builtinPlugins))
 	}
+	withSprite := func() { // the branded web UI (browser, phone, fallback webview) draws the sprite the user chose with /sprite
+		options.Sprite = nil
+		if home, err := brandsprite.DefaultHome(); err == nil {
+			if source, err := brandsprite.Open(home); err == nil {
+				options.Sprite = source
+			}
+		}
+	}
+	withSprite()
 	server, err := hosts.StartServer(options)
 	var listenErr *net.OpError
 	if err != nil && port != 0 && errors.As(err, &listenErr) {
 		// The port of the last launch is taken: any free one, and the web UI starts with its defaults on the new origin.
 		zero := 0
 		options.Port = &zero
+		withSprite()
 		server, err = hosts.StartServer(options)
 	}
 	return server, err

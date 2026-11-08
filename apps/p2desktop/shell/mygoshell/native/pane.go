@@ -20,7 +20,11 @@ func (a *App) pane(c *ui.Context, h *surfacehost.Host, sessions *screens.Session
 			row = item.Row
 		}
 	}
-	ui.Row(c).Height(52).AlignItems(ui.Center).Padding(0, 8, 0, 16).Gap(8).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+	bar := ui.Row(c).Height(52).AlignItems(ui.Center).Padding(0, 8, 0, 16).Gap(8)
+	if row != nil || a.creating { // the web's empty state has no top bar rule
+		bar.BorderWidth(0, 0, 1, 0).BorderColor(t.Border)
+	}
+	bar.Children(func() {
 		if showToggle {
 			if iconButton(c, iconChevronR, "Open the sidebar").Clicked() {
 				a.collapsed = false
@@ -49,22 +53,34 @@ func (a *App) pane(c *ui.Context, h *surfacehost.Host, sessions *screens.Session
 	})
 }
 
-// emptyState is the web's: the mark and "What should PiG do?", the folder, and the way to begin.
+// emptyState is the web's and the terminal's startup: the sprite's banner (the pig beside its "PiG." wordmark) at 6x of its
+// 54x18 grid (5x under 560 px wide, as the web's), the tagline, "What should PiG do?", the folder, and the way to begin.
 func (a *App) emptyState(c *ui.Context, sessions *screens.Sessions) {
 	t := c.Theme()
-	ui.Column(c).Grow(1).Center().Gap(18).Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
-			mark(c, sprite.Active(), 2)
-			ui.Text(c, "What should PiG do?").Bold().FontSize(22)
-		})
+	v := sprite.Active()
+	scale := 6
+	if width, _ := c.Size(); width < 560 {
+		scale = 5
+	}
+	ui.Column(c).Grow(1).Center().Gap(14).Children(func() {
+		ui.Image(c, marks.banner(v, scale)).Size(float32(sprite.BannerWidth*scale), float32(sprite.BannerHeight*scale)).Fit(ui.Contain)
+		if v.Tagline != "" {
+			ui.Text(c, v.Tagline).FontSize(14).TextColor(t.TextMuted)
+		}
+		ui.Text(c, "What should PiG do?").Bold().FontSize(22)
 		if cwd := sessions.DefaultCwd(); cwd != "" {
-			ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+			// The web's cwd-pick: the folder, where the session will work, and a chevron; it opens the new session's form.
+			chip := ui.Row(c).AlignItems(ui.Center).Gap(8).Padding(6, 10).Radius(6).Focusable().Label("Choose the folder").Children(func() {
 				ui.Icon(c, iconFolder).Size(15, 15).TextColor(t.TextMuted)
 				ui.Text(c, screens.ShortPath(cwd)).FontSize(12).Font("monospace").TextColor(t.TextMuted).DottedUnderline()
+				ui.Icon(c, iconChevronR).Size(14, 14).TextColor(t.TextMuted)
 			})
-		}
-		if ui.Button(c, "New session").Padding(10, 18).Clicked() {
-			a.startNew(sessions)
+			if chip.Hovered() {
+				chip.Background(t.SurfaceHover)
+			}
+			if chip.Clicked() {
+				a.startNew(sessions)
+			}
 		}
 	})
 }
