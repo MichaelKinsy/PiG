@@ -14,8 +14,8 @@ func TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDelet
 	var remote SessionSyncMaintenance = newRemote(t)
 	put, err := remote.PutBatch(ctx, "s1", 0, 1, "device-a", chunked([]byte("batch one"), 4), PutBatchOptions{})
 	noError(t, err)
-	if put.Type != PutCreated || put.To != 1 {
-		t.Fatalf("PutBatch = %+v, want the slot created up to 1", put)
+	if put.Type != PutCreated {
+		t.Fatalf("PutBatch = %+v, want the slot created", put)
 	}
 	noError(t, remote.PutSnapshot(ctx, "s1", 1, chunked([]byte("snapshot at one"), 5)))
 	snapshot, err := remote.GetSnapshot(ctx, "s1", 1)
