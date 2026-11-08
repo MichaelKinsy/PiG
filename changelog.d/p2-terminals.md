@@ -1,0 +1,3 @@
+### Added
+
+- `apps/p2/plugins/terminals` ports Pi's terminals plugin: the detached terminal host (`p2 terminals-host`, one per data directory, owning the programs, a headless libghostty terminal for each and the pi-env connections), its framed protocol, the owner's `Terminals` view with its one-use `/terminal` byte channel, the agent's `AgentTerminals` calls and the tmux-style `terminal` tool, plain-text output, tmux keys and commands, closing a session's terminals on archive, and the vendored web facet files. `hosts.RegisterSubcommand` lets a plugin be a program of the p2 executable. <!-- feat: p2-terminals -->

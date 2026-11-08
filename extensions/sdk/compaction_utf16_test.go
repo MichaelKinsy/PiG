@@ -4,19 +4,18 @@ import (
 	"math/rand/v2"
 	"strings"
 	"testing"
-	"unicode/utf16"
 )
 
-// jsLength is the length JavaScript reads from the string these bytes decode to: Go's conversion to runes makes each byte that is not UTF-8 one U+FFFD, as the
-// text a JSON decoder hands an extension holds it, and utf16.Encode gives the code units of the runes.
+// jsLength is the length JavaScript reads from the string these bytes hold: the SDK's WTF-8 form of an unpaired surrogate is its one unit (jsUnits), and every other
+// byte that is not UTF-8 is one U+FFFD, as the text a JSON decoder hands an extension holds it.
 func jsLength(text string) int {
-	return len(utf16.Encode([]rune(text)))
+	return len(jsUnits(text))
 }
 
-func TestUTF16LengthIsTheUTF16LengthOfTheRunes(t *testing.T) {
+func TestUTF16LengthIsTheUTF16LengthOfTheUnits(t *testing.T) {
 	for text, want := range map[string]int{
 		"": 0, "a": 1, "abcdefgh": 8, "abcdefghi": 9, "é": 1, "日本語": 3, "😀": 2, "𝒜": 2, "\U0010ffff": 2, "\U0000ffff": 1,
-		"abcdefg😀": 9, "abcdefgh😀": 10, "abcdefgh😀abcdefgh": 18, "\xff": 1, "\xf0\x9f\x98": 3, "abcdefgh\xf0\x9f\x98": 11, "\xed\xa0\x80": 3, "\xf4\x90\x80\x80": 4,
+		"abcdefg😀": 9, "abcdefgh😀": 10, "abcdefgh😀abcdefgh": 18, "\xff": 1, "\xf0\x9f\x98": 3, "abcdefgh\xf0\x9f\x98": 11, "\xed\xa0\x80": 1, "\xed\xbf\xbf": 1, "\xed\xa0": 2, "\xed\xa0\x80\xed\xb0\x80": 2, "a\xed\xa0\x80b": 3, "\xf4\x90\x80\x80": 4,
 	} {
 		if got := utf16Length(text); got != want {
 			t.Errorf("utf16Length(%q) = %d, want %d", text, got, want)
@@ -48,7 +47,7 @@ func utf16Fragments(rng *rand.Rand) string {
 	return string([]byte{0xed, 0xa0, 0x80})
 }
 
-func TestUTF16LengthOfRandomTextsMatchesTheUTF16LengthOfTheRunes(t *testing.T) {
+func TestUTF16LengthOfRandomTextsMatchesTheUTF16LengthOfTheUnits(t *testing.T) {
 	rng := rand.New(rand.NewPCG(11, 13))
 	for range 50000 {
 		var text strings.Builder

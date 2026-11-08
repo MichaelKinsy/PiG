@@ -207,7 +207,7 @@ func CreateExtension(tools Tools) (*p2runtime.P2Extension, error) {
 	tool := func(name, description string, parameters schema.Schema, execute func(ctx context.Context, a any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error)) p2runtime.P2Tool {
 		return p2runtime.P2Tool{
 			ToolRegistration: harness.DefineTool(durable.ToolRegistration{
-				ToolSchema: p2runtime.MustToolSchemaOf(name, description, parameters),
+				ToolSchema: p2runtime.MustToolSchema(name, description, parameters),
 				// Setting the same destination again changes nothing.
 				Replay:  durable.ReplaySafe,
 				Execute: execute,

@@ -113,12 +113,33 @@ export function normalizeLlamaServerUrl(value) {
 export function llamaInferenceUrl(serverUrl) {
     return `${normalizeLlamaServerUrl(serverUrl)}/v1`;
 }
+function connectionErrorDetail(error) {
+    const cause = error instanceof Error ? error.cause : undefined;
+    if (cause instanceof Error && cause.message)
+        return cause.message;
+    if (cause && typeof cause === "object" && "code" in cause && typeof cause.code === "string")
+        return cause.code;
+    return error instanceof Error ? error.message : String(error);
+}
 export class LlamaClient {
     serverUrl;
     apiKey;
     constructor(serverUrl, apiKey) {
         this.serverUrl = normalizeLlamaServerUrl(serverUrl);
         this.apiKey = apiKey;
+    }
+    /** Fetches from the server, naming the server and the network-level cause when the connection fails. */
+    async fetchServer(path, init) {
+        try {
+            return await fetch(`${this.serverUrl}${path}`, init);
+        }
+        catch (error) {
+            if (init.signal?.aborted)
+                throw error;
+            throw new Error(`Could not reach llama.cpp server at ${this.serverUrl}: ${connectionErrorDetail(error)}`, {
+                cause: error,
+            });
+        }
     }
     async request(path, init = {}) {
         const headers = new Headers(init.headers);
@@ -128,7 +149,7 @@ export class LlamaClient {
             headers.set("Authorization", `Bearer ${this.apiKey}`);
         const timeout = AbortSignal.timeout(15_000);
         const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
-        const response = await fetch(`${this.serverUrl}${path}`, { ...init, headers, signal });
+        const response = await this.fetchServer(path, { ...init, headers, signal });
         let payload;
         try {
             payload = await response.json();
@@ -183,7 +204,7 @@ export class LlamaClient {
         const headers = new Headers();
         if (this.apiKey)
             headers.set("Authorization", `Bearer ${this.apiKey}`);
-        const response = await fetch(`${this.serverUrl}/models/sse`, { headers, signal });
+        const response = await this.fetchServer("/models/sse", { headers, signal });
         if (!response.ok || !response.body)
             throw new Error(`llama.cpp SSE returned HTTP ${response.status}`);
         const reader = response.body.getReader();

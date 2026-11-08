@@ -47,7 +47,7 @@ func scriptOutput(t *testing.T, text string) string {
 }
 
 func codemodeResult(view delta.JsonValue) *delta.JsonObject {
-	results := messageToolResults(view, "codemode")
+	results := toolResults(view, "codemode")
 	if len(results) == 0 {
 		return nil
 	}
@@ -84,7 +84,7 @@ func TestCodeModeAgentFakeProvider(t *testing.T) {
 		view := f.until(f.Chat.Member("view"), func(v delta.JsonValue) bool { return codemodeResult(v) != nil && idle(v) }, 0)
 		result := codemodeResult(view)
 		callID, _ = result.Value("toolCallId").(string)
-		text := resultText(result)
+		text := agentResultText(result)
 		if result.Value("isError") != false {
 			t.Fatal(text)
 		}
@@ -134,7 +134,9 @@ func TestCodeModeAgentFakeProvider(t *testing.T) {
 		}
 		// Read-only: it can be opened and read, not prompted, reconfigured or archived.
 		sub := f.hold(first.Value("conversationId").(float64))
-		f.until(sub.Member("view"), func(v delta.JsonValue) bool { return strings.Contains(marshal(t, object(v).Value("entries")), `{\"n\":1}`) })
+		f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return strings.Contains(marshal(t, object(v).Value("entries")), `{\"n\":1}`)
+		})
 		_, err = sub.Call("send", delta.JsonObjectOf("text", "hello", "requestId", "steer"), p2test.Background)
 		if p2test.ExpectChord(t, err, data.CodeForbidden); err == nil || !strings.Contains(err.Error(), "read-only") {
 			t.Errorf("send: %v", err)
@@ -199,9 +201,9 @@ func TestCodeModeOffWhileTheAgentPluginStays(t *testing.T) {
 	f.send(`codemode return await tools.agent({ prompt: 'json {"back":true}', schema: { type: "object" } });`)
 	view := f.until(f.Chat.Member("view"), func(v delta.JsonValue) bool { return codemodeResult(v) != nil && idle(v) })
 	if codemodeResult(view).Value("isError") != false {
-		t.Fatal(resultText(codemodeResult(view)))
+		t.Fatal(agentResultText(codemodeResult(view)))
 	}
-	if got := scriptOutput(t, resultText(codemodeResult(view))); !strings.Contains(got, `"back":true`) {
+	if got := scriptOutput(t, agentResultText(codemodeResult(view))); !strings.Contains(got, `"back":true`) {
 		t.Errorf("output = %q", got)
 	}
 }
