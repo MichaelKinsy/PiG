@@ -336,7 +336,7 @@ func (a *App) attachmentChips(c *ui.Context) {
 	}
 	ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Padding(0, 0, 6).Children(func() {
 		for i, f := range attached {
-			ui.Row(c.Key("attached-" + f.ID)).Gap(4).AlignItems(ui.Center).Padding(2, 6).Background(t.Surface).Radius(6).Children(func() {
+			ui.Row(c.Key("attached-"+f.ID)).Gap(4).AlignItems(ui.Center).Padding(2, 6).Background(t.Surface).Radius(6).Children(func() {
 				ui.Text(c, f.Name).FontSize(12).SingleLine()
 				if iconButton(c, iconClose, "Remove "+f.Name).Clicked() {
 					a.mu.Lock()
