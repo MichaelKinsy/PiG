@@ -2,7 +2,7 @@
 # Only the random bash full-output filename is replaced with OUTPUT_FILE, after checking that the file exists; both probes remove their own file.
 # Object keys are sorted recursively. No result field, string whitespace, empty object, null or omission is removed.
 #
-# Pi main 676af1d77 (#11747, in the pin c23b9ec1; Pi 1.5.0 differed, D253 is retired) reads a limit below 1 as 1, floors a fraction and prints a find limit notice only when
+# Pi main 676af1d77 (#11747, in the pin c23b9ec1; Pi 1.5.0 differed; the divergence record is retired) reads a limit below 1 as 1, floors a fraction and prints a find limit notice only when
 # more results than the limit exist. `ls fractional` (limit 1.5 lists one entry and reports limit 1) and `find limited` (limit 1 with exactly one match prints no notice) are
 # compared against the pin's Pi like every other line; both_contain pins the two complete lines in both outputs so neither engine can drift back to Pi 1.5.0's text.
 name = "15-builtin-tool-wire-details"
