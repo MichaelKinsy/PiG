@@ -2973,7 +2973,7 @@ path = "packages/mcp/src/oauth/callback.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable", "detached-owned"]
 evidence = ["test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPlainTextByDefault", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPagesThroughRenderPage", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne"]
-rationale = "waitForCallback returns a promise settled by the redirect, the timeout or close(); WaitForCallback blocks on a channel with the caller context (a wait that ends with its context frees its state, a wait after Close fails at once: D370). The server goroutine is owned by the server and ends in Close, which also drops connections that never sent a request."
+rationale = "waitForCallback returns a promise settled by the redirect, the timeout or close(); WaitForCallback blocks on a channel with the caller context (a wait that ends with its context frees its state, a wait after Close fails at once). The server goroutine is owned by the server and ends in Close, which also drops connections that never sent a request."
 
 [[files]]
 path = "packages/mcp/src/oauth/client-settings.ts"
