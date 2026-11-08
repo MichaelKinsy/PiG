@@ -31277,35 +31277,6 @@
       ]
     },
     {
-      "id": "BF-D241",
-      "title": "Ctrl+V also pastes on Windows and WSL",
-      "symptom": "1.5.0 binds no key to `ctrl+v` on Windows and WSL (#11765).",
-      "rootCause": "Most Windows terminals handle Ctrl+V themselves and send a bracketed paste, but some pass Ctrl+V to the program as the raw `0x16` key. With only `alt+v` bound, nothing happened and no message was shown. In a terminal that handles Ctrl+V itself the program never receives the key, so the extra binding changes nothing there.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "Windows, WSL",
-      "class": "ahead-of-pi",
-      "divergence": "D241",
-      "removeWhen": "the pinned Pi release contains 37b38e9f6. Then the call-site markers and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "8b792f9bd1",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "bfe1b032a7",
-          "date": "2026-11-05"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/keybindings_inventory_test.go::TestAppKeybindingDefinitionsMatchUpstreamInventory",
-        "internal/codingagent/keybindings_platform_test.go::TestKeybindingDefinitionsApplyPlatformDefaults",
-        "internal/codingagent/keybindings_platform_test.go::TestPlatformDivergentControlKeys"
-      ]
-    },
-    {
       "id": "BF-D242",
       "title": "Reload is rejected while the session is running or compacting",
       "symptom": "1.5.0 has the TUI's entry checks only in the TUI, not in the core reload method (#9221).",
@@ -51944,11 +51915,6 @@
       "id": "D240",
       "title": "Claude Sonnet 5 takes no temperature",
       "entry": "BF-D240"
-    },
-    {
-      "id": "D241",
-      "title": "Ctrl+V also pastes on Windows and WSL",
-      "entry": "BF-D241"
     },
     {
       "id": "D242",
