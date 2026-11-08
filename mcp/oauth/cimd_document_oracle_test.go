@@ -1,13 +1,12 @@
-package mcpext
+package oauth
 
 import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
-	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
 
-// clientMetadataDocument and callbackId (extensions/mcp/oauth.ts:238-271) are not exported by Pi's module, so the oracle body transcribes them and runs them on Node's own URL: the callback ID hashes String(new URL(serverUrl)) without its fragment, and the server-specific redirect URI is new URL(redirectUrl) with pathname "/callback/<id>".
+// clientMetadataDocument, serverSpecificPath and callbackId (packages/mcp/src/oauth/client-settings.ts) are not exported by Pi's package, so the oracle body transcribes them and runs them on Node's own URL: the callback ID hashes String(new URL(serverUrl)) without its fragment, and the server-specific redirect URI is new URL(redirectUrl) with its path extended by "/<id>" (a trailing slash is not doubled).
 func TestClientMetadataDocumentMatchesNodeURL(t *testing.T) {
 	serverURLs := []string{
 		"https://mcp.example.com/mcp", "https://mcp.example.com", "https://mcp.example.com/mcp#frag", "https://mcp.example.com/mcp?x=1#frag", "HTTPS://MCP.EXAMPLE.COM:443/Mcp", "https://mcp.example.com:8443/mcp", "https://mcp.example.com/a/../b",
@@ -41,15 +40,15 @@ emit(input.map(({ server, redirect }) => {
 	try {
 		const id = callbackId(server);
 		const r = new URL(redirect);
-		r.pathname = "/callback/" + id;
+		r.pathname = r.pathname.replace(/\/$/, "") + "/" + id;
 		return { url: "https://pi.dev/oauth/" + id + "/client.json", redirect: r.href };
 	} catch (e) { return { error: e.message }; }
 }));`, probes, &want)
 	supported := true
-	metadata := &oauth.AuthorizationServerMetadata{ClientIDMetadataDocumentSupported: &supported, TokenEndpointAuthMethodsSupported: []string{"none"}}
+	metadata := &AuthorizationServerMetadata{ClientIDMetadataDocumentSupported: &supported, TokenEndpointAuthMethodsSupported: []string{"none"}}
 	for i, p := range probes {
 		var have result
-		doc, err := clientMetadataDocument(p.Server, p.Redirect, metadata)
+		doc, err := clientMetadataDocument(p.Server, p.Redirect, metadata, "https://pi.dev/oauth")
 		if err != nil {
 			have.Error = "Invalid URL"
 		} else {

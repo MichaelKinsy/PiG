@@ -199,3 +199,25 @@ func TestStreamableHTTPAnErrorBodyThatFailsMidReadIsEmpty(t *testing.T) {
 		t.Fatalf("message = %q, want %q", httpErr.Error(), want)
 	}
 }
+
+// Pi main f40984747 packages/mcp/test/streamable-http.test.ts "cancels the stream when an event exceeds the limit" (#11729): the Go twin goes
+// through the transport, whose consumer closes the response body once the event fails the size limit; the server keeps the response open.
+func TestStreamableHTTPClosesAnSSEResponseWhoseEventExceedsTheLimit(t *testing.T) {
+	body := &stalledBody{data: []byte("data: " + strings.Repeat("x", 512) + "\n\n"), closed: make(chan struct{})}
+	t.Cleanup(func() { _ = body.Close() })
+	header := http.Header{"Content-Type": []string{"text/event-stream"}}
+	transport := newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: "http://127.0.0.1/mcp", OpenGetStream: new(false), MaxMessageBytes: 128, Fetch: bodyFetch{status: 200, header: header, body: body}})
+	if err := transport.Start(); err != nil {
+		t.Fatal(err)
+	}
+	// The transport stays open: only the failed stream may close the body.
+	defer func() { _ = transport.Close() }()
+	if err := transport.Send(t.Context(), mcp.NewRequest(mcp.NumberID(1), "tools/list", nil)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-body.closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the failed SSE response stayed open")
+	}
+}

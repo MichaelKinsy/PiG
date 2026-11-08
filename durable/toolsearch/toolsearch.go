@@ -10,12 +10,14 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"reflect"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/internal/search"
@@ -38,11 +40,21 @@ type Details struct {
 	Loaded []string `json:"loaded"`
 }
 
-// schemaText appends the descriptions and property names of a schema, recursively.
-func schemaText(schema any, parts *[]string) {
+// schemaText appends the descriptions and property names of a schema, recursively, following local `$ref`s into root. seen holds the subschemas
+// already reached through a reference, so recursive and shared definitions are read once, and definitions no property references are not read
+// (Pi 6d3e342b2, #11803).
+func schemaText(schema, root any, parts *[]string, seen map[uintptr]bool) {
 	object, ok := schema.(map[string]any)
 	if !ok {
 		return
+	}
+	if ref, ok := object["$ref"].(string); ok {
+		if target, ok := codemode.ResolveSchemaRef(ref, root); ok {
+			if targetObject, isObject := target.(map[string]any); isObject && !seen[reflect.ValueOf(targetObject).Pointer()] {
+				seen[reflect.ValueOf(targetObject).Pointer()] = true
+				schemaText(target, root, parts, seen)
+			}
+		}
 	}
 	if text, ok := object["description"].(string); ok {
 		*parts = append(*parts, text)
@@ -55,14 +67,14 @@ func schemaText(schema any, parts *[]string) {
 		sort.Strings(names)
 		for _, name := range names {
 			*parts = append(*parts, name)
-			schemaText(properties[name], parts)
+			schemaText(properties[name], root, parts, seen)
 		}
 	}
-	schemaText(object["items"], parts)
+	schemaText(object["items"], root, parts, seen)
 	for _, key := range []string{"anyOf", "oneOf", "allOf"} {
 		if variants, ok := object[key].([]any); ok {
 			for _, variant := range variants {
-				schemaText(variant, parts)
+				schemaText(variant, root, parts, seen)
 			}
 		}
 	}
@@ -77,7 +89,11 @@ func searchText(tool *durable.ToolRegistration) string {
 		//portlint:allow jsonclone once per tool per tool_search call, which is a model turn; the parameters are walked as generic JSON
 		_ = json.Unmarshal(encoded, &decoded) //perf:ok once per tool per tool_search call, which is a model turn; the parameters are walked as generic JSON
 	}
-	schemaText(decoded, &parts)
+	seen := map[uintptr]bool{}
+	if root, ok := decoded.(map[string]any); ok {
+		seen[reflect.ValueOf(root).Pointer()] = true
+	}
+	schemaText(decoded, decoded, &parts, seen)
 	kept := parts[:0]
 	for _, part := range parts {
 		if jsstring.Trim(part) != "" {
