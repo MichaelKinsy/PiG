@@ -140,15 +140,6 @@ func (MarkerItem) isItem()              {}
 func (ToolItem) isItem()                {}
 func (GapItem) isItem()                 {}
 
-// ArtifactInfo is one version of an artifact: the artifact tool's result details and the artifacts plugin's index entries.
-// Lane A's runtime schemas leaf will own this type; it is replaced by that one when it lands.
-type ArtifactInfo struct {
-	Name    string
-	Title   string
-	Type    string
-	Version int
-}
-
 // RetryInfo is a pending retry: when and why.
 type RetryInfo struct {
 	At    int64
@@ -177,7 +168,7 @@ type Transcript struct {
 	Items []Item
 	// Earlier is true when more entries exist before the first item (`TranscriptStore.loadEarlier`).
 	Earlier   bool
-	Artifacts []ArtifactInfo
+	Artifacts []runtime.ArtifactInfo
 	Busy      bool
 	Working   bool
 	Retry     *RetryInfo
