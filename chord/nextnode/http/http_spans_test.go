@@ -94,9 +94,12 @@ func itemsFacet() host.Facet {
 func TestRequestSpansTracesARoutedRequestItsMethodRoutePatternAndStatusNeverItsPathItsHandlersCtxUnderIt(t *testing.T) {
 	telemetry := newW3cTelemetry()
 	server := serving(t, []plugin{{"@app/items", itemsFacet()}}, servedOptions{telemetry: telemetry})
-	for path, want := range map[string]int{"/items/secret-id": 200, "/broken": 500, "/nowhere": 404} {
-		if got := mustSend(t, server.port, "GET", path, sendOptions{}).status; got != want {
-			t.Fatalf("GET %s = %d, want %d", path, got, want)
+	for _, request := range []struct {
+		path string
+		want int
+	}{{"/items/secret-id", 200}, {"/broken", 500}, {"/nowhere", 404}} {
+		if got := mustSend(t, server.port, "GET", request.path, sendOptions{}).status; got != request.want {
+			t.Fatalf("GET %s = %d, want %d", request.path, got, request.want)
 		}
 	}
 	server.close()
