@@ -299,6 +299,7 @@ plugins/chat/contract.ts
 plugins/chat/outbox.ts
 plugins/chat/package.json
 plugins/chat/session-start.ts
+plugins/chat/shell.ts
 plugins/chat/web.tsx
 plugins/codemode/activity.tsx
 plugins/codemode/nested.ts
@@ -371,6 +372,7 @@ plugins/send-file/web.tsx
 plugins/sessions/BranchSheet.tsx
 plugins/sessions/SessionSheet.tsx
 plugins/sessions/contract.ts
+plugins/sessions/lock-worker.ts
 plugins/sessions/package.json
 plugins/sessions/web.tsx
 plugins/sharing/contract.ts
@@ -450,6 +452,7 @@ src/runtime/shell.ts
 src/runtime/tool-calls.ts
 src/runtime/web-core.ts
 src/runtime/web.tsx
+src/runtime/worker.ts
 src/web/AppLayout.tsx
 src/web/ArtifactPicker.tsx
 src/web/Chat.tsx

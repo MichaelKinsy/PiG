@@ -58,8 +58,8 @@ type holdStateKind int
 const (
 	// holdUnplaced: in the unbound index until the host's publication places it.
 	holdUnplaced holdStateKind = iota
-	// holdPending: until its object is live (the activation, parking and retries; toldFailed once the consumer was told
-	// of a failure, so the next attempt is announced with `loading`).
+	// holdPending: until its object is live (the activation, parking and retries; told: the failure its consumer was told, so
+	// the next attempt is announced with `loading` and a call that crossed the failure on the wire gets it).
 	holdPending
 	// holdBinding: its object is live and its `bound` waits for a slot.
 	holdBinding
@@ -74,17 +74,23 @@ const (
 
 // holdState is where a hold stands; only the fields of its kind are set (Pi's discriminated union).
 type holdState struct {
-	kind       holdStateKind
-	request    holdRequest
-	cause      data.FailureCause
-	toldFailed bool
-	variant    *contracts.VariantData
+	kind    holdStateKind
+	request holdRequest
+	cause   data.FailureCause
+	// told is the failure a pending hold's consumer was told.
+	told    *data.ChordError
+	variant *contracts.VariantData
 	// names are the bound version's names of the variant, which the wire's indexes point into.
 	names contracts.VariantNames
-	// instance is what a bound hold was bound to: a swap brings another, which it binds to afresh.
+	// instance is the attempt a bound hold was bound to: it follows it on while it still changes (a restart's open old attempt).
 	instance any
-	// previous (binding afresh after a swap in place): the names the consumer still holds it bound with.
+	// previous (a pending hold unbound with `loading`, and the binding after it):
+	// the names the consumer still holds it bound with, which its calls sent before it learnt of the `loading` are decoded by.
 	previous *boundNames
+	// rebinding (a bound hold): a rebinding's names before it; until is its `bound`, this host's own message number. Calls its
+	// consumer sent before it applied that `bound` carry their indexes, so they are decoded by them until its `ack`.
+	rebinding *boundNames
+	until     int
 	// followed are the members it follows, in the order they were subscribed.
 	followed []*holdFollowed
 }
@@ -149,13 +155,41 @@ func (*hold) dependent() *chordObject { return nil }
 // caller is whom the hold acts for.
 func (h *hold) caller() caller { return h.from }
 
+// listed: presence lists show every hold.
+func (h *hold) listed() bool { return true }
+
 // bound is whether the hold is bound: its members' changes are sent.
 func (h *hold) bound() bool { return h.state.kind == holdBound }
 
-// callable is whether calls on it reach its object: bound, or binding afresh after a swap in place (its `bound` not
-// sent yet).
-func (h *hold) callable() bool {
-	return h.state.kind == holdBound || (h.state.kind == holdBinding && h.state.previous != nil)
+// callable is whether calls on it reach its object: bound, or by the names it was bound with while it rebinds (after a
+// `loading` unbind: its fresh `bound` not sent yet).
+func (h *hold) callable() bool { return h.names() != nil }
+
+// refusal is what a call it does not take is refused with: the failure its consumer was told (refused, or failed while
+// pending: the call crossed that `failed` on the wire, and its consumer shows that cause), else `not_ready` (not bound yet).
+func (h *hold) refusal() *data.ChordError {
+	switch {
+	case h.state.kind == holdRefused:
+		return h.state.cause.Error
+	case h.state.kind == holdPending && h.state.told != nil:
+		return h.state.told
+	}
+	return data.NewChordError(data.ChordErrorInit{Code: data.CodeNotReady, Message: fmt.Sprintf("hold %d: not bound yet", h.id)}, nil)
+}
+
+// names are the names its calls are decoded by: its binding's (its previous ones until its consumer acknowledged the `bound`
+// that brought them: another variant's indexes name other methods), or the ones it was bound with while it rebinds.
+func (h *hold) names() *boundNames {
+	switch h.state.kind {
+	case holdBound:
+		if h.state.rebinding != nil && !h.provider.acknowledged(h.state.until) {
+			return h.state.rebinding
+		}
+		return &boundNames{variant: h.state.variant, names: h.state.names}
+	case holdPending, holdBinding:
+		return h.state.previous
+	}
+	return nil
 }
 
 // contract is its consumer's contract version and fingerprint (its request's): the provider binds them or it waits.
@@ -253,10 +287,9 @@ func (h *hold) wake() {
 	}
 }
 
-// moved: the object's state changed, or the hold took it: a pending hold binds once it is live (when a slot is free), sends
-// each failure, and announces the attempt after a failure with `loading`. A bound hold (or one whose `bound` waits for a
-// slot) whose object leaves `live` goes back to pending (slice 7b §6), except while a reload's swap runs in place; a
-// bound one whose object went live with another attempt (a swap) gets a fresh `bound` (audit A9).
+// moved: the object's state changed, or the hold took it: a pending hold binds once its object shows it live (when a slot is
+// free), sends each failure, and announces the attempt after a failure with `loading`. A bound hold (or one whose `bound` waits
+// for a slot) whose object no longer shows it live goes back to pending (slice 7b §6).
 func (h *hold) moved() {
 	current := h.state
 	object := h.object
@@ -264,19 +297,13 @@ func (h *hold) moved() {
 		return
 	}
 	if current.kind == holdBound || current.kind == holdBinding {
-		shown := object.state()
+		shown := h.shown(object)
 		if shown.Kind == RefStateLive {
-			if current.kind == holdBound && object.instance() != current.instance {
-				h.rebind(current)
-			}
 			return
 		}
-		// Its instance still changes (a swap's old one, a restart's drain, a live failure's admitted commits): it follows
-		// it on until it stopped (slice 7b, decision "References are the only indirection").
+		// Its instance still changes (a live failure's admitted commits, a restart's old attempt draining): it follows it on
+		// until it stopped (decision "References are the only indirection").
 		if current.kind == holdBound && object.attachable() == current.instance {
-			return
-		}
-		if current.kind == holdBinding && shown.Kind == RefStateLoading && object.swapsInPlace() {
 			return
 		}
 		var cause *data.ChordError
@@ -286,6 +313,13 @@ func (h *hold) moved() {
 		h.unbind(cause)
 	}
 	h.pending(object)
+}
+
+// shown is what its object shows to its version and fingerprint: `live` also while a restart's open old attempt binds them
+// (decision "Reload restarts every affected object", rule 5).
+func (h *hold) shown(object *chordObject) *RefState {
+	consumer := h.contract()
+	return object.stateFor(consumer.version, consumer.fingerprint)
 }
 
 // memberFailed: member followed failed with err: its failure waits to be sent, replacing one still waiting.
@@ -310,10 +344,14 @@ func (h *hold) memberHealed(index int) {
 	}
 }
 
-// unbind: its object left `live` (a restart, a parked swap, a live failure): no longer subscribed or waiting for a slot,
-// its calls in flight rejected (err, or `unavailable`), pending again; a `loading` tells the consumer it rebinds (a
-// failure is sent by `pending`, which a consumer applies to a bound hold as a rebinding too, model §5).
+// unbind: its object no longer shows it live (a restart, a live failure): no longer subscribed or waiting for a slot,
+// pending again. With err (a failure, sent by `pending`, which a consumer applies to a bound hold as a rebinding too, model
+// §5) its calls in flight are rejected. Without (`loading`, which tells the consumer it rebinds) they stay, and calls by the
+// names it was bound with keep arriving (sent before its consumer learnt of the `loading`): each gets exactly one answer from
+// what it waits on, the instance it already runs on (its result, or `released` at the seal) or its object's gate (the new
+// instance's result, its failure, `park_timeout`, its end), design §22.
 func (h *hold) unbind(err *data.ChordError) {
+	previous := h.names()
 	if h.state.kind == holdBound {
 		unfollow(&h.state)
 	}
@@ -321,26 +359,14 @@ func (h *hold) unbind(err *data.ChordError) {
 	h.failures = nil
 	h.retired = link.NoRetired
 	h.touchedFlag = false
-	reason := err
-	if reason == nil {
-		reason = data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: fmt.Sprintf("hold %d: its object rebinds", h.id)}, nil)
+	if err != nil {
+		h.provider.unbound(h, err)
+		h.state = holdState{kind: holdPending}
+		return
 	}
-	h.provider.unbound(h, reason)
-	h.state = holdState{kind: holdPending}
-	if err == nil {
-		h.provider.send(&link.LoadingMessage{Hold: h.id})
-	}
-}
-
-// rebind: a swap of its object went live in place (slice 7b §5, audit A9): no longer subscribed to the old instance, it
-// gets a fresh `bound` of the new one's members (as a restart, a variant or a version change does), answering calls by
-// its old names until that is sent.
-func (h *hold) rebind(state holdState) {
-	unfollow(&state)
-	// Its ops still waiting for a slot are the old instance's: the `bound` replaces them.
 	h.provider.unbind(h)
-	h.state = holdState{kind: holdBinding, previous: &boundNames{variant: state.variant, names: state.names}}
-	h.provider.bind(h, h.provider.link.context)
+	h.state = holdState{kind: holdPending, previous: previous}
+	h.provider.send(&link.LoadingMessage{Hold: h.id})
 }
 
 // retry handles a `retry` message with Hops left of its budget: the object is asked for an attempt now (it ignores this
@@ -365,10 +391,11 @@ func (h *hold) pending(object *chordObject) {
 	if current.kind != holdPending {
 		return
 	}
-	shown := object.state()
+	shown := h.shown(object)
 	switch shown.Kind {
 	case RefStateLive:
-		h.state = holdState{kind: holdBinding}
+		// Calls by the names it was bound with are still answered until the fresh `bound` is sent.
+		h.state = holdState{kind: holdBinding, previous: current.previous}
 		h.provider.bind(h, h.provider.link.context)
 	case RefStateFailed:
 		// Each failure and each new cause (a parked object's blocker changed) is a message of its own.
@@ -380,9 +407,10 @@ func (h *hold) pending(object *chordObject) {
 			message.RetryIn = link.Some(int(max(0, *shown.RetryAt-h.provider.link.host.loop().Now())))
 		}
 		h.provider.send(message)
-		h.state = holdState{kind: holdPending, toldFailed: true}
+		// Told a failure, its consumer rejects what it still waits on: calls by the old names are not taken any more.
+		h.state = holdState{kind: holdPending, told: shown.Cause.Error}
 	case RefStateLoading:
-		if current.toldFailed {
+		if current.told != nil {
 			h.provider.send(&link.LoadingMessage{Hold: h.id})
 			h.state = holdState{kind: holdPending}
 		}
@@ -408,16 +436,10 @@ func (h *hold) call(method string, args any, ctx context.Context) *parkedCallRes
 }
 
 // method is the method at index of the bound variant and whether its result carries byte segments (its schema has a
-// `bytes()` leaf). It fails on an index outside the variant (a protocol error); a hold that is not bound has none.
+// `bytes()` leaf). It fails on an index outside the variant (a protocol error); a hold that is not callable has none.
 func (h *hold) method(index int) (name string, resultBytes bool, err error) {
-	// Binding afresh after a swap: by the names the consumer still has (the new instance answers by name).
-	var names *boundNames
-	switch h.state.kind {
-	case holdBound:
-		names = &boundNames{variant: h.state.variant, names: h.state.names}
-	case holdBinding:
-		names = h.state.previous
-	}
+	// While it rebinds: by the names the consumer still has (its object answers by name).
+	names := h.names()
 	if names != nil && index >= 0 && index < len(names.names.Methods) {
 		name = names.names.Methods[index]
 		return name, names.variant.Methods.Value(name).Result.Bytes, nil
@@ -430,10 +452,13 @@ func (h *hold) method(index int) (name string, resultBytes bool, err error) {
 // travel as indexes into the bound version (2b). Counts one encode (`chord.link.encodes`).
 func (h *hold) boundEntry(ctx context.Context) link.BoundEntry {
 	object := h.object
-	contract := object.served.contract
-	// A live remote object has its variant.
-	variant, _ := object.variant()
-	bound := h.bindTo(object)
+	// It binds the instance its object shows it (`shown` live): the live one, or a restart's open old attempt; the object
+	// tells its holds at that attempt's seal (`moved`), so a hold waiting for a slot never binds it later.
+	instance := object.instance().(*attempt)
+	contract := instance.served.contract
+	// A live remote object's instance has its variant.
+	variant, _ := instance.variantName()
+	bound := h.bindTo(instance)
 	var snapshot []link.BoundMember
 	var failures []link.FailedMember
 	version := h.contract().version
@@ -590,15 +615,20 @@ func (h *hold) end(err *data.ChordError) {
 	h.provider.send(&link.GoneMessage{Hold: h.id, Error: wireError(err)})
 }
 
-// bindTo is the binding: its variant and names at the hold's version, with no member followed yet.
-func (h *hold) bindTo(object *chordObject) *holdState {
-	variants, err := contracts.VariantsAt(object.served.contract, h.contract().version)
+// bindTo is the binding: its variant and names at the hold's version, with no member followed yet, and the names its consumer
+// still has (a rebinding's) until it acknowledged this `bound`, the next of this host's own messages.
+func (h *hold) bindTo(instance *attempt) *holdState {
+	variants, err := contracts.VariantsAt(instance.served.contract, h.contract().version)
 	if err != nil {
 		panic(err)
 	}
-	variant, _ := object.variant()
+	variant, _ := instance.variantName()
 	data := variants.Value(variant)
-	h.state = holdState{kind: holdBound, variant: data, names: contracts.VariantNamesOf(data), instance: object.instance()}
+	previous := h.names()
+	h.state = holdState{kind: holdBound, variant: data, names: contracts.VariantNamesOf(data), instance: instance}
+	if previous != nil {
+		h.state.rebinding, h.state.until = previous, h.provider.nextOwn()
+	}
 	return &h.state
 }
 

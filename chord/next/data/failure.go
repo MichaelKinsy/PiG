@@ -81,7 +81,12 @@ func WaitingFor(blocker string, err *ChordError) FailureCause {
 		}
 	}
 	message := waitingPrefix + label + waitingSeparator + root
-	return FailureCause{Kind: FailureWaiting, Error: NewChordError(ChordErrorInit{Code: CodeUnavailable, Message: message}, err)}
+	init := ChordErrorInit{Code: CodeUnavailable, Message: message}
+	// A version refusal, here or along the chain, keeps its reason: it heals with another host's reload.
+	if err.Code == CodeContractMismatch || (err.Code == CodeUnavailable && err.Reason == ReasonVersion) {
+		init.Reason = ReasonVersion
+	}
+	return FailureCause{Kind: FailureWaiting, Error: NewChordError(init, err)}
 }
 
 func utf16Len(text string) int { return jsstring.Length(text) }

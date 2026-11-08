@@ -26,8 +26,8 @@ import (
 // instance each time. It is the `self` its factory declares with (handles to the object's documents and jobs, under its
 // seal token); it runs the activation steps, each failing with its own kind; it takes the live object's calls and starts
 // its routines and jobs; and it ends with its seal (slice 6a §1.3), the drain and the closes of its natives. A reload's
-// swap hands it over (slice 7b §5): its routines stop and hand over to the new attempt's, its jobs to the new attempt's,
-// and it is sealed once its calls settled.
+// restart drains it (decision "Reload restarts every affected object; old work finishes on old code"): its routines stop,
+// it serves old work under its own contract, and it is sealed once that work settled.
 //
 // Async contract. `activate` returns a promise (a keyedPromise settled in a section): the steps Pi awaits are
 // continuations on the host's Loop in Pi's microtask order (`await undefined` is a `Queue`, an awaited Promise a `then`),
@@ -36,8 +36,8 @@ import (
 // section. `call` admits the call in the caller's section and runs the handler (a blocking Go function) on an owned task;
 // its result settles later. `close` blocks (the drain, the natives' closes, the job writes) and is called outside a section.
 //
-// `drainCalls` and `handOverRoutines` (the async methods a reload awaits) are called in a section: each takes the list of
-// work to wait for then, as Pi does at the call, and returns a promise that an owned task settles in a section. `checked`
+// `drainCalls` (the async method a reload awaits) is called in a section: it takes the list of work to wait for at each
+// round, as Pi does, and returns a promise that settles in a section. `checked`
 // is the promise of the first dependency check. `pinKey` blocks, outside a section.
 //
 // Forced Go differences.
@@ -122,6 +122,12 @@ type StoreSelf interface {
 	Self
 	// Table is this object's table definition in the host's store, once per table name.
 	Table(definition *store.TableDefinition) *store.TableHandle
+	// Query is a live query (decision "Live queries over an object's own tables"): the rows of q (at most limit, in its
+	// order) over table, a table this factory declared, as a JSON watchable (a state member, a derive source). Run before
+	// the object goes live, and again in the commit step of every commit of this object that writes table (one query per
+	// such commit, bounded by limit; not for tables written hundreds of times a second). A limit is required
+	// (`invalid/args`).
+	Query(table *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue]
 	// Contribute contributes value to registry R from the moment this object is live until it ends, fails or restarts (R21:
 	// a host-lifetime object): a plain value, or a Chord watchable of one (followed: its change recomposes). At most one
 	// per registry.
@@ -232,10 +238,10 @@ type routineRun struct {
 	calls *workSet
 }
 
-// reloaded is what a reload did to an attempt: `started` (a reload started it), `handedOver` (a swap: its jobs are the new
-// attempt's, its invocations finish on their own), `callsDrained` (a swap or restart waited for its calls: its end's drain
-// does not again), `routinesStopped` (its routines stopped, and do not start late after a handover).
-type reloaded struct{ started, handedOver, callsDrained, routinesStopped bool }
+// reloaded is what a reload did to an attempt: `started` (a reload started it), `callsDrained` (a restart drains its calls:
+// old work runs on it until its seal, and its end's drain does not wait for them again), `routinesStopped` (its routines
+// stopped, and do not start late).
+type reloaded struct{ started, callsDrained, routinesStopped bool }
 
 // firstCheck is its first dependency check, for a reload (its report, a swap's handover): waited for by someone (waiting),
 // or done (done) with why it parked (cause; nil: it did not). Made by the first who asks or by the check.
@@ -270,6 +276,8 @@ type attempt struct {
 	abort func(cause error)
 	// opening is the object's context under this attempt's signal.
 	opening context.Context
+	// opener is opening carrying its object (`openingKey`): the context its natives open under.
+	opener context.Context
 	// token is the seal token its handles and transactions carry (the seal fence).
 	token *documents.SealToken
 	// routineRun is its routines once they started (most attempts have none); nil is Pi's undefined.
@@ -294,6 +302,8 @@ type attempt struct {
 	// tables are the tables it declared, by name.
 	tables     []declaredTable
 	tableNames map[string]struct{}
+	// queries are its live queries, run at activation (after the tables are prepared), detached at its end.
+	queries []*store.LiveQuery
 	// references are those this attempt declared with `self.get`.
 	references []declaredReference
 	// dependencies are its dependencies (`self.get` references and `self.registry` values) in declaration order: the parked
@@ -339,8 +349,11 @@ var (
 
 func newAttempt(object *chordObject, ctx context.Context) *attempt {
 	opening, abort := chordctx.WithCancel(ctx)
+	// Its opener's calls are known as its object's: their gate waits are the object's edges for reload cycles. A separate
+	// context: the abort order of `opening` is read through its own type (chordctx.AbortOrder), which a value wrapper hides.
 	return &attempt{
-		object: object, served: object.served, ctx: ctx, abort: abort, opening: opening, token: documents.NewSealToken(),
+		object: object, served: object.served, ctx: ctx, abort: abort, opening: opening, opener: chordctx.WithValue(opening, openingKey, object),
+		token:         documents.NewSealToken(),
 		declaredNames: map[string]struct{}{}, jobNames: map[string]struct{}{}, tableNames: map[string]struct{}{},
 	}
 }
@@ -406,6 +419,9 @@ func (o *attemptTableOwner) Label() string { return o.attempt.object.text }
 // Scope is the object's documents: a transaction of another object refuses the handle.
 func (o *attemptTableOwner) Scope() any { return o.attempt.object.documents }
 
+// Queries are the object's live queries, across its attempts: what a commit writing a table re-runs.
+func (o *attemptTableOwner) Queries() *store.LiveQueries { return o.attempt.object.queries() }
+
 // AssertLive returns `released` once the object ended. Table reads call it from a handler's goroutine, outside the host's
 // sections, where the object's end (a section) may write the state it reads: it takes a section of its own (Go form of
 // Pi's single thread; Run is inline when the caller is in one).
@@ -418,6 +434,44 @@ func (o *attemptTableOwner) AssertLive() error {
 // Fail fails the object `broken` with a row the code cannot read.
 func (o *attemptTableOwner) Fail(err *data.ChordError) {
 	o.attempt.object.failLive(o.attempt, liveFailure{kind: data.FailureBroken, err: err})
+}
+
+// attemptQueryOwner is the attempt's object as the owner of a live query: failures after its activation are reported.
+type attemptQueryOwner struct {
+	attempt *attempt
+	table   string
+}
+
+// Label names the object in messages.
+func (o *attemptQueryOwner) Label() string { return o.attempt.object.text }
+
+// Report reports a run's failure as `query_failed`.
+func (o *attemptQueryOwner) Report(err error) {
+	o.attempt.object.host.report(HostError{Kind: ErrQueryFailed, Object: o.attempt.object.text, Table: o.table, Error: err})
+}
+
+// Query implements StoreSelf: a live query is run before the object goes live (after its tables are prepared), again in
+// the commit step of every commit of the object that writes its table, and detached when its attempt ends.
+//
+// pig divergence (D431): Pi main 2439933cf, ahead of the v1.5.0 pin.
+func (a *attempt) Query(table *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
+	a.assertDeclaring("query")
+	object := a.object
+	// Plugin code may pass any table: only a handle this attempt declared is taken (its object's own table).
+	declared := false
+	for _, each := range a.tables {
+		declared = declared || each.handle == table
+	}
+	if !declared {
+		panic(declarationError("%s: self.query: the table is not one this factory declared", object.text))
+	}
+	if err := store.CheckLiveQuery(table.Definition, q, limit, object.text); err != nil {
+		panic(err)
+	}
+	live := store.NewLiveQuery(table, q, limit, &attemptQueryOwner{attempt: a, table: table.Definition.Name}, object.host.batch)
+	table.Owner.Queries().Add(live)
+	a.queries = append(a.queries, live)
+	return Expose(live)
 }
 
 // Derive implements Self.
@@ -470,6 +524,13 @@ func (a *attempt) Writable(initial any) state.Writable[any] {
 type attemptWritableOwner struct{ attempt *attempt }
 
 func (o *attemptWritableOwner) Context() context.Context { return o.attempt.ctx }
+
+// InSection reports whether the caller runs in a section of the host's loop. A loop that cannot tell (a test's virtual-time
+// loop) answers false: Do nests either way.
+func (o *attemptWritableOwner) InSection() bool {
+	inside, ok := o.attempt.object.host.events.(interface{ onLoop() bool })
+	return ok && inside.onLoop()
+}
 
 // Do runs work as one section of the host's loop (nested when the caller is in one).
 func (o *attemptWritableOwner) Do(work func()) { o.attempt.object.host.enter(work) }
@@ -669,10 +730,8 @@ func (a *attempt) followEnded(end chord.WatchEnd) {
 	a.abandon(activation{kind: activationFailed, cause: data.FailureCause{Kind: data.FailureTransient, Error: err}})
 }
 
-// live: the object went live: its jobs take starts and its routines start, in this turn; both stop when it is sealed. After
-// a swap (previous, the attempt it replaced; nil otherwise) its routines start once the previous attempt's routine calls
-// finished (the handover per object, §14), calls never wait for it.
-func (a *attempt) live(previous *attempt) {
+// live: the object went live: its jobs take starts and its routines start, in this turn; both stop when it is sealed.
+func (a *attempt) live() {
 	a.isLive = true
 	if early := a.endedEarly; early != nil {
 		a.object.failLive(a, liveFailure{kind: data.FailureTransient, err: early})
@@ -681,14 +740,9 @@ func (a *attempt) live(previous *attempt) {
 	for _, each := range a.jobs {
 		each.live()
 	}
-	if a.routines.empty() {
-		return
-	}
-	if previous == nil {
+	if !a.routines.empty() {
 		a.startRoutines()
-		return
 	}
-	previous.handOverRoutines().then(func(struct{}, error) { a.startRoutines() })
 }
 
 // startRoutines starts its routines, unless it was sealed meanwhile.
@@ -713,17 +767,7 @@ func (a *attempt) stopRoutinesWith(reason error) {
 	}
 }
 
-// handOver: a reload swaps this live attempt out (slice 7b §5): its routines stop, its jobs are handed over (their running
-// invocations finish on this code), it takes no new starts; its calls run on until drainCalls settled.
-func (a *attempt) handOver() {
-	a.reload().handedOver = true
-	a.stopRoutines()
-	for _, each := range a.jobs {
-		each.handOver()
-	}
-}
-
-// stopRoutines: its routines stop (their ctx aborted); their running calls are waited for by the drain or the handover.
+// stopRoutines: its routines stop (their ctx aborted); their running calls are waited for by the drain.
 func (a *attempt) stopRoutines() {
 	a.reload().routinesStopped = true
 	a.stopRoutinesWith(data.NewChordError(data.ChordErrorInit{
@@ -731,54 +775,70 @@ func (a *attempt) stopRoutines() {
 	}, nil))
 }
 
-// handOverRoutines: the new attempt's routines may start: once this attempt's routine calls finished, bounded by
-// `closeTimeout` (a stuck one is reported `drain_timeout`; the whole attempt is sealed by then: the swap's retirement drains
-// its calls and routine calls on the same bound from the swap's start, then seals it, so a stuck call's later commit is
-// refused `released`). The list of calls is the one now.
-func (a *attempt) handOverRoutines() *keyedPromise[struct{}] {
-	var calls []*nativeWork
-	if a.routineRun != nil {
-		calls = a.routineRun.calls.works()
-	}
-	return a.drainReported(calls)
-}
-
-// drainCalls waits for its running calls and routine calls (not its job invocations), bounded by `closeTimeout`
-// (`drain_timeout` reported): a reload's swap or restart lets them finish before the seal. Its end's drain then waits for
-// them no more. The list of calls is the one now.
-func (a *attempt) drainCalls() *keyedPromise[struct{}] {
-	calls := a.running.works()
-	if a.routineRun != nil {
-		calls = append(calls, a.routineRun.calls.works()...)
-	}
+// beginDrain: a restart drains it: from now on it serves old work (calls caused by calls on old attempts, routed by its
+// object) until its seal, counted as the host's old work.
+func (a *attempt) beginDrain() {
 	a.reload().callsDrained = true
-	return a.drainReported(calls)
+	a.object.host.oldWork.open()
 }
 
-// drainReported is `drained(calls, size, closeTimeout)` and, on a timeout, the `drain_timeout` report: the promise settles in
-// a section.
-func (a *attempt) drainReported(calls []*nativeWork) *keyedPromise[struct{}] {
+// draining is whether a restart drains it and it is not sealed yet: old work runs on it.
+func (a *attempt) draining() bool {
+	return a.reloaded != nil && a.reloaded.callsDrained && a.abandoned == nil
+}
+
+// drainCalls waits until no call or routine call runs on it, routed old work included (it joins while the drain runs), or
+// until due (the loop's `Now`, milliseconds; `drain_timeout` reported). Its end's drain then waits for them no more. The
+// list of calls is read in a section at each round; the promise settles in one.
+func (a *attempt) drainCalls(due int64) *keyedPromise[struct{}] {
 	host := a.object.host
-	result := newKeyedPromise[struct{}](host.loop())
-	a.drained(calls).then(func(outcome withinResult, _ error) {
-		if outcome == withinTimeout {
-			host.report(HostError{Kind: ErrDrainTimeout, Object: a.object.text})
+	loop := host.loop()
+	result := newKeyedPromise[struct{}](loop)
+	var round func()
+	round = func() {
+		calls := a.running.works()
+		if a.routineRun != nil {
+			calls = append(calls, a.routineRun.calls.works()...)
 		}
-		result.resolve(struct{}{})
-	})
+		if len(calls) == 0 {
+			result.resolve(struct{}{})
+			return
+		}
+		left := due - loop.Now()
+		if left <= 0 {
+			host.report(HostError{Kind: ErrDrainTimeout, Object: a.object.text})
+			result.resolve(struct{}{})
+			return
+		}
+		a.drainedWithin(calls, time.Duration(left)*time.Millisecond).then(func(outcome withinResult, _ error) {
+			if outcome == withinTimeout {
+				host.report(HostError{Kind: ErrDrainTimeout, Object: a.object.text})
+				result.resolve(struct{}{})
+				return
+			}
+			round()
+		})
+	}
+	round()
 	return result
 }
 
 // drained is `drained` of the work in calls, bounded by `closeTimeout`: the promise settles in a section (at once when there
 // is no work).
 func (a *attempt) drained(calls []*nativeWork) *keyedPromise[withinResult] {
+	return a.drainedWithin(calls, a.object.host.timeouts.close)
+}
+
+// drainedWithin is `drained` of the work in calls, bounded by ms: the promise settles in a section (at once when there is no
+// work).
+func (a *attempt) drainedWithin(calls []*nativeWork, ms time.Duration) *keyedPromise[withinResult] {
 	host := a.object.host
 	if len(calls) == 0 {
 		settled := newKeyedPromise[withinResult](host.loop())
 		settled.resolve(withinSettled)
 		return settled
 	}
-	return awaitTask(host, func() (withinResult, error) { return drained(host.loop(), calls, host.timeouts.close), nil })
+	return awaitTask(host, func() (withinResult, error) { return drained(host.loop(), calls, ms), nil })
 }
 
 // startedByReload: a reload started it: once live, its object retries its blocked job runs (slice 7b §8).
@@ -876,7 +936,8 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	}
 	object := a.object
 	host := object.host
-	entry := object.served
+	// Its own served type: an old attempt answers old work by the contract it was made with.
+	entry := a.served
 	own, hasOwn := a.members.methods.Get(method)
 	if !hasOwn && version == entry.contract.Version {
 		result.settle(nil, a.noMethod(method))
@@ -905,7 +966,7 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	if entry.kind == servedRemote {
 		acting = from
 	}
-	handlerCtx := newCallContext(callContext, acting, host)
+	handlerCtx := newCallContext(callContext, acting, host, a)
 	// Admitted to the drain before the handler runs: the handler may end its own object before it returns.
 	host.count(activityCalls, 1)
 	settle := a.admit(func() {
@@ -1102,6 +1163,10 @@ func (a *attempt) member(member string) (state.DeriveSource, error) {
 // it), its transactions refused and the one holding the line discarded, its job invocations cut off (an in-memory run ends
 // `aborted` with runs as its reason: `reload` for a native restart, slice 7b §8); documents stay readable.
 func (a *attempt) seal(err *data.ChordError, runs cutReason) {
+	// A drained old attempt stops counting as old work at its seal (once: an abandoned attempt is not draining).
+	if a.draining() {
+		a.object.host.oldWork.close()
+	}
 	a.abandon(activation{kind: activationEnded, err: err})
 	a.object.documents.Fence(a.token)
 	for _, each := range a.jobs {
@@ -1115,20 +1180,13 @@ func (a *attempt) seal(err *data.ChordError, runs cutReason) {
 func (a *attempt) close(reason NativeCloseReason) []*closeFailed {
 	host := a.object.host
 	var drain []*nativeWork
-	var handedOver bool
-	host.enter(func() {
-		drain = a.drainList()
-		handedOver = a.reloaded != nil && a.reloaded.handedOver
-	})
+	host.enter(func() { drain = a.drainList() })
 	if drained(host.loop(), drain, host.timeouts.close) == withinTimeout {
 		host.enter(func() { host.report(HostError{Kind: ErrDrainTimeout, Object: a.object.text}) })
 	}
-	// The close writer: the persisted runs the seal stopped, and the held state changes (slice 6b §4.2). A swap handed its
-	// jobs over: their records are the new attempt's.
-	if !handedOver {
-		for _, each := range a.jobs {
-			each.writeAtClose(a.ctx)
-		}
+	// The close writer: the persisted runs the seal stopped, and the held state changes (slice 6b §4.2).
+	for _, each := range a.jobs {
+		each.writeAtClose(a.ctx)
 	}
 	// Work stuck past the drain keeps running, but no longer counts as a call or holds its `ctx.get` references.
 	host.enter(func() {
@@ -1136,9 +1194,7 @@ func (a *attempt) close(reason NativeCloseReason) []*closeFailed {
 		if a.routineRun != nil {
 			cleanUp(a.routineRun.calls)
 		}
-		if !handedOver {
-			cleanUp(a.runs)
-		}
+		cleanUp(a.runs)
 	})
 	var failures []*closeFailed
 	for _, native := range slices.Backward(a.natives) {
@@ -1150,8 +1206,7 @@ func (a *attempt) close(reason NativeCloseReason) []*closeFailed {
 }
 
 // drainList is the drain at its end, bounded by `closeTimeout`: its running calls (unless a reload's drainCalls waited for
-// them already), routine calls and job invocations (unless a swap handed its jobs over: they finish on their own). In a
-// section.
+// them already), routine calls and job invocations. In a section.
 func (a *attempt) drainList() []*nativeWork {
 	var list []*nativeWork
 	if a.reloaded == nil || !a.reloaded.callsDrained {
@@ -1160,10 +1215,7 @@ func (a *attempt) drainList() []*nativeWork {
 	if a.routineRun != nil {
 		list = append(list, a.routineRun.calls.works()...)
 	}
-	if a.reloaded == nil || !a.reloaded.handedOver {
-		list = append(list, a.runs.works()...)
-	}
-	return list
+	return append(list, a.runs.works()...)
 }
 
 // detach detaches its derives (once their object no longer needs them: reads fail `released`, their watches end), its
@@ -1177,6 +1229,9 @@ func (a *attempt) detach() {
 	a.adapted = nil
 	for _, derive := range a.derives {
 		derive.Detach(ended)
+	}
+	for _, query := range a.queries {
+		query.Detach(ended)
 	}
 	for _, follow := range a.follows {
 		follow.detach()
@@ -1303,7 +1358,13 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 				fail(err)
 				return
 			}
-			loadJobs()
+			a.loadQueries(0, func(err error) {
+				if err != nil {
+					fail(err)
+					return
+				}
+				loadJobs()
+			})
 		})
 	}
 	if err := setup(); err != nil {
@@ -1321,6 +1382,24 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 				return
 			}
 			afterDocuments()
+		})
+}
+
+// loadQueries runs the live queries once, before the object goes live (`for (const query of queries) await
+// query.load(opening)`): one after the other.
+func (a *attempt) loadQueries(index int, done func(err error)) {
+	if index == len(a.queries) {
+		done(nil)
+		return
+	}
+	each := a.queries[index]
+	awaitTask(a.object.host, func() (struct{}, error) { return struct{}{}, each.Load(a.opening) }).then(
+		func(_ struct{}, err error) {
+			if err != nil {
+				done(err)
+				return
+			}
+			a.loadQueries(index+1, done)
 		})
 }
 
@@ -1584,7 +1663,7 @@ func (a *attempt) ownSteps(implementation factoryResult, finish func(activation)
 			return
 		}
 		native := a.natives[index]
-		awaitTask(host, func() (struct{}, error) { return struct{}{}, native.open(a.opening) }).
+		awaitTask(host, func() (struct{}, error) { return struct{}{}, native.open(a.opener) }).
 			thenWithContext(a.opening, func(_ struct{}, err error) {
 				if err != nil {
 					failedWith(data.OpenFailure(err, a.object.text))

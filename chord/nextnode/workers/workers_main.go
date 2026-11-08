@@ -74,6 +74,11 @@ type WorkerLoad struct {
 	// the NodeHost (the server, whose holds it relays).
 	Principal data.Principal
 	Peer      data.Principal
+	// Store is the NodeHost's store (RuntimeLoad.Store): the worker's own file, where the plugins' persisted documents and tables live;
+	// CloseTimeout and ReadyTimeout are the NodeHost's (RuntimeLoad's). Nil: none, the host's defaults.
+	Store        *plugins.StoreOptions
+	CloseTimeout *time.Duration
+	ReadyTimeout *time.Duration
 }
 
 // BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
@@ -100,6 +105,11 @@ type WorkerMainOptions struct {
 	// Redact is what crosses as `fatal` for an error (never the original message unless this returns it).
 	Redact  func(err any) CrossedError
 	OnError func(err any)
+	// Reload applies a server rollout's scripts (the complete set) in a worker whose plugins are not shipped through
+	// WorkerPlugins.Load: an app whose plugins are compiled in (p2). It is used when no PluginRuntime was loaded; its report
+	// is what the worker answers `reloaded` with, its error a failed reload. Without it such a worker answers that
+	// plugins.load was never called.
+	Reload func(scripts []plugins.PluginScript, ctx context.Context) (host.ReloadReport, error)
 }
 
 // forcedExit is how long a shutdown's closers get before the worker exits anyway: 3 s.
@@ -372,6 +382,7 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 	node, report, err := p.runtime.Load(plugins.RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
+		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout,
 	}, ctx)
 	if err != nil {
 		// A *plugins.PluginError comes with the loaded host (Pi's `host` is the caller's to stop): the worker ends instead.
@@ -544,7 +555,7 @@ func (w *worker) applyReloads() {
 		if applying != nil {
 			applying()
 		}
-		if loaded == nil {
+		if loaded == nil && w.options.Reload == nil {
 			failure := CrossedError{Message: "worker: plugins.load was never called"}
 			w.send(FromWorker{Kind: FromWorkerReloaded, Error: &failure})
 			continue
@@ -552,7 +563,11 @@ func (w *worker) applyReloads() {
 		var report host.ReloadReport
 		err := w.safely(func() error {
 			var reloadErr error
-			report, reloadErr = loaded.runtime.Reload(loaded.node, scripts, w.context)
+			if loaded == nil {
+				report, reloadErr = w.options.Reload(scripts, w.context)
+			} else {
+				report, reloadErr = loaded.runtime.Reload(loaded.node, scripts, w.context)
+			}
 			return reloadErr
 		})
 		if err != nil {

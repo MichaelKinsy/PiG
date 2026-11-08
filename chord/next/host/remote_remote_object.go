@@ -107,6 +107,9 @@ func (r *remoteObject) label() string { return r.name }
 
 func (r *remoteObject) state() *RefState { return r.refState }
 
+// stateFor: over a link another host decides what is live: its state.
+func (r *remoteObject) stateFor(int, string) *RefState { return r.refState }
+
 // blocksFirstPass: an object over a link is no blocker of this host's first pass.
 func (*remoteObject) blocksFirstPass() bool { return false }
 

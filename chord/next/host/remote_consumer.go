@@ -26,6 +26,8 @@ type outgoingCall struct {
 	args     link.Part
 	segments [][]byte
 	result   *parkedCallResult
+	// old is whether the caller is old work of a reload here (`call.old`: the provider routes it to open old attempts).
+	old bool
 	// id is the call's id once it got its slot; hasID tells it has one.
 	id    int
 	hasID bool
@@ -122,7 +124,7 @@ func (c *consumerSide) call(hold int, method int, methodData *contracts.MethodDa
 			part = c.link.part(payload.Json, ctx)
 		}
 	}
-	call := &outgoingCall{side: c, hold: hold, method: method, args: part, segments: payload.Segments, result: result}
+	call := &outgoingCall{side: c, hold: hold, method: method, args: part, segments: payload.Segments, result: result, old: c.link.host.oldWork.of(ctx)}
 	if ctx.Done() != nil {
 		loop := c.link.host.loop()
 		call.done = context.AfterFunc(ctx, func() {
@@ -207,7 +209,7 @@ func (c *consumerSide) send(call *outgoingCall) {
 	c.nextCall++
 	call.id, call.hasID = id, true
 	c.calls.set(id, call)
-	c.link.send(&link.CallMessage{Call: id, Hold: call.hold, Method: call.method, Args: call.args, Segments: call.segments})
+	c.link.send(&link.CallMessage{Call: id, Hold: call.hold, Method: call.method, Args: call.args, Segments: call.segments, Old: call.old})
 }
 
 // cancel cancels call: a waiting one leaves the window and nothing is sent; one in flight sends `abort` and frees its
@@ -367,7 +369,8 @@ func (c *consumerSide) failed(message *link.FailedMessage) error {
 }
 
 // loading: the hold's object, or its relay's upstream, starts over; its calls still waiting for a slot reject
-// `unavailable` (they may name a method of the old variant).
+// `unavailable` (they may name a method of the old variant); its calls in flight wait for their reply (a provider's `loading`
+// keeps them; a relay's upstream drop answered them before).
 func (c *consumerSide) loading(hold int) {
 	holder, found := c.entries.get(hold)
 	if !found {

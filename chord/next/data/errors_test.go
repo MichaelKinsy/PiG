@@ -111,7 +111,7 @@ func TestProtocolTable(t *testing.T) {
 		const pinned = `{"invalid":["args","params","member","host_address","reentrant","read_after_bulk","cycle"],` +
 			`"contract_mismatch":["updating"],"forbidden":["revoked"],"gone":[],"not_ready":[],` +
 			`"released":["ended","closed","settled","version","discarded"],"too_large":["part"],` +
-			`"unavailable":["locked","park_timeout","busy","storage_failed","undeclared"],"aborted":[]}`
+			`"unavailable":["locked","park_timeout","busy","storage_failed","undeclared","version","reload_cycle"],"aborted":[]}`
 		table := delta.NewJsonObject(9)
 		for _, code := range data.ChordErrorCodes() {
 			reasons, known := data.ChordErrorReasons(code)

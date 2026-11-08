@@ -46,6 +46,9 @@ type ServeOptions struct {
 	// Linger is how long a live object with params stays live after its last reference is released (0 by default, nil):
 	// a reference within that time reuses it, with its documents and dependencies.
 	Linger *time.Duration
+	// Untraced makes the calls of the served type record no span (`serve`'s `untraced`): a span per call of the telemetry
+	// ingest would be telemetry about telemetry, written back with the next batch. Its metrics are still counted.
+	Untraced bool
 }
 
 // FacetSelf is what a facet's setup declares with besides the host: its contributions to registries (R21).
@@ -107,6 +110,10 @@ type facetDefinition struct {
 func DefineFacet(setup func(host FacetHost, self FacetSelf) error) Facet {
 	return Facet{definition: &facetDefinition{setup: setup}}
 }
+
+// Renew is a new facet of the same setup: the Go form of evaluating a plugin's module again (the code is compiled in, so the
+// setup is the same function). It is not the same facet as f (`Host.Reload` counts it changed), and not shared with it.
+func (f Facet) Renew() Facet { return DefineFacet(f.definition.setup) }
 
 // same is Pi's `facet === other`: both are one DefineFacet's.
 func (f Facet) same(other Facet) bool {
