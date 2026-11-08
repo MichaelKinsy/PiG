@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/request.ts
+// pi: packages/chord/src/node/http/request.ts
 
 import (
 	"bufio"
@@ -20,7 +20,7 @@ import (
 
 // Tests of requests (slice 10 §2, D4): the summary a route gets, `json` and `body` with their limits and statuses (400, 413,
 // an `HttpFailure` escaping a route answering its status), and a body nobody read (drained or closed). Ports
-// packages/chord/test/next-node/http/request.test.ts.
+// packages/chord/test/node/http/request.test.ts.
 
 func TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce(t *testing.T) {
 	var mu sync.Mutex

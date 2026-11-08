@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/authenticate.ts
+// pi: packages/chord/src/node/http/authenticate.ts
 
 import (
 	"context"

@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/headers.ts
+// pi: packages/chord/src/node/http/headers.ts
 
 import (
 	"encoding/base64"
