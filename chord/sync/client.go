@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/chord/src/sync/client.ts
@@ -345,7 +346,8 @@ func encodedSize(commit store.OutboxCommit) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return len(text) + 64, nil
+	// Pi: `JSON.stringify(commit.writes).length + 64`, in UTF-16 units.
+	return jsstring.LengthBytes(text) + 64, nil
 }
 
 // exportedSnapshot is a snapshot of a store being exported: where it ends, its body, and closing it for when the body is

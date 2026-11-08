@@ -1025,7 +1025,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/surfaces/theme-choice.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/surfaces/themes.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/surfaces/translations.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/sync/batch.ts` | `chord/sync/batch.go (D432)` | ✅ |
+| `packages/chord/src/sync/batch.ts` | `chord/sync/batch.go` | ✅ |
 | `packages/chord/src/sync/client.ts` | `chord/sync/client.go, chord/sync/scheduler.go` | ✅ |
 | `packages/chord/src/sync/files.ts` | `chord/sync/files.go (errors, not FileResult; not-found is fs.ErrNotExist)` | ✅ |
 | `packages/chord/src/sync/filesystem.ts` | `chord/sync/filesystem.go` | ✅ |

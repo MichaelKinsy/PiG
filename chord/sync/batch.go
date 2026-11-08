@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/chord/src/sync/batch.ts
@@ -23,8 +24,7 @@ import (
 // goroutine of their own: a body holds no more than one chunk of lines and the compressor's window. A chunk is valid until
 // the next call of Next.
 //
-// Go forced differences: a chunk of lines is measured in bytes (Pi counts UTF-16 units). Decoding also bounds one line
-// (RangeError): none; a line is bounded as Pi's is.
+// Sizes (a chunk of lines, a line's Bytes) count UTF-16 units, as Pi's `.length` does.
 
 // SyncBody is a body on the remote: its bytes in chunks, read once.
 type SyncBody = store.ByteSource
@@ -68,8 +68,6 @@ type RangeError struct{}
 
 func (*RangeError) Error() string { return "Invalid string length" }
 
-const MaxLineBytes = 32 * 1024 * 1024
-
 // EncodeBatch is a batch body: commits as gzip-compressed JSON lines, read from commits only as the body is read.
 func EncodeBatch(commits CommitSource) SyncBody { return gzipSource(&lineChunks{commits: commits}) }
 
@@ -107,6 +105,10 @@ type batchLines struct {
 	chunks   SyncBody
 	buffer   []byte
 	consumed int
+	// units is the buffer's unfinished text in UTF-16 units, up to whole characters (Pi's `rest.length` before a chunk).
+	units int
+	// held is the bytes of the buffer past `consumed` that units counts; the rest is a character still arriving.
+	held     int
 	number   int
 	previous int64
 	started  bool
@@ -122,8 +124,14 @@ func (lines *batchLines) Next(ctx context.Context) (BatchLine, bool, error) {
 			return lines.emit(text)
 		}
 		// Keep the unfinished line, and take the next chunk.
-		lines.buffer = lines.buffer[:copy(lines.buffer, lines.buffer[lines.consumed:])]
-		lines.consumed = 0
+		if lines.consumed > 0 {
+			lines.buffer = lines.buffer[:copy(lines.buffer, lines.buffer[lines.consumed:])]
+			lines.consumed = 0
+			// The lines taken left the unfinished text: count it again (it is no longer than a chunk).
+			lines.held = 0
+			lines.units = 0
+			lines.count()
+		}
 		chunk, ok, err := lines.chunks.Next(ctx)
 		if err != nil {
 			lines.finished = true
@@ -141,13 +149,34 @@ func (lines *batchLines) Next(ctx context.Context) (BatchLine, bool, error) {
 			// A fatal TextDecoder drops the byte order mark at the start of its input.
 			chunk = bytes.TrimPrefix(chunk, []byte("\uFEFF"))
 		}
-		if len(lines.buffer)+len(chunk) > MaxLineBytes && bytes.IndexByte(chunk, '\n') < 0 {
-			lines.finished = true
-			return BatchLine{}, false, logFormatError(nil, "Log line %d is longer than %d bytes", lines.number+1, MaxLineBytes)
-		}
 		lines.buffer = append(lines.buffer, chunk...)
+		// Pi's `rest += decode(chunk)` throws once the text it holds passes V8's string length: all of the chunk's lines
+		// are in `rest` until they are sliced off.
+		lines.count()
+		if lines.units > stringLimit {
+			lines.finished = true
+			return BatchLine{}, false, &RangeError{}
+		}
 	}
 	return BatchLine{}, false, nil
+}
+
+// count adds the buffer's whole characters not counted yet to units: a character cut by the chunk's end is counted with
+// the next chunk, as a streaming TextDecoder holds its bytes back.
+func (lines *batchLines) count() {
+	rest := lines.buffer[lines.held:]
+	end := len(rest)
+	// At most three bytes of an unfinished character: a continuation run behind a lead byte that is not whole yet.
+	for back := 1; back <= min(3, len(rest)); back++ {
+		if utf8.RuneStart(rest[len(rest)-back]) {
+			if !utf8.FullRune(rest[len(rest)-back:]) {
+				end = len(rest) - back
+			}
+			break
+		}
+	}
+	lines.units += jsstring.LengthBytes(rest[:end])
+	lines.held += end
 }
 
 // emit is the commit of one line, checked.
@@ -155,9 +184,6 @@ func (lines *batchLines) emit(text []byte) (BatchLine, bool, error) {
 	fail := func(err error) (BatchLine, bool, error) {
 		lines.finished = true
 		return BatchLine{}, false, err
-	}
-	if len(text) > MaxLineBytes {
-		return fail(logFormatError(nil, "Log line %d is longer than %d bytes", lines.number, MaxLineBytes))
 	}
 	if !utf8.Valid(text) {
 		return fail(logFormatError(nil, "Log line %d is not UTF-8", lines.number))
@@ -170,7 +196,7 @@ func (lines *batchLines) emit(text []byte) (BatchLine, bool, error) {
 		return fail(logFormatError(nil, "Log line %d does not increase the sequence", lines.number))
 	}
 	lines.previous = commit.Seq
-	return BatchLine{Commit: commit, Bytes: len(text) + 1}, true, nil
+	return BatchLine{Commit: commit, Bytes: jsstring.LengthBytes(text) + 1}, true, nil
 }
 
 func (lines *batchLines) Close() error {
@@ -212,6 +238,12 @@ func (chunks *lineChunks) Next(ctx context.Context) ([]byte, bool, error) {
 			chunks.done = true
 			_ = chunks.commits.Close()
 			return nil, false, err
+		}
+		// Pi's `pending += line` throws past V8's string length; a line this port writes must pull back, so it is refused alike.
+		if len(line)+len(chunks.pending) > stringLimit && jsstring.LengthBytes(line)+jsstring.LengthBytes(chunks.pending) > stringLimit {
+			chunks.done = true
+			_ = chunks.commits.Close()
+			return nil, false, &RangeError{}
 		}
 		chunks.pending = append(chunks.pending, line...)
 	}
