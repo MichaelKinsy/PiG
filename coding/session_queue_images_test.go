@@ -71,12 +71,15 @@ func TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages(t *testing.T) {
 		sent = append(sent, providerImages(messages)...)
 		return fauxReply("ok", ai.StopReasonStop, 0)(messages)
 	}
-	waiting.setResponses(fauxToolCall("wait"), record, record)
+	waiting.setResponses(fauxToolCall("wait"), record, record, record)
 	<-waiting.waitForToolStart
 	if _, err := h.session.Steer(t.Context(), "steer", []ai.ImageContent{original}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.session.FollowUp(t.Context(), "follow up", []ai.ImageContent{original}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.session.Prompt(t.Context(), "streaming prompt", &PromptOptions{Images: []ai.ImageContent{original}, StreamingBehavior: extension.DeliverAsFollowUp}); err != nil {
 		t.Fatal(err)
 	}
 	waiting.releaseToolExecution()
@@ -87,7 +90,7 @@ func TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages(t *testing.T) {
 			continue
 		}
 		text := extractUserMessageText(message.User.Content)
-		if !strings.HasPrefix(text, "steer") && !strings.HasPrefix(text, "follow up") {
+		if !strings.HasPrefix(text, "steer") && !strings.HasPrefix(text, "follow up") && !strings.HasPrefix(text, "streaming prompt") {
 			continue
 		}
 		checked++
@@ -105,8 +108,8 @@ func TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages(t *testing.T) {
 			t.Fatalf("%q lacks the resize hint: %q", text, text)
 		}
 	}
-	if checked != 2 {
-		t.Fatalf("checked %d queued messages, want 2", checked)
+	if checked != 3 {
+		t.Fatalf("checked %d queued messages, want 3", checked)
 	}
 	if len(sent) == 0 {
 		t.Fatal("no image reached the model")
