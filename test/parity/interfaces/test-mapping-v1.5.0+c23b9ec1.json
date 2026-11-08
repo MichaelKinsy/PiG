@@ -2281,18 +2281,14 @@
     },
     {
       "path": "packages/chord/test/documents/documents.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:3a3b3103ce02255404ccbab1ee69187e04bf40945c7945440b25a3bf2c87bb8e",
       "evidence": [
         "chord/next/documents/documents_test.go",
         "chord/next/documents/documents_telemetry_test.go",
         "chord/next/host/host_documents_cancel_test.go"
       ],
-      "rationale": "8 of 10 upstream cases have a Go test on this branch; the 2 listed in missingCases have a Go test only on the unmerged lane fix/chord-gap-b (d74d70c587): \"cost nothing on the committed path\" = chord/next/documents/documents_cost_test.go TestTransactionsTheirContextsEndCancelledCostNothingOnTheCommittedPathNoCheckOfTheContextBeyondTheCommitsOwn, \"times nothing when nothing records\" = chord/next/documents/documents_telemetry_test.go TestCommitsInTelemetryTimesNothingWhenNothingRecords. The row becomes ported when gap-b lands.",
-      "missingCases": [
-        "transactions their context's end cancelled (decision \"Mistakes that wait are reported at once\" (e)) › cost nothing on the committed path: no check of the context beyond the commit's own (cost guard)",
-        "commits in telemetry (slice 9) › times nothing when nothing records"
-      ]
+      "rationale": "All 10 upstream cases have a Go test on this branch. The two cases earlier designed out as having no Go form are ported by fix/chord-gap-b: \"cost nothing on the committed path\" = chord/next/documents/documents_cost_test.go TestTransactionsTheirContextsEndCancelledCostNothingOnTheCommittedPath…, \"times nothing when nothing records\" = chord/next/documents/documents_telemetry_test.go TestCommitsInTelemetryTimesNothingWhenNothingRecords. \"counts the table rows a commit's writes changed\" = documents_telemetry_test.go TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged."
     },
     {
       "path": "packages/chord/test/documents/fence.test.ts",
@@ -2368,21 +2364,17 @@
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/plugins/lists/worker.test.ts",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamTestHash": "sha256:22afbe9db3be1818842f466e76b8dc06c5d5213e0dd31ceaa65777d6ae9bca51",
-      "evidence": [
-        "chord/nextnode/plugins/plugins_examples_tutorial_test.go"
-      ],
-      "rationale": "All 3 upstream cases run in plugins_examples_tutorial_test.go (TestTutorialListsPluginOnAListsWorker)."
+      "evidence": [],
+      "rationale": "Designed out by D604 (draft, owner sign-off pending; rows/chord-t11.md): Pi's tutorial is a TypeScript program on Pi's TS app kit (main.ts calls the TS startServer, worker.ts is a Node entry) plus a book whose blocks the test quotes, so the Go kit has no TS server to run it under."
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/plugins/traces/clock.test.ts",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamTestHash": "sha256:bb8c1305e4727dd134487975daeaa72cb0eef45306b6cbbb24ce5d48a5cf6098",
-      "evidence": [
-        "chord/nextnode/plugins/plugins_examples_tutorial_test.go"
-      ],
-      "rationale": "All 4 upstream cases run in plugins_examples_tutorial_test.go (TestTutorialTracesClockClamped)."
+      "evidence": [],
+      "rationale": "Designed out by D604 (draft, owner sign-off pending; rows/chord-t11.md): Pi's tutorial is a TypeScript program on Pi's TS app kit (main.ts calls the TS startServer, worker.ts is a Node entry) plus a book whose blocks the test quotes, so the Go kit has no TS server to run it under."
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/tutorial.test.ts",
@@ -2411,18 +2403,12 @@
     },
     {
       "path": "packages/chord/test/host/attempt.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:b08d38ef243b22955b78f3d41f8b633ad0de7114118fa670edb6635283ccf611",
       "evidence": [
         "chord/next/host/host_attempt_test.go"
       ],
-      "rationale": "32 of 36 upstream cases have a Go test on this branch; the 4 listed in missingCases have none yet (chord-missing-cases/). 3 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "activation spans (slice 9) › starts nothing without an adapter that records",
-        "activation spans (slice 9) › a transient failure and its retry › is a root of the host's adapter, linked to its first trigger; a retry's links to the attempt before",
-        "activation spans (slice 9) › ends `parked` with the cause, records the park's duration, and resumes in a new span linked to it",
-        "activation spans (slice 9) › records how a parked attempt ended in a short span linked to the parked one (review L4)"
-      ]
+      "rationale": "All 36 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"activation spans (slice 9) › starts nothing without an adapter that records\" -> next/host/host_attempt_test.go:TestActivationSpansStartNothingWithoutAnAdapterThatRecords."
     },
     {
       "path": "packages/chord/test/host/backoff.test.ts",
@@ -2435,8 +2421,16 @@
     },
     {
       "path": "packages/chord/test/host/ctx.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dc961893e2eff074cf517a3ff3c8d9448bb7fed96a2b14626dd2bcb4d776c514"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:dc961893e2eff074cf517a3ff3c8d9448bb7fed96a2b14626dd2bcb4d776c514",
+      "evidence": [
+        "chord/next/host/host_ctx_test.go",
+        "chord/next/host/host_spans_test.go"
+      ],
+      "rationale": "14 of 15 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). Cases removed from missingCases, with the Go test checked: \"ctx.trace (C11, slice 9) › marks its span failed (`trace_failed`) and rethrows\" -> next/host/host_spans_test.go:TestCtxTraceMarksItsSpanFailedTraceFailedAndReturnsTheError.",
+      "missingCases": [
+        "ctx.trace (C11, slice 9) › rejects, never throws, when fn throws synchronously, recorded or not (review L5)"
+      ]
     },
     {
       "path": "packages/chord/test/host/deadline.test.ts",
@@ -2458,8 +2452,13 @@
     },
     {
       "path": "packages/chord/test/host/facet.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fef49d564dda4c911046658e3ed763203e0d53ecb0a04e30d32a3261f1039809"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fef49d564dda4c911046658e3ed763203e0d53ecb0a04e30d32a3261f1039809",
+      "evidence": [
+        "chord/next/host/host_facet_test.go",
+        "chord/next/host/host_spans_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/host/follow.test.ts",
@@ -2475,8 +2474,14 @@
     },
     {
       "path": "packages/chord/test/host/host.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5a3ef416cd4d5d6822984e03e9f473a112e71ee5584a4ae5bdae321bde4fe497"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5a3ef416cd4d5d6822984e03e9f473a112e71ee5584a4ae5bdae321bde4fe497",
+      "evidence": [
+        "chord/next/host/host_host_test.go",
+        "chord/next/host/host_spans_test.go",
+        "chord/nextnode/plugins/plugins_node_hostoptions_test.go"
+      ],
+      "rationale": "All 78 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the host's spans (slice 9) › traces a reload with one event per object's fate\" -> next/host/host_spans_test.go:TestHostSpansTraceAReloadWithOneEventPerObjectsFate; \"the host's spans (slice 9) › counts the cost counters of its links' and roots' work on its adapter, under contexts without a span (review L6)\" -> next/host/host_spans_test.go:TestHostSpansCountTheCostCountersOfItsLinksAndRootsWorkOnItsAdapterUnderContextsWithoutASpan; \"the host's spans (slice 9) › records a revocation's count after it under the caller's span\" -> next/host/host_spans_test.go:TestHostSpansRecordARevocationsCountAfterItUnderTheCallersSpan."
     },
     {
       "path": "packages/chord/test/host/members.test.ts",
@@ -2489,18 +2494,13 @@
     },
     {
       "path": "packages/chord/test/host/native.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:2848ff91df2df1bc91905f7bcca52473015ac3015c43eeeec7ac7305969357e3",
       "evidence": [
         "chord/next/host/host_native_test.go",
         "chord/next/host/host_facet_test.go"
       ],
-      "rationale": "9 of 12 upstream cases have a Go test on this branch; the 3 listed in missingCases have none yet (chord-missing-cases/).",
-      "missingCases": [
-        "spans (slice 9) › opens each native in a `chord.open` span of its attempt's, and closes it in a `chord.close` root",
-        "spans (slice 9) › keeps an open its attempt abandoned (cancelled) ok (review L3)",
-        "spans (slice 9) › marks a close that threw failed"
-      ]
+      "rationale": "All 12 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"spans (slice 9) › opens each native in a `chord.open` span of its attempt's, and closes it in a `chord.close` root\" -> next/host/host_spans_test.go:TestNativeSpansOpenEachNativeInAChordOpenSpanOfItsAttemptsAndCloseItInAChordCloseRoot; \"spans (slice 9) › keeps an open its attempt abandoned (cancelled) ok (review L3)\" -> next/host/host_spans_test.go:TestNativeSpansKeepAnOpenItsAttemptAbandonedCancelledOk; \"spans (slice 9) › marks a close that threw failed\" -> chord/next/host/host_spans_test.go:TestNativeSpansMarkACloseThatFailedFailed."
     },
     {
       "path": "packages/chord/test/host/object.test.ts",
@@ -2578,15 +2578,12 @@
     },
     {
       "path": "packages/chord/test/host/reference.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:97a8a2ff546a571ff778293577f1a42e63a6aa88352704853acaac5b3fce78e5",
       "evidence": [
         "chord/next/host/host_reference_test.go"
       ],
-      "rationale": "28 of 29 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). 1 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "GC › a hold released while it waits unbound keeps nothing: the reference and its contract leave the index and its clock"
-      ]
+      "rationale": "All 29 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/host/reload-cycle.test.ts",
@@ -2617,43 +2614,31 @@
     },
     {
       "path": "packages/chord/test/host/root.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:584a833b6d3b7f639164cf9938e8d7e677094ea338c729c2cc50f0d68d3c2395",
       "evidence": [
         "chord/next/host/host_root_test.go"
       ],
-      "rationale": "11 of 14 upstream cases have a Go test on this branch; the 3 listed in missingCases have none yet (chord-missing-cases/). 1 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "host.root's trace › runs fn in a new root span of the host's adapter, with its host and attributes; a throw fails it",
-        "host.root's trace › starts nothing without an adapter that records",
-        "host.root › a `ctx.get` before `load` throws not_ready (decision (a)); after it, it gets"
-      ]
+      "rationale": "All 14 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"host.root's trace › runs fn in a new root span of the host's adapter, with its host and attributes; a throw fails it\" -> next/host/host_spans_test.go:TestHostRootRunsItsScopeInANewRootSpanOfItsAdapterWithItsHostAndAttributesAFailureMarksItFailed; \"host.root's trace › starts nothing without an adapter that records\" -> next/host/host_spans_test.go:TestHostRootStartsNothingWithoutAnAdapterThatRecords."
     },
     {
       "path": "packages/chord/test/host/route.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:e97e7a65d309971cb353a82f0d818fb3e062e10c309c23422816737f19b3ba93",
       "evidence": [
         "chord/next/host/host_route_test.go"
       ],
-      "rationale": "23 of 24 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). 1 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "resolve spans (slice 9) › marks a resolve that rejected failed (`resolve_failed`), a root linked to the hold that started it"
-      ]
+      "rationale": "All 24 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/host/routines.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:c5281925707cf88d03603c967a29847279dab7d059f2c228f0ed569c35945cee",
       "evidence": [
         "chord/next/host/host_routines_test.go",
         "chord/next/host/remote_host_link_test.go"
       ],
-      "rationale": "41 of 43 upstream cases have a Go test on this branch; the 2 listed in missingCases have none yet (chord-missing-cases/). 2 of them have a Go test only on an unmerged lane branch. Cases removed from missingCases, with the Go test checked: \"routines and the end › act as a remote object's principal\" -> chord/next/host/host_routines_test.go:TestRoutinesActAsTheOwnersCallerPrincipal.",
-      "missingCases": [
-        "routine spans (slice 9) › traces each routine call as a root, its commits events of it, a throw `routine_failed`",
-        "routine spans (slice 9) › links a call to the method span whose commit changed its source (review L7)"
-      ]
+      "rationale": "All 43 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"routines and the end › act as a remote object's principal\" -> chord/next/host/host_routines_test.go:TestRoutinesActAsTheOwnersCallerPrincipal."
     },
     {
       "path": "packages/chord/test/host/sleep.test.ts",
@@ -2676,20 +2661,21 @@
     },
     {
       "path": "packages/chord/test/host/unbound-clock.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:77cf774db1a46ab5f17b6a4dd18761e8eaa07987eb69ad2329074550d6941d16"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:77cf774db1a46ab5f17b6a4dd18761e8eaa07987eb69ad2329074550d6941d16",
+      "evidence": [
+        "chord/next/host/host_unbound_clock_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/host/unbound.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:057d3920a248acdc5d836e40ebf9700496a910e4ae128e1204ccc893acab86f4",
       "evidence": [
         "chord/next/host/host_unbound_test.go"
       ],
-      "rationale": "8 of 9 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). 1 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "references waiting in the index › after the publication: a type served binds; one not served waits failed { waiting }"
-      ]
+      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/jobs/definition.test.ts",
@@ -2702,31 +2688,23 @@
     },
     {
       "path": "packages/chord/test/jobs/job.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:c369378ef5a3b5a0eaf501f68670c15dcaa529436058d9959dbfd9ee1d7e4117",
       "evidence": [
         "chord/next/host/jobs_job_runs_test.go",
         "chord/next/host/jobs_job_test.go",
         "chord/next/host/jobs_job_end_test.go"
       ],
-      "rationale": "54 of 57 upstream cases have a Go test on this branch; the 3 listed in missingCases have none yet (chord-missing-cases/). 3 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "phase spans (slice 9) › traces the intent under the starter, the run and the finish under the intent; a failed finish try is a retry",
-        "phase spans (slice 9) › keeps a run's ctx a job's under `ctx.trace`: its id and state, recorded or not (review L5)",
-        "phase spans (slice 9) › marks a run that threw failed (`job_failed`), and an aborted one ok"
-      ]
+      "rationale": "All 57 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/jobs/persisted.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:61af78e308288f09a2ab2ae1234644bcc72cbefa2de0e8e54c7f012996bbac46",
       "evidence": [
         "chord/next/host/jobs_persisted_test.go"
       ],
-      "rationale": "33 of 34 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). 1 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "trace (slice 9) › runs, resumed after a crash in a new attempt and host, and finishes under its start's stored carrier"
-      ]
+      "rationale": "All 34 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/jobs/records.test.ts",
@@ -2806,8 +2784,13 @@
     },
     {
       "path": "packages/chord/test/link/message.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ea2ee944fae53fb74db283000f5b6257875b8fcd33e4535b69ec0ad0f023e148"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ea2ee944fae53fb74db283000f5b6257875b8fcd33e4535b69ec0ad0f023e148",
+      "evidence": [
+        "chord/next/link/message_test.go",
+        "chord/next/link/message_trace_test.go"
+      ],
+      "rationale": "All 41 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/link/part.test.ts",
@@ -3085,8 +3068,13 @@
     },
     {
       "path": "packages/chord/test/node/http/http.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:def0f4f53af1817366e25c5acf672c232b209180ac7d1985251032132b283bf5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:def0f4f53af1817366e25c5acf672c232b209180ac7d1985251032132b283bf5",
+      "evidence": [
+        "chord/nextnode/http/http_test.go",
+        "chord/nextnode/http/http_spans_test.go"
+      ],
+      "rationale": "All 36 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"Host and principals › refuses a Host neither loopback nor contributed (403, with the default headers); admits a contributed one\" -> nextnode/http/http_test.go:TestHostAndPrincipalsRefusesAHostNeitherLoopbackNorContributedAdmitsAContributedOne; \"answers › answers %s without a body\" -> nextnode/http/http_test.go:TestAnswersAnswersWithoutABody."
     },
     {
       "path": "packages/chord/test/node/http/node.test.ts",
@@ -3120,25 +3108,21 @@
       "evidence": [
         "chord/nextnode/http/response_test.go"
       ],
-      "rationale": "6 of 10 upstream cases have a Go test on this branch; the 4 listed in missingCases have none yet (chord-missing-cases/). Cases removed from missingCases, with the Go test checked: \"descriptions › writes json, html, redirect and error, the default headers first, the response's replacing same-named ones\" -> nextnode/http/response_test.go:TestDescriptionsWriteJSONHTMLRedirectAndErrorTheDefaultHeadersFirstTheResponsesReplacingSameNamedOnes; \"bytes › ignores ranges unless asked; HEAD sends headers only and reads nothing\" -> nextnode/http/response_test.go:TestBytesIgnoreRangesUnlessAskedHEADSendsHeadersOnlyAndReadsNothing.",
+      "rationale": "7 of 10 upstream cases have a Go test on this branch; the 3 listed in missingCases have none yet (chord-missing-cases/). Cases removed from missingCases, with the Go test checked: \"descriptions › writes json, html, redirect and error, the default headers first, the response's replacing same-named ones\" -> nextnode/http/response_test.go:TestDescriptionsWriteJSONHTMLRedirectAndErrorTheDefaultHeadersFirstTheResponsesReplacingSameNamedOnes; \"bytes › ignores ranges unless asked; HEAD sends headers only and reads nothing\" -> nextnode/http/response_test.go:TestBytesIgnoreRangesUnlessAskedHEADSendsHeadersOnlyAndReadsNothing; \"bytes › names a download with an ASCII fallback and the UTF-8 name, control and bidi characters dropped\" -> nextnode/http/response_test.go:TestBytesNameADownloadWithAnASCIIFallbackAndTheUTF8NameControlAndBidiCharactersDropped.",
       "missingCases": [
         "descriptions › answers 500 for a header with a CR or LF and a value that is no JSON, reported response_failed",
         "bytes › sends Content-Length, reads 256 KiB pieces, answers a single range 206 and an unsatisfiable one 416",
-        "bytes › names a download with an ASCII fallback and the UTF-8 name, control and bidi characters dropped",
         "bytes › refuses a foreign request (another site's) 403, reading nothing"
       ]
     },
     {
       "path": "packages/chord/test/node/http/router.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:4367dd0cf02105a9837260ce4acf47dabecdd5626095dd78c7586d779c0d4b01",
       "evidence": [
         "chord/nextnode/http/router_test.go"
       ],
-      "rationale": "11 of 12 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/).",
-      "missingCases": [
-        "patterns and precedence (D8) › takes a route with options: page, crossSite and public (a cross-site route is public: always anonymous)"
-      ]
+      "rationale": "All 12 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"patterns and precedence (D8) › takes a route with options: page, crossSite and public (a cross-site route is public: always anonymous)\" -> nextnode/http/router_test.go:takes a route with options: page, crossSite and public (a cross-site route is public: always anonymous)."
     },
     {
       "path": "packages/chord/test/node/http/upgrades.test.ts",
@@ -3253,113 +3237,205 @@
     },
     {
       "path": "packages/chord/test/node/react/hooks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8becb1af90184457de3a89fb1711ea0ba1f313e19d629c1a8c5a2116323697ce"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8becb1af90184457de3a89fb1711ea0ba1f313e19d629c1a8c5a2116323697ce",
+      "evidence": [
+        "chord/nextnode/app/app_web_browser_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/react/stores.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5d49f62d4c2658f54799af692ef9a1e1fd12bd4a60c1f2528460b9b8861f1fd9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5d49f62d4c2658f54799af692ef9a1e1fd12bd4a60c1f2528460b9b8861f1fd9",
+      "evidence": [
+        "chord/nextnode/surfaces/surfaces_react_test.go"
+      ],
+      "rationale": "All 3 upstream cases run: chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable runs Pi's own test (testdata/react_stores.test.mjs, vendored sources, D601) under Node and asserts 3 passing, 0 failing."
     },
     {
       "path": "packages/chord/test/node/reload/base.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:19018791c06b556ba20b429b0ad4fc9067ecfcb8e339739bbeaa6e2a0dea516a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:19018791c06b556ba20b429b0ad4fc9067ecfcb8e339739bbeaa6e2a0dea516a",
+      "evidence": [
+        "chord/nextnode/app/reload_web_test.go"
+      ],
+      "rationale": "All 2 upstream cases have a Go test on this branch: \"reloads the page, ends calls in flight with the link…\" = chord/nextnode/app/reload_web_test.go TestAChangeOfBaseCodeReloadsThePageEndsCallsInFlightWithTheLinkLosesPageStateAndKeepsServerState; \"flags a change of the web entry as base code\" = TestAChangeOfBaseCodeFlagsAChangeOfTheWebEntryAsBaseCodePluginsStateBase."
     },
     {
       "path": "packages/chord/test/node/reload/contracts.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b72b2a6a6d823532b5b6e65106446a636542a7e08c14f21d9532d62e5782ccc1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b72b2a6a6d823532b5b6e65106446a636542a7e08c14f21d9532d62e5782ccc1",
+      "evidence": [
+        "chord/nextnode/app/reload_contracts_test.go"
+      ],
+      "rationale": "All 4 upstream cases have a Go test on this branch (chord/nextnode/app/reload_contracts_test.go): TestAReloadChangingAContractKeepsAnOldPageWorkingThroughTheMapping…, …KeepsTheLastValuesWhileTheVersionIsRefused…, …KeepsTheLastValuesWhileTheTypeIsRemoved…, …FailsACallAtOnceWithTheCauseWhile (the it.each case, run per cause)."
     },
     {
       "path": "packages/chord/test/node/reload/failed.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:01df3121b616efc1eb1dd3eda3db6896588830d6ebff0b162821a5aec8fc6b10"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:01df3121b616efc1eb1dd3eda3db6896588830d6ebff0b162821a5aec8fc6b10",
+      "evidence": [
+        "chord/nextnode/app/reload_failed_test.go",
+        "chord/nextnode/app/reload_web_test.go"
+      ],
+      "rationale": "All 4 upstream cases have a Go test on this branch: worker plugin = reload_failed_test.go TestAReloadWhoseNewCodeFailsKeepsAWorkerPluginWhoseNewBuildEvaluationSetupFailsOnItsOldCode…; last values until a fix = reload_failed_test.go TestAReloadWhoseNewCodeFailsShowsAFailureWithTheLastValues…; web build fails = reload_web_test.go TestAReloadWhoseNewCodeFailsKeepsAWebPluginWhoseNewBuildFailsOnItsOldCode…; web script throws = reload_web_test.go TestAReloadWhoseNewCodeFailsKeepsAWebPluginWhoseNewScriptThrowsInThePage…."
     },
     {
       "path": "packages/chord/test/node/reload/jobs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d9f263d9c3a6ffa2585b7ec2f882c315bb2e57dc2db4985153c956729a63da23"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d9f263d9c3a6ffa2585b7ec2f882c315bb2e57dc2db4985153c956729a63da23",
+      "evidence": [
+        "chord/nextnode/app/reload_jobs_test.go"
+      ],
+      "rationale": "The 1 upstream case (an it.each over the restart kinds) = chord/nextnode/app/reload_jobs_test.go TestAJobRunningAcrossAReloadAcrossARestartOf."
     },
     {
       "path": "packages/chord/test/node/reload/pure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:abbc104ceed9a0b6c0eaf7e60b76c1de88e792e4953351ab29d1bf7b65d79745"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:abbc104ceed9a0b6c0eaf7e60b76c1de88e792e4953351ab29d1bf7b65d79745",
+      "evidence": [
+        "chord/nextnode/app/reload_pure_test.go"
+      ],
+      "rationale": "All 2 upstream cases have a Go test on this branch (chord/nextnode/app/reload_pure_test.go): TestAReloadOfPureCodeStaysLiveWhileARunningCallFinishesOnTheOldCode…, TestAReloadOfPureCodeShowsLoadingOnceThenTheNewCode…."
     },
     {
       "path": "packages/chord/test/node/reload/restart.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ab258f5c5386813d772d0ee4dd6df16ef4a7285b9c209bc4ff7598c339bfb116"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ab258f5c5386813d772d0ee4dd6df16ef4a7285b9c209bc4ff7598c339bfb116",
+      "evidence": [
+        "chord/nextnode/app/reload_restart_test.go"
+      ],
+      "rationale": "All 2 upstream cases have a Go test on this branch (chord/nextnode/app/reload_restart_test.go): TestAReloadRestartingAnObjectWithNativesStaysLiveWhileTheOldCodeDrains…, …CutsARunningCallOffAtTheReloadDrainBound…."
     },
     {
       "path": "packages/chord/test/node/reload/rollout.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a7b79448a5cc056f705b9dc01cff5ceab4d035b289c428731f207426089b6656"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a7b79448a5cc056f705b9dc01cff5ceab4d035b289c428731f207426089b6656",
+      "evidence": [
+        "chord/nextnode/app/reload_rollout_test.go"
+      ],
+      "rationale": "All 5 upstream cases have a Go test on this branch (chord/nextnode/app/reload_rollout_test.go), one TestARolloutAcrossHosts… per case, including …BringsAPageWhoseLinkWasDownDuringTheRollout…."
     },
     {
       "path": "packages/chord/test/node/reload/web.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c1ee67f99a1b67af96d6f770958b73cb210e80a12959deebc961743c23f42559"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c1ee67f99a1b67af96d6f770958b73cb210e80a12959deebc961743c23f42559",
+      "evidence": [
+        "chord/nextnode/app/reload_web_test.go"
+      ],
+      "rationale": "All 3 upstream cases have a Go test on this branch (chord/nextnode/app/reload_web_test.go): TestAReloadOfAWebPluginRemountsOnlyTheReloadedPluginsComponents…, TestAReloadOfAWebPluginEndsACallTheReloadedPluginsOldComponentMadeReleased…, TestAReloadOfAWebPluginRemovesAndRestoresAViewWhosePluginsContributionsChange…."
     },
     {
       "path": "packages/chord/test/node/surfaces/bundle.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:320d3595a23da8e5c2b3a42a5a6e5ba725afa56ba504b7b83b776096d9c0c7ef"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:320d3595a23da8e5c2b3a42a5a6e5ba725afa56ba504b7b83b776096d9c0c7ef",
+      "evidence": [
+        "chord/nextnode/surfaces/surfaces_bundle_test.go"
+      ],
+      "rationale": "All 3 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"conditions › takes the server process's conditions by default: its flags and a quoted NODE_OPTIONS\" -> nextnode/surfaces/surfaces_bundle_test.go:TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedNODEOPTIONS."
     },
     {
       "path": "packages/chord/test/node/surfaces/tui.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7195a06f4cffbfe206b44129bd2935f23c9975204e88bccb94ad9c3d95ac618c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7195a06f4cffbfe206b44129bd2935f23c9975204e88bccb94ad9c3d95ac618c",
+      "evidence": [
+        "chord/nextnode/tui/tui_kit_upstream_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/surfaces/web.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ea587206867b0ecb99a576b6c08ce4ea4c3e19572f639321a7f3ccaaa6cbc5eb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ea587206867b0ecb99a576b6c08ce4ea4c3e19572f639321a7f3ccaaa6cbc5eb",
+      "evidence": [
+        "chord/nextnode/app/app_surfaces_test.go"
+      ],
+      "rationale": "All 6 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the base bundle and the page › answers the current base hash publicly, and refuses the page and files to a request without a session\" -> nextnode/app/app_surfaces_test.go:TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession; \"plugin scripts › publishes a new set on a rollout without waiting for clients; the previous files stay served\" -> nextnode/app/app_surfaces_test.go:TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed."
     },
     {
       "path": "packages/chord/test/node/tui/actions.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:85652f2ba42cdcf9fc7860b6031b6ff0ab7021faeab208d0a9fbc9492d598331"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:85652f2ba42cdcf9fc7860b6031b6ff0ab7021faeab208d0a9fbc9492d598331",
+      "evidence": [
+        "chord/nextnode/tui/tui_actions_test.go"
+      ],
+      "rationale": "All 10 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"copying › shows every line up to five, then how many more; OSC 52 only once confirmed\" -> nextnode/tui/tui_actions_test.go:TestCopyingShowsEveryLineUpToFiveThenHowManyMoreOSC52OnlyOnceConfirmed; \"attaching a file › shows the path by its text before the yes; refuses a directory, a missing file and one over 16 MiB alike (Opus L2, E5, E9)\" -> nextnode/tui/tui_actions_test.go:TestAttachingAFileShowsThePathByItsTextBeforeTheYesRefusesADirectoryAMissingFileAndOneOver16MiBAlikeOpusL2E5E9; \"attaching a file › reads only the file confirmed: a parent directory swapped for a link after the yes is refused (Opus R1)\" -> nextnode/tui/tui_actions_test.go:TestAttachingAFileReadsOnlyTheFileConfirmedAParentDirectorySwappedForALinkAfterTheYesIsRefusedOpusR1; \"attaching a file › refuses UNC, device and //host paths on Windows without asking (Opus E9)\" -> nextnode/tui/tui_actions_test.go:TestAttachingAFileRefusesUNCDeviceAndHostPathsOnWindowsWithoutAskingOpusE9; \"attaching a file › never waits on a FIFO: opened without blocking, refused as no regular file (Opus E12)\" -> nextnode/tui/tui_actions_test.go:TestAttachingAFileNeverWaitsOnAFIFOOpenedWithoutBlockingRefusedAsNoRegularFileOpusE12."
     },
     {
       "path": "packages/chord/test/node/tui/credentials.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d6801b85c1e6f8f84e0694ee4ce85cadbead55d2638d8caebd765e22a27c18d9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d6801b85c1e6f8f84e0694ee4ce85cadbead55d2638d8caebd765e22a27c18d9",
+      "evidence": [
+        "chord/nextnode/tui/tui_credentials_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/tui/filter.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b1aec08238bc2f7b2ca3cb8e9db8efda68ff2b31661631f98c4e533511e1fab8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b1aec08238bc2f7b2ca3cb8e9db8efda68ff2b31661631f98c4e533511e1fab8",
+      "evidence": [
+        "chord/nextnode/tui/tui_filter_test.go"
+      ],
+      "rationale": "All 5 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"what is dropped › drops unknown modes, charset changes, other ESC sequences and control characters\" -> nextnode/tui/tui_filter_test.go:TestWhatIsDroppedDropsUnknownModesCharsetChangesOtherESCSequencesAndControlCharacters; \"what is dropped › refuses a frame over 64 KiB\" -> nextnode/tui/tui_filter_test.go:TestWhatIsDroppedRefusesAFrameOver64KiB."
     },
     {
       "path": "packages/chord/test/node/tui/launcher.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d12ab9479e4422ccf72ad917eceead4740c351bc1b6c385c8fb0892fb86d3c87"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d12ab9479e4422ccf72ad917eceead4740c351bc1b6c385c8fb0892fb86d3c87",
+      "evidence": [
+        "chord/nextnode/tui/tui_kit_upstream_test.go"
+      ],
+      "rationale": "All 10 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the Node it needs › refuses a Node older than 26.5.1 with a clear error\" -> nextnode/tui/tui_launcher_test.go:TestTheNodeItNeedsRefusesANodeOlderThan2651WithAClearError; \"the files the sandbox may fetch › are the terminal surface's, after dot segments and encodings resolve (Opus M2, Fable L1)\" -> nextnode/tui/tui_launcher_test.go:TestTheFilesTheSandboxMayFetchAreTheTerminalSurfacesAfterDotSegmentsAndEncodingsResolveOpusM2FableL1; \"a terminal client › runs the app's terminal code with the plugins, confirms its actions, applies an edit in place, exits\" -> nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits; \"a terminal client › answers eight requests at once, refuses more, and ignores SIGUSR1 (Opus E10, E8)\" -> nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8; \"a terminal client › ends on Ctrl-C while its prompt is open, whatever the sandbox asks (Opus E11)\" -> nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11; \"a terminal client › ends on three Ctrl-C within a second, though the sandbox ignores them (Opus R2)\" -> nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnThreeCtrlCWithinASecondThoughTheSandboxIgnoresThemOpusR2."
     },
     {
       "path": "packages/chord/test/node/tui/pipe.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d5ea97db17f981a194be5860668fdb66f7b516b0094e1b2fabd7ca6a5fd13f38"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d5ea97db17f981a194be5860668fdb66f7b516b0094e1b2fabd7ca6a5fd13f38",
+      "evidence": [
+        "chord/nextnode/tui/tui_pipe_test.go"
+      ],
+      "rationale": "All 3 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"reading the sandbox's frames › cuts messages from chunks of any size, a byte at a time included\" -> nextnode/tui/tui_pipe_test.go:TestReadingTheSandboxsFramesCutsMessagesFromChunksOfAnySizeAByteAtATimeIncluded; \"reading the sandbox's frames › refuses a frame over 17 MiB before reading it, and messages of no known shape\" -> nextnode/tui/tui_pipe_test.go:TestReadingTheSandboxsFramesRefusesAFrameOver17MiBBeforeReadingItAndMessagesOfNoKnownShape."
     },
     {
       "path": "packages/chord/test/node/tui/sandbox.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:012b6c4676863bd8224316426c9a2c92bbd6313478b26778956d9063691310e6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:012b6c4676863bd8224316426c9a2c92bbd6313478b26778956d9063691310e6",
+      "evidence": [
+        "chord/nextnode/tui/tui_sandbox_test.go"
+      ],
+      "rationale": "All 3 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the sandbox › closes every escape to the app's code and to plugins, on a real terminal (Fable C1, Opus H1, E1, E2)\" -> nextnode/tui/tui_kit_upstream_test.go:TestTheSandboxClosesEveryEscapeToTheAppsCodeAndToPluginsOnARealTerminalFableC1OpusH1E1E2."
     },
     {
       "path": "packages/chord/test/node/web/language.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:46e2730a29eb51430f648126124b32d0e40268461b561348bb53536b804e854b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:46e2730a29eb51430f648126124b32d0e40268461b561348bb53536b804e854b",
+      "evidence": [
+        "chord/nextnode/app/app_web_browser_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/web/page.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bf7d5a585b21af094470ffd57cb986b866607feea95329446bc3729d60e0b6a7"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:bf7d5a585b21af094470ffd57cb986b866607feea95329446bc3729d60e0b6a7",
+      "evidence": [
+        "chord/nextnode/app/app_web_browser_test.go"
+      ],
+      "rationale": "2 of 3 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/).",
+      "missingCases": [
+        "a page › records a click as the root of one trace through the server into the worker, stored by the server"
+      ]
     },
     {
       "path": "packages/chord/test/node/web/styles.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:28355c162bbb909951099b4f6e706448fac184e0822375c2355ebdd2c261cd41"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:28355c162bbb909951099b4f6e706448fac184e0822375c2355ebdd2c261cd41",
+      "evidence": [
+        "chord/nextnode/app/app_web_styles_test.go"
+      ],
+      "rationale": "All 9 upstream cases have a Go test on this branch: the nine TestAPagesPluginStylesheets… tests of chord/nextnode/app/app_web_styles_test.go, one per case in Pi's order (slow new stylesheet … UI contributed unstyled while the object restarts)."
     },
     {
       "path": "packages/chord/test/node/workers/base.test.ts",
@@ -3458,8 +3534,14 @@
     },
     {
       "path": "packages/chord/test/registries/record.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d6fbed9b8fb3f739df996ee613daed7884b3d6af6d4823888bf69b8f83a4fd4b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d6fbed9b8fb3f739df996ee613daed7884b3d6af6d4823888bf69b8f83a4fd4b",
+      "evidence": [
+        "chord/next/registries/record_test.go",
+        "chord/next/host/host_registry_undeclared_test.go",
+        "chord/next/host/host_registry_record_test.go"
+      ],
+      "rationale": "All 27 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/registries/registry.test.ts",
@@ -3530,17 +3612,12 @@
     },
     {
       "path": "packages/chord/test/remote/provider.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:1a6c594059ef8fba2092041bc3a67bf6ce047d35140d7607248a62ee7eb07143",
       "evidence": [
         "chord/next/host/remote_provider_test.go"
       ],
-      "rationale": "52 of 55 upstream cases have a Go test on this branch; the 3 listed in missingCases have none yet (chord-missing-cases/). 3 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "telemetry at the provider (slice 9) › runs a call's method under its carrier, extracted with the host's adapter; an absent or unknown one is a root",
-        "telemetry at the provider (slice 9) › counts holds placed here up and down, its own state messages, and the bytes of its link",
-        "telemetry at the provider (slice 9) › records how long state waited for a slot of the window"
-      ]
+      "rationale": "All 55 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/remote/relay.test.ts",
@@ -3553,17 +3630,12 @@
     },
     {
       "path": "packages/chord/test/remote/remote-object.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:4fa596ec91d2fcfaf5ae40e78233dba2fabeec9516e2957ea83a635ac5e6d8df",
       "evidence": [
         "chord/next/host/remote_remote_object_test.go"
       ],
-      "rationale": "30 of 33 upstream cases have a Go test on this branch; the 3 listed in missingCases have none yet (chord-missing-cases/). 3 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "consumer spans (slice 9) › holds in a `chord.hold` span until bound, its carrier on the hold; a call in a `chord.call` span, its carrier on the call",
-        "consumer spans (slice 9) › keeps a call its caller cancelled ok, outcome `aborted` (a thrown cancel is no error)",
-        "consumer spans (slice 9) › ends a hold's span failed when its first answer is a failure"
-      ]
+      "rationale": "All 33 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/remote/replica.test.ts",
@@ -4010,7 +4082,7 @@
       "evidence": [
         "chord/next/surfaces/surfaces_client_test.go"
       ],
-      "rationale": "All 10 upstream cases have a Go test on this branch. \"applying a new set in place › keeps a plugin's old facet when its new script fails, and reports it\" = chord/next/surfaces/surfaces_client_test.go TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt (Pi client.test.ts:182-194: same scripts, a `plugins` error naming @test/a, the greeting stays \"hello\"); it came in with the merged fix/chord-appcases lane."
+      "rationale": "All 10 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/surfaces/connection.test.ts",
@@ -4131,10 +4203,9 @@
       "evidence": [
         "chord/next/telemetryingest/ingest_upstream_test.go"
       ],
-      "rationale": "6 of 8 upstream cases have a Go test on this branch; the 2 listed in missingCases have none yet (chord-missing-cases/). Cases removed from missingCases, with the Go test checked: \"a page's batches › writes its own spans marked `chord.host: browser` with its link's principal, no attribute of its overriding\" -> next/telemetryingest/ingest_upstream_test.go:TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding; \"a page's batches › caps a page's spans per minute: past the budget they are dropped and counted\" -> next/telemetryingest/ingest_upstream_test.go:TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget.",
+      "rationale": "7 of 8 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). Cases removed from missingCases, with the Go test checked: \"a page's batches › writes its own spans marked `chord.host: browser` with its link's principal, no attribute of its overriding\" -> next/telemetryingest/ingest_upstream_test.go:TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding; \"a page's batches › drops spans posing as another sender's or the server's: ids, traces and parents not under its own prefix\" -> next/telemetryingest/ingest_upstream_test.go:TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers; \"a page's batches › caps a page's spans per minute: past the budget they are dropped and counted\" -> next/telemetryingest/ingest_upstream_test.go:TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget.",
       "missingCases": [
-        "a page's batches › never keeps a principal the page claims: with a hook recording none, its spans carry none",
-        "a page's batches › drops spans posing as another sender's or the server's: ids, traces and parents not under its own prefix"
+        "a page's batches › never keeps a principal the page claims: with a hook recording none, its spans carry none"
       ]
     },
     {
@@ -4192,13 +4263,22 @@
     },
     {
       "path": "packages/chord/test/telemetry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e2411807ef5c1a744489182c765f92fbb54395eaa52bfc6e9d8964fe781b60df"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e2411807ef5c1a744489182c765f92fbb54395eaa52bfc6e9d8964fe781b60df",
+      "evidence": [
+        "chord/next/host/host_telemetry_test.go",
+        "chord/next/telemetry/telemetry_upstream_test.go"
+      ],
+      "rationale": "All 18 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the schema › declares every metric a traced call over a relay records\" -> next/host/host_telemetry_test.go:TestTelemetrySchemaDeclaresEveryMetricATracedCallOverARelayRecords; \"nothing recorded › treats the NOOP context as untraced: no carrier, its own root\" -> next/telemetry/telemetry_upstream_test.go:TestUntracedTreatsTheNoopContextAsUntraced; \"carriers › extracts an unknown or absent carrier as the adapter's root, never throwing\" -> next/telemetry/telemetry_upstream_test.go:TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing; \"open spans › ends once, with how its work settled: ok, a cancel (status ok), or an error with its category\" -> chord/next/telemetry/telemetry_upstream_test.go:TestOpenSpansEndOnceWithHowTheirWorkSettled; \"open spans › marks a span failed with a fixed category and at most 500 characters\" -> chord/next/telemetry/telemetry_upstream_test.go:TestSpanFailedUsesAFixedCategoryAndAtMost500Characters; \"metrics › makes each instrument once per adapter's metrics and none for NOOP\" -> next/telemetry/telemetry_upstream_test.go:TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop; \"metrics › keeps no adapter alive (its instruments are cached by its metrics object, weakly)\" -> next/telemetry/telemetry_metrics_cache_test.go:TestMetricsKeepsNoAdapterAliveItsInstrumentsAreCachedByItsMetricsObjectWeakly; \"across hosts › follows a call from the tab through the server's relay into the worker's method and its commit\" -> next/host/host_telemetry_test.go:TestAcrossHostsFollowsACallFromTheTabThroughTheServersRelayIntoTheWorkersMethodAndItsCommit; \"across hosts › holds through the relay under the tab's span; the worker's start and its activations link to their triggers\" -> next/host/host_telemetry_test.go:TestAcrossHostsHoldsThroughTheRelayUnderTheTabsSpanTheWorkersStartAndItsActivationsLinkToTheirTriggers; \"across hosts › costs a call over a relay exactly its spans and no extra encode\" -> next/host/host_telemetry_test.go:TestAcrossHostsCostsACallOverARelayExactlyItsSpansAndNoExtraEncode; \"across hosts › starts a new root for a well-formed carrier the server's adapter does not know\" -> next/host/host_telemetry_test.go:TestAcrossHostsStartsANewRootForAWellFormedCarrierTheServersAdapterDoesNotKnow; \"re-holds (slice 9 review L1) › carries the carrier only on a reference's first hold; a re-hold after a reconnect is a fresh root linked to it\" -> next/host/host_telemetry_test.go:TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt; \"relayed re-holds (slice 9 review L1) › re-holds upstream after a drop in a fresh relay root linked to the first relay span\" -> next/host/host_telemetry_test.go:TestRelayedReHoldsReHoldUpstreamAfterADropInAFreshRelayRootLinkedToTheFirstRelaySpan; \"what a peer sends (slice 9 review M1, M2, L8) › caps an object's label (its client-chosen params key) at 256 characters in its spans\" -> next/host/host_telemetry_test.go:TestWhatAPeerSendsCapsAnObjectsLabelItsClientChosenParamsKeyAt256CharactersInItsSpans."
     },
     {
       "path": "packages/chord/test/tui/frames.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6b9fd15c8c399981f3f145211f31191b27798b21f3f12f6c977c11b9d6801990"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6b9fd15c8c399981f3f145211f31191b27798b21f3f12f6c977c11b9d6801990",
+      "evidence": [
+        "chord/nextnode/tui/tui_frames_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/tui/scope.test.ts",
