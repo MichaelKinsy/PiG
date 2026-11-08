@@ -75,21 +75,13 @@ func (a *App) providerRow(c *ui.Context, p screens.Provider) {
 			}
 			if ui.Button(c.Key(m.Type), label).Clicked() {
 				id, kind := p.ID, m.Type
-				go func() {
-					if err := a.providers.Start(id, kind); err != nil {
-						c.Toast(err.Error())
-					}
-				}()
+				go func() { a.toastError(a.providers.Start(id, kind)) }()
 			}
 		}
 		if p.SignedIn != "" {
 			if ui.Button(c, "Sign out").Clicked() {
 				id := p.ID
-				go func() {
-					if err := a.providers.Logout(id); err != nil {
-						c.Toast(err.Error())
-					}
-				}()
+				go func() { a.toastError(a.providers.Logout(id)) }()
 			}
 		}
 	})
@@ -206,9 +198,28 @@ func (a *App) urlButtons(c *ui.Context, url string) {
 
 func (a *App) answer(c *ui.Context, login *screens.Login, prompt, value string) {
 	attempt := login.AttemptID
-	go func() {
-		if err := a.providers.Answer(attempt, prompt, value); err != nil {
-			c.Toast(err.Error())
-		}
-	}()
+	go func() { a.toastError(a.providers.Answer(attempt, prompt, value)) }()
+}
+
+// toastError queues err's message for the next frame: a toast belongs to a UI context, which only the frame's goroutine may use,
+// so work running off the frame (the sign-in calls) hands its errors over here and the frame shows them.
+func (a *App) toastError(err error) {
+	if err == nil {
+		return
+	}
+	a.mu.Lock()
+	a.toasts = append(a.toasts, err.Error())
+	a.mu.Unlock()
+	a.Invalidate()
+}
+
+// showToasts shows what toastError queued; it runs in the frame.
+func (a *App) showToasts(c *ui.Context) {
+	a.mu.Lock()
+	queued := a.toasts
+	a.toasts = nil
+	a.mu.Unlock()
+	for _, message := range queued {
+		c.Toast(message)
+	}
 }

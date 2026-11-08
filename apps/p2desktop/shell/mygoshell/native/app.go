@@ -49,7 +49,9 @@ type App struct {
 	// pickSprite is the sprite picker's dialog; modeChoice the theme toggle (system, light, dark); collapsed the sidebar.
 	pickSprite bool
 	// The providers sheet: shown, its search, the answer being typed, and the screen's references.
-	pickProvider  bool
+	pickProvider bool
+	// toasts are the errors of work off the frame, shown by the next one (guarded by mu).
+	toasts        []string
 	providerQuery string
 	loginAnswer   string
 	providers     *screens.Providers
@@ -247,6 +249,7 @@ func (a *App) Build(c *ui.Context) {
 	a.spritePicker(c)
 	a.providersSheet(c)
 	a.activitySheet(c)
+	a.showToasts(c)
 	if err := sessions.LastError(); err != nil {
 		c.Toast(err.Error())
 		sessions.ClearError()

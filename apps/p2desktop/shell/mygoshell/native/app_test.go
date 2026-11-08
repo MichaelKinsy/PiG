@@ -1,6 +1,7 @@
 package native
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -173,4 +174,12 @@ func TestActivityRowOpensItsSheet(t *testing.T) {
 		t.Fatal(err)
 	}
 	until(t, tt, "the sheet closed", func() bool { return !tt.HasText("2 steps ·") })
+}
+
+// An error of work off the frame (a sign-in call) is shown by the next frame, never from the goroutine that failed.
+func TestErrorsOffTheFrameAreToastedByTheFrame(t *testing.T) {
+	app, tt := startApp(t)
+	until(t, tt, "the sessions", app.sessions.Ready)
+	go app.toastError(errors.New("sign-in refused"))
+	until(t, tt, "the toast", func() bool { return tt.HasText("sign-in refused") })
 }
