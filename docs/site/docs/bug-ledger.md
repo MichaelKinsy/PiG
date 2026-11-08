@@ -332,8 +332,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3ad9ec8](#bf-3ad9ec8) | fix(tui): tree label prompt gives its input width-2 cells (Pi LabelInput) | PiG's own defect | All platforms | Unreleased |
 | [BF-3b009a3](#bf-3b009a3) | `chord/host`: a child host forked by `ForkDriver` no longer inherits its parent's `CHORD2_LOCK` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3b3dba6](#bf-3b3dba6) | A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-3b49d43](#bf-3b49d43) | Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is… | PiG's own defect | All platforms | Unreleased |
-| [BF-3b49d43-2](#bf-3b49d43-2) | Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged… | PiG's own defect | All platforms | Unreleased |
 | [BF-3b696c8](#bf-3b696c8) | A changelog version recorded with a prerelease or build suffix, such as `0.1.5-20261020.7`, no longer shows… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-3b8aa66](#bf-3b8aa66) | A Piglet Binary that strips `bedrock-converse-stream` links the AWS SDK again: the Bedrock retry backoff… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3b9bd16](#bf-3b9bd16) | `chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node… | PiG's own defect | All platforms | 0.7.0 |
@@ -1161,8 +1159,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D310](#bf-d310) | `/reload` and a session switch remove every extension overlay | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D311](#bf-d311) | `ctrl+o` applies to user bash output shown while the agent is working | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D312](#bf-d312) | The model selectors keep the row the user browsed to when a catalog refresh lands | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D370](#bf-d370) | The OAuth callback server drops connections that have not sent a request when it closes | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D373](#bf-d373) | The stored PKCE verifier is dropped once its code exchange succeeded | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D520](#bf-d520) | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -6138,34 +6134,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3b3dba64c8` (2026-10-09)
 - **Tests:** `ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput`
 - **Release note:** A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's `JSON.stringify` does instead of `-0`.
-
-### BF-3b49d43
-
-**Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.
-- **Root cause:** Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `3b49d43239` (2026-11-07)
-- **Tests:** None recorded.
-- **Release note:** Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.
-
-### BF-3b49d43-2
-
-**Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).
-- **Root cause:** Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `3b49d43239` (2026-11-07)
-- **Tests:** None recorded.
-- **Release note:** Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).
 
 ### BF-3b696c8
 
@@ -14890,7 +14858,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `8d46bf82b6` (2026-11-07)
-- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext`, `mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime` and 3 more in docs/bug-ledger.json
 - **Release note:** A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.
 
 ### BF-8d46bf8-2
@@ -14904,7 +14872,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `8d46bf82b6` (2026-11-07)
-- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext`, `mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime` and 3 more in docs/bug-ledger.json
 - **Release note:** `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.
 
 ### BF-8d46bf8-3
@@ -14918,7 +14886,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `8d46bf82b6` (2026-11-07)
-- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext`, `mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime` and 3 more in docs/bug-ledger.json
 - **Release note:** Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.
 
 ### BF-8d6fb83
@@ -17667,36 +17635,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.
 - **Fix commits:** `b1333a0834` (2026-11-07)
 - **Tests:** None recorded.
-
-### BF-D370
-
-**The OAuth callback server drops connections that have not sent a request when it closes**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D370)
-- **Symptom:** 1.5.0 waits for the browser to drop the socket, for minutes.
-- **Root cause:** Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 63ea042ce and PiG's close matches it.
-- **Fix commits:** `d852965a33` (2026-11-07)
-- **Tests:** `mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`
-
-### BF-D373
-
-**The stored PKCE verifier is dropped once its code exchange succeeded**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D373)
-- **Symptom:** none observable in behavior; additive hardening.
-- **Root cause:** a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Pi drops the verifier after the exchange, or the owner declines the hardening.
-- **Fix commits:** `474fc73fd8` (2026-11-07), `8d46bf82b6` (2026-11-07)
-- **Tests:** `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`
 
 ### BF-D430
 
@@ -26749,8 +26687,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D310 | `/reload` and a session switch remove every extension overlay | [BF-D310](#bf-d310) |
 | D311 | `ctrl+o` applies to user bash output shown while the agent is working | [BF-D311](#bf-d311) |
 | D312 | The model selectors keep the row the user browsed to when a catalog refresh lands | [BF-D312](#bf-d312) |
-| D370 | The OAuth callback server drops connections that have not sent a request when it closes | [BF-D370](#bf-d370) |
-| D373 | The stored PKCE verifier is dropped once its code exchange succeeded | [BF-D373](#bf-d373) |
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
 | D520 | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | [BF-D520](#bf-d520) |

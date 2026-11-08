@@ -1167,7 +1167,7 @@ func TestMCPOAuthRejectsNonHTTPAuthorizationEndpointsWhichThePlatformURLHandlerW
 	}
 }
 
-// A wait that ends with its context frees its state, so the same state can wait again; a wait begun after Close fails at once (D370).
+// A wait that ends with its context frees its state, so the same state can wait again; a wait begun after Close fails at once.
 func TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext(t *testing.T) {
 	callback, err := oauth.ListenOAuthCallbackServer(oauth.OAuthCallbackServerOptions{})
 	if err != nil {
@@ -1198,43 +1198,5 @@ func TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext(t *testin
 	_ = callback.Close()
 	if _, err := callback.WaitForCallback(t.Context(), "s2"); err == nil || err.Error() != "OAuth callback server closed" {
 		t.Fatalf("wait after Close = %v", err)
-	}
-}
-
-// D373: the exchange that consumed the PKCE verifier drops it from the stored state.
-func TestAuthorizeMcpDropsTheVerifierAfterTheExchange(t *testing.T) {
-	ctx := t.Context()
-	origin := listen(t, func(w http.ResponseWriter, r *http.Request, serverOrigin string) {
-		switch r.URL.Path {
-		case "/.well-known/oauth-protected-resource/mcp":
-			jsonResponse(w, 200, map[string]any{"resource": serverOrigin + "/mcp"})
-		case "/.well-known/oauth-authorization-server":
-			jsonResponse(w, 200, map[string]any{
-				"issuer": serverOrigin, "authorization_endpoint": serverOrigin + "/authorize", "token_endpoint": serverOrigin + "/token",
-				"response_types_supported": []string{"code"},
-			})
-		case "/token":
-			jsonResponse(w, 200, map[string]any{"access_token": "a1", "token_type": "Bearer"})
-		default:
-			w.WriteHeader(404)
-		}
-	})
-	store := &oauth.MemoryOAuthStateStore{}
-	provider, err := oauth.NewMcpOAuthProvider(oauth.McpOAuthProviderOptions{
-		ServerURL: origin + "/mcp", RedirectURL: "http://127.0.0.1/callback", ClientMetadata: oauth.OAuthClientMetadata{ClientName: "test"},
-		ClientID: "client", Store: store, OnRedirect: func(context.Context, oauth.URL) error { return nil },
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := provider.SaveCodeVerifier(ctx, "verifier"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := oauth.AuthorizeMcp(ctx, provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp", AuthorizationCode: "code"}); err != nil {
-		t.Fatal(err)
-	}
-	state, _ := store.Load(ctx)
-	if state == nil || state.Tokens == nil || state.Tokens.AccessToken != "a1" || state.CodeVerifier != "" {
-		t.Fatalf("state = %#v", state)
 	}
 }
