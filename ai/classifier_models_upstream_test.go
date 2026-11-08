@@ -109,11 +109,11 @@ func TestClassifierModelsUpstream(t *testing.T) {
 				state                     any
 			}
 			var requests []recorded
-			result := models.Classify(t.Context(), jev, classifierTestContext(), ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{APIKey: "secret", APIKeySet: true, Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
+			result := models.Classify(t.Context(), jev, classifierTestContext(), ModelsClassifierOptions{APIKey: "secret", APIKeySet: true, Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
 				body := clsBody(t, r)
 				requests = append(requests, recorded{r.URL.String(), body["model"].(string), r.Header.Get("authorization"), body["state"]})
 				return clsJSON(200, `{"model":"`+tc.id+`","answers":{"approved":{"type":"noul","noul":0.8}}}`), nil
-			})}})
+			})})
 
 			if !reflect.DeepEqual(requests, []recorded{{tc.url, tc.id, "Bearer secret", map[string]any{"text": "yes"}}}) {
 				t.Fatalf("requests=%+v", requests)
@@ -166,10 +166,10 @@ func TestClassifierModelsUpstream(t *testing.T) {
 		var urls []string
 		withImages := classifierTestContext()
 		withImages.Images = []ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}
-		result := models.Classify(t.Context(), luna, withImages, ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{APIKey: "secret", APIKeySet: true, Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
+		result := models.Classify(t.Context(), luna, withImages, ModelsClassifierOptions{APIKey: "secret", APIKeySet: true, Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
 			urls = append(urls, r.URL.String())
 			return clsJSON(200, `{"answers":[{"type":"predicate","name":"approved","probability":0.8}]}`), nil
-		})}})
+		})})
 
 		if !reflect.DeepEqual(urls, []string{"https://api.openai.com/v1/decisions"}) {
 			t.Fatalf("urls=%v", urls)
@@ -247,11 +247,11 @@ func TestClassifierModelsUpstream(t *testing.T) {
 
 		var urls []string
 		var headers http.Header
-		result := models.Classify(t.Context(), decision, classifierTestContext(), ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
+		result := models.Classify(t.Context(), decision, classifierTestContext(), ModelsClassifierOptions{Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
 			urls = append(urls, r.URL.String())
 			headers = r.Header.Clone()
 			return clsJSON(200, `{"answers":{"approved":{"type":"noul","noul":0.8}}}`), nil
-		})}})
+		})})
 
 		if !reflect.DeepEqual(urls, []string{"https://api.enterprise.githubcopilot.com/v1/systemone"}) {
 			t.Fatalf("urls=%v", urls)
@@ -275,10 +275,10 @@ func TestClassifierModelsUpstream(t *testing.T) {
 			t.Fatal("missing GitHub Copilot decision model")
 		}
 		var urls []string
-		models.Classify(t.Context(), decision, classifierTestContext(), ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{APIKey: "secret", APIKeySet: true, Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
+		models.Classify(t.Context(), decision, classifierTestContext(), ModelsClassifierOptions{APIKey: "secret", APIKeySet: true, Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
 			urls = append(urls, r.URL.String())
 			return clsJSON(200, `{"answers":{"approved":{"type":"noul","noul":0.8}}}`), nil
-		})}})
+		})})
 		if !reflect.DeepEqual(urls, []string{"https://api.individual.githubcopilot.com/v1/systemone"}) {
 			t.Fatalf("urls=%v", urls)
 		}

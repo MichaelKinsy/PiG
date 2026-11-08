@@ -248,7 +248,7 @@ func resultRecord(result Result) map[string]any {
 // replyFor is the client's reply to one call of a serve case, the table of testdata/wire_oracle.mjs replyFor.
 func replyFor(kind string, call RemoteMessage, seq int, deterministic *VmDeterministic, properties json.RawMessage, shape string) *RemoteReply {
 	if kind == "stop" {
-		return &RemoteReply{HostToWorkerMessage: HostToWorkerMessage{Type: MessageStop}}
+		return &RemoteReply{Type: MessageStop}
 	}
 	reply := HostToWorkerMessage{Type: MessageResult, ID: call.ID, Ok: true}
 	switch kind {
@@ -487,7 +487,7 @@ func (c wireCase) runClient(t *testing.T) wireRecord {
 }
 
 func (c wireCase) inlineSandbox(t *testing.T) *InlineSandbox {
-	options := InlineSandboxOptions{SandboxOptions: SandboxOptions{Tools: newWireTools(c.Tools), Globals: newWireTools(c.Globals), MemoryLimitBytes: c.MemoryLimitBytes}}
+	options := InlineSandboxOptions{Tools: newWireTools(c.Tools), Globals: newWireTools(c.Globals), MemoryLimitBytes: c.MemoryLimitBytes}
 	if c.InterruptBudget != nil {
 		options.InterruptBudget = *c.InterruptBudget
 	}

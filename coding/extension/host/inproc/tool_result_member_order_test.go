@@ -14,8 +14,8 @@ func TestEmitToolResultKeepsHandlerDetailsMemberOrder(t *testing.T) {
 		"tool_result": {func(args ...any) (any, error) { return json.RawMessage(`{"details":` + details + `}`), nil }},
 	}}}, ".")
 	result, err := runner.EmitToolResult(t.Context(), extension.CustomToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "call"},
-		ToolName:            "tool",
+		Type: "tool_result", ToolCallID: "call",
+		ToolName: "tool",
 	})
 	if err != nil || result == nil {
 		t.Fatalf("EmitToolResult = %#v, %v", result, err)

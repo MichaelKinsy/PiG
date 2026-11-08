@@ -794,7 +794,7 @@ func TestCoreRegistrySnapshotToolsPairEachToolWithItsExtensionInInstallOrder(t *
 	})
 	h, registry, root := openTasksRegistry(t, task.Erased())
 	schema := func(name string) *durable.ToolRegistration {
-		return &durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}}
+		return &durable.ToolRegistration{Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}
 	}
 	for _, extension := range []*durable.Extension{
 		{Name: "first", Tools: []*durable.ToolRegistration{schema("a"), schema("b")}},

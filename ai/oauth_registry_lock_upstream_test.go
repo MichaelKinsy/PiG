@@ -95,14 +95,12 @@ func TestRegistryOAuthRefreshIsBoundedUpstream(t *testing.T) {
 	var bounded bool
 	var received context.Context
 	useOAuthProvider(t, deadlineOAuthProvider{
-		spyOAuthProvider: spyOAuthProvider{
-			id:           "spy-oauth-bounded",
-			refreshCalls: &calls,
-			refreshed:    OAuthCredentials{Access: "refreshed", Refresh: "refresh-2", Expires: time.Now().Add(time.Hour).UnixMilli()},
-		},
-		deadline: &deadline,
-		bounded:  &bounded,
-		received: &received,
+		id:           "spy-oauth-bounded",
+		refreshCalls: &calls,
+		refreshed:    OAuthCredentials{Access: "refreshed", Refresh: "refresh-2", Expires: time.Now().Add(time.Hour).UnixMilli()},
+		deadline:     &deadline,
+		bounded:      &bounded,
+		received:     &received,
 	})
 	path := filepath.Join(t.TempDir(), "auth.json")
 	stored := fmt.Sprintf(`{"spy-oauth-bounded":{"type":"oauth","access":"old-access","refresh":"old-refresh","expires":%d}}`, time.Now().Add(-time.Minute).UnixMilli())
@@ -157,8 +155,8 @@ func TestRegistryOAuthRefreshCancelledDuringTheRefreshPersistsTheCredentialUpstr
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	useOAuthProvider(t, cancellingOAuthProvider{
-		spyOAuthProvider: spyOAuthProvider{id: "spy-oauth-cancel", refreshCalls: &calls},
-		cancel:           cancel,
+		id: "spy-oauth-cancel", refreshCalls: &calls,
+		cancel: cancel,
 	})
 	path := filepath.Join(t.TempDir(), "auth.json")
 	stored := fmt.Sprintf(`{"spy-oauth-cancel":{"type":"oauth","access":"old-access","refresh":"old-refresh","expires":%d}}`, time.Now().Add(-time.Minute).UnixMilli())

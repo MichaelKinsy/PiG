@@ -121,7 +121,7 @@ func TestInteractiveCompactionUpstream(t *testing.T) {
 				t.Fatal(output)
 			}
 			caller := compactionUIMode(t, true)
-			handle := &compactionUIHandle{recordingCompactHandle: recordingCompactHandle{inner: caller.currentSession()}}
+			handle := &compactionUIHandle{inner: caller.currentSession()}
 			caller.opts.SessionHandle = handle
 			caller.turnActive.Store(true)
 			caller.compactionQueue = []compactionQueuedMessage{{text: "queued after", mode: compactionQueueSteer}}

@@ -114,9 +114,9 @@ func TestUpstreamColors(t *testing.T) {
 	// colors.test.ts:40.
 	t.Run("styles text and closes sequences in reverse order", func(t *testing.T) {
 		got := StyleText("Ready", TextStyle{
-			Fg:             rgbOK(t, 18, 52, 86),
-			Bg:             indexedOK(t, 9),
-			TextAttributes: TextAttributes{Bold: true, Italic: true},
+			Fg:   rgbOK(t, 18, 52, 86),
+			Bg:   indexedOK(t, 9),
+			Bold: true, Italic: true,
 		}, TerminalColorModeTrueColor)
 		if want := "\x1b[38;2;18;52;86m\x1b[48;5;9m\x1b[1m\x1b[3mReady\x1b[23m\x1b[22m\x1b[49m\x1b[39m"; got != want {
 			t.Fatalf("got %q, want %q", got, want)

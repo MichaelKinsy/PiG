@@ -77,12 +77,10 @@ func telemetryReport(onReport func(err error, info durable.ReportInfo), adapter 
 
 func attribute(attributeType telemetry.TelemetryAttributeType, required bool, description string, values ...string) telemetry.TelemetryStartAttributeDefinition {
 	return telemetry.TelemetryStartAttributeDefinition{
-		TelemetryAttributeDefinition: telemetry.TelemetryAttributeDefinition{
-			TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: description},
-			Type:                       attributeType,
-			Values:                     values,
-		},
-		Required: required,
+		Description: description,
+		Type:        attributeType,
+		Values:      values,
+		Required:    required,
 	}
 }
 

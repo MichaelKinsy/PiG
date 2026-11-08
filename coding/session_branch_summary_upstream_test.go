@@ -131,7 +131,7 @@ func TestBranchSummaryRequestAuth(t *testing.T) {
 						resolvedAuth.Headers = ai.ProviderHeaders{"Authorization": new("Bearer ambient-token"), "X-Deleted": nil}
 					}
 					resolved := 0
-					p := &branchAuthProvider{upstreamBranchProvider: upstreamBranchProvider{response: ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "summary"}}, StopReason: ai.StopReasonStop}}}
+					p := &branchAuthProvider{response: ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "summary"}}, StopReason: ai.StopReasonStop}}
 					if kind == "oauth" {
 						if err := h.session.services.Auth().Set(p.ID(), ai.Credential{Type: ai.CredentialOAuth, Access: "oauth-token", Refresh: "refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}); err != nil {
 							t.Fatal(err)

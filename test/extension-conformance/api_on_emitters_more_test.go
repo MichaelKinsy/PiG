@@ -185,7 +185,7 @@ func TestConformanceAPIOnAgentBeforeSettleChainsContinuation(t *testing.T) {
 		return extension.AgentBeforeSettleEventResult{}, nil
 	})
 	runner := apiReferenceRunner(t, map[string][]extension.HandlerFn{"agent_before_settle": bridgeResult(fake.OnAgentBeforeSettleHandlers)})
-	result, err := runner.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: "completed"}},
+	result, err := runner.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: "completed"},
 		func([]extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 			return extension.BoundaryContextPreview{}, nil
 		})

@@ -43,7 +43,7 @@ func TestToolCallReplyEditsTheEventInputInPlace(t *testing.T) {
 			handler := managed.makeEventHandler("tool_call", 1)
 			input := map[string]any{"command": "git status", "drop": "dropped", "timeout": 5.0}
 			wire := json.RawMessage(wireBefore)
-			event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "call", WireInput: &wire}, ToolName: "bash", Input: input}
+			event := extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "call", WireInput: &wire, ToolName: "bash", Input: input}
 			type outcome struct {
 				result any
 				err    error
@@ -96,7 +96,7 @@ func TestToolCallReplyKeepsTheHandlersMemberOrder(t *testing.T) {
 	handler := managed.makeEventHandler("tool_call", 1)
 	input := map[string]any{"command": "git status"}
 	wire := json.RawMessage(`{"command":"git status"}`)
-	event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "call", WireInput: &wire}, ToolName: "bash", Input: input}
+	event := extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "call", WireInput: &wire, ToolName: "bash", Input: input}
 	done := make(chan error, 1)
 	go func() {
 		_, err := handler(event, t.Context())

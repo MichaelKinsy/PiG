@@ -448,5 +448,5 @@ func (t *TextInput) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 	}
 	t.lastAction = ""
 	t.Invalidate()
-	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+	return &TuiMouseDispatchResult{Handled: true, Focus: true}
 }

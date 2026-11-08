@@ -40,17 +40,15 @@ type InboxState struct {
 
 // InboxDoc is the built-in pi.inbox document; a complete base is stored exactly while it is empty (inbox.ts:16-24).
 var InboxDoc = durable.DefineDoc(durable.DocDefinition[InboxState]{
-	CommonDocDefinition: durable.CommonDocDefinition[InboxState]{
-		Kind:    "pi.inbox",
-		Version: 1,
-		CheckpointWhenRaw: func(value durable.JsonObject, _ []durable.Op, _ durable.CheckpointInfo) bool {
-			items, _ := value.Get("items")
-			list, _ := items.([]any)
-			return len(list) == 0
-		},
-
-		Initial: func() InboxState { return InboxState{Items: []InboxItem{}} },
+	Kind:    "pi.inbox",
+	Version: 1,
+	CheckpointWhenRaw: func(value durable.JsonObject, _ []durable.Op, _ durable.CheckpointInfo) bool {
+		items, _ := value.Get("items")
+		list, _ := items.([]any)
+		return len(list) == 0
 	},
+
+	Initial:           func() InboxState { return InboxState{Items: []InboxItem{}} },
 	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 })
 

@@ -830,7 +830,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	*h.notify = nil
 	var boundaryErrors []*extension.ExtensionError
 	removeBoundaryListener := h.runner.AddErrorListener(func(err *extension.ExtensionError) { boundaryErrors = append(boundaryErrors, err) })
-	boundary, err := h.runner.EmitBoundary(ctx, &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}},
+	boundary, err := h.runner.EmitBoundary(ctx, &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: extension.AgentActivityCompleted},
 		func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 			return extension.BoundaryContextPreview{
 				ContextEntries: make([]extension.ProjectedSessionEntry, len(entries)),

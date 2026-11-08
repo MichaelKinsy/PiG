@@ -64,7 +64,7 @@ func TestValidateGapsRatchets(t *testing.T) {
 
 // A property the runtime reads is handed over as an object-literal key (`renderDiff(text, { filePath })`), so the key reaches a read: cell as a member access does; a name that is only a substring, a call or a ternary branch does not, and a generic member name keeps its receiver rule.
 func TestExerciseTokensReadPropertyKey(t *testing.T) {
-	member := matrixRow{surfaceRow: surfaceRow{Kind: kindMember}}
+	member := matrixRow{Kind: kindMember}
 	reaches := func(sym, text string) bool {
 		for _, re := range exerciseTokens(member, cell{Symbol: sym}) {
 			if re.MatchString(text) {
@@ -92,7 +92,7 @@ func TestExerciseTokensReadPropertyKey(t *testing.T) {
 }
 
 func TestExerciseTokens(t *testing.T) {
-	member := matrixRow{surfaceRow: surfaceRow{Kind: kindMember}}
+	member := matrixRow{Kind: kindMember}
 	for sym, text := range map[string]string{"Context.SetTitle": "ctx.SetTitle(x)", "Context::set_title": "ctx.set_title(x)", "api.events.emit": "pi.events.emit(1)", "read:tool.promptSnippet": "tool.promptSnippet"} {
 		hit := false
 		for _, re := range exerciseTokens(member, cell{Symbol: sym}) {
@@ -116,7 +116,7 @@ func TestExerciseTokens(t *testing.T) {
 		}
 	}
 	// An implemented member is reached by the host, so a fixture that defines it exercises it; a fixture that only names it does not.
-	implemented := matrixRow{surfaceRow: surfaceRow{Kind: kindPig, Implemented: true}}
+	implemented := matrixRow{Kind: kindPig, Implemented: true}
 	for sym, def := range map[string]string{"ViewEventHandler.HandleViewEvent": "func (p *probe) HandleViewEvent(event kit.Event) {", "ViewComponent::handle_view_event": "    fn handle_view_event(&mut self, event: Event) {", "kit.ViewEventHandler.handle_view_event": "    def handle_view_event(self, event):"} {
 		hit, hitOther := false, false
 		for _, re := range exerciseTokens(implemented, cell{Symbol: sym}) {
@@ -127,7 +127,7 @@ func TestExerciseTokens(t *testing.T) {
 			t.Errorf("%s: definition matched=%v, a comment matched=%v; want true, false", sym, hit, hitOther)
 		}
 	}
-	event := matrixRow{surfaceRow: surfaceRow{Kind: kindEvent, Event: "turn_start"}}
+	event := matrixRow{Kind: kindEvent, Event: "turn_start"}
 	hit := false
 	for _, re := range exerciseTokens(event, cell{Symbol: "api.on"}) {
 		hit = hit || re.MatchString(`pi.on("turn_start", h)`)

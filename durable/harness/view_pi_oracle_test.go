@@ -417,7 +417,7 @@ func agentChange(raw json.RawMessage) (AgentChange, error) {
 	tools := func(names []string) []*durable.ToolRegistration {
 		list := []*durable.ToolRegistration{}
 		for _, name := range names {
-			list = append(list, &durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: name}})
+			list = append(list, &durable.ToolRegistration{Name: name})
 		}
 		return list
 	}

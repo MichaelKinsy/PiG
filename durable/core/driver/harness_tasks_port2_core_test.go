@@ -78,8 +78,8 @@ type (
 // harness-tasks.test.ts:188 "commits results with entries atomically, keeps memos until terminal, and retires task documents".
 func TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments(t *testing.T) {
 	progress := durable.DefineDoc(durable.DocDefinition[progressLines]{
-		CommonDocDefinition: durable.CommonDocDefinition[progressLines]{Kind: "test.task-progress", Version: 1, Initial: func() progressLines { return progressLines{Lines: []string{}} }, CheckpointWhen: func(progressLines, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
+		Kind: "test.task-progress", Version: 1, Initial: func() progressLines { return progressLines{Lines: []string{}} }, CheckpointWhen: func(progressLines, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeTask,
 	})
 	answer := durable.DefineEntry[durable.Never]("answer")
 	child := quickTask("test.child")
@@ -282,8 +282,8 @@ type runtimeNotes struct {
 // harness-tasks.test.ts:579 "reads committed documents and context through the runtime, and forwards the clock and reports".
 func TestCoreTaskReadsCommittedDocumentsAndContextThroughTheRuntimeAndForwardsClockAndReports(t *testing.T) {
 	notes := durable.DefineDoc(durable.DocDefinition[runtimeNotes]{
-		CommonDocDefinition: durable.CommonDocDefinition[runtimeNotes]{Kind: "test.runtime-notes", Version: 1, Initial: func() runtimeNotes { return runtimeNotes{} }, CheckpointWhen: func(runtimeNotes, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+		Kind: "test.runtime-notes", Version: 1, Initial: func() runtimeNotes { return runtimeNotes{} }, CheckpointWhen: func(runtimeNotes, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 	})
 	captured := make(chan stepRuntime, 1)
 	var mu sync.Mutex

@@ -41,7 +41,7 @@ func TestTreeLabelInputContract(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			treeHelpTestKeybindings(t, tc.bindings)
-			node := &editableTreeTestNode{fakeNodeWithBranchLabel: fakeNodeWithBranchLabel{fakeNode: fakeNode{id: "entry", label: "unique message body"}, branchLabel: tc.initial}}
+			node := &editableTreeTestNode{id: "entry", label: "unique message body", branchLabel: tc.initial}
 			selector := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: []TreeNode{node}})
 			calls := 0
 			selector.OnLabelEdit = func(id, label string) {
@@ -89,7 +89,7 @@ func BenchmarkTreeLabelEdit(b *testing.B) {
 			SetTUIKeybindings(NewKeybindingsManager(defs, nil))
 			root := &fakeNode{id: "root"}
 			for i := range size {
-				root.kids = append(root.kids, &editableTreeTestNode{fakeNodeWithBranchLabel: fakeNodeWithBranchLabel{fakeNode: fakeNode{id: fmt.Sprint(i), label: "message"}}})
+				root.kids = append(root.kids, &editableTreeTestNode{id: fmt.Sprint(i), label: "message"})
 			}
 			selector := NewTreeSelectorComponent("", root)
 			selector.SetInitialCursor("0", "")
@@ -107,7 +107,7 @@ func BenchmarkTreeLabelEdit(b *testing.B) {
 
 func TestTreeLabelCancelKeepsBranchLabel(t *testing.T) {
 	treeHelpTestKeybindings(t, nil)
-	node := &editableTreeTestNode{fakeNodeWithBranchLabel: fakeNodeWithBranchLabel{fakeNode: fakeNode{id: "entry", label: "body"}, branchLabel: "original"}}
+	node := &editableTreeTestNode{id: "entry", label: "body", branchLabel: "original"}
 	selector := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: []TreeNode{node}})
 	selector.OnLabelEdit = func(string, string) { t.Fatal("cancel saved a label") }
 	selector.HandleInput("L")

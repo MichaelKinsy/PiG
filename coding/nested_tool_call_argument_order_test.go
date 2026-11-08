@@ -29,7 +29,7 @@ func (h *orderRecordingHost) RunToolCall(ctx context.Context, toolCall agent.Age
 func TestNestedToolCallKeepsTheScriptsArgumentOrder(t *testing.T) {
 	const arguments = `{"zeta":1,"alpha":{"yy":2,"bb":3},"mid":[{"qq":1,"aa":2}]}`
 	tools := []agent.AgentTool{}
-	host := &orderRecordingHost{nestedTestHost: nestedTestHost{tools: &tools}}
+	host := &orderRecordingHost{tools: &tools}
 	runner := NewNestedToolCallRunner(host)
 	if _, err := runner.Execute(t.Context(), "call", "probe", json.RawMessage(arguments), NestedToolCallOptions{}); err != nil {
 		t.Fatal(err)

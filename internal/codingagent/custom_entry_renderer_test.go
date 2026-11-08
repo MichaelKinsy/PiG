@@ -48,7 +48,7 @@ func TestCustomEntryUsesRegisteredEntryRenderer(t *testing.T) {
 		toolsExpanded: true,
 	}
 	parent := "parent-1"
-	m.addCustomEntryToChat(CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: "entry-1", ParentID: &parent, Timestamp: "2026-01-01T00:00:00.000Z"}, CustomType: "note", Data: "hi"})
+	m.addCustomEntryToChat(CustomEntry{Type: "custom", ID: "entry-1", ParentID: &parent, Timestamp: "2026-01-01T00:00:00.000Z", CustomType: "note", Data: "hi"})
 
 	// Host owns transcript spacing: a Spacer(1) blank line above the content.
 	lines := m.chatContainer.Render(80)

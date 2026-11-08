@@ -229,7 +229,7 @@ func TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401(t *testin
 		return transport
 	}
 	newClient := func() *mcp.Client {
-		return mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "oauth-test", Version: "1.0.0"}})
+		return mcp.NewClient(mcp.ClientOptions{Name: "oauth-test", Version: "1.0.0"})
 	}
 	firstClient := newClient()
 	_, err = firstClient.Connect(ctx, newTransport())
@@ -767,8 +767,8 @@ func TestRefreshAuthorizationKeepsTheOldRefreshTokenWhenTheServerDoesNotRotateIt
 		jsonResponse(w, 200, map[string]any{"access_token": "fresh", "token_type": "Bearer"})
 	})
 	tokens, err := oauth.RefreshAuthorization(t.Context(), origin, oauth.RefreshAuthorizationOptions{
-		TokenRequestOptions: oauth.TokenRequestOptions{ClientInformation: oauth.OAuthClientInformationMixed{ClientID: "client"}},
-		RefreshToken:        "old",
+		ClientInformation: oauth.OAuthClientInformationMixed{ClientID: "client"},
+		RefreshToken:      "old",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -781,8 +781,8 @@ func TestRefreshAuthorizationKeepsTheOldRefreshTokenWhenTheServerDoesNotRotateIt
 // Regression: credentials must not go to a plain HTTP endpoint that is not loopback.
 func TestTokenRequestsRefuseNonLoopbackHTTPEndpoints(t *testing.T) {
 	_, err := oauth.RefreshAuthorization(t.Context(), "http://auth.example.com", oauth.RefreshAuthorizationOptions{
-		TokenRequestOptions: oauth.TokenRequestOptions{ClientInformation: oauth.OAuthClientInformationMixed{ClientID: "client"}},
-		RefreshToken:        "old",
+		ClientInformation: oauth.OAuthClientInformationMixed{ClientID: "client"},
+		RefreshToken:      "old",
 	})
 	if _, ok := errors.AsType[*oauth.OAuthInsecureEndpointError](err); !ok {
 		t.Fatalf("err = %v", err)

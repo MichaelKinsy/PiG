@@ -33,7 +33,7 @@ func (ps Partitions) ResolveEndpoint(region string, opts Options) (aws.Endpoint,
 		return aws.Endpoint{}, fmt.Errorf("no partitions found")
 	}
 
-	for i := 0; i < len(ps); i++ {
+	for i := range ps {
 		if !ps[i].canResolveEndpoint(region) {
 			continue
 		}
@@ -171,8 +171,8 @@ func getByPriority(s []string, p []string, def string) string {
 		return def
 	}
 
-	for i := 0; i < len(p); i++ {
-		for j := 0; j < len(s); j++ {
+	for i := range p {
+		for j := range s {
 			if s[j] == p[i] {
 				return s[j]
 			}

@@ -180,7 +180,7 @@ func (s *Session) runBeforeSettleBoundary(ctx context.Context) (bool, error) {
 	s.runState.isBeforeSettle = true
 	s.runState.mu.Unlock()
 	defer func() { s.runState.mu.Lock(); s.runState.isBeforeSettle = false; s.runState.mu.Unlock() }()
-	base := &extension.AgentBeforeSettleEvent{Type: icodingagent.EventAgentBeforeSettle, BoundaryState: extension.BoundaryState{Outcome: s.lastActivityOutcome}}
+	base := &extension.AgentBeforeSettleEvent{Type: icodingagent.EventAgentBeforeSettle, Outcome: s.lastActivityOutcome}
 	dispatchCtx, wire := boundarywire.WithSessionCache(ctx, &s.boundaryEncodings)
 	result, err := runner.EmitBoundary(dispatchCtx, base, func(drafts []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 		return s.recordedBoundaryContext(wire, drafts, icodingagent.EventAgentBeforeSettle)

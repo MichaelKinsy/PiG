@@ -5,14 +5,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/ai"
-
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
 // Pi packages/durable/src/harness/define.ts defineTool: an identity function that types a tool; the registration comes back unchanged.
 func TestDefineToolReturnsTheRegistrationUnchanged(t *testing.T) {
-	registration := durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "echo", Description: "Echo input"}}
+	registration := durable.ToolRegistration{Name: "echo", Description: "Echo input"}
 	defined := DefineTool(registration)
 	if defined == nil || defined.Name != "echo" || defined.Description != "Echo input" {
 		t.Fatalf("DefineTool = %+v", defined)

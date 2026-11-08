@@ -29,40 +29,34 @@ import (
 
 var (
 	aiProvider = telemetry.TelemetryStartAttributeDefinition{
-		TelemetryAttributeDefinition: telemetry.TelemetryAttributeDefinition{
-			TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: "Provider identifier."},
-			Type:                       telemetry.TelemetryAttributeTypeString,
-		},
-		Required: true,
+		Description: "Provider identifier.",
+		Type:        telemetry.TelemetryAttributeTypeString,
+		Required:    true,
 	}
 	aiModel = telemetry.TelemetryStartAttributeDefinition{
-		TelemetryAttributeDefinition: telemetry.TelemetryAttributeDefinition{
-			TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: "Requested model identifier."},
-			Type:                       telemetry.TelemetryAttributeTypeString,
-		},
-		Required: true,
+		Description: "Requested model identifier.",
+		Type:        telemetry.TelemetryAttributeTypeString,
+		Required:    true,
 	}
 	aiStop = telemetry.TelemetryAttributeDefinition{
-		TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: "Normalized stop reason."},
-		Type:                       telemetry.TelemetryAttributeTypeString,
-		Values:                     []string{"pending", "stop", "length", "toolUse", "error", "aborted", "deferred"},
+		Description: "Normalized stop reason.",
+		Type:        telemetry.TelemetryAttributeTypeString,
+		Values:      []string{"pending", "stop", "length", "toolUse", "error", "aborted", "deferred"},
 	}
 )
 
 func aiAttribute(valueType telemetry.TelemetryAttributeType, description string, required bool) telemetry.TelemetryStartAttributeDefinition {
 	return telemetry.TelemetryStartAttributeDefinition{
-		TelemetryAttributeDefinition: telemetry.TelemetryAttributeDefinition{
-			TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: description},
-			Type:                       valueType,
-		},
-		Required: required,
+		Description: description,
+		Type:        valueType,
+		Required:    required,
 	}
 }
 
 func aiEndAttribute(description string) telemetry.TelemetryAttributeDefinition {
 	return telemetry.TelemetryAttributeDefinition{
-		TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: description},
-		Type:                       telemetry.TelemetryAttributeTypeNumber,
+		Description: description,
+		Type:        telemetry.TelemetryAttributeTypeNumber,
 	}
 }
 
@@ -70,8 +64,8 @@ func aiRequestSpan(description string) telemetry.TelemetrySpanDefinition {
 	blockType := aiAttribute(telemetry.TelemetryAttributeTypeString, "Block kind.", true)
 	blockType.Values = []string{"text", "thinking", "tool_call"}
 	responseID := telemetry.TelemetryAttributeDefinition{
-		TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: "Provider response identifier.", Cardinality: telemetry.TelemetryAttributeCardinalityHigh},
-		Type:                       telemetry.TelemetryAttributeTypeString,
+		Description: "Provider response identifier.", Cardinality: telemetry.TelemetryAttributeCardinalityHigh,
+		Type: telemetry.TelemetryAttributeTypeString,
 	}
 	return telemetry.TelemetrySpanDefinition{
 		Description: description,

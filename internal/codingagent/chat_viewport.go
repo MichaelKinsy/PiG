@@ -42,7 +42,7 @@ func CreateChatViewport(options ChatViewportOptions) ChatViewport {
 		ScrollbarThumbStyle: options.ScrollbarThumbStyle,
 	})
 	shrinking := func(component tui.Component, minSize int) tui.StackEntry {
-		return tui.StackEntry{Component: component, StackEntryOptions: tui.StackEntryOptions{Shrink: new(1), MinSize: new(minSize)}}
+		return tui.StackEntry{Component: component, Shrink: new(1), MinSize: new(minSize)}
 	}
 	dockChildren := []tui.StackEntry{
 		shrinking(options.PendingMessages, 0),
@@ -60,8 +60,8 @@ func CreateChatViewport(options ChatViewportOptions) ChatViewport {
 	return ChatViewport{
 		Transcript: transcript,
 		Root: tui.NewVStack([]tui.StackEntry{
-			{Component: transcript, StackEntryOptions: tui.StackEntryOptions{Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)}},
-			{Component: dock, StackEntryOptions: tui.StackEntryOptions{Grow: new(0), Shrink: new(1), MinSize: new(1)}},
+			{Component: transcript, Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)},
+			{Component: dock, Grow: new(0), Shrink: new(1), MinSize: new(1)},
 		}, tui.StackOptions{}),
 	}
 }

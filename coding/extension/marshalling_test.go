@@ -132,42 +132,42 @@ func TestToolResultEvent_RoundTripPerVariant(t *testing.T) {
 		in   ToolResultEvent
 	}{
 		{"bash", BashToolResultEvent{
-			ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "r1", IsError: false},
-			ToolName:            "bash",
+			Type: "tool_result", ToolCallID: "r1", IsError: false,
+			ToolName: "bash",
 		}},
 		{"powershell", PowerShellToolResultEvent{
-			ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "r_ps"},
-			ToolName:            "powershell",
-			Details:             &PowerShellToolDetails{FullOutputPath: `C:\Temp\pi-powershell.log`},
+			Type: "tool_result", ToolCallID: "r_ps",
+			ToolName: "powershell",
+			Details:  &PowerShellToolDetails{FullOutputPath: `C:\Temp\pi-powershell.log`},
 		}},
 		{"read", ReadToolResultEvent{
-			ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "r2"},
-			ToolName:            "read",
+			Type: "tool_result", ToolCallID: "r2",
+			ToolName: "read",
 		}},
 		{"edit", EditToolResultEvent{
-			ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "r3"},
-			ToolName:            "edit",
+			Type: "tool_result", ToolCallID: "r3",
+			ToolName: "edit",
 		}},
 		{"write", WriteToolResultEvent{
-			ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "r4"},
-			ToolName:            "write",
+			Type: "tool_result", ToolCallID: "r4",
+			ToolName: "write",
 		}},
 		{"grep", GrepToolResultEvent{
-			ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "r5"},
-			ToolName:            "grep",
+			Type: "tool_result", ToolCallID: "r5",
+			ToolName: "grep",
 		}},
 		{"find", FindToolResultEvent{
-			ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "r6"},
-			ToolName:            "find",
+			Type: "tool_result", ToolCallID: "r6",
+			ToolName: "find",
 		}},
 		{"ls", LsToolResultEvent{
-			ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "r7"},
-			ToolName:            "ls",
+			Type: "tool_result", ToolCallID: "r7",
+			ToolName: "ls",
 		}},
 		{"custom", CustomToolResultEvent{
-			ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "r8"},
-			ToolName:            "my_custom",
-			Details:             map[string]any{"k": "v"},
+			Type: "tool_result", ToolCallID: "r8",
+			ToolName: "my_custom",
+			Details:  map[string]any{"k": "v"},
 		}},
 	}
 	for _, tc := range cases {

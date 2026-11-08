@@ -22,9 +22,7 @@ func scored(variant DocumentationVariant, runNumber int, score float64, metrics 
 		EvalRunIdentity: observationIdentity(variant, runNumber),
 		Outcome:         EvalOutcomeScored,
 		Score:           new(score),
-		EvalMetrics: EvalMetrics{
-			TotalTokens: new(100.0), ToolCalls: new(2.0), TotalMs: new(1000.0), EstimatedCostUsd: new(0.01),
-		},
+		TotalTokens:     new(100.0), ToolCalls: new(2.0), TotalMs: new(1000.0), EstimatedCostUsd: new(0.01),
 	}
 	if metrics.totalTokens != nil {
 		observation.TotalTokens = metrics.totalTokens
@@ -42,7 +40,7 @@ func scored(variant DocumentationVariant, runNumber int, score float64, metrics 
 }
 
 func errored(variant DocumentationVariant, runNumber int, totalTokens *float64) EvalObservation {
-	return EvalObservation{EvalRunIdentity: observationIdentity(variant, runNumber), Outcome: EvalOutcomeErrored, EvalMetrics: EvalMetrics{TotalTokens: totalTokens}}
+	return EvalObservation{EvalRunIdentity: observationIdentity(variant, runNumber), Outcome: EvalOutcomeErrored, TotalTokens: totalTokens}
 }
 
 func expectedFor(runNumbers ...int) []ExpectedEvalRun {

@@ -33,8 +33,8 @@ func commandFactory(name, description string, onLoad func()) extension.Extension
 func newExtensionSetTestLoader(t *testing.T, cwd, agentDir string, flags Args, inline ...extension.InlineExtension) *extensionSetHarness {
 	t.Helper()
 	return &extensionSetHarness{
-		extensionSetLoader: extensionSetLoader{CWD: cwd, Settings: codingagent.NewSettingsManager(cwd, agentDir), Flags: flags, Inline: inline},
-		AgentDir:           agentDir, Mode: extension.ModeTUI,
+		CWD: cwd, Settings: codingagent.NewSettingsManager(cwd, agentDir), Flags: flags, Inline: inline,
+		AgentDir: agentDir, Mode: extension.ModeTUI,
 	}
 }
 

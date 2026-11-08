@@ -26,14 +26,12 @@ func TestExample33TurnLimitAndContinue(t *testing.T) {
 	// The second continue's run waits in its first round until the test has tried a third continue.
 	gate := make(chan struct{})
 	step := &durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{
-			Name:        "step",
-			Description: "Do one step of the work",
-			Parameters: map[string]any{
-				"type":       "object",
-				"properties": map[string]any{"n": map[string]any{"type": "number"}},
-				"required":   []any{"n"},
-			},
+		Name:        "step",
+		Description: "Do one step of the work",
+		Parameters: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"n": map[string]any{"type": "number"}},
+			"required":   []any{"n"},
 		},
 		Execute: func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			n := args.(map[string]any)["n"].(float64)

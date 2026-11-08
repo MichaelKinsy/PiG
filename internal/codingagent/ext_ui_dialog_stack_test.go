@@ -197,7 +197,7 @@ func TestExtensionDialogsShowAConfirmOpenedFromACustomComponentThenRestoreIt(t *
 	r := newCustomRig(t)
 	var confirmed <-chan dialogCall
 	var done func(any)
-	form := &formProbe{customProbe: customProbe{label: "custom form"}}
+	form := &formProbe{label: "custom form"}
 	form.onInput = func() {
 		result := make(chan dialogCall, 1)
 		confirmed = result

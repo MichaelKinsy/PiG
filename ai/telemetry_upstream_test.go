@@ -155,7 +155,7 @@ func TestAITelemetryObservesWithoutChangingDeliveredEventsOrResultsUpstream(t *t
 				var stream *AssistantMessageEventStream
 				switch method {
 				case "streamDeferred":
-					stream = models.StreamDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{StreamOptions: StreamOptions{Telemetry: parent}})
+					stream = models.StreamDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{Telemetry: parent})
 				case "stream":
 					stream = models.Stream(t.Context(), model, Context{Messages: []Message{}}, StreamOptions{Telemetry: parent, Thinking: "high"})
 				default:
@@ -290,7 +290,7 @@ func TestAITelemetryBoundsPollErrorMessagesUpstream(t *testing.T) {
 			models := aiTelemetrySetup(t, result)
 			model := aiTelemetryModel()
 			got := aiTelemetryCaller(t, recorder, func(span telemetry.TelemetrySpan) *AssistantMessage {
-				return models.FetchDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{StreamOptions: StreamOptions{Telemetry: span}})
+				return models.FetchDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{Telemetry: span})
 			})
 			if got.StopReason != StopReasonError {
 				t.Fatalf("result = %+v", got)
@@ -331,7 +331,7 @@ func TestAITelemetryKeepsABoundedErrorMessageThatDoesNotHoldTheProvidersWholeMes
 		models := aiTelemetryModels(result)
 		model := aiTelemetryModel()
 		aiTelemetryCaller(t, recorder, func(span telemetry.TelemetrySpan) *AssistantMessage {
-			return models.FetchDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{StreamOptions: StreamOptions{Telemetry: span}})
+			return models.FetchDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{Telemetry: span})
 		})
 		aiTelemetrySettled(t, recorder)
 		models.Close()
@@ -505,7 +505,7 @@ func TestAITelemetryRecordsUsageForPollOnlyWhenFinalUpstream(t *testing.T) {
 			models := aiTelemetrySetup(t, aiTelemetryMessage(reason))
 			model := aiTelemetryModel()
 			aiTelemetryCaller(t, recorder, func(span telemetry.TelemetrySpan) *AssistantMessage {
-				return models.FetchDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{StreamOptions: StreamOptions{Telemetry: span}})
+				return models.FetchDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{Telemetry: span})
 			})
 			aiTelemetrySettled(t, recorder)
 			counters := 0
@@ -564,7 +564,7 @@ func TestAITelemetryCreatesInstrumentsOncePerMetricsObjectUpstream(t *testing.T)
 		return struct{}{}
 	})
 	aiTelemetryCaller(t, recorder, func(span telemetry.TelemetrySpan) struct{} {
-		models.FetchDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{StreamOptions: StreamOptions{Telemetry: countingSpan{span, metrics}}})
+		models.FetchDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{Telemetry: countingSpan{span, metrics}})
 		return struct{}{}
 	})
 	aiTelemetryCaller(t, recorder, func(span telemetry.TelemetrySpan) struct{} {

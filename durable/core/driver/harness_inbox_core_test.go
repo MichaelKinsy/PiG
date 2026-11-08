@@ -32,7 +32,7 @@ type handoffRig struct {
 
 func holdingTool(name string, started chan<- struct{}, gate <-chan struct{}, control durable.ToolControl) *durable.ToolRegistration {
 	return &durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			if started != nil {
 				select {

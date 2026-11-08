@@ -72,9 +72,9 @@ func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID
 	}
 	beforeValues, _ := json.Marshal(input)
 	event := extension.CustomToolCallEvent{
-		ToolCallEventBase: extension.ToolCallEventBase{Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID, WireInput: wireInput},
-		ToolName:          toolName,
-		Input:             input,
+		Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID, WireInput: wireInput,
+		ToolName: toolName,
+		Input:    input,
 	}
 	result, err := runner.EmitToolCall(ctx, event)
 	if err != nil {
@@ -128,19 +128,17 @@ func (s *Session) toolResultHook(ctx context.Context, toolCallID, parentToolCall
 		details = json.RawMessage("null")
 	}
 	hookResult, err := runner.EmitToolResult(ctx, extension.CustomToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{
-			Type:              icodingagent.EventToolResult,
-			ToolCallID:        toolCallID,
-			ParentToolCallID:  parentToolCallID,
-			Input:             input,
-			WireInput:         args,
-			Content:           icodingagent.ToolResultEventContent(result),
-			StructuredContent: result.StructuredContent,
-			IsError:           result.IsError,
-			Usage:             toolResultEventUsage(result.Usage),
-		},
-		ToolName: toolName,
-		Details:  details,
+		Type:              icodingagent.EventToolResult,
+		ToolCallID:        toolCallID,
+		ParentToolCallID:  parentToolCallID,
+		Input:             input,
+		WireInput:         args,
+		Content:           icodingagent.ToolResultEventContent(result),
+		StructuredContent: result.StructuredContent,
+		IsError:           result.IsError,
+		Usage:             toolResultEventUsage(result.Usage),
+		ToolName:          toolName,
+		Details:           details,
 	})
 	if err != nil || hookResult == nil {
 		return agent.AfterToolCallResult{}

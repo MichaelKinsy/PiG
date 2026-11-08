@@ -653,7 +653,7 @@ func TestManualCompaction(t *testing.T) {
 	t.Run("places a queued summary at postTools and the run continues in the compacted context", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:445
 		chat := openCompaction(t)
-		addTool(t, chat.setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		addTool(t, chat.setup.Registry, DefineTool(durable.ToolRegistration{Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}, Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "waited"}}}, nil
 		}}))
 		if err := chat.root.Configure(testContext, AgentChange{Tools: SetTo(ToolChange{List: toolsNamed(t, chat.setup, "wait")})}); err != nil {
@@ -1698,7 +1698,7 @@ func TestCompactionEstimates(t *testing.T) {
 			}
 			chat := openCompaction(t, compactionOptions{contextWindow: 2000, setup: setup})
 			toolGate, toolReached := deferred(), deferred()
-			addTool(t, chat.setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "slow", Description: "slow", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			addTool(t, chat.setup.Registry, DefineTool(durable.ToolRegistration{Name: "slow", Description: "slow", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}, Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				toolReached.resolve()
 				if err := toolGate.wait(ctx); err != nil {
 					return durable.ToolExecutionResult{}, err
@@ -3396,12 +3396,10 @@ func TestPiLiveMigrations(t *testing.T) {
 		store := storage.NewMemoryStorage()
 		line := session.CreateSession(store)
 		LiveV1 := durable.DefineDoc(durable.DocDefinition[liveV1]{
-			CommonDocDefinition: durable.CommonDocDefinition[liveV1]{
-				Kind:           "pi.live",
-				Version:        1,
-				Initial:        func() liveV1 { return liveV1{} },
-				CheckpointWhen: func(liveV1, []durable.Op, durable.CheckpointInfo) bool { return false },
-			},
+			Kind:              "pi.live",
+			Version:           1,
+			Initial:           func() liveV1 { return liveV1{} },
+			CheckpointWhen:    func(liveV1, []durable.Op, durable.CheckpointInfo) bool { return false },
 			DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 		})
 		conversationId := must(durable.Commit(testContext, line, func(tx durable.Tx) (durable.ConversationId, error) {
@@ -3470,12 +3468,10 @@ func TestPiLiveMigrations(t *testing.T) {
 		store := storage.NewMemoryStorage()
 		line := session.CreateSession(store)
 		LiveV2 := durable.DefineDoc(durable.DocDefinition[liveV2]{
-			CommonDocDefinition: durable.CommonDocDefinition[liveV2]{
-				Kind:           "pi.live",
-				Version:        2,
-				Initial:        func() liveV2 { return liveV2{} },
-				CheckpointWhen: func(liveV2, []durable.Op, durable.CheckpointInfo) bool { return false },
-			},
+			Kind:              "pi.live",
+			Version:           2,
+			Initial:           func() liveV2 { return liveV2{} },
+			CheckpointWhen:    func(liveV2, []durable.Op, durable.CheckpointInfo) bool { return false },
 			DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 		})
 		conversationId := must(durable.Commit(testContext, line, func(tx durable.Tx) (durable.ConversationId, error) {

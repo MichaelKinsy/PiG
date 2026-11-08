@@ -17,7 +17,7 @@ import (
 // forgets the token when the request ends.
 func TestProgressTokenRoutesNotificationsToTheRequestThatCarriesIt(t *testing.T) {
 	clientTransport, server := createServer(t)
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "2.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "2.0.0"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}

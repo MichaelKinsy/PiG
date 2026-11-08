@@ -20,7 +20,7 @@ func TestClientAcceptsEverySupportedProtocolVersionUnionMember(t *testing.T) {
 		server.setHandler("initialize", func(mcp.JSONRPCMessage) (any, error) {
 			return map[string]any{"protocolVersion": selected, "capabilities": map[string]any{}, "serverInfo": map[string]any{"name": "server", "version": "0.1.0"}}, nil
 		})
-		client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "1.0.0"}})
+		client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "1.0.0"})
 		_, err := client.Connect(t.Context(), clientTransport)
 		return client, err
 	}

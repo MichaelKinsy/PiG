@@ -18,7 +18,7 @@ import (
 func TestStdioTransportKillsAServerThatIgnoresShutdownIncludingItsChildren(t *testing.T) {
 	command, args, env := fixtureStdioOptions("stubborn-server")
 	transport := mcp.NewStdioTransport(mcp.StdioTransportOptions{Command: command, Args: args, Env: env, CloseTimeoutMs: 100})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "stdio-test", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "stdio-test", Version: "1.0.0"})
 	if _, err := client.Connect(t.Context(), transport); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func connectFixture(t *testing.T, name string, closeTimeoutMs int) (*mcp.Client,
 	t.Helper()
 	command, args, env := fixtureStdioOptions(name)
 	transport := mcp.NewStdioTransport(mcp.StdioTransportOptions{Command: command, Args: args, Env: env, CloseTimeoutMs: closeTimeoutMs})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "stdio-test", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "stdio-test", Version: "1.0.0"})
 	if _, err := client.Connect(t.Context(), transport); err != nil {
 		t.Fatal(err)
 	}

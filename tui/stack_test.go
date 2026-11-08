@@ -145,7 +145,7 @@ func TestVStackRenderPadsToAllocatedHeight(t *testing.T) {
 	// but with no available size the allocator returns the intrinsic size, so
 	// no padding. A larger basis, however, pads with blank lines.
 	a := &stubComponent{lines: []string{"x"}}
-	v := NewVStack([]StackEntry{{Component: a, StackEntryOptions: StackEntryOptions{Basis: new(3)}}}, StackOptions{})
+	v := NewVStack([]StackEntry{{Component: a, Basis: new(3)}}, StackOptions{})
 	got := v.Render(20)
 	want := []string{"x", "", ""}
 	if !reflect.DeepEqual(got, want) {
@@ -193,7 +193,7 @@ func TestHStackRenderAlignEndOffsetsShorterChild(t *testing.T) {
 
 func TestStackLayoutNodeReflectsEntries(t *testing.T) {
 	a := &stubComponent{lines: []string{"a"}}
-	v := NewVStack([]StackEntry{{Component: a, StackEntryOptions: StackEntryOptions{Grow: new(2)}}}, StackOptions{Gap: new(3), Align: "center"})
+	v := NewVStack([]StackEntry{{Component: a, Grow: new(2)}}, StackOptions{Gap: new(3), Align: "center"})
 	node, ok := v.LayoutNode().(StackLayoutNode)
 	if !ok {
 		t.Fatalf("LayoutNode is %T, want StackLayoutNode", v.LayoutNode())

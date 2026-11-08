@@ -859,8 +859,8 @@ func TestGeneration(t *testing.T) {
 			Kind string `json:"kind"`
 		}
 		agentDoc := durable.DefineDoc(durable.DocDefinition[agentState]{
-			CommonDocDefinition: durable.CommonDocDefinition[agentState]{Kind: "test.agent", Version: 1, Initial: func() agentState { return agentState{Cwd: "/", Kind: "main"} }, CheckpointWhen: func(agentState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
+			Kind: "test.agent", Version: 1, Initial: func() agentState { return agentState{Cwd: "/", Kind: "main"} }, CheckpointWhen: func(agentState, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent,
 		})
 		read := func(ctx context.Context, input durable.PromptInput) (*agentState, error) {
 			return durable.Snapshot(ctx, input.Read, agentDoc, input.ConversationId)

@@ -625,8 +625,8 @@ func customMessageEntryOf(custom map[string]any) (entry CustomMessageEntry, disp
 		timestamp = int64(value)
 	}
 	return CustomMessageEntry{
-		SessionEntryBase: SessionEntryBase{Type: "custom_message", Timestamp: time.UnixMilli(timestamp).UTC().Format(time.RFC3339Nano)},
-		CustomType:       customType, Content: custom["content"], Display: display, Details: custom["details"],
+		Type: "custom_message", Timestamp: time.UnixMilli(timestamp).UTC().Format(time.RFC3339Nano),
+		CustomType: customType, Content: custom["content"], Display: display, Details: custom["details"],
 	}, display
 }
 

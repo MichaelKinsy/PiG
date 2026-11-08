@@ -25,7 +25,7 @@ func TestSessionSavesCustomEntriesAndIncludesThemInTreeTraversal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := session.AppendEntry(CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: customID, ParentID: session.GetLeafID(), Timestamp: RFC3339NowNano()}, CustomType: "my_data", Data: map[string]any{"foo": "bar"}}); err != nil {
+	if err := session.AppendEntry(CustomEntry{Type: "custom", ID: customID, ParentID: session.GetLeafID(), Timestamp: RFC3339NowNano(), CustomType: "my_data", Data: map[string]any{"foo": "bar"}}); err != nil {
 		t.Fatal(err)
 	}
 	assistant := mkAssistantMsg("hi")

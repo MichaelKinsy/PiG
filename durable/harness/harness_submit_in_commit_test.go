@@ -25,12 +25,10 @@ type sicSent struct {
 
 // sicSentDoc is a host's own conversation document.
 var sicSentDoc = durable.DefineDoc(durable.DocDefinition[sicSent]{
-	CommonDocDefinition: durable.CommonDocDefinition[sicSent]{
-		Kind: "test.sent", Version: 1,
-		Initial:        func() sicSent { return sicSent{Ids: []durable.SubmissionId{}} },
-		CheckpointWhen: func(sicSent, []durable.Op, durable.CheckpointInfo) bool { return false },
-	},
-	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
+	Kind: "test.sent", Version: 1,
+	Initial:        func() sicSent { return sicSent{Ids: []durable.SubmissionId{}} },
+	CheckpointWhen: func(sicSent, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope:          durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial,
 })
 
 func sicFailure() ai.FauxResponseStep {

@@ -40,8 +40,8 @@ func writePackageAt(t *testing.T, dir, version string) string {
 
 func request(dir string, flags npmpublish.Flags, out *bytes.Buffer) npmpublish.Request {
 	return npmpublish.Request{
-		Package: npmpublish.Package{Name: "@acme/tool", Version: "1.0.0", Dir: dir},
-		Flags:   flags, Label: "Package",
+		Name: "@acme/tool", Version: "1.0.0", Dir: dir,
+		Flags: flags, Label: "Package",
 		Stdout: out, Stderr: out,
 	}
 }

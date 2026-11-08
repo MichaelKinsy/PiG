@@ -92,8 +92,7 @@ func (p *Provider) Retrieve(ctx context.Context) (aws.Credentials, error) {
 		},
 	}, opts...)
 	if err != nil {
-		var terr *types.AccessDeniedException
-		if errors.As(err, &terr) {
+		if terr, ok := errors.AsType[*types.AccessDeniedException](err); ok {
 			err = toAccessDeniedError(terr)
 		}
 		return aws.Credentials{}, fmt.Errorf("create oauth2 token: %w", err)

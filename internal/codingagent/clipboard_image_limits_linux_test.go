@@ -116,10 +116,10 @@ func TestClipboardImageNativeBytesOfUnknownFormatAreNotReturnedAsAnImage(t *test
 func TestReadClipboardImageWSLIgnoresAFileWhenPowerShellReportsEmpty(t *testing.T) {
 	withEnv(t, map[string]string{"WSL_DISTRO_NAME": "Ubuntu", "WAYLAND_DISPLAY": "wayland-0"})
 	w := withWindowsClipboard(t, &windowsClipboard{
-		scriptedClipboard: scriptedClipboard{responses: map[string]fakeCall{"wl-paste --list-types": {out: []byte("text/plain\n")}}},
-		winPath:           `C:\Users\x\clip.png`,
-		image:             linuxClipboardPNG,
-		output:            "empty",
+		responses: map[string]fakeCall{"wl-paste --list-types": {out: []byte("text/plain\n")}},
+		winPath:   `C:\Users\x\clip.png`,
+		image:     linuxClipboardPNG,
+		output:    "empty",
 	})
 	data, mime, err := readClipboardImageLinux()
 	if err != nil || data != nil || mime != "" {
