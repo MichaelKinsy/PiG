@@ -26,7 +26,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/jobs/persisted.test.ts: persisted jobs (slice 6b §4, D5-D8, R3): run records and state
+// Ports packages/chord/test/jobs/persisted.test.ts: persisted jobs (slice 6b §4, D5-D8, R3): run records and state
 // documents in the object's store, every transition of §4.2 across a crash (the store closed under a live host, reopened
 // by a new one), the clean stop and the close writer, a seal and its retry, the restart limit and its reset, the finish
 // failure count, a stored abort, deferred state.

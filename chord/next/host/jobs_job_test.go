@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/jobs/job.test.ts: jobs in memory (§15): starts (args, dedupe, concurrency, `tx.start`,
+// Ports packages/chord/test/jobs/job.test.ts: jobs in memory (§15): starts (args, dedupe, concurrency, `tx.start`,
 // `outcome`, when `run` starts), runs (the ctx, the state document and its fence, throws and aborts), finishes
 // (cleanup, retries, blocked, dropped), `running`, keep-alive, the object's end, cost guards and GC.
 //

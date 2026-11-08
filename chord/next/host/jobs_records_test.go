@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/test/next/jobs/records.test.ts: a job's records on its object (slice 6a §1.2, §15 rule 5): runs
+// Ports packages/chord/test/jobs/records.test.ts: a job's records on its object (slice 6a §1.2, §15 rule 5): runs
 // across attempts, cut off by an attempt's seal, finished on the next live attempt, and the keep-alive of runs waiting
 // for one. Go forms: jobs_job_test.go.
 //

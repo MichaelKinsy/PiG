@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 )
 
-// Ports packages/chord/test/next/jobs/definition.test.ts: what DefineJob checks at declaration (names, versions, closed
+// Ports packages/chord/test/jobs/definition.test.ts: what DefineJob checks at declaration (names, versions, closed
 // JSON args, a singleton state, concurrency, the shape of accepts, persist) and what it gives.
 //
 // Type-level checks (`expectTypeOf(...).toEqualTypeOf<JobDefinition<...>>()`) are designed out: Go's JobDefinition is
