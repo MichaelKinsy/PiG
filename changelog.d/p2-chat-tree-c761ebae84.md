@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- A send router or read-only check that reads the session (chat mode's router, the tree's earlier-branch check) no longer holds the worker's loop while a tool runs, which dropped the worker's link ("worker: link lost"). <!-- fix: p2-chat-tree -->
+- A send router or read-only check that reads the session (chat mode's router, the tree's earlier-branch check) no longer holds the worker's loop while a tool runs, which dropped the worker's link ("worker: link lost"). <!-- fix: c761ebae84d90bed8bf432a08cc72f2e852c7df2 -->
