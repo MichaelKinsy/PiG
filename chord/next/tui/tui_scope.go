@@ -68,11 +68,17 @@ func (s *TuiScope) release(release func()) {
 // Hold is a reference to typ with params, held until Dispose; its state changes call changed. It returns the error of
 // invalid params.
 func (s *TuiScope) Hold(typ *contracts.Contract, params any) (*host.Reference, error) {
+	return s.HoldWith(typ, params, (*host.Reference).Release)
+}
+
+// HoldWith is Hold whose reference is let go by release at Dispose: an app that keeps a released reference for a while (p2's
+// lingering chat) decides there.
+func (s *TuiScope) HoldWith(typ *contracts.Contract, params any, release func(*host.Reference)) (*host.Reference, error) {
 	held, err := s.host.Hold(s.ctx, typ, params, host.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	s.release(held.Release)
+	s.release(func() { release(held) })
 	WatchNative(s, held.State())
 	return held, nil
 }

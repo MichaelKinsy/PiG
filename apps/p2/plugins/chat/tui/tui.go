@@ -676,7 +676,10 @@ func (s *ChatSurface) switchTo(identity string) {
 	})
 	s.starting, s.start, _ = chordtui.OptimisticLast(scope, func() *chatcontract.LiveShell { return nil })
 	s.compacting, s.compactNow, _ = chordtui.OptimisticLast(scope, func() bool { return false })
-	if ref, err := scope.Hold(chatcontract.Chat, delta.JsonObjectOf("session", s.session, "conversation", float64(s.conversation))); err == nil {
+	if ref, err := scope.HoldWith(chatcontract.Chat, delta.JsonObjectOf("session", s.session, "conversation", float64(s.conversation)), func(ref *host.Reference) {
+		// The conversation stays held for a while after its screen is left (Pi's UI_LINGER): coming back finds it live.
+		p2runtime.UILinger.Release(ref, chatcontract.Chat.Name)
+	}); err == nil {
 		s.ref = ref
 		s.viewRead = chordtui.WatchMember(scope, ref.Member("view"))
 		s.liveShellRead = chordtui.WatchMember(scope, ref.Member("liveShell"))
