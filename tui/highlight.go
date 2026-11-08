@@ -528,18 +528,30 @@ func storeHighlightLocked(key hlKey, out []string) {
 	if size > hlCacheMaxBytes {
 		return
 	}
+	// A code block that is streamed stores a longer prefix per frame, and each replaces the entry before it, so those keys are not copied, or streaming a block of n bytes would copy O(n) bytes per frame more (TestScalingStreamedCodeBlockHighlight). The key of the frame that ends up staying is copied when the stream ends, below.
+	streamed := false
 	if last := hlLast; last.lang == key.lang && strings.HasPrefix(key.code, last.code) {
 		if lines, ok := hlCache[last]; ok {
 			delete(hlCache, last)
 			hlCacheBytes -= hlEntrySize(last, lines)
+			streamed = true
 		}
+	}
+	// Any other key must not hold the text it was sliced from: the code of a fence is a part of a chunk that the block lexer copied the document's strings to, and a memo entry would keep the whole chunk, which hlEntrySize does not count.
+	if !streamed {
+		// The block that was streamed before this one is complete: its key, the last of its frames, keeps the text it was sliced from until it has its own.
+		if lines, ok := hlCache[hlLast]; ok && hlLastShared {
+			delete(hlCache, hlLast)
+			hlCache[hlKey{lang: strings.Clone(hlLast.lang), code: strings.Clone(hlLast.code)}] = lines
+		}
+		key = hlKey{lang: strings.Clone(key.lang), code: strings.Clone(key.code)}
 	}
 	if len(hlCache) >= hlCacheMax || hlCacheBytes+size > hlCacheMaxBytes {
 		resetHighlightCacheLocked()
 	}
 	hlCache[key] = out
 	hlCacheBytes += size
-	hlLast = key
+	hlLast, hlLastShared = key, streamed
 }
 
 // hlKey memoizes highlighted lines for the active theme and loaded languages.
@@ -562,8 +574,9 @@ var (
 	hlGeneration int
 	hlCache      = map[hlKey][]string{}
 	hlCacheBytes int
-	// hlLast is the entry stored last, which the next prefix of a streamed block replaces.
-	hlLast hlKey
+	// hlLast is the entry stored last, which the next prefix of a streamed block replaces. hlLastShared reports that its key was stored without a copy of its strings, which the next store that does not continue the block makes.
+	hlLast       hlKey
+	hlLastShared bool
 )
 
 // hlEntrySize is the bytes a memo entry retains: the code held by its key and the highlighted lines.
@@ -579,7 +592,7 @@ func hlEntrySize(key hlKey, lines []string) int {
 func resetHighlightCacheLocked() {
 	clear(hlCache)
 	hlCacheBytes = 0
-	hlLast = hlKey{}
+	hlLast, hlLastShared = hlKey{}, false
 	resetHighlightResumesLocked()
 }
 
