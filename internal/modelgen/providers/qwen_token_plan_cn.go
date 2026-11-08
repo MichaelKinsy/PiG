@@ -8,7 +8,7 @@ func qwenTokenPlanCn() ProviderDefinition {
 	return ProviderDefinition{
 		ID: "qwen-token-plan-cn",
 		Models: func(ctx *ProviderContext) ([]ChatModel, error) {
-			return qwenTokenPlanModels(ctx, "alibaba-token-plan-cn", "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", nil)
+			return qwenTokenPlanModels(ctx, "alibaba-token-plan-cn", cnBaseURL, nil)
 		},
 		Compat: ApiCompatDefaults{"openai-completions": FixedCompat(qwenCompletionsCompat())},
 	}

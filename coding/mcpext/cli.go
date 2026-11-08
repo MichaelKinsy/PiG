@@ -355,7 +355,7 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 		}
 		// pig divergence (D255): Pi 4d72d05bc points a provider-backed server to /login and /logout instead of failing with "does not use OAuth".
 		if provider := authProviderOf(*entry); provider != "" {
-			c.error(fmt.Sprintf(`MCP server "%s" uses the credentials of provider "%s". Run /%s %s in %s.`, name, provider, command, provider, c.app))
+			c.error(fmt.Sprintf(`MCP server "%s" uses the credentials of provider "%s". Run "%s auth %s %s".`, name, provider, c.app, command, provider))
 			return 1
 		}
 		connection, err := c.newConnection(*entry, credentials)

@@ -32,7 +32,7 @@ func snapshotTree(t *testing.T, root string) map[string]string {
 
 func tokenPlanCatalog(toolless string) map[string]any {
 	var models []map[string]any
-	for _, id := range []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max", "qwen3.8-max-preview"} {
+	for _, id := range []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "deepseek-v4.1-flash", "glm-5.2", "glm-5.3", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max", "qwen3.8-max-preview"} {
 		model := sourceModel(id, map[string]any{})
 		if id == toolless {
 			model["capabilities"] = map[string]any{"tools": map[string]any{"supported": false}, "reasoning": map[string]any{"supported": false}}

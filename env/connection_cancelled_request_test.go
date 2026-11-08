@@ -2,6 +2,7 @@ package env
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -24,7 +25,7 @@ func TestRequestWithACancelledContextIsNotSentAndIsAborted(t *testing.T) {
 		if started.Load() {
 			t.Fatalf("attempt %d: the request with a cancelled context was sent", attempt)
 		}
-		if remote, ok := err.(*RemoteError); !ok || remote.Code != "aborted" {
+		if remote, ok := errors.AsType[*RemoteError](err); !ok || remote.Code != "aborted" {
 			t.Fatalf("attempt %d: err = %v, want code aborted", attempt, err)
 		}
 	}
@@ -57,7 +58,7 @@ func TestRequestCancelledWhileTheDaemonStartsIsAbortedAtOnce(t *testing.T) {
 	cancel()
 	select {
 	case result := <-done:
-		if remote, ok := result.err.(*RemoteError); !ok || remote.Code != "aborted" {
+		if remote, ok := errors.AsType[*RemoteError](result.err); !ok || remote.Code != "aborted" {
 			t.Fatalf("err = %v, want code aborted", result.err)
 		}
 	case <-time.After(5 * time.Second):
