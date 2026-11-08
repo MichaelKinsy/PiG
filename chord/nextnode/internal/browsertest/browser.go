@@ -116,6 +116,10 @@ func Start(t testing.TB) *Browser {
 	t.Helper()
 	binary := Binary(t.Context())
 	if binary == "" {
+		// CI sets CHORD_REQUIRE_CHROMIUM: a missing browser fails the tests there rather than skipping them (Pi's web tests run).
+		if os.Getenv("CHORD_REQUIRE_CHROMIUM") != "" {
+			t.Fatal("no Chromium, and CHORD_REQUIRE_CHROMIUM is set: set CHROMIUM_BIN (or put chromium-docker on the PATH)")
+		}
 		t.Skip("no Chromium: set CHROMIUM_BIN (or put chromium-docker on the PATH)")
 	}
 	profile, err := os.MkdirTemp("", "chord-browser-")
