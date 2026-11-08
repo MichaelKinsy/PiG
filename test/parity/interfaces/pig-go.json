@@ -332811,6 +332811,17 @@
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#MakeRaw",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "MakeRaw",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fd int) (*golang.org/x/term.State, error)"
+      },
+      "shapeHash": "sha256:da08de22057ee94aa9a2a4e68f77725f6eb7a74cffa7fe0f432f12dceb96f04e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#MarkTerminalColorsPending",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "MarkTerminalColorsPending",
@@ -333031,6 +333042,17 @@
       "shapeHash": "sha256:c614007b9578e7cbbe044734ad3af7a1d619d6215336d8c94b6b898d5f2f008d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Markdown.holdMemos",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Markdown.holdMemos",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Markdown.keepWraps",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "Markdown.keepWraps",
@@ -333086,9 +333108,31 @@
       "shapeHash": "sha256:9da83393322525e2d9c7a3dcee45b5c4cc6c06c7e6770018f66a4c6fd8c1f073"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Markdown.memos",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Markdown.memos",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *markdownMemos"
+      },
+      "shapeHash": "sha256:facd4a2c9e67e1cba21410a9a6c634d91bbc650627fed0e708c412e7cdeb79f8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Markdown.notifySurface",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "Markdown.notifySurface",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Markdown.releaseMemos",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Markdown.releaseMemos",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -337880,6 +337924,17 @@
         "type": "ResourceType"
       },
       "shapeHash": "sha256:f6814c1ec540504d12092a6dc8f51ef23d369aeeaf09bd8cb4bb2b8603e1b758"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#RestoreCooked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "RestoreCooked",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fd int, state *golang.org/x/term.State) error"
+      },
+      "shapeHash": "sha256:69ad42fd73ee7c4b1973673787ebe0e3818a45a1d2afa293a2a68a6bdc43ffb7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#RestoreTerminalFromSignal",
@@ -365800,17 +365855,6 @@
       "shapeHash": "sha256:cdb7eba80f091f90f12e25d58a724db47a535867f995bb010cc389b7402702be"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#makeRaw",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "makeRaw",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(fd int) (*golang.org/x/term.State, error)"
-      },
-      "shapeHash": "sha256:da08de22057ee94aa9a2a4e68f77725f6eb7a74cffa7fe0f432f12dceb96f04e"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#makeRawTerminal",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "makeRawTerminal",
@@ -365875,6 +365919,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markdownMemos",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markdownMemos",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "markdownMemos"
+      },
+      "shapeHash": "sha256:1148c5977dae12d922f81d529b65c1a36999d2b0071865fc3aa6f3f991fbc056"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markdownOrderedMarker",
@@ -373146,17 +373201,6 @@
         "type": "map[ResourceType]string"
       },
       "shapeHash": "sha256:6874770aa44b2b33fe43cae761f1ac31d2c8c0503afc0cb6d87c0d1fdde4fb2e"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#restoreCooked",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "restoreCooked",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(fd int, state *golang.org/x/term.State) error"
-      },
-      "shapeHash": "sha256:69ad42fd73ee7c4b1973673787ebe0e3818a45a1d2afa293a2a68a6bdc43ffb7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#restoreTerminal",
