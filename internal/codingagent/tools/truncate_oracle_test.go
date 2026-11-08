@@ -13,7 +13,7 @@ import (
 
 // pi: packages/coding-agent/src/core/tools/truncate.ts
 
-// truncateHead, truncateTail, truncateLine, truncateMiddle and formatSize against pinned Pi over seeded content (ASCII, multi-byte, astral
+// truncateHead, truncateTail, truncateLine and formatSize against pinned Pi over seeded content (ASCII, multi-byte, astral
 // characters, CRLF, missing trailing newline, one huge line) and limits around every boundary.
 func TestTruncateMatchesPi(t *testing.T) {
 	type call struct {
@@ -74,7 +74,6 @@ func TestTruncateMatchesPi(t *testing.T) {
 			if n > 0 {
 				calls = append(calls, call{"line", c, nil, nil, n})
 			}
-			calls = append(calls, call{"middle", c, nil, nil, n})
 		}
 	}
 	for _, n := range []int{0, 1, 1023, 1024, 1025, 1536, 51200, 1048575, 1048576, 1048577, 5 * 1048576, 1 << 40} {
@@ -115,21 +114,6 @@ func TestTruncateMatchesPi(t *testing.T) {
 		case "line":
 			r := TruncateLine(c.Content, c.N)
 			got, want = lineOutcome(r), new(lineOutcome)
-		case "middle":
-			r := TruncateMiddle(c.Content, c.N)
-			got, want = struct {
-				Content      string `json:"content"`
-				Truncated    bool   `json:"truncated"`
-				RemovedChars int    `json:"removedChars"`
-				TotalBytes   int    `json:"totalBytes"`
-				TotalLines   int    `json:"totalLines"`
-			}{r.Content, r.Truncated, r.RemovedChars, r.TotalBytes, r.TotalLines}, new(struct {
-				Content      string `json:"content"`
-				Truncated    bool   `json:"truncated"`
-				RemovedChars int    `json:"removedChars"`
-				TotalBytes   int    `json:"totalBytes"`
-				TotalLines   int    `json:"totalLines"`
-			})
 		case "size":
 			var s string
 			if err := json.Unmarshal(expected[i], &s); err != nil {

@@ -219,12 +219,13 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		}
 		inWindow := e.filePath == lastFile && float64(e.lineNumber) <= trailingContextEnd
 		// A match inside the last match's trailing context is shown as context.
+		isMatch := e.isMatch
 		if inWindow {
 			e.isMatch = false
 			pushLine(e)
 		}
-		// Only another match proves that the limit cut results off.
-		if e.isMatch {
+		// Only another match proves that the limit cut results off, whether or not it was shown as context.
+		if isMatch {
 			matchLimitReached = true
 		}
 		if matchLimitReached && !(inWindow && float64(e.lineNumber) < trailingContextEnd) {
