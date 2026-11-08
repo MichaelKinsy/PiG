@@ -303,7 +303,10 @@ func OpenSettings(ctx runtime.TuiContext) error {
 			body["theme"] = patchTheme
 		}
 		go func() {
-			notifySave(ctx, "Preferences", ctx.Prefs().Save(body), "Preferences saved; they apply as the launcher reloads them")
+			result := ctx.Prefs().Save(body)
+			ctx.Post(func() {
+				notifySave(ctx, "Preferences", result, "Preferences saved; they apply as the launcher reloads them")
+			})
 		}()
 	}
 	list := pitui.NewSettingsList(items, min(len(items), 12), ctx.Theme().SettingsList(), func(id, value string) {
@@ -472,7 +475,7 @@ func OpenKeybindings(ctx runtime.TuiContext) {
 				}
 				go func() {
 					result := ctx.Prefs().Save(map[string]any{"keybindings": map[string]any{row.Key: value}})
-					notifySave(ctx, "Keybinding", result, "Keybinding saved; /hotkeys lists any conflict")
+					ctx.Post(func() { notifySave(ctx, "Keybinding", result, "Keybinding saved; /hotkeys lists any conflict") })
 				}()
 			}), pitui.OverlaySpec{Width: widthOf(100), Anchor: "bottom-center"})
 		},
