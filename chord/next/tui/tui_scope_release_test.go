@@ -16,6 +16,7 @@ func TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly(t *testing.T) {
 	h := newHost(t)
 	for range 100 {
 		scope := NewTuiScope(bg, h, func() {})
+		var _ *TuiScope = scope
 		held, err := scope.Hold(Notes, delta.NewJsonObject(0))
 		if err != nil {
 			t.Fatal(err)

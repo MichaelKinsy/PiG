@@ -30,6 +30,7 @@ func TestQueries(t *testing.T) {
 
 	t.Run("are immutable; several wheres are and-ed", func(t *testing.T) {
 		base := NewQuery(T)
+		var _ *Query = base
 		one := base.Where(func(e ColumnRefs) Condition { return Eq(e["id"], "a") })
 		two := one.Where(func(e ColumnRefs) Condition { return Gt(e["at"], 1) })
 		must(t, base.Err())

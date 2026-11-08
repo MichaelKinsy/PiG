@@ -1041,35 +1041,6 @@
    "new": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
- "packages/chord/src/cluster.ts": [
-  {
-   "file": "chord/host/cluster.go",
-   "old": "connection.peer.kind == KindHost && connection.open() && connection.synced {",
-   "new": "connection.peer.kind == KindHost && connection.open() {"
-  },
-  {
-   "file": "chord/host/cluster.go",
-   "old": "\treload.waitForRetirement()\n\tvar participants",
-   "new": "\tvar participants"
-  },
-  {
-   "file": "chord/host/cluster.go",
-   "old": "\t\tname := connection.name()\n\t\t\tif name == \"\" {\n\t\t\t\tname = \"child\"\n\t\t\t}",
-   "new": "\t\tname := \"child\""
-  },
-  {
-   "file": "chord/host/cluster.go",
-   "old": "CodeVersion: report.CodeVersion, Previous: report.Previous, Changed: report.Changed, Removed: report.Removed, Prepared: report.Prepared, Gated: report.Gated}\n}\n\nfunc reportToWire",
-   "new": "CodeVersion: report.CodeVersion, Previous: report.Previous, Removed: report.Removed, Prepared: report.Prepared, Gated: report.Gated}\n}\n\nfunc reportToWire"
-  }
- ],
- "packages/chord/src/loader.ts": [
-  {
-   "file": "chord/host/loader.go",
-   "old": "\t\tName: info.name,\n",
-   "new": "\t\tName: info.name + \"?\",\n"
-  }
- ],
  "packages/chord/src/next-node/compression.ts": [
   {
    "file": "chord/nextnode/compression.go",
@@ -1124,13 +1095,6 @@
    "file": "chord/nextnode/http/incoming.go",
    "old": "strings.HasPrefix(name, \"x-forwarded-\")",
    "new": "strings.HasPrefix(name, \"x-forwarder-\")"
-  }
- ],
- "packages/chord/src/next-node/http/node.ts": [
-  {
-   "file": "chord/nextnode/http/node.go",
-   "old": "WireRefusal{Status: 501}",
-   "new": "WireRefusal{Status: 500}"
   }
  ],
  "packages/chord/src/next-node/http/request.ts": [
@@ -1582,8 +1546,8 @@
   },
   {
    "file": "chord/next/host/remote_provider.go",
-   "old": "Code: data.CodeNotReady, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)",
-   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)"
+   "old": "p.calls.len() >= p.limit",
+   "new": "p.calls.len() > p.limit"
   }
  ],
  "packages/chord/src/next/remote/relay.ts": [
@@ -1691,44 +1655,11 @@
    "new": "write := &PutWrite{Table: table, Row: row.Row, Version: version + 1, Columns: row.Columns}"
   }
  ],
- "packages/chord/src/node.ts": [
-  {
-   "file": "chord/host/loader.go",
-   "old": "\t\tName: info.name,\n",
-   "new": "\t\tName: info.name + \"?\",\n"
-  }
- ],
- "packages/chord/src/publish.ts": [
-  {
-   "file": "chord/host/publish.go",
-   "old": "if queue.draining || queue.held > 0 {",
-   "new": "if queue.held > 0 {"
-  },
-  {
-   "file": "chord/host/publish.go",
-   "old": "if current := deliveringQueue(); current != nil && current != queue {\n\t\t// The queue",
-   "new": "if current := deliveringQueue(); current != nil && current == nil {\n\t\t// The queue"
-  }
- ],
- "packages/chord/src/remote.ts": [
-  {
-   "file": "chord/host/remote.go",
-   "old": "target.decoder.Decode(frame.Ops)",
-   "new": "target.decoder.Decode(nil)"
-  }
- ],
- "packages/chord/src/schema.ts": [
-  {
-   "file": "chord/host/schema.go",
-   "old": "^ (b >> 13)",
-   "new": "^ (b >> 12)"
-  }
- ],
  "packages/chord/src/telemetry-sqlite/store.ts": [
   {
    "file": "chord/telemetrysqlite/store.go",
-   "old": "ORDER BY started_ms DESC, trace_id LIMIT ?",
-   "new": "ORDER BY started_ms, trace_id LIMIT ?"
+   "old": "ORDER BY started_us DESC, trace_id LIMIT ?",
+   "new": "ORDER BY started_us, trace_id LIMIT ?"
   },
   {
    "file": "chord/telemetrysqlite/store.go",
@@ -1737,13 +1668,8 @@
   },
   {
    "file": "chord/telemetrysqlite/store.go",
-   "old": "ORDER BY started_ms, id LIMIT 1) = ?",
-   "new": "ORDER BY started_ms DESC, id LIMIT 1) = ?"
-  },
-  {
-   "file": "chord/telemetrysqlite/store.go",
-   "old": "ORDER BY started_ms, id\", string(encoded))",
-   "new": "ORDER BY started_ms DESC, id\", string(encoded))"
+   "old": "const spanOrder = \"started_us, length(id), id\"",
+   "new": "const spanOrder = \"started_us DESC, length(id), id\""
   }
  ],
  "packages/chord/test/examples/01-objects.ts": [
@@ -5546,6 +5472,16 @@
    "file": "chord/sync/filesystem.go",
    "old": "\tif !sessionIDPat.MatchString(sessionID) {\n",
    "new": "\tif sessionIDPat.MatchString(sessionID) {\n"
+  },
+  {
+   "file": "chord/sync/filesystem.go",
+   "old": "remote.fs.CreateDir(ctx, dir, true)",
+   "new": "remote.fs.CreateDir(ctx, dir, false)"
+  },
+  {
+   "file": "chord/sync/filesystem.go",
+   "old": "remote.fs.Remove(ctx, path, false, true)",
+   "new": "remote.fs.Remove(ctx, path, true, true)"
   }
  ],
  "packages/chord/src/surfaces/connection.ts": [
@@ -5941,6 +5877,135 @@
    "file": "chord/nextnode/app/layout.go",
    "old": "\tfor _, name := range []string{path, path + \"-wal\", path + \"-shm\"} {\n",
    "new": "\tfor _, name := range []string{path, path + \"-shm\"} {\n"
+  }
+ ],
+ "packages/chord/src/node/http/node.ts": [
+  {
+   "file": "chord/nextnode/http/node.go",
+   "old": "&WireRefusal{Status: WireNotImplemented}",
+   "new": "&WireRefusal{Status: WireForbidden}"
+  }
+ ],
+ "packages/chord/src/jobs/definition.ts": [
+  {
+   "file": "chord/next/host/jobs_definition.go",
+   "old": "if version < 1 {",
+   "new": "if version < 0 {"
+  },
+  {
+   "file": "chord/next/host/jobs_definition.go",
+   "old": "if key < 1 || key >= version {",
+   "new": "if key < 1 || key > version {"
+  },
+  {
+   "file": "chord/next/host/jobs_definition.go",
+   "old": "*options.Concurrency <= 0",
+   "new": "*options.Concurrency < 0"
+  }
+ ],
+ "packages/chord/src/documents/handles.ts": [
+  {
+   "file": "chord/next/documents/handles.go",
+   "old": "return handle.declarer.At(handle.Slot, key) }",
+   "new": "return handle.declarer.At(handle.Slot, \"\") }"
+  }
+ ],
+ "packages/chord/src/host/attempt.ts": [
+  {
+   "file": "chord/next/host/host_attempt.go",
+   "old": "if !declared {\n\t\tpanic(declarationError(\"%s: self.query",
+   "new": "if declared {\n\t\tpanic(declarationError(\"%s: self.query"
+  },
+  {
+   "file": "chord/next/host/host_attempt.go",
+   "old": "table.Owner.Queries().Add(live)\n",
+   "new": ""
+  },
+  {
+   "file": "chord/next/host/host_attempt.go",
+   "old": "declarations.retrySources = append(declarations.retrySources, wake)",
+   "new": "_ = wake\n\t\tdeclarations.retrySources = append(declarations.retrySources, retrySourceType{})"
+  }
+ ],
+ "packages/chord/src/surfaces/messages.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_messages.go",
+   "old": "m.first = m.own[order[0]]",
+   "new": "m.first = m.own[order[len(order)-1]]"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_messages.go",
+   "old": "if err := matchesFirst(m.first, m.own[locale]); err != nil {",
+   "new": "if err := matchesFirst(m.first, m.first); err != nil {"
+  }
+ ],
+ "packages/chord/src/data/errors.ts": [
+  {
+   "file": "chord/next/data/errors.go",
+   "old": "init := ChordErrorInit{Code: CodeForbidden, Message: message}",
+   "new": "init := ChordErrorInit{Code: CodeUnavailable, Message: message}"
+  }
+ ],
+ "packages/chord/src/node/plugins/base-inputs.ts": [
+  {
+   "file": "chord/nextnode/workers/workers_base.go",
+   "old": "if !info.Mode().IsRegular() {",
+   "new": "if info.Mode().IsRegular() {"
+  },
+  {
+   "file": "chord/nextnode/workers/workers_base.go",
+   "old": "return model.BaseInputs{path: hash}, nil",
+   "new": "return model.BaseInputs{path + \"x\": hash}, nil"
+  }
+ ],
+ "packages/chord/src/node/app/ephemeral.ts": [
+  {
+   "file": "chord/nextnode/app/ephemeral.go",
+   "old": "HttpResponse{Kind: chordhttp.KindError, Status: 400}",
+   "new": "HttpResponse{Kind: chordhttp.KindError, Status: 401}"
+  }
+ ],
+ "packages/chord/src/tui/theme.ts": [
+  {
+   "file": "chord/next/tui/tui_theme.go",
+   "old": "+ text + \"\\x1b[39m\"",
+   "new": "+ text + \"\\x1b[49m\""
+  },
+  {
+   "file": "chord/next/tui/tui_theme.go",
+   "old": "\tt.theme = theme\n",
+   "new": ""
+  }
+ ],
+ "packages/chord/src/store/engine.ts": [
+  {
+   "file": "chord/next/store/engine.go",
+   "old": "return DocumentContentAt{Value: value, Version: baseVersion, DeltasSinceBase: len(deltas)}, nil",
+   "new": "return DocumentContentAt{Value: value, Version: baseVersion, DeltasSinceBase: len(deltas) + 1}, nil"
+  }
+ ],
+ "packages/chord/src/state/watchable.ts": [
+  {
+   "file": "chord/next/state/watchable.go",
+   "old": "func (c *constantOf[T]) Watch(ctx context.Context) (chord.WatchHandle[T], error) {\n\twatch := chord.NewWatch(c.value, func() {}, func(error) {})",
+   "new": "func (c *constantOf[T]) Watch(ctx context.Context) (chord.WatchHandle[T], error) {\n\twatch := chord.NewWatch(*new(T), func() {}, func(error) {})"
+  }
+ ],
+ "packages/chord/src/surfaces/client.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "entries := make([]SetEntry, len(options.Initial))",
+   "new": "entries := make([]SetEntry, len(options.Initial)-len(options.Initial))"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "return &Client{Host: h, connect: loop, updates: u}, nil",
+   "new": "loop.Stop()\n\treturn &Client{Host: h, connect: loop, updates: u}, nil"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "loaded, report, err := LoadFacets(h, options.Core, entries, ctx)",
+   "new": "loaded, report, err := LoadFacets(h, nil, entries, ctx)"
   }
  ]
 }

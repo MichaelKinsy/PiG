@@ -94,6 +94,30 @@ func TestTerminalColorTakesTheThemesTuiOverrideFirstTheFallbackForAMissingRoleTh
 	}
 }
 
+// BaseRole is Pi's union of seven literals (themes.ts:12 BASE_ROLES): the variants are exactly these, in this order, as their wire spellings,
+// and a theme missing any one of them is the one the fallback themes never are.
+func TestBaseRoleVariantsAreExactlyPisSevenInOrder(t *testing.T) {
+	wire := []string{"accent", "bg", "fg", "muted", "error", "warning", "success"}
+	if len(BaseRoles) != len(wire) {
+		t.Fatalf("%d base roles, want Pi's %d", len(BaseRoles), len(wire))
+	}
+	seen := map[BaseRole]bool{}
+	for index, role := range BaseRoles {
+		if string(role) != wire[index] {
+			t.Errorf("base role %d = %q, want %q", index, role, wire[index])
+		}
+		if seen[role] {
+			t.Errorf("base role %q listed twice", role)
+		}
+		seen[role] = true
+	}
+	for _, role := range []BaseRole{BaseRoleAccent, BaseRoleBg, BaseRoleFg, BaseRoleMuted, BaseRoleError, BaseRoleWarning, BaseRoleSuccess} {
+		if !seen[role] {
+			t.Errorf("the constant %q is not among the variants", role)
+		}
+	}
+}
+
 // Pi packages/chord/src/surfaces/themes.ts:12 BASE_ROLES: the roles every theme names; the fallback themes fill all of them.
 func TestFallbackThemesFillEveryBaseRole(t *testing.T) {
 	if len(BaseRoles) != 7 || BaseRoles[0] != BaseRoleAccent || BaseRoles[6] != BaseRoleSuccess {
