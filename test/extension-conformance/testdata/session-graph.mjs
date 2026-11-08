@@ -625,7 +625,23 @@ async function modelRuntimeScript({ mrAuth, mrModels, mrStore, mrServer }) {
   r.login = { credential: plain(credential), prompts: seen, events: events2, listed: (await rt.listCredentials()).map((entry) => entry.providerId).sort(), status: rt.getProviderAuthStatus("openai") };
   await rt.logout("openai");
   r.login.afterLogout = (await rt.listCredentials()).map((entry) => entry.providerId).sort();
+  r.settled = (await rt.settleCredentialWrites()) === undefined;
   r.stored = readJson(mrAuth);
+  r.pending = await (async () => {
+    const { mkdirSync, rmdirSync } = await import("node:fs");
+    const lock = mrAuth + ".lock";
+    mkdirSync(lock);
+    const login = rt.login("openai", "api_key", { prompt: async () => "sk-pending", notify: () => {} }).then(() => true, () => false);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setTimeout(() => rmdirSync(lock), 1500);
+    const start = Date.now();
+    await rt.settleCredentialWrites();
+    const waited = Date.now() - start >= 1000;
+    const key = readJson(mrAuth).openai?.key ?? null;
+    const loggedIn = await login;
+    await rt.logout("openai");
+    return { keyAtSettle: key, waited, login: loggedIn };
+  })();
   return r;
 }
 
