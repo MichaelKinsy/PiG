@@ -43,7 +43,7 @@ func TestOpenAISDKTimeoutBeforeTheConnectionIsTheShortTimeoutText(t *testing.T) 
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			transport := &nodeFetchTransport{base: timeoutAfterTrace{connected: tc.connected}, connectionIdle: true}
-			request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://127.0.0.1:9/v1/chat/completions", http.NoBody)
+			request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://127.0.0.1:8080/v1/chat/completions", http.NoBody)
 			if err != nil {
 				t.Fatal(err)
 			}

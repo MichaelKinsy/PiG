@@ -3,10 +3,9 @@
 # reasoning off (:333-344), and forwards tool_choice. These HTTP probes compare
 # both APIs using direct/proxy URL paths, each affinity format, long/none retention
 # and configured/request header precedence. No network credentials or output
-# normalization are used, except the D246 allowance: the pig probe reads the
-# Responses session-affinity header as session-id where Pi 1.5.0 sends session_id
-# (Pi c5d397835), and reports a Responses request that carries a session_id the
-# model did not configure. Only the prompt cache key, not generic headers, clamps.
+# normalization are used. Responses sends its session-affinity header as
+# session-id (Pi c5d397835), Completions as session_id; both probes read that
+# header. Only the prompt cache key, not generic headers, clamps.
 name = "15-openai-cache-affinity"
 description = "Completions and Responses preserve independent cache-body and affinity-header policies, omitted reasoning and required tool choice."
 covers = ["packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses.ts"]

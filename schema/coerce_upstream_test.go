@@ -11,6 +11,7 @@ package schema_test
 
 import (
 	"math"
+	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -52,6 +53,12 @@ func sameJSONValue(a, b any, ordered bool) bool {
 		return true
 	case *schema.Object, map[string]any:
 		return sameObjects(a, b, ordered)
+	case *big.Int:
+		y, ok := b.(*big.Int)
+		return ok && x.Cmp(y) == 0
+	case schema.UndefinedType:
+		_, ok := b.(schema.UndefinedType)
+		return ok
 	}
 	return false
 }

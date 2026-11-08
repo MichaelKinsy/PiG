@@ -71,8 +71,9 @@ func TestProviderTransportResetRecordsDiagnosticAndKeepsMessage(t *testing.T) {
 	}))
 	defer server.Close()
 	result := transportErrorTestResult(t, transportErrorTestProvider(server.URL))
-	if result.ErrorMessage != "Connection error." || result.StopReason != StopReasonError {
-		t.Fatalf("result = %q %q, want unchanged Connection error.", result.StopReason, result.ErrorMessage)
+	// The handler resets after it read the request: Node's undici reports `read ECONNRESET` as the cause (pinned pi-ai, all three APIs).
+	if result.ErrorMessage != "Connection error.: read ECONNRESET" || result.StopReason != StopReasonError {
+		t.Fatalf("result = %q %q, want Connection error.: read ECONNRESET", result.StopReason, result.ErrorMessage)
 	}
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("diagnostics = %+v", result.Diagnostics)
@@ -157,7 +158,7 @@ func TestTransportDiagnosticLeavesEventStreamUnchanged(t *testing.T) {
 		t.Fatalf("events = %v, want a single error event", kinds)
 	}
 	result := stream.Result()
-	if result.StopReason != StopReasonError || result.ErrorMessage != "Connection error." || !IsRetryableAssistantError(*result) {
+	if result.StopReason != StopReasonError || result.ErrorMessage != "Connection error.: other side closed (UND_ERR_SOCKET)" || !IsRetryableAssistantError(*result) {
 		t.Fatalf("result = %q %q", result.StopReason, result.ErrorMessage)
 	}
 }
