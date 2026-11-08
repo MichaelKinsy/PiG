@@ -62,6 +62,26 @@ func (m *messageSequences) Sequence(message agent.AgentMessage) uint64 {
 	return m.last
 }
 
+// reset forgets every message numbered so far, so a Session that switches away from its session does not keep the old messages alive (agent-session.ts _entryIdsByMessage is a WeakMap). The counter goes on: a number is never given to another message.
+func (m *messageSequences) reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.byMessage = nil
+	m.byToolCall = nil
+	m.order = nil
+}
+
+// Numbered is the number a message itself was given, 0 for a message no Node handler received: persisting it names no pair then, and a session with no Node extension numbers nothing.
+func (m *messageSequences) Numbered(message agent.AgentMessage) uint64 {
+	key := message.Identity()
+	if key == nil {
+		return 0
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.byMessage[key]
+}
+
 // Known implements icodingagent.MessageSequencer.
 func (m *messageSequences) Known(message agent.AgentMessage) uint64 {
 	key := message.Identity()

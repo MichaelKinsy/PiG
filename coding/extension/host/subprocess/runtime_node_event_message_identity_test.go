@@ -291,6 +291,8 @@ func TestNodeRuntimeEventMessageIdentityPaths(t *testing.T) {
   const runtime = newRuntime();
   const seen = [], seqs = [];
   runtime.on("message_end", (event) => { seen.push(event.message); });
+  // The runtime learns its session before it numbers a message (the process may hold another one's, which a switch drops).
+  push(runtime, [], []);
   for (let i = 1; i <= 140; i++) { seqs.push(nextSeq()); await messageEnd(runtime, user("m" + i, i), seqs[i - 1]); }
   push(runtime, [entry("e1", null, user("m1", 1)), entry("e20", "e1", user("m20", 20)), entry("e140", "e20", user("m140", 140))], [{ id: "e1", seq: seqs[0] }, { id: "e20", seq: seqs[19] }, { id: "e140", seq: seqs[139] }]);
   const entries = runtime.ctx.sessionManager.getEntries();

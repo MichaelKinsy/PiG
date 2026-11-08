@@ -185,6 +185,8 @@ func TestReplaceInnerReleasesTheNumberedMessages(t *testing.T) {
 	var user weak.Pointer[agent.UserMessage]
 	h := newRecoveryHarness(t, harnessOptions{extension: extension.Extension{Path: "/ext/release", Handlers: map[string][]extension.HandlerFn{
 		"message_end": {func(args ...any) (any, error) {
+			// Asking for the numbers is what numbers the message (a Node runtime does it when it sends them).
+			extension.MessageSequences(args[1].(context.Context))
 			if message := args[0].(extension.MessageEndEvent).Message; message.User != nil {
 				mu.Lock()
 				user = weak.Make(message.User)
@@ -196,7 +198,10 @@ func TestReplaceInnerReleasesTheNumberedMessages(t *testing.T) {
 	if _, err := h.session.Send(context.Background(), "go"); err != nil {
 		t.Fatal(err)
 	}
-	// The harness keeps the events it saw: they are not what is under test.
+	// The harness keeps the events it saw, and they carry the messages: they are not what is under test.
+	if err := h.session.FlushEvents(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 	h.mu.Lock()
 	h.events = nil
 	h.mu.Unlock()

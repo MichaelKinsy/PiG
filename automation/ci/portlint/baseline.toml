@@ -6245,7 +6245,7 @@ snippet = "_, _ = runner.Emit(context.Background(), extension.AgentStartEvent{"
 check = "ctxbackground"
 file = "internal/codingagent/event_bridge.go"
 func = "emitAgentEnd"
-snippet = "_, _ = runner.Emit(context.Background(), extension.AgentEndEvent{"
+snippet = "_, _ = runner.Emit(withEventSequences(context.Background(), sequence, sequences), extension.AgentEndEvent{"
 
 [[hit]]
 check = "ctxbackground"
@@ -6263,7 +6263,7 @@ snippet = "_, _ = runner.Emit(context.Background(), extension.TurnStartEvent{"
 check = "ctxbackground"
 file = "internal/codingagent/event_bridge.go"
 func = "emitTurnEnd"
-snippet = "_, _ = runner.Emit(context.Background(), extension.TurnEndEvent{"
+snippet = "_, _ = runner.Emit(withEventSequences(context.Background(), sequence, sequences), extension.TurnEndEvent{"
 
 [[hit]]
 check = "ctxbackground"
