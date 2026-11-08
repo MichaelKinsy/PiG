@@ -183,10 +183,10 @@ func (w *Web) Handle(response http.ResponseWriter, request *http.Request) {
 		if file, found := w.Bundle.Files[name]; found {
 			// Named by content: a page may keep it forever. Private: only this browser's caches.
 			header.Set("Content-Type", file.Type)
-			header.Set("Content-Length", strconv.Itoa(len(file.Body)))
+			header.Set("Content-Length", strconv.Itoa(file.Size))
 			header.Set("Cache-Control", "private, max-age=31536000, immutable")
 			response.WriteHeader(http.StatusOK)
-			write(file.Body)
+			write(file.Body())
 			return
 		}
 	}
