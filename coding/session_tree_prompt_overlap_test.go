@@ -3,12 +3,14 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -242,5 +244,70 @@ func TestThinkingLevelThatOnlyDiffersFromTheBranchByClampingIsNotRecorded(t *tes
 	}
 	if err := json.Unmarshal(entries[len(entries)-1].Raw(), &last); err != nil || last.ThinkingLevel != "xhigh" {
 		t.Fatalf("last thinking_level_change = %+v, %v", last, err)
+	}
+}
+
+// Pi's "allows a prompt from session_tree after the selected context is installed": a session_tree handler sends a user message, and
+// the message runs on the selected branch.
+func TestPromptFromSessionTreeRunsOnTheSelectedBranch(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{}, fauxReply("continued", ai.StopReasonStop, 0))
+	sess := h.session
+	target := seedTreeHistory(t, sess)
+	var sendErr error
+	withTreeHandlers(sess, t, map[string][]extension.HandlerFn{
+		"session_tree": {func(args ...any) (any, error) {
+			sendErr = sess.SendUserMessage(t.Context(), "continue on the selected branch", nil)
+			return nil, nil
+		}},
+	})
+	if _, err := sess.NavigateTree(t.Context(), target, NavigateTreeOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if sendErr != nil {
+		t.Fatalf("sendUserMessage from session_tree: %v", sendErr)
+	}
+	var users []string
+	for _, message := range sess.Messages() {
+		if message.User != nil {
+			users = append(users, messageText(message))
+		}
+	}
+	if want := []string{"first prompt", "continue on the selected branch"}; !slices.Equal(users, want) {
+		t.Fatalf("user messages = %q, want %q", users, want)
+	}
+	if got := lastAssistantText(sess.Messages()); got != "continued" {
+		t.Fatalf("last assistant text = %q", got)
+	}
+}
+
+// Pi's "allows navigation from an extension %s": a command handler and an agent_settled handler navigate the tree.
+func TestNavigationIsAllowedFromAnExtensionCommandAndAgentSettledHandler(t *testing.T) {
+	for _, event := range []string{"command", "agent_settled"} {
+		t.Run(event, func(t *testing.T) {
+			h := newRecoveryHarness(t, harnessOptions{}, fauxReply("done", ai.StopReasonStop, 0))
+			sess := h.session
+			target := seedTreeHistory(t, sess)
+			navigated := false
+			navigate := func() error {
+				_, err := sess.NavigateTree(t.Context(), target, NavigateTreeOptions{})
+				navigated = err == nil
+				return err
+			}
+			var registered extension.Extension
+			prompt := "finish then rewind"
+			if event == "command" {
+				registered.Commands = map[string]extension.RegisteredCommand{"rewind": {Name: "rewind", Handler: func(context.Context, string) error { return navigate() }}}
+				prompt = "/rewind"
+			} else {
+				registered.Handlers = map[string][]extension.HandlerFn{"agent_settled": {func(args ...any) (any, error) { return nil, navigate() }}}
+			}
+			sess.ReplaceRunner(inproc.NewRunner([]extension.Extension{registered}, t.TempDir()))
+			if err := sess.Prompt(t.Context(), prompt, nil); err != nil {
+				t.Fatal(err)
+			}
+			if got := sess.inner.GetLeafID(); !navigated || got == nil || *got != target {
+				t.Fatalf("navigated = %v, leaf = %v, want %s", navigated, got, target)
+			}
+		})
 	}
 }
