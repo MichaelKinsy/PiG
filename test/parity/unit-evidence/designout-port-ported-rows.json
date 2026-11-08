@@ -9,7 +9,7 @@
     "mutation": "mcp/client.go ListTools: replace 'tools = append(tools, tool)' with 'tools = append(tools, tool); break'; go test ./mcp -run TestClientListToolsMatchesPiOnScriptedPages fails ('PiG 1 tools, Pi 3'). Replacing 'return tools, nil' with 'return tools[:0], nil' fails it with 'PiG 0 tools, Pi 3'."
   },
   {
-    "upstream": "packages/chord/src/types.ts",
+    "upstream": "packages/chord/src/context/index.ts",
     "package": "./chord/context",
     "tests": [
       "TestContextKeyTokenMatchesPi"

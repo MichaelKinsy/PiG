@@ -25,7 +25,7 @@ func TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt(t *t
 	if err := writer.Run("INSERT INTO probe VALUES (1)"); err != nil {
 		t.Fatal(err)
 	}
-	reader, err := OpenNodeSqliteDatabase(file, NodeSqliteDatabaseOptions{ReadOnly: true})
+	reader, err := OpenNodeSqliteDatabase(file, NodeSqliteDatabaseOptions{Mode: ReadOnly})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt(t *t
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if missing, err := OpenNodeSqliteDatabase(filepath.Join(t.TempDir(), "missing.sqlite"), NodeSqliteDatabaseOptions{ReadOnly: true}); err == nil {
+	if missing, err := OpenNodeSqliteDatabase(filepath.Join(t.TempDir(), "missing.sqlite"), NodeSqliteDatabaseOptions{Mode: ReadOnly}); err == nil {
 		_ = missing.Close()
 		t.Fatal("a missing file opened read-only")
 	}

@@ -72,7 +72,7 @@ func (f *persistFixture) change(key string, before *JsonObject, after func(draft
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 	if _, err := f.store.Commit(writes, fence, background); err != nil {
 		f.t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirO
 		t.Errorf("staged = %+v %+v %+v", first, again, gone)
 	}
 	var ids []int64
-	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(_ int64, created []int64) error { ids = created; return nil }}
+	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(_ int64, created []int64, _ int) error { ids = created; return nil }}
 	if _, err := f.store.Commit(writes, fence, background); err != nil {
 		t.Fatal(err)
 	}

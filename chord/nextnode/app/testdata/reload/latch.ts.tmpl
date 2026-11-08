@@ -1,0 +1,13 @@
+type Latch = { readonly entered: PromiseWithResolvers<void>; readonly open: PromiseWithResolvers<void> };
+const latches: Map<string, Latch> = ((globalThis as Record<string, unknown>).reloadLatches ??= new Map()) as Map<string, Latch>;
+/** The latch named `name`, made on first use. */
+function latch(name: string): Latch {
+	let found = latches.get(name);
+	if (found === undefined) {
+		found = { entered: Promise.withResolvers(), open: Promise.withResolvers() };
+		latches.set(name, found);
+	}
+	return found;
+}
+/** What the natives of every version did in this process: opens by version, closes as `<version>:<reason>`. */
+const natives = ((globalThis as Record<string, unknown>).reloadNatives ??= { opens: [], closes: [] }) as { opens: string[]; closes: string[] };

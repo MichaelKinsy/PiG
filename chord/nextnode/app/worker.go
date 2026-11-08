@@ -122,7 +122,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 	var recorder *telemetryingest.Recorder
 	hostOptions := host.HostOptions{
 		Principal: kit.Principal, Store: opened, OnError: func(err host.HostError) { options.OnError(err) },
-		CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(),
+		CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(), ReloadDrainTimeout: kit.Timeouts.reloadDrain(),
 	}
 	if kit.Telemetry {
 		scope := uuid.NewString()
@@ -172,7 +172,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 			{Name: "chord.app.data.export", Contracts: []*contracts.Contract{HostDataExport}},
 		},
 		Principal: kit.Principal, Peer: kit.Server,
-		Store: &plugins.StoreOptions{Path: storePath}, CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(),
+		Store: &plugins.StoreOptions{Path: storePath}, CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(), ReloadDrainTimeout: kit.Timeouts.reloadDrain(),
 	}, ctx); err != nil {
 		return nil, err
 	}

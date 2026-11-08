@@ -60,7 +60,7 @@ func (owned *StoreOwnerTables) Prepare(ctx context.Context) error {
 	for index, table := range owned.tables {
 		tables[index] = DeclaredTable{Definition: table.Definition, Table: table.Sql.Table}
 	}
-	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 	return PrepareTables(tables, owned.Store, fence, owned.Owner, ctx)
 }
 

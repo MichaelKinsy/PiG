@@ -42,17 +42,19 @@ enableCompileCache(fileURLToPath(new URL("./v8/", import.meta.url)));
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
 const pi = (path) => import(new URL(path, tree).href);
-const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal, withTelemetry }, { nodeCompression }, { canonicalJson }] =
+const [chordNext, { ipcLink }, { createPluginRuntime, PluginError }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal, withTelemetry }, { nodeCompression }, { canonicalJson }] =
 	await Promise.all([
-		pi("next/index.ts"),
-		pi("next/link/index.ts"),
-		pi("next-node/plugins/runtime.ts"),
-		pi("next-node/plugins/stack.ts"),
+		pi("index.ts"),
+		pi("link/index.ts"),
+		pi("node/plugins/runtime.ts"),
+		pi("node/plugins/stack.ts"),
 		pi("context/index.ts"),
-		pi("next-node/compression.ts"),
-		pi("next/data/internal.ts"),
+		pi("node/compression.ts"),
+		pi("data/internal.ts"),
 	]);
 const { createHost, isChordError } = chordNext;
+// host.ts's `Destination` (resolve.mjs): already loaded by the import of the host above.
+const { setParentServes, forgetParentServes } = await import("./destination.mjs");
 
 const KIND_LINK = 0;
 const KIND_CONTROL = 1;
@@ -198,11 +200,13 @@ process.on("uncaughtException", (error) => {
 
 async function load(request, context) {
 	if (hosted !== undefined) throw new Error("load: this process loaded its host already");
-	const modules = { "@earendil-works/chord/next": chordNext };
+	const modules = { "@earendil-works/chord": chordNext };
 	for (const [specifier, file] of Object.entries(request.modules)) modules[specifier] = await import(pathToFileURL(file).href);
 	for (const pkg of request.goPackages) modules[pkg.specifier] = await importGoPackage(pkg);
-	// principalKey and revokedBy are synchronous in the host: they call the Go side on a connection of their own.
+	// principalKey, revokedBy and parentServes are synchronous in the host: they call the Go side on a connection of their own.
 	if (request.syncToken !== undefined) await callbacks.startSync(process.argv[2], request.syncToken);
+	// The remote types the Go host serves go over the link to it (destination.mjs).
+	setParentServes(request.parentServes === true ? (name) => callbacks.callSync("parentServes", name) : undefined);
 	const telemetry = request.telemetry === undefined ? undefined : createTelemetry({ emit: (event) => port.control({ event: "telemetry", ...event }), ...request.telemetry });
 	// The proxies of the Go host's own facets import it (bridge.mjs).
 	modules[GO_PACKAGE] = bridge.hostPackage;
@@ -218,6 +222,7 @@ async function load(request, context) {
 		...(request.heartbeat === undefined ? {} : { heartbeat: request.heartbeat }),
 		...(request.closeTimeout === undefined ? {} : { closeTimeout: request.closeTimeout }),
 		...(request.readyTimeout === undefined ? {} : { readyTimeout: request.readyTimeout }),
+		...(request.reloadDrainTimeout === undefined ? {} : { reloadDrainTimeout: request.reloadDrainTimeout }),
 		...(request.compression === true ? { compression: nodeCompression } : {}),
 		...(telemetry === undefined ? {} : { telemetry }),
 		...(request.principalKey === true
@@ -227,9 +232,17 @@ async function load(request, context) {
 		onError: (error) => port.control({ event: "error", error: hostError(error) }),
 	});
 	const runtime = createPluginRuntime();
+	// The names the runtime offered the host (`TestPlugin` tells a plugin that failed before the host, in its build or
+	// evaluation, from one whose setup failed in it: a plugin that never reached the host was not offered).
+	const offered = [];
+	const hostLoad = host.load.bind(host);
+	host.load = (facets, loadContext) => {
+		offered.push(...facets.map(({ name }) => name));
+		return hostLoad(facets, loadContext);
+	};
 	// What the host's work runs under: the app's telemetry parent, when it gave an adapter.
 	const base = telemetry === undefined ? BACKGROUND_CONTEXT : withTelemetry(telemetry, BACKGROUND_CONTEXT);
-	hosted = { host, runtime, store, peer: request.peer, base };
+	hosted = { host, runtime, store, peer: request.peer, base, core, scripts: request.scripts, offered };
 	// The host's keep-alive counts, for the app that supervises it (NodeOptions.OnActivity): now, and at each change.
 	port.control({ event: "activity", counts: host.activity.value });
 	void host.activity.watch(BACKGROUND_CONTEXT).then((watch) =>
@@ -238,8 +251,16 @@ async function load(request, context) {
 		}),
 	);
 	const traced = telemetry === undefined ? context : withTelemetry(telemetry, context);
-	const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, traced);
-	return { failed: report.failed.map(({ plugin, error }) => ({ plugin, error: wireError(error) })) };
+	const wireFailures = (failures) => failures.map(({ plugin, error }) => ({ plugin, error: wireError(error) }));
+	try {
+		const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, traced);
+		return { failed: wireFailures(report.failed) };
+	} catch (error) {
+		// A required root's plugins failed once the host's load settled (runtime.ts's PluginError): the host stays
+		// loaded, and the Go side raises the error with these (`required` is never empty then).
+		if (!(error instanceof PluginError)) throw error;
+		return { failed: wireFailures(error.failed), required: wireFailures(error.required) };
+	}
 }
 
 /**
@@ -258,6 +279,8 @@ function hostError(error) {
 
 async function reload(request, context) {
 	if (hosted === undefined) throw new Error("reload: no host is loaded");
+	hosted.scripts = request.scripts;
+	forgetParentServes();
 	const report = await hosted.runtime.reload(hosted.host, request.scripts, context);
 	return {
 		plugins: report.plugins,
@@ -267,7 +290,7 @@ async function reload(request, context) {
 }
 
 /**
- * As a worker connects to its parent (next-node/workers/main.ts): the Go side uses the other end of the link, as the server
+ * As a worker connects to its parent (node/workers/main.ts): the Go side uses the other end of the link, as the server
  * of a worker does, and `peer` is who the Go side is, as this host stamps it. Once; the host's heartbeat starts with the link.
  */
 function attach() {
@@ -286,7 +309,8 @@ async function revoke(request, context) {
 // The reference RPC and contracts as data (bridge.mjs, contracts.mjs): the control requests of `NodeHost.Get` and the Go host's `Bridged` facets.
 const { createBridge, GO_PACKAGE } = await import("./bridge.mjs");
 const bridge = createBridge({ port, wireError, host: () => hosted?.host });
-const operations = { load, reload, revoke, ...bridge.operations };
+const { testOperations } = await import("./testing.mjs");
+const operations = { load, reload, revoke, ...bridge.operations, ...testOperations({ hosted: () => hosted, chord: chordNext }) };
 
 port.on("message", (message) => {
 	if (message instanceof Uint8Array) return;

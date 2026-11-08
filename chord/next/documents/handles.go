@@ -61,12 +61,28 @@ func NewSingleton(slot *SingletonSlot, token *SealToken, version int) *Singleton
 	return &Singleton{Slot: slot, Token: token, Version: version}
 }
 
-// Value is the current value, after the handle's version fence.
+// Value is the current value, after the handle's version fence. It is read in a section of the owner (inline in one): the
+// slot is the section's state, and Go code reads it from the goroutines of its jobs, which race the commits of the object's
+// other changes and its seal otherwise (Watch takes its section the same way).
 func (handle *Singleton) Value() (*JsonObject, error) {
+	if handle.Slot.owner.InSection() {
+		return handle.read()
+	}
+	return handle.readFromOutside()
+}
+
+// read is Value inside a section of the owner.
+func (handle *Singleton) read() (*JsonObject, error) {
 	if err := handle.Slot.definition.AssertVersion(handle.Version); err != nil {
 		return nil, err
 	}
 	return handle.Slot.Object()
+}
+
+// readFromOutside is Value for a caller outside the host's loop (the closure is made here only).
+func (handle *Singleton) readFromOutside() (value *JsonObject, err error) {
+	handle.Slot.owner.Do(func() { value, err = handle.read() })
+	return value, err
 }
 
 // Watch is a watch of the document.

@@ -6,8 +6,11 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/host/routines.ts. Routines (§14): the standing behaviour an object or a facet declares,
@@ -42,6 +45,7 @@ import (
 // context of their calls, aborted when the owner ends. admit adds a running call to the owner's drain.
 type routineOwner struct {
 	label   string
+	typ     string
 	host    *chordHost
 	caller  caller
 	context context.Context
@@ -151,6 +155,9 @@ type declaration struct {
 type called struct {
 	failed bool
 	err    error
+	// span is its `chord.routine` span, still open (callEnded ends it once it knows whether a retry follows); nil when
+	// the host records nothing.
+	span *chordtelemetry.OpenSpan
 }
 
 // longRun: one run of an `onLive` that lasted this long resets its backoff.
@@ -216,8 +223,9 @@ func (l *liveRoutine) run() {
 	}
 	loop := owner.host.loop()
 	started := loop.Now()
-	call(owner, l.declaration.live, func(done called) {
+	call(owner, l.declaration.at, l.declaration.live, nil, func(done called) {
 		if !done.failed || owner.context.Err() != nil {
+			callEnded(done, owner, nil)
 			return
 		}
 		routineFailed(owner, l.declaration.at, done.err)
@@ -225,6 +233,7 @@ func (l *liveRoutine) run() {
 			l.delay = 0
 		}
 		l.delay = nextDelay(l.delay)
+		callEnded(done, owner, &l.delay)
 		l.sleep()
 	})
 }
@@ -254,11 +263,30 @@ func (l *liveRoutine) sleep() {
 // call runs one routine call under its own ctx (its `ctx.get` references released when it settles), admitted to the owner's
 // drain before the handler runs: a handler may end its own owner before its first await. The handler's synchronous part
 // runs here; after gets how it ended, a microtask after it settled; it never fails. It runs inside a section.
-func call(owner routineOwner, invoke func(ctx Ctx) *Handled, after func(done called)) {
+func call(owner routineOwner, at Position, invoke func(ctx Ctx) *Handled, trigger telemetry.TelemetryContext, after func(done called)) {
 	loop := owner.host.loop()
-	ctx := newCallContext(owner.context, owner.caller, owner.host)
+	host := owner.host
+	// Its `chord.routine` root span on the host's adapter, linked to the commit that made its frame; none when nothing records.
+	var span *chordtelemetry.OpenSpan
+	callContext := owner.context
+	if !chordtelemetry.Untraced(host.telemetry) {
+		var links []telemetry.SpanLink
+		if !chordtelemetry.Untraced(trigger) {
+			links = append(links, telemetry.SpanLink{Context: trigger})
+		}
+		span = chordtelemetry.NewOpenSpan(host.telemetry, "chord.routine", telemetry.SpanAttributes{
+			telemetry.Attr("chord.host", host.spanHost),
+			telemetry.Attr("type", owner.typ),
+			telemetry.Attr("object", chordtelemetry.Capped(owner.label)),
+			telemetry.Attr("routine", string(at.Kind)),
+			telemetry.Attr("position", float64(at.Position)),
+		}, links...)
+		callContext = chordctx.WithTelemetry(callContext, span.Span())
+	}
+	ctx := newCallContext(callContext, owner.caller, owner.host, nil)
 	settle := owner.admit(ctx.settle)
 	finish := func(done called) {
+		done.span = span
 		ctx.settle()
 		settle(done.err)
 		loop.Queue(func() { after(done) })
@@ -277,6 +305,24 @@ func call(owner routineOwner, invoke func(ctx Ctx) *Handled, after func(done cal
 	default:
 		handled.later.then(func(_ struct{}, err error) { finish(called{failed: err != nil, err: err}) })
 	}
+}
+
+// callEnded ends a routine call's span: `ok`, `aborted` (a cancel), or `error` with `routine_failed` and, when its routine
+// calls again after a backoff, a `chord.retry` event with that delay.
+func callEnded(done called, owner routineOwner, backoff *time.Duration) {
+	span := done.span
+	if span == nil {
+		return
+	}
+	if !done.failed {
+		span.SetOutcome("ok")
+		return
+	}
+	outcome := chordtelemetry.Ended(span.Span(), "routine_failed", done.err, owner.context)
+	if outcome == "error" && backoff != nil {
+		span.Span().AddEvent("chord.retry", telemetry.SpanAttributes{telemetry.Attr("backoff", float64(backoff.Milliseconds()))})
+	}
+	span.SetOutcome(outcome)
 }
 
 // routineFailed reports a failed routine call or source (Pi's `failed`; renamed: `failed` is the reference state alias).
@@ -346,6 +392,8 @@ type watchedCall struct {
 	value   any
 	ops     []delta.Op
 	retired bool
+	// trigger is the span of the commit that made the frame (its watch's context).
+	trigger telemetry.TelemetryContext
 }
 
 // onRoutine is one `on` routine. Its watch's listener never throws (a throwing listener would end the watch) and never
@@ -370,6 +418,8 @@ type onRoutine struct {
 	delay       time.Duration
 	// failed: the source failed after its last value: no call until its next value (a retry waits too).
 	failed bool
+	// trigger is the span of the commit that made the newest frame, linked from the next call's span.
+	trigger telemetry.TelemetryContext
 }
 
 func newOnRoutine(owner routineOwner, declared declaration) *onRoutine {
@@ -414,8 +464,8 @@ func (o *onRoutine) open() (openedWatch, error) {
 		return openedWatch{
 			value: watch.Value(),
 			start: func(listener func(call watchedCall)) {
-				watch.Start(func(_ context.Context, call chord.NativeWatchCall[any]) error {
-					listener(watchedCall{failed: call.Kind != chord.WatchCallValue, value: call.Value})
+				watch.Start(func(ctx context.Context, call chord.NativeWatchCall[any]) error {
+					listener(watchedCall{failed: call.Kind != chord.WatchCallValue, value: call.Value, trigger: chordctx.Telemetry(ctx)})
 					return nil
 				})
 			},
@@ -431,8 +481,8 @@ func (o *onRoutine) open() (openedWatch, error) {
 	return openedWatch{
 		value: watch.Value(),
 		start: func(listener func(call watchedCall)) {
-			watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-				listener(watchedCall{failed: call.Kind != chord.WatchCallValue, value: call.Value, ops: call.Ops, retired: call.Retired})
+			watch.Start(func(ctx context.Context, call chord.WatchCall[delta.JsonValue]) error {
+				listener(watchedCall{failed: call.Kind != chord.WatchCallValue, value: call.Value, ops: call.Ops, retired: call.Retired, trigger: chordctx.Telemetry(ctx)})
 				return nil
 			})
 		},
@@ -586,6 +636,7 @@ func (o *onRoutine) frame(call watchedCall) {
 	}
 	o.failed = false
 	o.pending = &pendingFrame{value: call.value}
+	o.trigger = call.trigger
 	if !o.native {
 		// A JSON watch's call, as its class decided.
 		o.pendingOps.Push(call.ops)
@@ -612,7 +663,9 @@ func (o *onRoutine) next() {
 	value := pending.value
 	o.state = onState{kind: stateCalling}
 	o.last = value
-	call(o.owner, o.invocation(value), o.called)
+	trigger := o.trigger
+	o.trigger = nil
+	call(o.owner, o.declaration.at, o.invocation(value), trigger, o.called)
 }
 
 // invocation is the handler's call with value: a native one with the value alone, a JSON one with the folded ops or the
@@ -646,6 +699,9 @@ func (o *onRoutine) invocation(value any) func(ctx Ctx) *Handled {
 // during the call (a handler that changes its own source and throws would feed itself otherwise); its timer calls with the
 // newest value, or the last call's, as a whole value.
 func (o *onRoutine) called(done called) {
+	if o.state.kind == stateEnded || !done.failed || o.aborted() {
+		callEnded(done, o.owner, nil)
+	}
 	if o.state.kind == stateEnded {
 		return
 	}
@@ -677,9 +733,11 @@ func (o *onRoutine) called(done called) {
 	o.delay = nextDelay(o.delay)
 	// The source failed meanwhile: the retry waits for its next value, never the stale last one.
 	if o.failed {
+		callEnded(done, o.owner, nil)
 		o.state = onState{kind: stateIdle}
 		return
 	}
+	callEnded(done, o.owner, &o.delay)
 	timer := loop.AfterFunc(o.delay, func() {
 		o.owner.host.enter(func() {
 			if o.pending == nil {

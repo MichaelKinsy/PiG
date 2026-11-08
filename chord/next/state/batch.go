@@ -58,6 +58,8 @@ type Batch struct {
 	microtasks func(job func())
 	// section runs work as a synchronous section of the host (nil: inline, the caller's own).
 	section func(work func())
+	// inSection tells whether the caller runs in a section of the host (nil: it cannot tell).
+	inSection func() bool
 	// running is set while adopting, delivering or computing a derive; one flag per host.
 	running bool
 	// computing is set while a pure compute runs (a derive's, a registry's compose): nothing may change a source then.
@@ -97,10 +99,21 @@ func (b *Batch) UseMicrotasks(queue func(job func())) *Batch {
 
 // UseSection gives the batch the host's way to run work as one of its sections: what ends a watch from a goroutine of its
 // own (an aborted context's listener) runs its detach there, with the other code that touches the host's sources. It is
-// called once, right after NewBatch, and returns the batch.
-func (b *Batch) UseSection(run func(work func())) *Batch {
-	b.section = run
+// called once, right after NewBatch, and returns the batch. inSection tells whether the caller runs in a section already
+// (nil: the host's loop cannot tell, as a test's virtual-time loop cannot), so a read can run inline without making the
+// closure a section takes.
+func (b *Batch) UseSection(run func(work func()), inSection func() bool) *Batch {
+	b.section, b.inSection = run, inSection
 	return b
+}
+
+// InSection reports whether the caller runs in a section of the host (or the batch has none: everything is inline). A
+// caller that is not in one takes Section; one that is reads directly, with no closure.
+func (b *Batch) InSection() bool {
+	if b.section == nil {
+		return true
+	}
+	return b.inSection != nil && b.inSection()
 }
 
 // Section runs work as a section of the host when the batch has one (UseSection), inline otherwise.
@@ -254,6 +267,9 @@ func (b *Batch) Changed(source Delivered) { b.changed = append(b.changed, source
 
 // Flushing lists flush to run at the end of the current commit, after its deliveries (a link sending what they fed it).
 func (b *Batch) Flushing(flush func(ctx context.Context) error) { b.flushes = append(b.flushes, flush) }
+
+// Metrics is the host's metrics adapter the batch counts on; nil when the host records none.
+func (b *Batch) Metrics() telemetry.TelemetryMetrics { return b.metrics }
 
 // Count counts one unit of derive or registry work on the host's metrics (a lazy read has no context to count
 // through).
