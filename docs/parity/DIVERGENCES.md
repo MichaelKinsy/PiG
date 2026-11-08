@@ -248,6 +248,12 @@ Call site:
 
 Parity allowance: no paired scenario drives either part. Part 1 needs an extension that uses a captured `ctx` after a replacement, which no parity fixture does; Part 2 is a library path no Stock PiG mode reaches. The Stock modes are covered by the paired session-replacement scenarios and the tests named above.
 
+Protects: the stale-context expectations of Pi's `2860-replaced-session-context.test.ts` (:147-205) and `agent-session-branching.test.ts`: after a Session is replaced, calls from its old ctx and extension host fail with Pi's stale message and never start a turn in the replacement.
+
+PiG-shaped test considered: the Go tests named in Evidence (`TestReplacedSession2860*`, `TestPrintModeReplacedSessionHostCallsFailWithThePiStaleMessage`, `TestReplacedSession2860AcrossSDKs`) run the same expectations on the Node runtime and in-process; the same cases on the Go, Rust and Python SDK getters were considered.
+
+Why not: the Go, Rust and Python getters return plain values with no error to carry Pi's stale message, and a bare `coding.Session` owns no factory to replace itself; running Pi's cases there needs an SDK interface change that needs an approved spec (Why deferred, not ported).
+
 Remove when: the Go, Rust and Python SDKs apply the invalidate notification and every SDK-local ctx and pi member fails with Pi's stale message after it (Part 1), and the in-place `Session` replacement methods and the default `Session.ExtensionCommandActions` replacement actions are deleted or routed through `Runtime`, so no caller can replace a Session without invalidating its runner (Part 2).
 
 SCRUTINIZED:approved
@@ -716,6 +722,12 @@ Regression: `internal/codingagent/debug_hotkey_release_test.go`
 (`TestDebugHotkeyFiresOncePerPress`), which fails when the registration is moved
 back to `addTerminalInputListener`.
 SCRUTINIZED:approved
+
+Protects: the global debug hotkey runs its handler once per press rather than once per press and once per Kitty key release. No Pi test covers the hotkey after its key-release filter.
+
+PiG-shaped test considered: `TestDebugHotkeyFiresOncePerPress` (`internal/codingagent/debug_hotkey_release_test.go`), which fails when the registration moves back to `addTerminalInputListener`.
+
+Why not: Pi has no case for the release behavior to run against, so no upstream test is replaced; the PiG test is the only one.
 
 Remove when: upstream tests the debug hotkey after its key-release filter, or
 `matchesKey` stops matching a release, at which point the raw registration
@@ -1291,6 +1303,12 @@ Evidence: `TestShouldRunFirstTimeSetupGate` (interactive with and without `setti
 
 Parity allowance: Pi never shows the dialog for a fork, and parity fixtures carry `settings.json`, so no paired scenario compares it.
 
+Protects: Pi's first-time-setup cases check when the setup dialog appears (its gate: the official distribution, `PI_EXPERIMENTAL=1`, the default agent directory and no `settings.json`) and what Esc and each step save.
+
+PiG-shaped test considered: Pi's gate inputs run against PiG's real CLI (`TestFirstTimeSetupOriginalCasesAsFork`, `TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup`), PiG's own gate `TestShouldRunFirstTimeSetupGate`, and PTY runs of the real CLI for Esc and for saving the theme, sprite and analytics choice. Running Pi's component test unchanged was considered.
+
+Why not: Pi's cases expect the dialog only for Pi's official distribution; PiG shows it in every default agent directory without `settings.json` and adds a sprite step, so the same inputs cannot give the same results. The PiG-shaped tests assert the approved gate and steps.
+
 Remove when: never; the first-run setup is PiG's.
 
 SCRUTINIZED:approved
@@ -1325,6 +1343,12 @@ Call-site markers: `internal/codingagent/llama/provider.go` (`toPiModel`).
 Evidence: `TestLlamaReasoningModelOffersBudgetedThinkingLevels` (cmd/pig: the built-in host's model offers off through high and each level's request carries its `thinking_budget_tokens`; red before the change with `[off medium]`), `TestRefreshModelsDiscoversChatTemplateThinkingSupportForLoadedModels` (the ported Pi test, with Pi's expected map recorded at the assertion).
 
 Parity allowance: no paired scenario runs a llama.cpp server; Pi's own test `packages/coding-agent/test/llama-extension.test.ts` asserts the two-level map this entry replaces.
+
+Protects: the upstream llama-extension case checks the thinking levels a llama.cpp reasoning model offers and the request each level sends.
+
+PiG-shaped test considered: `TestLlamaReasoningModelOffersBudgetedThinkingLevels` asserts the five-level map and each level's `thinking_budget_tokens`; `TestRefreshModelsDiscoversChatTemplateThinkingSupportForLoadedModels` runs Pi's case with Pi's expected map recorded at the assertion. Running Pi's case against the vendored TypeScript was considered.
+
+Why not: Pi's case asserts the two-level (`off`, `medium`) map this entry replaces on purpose, so Pi's inputs cannot give Pi's expected output in PiG; the PiG-shaped tests assert the approved map.
 
 Remove when: Pi offers more than off and medium for a llama.cpp reasoning model, then follow Pi.
 
@@ -1556,6 +1580,12 @@ Evidence: `TestNewAgentSessionDrivesTheSuppliedAgentAndChainsItsHooks` and `Test
 
 Parity allowance: no paired scenario builds an Agent through the public Pi constructor, because Pi's only caller is `sdk.ts`.
 
+Protects: the property Pi's `extensionRunnerRef` serves: the hooks of a caller-supplied Agent and cache warmer read the Session's current extension runner after every replacement. No Pi test covers the cell itself; Pi's suite helper (`test/suite/harness.ts`) builds one.
+
+PiG-shaped test considered: `TestNewAgentSessionDrivesTheSuppliedAgentAndChainsItsHooks` and `TestNewAgentSessionDrivesTheSuppliedCacheWarmer` drive a supplied Agent and warmer through the Session and its `ExtensionRunner()` accessor.
+
+Why not: a test of the cell needs the cell, and PiG has none by design (a second source of truth for the runner); the property is held by the two tests above.
+
 Remove when: PiG's SDK needs a caller-owned runner cell.
 
 SCRUTINIZED:approved
@@ -1575,6 +1605,12 @@ Call-site markers: `tui/stdin_buffer.go` (`StdinBuffer`) and `tui/stdin_buffer_e
 Evidence: none beyond the absence of any Pi caller. `TestStdinBufferEventsMatchPi` pins the events that Pi's callers read.
 
 Parity allowance: no paired scenario adds an eleventh listener to a `StdinBuffer`.
+
+Protects: Node's listener limit of 10 per event and its `MaxListenersExceededWarning` on the eleventh registration. No Pi test asserts it; the tui tests rely on the events Pi's callers read.
+
+PiG-shaped test considered: `TestStdinBufferEventsMatchPi` pins those events. A test that adds eleven listeners and expects Node's warning was considered.
+
+Why not: the owner ruled on 2026-10-10 (Q3, option A) against a magic limit of 10, so a test of the warning would assert behavior PiG does not have; no Pi code reaches the limit.
 
 Remove when: PiG's `StdinBuffer` gets Node's listener limit and warning (design-out audit Q3 option B).
 
