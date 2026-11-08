@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -191,5 +192,25 @@ func TestAppDoesNotMarkAnExecutableStampedInTheFutureComparedByItsBytes(t *testi
 	s := startWithExecutable(t, time.Now().Add(24*time.Hour), time.Now().Add(time.Hour))
 	if s.app.Plugins.Marks().Base {
 		t.Fatal("base is marked for an executable stamped in the future")
+	}
+}
+
+// A program under the go-build cache is skipped before it is read: one the process cannot read is not the server's code that cannot
+// be read, so nothing is reported for it (the skip needs no bytes).
+func TestAppSkipsAGoBuildProgramBeforeReadingIt(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("the file's mode does not keep this user from reading it")
+	}
+	built := filepath.Join(t.TempDir(), "go-build123", "b001", "server")
+	if err := os.MkdirAll(filepath.Dir(built), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(built, []byte("v1"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return built, nil } })
+	<-s.app.BaseWatched()
+	if got := s.errors.kinds(); len(got) != 0 {
+		t.Fatalf("reported %v, want nothing for a go-build program", got)
 	}
 }
