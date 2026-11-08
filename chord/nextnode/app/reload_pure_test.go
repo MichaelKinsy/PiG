@@ -22,11 +22,8 @@ func expectEqual(t testing.TB, what string, got, want any) {
 	}
 }
 
-// isFailedFrame is whether a frame of the probe's record is a watch failure.
-func isFailedFrame(frame any) bool {
-	text, ok := frame.(string)
-	return ok && strings.HasPrefix(text, "failed")
-}
+// isFailedFrame is whether a frame of the probe's record (compact JSON) is a watch failure.
+func isFailedFrame(frame string) bool { return strings.HasPrefix(frame, `"failed`) }
 
 func TestAReloadOfPureCodeStaysLiveWhileARunningCallFinishesOnTheOldCodeThenShowsTheNewCodesSnapshot(t *testing.T) {
 	for _, placement := range []string{"worker", "server"} {
@@ -107,7 +104,7 @@ func TestAReloadOfPureCodeStaysLiveWhileARunningCallFinishesOnTheOldCodeThenShow
 					t.Fatalf("a failed frame: %v", frames)
 				}
 			}
-			expectEqual(t, "last frame", frames[len(frames)-1], "v2:3")
+			expectEqual(t, "last frame", frames[len(frames)-1], `"v2:3"`)
 			// Documents and tables unchanged: the count went on from 2, the table kept the old code's rows.
 			expectEqual(t, "count", tab.shows("alpha", ".count"), "3")
 			expectEqual(t, "visits", tab.result(tab.call("alpha", "visits")), okResult(2))

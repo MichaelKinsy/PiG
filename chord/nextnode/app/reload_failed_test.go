@@ -37,7 +37,7 @@ func TestAReloadWhoseNewCodeFailsKeepsAWorkerPluginWhoseNewBuildEvaluationSetupF
 			expectEqual(t, "add 1", tab.result(tab.call("alpha", "add", 1)), okResult("v1:3"))
 			tab.waitText("alpha", ".label", "v1:3")
 			expectEqual(t, "states", tab.states("alpha")[settled:], []string{})
-			expectEqual(t, "frames", tab.frames("alpha")[frames:], []any{"v1:3"})
+			expectEqual(t, "frames", tab.frames("alpha")[frames:], []string{`"v1:3"`})
 			expectEqual(t, "visits", tab.result(tab.call("alpha", "visits")), okResult(2))
 			expectEqual(t, "draft", tab.value("alpha", ".draft"), "half-typed")
 			expectEqual(t, "loads", tab.loads(), 1)

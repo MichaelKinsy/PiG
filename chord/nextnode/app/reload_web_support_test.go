@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -161,9 +162,9 @@ func startReloadTab(t testing.TB) *reloadTab {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		var shown string
-		if err := r.browser.Evaluate(ctx, `JSON.stringify({ connection: globalThis.page?.connection, errors: globalThis.page?.errors, loads: globalThis.page?.loads, views: document.getElementById("views")?.innerText, states: globalThis.reload?.states, frames: globalThis.reload?.frames, scripts: [...document.scripts].map((s) => s.src) })`, &shown); err != nil {
-			shown = err.Error()
+		shown, err := r.browser.Evaluate(ctx, `JSON.stringify({ connection: globalThis.page?.connection, errors: globalThis.page?.errors, loads: globalThis.page?.loads, views: document.getElementById("views")?.innerText, states: globalThis.reload?.states, frames: globalThis.reload?.frames, scripts: [...document.scripts].map((s) => s.src) })`)
+		if err != nil {
+			shown = json.RawMessage(err.Error())
 		}
 		t.Logf("the page at the end: %s", shown)
 	})
@@ -175,9 +176,15 @@ func evalAs[T any](r *reloadTab, expression string) T {
 	r.t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), reloadWait)
 	defer cancel()
-	var value T
-	if err := r.browser.Evaluate(ctx, expression, &value); err != nil {
+	raw, err := r.browser.Evaluate(ctx, expression)
+	if err != nil {
 		r.t.Fatal(err)
+	}
+	var value T
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			r.t.Fatalf("%s: %s (%v)", expression, raw, err)
+		}
 	}
 	return value
 }
@@ -284,19 +291,27 @@ func (r *reloadTab) waitStateWithin(name, state string, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	err := browsertest.Poll(ctx, timeout, name+" in "+state, func(ctx context.Context) (bool, error) {
-		var ok bool
-		err := r.browser.Evaluate(ctx, `globalThis.reload.states[`+quoted(name)+`]?.at(-1) === `+quoted(state), &ok)
-		return ok, err
+		raw, err := r.browser.Evaluate(ctx, `globalThis.reload.states[`+quoted(name)+`]?.at(-1) === `+quoted(state))
+		return string(raw) == "true", err
 	})
 	if err != nil {
 		r.t.Fatalf("%s never reached %s: %v (states %v)", name, state, err, r.states(name))
 	}
 }
 
-// frames are every value its watched member had (or `failed:<reason>`), as decoded JSON.
-func (r *reloadTab) frames(name string) []any {
+// frames are every value its watched member had (or `failed:<reason>`), each as compact JSON.
+func (r *reloadTab) frames(name string) []string {
 	r.t.Helper()
-	return evalAs[[]any](r, `globalThis.reload.frames[`+quoted(name)+`] ?? []`)
+	raw := evalAs[[]json.RawMessage](r, `globalThis.reload.frames[`+quoted(name)+`] ?? []`)
+	texts := make([]string, len(raw))
+	for i, frame := range raw {
+		var compact bytes.Buffer
+		if err := json.Compact(&compact, frame); err != nil {
+			r.t.Fatal(err)
+		}
+		texts[i] = compact.String()
+	}
+	return texts
 }
 
 // hold holds the object of project id (the server's, with no params, for an empty id) as the web plugin contract registered its contract, as name, its calls parking readyTimeout,

@@ -62,13 +62,13 @@ func TestAReloadRestartingAnObjectWithNativesStaysLiveWhileTheOldCodeDrainsThenS
 			frames := tab.frames("alpha")
 			from := 0
 			for i, frame := range frames {
-				if frame == "v1:2" {
+				if frame == `"v1:2"` {
 					from = i
 				}
 			}
 			since := frames[from:]
-			expectEqual(t, "frames since v1:2", since[:2], []any{"v1:2", "v1:12"})
-			expectEqual(t, "last frame", since[len(since)-1], "v2:13")
+			expectEqual(t, "frames since v1:2", since[:2], []string{`"v1:2"`, `"v1:12"`})
+			expectEqual(t, "last frame", since[len(since)-1], `"v2:13"`)
 			for _, frame := range since {
 				if isFailedFrame(frame) {
 					t.Fatalf("a failed frame: %v", since)
