@@ -158432,6 +158432,7 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#childSessions.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#diagnosticBytes.Add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#graphCallbackRegistry.add",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#readStreams.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#setupRegistry.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#withSessionRegistry.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#alignmentScore.add",
@@ -158459,7 +158460,6 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionSnapshot.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/export#exportCardSeq.Add",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#grepLineWindow.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#headJoin.Add",
         "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.Add",
         "go:github.com/MichaelKinsy/PiG/tui#AuthURL.Add",
@@ -163500,7 +163500,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "9 normalized-name Pig candidates are ambiguous."
+        "10 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -163518,6 +163518,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sparse.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#wireReader.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter.Str",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#grepScanner.str",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#graphemeIter.Str"
       ],
       "missingClosure": [
@@ -172494,7 +172495,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -172504,6 +172505,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/cli#updateSummary.progress",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Progress",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#LlamaView.Progress"
       ],
@@ -381811,7 +381813,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "9 normalized-name Pig candidates are ambiguous."
+        "10 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -381829,6 +381831,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sparse.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#wireReader.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter.Str",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#grepScanner.str",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#graphemeIter.Str"
       ],
       "missingClosure": [
@@ -411873,7 +411876,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "22 normalized-name Pig candidates are ambiguous."
+        "23 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -411899,6 +411902,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#markedDefinitionBlock.Text",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#markedHTMLBlock.Text",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#searchTextArena.text",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#grepEventParser.text",
         "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.Text",
         "go:github.com/MichaelKinsy/PiG/tui#Editor.Text",
         "go:github.com/MichaelKinsy/PiG/tui#ExtensionInputComponent.Text",
