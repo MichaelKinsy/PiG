@@ -27,7 +27,14 @@ func TestMain(m *testing.M) { p2test.Main(m) }
 // startApp runs the native app on a real in-process server and returns it with a tester drawing its view.
 func startApp(t *testing.T) (*App, *ui.Tester) {
 	t.Helper()
-	fake, zero := true, 0
+	return startAppFake(t, true)
+}
+
+// startAppFake starts the app over a real in-process server: under the fake provider (the chat tests) or with the real
+// catalog, whose providers have login methods (the providers sheet; the fake mode lists none).
+func startAppFake(t *testing.T, fakeMode bool) (*App, *ui.Tester) {
+	t.Helper()
+	fake, zero := fakeMode, 0
 	server, err := hosts.StartServer(hosts.ServerOptions{DataDir: t.TempDir(), Port: &zero, Fake: &fake, Facets: []host.HostFacet{surfacehost.ServerFacet(nil)}})
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +146,8 @@ func TestChatRoundTrip(t *testing.T) {
 // TestProvidersSheetFromTheEmptyState: without a credential the empty state offers "Sign in to a provider", which opens the
 // providers sheet (the server's p2.provider-login).
 func TestProvidersSheetFromTheEmptyState(t *testing.T) {
-	_, tt := startApp(t)
+	t.Setenv("PIG_HOME", t.TempDir())
+	_, tt := startAppFake(t, false)
 	until(t, tt, "the empty state", func() bool { return tt.HasText("What should PiG do?") && tt.HasText("Sign in to a provider") })
 	if err := tt.Click("Sign in to a provider"); err != nil {
 		t.Fatal(err)
