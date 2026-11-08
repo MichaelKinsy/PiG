@@ -194,6 +194,8 @@ type TuiContext interface {
 	// (section 6.2 stage 3). Closed on navigation, reload and plugin replacement.
 	Overlay(id string, component tui.Component, options tui.OverlaySpec) TuiOverlayHandle
 	Panel() TuiPanel
+	// Post queues fn on the TUI's owner loop: the continuation of a call made off it (Pi's promise `.then`); fn is dropped once the runtime is disposed.
+	Post(fn func())
 	Exit()
 	Reload()
 	// Grant asks the visitor's launcher for a C action (section 3.2), e.g. `openUrl`; the launcher shows its own consent UI with the exact data.

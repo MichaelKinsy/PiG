@@ -120,6 +120,9 @@ func (c *TuiRuntimeContext) Overlay(id string, component pitui.Component, option
 // Panel is the side panel.
 func (c *TuiRuntimeContext) Panel() TuiPanel { return tuiPanel{c.rt} }
 
+// Post queues fn on the owner loop.
+func (c *TuiRuntimeContext) Post(fn func()) { c.rt.Post(fn) }
+
 // Exit asks the launcher to end the session.
 func (c *TuiRuntimeContext) Exit() { c.rt.OnExit() }
 
