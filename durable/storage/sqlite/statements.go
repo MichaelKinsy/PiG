@@ -51,6 +51,7 @@ func utf16Length(text string) int {
 		if r >= 0x10000 {
 			units++
 		}
+		//portlint:allow utf16units advances by the byte size of the code point just decoded; the count is UTF-16 units
 		rest = rest[size:]
 	}
 	return units
