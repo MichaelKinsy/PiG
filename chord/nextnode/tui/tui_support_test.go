@@ -34,7 +34,8 @@ func tuiNode(t testing.TB) string {
 type terminalInput struct{ Terminal }
 
 func (i terminalInput) Read(p []byte) (int, error) { return i.Input().Read(p) }
-func (i terminalInput) SetRawMode(raw bool) error  { return i.SetRaw(raw) }
+
+func (i terminalInput) SetRawMode(raw bool) error { return i.SetRaw(raw) }
 
 type terminalOutput struct{ Terminal }
 

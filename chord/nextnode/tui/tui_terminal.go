@@ -132,13 +132,15 @@ func terminalOf(input io.Reader, output io.Writer) Terminal {
 type processInput struct{ *ProcessTerminal }
 
 func (processInput) Read(p []byte) (int, error) { return os.Stdin.Read(p) }
+
 func (p processInput) SetRawMode(raw bool) error { return p.SetRaw(raw) }
 
 type processOutput struct{ *ProcessTerminal }
 
 func (processOutput) Write(p []byte) (int, error) { return os.Stdout.Write(p) }
 
-func (s streams) Input() io.Reader  { return s.input }
+func (s streams) Input() io.Reader { return s.input }
+
 func (s streams) Output() io.Writer { return s.output }
 
 func (s streams) Columns() int {

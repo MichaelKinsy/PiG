@@ -415,8 +415,8 @@ func TestOptimisticAddReturnsTheResultOfItsCall(t *testing.T) {
 	scope := scopeOn(newHost(t), func() {})
 	defer scope.Dispose()
 	_, add, _ := OptimisticLast[string, int](scope, func() string { return "real" })
-	var typed OptimisticAdd[string, int] = add
-	got, err := typed("x", func() (int, error) { return 7, nil })
+	run := func(add OptimisticAdd[string, int]) (int, error) { return add("x", func() (int, error) { return 7, nil }) }
+	got, err := run(add)
 	if err != nil || got != 7 {
 		t.Fatalf("add = %v, %v; want 7, nil", got, err)
 	}

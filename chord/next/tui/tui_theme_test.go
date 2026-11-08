@@ -3,8 +3,9 @@ package tui
 import (
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
 )
 
 // Ports packages/chord/src/tui/theme.ts (Pi has no test file for it).
