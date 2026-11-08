@@ -28150,6 +28150,26 @@
       ]
     },
     {
+      "id": "BF-9faf2de",
+      "title": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)…",
+      "symptom": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand.",
+      "rootCause": "Ports Pi. A worker killed by a signal left its lock's socket file, and every later start of its address failed closed on it, retry too. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. ProcessLock also treats ENOTSOCK as stale instead of retrying until its context ended.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. `ProcessLock` on macOS no longer spins until its context ends when a regular file sits at the lock's path (`ENOTSOCK`); it fails closed naming the file, as for a socket file nobody listens on.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9faf2de0f5",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-D110",
       "title": "Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable…",
       "symptom": "for (2) and (3) Pi's `parseGitUrl` returns a repository no Git client can clone (`https:////host/org/repo`, `https://HTTPS://host/org/repo`), so `pi install` of such a source fails at clone time.",

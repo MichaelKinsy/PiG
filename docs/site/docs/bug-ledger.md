@@ -1016,6 +1016,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9df8c5c](#bf-9df8c5c) | `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9eda512](#bf-9eda512) | The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9f4702c](#bf-9f4702c) | A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9faf2de](#bf-9faf2de) | Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)… | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-D110](#bf-d110) | Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D150](#bf-d150) | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D151](#bf-d151) | `grep` with context reads a window of each matched file (Pi #9276) | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -15400,6 +15401,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9f4702c4e1` (2026-10-13)
 - **Tests:** `internal/codingagent/interactive_command_error_test.go::TestInteractiveShortcutDiagnosticOwnership`
 - **Release note:** A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error color, as in Pi. Previously it was shown as a warning.
+
+### BF-9faf2de
+
+**Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand.
+- **Root cause:** Ports Pi. A worker killed by a signal left its lock's socket file, and every later start of its address failed closed on it, retry too. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. ProcessLock also treats ENOTSOCK as stale instead of retrying until its context ended.
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `9faf2de0f5` (2026-11-07)
+- **Tests:** None recorded.
+- **Release note:** Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. `ProcessLock` on macOS no longer spins until its context ends when a regular file sits at the lock's path (`ENOTSOCK`); it fails closed naming the file, as for a socket file nobody listens on.
 
 ### BF-D110
 
