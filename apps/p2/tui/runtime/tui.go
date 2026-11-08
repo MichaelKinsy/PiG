@@ -81,7 +81,7 @@ func TuiFacet(name string, factory TuiFactory, commands p2runtime.Keyed[TuiComma
 				return err
 			}
 		}
-		return p2runtime.Contribute(facet, "p2.tui-slot:"+name, func(self host.StoreSelf) error {
+		return p2runtime.Contribute(facet, "p2.tui-slot/"+contractSafe(name), func(self host.StoreSelf) error {
 			p2runtime.ContributeKeyed(self, TuiSlots, p2runtime.Entry(name, &TuiSlot{Factory: factory}))
 			if len(commands) > 0 {
 				p2runtime.ContributeKeyed(self, TuiCommands, commands...)
@@ -89,6 +89,19 @@ func TuiFacet(name string, factory TuiFactory, commands p2runtime.Keyed[TuiComma
 			return nil
 		})
 	})
+}
+
+// contractSafe maps a slot name (`composer:chip`) onto the characters a contract name allows.
+func contractSafe(name string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '.', r == '_', r == '~', r == '-':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r + ('a' - 'A')
+		}
+		return '-'
+	}, name)
 }
 
 // panelMinColumns: below this many columns the side panel is hidden: the chat would be too narrow next to it.
