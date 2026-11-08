@@ -105636,9 +105636,9 @@
         "call:chord/next/store/engine.go#CreateDocument"
       ],
       "evidence": [
+        "test:chord/next/store/engine_test.go#TestEngineEntries",
         "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
-        "test:chord/next/store/import_test.go#TestImportRoundTrips",
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/import_test.go#TestImportRoundTrips"
       ]
     },
     {
@@ -105667,7 +105667,7 @@
       "id": "pkg:chord/.#DocumentEntry",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cf849dd750d60fb78408fbedab0eb81c1222d49a9fe15c06a35b9c0b7e28e321",
-      "rationale": "Derived by the interface gap detector: DocumentEntry is Go chord/next/store/engine.go#DocumentEntry (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: DocumentEntry is Go chord/next/store/engine.go#DocumentEntry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/engine.go#DocumentEntry"
       ],
@@ -105680,7 +105680,7 @@
         "call:chord/next/store/engine.go#FindDocumentEntry"
       ],
       "evidence": [
-        "reach:chord/next/store/engine.go#FindDocumentEntry"
+        "test:chord/next/store/engine_test.go#TestEngineEntries"
       ]
     },
     {
@@ -105702,7 +105702,7 @@
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
         "test:chord/next/store/write_marshal_golden_test.go#TestWriteMarshalGolden",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
+        "test:chord/next/store/engine_test.go#TestEngineEntries"
       ]
     },
     {
@@ -105766,6 +105766,7 @@
         "call:chord/next/store/engine.go#ListDocumentEntries"
       ],
       "evidence": [
+        "test:chord/next/store/engine_test.go#TestEngineEntries",
         "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
       ]
     },
@@ -107510,7 +107511,7 @@
       "id": "pkg:chord/.#IpcPort::property:on",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b1b4bd1583436d89a468bd80b2ec10f9bb75462714e8b4cc17083d6cdfb5e337",
-      "rationale": "Pi packages/chord/src/link/ipc.ts:12 IpcPort::property:on (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: IpcPort.OnMessage and OnDisconnect take the listener and return remove func() (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestMemoryLinks (chord/next/link/link_test.go).",
+      "rationale": "Pi packages/chord/src/link/ipc.ts:12 IpcPort::property:on (Pi 1.5.0+c23b9ec1): the Node EventEmitter pair on(event, listener) / removeListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: IpcPort.OnMessage and OnDisconnect take the listener and return remove func() (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestIPCLinksOverAFakePort (chord/next/link/ipc_test.go): its fake port registers and removes the message and disconnect listeners through OnMessage and OnDisconnect, and the link takes them off when it closes.",
       "pigTargets": [
         "chord/next/link/ipc.go#IpcPort.OnMessage",
         "chord/next/link/ipc.go#IpcPort.OnDisconnect"
@@ -107520,7 +107521,7 @@
       "id": "pkg:chord/.#IpcPort::property:on::call:disconnect",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3b2dc0543768a84bdd70fef9506bdb8ee37fb2a93d9abe4182415a32dcc389b5",
-      "rationale": "Pi packages/chord/src/link/ipc.ts:12 IpcPort::property:on::call:disconnect (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: IpcPort.OnDisconnect (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestMemoryLinks (chord/next/link/link_test.go).",
+      "rationale": "Pi packages/chord/src/link/ipc.ts:12 IpcPort::property:on::call:disconnect (Pi 1.5.0+c23b9ec1): the Node EventEmitter pair on(event, listener) / removeListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: IpcPort.OnDisconnect (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestIPCLinksOverAFakePort (chord/next/link/ipc_test.go): its fake port registers and removes the message and disconnect listeners through OnMessage and OnDisconnect, and the link takes them off when it closes.",
       "pigTargets": [
         "chord/next/link/ipc.go#IpcPort.OnDisconnect"
       ]
@@ -107529,7 +107530,7 @@
       "id": "pkg:chord/.#IpcPort::property:on::call:message",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:98c0b067553f3df4acead6337b545630523d0f6b9dc7da910e796a8d121c4599",
-      "rationale": "Pi packages/chord/src/link/ipc.ts:12 IpcPort::property:on::call:message (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: IpcPort.OnMessage (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestMemoryLinks (chord/next/link/link_test.go).",
+      "rationale": "Pi packages/chord/src/link/ipc.ts:12 IpcPort::property:on::call:message (Pi 1.5.0+c23b9ec1): the Node EventEmitter pair on(event, listener) / removeListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: IpcPort.OnMessage (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestIPCLinksOverAFakePort (chord/next/link/ipc_test.go): its fake port registers and removes the message and disconnect listeners through OnMessage and OnDisconnect, and the link takes them off when it closes.",
       "pigTargets": [
         "chord/next/link/ipc.go#IpcPort.OnMessage"
       ]
@@ -107538,7 +107539,7 @@
       "id": "pkg:chord/.#IpcPort::property:removeListener",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b2fb32e4e75be16d6517331709621410ccd2f388e41975930a91ae314d949743",
-      "rationale": "Pi packages/chord/src/link/ipc.ts:14 IpcPort::property:removeListener (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: the remove func() that IpcPort.OnMessage and OnDisconnect return (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestMemoryLinks (chord/next/link/link_test.go).",
+      "rationale": "Pi packages/chord/src/link/ipc.ts:14 IpcPort::property:removeListener (Pi 1.5.0+c23b9ec1): the Node EventEmitter pair on(event, listener) / removeListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: the remove func() that IpcPort.OnMessage and OnDisconnect return (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestIPCLinksOverAFakePort (chord/next/link/ipc_test.go): its fake port registers and removes the message and disconnect listeners through OnMessage and OnDisconnect, and the link takes them off when it closes.",
       "pigTargets": [
         "chord/next/link/ipc.go#IpcPort.OnMessage",
         "chord/next/link/ipc.go#IpcPort.OnDisconnect"
@@ -107548,7 +107549,7 @@
       "id": "pkg:chord/.#IpcPort::property:removeListener::call:disconnect",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3b2dc0543768a84bdd70fef9506bdb8ee37fb2a93d9abe4182415a32dcc389b5",
-      "rationale": "Pi packages/chord/src/link/ipc.ts:14 IpcPort::property:removeListener::call:disconnect (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: the remove func() IpcPort.OnDisconnect returns (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestMemoryLinks (chord/next/link/link_test.go).",
+      "rationale": "Pi packages/chord/src/link/ipc.ts:14 IpcPort::property:removeListener::call:disconnect (Pi 1.5.0+c23b9ec1): the Node EventEmitter pair on(event, listener) / removeListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: the remove func() IpcPort.OnDisconnect returns (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestIPCLinksOverAFakePort (chord/next/link/ipc_test.go): its fake port registers and removes the message and disconnect listeners through OnMessage and OnDisconnect, and the link takes them off when it closes.",
       "pigTargets": [
         "chord/next/link/ipc.go#IpcPort.OnDisconnect"
       ]
@@ -107557,7 +107558,7 @@
       "id": "pkg:chord/.#IpcPort::property:removeListener::call:message",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:98c0b067553f3df4acead6337b545630523d0f6b9dc7da910e796a8d121c4599",
-      "rationale": "Pi packages/chord/src/link/ipc.ts:14 IpcPort::property:removeListener::call:message (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: the remove func() IpcPort.OnMessage returns (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestMemoryLinks (chord/next/link/link_test.go).",
+      "rationale": "Pi packages/chord/src/link/ipc.ts:14 IpcPort::property:removeListener::call:message (Pi 1.5.0+c23b9ec1): the Node EventEmitter pair on(event, listener) / removeListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: the remove func() IpcPort.OnMessage returns (link/ipc.go:13-16). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestIPCLinksOverAFakePort (chord/next/link/ipc_test.go): its fake port registers and removes the message and disconnect listeners through OnMessage and OnDisconnect, and the link takes them off when it closes.",
       "pigTargets": [
         "chord/next/link/ipc.go#IpcPort.OnMessage"
       ]
@@ -109181,7 +109182,7 @@
       "id": "pkg:chord/.#listDocumentEntries",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:723a2278d56fe57e3d1b7ce1fb79c72d8faefc25b608ebd2b62c0c890a83a0e4",
-      "rationale": "Derived by the interface gap detector: listDocumentEntries is Go chord/next/store/engine.go#ListDocumentEntries (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: listDocumentEntries is Go chord/next/store/engine.go#ListDocumentEntries (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/engine.go#ListDocumentEntries"
       ],
@@ -109194,7 +109195,7 @@
         "call:chord/next/store/engine.go#ListDocumentEntries"
       ],
       "evidence": [
-        "reach:chord/next/store/engine.go#ListDocumentEntries"
+        "test:chord/next/store/engine_test.go#TestEngineEntries"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109202,7 +109203,7 @@
       "id": "pkg:chord/.#listDocumentEntries::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:a8f72471d6f41bfb8d1364e3410bb49fac0cd673595de08d5c0a8151a7b84549",
-      "rationale": "Derived by the interface gap detector: listDocumentEntries::call:0 is Go chord/next/store/engine.go#ListDocumentEntries (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: listDocumentEntries::call:0 is Go chord/next/store/engine.go#ListDocumentEntries (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/engine.go#ListDocumentEntries"
       ],
@@ -109215,7 +109216,7 @@
         "call:chord/next/store/engine.go#ListDocumentEntries"
       ],
       "evidence": [
-        "reach:chord/next/store/engine.go#ListDocumentEntries"
+        "test:chord/next/store/engine_test.go#TestEngineEntries"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -110183,7 +110184,7 @@
       "id": "pkg:chord/.#MessageArgs",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:2d62b5504592ae013760b25aab10f9eb55cc7d0f4137b807655b005245af0990",
-      "rationale": "Pi packages/chord/src/surfaces/messages.ts:25 MessageArgs (Pi 1.5.0+c23b9ec1): `MessageArgs\u003cV\u003e = V extends (...args: infer A) =\u003e string ? A : []` is a TypeScript conditional type that reads a message's argument list off its function type, `[]` for a text. It has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries the arguments where they are used as the variadic `args ...any` of Messages.T and Translator.T and of Messages.Message, which a MessageFunc takes and checks at run time (surfaces_messages.go). Exercised by surfaces_messages_test.go.",
+      "rationale": "Pi packages/chord/src/surfaces/messages.ts:25 MessageArgs (Pi 1.5.0+c23b9ec1): `MessageArgs\u003cV\u003e = V extends (...args: infer A) =\u003e string ? A : []` is a TypeScript conditional type that reads a message's argument list off its function type, `[]` for a text. It has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries the arguments where they are used as the variadic `args ...any` of Messages.T and Translator.T and of Messages.Message, which a MessageFunc takes and checks at run time (surfaces_messages.go). Intention: a message's arguments fit its function (Pi's `@ts-expect-error a wrong argument`, messages.test.ts \"builds typed data for the keys whose arguments are data\"). The Go way is the run-time check: a MessageFunc whose arguments do not fit returns the error a JavaScript throw would be from Messages.T, and Render of a message as data shows its key and reports it. Exercised by TestAMessageFunctionWhoseArgumentsDoNotFitReturnsTheErrorAThrowWouldBe and TestShowsTheKeyOfAMessageWhoseParamsDoNotFitReported (chord/next/surfaces/surfaces_messages_test.go).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#MessageFunc"
       ]
@@ -110205,16 +110206,16 @@
         "call:chord/next/surfaces/surfaces_messages.go#Messages.Message"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestAMessageAsDataCrossesALinkOnlyWithJSONScalarParams",
         "test:chord/next/surfaces/surfaces_messages_test.go#TestAMessageWithNoArgumentsHasEmptyParamsAndRenders",
-        "test:chord/next/surfaces/surfaces_messages_test.go#TestBuildsDataAndRendersItInTheViewersLanguage",
-        "test:chord/next/surfaces/surfaces_messages_test.go#TestShowsTheKeyOfAForeignOrUnknownMessageFromALinkReported"
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestBuildsDataAndRendersItInTheViewersLanguage"
       ]
     },
     {
       "id": "pkg:chord/.#MessageParam",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:988954ba38c1428277e910fefee7f0dcb93e50c28d6335024fa11e902b05dc32",
-      "rationale": "Pi packages/chord/src/surfaces/messages.ts:28 MessageParam (Pi 1.5.0+c23b9ec1): `MessageParam = string | number | boolean | null` is a TypeScript union alias of the JSON scalars a message carries as data; Go has no unions, so a parameter is `any` holding one of them: MessageData.Params is []any and Messages.Message takes `params ...any` (surfaces_messages.go), the same values that cross a link through MessageSchema's union of str, num, bool and nul. Designed out as a union alias (as chord/delta#PathRef is). Exercised by surfaces_messages_test.go.",
+      "rationale": "Pi packages/chord/src/surfaces/messages.ts:28 MessageParam (Pi 1.5.0+c23b9ec1): `MessageParam = string | number | boolean | null` is a TypeScript union alias of the JSON scalars a message carries as data; Go has no unions, so a parameter is `any` holding one of them: MessageData.Params is []any and Messages.Message takes `params ...any` (surfaces_messages.go), the same values that cross a link through MessageSchema's union of str, num, bool and nul. Designed out as a union alias (as chord/delta#PathRef is). Intention: a message's params are data that crosses a link (Pi's `@ts-expect-error a Date is no data: it would not cross a link`, messages.test.ts \"builds typed data for the keys whose arguments are data\"). The Go way is the schema a message as data crosses a link with: MessageSchema accepts strings, numbers, booleans and null and refuses an object or an array. Exercised by TestAMessageAsDataCrossesALinkOnlyWithJSONScalarParams and TestBuildsDataAndRendersItInTheViewersLanguage (chord/next/surfaces/surfaces_messages_test.go).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#MessageData"
       ]
@@ -110223,7 +110224,7 @@
       "id": "pkg:chord/.#Messages",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:03f35e4cb52e9916b66e78f40bf9e747e7a4776320cfa295c592a3cfd341972f",
-      "rationale": "Pi packages/chord/src/surfaces/messages.ts:67 Messages (Pi 1.5.0+c23b9ec1): `Messages\u003cN, M\u003e = Translator\u003cN, M\u003e \u0026 {namespace, translations, message, in}` is an intersection of a callable translator, whose type parameters N (the namespace literal) and M (the catalog shape) are type-level, and an object; Go has no intersection or callable-object type, so the one struct surfaces.Messages carries them: Namespace, Translations, T (the call), Render, Message and In, which returns the *Translator bound to a language (surfaces_messages.go). Designed out as a language mechanic (type-level generics and a callable object). Exercised by surfaces_messages_test.go.",
+      "rationale": "Pi packages/chord/src/surfaces/messages.ts:67 Messages (Pi 1.5.0+c23b9ec1): `Messages\u003cN, M\u003e = Translator\u003cN, M\u003e \u0026 {namespace, translations, message, in}` is an intersection of a callable translator, whose type parameters N (the namespace literal) and M (the catalog shape) are type-level, and an object; Go has no intersection or callable-object type, so the one struct surfaces.Messages carries them: Namespace, Translations, T (the call), Render, Message and In, which returns the *Translator bound to a language (surfaces_messages.go). Designed out as a language mechanic (type-level generics and a callable object). Intention: a plugin's texts are defined once per namespace, the first catalog defining the keys, rendered by `t` in the viewer's language or plainly in the first catalog, and a catalog's contributions reach the translations. Exercised by TestRendersTheFirstCatalogOutsideALanguage, TestRendersThePluginsOwnCatalogOfTheLanguageValuesAndFunctions and TestDefineMessagesListsItsCatalogsAsContributionsByCanonicalLocale (chord/next/surfaces/surfaces_messages_test.go).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#Messages",
         "chord/next/surfaces/surfaces_messages.go#Translator"
@@ -110233,7 +110234,7 @@
       "id": "pkg:chord/.#Messages::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b1c2d9c0876357818689bcb0f4f99b6f2c0ad74b6b7ed85f16dfa4985531dc29",
-      "rationale": "Pi packages/chord/src/surfaces/messages.ts:67 Messages::call:0 (Pi 1.5.0+c23b9ec1): `t(key, ...args)` renders the message `key` with its arguments: a call of the Messages value itself. Go has no callable struct, so it is the method Messages.T(key string, args ...any) (string, error) (and Translator.T for one language), returning the error a JavaScript message would throw (its arguments do not fit) beside the text (surfaces_messages.go; D450 for the current language). Designed out as a callable object. Exercised by surfaces_messages_test.go.",
+      "rationale": "Pi packages/chord/src/surfaces/messages.ts:67 Messages::call:0 (Pi 1.5.0+c23b9ec1): `t(key, ...args)` renders the message `key` with its arguments: a call of the Messages value itself. Go has no callable struct, so it is the method Messages.T(key string, args ...any) (string, error) (and Translator.T for one language), returning the error a JavaScript message would throw (its arguments do not fit) beside the text (surfaces_messages.go; D450 for the current language). Designed out as a callable object. Intention: `t(key, ...args)` renders the key with its arguments in the first catalog (a key the catalog lacks is the error of calling `undefined`). Exercised by TestRendersTheFirstCatalogOutsideALanguage (chord/next/surfaces/surfaces_messages_test.go), whose `t.T(\"count\", 2)` and unknown-key cases are Pi's \"renders the first catalog outside a language\".",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#Messages.T"
       ]
@@ -110255,6 +110256,7 @@
         "public-api:chord/next/surfaces/surfaces_messages.go#MessageSchema"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestAMessageAsDataCrossesALinkOnlyWithJSONScalarParams",
         "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
       ]
     },
@@ -110335,7 +110337,7 @@
       "id": "pkg:chord/.#method::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:59abf0ea4419f4215ef14cf2d8949daaa2fda12d67b4591d3e428e9df7938ba8",
-      "rationale": "Pi packages/chord/src/contracts/schema.ts:195 method::call:0 (Pi 1.5.0+c23b9ec1): Pi declares method as four overloads; method() is one: Go's NewMethod(sides ...Schema) takes no side, args, or args and result, a zero Schema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:307-319; Go cannot name a function method beside the Method type), and the Method<A, R> type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
+      "rationale": "Pi packages/chord/src/contracts/schema.ts:195 method::call:0 (Pi 1.5.0+c23b9ec1): Pi declares method as four overloads; method() is one: Go's NewMethod(sides ...Schema) takes no side, args, or args and result, a zero Schema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:322-340; Go cannot name a function method beside the Method type), and the Method\u003cA, R\u003e type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
       "pigTargets": [
         "chord/next/contracts/schema.go#NewMethod"
       ]
@@ -110344,7 +110346,7 @@
       "id": "pkg:chord/.#method::call:1",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6dfc7cf9feffd46880858f948d57420eac0db3568e50ca0742c251cce3b170df",
-      "rationale": "Pi packages/chord/src/contracts/schema.ts:195 method::call:1 (Pi 1.5.0+c23b9ec1): Pi declares method as four overloads; method(args) is one: Go's NewMethod(sides ...Schema) takes no side, args, or args and result, a zero Schema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:307-319; Go cannot name a function method beside the Method type), and the Method<A, R> type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
+      "rationale": "Pi packages/chord/src/contracts/schema.ts:195 method::call:1 (Pi 1.5.0+c23b9ec1): Pi declares method as four overloads; method(args) is one: Go's NewMethod(sides ...Schema) takes no side, args, or args and result, a zero Schema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:322-340; Go cannot name a function method beside the Method type), and the Method\u003cA, R\u003e type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
       "pigTargets": [
         "chord/next/contracts/schema.go#NewMethod"
       ]
@@ -110353,7 +110355,7 @@
       "id": "pkg:chord/.#method::call:2",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f9b18f411bb6270d45da33094e9a396373df2c6ab7bb12557890fcd52ed4c297",
-      "rationale": "Pi packages/chord/src/contracts/schema.ts:195 method::call:2 (Pi 1.5.0+c23b9ec1): Pi declares method as four overloads; method(undefined, result) is one: Go's NewMethod(sides ...Schema) takes no side, args, or args and result, a zero Schema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:307-319; Go cannot name a function method beside the Method type), and the Method<A, R> type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
+      "rationale": "Pi packages/chord/src/contracts/schema.ts:195 method::call:2 (Pi 1.5.0+c23b9ec1): Pi declares method as four overloads; method(undefined, result) is one: Go's NewMethod(sides ...Schema) takes no side, args, or args and result, a zero Schema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:322-340; Go cannot name a function method beside the Method type), and the Method\u003cA, R\u003e type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
       "pigTargets": [
         "chord/next/contracts/schema.go#NewMethod"
       ]
@@ -110362,7 +110364,7 @@
       "id": "pkg:chord/.#method::call:3",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f69ef26d58bfee59a2220e642d70150cf622bce65e0810708402d30700e66ced",
-      "rationale": "Pi packages/chord/src/contracts/schema.ts:195 method::call:3 (Pi 1.5.0+c23b9ec1): Pi declares method as four overloads; method(args, result) is one: Go's NewMethod(sides ...Schema) takes no side, args, or args and result, a zero Schema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:307-319; Go cannot name a function method beside the Method type), and the Method<A, R> type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
+      "rationale": "Pi packages/chord/src/contracts/schema.ts:195 method::call:3 (Pi 1.5.0+c23b9ec1): Pi declares method as four overloads; method(args, result) is one: Go's NewMethod(sides ...Schema) takes no side, args, or args and result, a zero Schema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:322-340; Go cannot name a function method beside the Method type), and the Method\u003cA, R\u003e type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
       "pigTargets": [
         "chord/next/contracts/schema.go#NewMethod"
       ]
@@ -110929,7 +110931,7 @@
       "id": "pkg:chord/.#OnHandler::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f73f8f3f6c08bbf9adbd1d9b367345c8a9bcf5d14f96de690bdf5c993a9b831a",
-      "rationale": "Pi packages/chord/src/host/routines.ts:50 OnHandler::call:0 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise<void>`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:7-13, 53-63). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
+      "rationale": "Pi packages/chord/src/host/routines.ts:50 OnHandler::call:0 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise\u003cvoid\u003e`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:22-31, 57-63). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
       "pigTargets": [
         "chord/next/host/host_routines.go#OnHandler"
       ]
@@ -110959,7 +110961,7 @@
       "id": "pkg:chord/.#OnLiveHandler::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:33dc26252e1d020a64f9379ababd69cd88b7378dcc70a6f954a433b0c2324857",
-      "rationale": "Pi packages/chord/src/host/routines.ts:62 OnLiveHandler::call:0 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise<void>`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:7-13, 53-63). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
+      "rationale": "Pi packages/chord/src/host/routines.ts:62 OnLiveHandler::call:0 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise\u003cvoid\u003e`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:22-31, 57-63). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
       "pigTargets": [
         "chord/next/host/host_routines.go#OnLiveHandler"
       ]
@@ -110989,7 +110991,7 @@
       "id": "pkg:chord/.#OnNativeHandler::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:efb551fe19ce9a4d15ccb0411eaea21f65a6c2f98c545d86a9609d35b25b04da",
-      "rationale": "Pi packages/chord/src/host/routines.ts:59 OnNativeHandler::call:0 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise<void>`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:7-13, 53-63). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
+      "rationale": "Pi packages/chord/src/host/routines.ts:59 OnNativeHandler::call:0 (Pi 1.5.0+c23b9ec1): Pi's handler is `void | Promise\u003cvoid\u003e`: it returns nothing or an async function's Promise; Go has no Promise, so a handler returns nil (its synchronous part was all of it) or a *host.Handled, the Promise of one still running or that threw (host/host_routines.go:22-31, 57-63). Designed out as Promise mechanics (AGENTS.md async rule). Exercised by TestExample18Routines (chord/next/host/host_examples_test.go).",
       "pigTargets": [
         "chord/next/host/host_routines.go#OnNativeHandler"
       ]
@@ -111088,7 +111090,7 @@
       "id": "pkg:chord/.#Optional",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:88ead9082af980d52bfa436d11cc12505b8c272259c06055c90d299bf2bc6e8f",
-      "rationale": "Pi packages/schema/src/builders.ts:147 Optional (Pi 1.5.0+c23b9ec1): `class Optional<S extends Schema>` is the wrapper opt(schema) returns so obj() can tell an optional property from a required one (`instanceof Optional`). Go has no wrapper object: contracts.Opt(schema Schema) Schema returns the schema with its Optional flag set (contracts/schema.go:40-44, 268) and Obj reads the flag, so the class is a Go language mechanic folded into the one Schema value. The chord/next/link/message.go#Optional the name rule found is the wire Optional[T] of the link protocol, not this class. Designed out as a Go language mechanic. Go: chord/next/contracts/schema.go#Opt. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "rationale": "Pi packages/schema/src/builders.ts:187 Optional (Pi 1.5.0+c23b9ec1): `class Optional\u003cS extends Schema\u003e` is the wrapper opt(schema) returns so obj() can tell an optional property from a required one (`instanceof Optional`). Go has no wrapper object: contracts.Opt(schema Schema) Schema returns the schema with its Optional flag set (contracts/schema.go:40-44, 271) and Obj reads the flag, so the class is a Go language mechanic folded into the one Schema value. The chord/next/link/message.go#Optional the name rule found is the wire Optional[T] of the link protocol, not this class. Designed out as a Go language mechanic. Go: chord/next/contracts/schema.go#Opt. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
       "pigTargets": [
         "chord/next/contracts/schema.go#Opt"
       ]
@@ -111097,7 +111099,7 @@
       "id": "pkg:chord/.#Optional::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:7efe9b41d9981db4c7593b6810fdb826f46063db46dd549f372ea0fd38b62703",
-      "rationale": "Pi packages/schema/src/builders.ts:147 Optional::construct:0 (Pi 1.5.0+c23b9ec1): `new Optional(schema)` is the class constructor opt(schema) calls to mark an obj() property optional, and `instanceof Optional` is isOptional (contracts/schema.ts:165); Go has no wrapper object, so contracts.Opt(schema Schema) Schema returns the schema with its Optional flag set (contracts/schema.go:40-44, 268) and isOptional reads the flag. Designed out as a Go language mechanic: the marker is a field of the one schema value. Go: chord/next/contracts/schema.go#Opt. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "rationale": "Pi packages/schema/src/builders.ts:187 Optional::construct:0 (Pi 1.5.0+c23b9ec1): `new Optional(schema)` is the class constructor opt(schema) calls to mark an obj() property optional, and `instanceof Optional` is isOptional (contracts/schema.ts:165); Go has no wrapper object, so contracts.Opt(schema Schema) Schema returns the schema with its Optional flag set (contracts/schema.go:40-44, 268) and isOptional reads the flag. Designed out as a Go language mechanic: the marker is a field of the one schema value. Go: chord/next/contracts/schema.go#Opt. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
       "pigTargets": [
         "chord/next/contracts/schema.go#Opt"
       ]
@@ -111111,7 +111113,7 @@
       "id": "pkg:chord/.#Optional::property:schema",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:dace9d371fc1051f9210bc3e95fb1fa98538fb0186822069ff3878714995d112",
-      "rationale": "Pi packages/schema/src/builders.ts:149 Optional::property:schema (Pi 1.5.0+c23b9ec1): `readonly schema: S` is the schema an Optional wraps; Go has no wrapper object (see Optional::construct:0), the optional Schema is the wrapped schema with its Optional flag set, so the wrapped schema is the Schema's own Node (contracts/schema.go:40-44). Designed out as a Go language mechanic. Go: chord/next/contracts/schema.go#Schema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "rationale": "Pi packages/schema/src/builders.ts:189 Optional::property:schema (Pi 1.5.0+c23b9ec1): `readonly schema: S` is the schema an Optional wraps; Go has no wrapper object (see Optional::construct:0), the optional Schema is the wrapped schema with its Optional flag set, so the wrapped schema is the Schema's own Node (contracts/schema.go:40-44). Designed out as a Go language mechanic. Go: chord/next/contracts/schema.go#Schema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
       "pigTargets": [
         "chord/next/contracts/schema.go#Schema"
       ]
@@ -111425,7 +111427,7 @@
       "id": "pkg:chord/.#OwnedDocumentEntry",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d154ca5cea2b4f494e6517db017eb51099cf060cdae60fc973541c2fb0cde915",
-      "rationale": "Derived by the interface gap detector: OwnedDocumentEntry is Go chord/next/store/engine.go#OwnedDocumentEntry (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OwnedDocumentEntry is Go chord/next/store/engine.go#OwnedDocumentEntry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/engine.go#OwnedDocumentEntry"
       ],
@@ -111438,7 +111440,7 @@
         "call:chord/next/store/engine.go#ReadDocumentEntry"
       ],
       "evidence": [
-        "reach:chord/next/store/engine.go#ReadDocumentEntry"
+        "test:chord/next/store/engine_test.go#TestEngineEntries"
       ]
     },
     {
@@ -112236,7 +112238,7 @@
       "id": "pkg:chord/.#Prepared",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:a7eb930a7033cfac74e61c3b72f01e9dea3d27c5578684cc295649348213a310",
-      "rationale": "Pi packages/chord/src/surfaces/loaded.ts:20 Prepared (Pi 1.5.0+c23b9ec1): `Prepared = {kind: \"facet\"; facet; digest} | {kind: \"failed\"; error}` is a TypeScript union discriminated by kind with no Go counterpart: Go has no unions, so surfaces.Prepared is the one struct of the Facet and Digest of the first variant and the Err of the second, a non-nil Err being Pi's `failed` (surfaces_loaded.go). Designed out as a language mechanic (as host.HostError is: the one struct of every variant's members).",
+      "rationale": "Pi packages/chord/src/surfaces/loaded.ts:20 Prepared (Pi 1.5.0+c23b9ec1): `Prepared = {kind: \"facet\"; facet; digest} | {kind: \"failed\"; error}` is a TypeScript union discriminated by kind with no Go counterpart: Go has no unions, so surfaces.Prepared is the one struct of the Facet and Digest of the first variant and the Err of the second, a non-nil Err being Pi's `failed` (surfaces_loaded.go). Intention: a plugin whose script failed (its build, its evaluation) keeps its loaded facet and is reported to the host, an unchanged plugin passes as the same facet. Exercised by the ported client.test.ts cases TestLoadsTheInitialScriptsWithTheCoreFacets, TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet, TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt and TestKeepsAPluginsOldFacetWhenItsNewScriptPanicsOrHasNoFunctionAndReportsIt (chord/next/surfaces/surfaces_client_test.go), which run Prepared{Err}. Designed out as a language mechanic (as host.HostError is: the one struct of every variant's members).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_loaded.go#Prepared"
       ]
@@ -112609,8 +112611,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
-        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
+        "test:chord/next/store/engine_test.go#TestEngineEntries",
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -112632,8 +112634,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
-        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
+        "test:chord/next/store/engine_test.go#TestEngineEntries",
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -112641,7 +112643,7 @@
       "id": "pkg:chord/.#readDocumentEntry",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5522d8555dab8764167f66da21da64547109e5647224a6e313196cca8334948c",
-      "rationale": "Derived by the interface gap detector: readDocumentEntry is Go chord/next/store/engine.go#ReadDocumentEntry (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: readDocumentEntry is Go chord/next/store/engine.go#ReadDocumentEntry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/engine.go#ReadDocumentEntry"
       ],
@@ -112654,7 +112656,7 @@
         "call:chord/next/store/engine.go#ReadDocumentEntry"
       ],
       "evidence": [
-        "reach:chord/next/store/engine.go#ReadDocumentEntry"
+        "test:chord/next/store/engine_test.go#TestEngineEntries"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -112662,7 +112664,7 @@
       "id": "pkg:chord/.#readDocumentEntry::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b1159f9cf95aadf60edbad6acdd5e36726f124d90a716b7ecd703d225bee398d",
-      "rationale": "Derived by the interface gap detector: readDocumentEntry::call:0 is Go chord/next/store/engine.go#ReadDocumentEntry (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: readDocumentEntry::call:0 is Go chord/next/store/engine.go#ReadDocumentEntry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/engine.go#ReadDocumentEntry"
       ],
@@ -112675,7 +112677,7 @@
         "call:chord/next/store/engine.go#ReadDocumentEntry"
       ],
       "evidence": [
-        "reach:chord/next/store/engine.go#ReadDocumentEntry"
+        "test:chord/next/store/engine_test.go#TestEngineEntries"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -113212,8 +113214,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
-        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
+        "test:chord/next/store/engine_test.go#TestEngineEntries",
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -113235,8 +113237,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
-        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
+        "test:chord/next/store/engine_test.go#TestEngineEntries",
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -113310,7 +113312,7 @@
       "id": "pkg:chord/.#RouteHandle",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:8da87cce6841cea14e5ead08d2f1b90239ad090b668704211c6e15ffb3a4a348",
-      "rationale": "Pi packages/chord/src/host/route.ts:40 RouteHandle (Pi 1.5.0+c23b9ec1): RouteHandle is Pi's object { retry(address): void; suspend(...): ... }; Go's host.RouteHandle struct (host/host_route.go:61) has Retry and Suspend that enter the host's loop and run the app's Resolve inline, and Retry also reports whether it started a resolve (the host_route.go:62-67 comment: Pi's caller reads what its synchronous resolve recorded, which one event loop makes consistent; a Go caller cannot), so Go's Retry returns a bool where Pi's returns nothing. Designed out as a Go addition forced by Go's concurrency. Exercised by TestConsumerLimitsPerPart (chord/next/host/remote_consumer_test.go).",
+      "rationale": "Pi packages/chord/src/host/route.ts:40 RouteHandle (Pi 1.5.0+c23b9ec1): RouteHandle is Pi's object { retry(address): void; suspend(...): ... }; Go's host.RouteHandle struct (host/host_route.go:64) has Retry and Suspend that enter the host's loop and run the app's Resolve inline, and Retry also reports whether it started a resolve (the host_route.go:65-71 comment: Pi's caller reads what its synchronous resolve recorded, which one event loop makes consistent; a Go caller cannot), so Go's Retry returns a bool where Pi's returns nothing. Designed out as a Go addition forced by Go's concurrency. Exercised by TestConsumerLimitsPerPart (chord/next/host/remote_consumer_test.go).",
       "pigTargets": [
         "chord/next/host/host_route.go#RouteHandle"
       ]
