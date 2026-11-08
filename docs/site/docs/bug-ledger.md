@@ -886,6 +886,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8001cc5-2](#bf-8001cc5-2) | `SettingsManager.getCompactionSettings` (+ `getCompactionReserveTokens`, `getCompactionKeepRecentTokens`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8019120](#bf-8019120) | `pig config` in the default theme no longer draws the space after a dim checkbox, or the name of a… | PiG's own defect | All platforms | Unreleased |
 | [BF-801cadd](#bf-801cadd) | fix(codingagent): session files decode invalid UTF-8 as Node does | PiG's own defect | All platforms | Unreleased |
+| [BF-8022d7a](#bf-8022d7a) | fix(chord/nextnode): no JSON decode into an interface value in the terminal pipe or the browser driver… | PiG's own defect | All platforms | Unreleased |
 | [BF-8048c85](#bf-8048c85) | Tool-call header argument preview no longer splits a character: `truncateArg` (`tui/tool_execution.go`) cut… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8070fcc](#bf-8070fcc) | OpenAI Codex and Azure OpenAI requests parse their URL as fetch does again: an upper-case scheme, a space or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8085dc0](#bf-8085dc0) | A legacy `oauth.json` or `settings.json` that starts with a byte order mark migrates to `auth.json`, as in Pi | PiG's own defect | All platforms | 0.5.0 |
@@ -13801,6 +13802,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `801cadd5a9` (2026-10-10)
 - **Tests:** `internal/codingagent/session_load_oracle_test.go::TestLoadEntriesFromFileMatchesPiOnCorruptedFiles`
+
+### BF-8022d7a
+
+**fix(chord/nextnode): no JSON decode into an interface value in the terminal pipe or the browser driver…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/nextnode): no JSON decode into an interface value in the terminal pipe or the browser driver (any-trap)
+- **Root cause:** The sandbox's header is decoded into raw fields, each read as the type its message kind needs (safeInteger, stringField, bridgeRequest, jsString); Browser.Evaluate returns the page value's JSON and the tests decode it into their own types. A header field beyond a float64 in an unrelated field no longer fails the whole header, as Pi's JSON.parse does not.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8022d7a16d` (2026-11-08)
+- **Tests:** `chord/nextnode/tui/tui_pipe_test.go::TestReadingTheSandboxsHeaderChecksEachFieldAsPiDoes`
 
 ### BF-8048c85
 
