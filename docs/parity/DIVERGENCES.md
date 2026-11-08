@@ -2797,7 +2797,7 @@ Scope: `chord/nextnode/plugins` `BuildFacet`, the failure of an input that canno
 
 Owner decision: 2026-11-01, owner decided to keep PiG's location and record the difference (D222).
 
-Call-site marker: `chord/nextnode/plugins/plugins_build.go` (the `OnLoad` read failure).
+Call-site marker: `chord/nextnode/plugins/build/build_facet.go` (the `OnLoad` read failure).
 
 Evidence: `TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText` (`chord/nextnode/plugins/plugins_node_unix_test.go`) states PiG's text with the import's location.
 

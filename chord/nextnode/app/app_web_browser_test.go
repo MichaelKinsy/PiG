@@ -270,7 +270,7 @@ func TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStore
 		shown[index].Attributes = telemetry.SpanAttributes{{Name: "host", Value: host}}
 	}
 	var tree []string
-	for _, line := range strings.Split(traceDuration.ReplaceAllString(telemetry.RenderTrace(shown), ""), "\n") {
+	for line := range strings.SplitSeq(traceDuration.ReplaceAllString(telemetry.RenderTrace(shown), ""), "\n") {
 		if !strings.Contains(line, "·") {
 			tree = append(tree, line)
 		}
