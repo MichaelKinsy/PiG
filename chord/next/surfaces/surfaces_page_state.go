@@ -24,7 +24,9 @@ func (p PageState[T]) Read() T { return p.state.read().(T) }
 func (p PageState[T]) Set(value T) { p.state.set(value) }
 
 // Subscribe calls changed after every Set that changed the value, until the returned unsubscribe.
-func (p PageState[T]) Subscribe(changed func()) (unsubscribe func()) { return p.state.subscribe(changed) }
+func (p PageState[T]) Subscribe(changed func()) (unsubscribe func()) {
+	return p.state.subscribe(changed)
+}
 
 // keptState is a value with its subscribers; PageState[T] is its typed view (a key is the app's: whoever names it names
 // its type too).
@@ -142,4 +144,6 @@ const languageKey = "chord.language"
 
 // HostLanguage is h's active language, kept as its page state: nil until a follower sets it (then `t` renders the first
 // catalog). Ports packages/chord/src/surfaces/active-language.ts `hostLanguage`.
-func HostLanguage(h host.Host) PageState[*Language] { return PageStateOf[*Language](h, languageKey, nil) }
+func HostLanguage(h host.Host) PageState[*Language] {
+	return PageStateOf[*Language](h, languageKey, nil)
+}

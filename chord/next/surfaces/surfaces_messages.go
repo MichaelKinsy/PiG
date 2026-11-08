@@ -104,7 +104,9 @@ type Translator struct {
 }
 
 // In is `t` in language (nil: the first catalog).
-func (m *Messages) In(language *Language) *Translator { return &Translator{messages: m, language: language} }
+func (m *Messages) In(language *Language) *Translator {
+	return &Translator{messages: m, language: language}
+}
 
 // T renders the message key with its arguments: down the language's chain, at each locale the host's contributed
 // catalog, then the plugin's own; else the first catalog. A key the first catalog lacks is an error.

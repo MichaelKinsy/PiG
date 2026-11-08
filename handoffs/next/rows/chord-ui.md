@@ -52,3 +52,9 @@ Owner decision: owner sign-off pending.
 ## Async contracts (test/parity/async-contracts.toml rows to add)
 
 - `surfaces/active-language.ts followActiveLanguage`, `tui/scope.ts watch/registry/optimistic`: unawaited `.then` chains are goroutines owned by the scope; ended by Dispose (`stop` joined before return).
+
+## Update (preference, locale choice, themes, active language/theme landed)
+
+- `surfaces/{preference,locale-choice,theme-choice,themes,active-language,active-theme}.ts` -> `surfaces_{preference,locale_choice,theme_choice,themes,active_language,active_theme}.go`, partial. Tests mapped 1:1 (`preference`, `locale-choice`, `active-language`, `themes`, `active-theme` test files: all cases). `go test -race -count=3` green.
+- Go form notes (extend D450/D452): ThemeVariables returns a map (order is the caller's); Theme records are maps; Follow* take a `context.Context` last and end their watches in Stop.
+- Still pending in surfaces: `client.ts`, `connection.ts`, `loaded.ts`, `registered.ts`, `scripts.ts` (client-side; vendored per specs/chord-ui-homes.md), formatTime.
