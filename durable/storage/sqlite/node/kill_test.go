@@ -63,7 +63,8 @@ func TestKilledDurableWriterLeavesWholeCalls(t *testing.T) {
 		if err != nil || check["integrity_check"] != "ok" {
 			t.Fatalf("round %d: integrity_check = %v, %v", round, check, err)
 		}
-		// One row of each table per batch: the call that was running is there whole or not at all.
+		// One row of each table per batch: every acknowledged call is there, and the one running when the process died is
+		// there whole or not at all (how many calls the child ran before the kill lands depends on the host's load).
 		counted, err := database.Get(`SELECT
 			(SELECT count(*) FROM entries) AS entries,
 			(SELECT count(DISTINCT commit_seq) FROM entries) AS seqs,
@@ -72,7 +73,7 @@ func TestKilledDurableWriterLeavesWholeCalls(t *testing.T) {
 			t.Fatal(err)
 		}
 		entries := counted["entries"].(int64)
-		if entries%killBatches != 0 || entries < int64(acknowledged*killBatches) || entries > int64((acknowledged+1)*killBatches) ||
+		if entries%killBatches != 0 || entries < int64(acknowledged*killBatches) ||
 			counted["claimed"] != entries || counted["seqs"] != entries {
 			t.Fatalf("round %d: %v after %d acknowledged calls of %d batches", round, counted, acknowledged, killBatches)
 		}
