@@ -2,7 +2,7 @@
 // the cache of the plugin's generation. A reload to a new generation swaps `Status` in place; its new code needs a new
 // `Cache` object, and its first dependency check waits until that one is open: the reload's report waits for it too.
 
-import { constant, defineFacet, local, str } from "@earendil-works/chord/next";
+import { constant, defineFacet, local, str } from "@earendil-works/chord";
 
 const generation = "v1";
 

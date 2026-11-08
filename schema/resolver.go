@@ -70,7 +70,7 @@ func (r *resolver) baseFor(node jsonObject, base string) string {
 	if !ok {
 		return base
 	}
-	// pig divergence (D302): index before applying an `$id`: a caller's base may already include it, and the index applies it once
+	// index before applying an `$id`: a caller's base may already include it, and the index applies it once
 	// (Pi main 2bd2c2d0a).
 	if !r.indexed {
 		r.ensureIndexed()

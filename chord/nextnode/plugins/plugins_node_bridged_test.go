@@ -109,7 +109,7 @@ func bgPlugin(t *testing.T, version int, tag string) PluginScript {
 		extra = ", extra: str()"
 	}
 	source := `(function (require, module, exports) {
-const { defineFacet, int, local, method, str } = require("@earendil-works/chord/next");
+const { defineFacet, int, local, method, str } = require("@earendil-works/chord");
 const Core = local("test.gocore", { version: ` + string(rune('0'+version)) + `, params: { id: str() }, members: { label: str(), count: int(), add: method(int(), int())` + extra + ` } });
 const Out = local("test.out", { version: 1, params: { id: str() }, members: { label: str(), count: int(), tag: str(), bump: method(int(), int()) } });
 module.exports = { default: defineFacet((host) => host.serve(Out, (_params, self) => {
@@ -314,7 +314,7 @@ func TestBridgedAGoCoreFacetNeedingAPluginsTypeKeepsItsOldCodeWhenThePluginFails
 	run := func(t *testing.T, useOptions bool) (host.ReloadReport, host.Host) {
 		root := t.TempDir()
 		writePlugin(t, root, "idx", "@test/idx", map[string]string{
-			"worker.ts": `import { constant, defineFacet, local, str } from "@earendil-works/chord/next";
+			"worker.ts": `import { constant, defineFacet, local, str } from "@earendil-works/chord";
 import { label } from "./label.ts";
 const Idx = local("test.idx", { version: 1, params: {}, members: { label: str() } });
 export default defineFacet((host) => host.serve(Idx, () => ({ label: constant(label) })));`,
@@ -388,7 +388,7 @@ func TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnsw
 	bgClosed.Store(0)
 	goHost := bgGoHost(t, host.HostFacet{Name: "@app/core", Facet: bgFacet(bgCore)})
 	source := `(function (require, module, exports) {
-const { defineFacet, int, local, method, str } = require("@earendil-works/chord/next");
+const { defineFacet, int, local, method, str } = require("@earendil-works/chord");
 const go = require("@acme/go");
 const Core = local("test.gocore", { version: 1, params: { id: str() }, members: { label: str(), count: int(), add: method(int(), int()) } });
 const Out = local("test.out", { version: 1, params: { id: str() }, members: { label: str(), count: int(), tag: str(), bump: method(int(), int()) } });
