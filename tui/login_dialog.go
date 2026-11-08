@@ -10,32 +10,13 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	"github.com/MichaelKinsy/PiG/internal/weburl"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// webURL is login-dialog.ts webUrl: the normalized href of the http: or https: URL value names, and false for anything else. The shared launcher also opens
-// files and custom protocols, so login only opens web URLs; normalizing percent-encodes control characters, which would otherwise end a terminal hyperlink early.
-func webURL(value string) (string, bool) {
-	parsed, err := nodeurl.ParseHTTPHref(value)
-	if err != nil {
-		return "", false
-	}
-	return parsed.Href, true
-}
-
-// displayURL is login-dialog.ts displayUrl: value normalized as a web URL, else with control characters replaced, since an untrusted string printed as it is
-// could end a hyperlink early or send its own escape sequences to the terminal.
-func displayURL(value string) string {
-	if href, ok := webURL(value); ok {
-		return href
-	}
-	return widthx.ReplaceControlCharacters(value)
-}
-
 // webLink is login-dialog.ts webLink: text as a terminal hyperlink to url when that is a web URL, else plain text.
 func webLink(text, url string) string {
-	target, ok := webURL(url)
+	target, ok := weburl.WebURL(url)
 	if !ok {
 		return text
 	}
@@ -182,7 +163,7 @@ func loginKeyHint(action TUIKeybinding, description string) string {
 // LoginBrowserTarget is the URL login-dialog.ts showAuth opens in the browser: the normalized href of a web URL, empty for any other URL. showAuth opens it
 // itself; Go leaves the launch to the caller, which opens what this returns after ShowAuth.
 func LoginBrowserTarget(url string) string {
-	target, _ := webURL(url)
+	target, _ := weburl.WebURL(url)
 	return target
 }
 
@@ -191,7 +172,7 @@ func (d *LoginDialogComponent) ShowAuth(url, instructions string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.clearDeviceCodeActionLocked()
-	target, isWeb := webURL(url)
+	target, isWeb := weburl.WebURL(url)
 	shown := target
 	if !isWeb {
 		shown = widthx.ReplaceControlCharacters(url)
@@ -307,7 +288,7 @@ func (d *LoginDialogComponent) activateDeviceCodeLocked(info OAuthDeviceCodeInfo
 		d.setDeviceCodeStatusLocked(hint, "Browser open requested")
 	}
 	if info.OpenBrowserOnConfirm != nil && *info.OpenBrowserOnConfirm && d.openBrowser != nil {
-		if target, ok := webURL(info.VerificationURI); ok {
+		if target, ok := weburl.WebURL(info.VerificationURI); ok {
 			d.openBrowser(target)
 		}
 	}
@@ -316,7 +297,7 @@ func (d *LoginDialogComponent) activateDeviceCodeLocked(info OAuthDeviceCodeInfo
 // linkedURLLines renders the hyperlinked URL and the platform's click hint.
 func linkedURLLines(verificationURI string) []string {
 	t := ActiveTheme()
-	shown := displayURL(verificationURI)
+	shown := weburl.DisplayURL(verificationURI)
 	hint := "Ctrl+click to open"
 	if runtime.GOOS == "darwin" {
 		hint = "Cmd+click to open"
@@ -349,7 +330,7 @@ func (d *LoginDialogComponent) ShowInfo(message string, links []AuthInfoLink, sh
 	d.addSpacer()
 	d.addLine(" " + t.Fg("text", d.redactLocked(message)))
 	for _, link := range links {
-		shown := displayURL(link.URL)
+		shown := weburl.DisplayURL(link.URL)
 		text := shown
 		if link.Label != "" {
 			text = link.Label + ": " + shown

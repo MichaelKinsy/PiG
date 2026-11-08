@@ -63,6 +63,7 @@ func TestTotalTokensUpstream(t *testing.T) {
 		{"qwen-token-plan", "qwen3.7-max", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:613
 		{"qwen-token-plan-individual", "qwen3.8-max", "", false, false, ""},
+		{"qwen-token-plan-individual-cn", "qwen3.8-max", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:638
 		{"qwen-token-plan-cn", "qwen3.7-max", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:663
