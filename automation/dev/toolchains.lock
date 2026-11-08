@@ -29,3 +29,8 @@ sbcl	2.6.9	windows	amd64	sbcl.org	http://prdownloads.sourceforge.net/sbcl/sbcl-2
 # libvterm (the terminal library of Neovim and Vim) is built from this release source by automation/ci/test-term-engines.sh for the
 # terminal-engine A/B test (make test-term-engines). The tarball is checked against its digest before it is unpacked.
 libvterm	0.3.3	any	any	leonerd.org.uk	https://www.leonerd.org.uk/code/libvterm/libvterm-0.3.3.tar.gz	09156f43dd2128bd347cbeebe50d9a571d32c64e0cf18d211197946aff7226e0
+#
+# zstd-source pins the zstd that writes every embedded frame (internal/zstdblob, PinnedCLIVersion). Another zstd compresses the same input to different bytes, so
+# automation/ci/install-zstd.sh builds this release source, checked against the digest facebook/zstd publishes in zstd-1.5.5.tar.gz.sha256, and the generators and
+# the frame tests use that build (PIG_ZSTD, else <cache>/pig-zstd/<version>/bin/zstd).
+zstd-source	1.5.5	any	any	facebook/zstd	https://github.com/facebook/zstd/releases/download/v1.5.5/zstd-1.5.5.tar.gz	9c4396cc829cfae319a6e2615202e82aad41372073482fce286fac78646d3ee4

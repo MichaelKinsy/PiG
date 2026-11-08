@@ -5,11 +5,11 @@
 package mermaid
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // The shared statement layer: source text to statements, plus the small
@@ -241,7 +241,7 @@ func parseClassAssign(rest string) (classAssign, bool) {
 	return classAssign{ids: splitCommaList(body[:ws]), names: splitCommaList(body[ws:])}, true
 }
 
-var hrefURL = regexp.MustCompile(`"([^"]+)"`)
+var hrefURL = lazyregexp.New(`"([^"]+)"`)
 
 // parseHref reads `A "url" [tooltip]` / `A href "url" ...` into an id and url.
 // The callback forms (`call`/`callback`) return ok=false: their quoted string is

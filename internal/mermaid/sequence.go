@@ -18,20 +18,22 @@ import (
 
 var sequenceHeaders = []string{"sequencediagram"}
 
-var sequenceDiagram = diagram{
-	kind:    "sequence",
-	headers: sequenceHeaders,
-	render: func(src string) (*canvas, drawnMeta, bool) {
-		seq := parseSequence(src)
-		if seq == nil {
-			return nil, drawnMeta{}, false
-		}
-		c := layoutSequence(seq)
-		if c == nil {
-			return nil, drawnMeta{}, false
-		}
-		return c, drawnMeta{warnings: seq.warnings, classDefs: map[string]map[string]string{}}, true
-	},
+func sequenceDiagram() *diagram {
+	return &diagram{
+		kind:    "sequence",
+		headers: sequenceHeaders,
+		render: func(src string) (*canvas, drawnMeta, bool) {
+			seq := parseSequence(src)
+			if seq == nil {
+				return nil, drawnMeta{}, false
+			}
+			c := layoutSequence(seq)
+			if c == nil {
+				return nil, drawnMeta{}, false
+			}
+			return c, drawnMeta{warnings: seq.warnings, classDefs: map[string]map[string]string{}}, true
+		},
+	}
 }
 
 type seqHead string

@@ -15,25 +15,27 @@ import "strings"
 
 var flowchartHeaders = []string{"graph", "flowchart"}
 
-var flowchartDiagram = diagram{
-	kind:    "flowchart",
-	headers: flowchartHeaders,
-	render: func(src string) (*canvas, drawnMeta, bool) {
-		g := parseGraph(src)
-		if g == nil {
-			return nil, drawnMeta{}, false
-		}
-		var c *canvas
-		if len(g.groups) == 0 {
-			c = layoutFlowchart(g)
-		} else {
-			c = layoutGrouped(g)
-		}
-		if c == nil {
-			return nil, drawnMeta{}, false
-		}
-		return c, drawnMeta{warnings: g.warnings, classDefs: g.classDefs}, true
-	},
+func flowchartDiagram() *diagram {
+	return &diagram{
+		kind:    "flowchart",
+		headers: flowchartHeaders,
+		render: func(src string) (*canvas, drawnMeta, bool) {
+			g := parseGraph(src)
+			if g == nil {
+				return nil, drawnMeta{}, false
+			}
+			var c *canvas
+			if len(g.groups) == 0 {
+				c = layoutFlowchart(g)
+			} else {
+				c = layoutGrouped(g)
+			}
+			if c == nil {
+				return nil, drawnMeta{}, false
+			}
+			return c, drawnMeta{warnings: g.warnings, classDefs: g.classDefs}, true
+		},
+	}
 }
 
 func parseGraph(src string) *graph {

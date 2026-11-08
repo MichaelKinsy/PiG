@@ -4,7 +4,10 @@
 
 package mermaid
 
-import "slices"
+import (
+	"slices"
+	"sync"
+)
 
 // The diagram registry: one entry per supported diagram type, ported from
 // lovely-mermaid registry.ts.
@@ -32,16 +35,29 @@ type diagram struct {
 
 func hasHeader(headers []string, kind string) bool { return slices.Contains(headers, kind) }
 
-var diagrams = []*diagram{
-	&flowchartDiagram,
-	&stateDiagram,
-	&classDiagram,
-	&erDiagram,
-	&sequenceDiagram,
-	&pieDiagram,
-	&mindmapDiagram,
-	&timelineDiagram,
-	&gitgraphDiagram,
+// The table is built on first use, not by the package's init: a package-level slice of
+// closures keeps every parser and layout linked into programs that import the package
+// and never draw a diagram. Plain variables, so nothing here runs at init.
+var (
+	diagramsOnce  sync.Once
+	diagramsTable []*diagram
+)
+
+func diagrams() []*diagram {
+	diagramsOnce.Do(func() {
+		diagramsTable = []*diagram{
+			flowchartDiagram(),
+			stateDiagram(),
+			classDiagram(),
+			erDiagram(),
+			sequenceDiagram(),
+			pieDiagram(),
+			mindmapDiagram(),
+			timelineDiagram(),
+			gitgraphDiagram(),
+		}
+	})
+	return diagramsTable
 }
 
 // diagramFor is the registry entry src's header declares, or nil.
@@ -50,7 +66,7 @@ func diagramFor(src string) *diagram {
 	if header == "" {
 		return nil
 	}
-	for _, d := range diagrams {
+	for _, d := range diagrams() {
 		if hasHeader(d.headers, header) {
 			return d
 		}

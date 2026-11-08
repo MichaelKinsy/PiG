@@ -22,77 +22,79 @@ const pieBarW = 20
 
 var pieEighths = [8]string{"", "▏", "▎", "▍", "▌", "▋", "▊", "▉"}
 
-var pieDiagram = diagram{
-	kind:    "pie",
-	headers: []string{"pie"},
-	render: func(src string) (*canvas, drawnMeta, bool) {
-		parsed := parsePie(src)
-		if parsed == nil {
-			return nil, drawnMeta{}, false
-		}
+func pieDiagram() *diagram {
+	return &diagram{
+		kind:    "pie",
+		headers: []string{"pie"},
+		render: func(src string) (*canvas, drawnMeta, bool) {
+			parsed := parsePie(src)
+			if parsed == nil {
+				return nil, drawnMeta{}, false
+			}
 
-		labelW := 0
-		total := 0.0
-		for i, s := range parsed.slices {
-			if w := stringWidth(s.label); i == 0 || w > labelW {
-				labelW = w
+			labelW := 0
+			total := 0.0
+			for i, s := range parsed.slices {
+				if w := stringWidth(s.label); i == 0 || w > labelW {
+					labelW = w
+				}
+				total += s.value
 			}
-			total += s.value
-		}
-		type pieRow struct {
-			pieSlice
-			share  float64
-			suffix string
-		}
-		rows := make([]pieRow, len(parsed.slices))
-		suffixW := 0
-		for i, s := range parsed.slices {
-			share := 0.0
-			if total != 0 {
-				share = s.value / total
+			type pieRow struct {
+				pieSlice
+				share  float64
+				suffix string
 			}
-			pct := jsnumber.String(jsnumber.Round(share*100)) + "%"
-			for len(pct) < 4 {
-				pct = " " + pct
+			rows := make([]pieRow, len(parsed.slices))
+			suffixW := 0
+			for i, s := range parsed.slices {
+				share := 0.0
+				if total != 0 {
+					share = s.value / total
+				}
+				pct := jsnumber.String(jsnumber.Round(share*100)) + "%"
+				for len(pct) < 4 {
+					pct = " " + pct
+				}
+				data := ""
+				if parsed.showData {
+					data = "  (" + jsnumber.String(s.value) + ")"
+				}
+				rows[i] = pieRow{pieSlice: s, share: share, suffix: pct + data}
+				if w := stringWidth(rows[i].suffix); i == 0 || w > suffixW {
+					suffixW = w
+				}
 			}
-			data := ""
-			if parsed.showData {
-				data = "  (" + jsnumber.String(s.value) + ")"
-			}
-			rows[i] = pieRow{pieSlice: s, share: share, suffix: pct + data}
-			if w := stringWidth(rows[i].suffix); i == 0 || w > suffixW {
-				suffixW = w
-			}
-		}
 
-		barX := labelW + 2
-		suffixX := barX + pieBarW + 1
-		width := suffixX + suffixW
-		top := 0
-		if parsed.title != nil {
-			top = 1
-		}
-		c := newCanvas(width, top+len(rows))
-
-		if parsed.title != nil {
-			drawText(c, *parsed.title, max(0, (width-stringWidth(*parsed.title))/2), 0, RoleTitle)
-		}
-		for i, r := range rows {
-			y := top + i
-			drawText(c, r.label, 0, y, RoleText)
-			eighths := int(jsnumber.Round(r.share * pieBarW * 8))
-			bar := strings.Repeat("█", eighths/8) + pieEighths[eighths%8]
-			// A nonzero slice always shows at least a sliver.
-			if bar == "" && r.value > 0 {
-				bar = "▏"
+			barX := labelW + 2
+			suffixX := barX + pieBarW + 1
+			width := suffixX + suffixW
+			top := 0
+			if parsed.title != nil {
+				top = 1
 			}
-			drawText(c, bar, barX, y, RoleEdge)
-			// The unfilled remainder is a track, so every bar shows its full scale.
-			drawText(c, strings.Repeat("░", pieBarW-stringWidth(bar)), barX+stringWidth(bar), y, RoleBorder)
-			drawText(c, r.suffix, suffixX, y, RoleEdgeLabel)
-		}
-		return c, drawnMeta{warnings: parsed.warnings, classDefs: map[string]map[string]string{}}, true
-	},
+			c := newCanvas(width, top+len(rows))
+
+			if parsed.title != nil {
+				drawText(c, *parsed.title, max(0, (width-stringWidth(*parsed.title))/2), 0, RoleTitle)
+			}
+			for i, r := range rows {
+				y := top + i
+				drawText(c, r.label, 0, y, RoleText)
+				eighths := int(jsnumber.Round(r.share * pieBarW * 8))
+				bar := strings.Repeat("█", eighths/8) + pieEighths[eighths%8]
+				// A nonzero slice always shows at least a sliver.
+				if bar == "" && r.value > 0 {
+					bar = "▏"
+				}
+				drawText(c, bar, barX, y, RoleEdge)
+				// The unfilled remainder is a track, so every bar shows its full scale.
+				drawText(c, strings.Repeat("░", pieBarW-stringWidth(bar)), barX+stringWidth(bar), y, RoleBorder)
+				drawText(c, r.suffix, suffixX, y, RoleEdgeLabel)
+			}
+			return c, drawnMeta{warnings: parsed.warnings, classDefs: map[string]map[string]string{}}, true
+		},
+	}
 }
 
 type pieSlice struct {

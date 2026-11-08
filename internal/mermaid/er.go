@@ -18,20 +18,22 @@ import (
 
 var erHeaders = []string{"erdiagram"}
 
-var erDiagram = diagram{
-	kind:    "er",
-	headers: erHeaders,
-	render: func(src string) (*canvas, drawnMeta, bool) {
-		g := parseEr(src)
-		if g == nil {
-			return nil, drawnMeta{}, false
-		}
-		c := layoutClass(g)
-		if c == nil {
-			return nil, drawnMeta{}, false
-		}
-		return c, drawnMeta{warnings: g.warnings, classDefs: g.classDefs}, true
-	},
+func erDiagram() *diagram {
+	return &diagram{
+		kind:    "er",
+		headers: erHeaders,
+		render: func(src string) (*canvas, drawnMeta, bool) {
+			g := parseEr(src)
+			if g == nil {
+				return nil, drawnMeta{}, false
+			}
+			c := layoutClass(g)
+			if c == nil {
+				return nil, drawnMeta{}, false
+			}
+			return c, drawnMeta{warnings: g.warnings, classDefs: g.classDefs}, true
+		},
+	}
 }
 
 func parseEr(src string) *graph {

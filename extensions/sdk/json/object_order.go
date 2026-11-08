@@ -2,6 +2,7 @@ package json
 
 import (
 	"cmp"
+	"math/bits"
 	"reflect"
 	"slices"
 	"sync"
@@ -215,7 +216,7 @@ func (o *ObjectOrder) sort() {
 		}
 	}
 	o.copies, o.from = nil, nil
-	slices.SortFunc(o.sorted, func(a, b orderEntry) int { return cmp.Compare(a.pointer, b.pointer) })
+	sortOrderEntries(o.sorted)
 	o.blocks, o.free, o.scratch = nil, nil, nil
 }
 
@@ -258,4 +259,88 @@ func (d *decodeState) unmarshalObject(data []byte) (map[string]any, *ObjectOrder
 	d.init(data)
 	err := d.unmarshal(&m)
 	return m, nil, err
+}
+
+// sortOrderEntries sorts s by pointer. The pointers are distinct. slices.SortFunc compiles a 12 KB copy of the pattern-defeating quicksort for this element
+// shape, in every program that links the SDK (pig and every embedder); this is the same O(n log n) sort in about a tenth of that: a quicksort on the median of three that
+// falls back to heapsort when it has split badly 2 log2 n times, and sorts a run of 12 or fewer by insertion, as package slices does.
+func sortOrderEntries(s []orderEntry) {
+	quickOrderEntries(s, 2*bits.Len(uint(len(s))))
+}
+
+func quickOrderEntries(s []orderEntry, depth int) {
+	for len(s) > 12 {
+		if depth == 0 {
+			heapOrderEntries(s)
+			return
+		}
+		depth--
+		hi, mid := len(s)-1, len(s)/2
+		if s[mid].pointer < s[0].pointer {
+			s[mid], s[0] = s[0], s[mid]
+		}
+		if s[hi].pointer < s[mid].pointer {
+			s[hi], s[mid] = s[mid], s[hi]
+			if s[mid].pointer < s[0].pointer {
+				s[mid], s[0] = s[0], s[mid]
+			}
+		}
+		// Hoare partition around the median's pointer: the elements of s[:j+1] are at most the pivot, those of s[i:] at least, and s[j+1:i] is the pivot.
+		pivot := s[mid].pointer
+		i, j := 0, hi
+		for i <= j {
+			for s[i].pointer < pivot {
+				i++
+			}
+			for s[j].pointer > pivot {
+				j--
+			}
+			if i <= j {
+				s[i], s[j] = s[j], s[i]
+				i++
+				j--
+			}
+		}
+		// Recurse into the smaller part and loop on the larger, so the stack stays O(log n).
+		if j+1 < len(s)-i {
+			quickOrderEntries(s[:j+1], depth)
+			s = s[i:]
+		} else {
+			quickOrderEntries(s[i:], depth)
+			s = s[:j+1]
+		}
+	}
+	for i := 1; i < len(s); i++ {
+		for j := i; j > 0 && s[j].pointer < s[j-1].pointer; j-- {
+			s[j], s[j-1] = s[j-1], s[j]
+		}
+	}
+}
+
+func heapOrderEntries(s []orderEntry) {
+	n := len(s)
+	for i := (n - 1) / 2; i >= 0; i-- {
+		siftDownOrderEntries(s, i, n)
+	}
+	for end := n - 1; end > 0; end-- {
+		s[0], s[end] = s[end], s[0]
+		siftDownOrderEntries(s, 0, end)
+	}
+}
+
+func siftDownOrderEntries(s []orderEntry, root, n int) {
+	for {
+		child := 2*root + 1
+		if child >= n {
+			return
+		}
+		if child+1 < n && s[child].pointer < s[child+1].pointer {
+			child++
+		}
+		if s[root].pointer >= s[child].pointer {
+			return
+		}
+		s[root], s[child] = s[child], s[root]
+		root = child
+	}
 }
