@@ -3,6 +3,7 @@ package devtools
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -190,14 +192,15 @@ func devToolsHost(t *testing.T, dataDir, cwd string) *p2test.TestHost {
 
 func extensionsOf(t *testing.T, fixture *p2test.TestHost) *p2runtime.P2Extension {
 	t.Helper()
-	source, err := fixture.Host.Registry(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	var found *p2runtime.P2Extension
 	if err := p2test.Poll(func() (bool, error) {
-		table, err := p2runtime.Extensions.Table(source)
+		// Read inside a section of the host's loop, where contributions change.
+		value, err := registryValue(fixture.Host, p2runtime.Extensions.Registry)
 		if err != nil {
+			return false, nil
+		}
+		table, ok := value.(*p2runtime.KeyedTable[*p2runtime.P2Extension])
+		if !ok {
 			return false, nil
 		}
 		found, _ = table.Get("p2-dev-tools")
@@ -242,13 +245,13 @@ func TestReloadPluginsIsOfferedOnlyInDevModeForASessionOnThisP2Checkout(t *testi
 		}
 		fixture := devToolsHost(t, t.TempDir(), cwd)
 		time.Sleep(20 * time.Millisecond)
-		source, err := fixture.Host.Registry(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
+		value, err := registryValue(fixture.Host, p2runtime.ExtensionSwitches.Registry)
 		if err != nil {
 			t.Fatal(err)
 		}
-		table, err := p2runtime.ExtensionSwitches.Table(source)
-		if err != nil {
-			t.Fatal(err)
+		table, ok := value.(*p2runtime.KeyedTable[*bool])
+		if !ok {
+			t.Fatalf("switches = %T", value)
 		}
 		on, _ := table.Get("p2-dev-tools")
 		return on != nil && *on
@@ -262,4 +265,19 @@ func TestReloadPluginsIsOfferedOnlyInDevModeForASessionOnThisP2Checkout(t *testi
 	if offered(true, t.TempDir()) {
 		t.Error("another directory: offered")
 	}
+}
+
+// registryValue is a registry's current value (the source reads inside a section of the host's loop); an error while it has
+// none, so a poll tries again.
+func registryValue(h host.Host, registry registries.Registry[any, any]) (value any, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("registry %s: %v", registry.Name, recovered)
+		}
+	}()
+	source, err := h.Registry(p2test.Background, registry, host.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return source.Value(), nil
 }
