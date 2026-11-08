@@ -42,6 +42,8 @@ type DatabaseSync struct {
 	conn *sql.Conn
 	// prepared is called with the SQL text of every statement Prepare compiles (ObservePrepare).
 	prepared func(sqlText string)
+	// path is the database as it was opened.
+	path string
 }
 
 // ObservePrepare calls observe with the SQL text of every statement Prepare compiles from now on. It stands in for a
@@ -65,7 +67,7 @@ func NewDatabaseSync(path string, options DatabaseSyncOptions) (*DatabaseSync, e
 		_ = db.Close()
 		return nil, err
 	}
-	database := &DatabaseSync{db: db, conn: conn}
+	database := &DatabaseSync{db: db, conn: conn, path: path}
 	if _, err := conn.ExecContext(
 		context.Background(), fmt.Sprintf("PRAGMA busy_timeout = %d", max(options.TimeoutMs, 0)),
 	); err != nil {
@@ -522,6 +524,8 @@ type NodeSqliteDatabase struct {
 	// readOnly is a connection opened with NodeSqliteDatabaseOptions.ReadOnly: its transactions are deferred (they read
 	// one snapshot; it cannot take the write lock) and its close checkpoints nothing.
 	readOnly bool
+	// commitTokens reads the committed state of a database file (CommitToken); nil for a connection that is not one.
+	commitTokens *commitTokenFile
 }
 
 // NewNodeSqliteDatabase adapts database; the adapter owns it from now on. It is Pi's `new NodeSqliteDatabase(database: DatabaseSync)`.
@@ -536,6 +540,9 @@ func newNodeSqliteDatabase(database connection) *NodeSqliteDatabase {
 		database:     database,
 		statements:   newStatementCache(),
 		runOperation: adapter.run,
+	}
+	if file, ok := database.(*DatabaseSync); ok && file.path != "" {
+		adapter.commitTokens = &commitTokenFile{path: file.path}
 	}
 	return adapter
 }
@@ -607,6 +614,9 @@ func (adapter *NodeSqliteDatabase) Close() error {
 		return nil
 	}
 	adapter.closed = true
+	if adapter.commitTokens != nil {
+		adapter.commitTokens.close()
+	}
 	adapter.statements.mu.Lock()
 	var errs []error
 	for sqlText, element := range adapter.statements.statements {
