@@ -3497,30 +3497,30 @@ rationale = "Pi: the help line for the auth command reads 'Log in or out, print 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-command.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_command_oracle_test.go#TestAuthCommandMatchesPi"]
+rationale = "coding/cli/auth_command.go: the auth command's help, arguments and errors match Pi's (oracle)."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-login.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_login_test.go#TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive", "test:coding/cli/auth_login_test.go#TestAuthLoginReportsCancellation"]
+rationale = "coding/cli/auth_login.go: a login that fails with the message \"Login cancelled\" or whose signal aborted reports \"Login cancelled.\" (auth-login.ts:78), including the ai providers' own errors."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-logout.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_logout_test.go#TestAuthLogoutRemovesAStoredAccountLogin", "test:coding/cli/auth_logout_test.go#TestAuthLogoutReportsCommittedCredentialRemovalSeparatelyFromAFailedLogout"]
+rationale = "coding/cli/auth_logout.go ports auth-logout.ts."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-terminal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_terminal_test.go#TestAuthTerminalCancelsTheLoginWhenStdinClosesBeforeAnAnswer", "test:coding/cli/auth_terminal_test.go#TestAuthTerminalPromptCancellationDoesNotCancelTheWholeLogin"]
+rationale = "coding/cli/auth_terminal.go ports auth-terminal.ts (secret prompt in raw mode, cancellation by context)."
 
 [[files]]
 path = "packages/coding-agent/src/cli/config-selector.ts"
@@ -3574,30 +3574,30 @@ rationale = "Pi: truncateForSummary slices with sliceHead so a tool result cut i
 [[files]]
 path = "packages/coding-agent/src/core/extensions/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:test/extension-conformance/markdown_contexts_test.go#TestMarkdownContextsAcrossSDKs"]
+rationale = "Pi eebd5d90 exports MarkdownMessageType, MarkdownTransformerOptions and MarkdownTransformerRegistration; Go has no barrel exports, the names are coding/extension (MarkdownMessageType, DefaultMarkdownMessageTypes, Extension.MarkdownMessageTypes)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/loader.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:extensions/sdk/markdown_message_types_test.go#TestMarkdownTransformerMessageTypesOnTheRegisterFrame", "test:coding/extension/host/subprocess/markdown_message_types_test.go#TestRegisteredMarkdownMessageTypesReachTheBuiltExtension", "test:coding/extension/host/subprocess/node_runtime_markdown_types_test.go#TestNodeRuntimeRegisterFrameCarriesTheMarkdownMessageTypes"]
+rationale = "Pi eebd5d90 registerMarkdownTransformer(transformer, options): the SDKs and the host carry messageTypes on the register frame (markdown_message_types)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/runner.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder", "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"]
+rationale = "Pi eebd5d90 getMarkdownTransformers filters each transformer to its message types (coding/extension/host/inproc/runner.go restrictMarkdownTransformer)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/types.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:test/extension-conformance/markdown_contexts_test.go#TestMarkdownContextsAcrossSDKs"]
+rationale = "Pi eebd5d90 MarkdownMessageType gains custom, summary and changelog; MarkdownTransformerOptions.messageTypes (extensions/sdk, sdk-rs, sdk-py, sdk-lisp, runtime-node, sdk-ts typecheck)."
 
 [[files]]
 path = "packages/coding-agent/src/core/keybindings.ts"
@@ -3609,9 +3609,9 @@ rationale = "Pi: app.clipboard.pasteImage defaults to alt+v and ctrl+v where Win
 [[files]]
 path = "packages/coding-agent/src/core/mcp-servers.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/mcp_servers_test.go#TestMcpServerRegistryKeepsOwnershipOrderAndCopies", "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi"]
+rationale = "coding/extension/mcp_servers.go ports mcp-servers.ts; validation lives in internal/mcpshared (Pi 76c040a2a)."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-resolver.ts"
@@ -3658,9 +3658,9 @@ rationale = "Pi: findMatchingProviders matches IDs and display names case-insens
 [[files]]
 path = "packages/coding-agent/src/core/radius-mcp.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/radius_login_mcp_offer_upstream_test.go#TestRadiusMcpServerConfig", "test:internal/codingagent/radius_login_mcp_offer_upstream_test.go#TestRadiusLoginOffersTheRadiusMCPServerUpstream"]
+rationale = "internal/codingagent/radius_mcp.go ports radius-mcp.ts; the namespace check uses internal/mcpshared."
 
 [[files]]
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
@@ -3749,16 +3749,16 @@ rationale = "Pi ea0f49a36 (#11745) routes the client's fetches, the models/sse s
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands"]
+rationale = "internal/codingagent/llama/ui.go: a Hugging Face search keeps the row the user browsed to (Pi df0d88aac)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/cli.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/cli_oracle_test.go#TestMcpCommandMatchesPi"]
+rationale = "coding/mcpext ports the mcp command; the oracle compares it with Pi's."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/config.ts"
@@ -3805,44 +3805,44 @@ rationale = "Pi 76c040a2 moves createMcpToolName, limitMcpContent and the input-
 [[files]]
 path = "packages/coding-agent/src/extensions/tool-search/tool.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/toolsearch/tool_test.go#TestToolSearchAcceptsALimitBeyondTheIntRange", "test:coding/extension/builtin/toolsearch/tool_test.go#TestToolSearchRejectsAnEmptyQueryAndANonPositiveOrFractionalLimit"]
+rationale = "coding/extension/builtin/toolsearch ports tool.ts, schema refs through internal/schemaref (Pi 6d3e342b2)."
 
 [[files]]
 path = "packages/coding-agent/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent"]
+rationale = "Pi eebd5d90 exports MarkdownMessageType, MarkdownTransformerOptions and MarkdownTransformerRegistration from the package root; Go has no barrel exports, the names live in coding/extension."
 
 [[files]]
 path = "packages/coding-agent/src/main.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/main_test.go#TestVersionFlagsPrintPisVersionWhileVersionCommandNamesBoth"]
+rationale = "coding/cli/main.go ports main.ts at c23b9ec1."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader"]
+rationale = "tui/branch_summary.go: the expanded body runs the transformers of the summary type on the summary without Pi's header, with the entry's messageId and timestamp (tui.MarkdownSurface)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader"]
+rationale = "tui/compaction_summary.go: as the branch summary."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/custom-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent", "test:internal/codingagent/markdown_surface_async_test.go#TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop"]
+rationale = "tui/custom_message.go: the default body runs the custom transformers; a renderer's component stays and is not called again. pig additive (D19): the chain runs off the render loop."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
@@ -3882,9 +3882,9 @@ rationale = "Pi (#9109): a catalog refresh keeps the browsed model selected, fol
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader"]
+rationale = "tui/skill_invocation.go: the expanded skill block runs the custom transformers on the skill content without the header."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
@@ -3896,9 +3896,9 @@ rationale = "Pi: the search line draws the cursor marker plus a reverse-video ce
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/live_message_meta_test.go#TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity", "test:internal/codingagent/live_message_meta_test.go#TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity", "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity", "test:internal/codingagent/markdown_surface_async_test.go#TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop"]
+rationale = "internal/codingagent ports the interactive-mode.ts changes of c23b9ec1: Markdown transformer surfaces with messageMeta only from restored entries (renderSessionEntries), live custom messages and boundary summaries without it."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
@@ -3945,9 +3945,9 @@ rationale = "Pi 1f7c685b (#10695) resolves a resize only after its worker thread
 [[files]]
 path = "packages/coding-agent/src/utils/terminal-question.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/terminalquestion/terminalquestion_test.go#TestCtrlCFailsTheQuestionAndReportsAnInterrupt", "test:internal/terminalquestion/terminalquestion_test.go#TestCallerCancellationDoesNotReportAnInterruptAndKeepsTheLaterAnswer"]
+rationale = "internal/terminalquestion ports terminal-question.ts."
 
 [[files]]
 path = "packages/coding-agent/src/utils/web-url.ts"

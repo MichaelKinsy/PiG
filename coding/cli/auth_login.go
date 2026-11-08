@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -90,9 +91,11 @@ func RunAuthLogin(ctx context.Context, args []string, options AuthLoginOptions) 
 		ai.LoginOptions{GetDeviceID: options.GetDeviceID})
 	if err != nil {
 		message := err.Error()
+		//portlint:allow erroridentity auth-login.ts:78 compares the message, and ai providers create their own "Login cancelled" errors
+		cancelled := ctx.Err() != nil || message == errLoginCancelled.Error()
 		if _, ok := errors.AsType[*codingagent.CredentialSynchronizationError](err); ok {
 			terminal.Error("Logged in to " + provider.Name + ", but local model state could not be synchronized: " + message)
-		} else if ctx.Err() != nil || message == errLoginCancelled.Error() {
+		} else if cancelled {
 			terminal.Error("Login cancelled.")
 		} else {
 			terminal.Error("Failed to log in to " + provider.Name + ": " + message)
@@ -271,22 +274,24 @@ func createLoginInteraction(providerID string, authType ai.AuthType, request log
 // selectInTerminal lists options by number and asks until the answer is one of them.
 func selectInTerminal(ctx context.Context, message string, options []ai.AuthSelectOption, terminal LoginTerminal) (string, error) {
 	terminal.Write(message)
+	selectPrompt := "Select 1-" + strconv.Itoa(len(options)) + ": "
+	selectRetry := "Enter a number from 1 to " + strconv.Itoa(len(options)) + "."
 	for index, option := range options {
 		description := ""
 		if option.Description != "" {
 			description = " - " + option.Description
 		}
-		terminal.Write(fmt.Sprintf("  %d. %s%s", index+1, option.Label, description))
+		terminal.Write("  " + strconv.Itoa(index+1) + ". " + option.Label + description)
 	}
 	for {
-		answer, err := terminal.Question(ctx, fmt.Sprintf("Select 1-%d: ", len(options)))
+		answer, err := terminal.Question(ctx, selectPrompt)
 		if err != nil {
 			return "", err
 		}
 		if number, ok := parseSelection(widthx.JSTrim(answer)); ok && number >= 1 && number <= len(options) {
 			return options[number-1].ID, nil
 		}
-		terminal.Write(fmt.Sprintf("Enter a number from 1 to %d.", len(options)))
+		terminal.Write(selectRetry)
 	}
 }
 

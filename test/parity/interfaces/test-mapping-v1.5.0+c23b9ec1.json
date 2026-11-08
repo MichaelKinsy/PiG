@@ -4351,8 +4351,13 @@
     },
     {
       "path": "packages/coding-agent/test/collapsible-message-components.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f4712df77f161c069228f509d6c27890837eed199a15583b6f925dec43615104"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f4712df77f161c069228f509d6c27890837eed199a15583b6f925dec43615104",
+      "evidence": [
+        "tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader",
+        "tui/markdown_surface_test.go#TestExpandedMessageComponentsWithoutATransformKeepTheirHeader"
+      ],
+      "rationale": "The Markdown transformer cases of Pi eebd5d90 for summaries and skill blocks; the file's collapse and expand cases are ported in tui/*_test.go that name it."
     },
     {
       "path": "packages/coding-agent/test/compaction-extensions-example.test.ts",
@@ -4506,8 +4511,12 @@
     },
     {
       "path": "packages/coding-agent/test/custom-message.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ee5b19f6446670c0d35cc53634a325a5d00e45bccdd2c21e16616f61fbc46fa8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ee5b19f6446670c0d35cc53634a325a5d00e45bccdd2c21e16616f61fbc46fa8",
+      "evidence": [
+        "tui/markdown_surface_test.go#TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent"
+      ],
+      "rationale": "\"runs Markdown transformers on default-rendered content\" (Pi eebd5d90); the file's other cases are ported in tui/custom_message_*_test.go."
     },
     {
       "path": "packages/coding-agent/test/default-tools-setting.test.ts",
@@ -4763,8 +4772,13 @@
     },
     {
       "path": "packages/coding-agent/test/extensions-runner.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ffcfc9f6550f3cf1eb7e2a02e94ef788713ab2ced3321dfcfca694123a7adcc1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ffcfc9f6550f3cf1eb7e2a02e94ef788713ab2ced3321dfcfca694123a7adcc1",
+      "evidence": [
+        "coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
+        "coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
+      ],
+      "rationale": "The Markdown transformer cases of Pi eebd5d90 (collection order, message-type filtering); the file's other cases are ported in the coding/extension/host/inproc upstream_*_test.go files that name it."
     },
     {
       "path": "packages/coding-agent/test/external-editor.test.ts",
@@ -5022,8 +5036,14 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-changelog.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a4a0990e70cc2cb520c65f8758f19c2214de43e5a1be52aba6f74d655919300e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a4a0990e70cc2cb520c65f8758f19c2214de43e5a1be52aba6f74d655919300e",
+      "evidence": [
+        "internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream",
+        "internal/codingagent/interactive_extension_changelog_test.go#TestStartupExtensionChangelogBlock",
+        "internal/codingagent/interactive_extension_changelog_test.go#TestStartupChangelogRunsTheChangelogMarkdownTransformers"
+      ],
+      "rationale": "The extension changelog block, collapsed or expanded, runs the changelog Markdown transformers (Pi eebd5d90)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-dialogs.test.ts",

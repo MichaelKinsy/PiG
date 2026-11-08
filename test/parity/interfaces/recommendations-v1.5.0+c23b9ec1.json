@@ -253246,7 +253246,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -253255,9 +253255,14 @@
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension#MarkdownTransformerOptions",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/markdowntransform#MarkdownTransformerOptions",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#MarkdownTransformerOptions"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "candidate-disambiguation",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -369117,23 +369122,21 @@
     {
       "id": "pkg:mcp/.#mcpNamespace",
       "upstreamShapeHash": "sha256:61a38aba9bb7c7236d1cab78577bb38a52dc6b0ce35578dba7fb9cdc67babc0c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#mcpNamespace"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -398462,7 +398465,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -398473,7 +398476,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Markdown",
-        "go:github.com/MichaelKinsy/PiG/tui#Markdown"
+        "go:github.com/MichaelKinsy/PiG/tui#Markdown",
+        "go:github.com/MichaelKinsy/PiG/tui#markdownSurface.markdown"
       ],
       "missingClosure": [
         "candidate-disambiguation",
