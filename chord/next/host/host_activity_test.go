@@ -290,6 +290,7 @@ func TestHostActivityCountsHoldsArrivingOverLinksAndServedHereNotItsOwnReference
 }
 
 // Mirrors "counts a hold placed here from its arrival, bound or not: a missing provider keeps the worker alive (M§10)".
+// Reads `host.activity` (packages/chord/src/host/host.ts:354) and `host.references(Type)` as packages/chord/test/host/host.test.ts:1512 does (`const presence = host.references(Info)`).
 func TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot(t *testing.T) {
 	l := linked(t, func(FacetHost) error { return nil }, linkedOptions{})
 	defer closeHosts(t, l.Client, l.Server)
@@ -314,6 +315,7 @@ func TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot(t *testing.T)
 }
 
 // Mirrors "counts method calls running on this host, local and remote, until they settle".
+// Ports packages/chord/test/host/activity.test.ts:18 (describe "host.activity").
 func TestHostActivityCountsMethodCallsRunningOnThisHostUntilTheySettle(t *testing.T) {
 	l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{})
 	defer closeHosts(t, l.Client, l.Server)
@@ -362,6 +364,7 @@ func awaitActivity(t testing.TB, host Host, ok func(ActivityCounts) bool) {
 }
 
 // Mirrors "publishes once per microtask turn with changes; a slow watcher gets the newest counts".
+// Ports packages/chord/test/host/activity.test.ts:18 (describe "host.activity").
 func TestHostActivityPublishesOncePerMicrotaskTurnWithChanges(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(activityCounter, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return bumpImplementation() }, ServeOptions{})
@@ -396,6 +399,7 @@ func TestHostActivityPublishesOncePerMicrotaskTurnWithChanges(t *testing.T) {
 }
 
 // Mirrors "gives a slow watcher the newest counts once it is free: its pending frames fold".
+// Ports packages/chord/test/host/activity.test.ts:18 (describe "host.activity").
 func TestHostActivityGivesASlowWatcherTheNewestCountsOnceItIsFree(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(activityCounter, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return bumpImplementation() }, ServeOptions{})
@@ -430,6 +434,7 @@ func TestHostActivityGivesASlowWatcherTheNewestCountsOnceItIsFree(t *testing.T) 
 }
 
 // Mirrors "schedules nothing while nobody watches or derives from it; a later watch reads the counts then".
+// Ports packages/chord/test/host/activity.test.ts:18 (describe "host.activity").
 func TestHostActivitySchedulesNothingWhileNobodyWatchesOrDerivesFromIt(t *testing.T) {
 	counter := mustContract(declareLocal("app.counter", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,

@@ -192,6 +192,16 @@ func Invalid(reason ChordErrorReason, message string, details ...delta.JsonValue
 	return NewChordError(init, nil)
 }
 
+// Forbidden returns a `forbidden` error without a reason: what a plugin or an `authorize` returns for a principal it
+// refuses (`revoked` is Chord's own, for a revoked authority); details is optional.
+func Forbidden(message string, details ...delta.JsonValue) *ChordError {
+	init := ChordErrorInit{Code: CodeForbidden, Message: message}
+	if len(details) > 0 {
+		init.Details, init.HasDetails = details[0], true
+	}
+	return NewChordError(init, nil)
+}
+
 // AsChordError is err itself when it is a ChordError, otherwise an `unavailable` error naming label, with err as cause.
 func AsChordError(err error, label string) *ChordError {
 	if chordErr, ok := IsChordError(err); ok {

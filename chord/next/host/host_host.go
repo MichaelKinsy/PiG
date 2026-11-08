@@ -174,6 +174,9 @@ type Host interface {
 	// Incarnation is this run of the host, sent in every handshake (R20): a link's peer sees it as its calls'
 	// `ctx.Incarnation()` (Pi's `readonly incarnation`).
 	Incarnation() string
+	// PrincipalAttributes are the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
+	// `chord.principal`, its principal key; none without a principal (Pi's `principalAttributes(principal, context)`).
+	PrincipalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes
 	// Load runs every facet's setup and publishes what they declared in one batch (the types and registries served, the
 	// registries composed once, the contributions); requests that waited for the publication are placed after that batch.
 	// Then activates every served type with empty params and returns when each has had its first outcome (the start
@@ -1614,9 +1617,9 @@ func (h *chordHost) newBindingFor(typ *contracts.Contract, dependent *chordObjec
 // own is this host as the maker of its own references: its principal and incarnation.
 func (h *chordHost) own() caller { return caller{principal: h.principal, incarnation: h.incarnation} }
 
-// principalAttributes are the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
+// PrincipalAttributes implements Host: the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
 // `chord.principal`, its principal key; none without a principal.
-func (h *chordHost) principalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes {
+func (h *chordHost) PrincipalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes {
 	if principal == nil {
 		return nil
 	}

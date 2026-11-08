@@ -142,7 +142,7 @@ func (r *route) path(params any, principal data.Principal, ctx context.Context) 
 		}
 	}
 	if !admitted {
-		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Message: address.Key + ": not authorized"}, nil)
+		return nil, data.Forbidden(address.Key + ": not authorized")
 	}
 	existing := r.addresses[address.Key]
 	if existing == nil {

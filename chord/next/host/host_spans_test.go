@@ -219,6 +219,7 @@ func hasCode(err error, code data.ChordErrorCode) bool {
 	return ok
 }
 
+// Ports ctx.test.ts › ctx.trace (packages/chord/test/host/ctx.test.ts:267, `ctx.trace("app.step", ...)`).
 func TestCtxTraceRunsFnInAChildSpanOfTheHandlersWithAChildCtxTheSamePrincipalSignalAndReferences(t *testing.T) {
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	var outer, inner Ctx

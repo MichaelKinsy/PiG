@@ -121,7 +121,7 @@ func HostDataFacet(dir string, kit store.Store, token string) host.Facet {
 					"exportTo": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						object := args.(*delta.JsonObject)
 						if subtle.ConstantTimeCompare([]byte(object.Value("token").(string)), []byte(token)) != 1 {
-							return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Message: "chord.app.data: the server's only"}, nil)
+							return nil, data.Forbidden("chord.app.data: the server's only")
 						}
 						// The server's own manifest for this address.
 						var manifest ArchiveManifest

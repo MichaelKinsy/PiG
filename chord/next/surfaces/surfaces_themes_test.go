@@ -68,7 +68,7 @@ func TestTerminalColorGivesTrueColourOrTheNearestOf256ForARole(t *testing.T) {
 		{"fg", "256", "fg", "38;5;254"},
 		{"bg", "256", "bg", "48;5;233"},
 	} {
-		if got := TerminalColor(solarized, c.role, c.depth, c.layer); got != c.want {
+		if got := TerminalColor(solarized, c.role, ColorDepth(c.depth), c.layer); got != c.want {
 			t.Errorf("TerminalColor(%s, %s, %s) = %s, want %s", c.role, c.depth, c.layer, got, c.want)
 		}
 	}
@@ -91,5 +91,19 @@ func TestTerminalColorTakesTheThemesTuiOverrideFirstTheFallbackForAMissingRoleTh
 	delete(missing.Colors, "accent")
 	if got := TerminalColor(missing, "accent", "truecolor", "fg"); got != "38;2;76;154;255" {
 		t.Errorf("missing = %s", got)
+	}
+}
+
+// Pi packages/chord/src/surfaces/themes.ts:12 BASE_ROLES: the roles every theme names; the fallback themes fill all of them.
+func TestFallbackThemesFillEveryBaseRole(t *testing.T) {
+	if len(BaseRoles) != 7 || BaseRoles[0] != BaseRoleAccent || BaseRoles[6] != BaseRoleSuccess {
+		t.Fatalf("BaseRoles = %v", BaseRoles)
+	}
+	for mode, theme := range FallbackThemes {
+		for _, role := range BaseRoles {
+			if theme.Colors[string(role)] == "" {
+				t.Errorf("the %s fallback theme has no colour for %s", mode, role)
+			}
+		}
 	}
 }

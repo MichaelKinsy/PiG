@@ -1039,7 +1039,7 @@ func (a *attempt) methodSpan(parent telemetry.TelemetryContext, method string, a
 		telemetry.Attr("object", chordtelemetry.Capped(object.text)),
 		telemetry.Attr("principal.kind", chordtelemetry.Capped(kind)),
 	}
-	attributes = append(attributes, object.host.principalAttributes(acting.principal, ctx)...)
+	attributes = append(attributes, object.host.PrincipalAttributes(acting.principal, ctx)...)
 	return chordtelemetry.NewOpenSpan(parent, "chord.method", attributes)
 }
 
