@@ -154,11 +154,44 @@ func (s started) edit(t testing.TB, dir string, files map[string]string, alsoDir
 	t.Helper()
 	_, err := os.Stat(filepath.Join(s.root, dir))
 	known := err == nil
-	writePlugin(t, s.root, dir, "@test/"+dir, files)
+	writePluginAtomically(t, s.root, dir, "@test/"+dir, files)
 	name := "@test/" + dir
 	untilMarks(t, s.app, strings.Join(append([]string{name}, alsoDirty...), ", ")+" marked", func(m plugins.PluginsState) bool {
 		return (slices.Contains(m.Dirty, name) || (!known && m.Set)) && !slices.ContainsFunc(alsoDirty, func(also string) bool { return !slices.Contains(m.Dirty, also) })
 	})
+}
+
+// writePluginAtomically is writePlugin with each file put in place by a rename from outside the watched root, as an editor saves one: a
+// build running while the next edit lands (two rollouts back to back) never reads a half-written file.
+func writePluginAtomically(t testing.TB, root, dir, name string, files map[string]string) {
+	t.Helper()
+	all := map[string]string{"package.json": fmt.Sprintf(`{"name":%q,"private":true,"type":"module"}`, name)}
+	for file, text := range files {
+		all[file] = text
+	}
+	staging := filepath.Join(filepath.Dir(root), "staging")
+	if err := os.MkdirAll(staging, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for file, text := range all {
+		path := filepath.Join(root, dir, file)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		temp, err := os.CreateTemp(staging, "edit-*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := temp.WriteString(text); err != nil {
+			t.Fatal(err)
+		}
+		if err := temp.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(temp.Name(), path); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // editAndApply edits plugin dir (see edit) and applies the changes (the rollout: server, workers, clients).
