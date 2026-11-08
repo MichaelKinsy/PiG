@@ -57,7 +57,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-081e8c3](#bf-081e8c3) | Bug report files against live Pi: new `TestBugReportFilesMatchPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-082355f](#bf-082355f) | The session picker checks its keys in Pi's order when bindings overlap (delete before rename, list actions… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-082f350](#bf-082f350) | `markdown.codeBlockIndent`: Pi's getter is `markdown?.codeBlockIndent ?? " "`, so an authored `""` means no… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-083db0c](#bf-083db0c) | A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a… | PiG's own defect | All platforms | Unreleased |
+| [BF-083db0c](#bf-083db0c) | A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search | PiG's own defect | All platforms | Unreleased |
 | [BF-084fa64](#bf-084fa64) | fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment | PiG's own defect | All platforms | Unreleased |
 | [BF-086395a](#bf-086395a) | `coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-08ab103](#bf-08ab103) | fix(childwait): the zero-byte read's OVERLAPPED is heap allocated and pinned; the child's pipe end can be… | PiG's own defect | All platforms | Unreleased |
@@ -494,7 +494,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-54283ce](#bf-54283ce) | fix(extension): Shutdown closes live child sessions and releases the objects they hold | PiG's own defect | All platforms | Unreleased |
 | [BF-542b536](#bf-542b536) | fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version | PiG's own defect | All platforms | Unreleased |
 | [BF-5443b6c](#bf-5443b6c) | `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-54660cf](#bf-54660cf) | fix(tui): installing a Markdown transform on a custom message does not call its renderer again | PiG's own defect | All platforms | Unreleased |
+| [BF-54660cf](#bf-54660cf) | A custom message renderer is called once, not twice, when a message is drawn | PiG's own defect | All platforms | Unreleased |
 | [BF-54a5bf6](#bf-54a5bf6) | The host answers a parsed frontmatter with `<`, `>`, `&` and U+2028 as they are (as `JSON.stringify` writes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-54c4ee3](#bf-54c4ee3) | fix(chord): the platform locale is the first set variable of LC_ALL, LC_MESSAGES, LANG (C and POSIX are… | PiG's own defect | All platforms | Unreleased |
 | [BF-54dc372](#bf-54dc372) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
@@ -2340,17 +2340,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-083db0c
 
-**A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a…**
+**A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search**
 
 - **Source:** PiG's own defect
-- **Symptom:** A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a custom message renderer is called once, not twice, when a message is drawn.
+- **Symptom:** A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search.
 - **Root cause:** The mcp helpers coding/extension uses (naming, server config validation) move to internal/mcpshared, which package mcp re-exports; the local $ref resolver tool search uses moves to internal/schemaref, which codemode wraps. A pig_strip_mcp build no longer links mcp and a pig_strip_codemode build no longer links codemode or wazero (,).
-- **User impact:** Wrong display
+- **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `083db0c482` (2026-11-07)
 - **Tests:** None recorded.
-- **Release note:** A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a custom message renderer is called once, not twice, when a message is drawn.
+- **Release note:** A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search.
 
 ### BF-084fa64
 
@@ -8373,16 +8373,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-54660cf
 
-**fix(tui): installing a Markdown transform on a custom message does not call its renderer again**
+**A custom message renderer is called once, not twice, when a message is drawn**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix(tui): installing a Markdown transform on a custom message does not call its renderer again
+- **Symptom:** A custom message renderer is called once, not twice, when a message is drawn.
 - **Root cause:** SetMarkdownTransform rebuilt the whole component, so a custom renderer ran twice at construction; Pi's constructor renders once. Only the default body reads the transform.
 - **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `54660cf133` (2026-11-07)
 - **Tests:** None recorded.
+- **Release note:** A custom message renderer is called once, not twice, when a message is drawn.
 
 ### BF-54a5bf6
 
