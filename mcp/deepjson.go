@@ -8,8 +8,8 @@ import (
 )
 
 // Pi parses every message with JSON.parse, which has no nesting limit that matters here: a server's schema or result nested 12,000 levels deep
-// arrives intact. encoding/json refuses a document nested deeper than 10,000 levels. unmarshalJSON is json.Unmarshal that, when that is why the
-// document failed, reads it with every container below deepElideLevel replaced by a placeholder object, then puts the original text back into the
+// arrives intact. encoding/json refuses a document nested deeper than 10,000 levels. deepFallback gives json.Unmarshal a fallback that, when that is
+// why the document failed, reads it with every container below deepElideLevel replaced by a placeholder object, then puts the original text back into the
 // json.RawMessage fields it filled (and into the values that keep their own bytes, deepRestorer). Fields that decode into `any` or a typed value
 // see the placeholder where a container nested deeper than deepElideLevel would be; the types of this package keep such text only as raw bytes.
 
@@ -23,16 +23,17 @@ type deepRestorer interface {
 
 var rawMessageType = reflect.TypeFor[json.RawMessage]()
 
-func unmarshalJSON(data []byte, v any) error {
-	err := json.Unmarshal(data, v)
+// deepFallback takes the result of json.Unmarshal(data, v) and, when that failed, reads the text again past encoding/json's nesting limit. Callers
+// write `deepFallback(json.Unmarshal(data, v), data, v)`, so the decode runs in the caller's frame; the wrapper is small enough to inline, and the
+// fallback is out of line.
+func deepFallback(err error, data []byte, v any) error {
 	if err == nil {
 		return nil
 	}
 	return unmarshalDeep(data, v, err)
 }
 
-// unmarshalDeep is the fallback of unmarshalJSON, kept out of line so that the success path is a wrapper small enough to inline: the decode runs no
-// frame deeper than a direct json.Unmarshal call, which a message-rate hot path feels in stack copying.
+// unmarshalDeep is the fallback of deepFallback, kept out of line.
 //
 //go:noinline
 func unmarshalDeep(data []byte, v any, err error) error {
