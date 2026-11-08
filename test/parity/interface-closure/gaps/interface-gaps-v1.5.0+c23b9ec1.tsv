@@ -664,11 +664,3 @@ pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-ga
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
 pkg:durable/storage/sqlite/node#NodeSqliteDatabase	durable	child-gap	durable/storage/sqlite/node/node.go#NodeSqliteDatabase
 pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0	durable	signature-mismatch	durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase
-pkg:schema/.#BigintBounds	schema	no-go-symbol	
-pkg:schema/.#BigintBounds::property:exclusiveMaximum	schema	child-gap	
-pkg:schema/.#BigintBounds::property:exclusiveMinimum	schema	child-gap	
-pkg:schema/.#BigintBounds::property:maximum	schema	child-gap	
-pkg:schema/.#BigintBounds::property:minimum	schema	child-gap	
-pkg:schema/.#BigintBounds::property:multipleOf	schema	child-gap	
-pkg:schema/.#bigint	schema	child-gap	schema/builders.go#BigInt
-pkg:schema/.#bigint::call:0	schema	undecidable	schema/builders.go#BigInt

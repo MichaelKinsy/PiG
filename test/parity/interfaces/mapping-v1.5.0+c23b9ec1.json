@@ -275895,8 +275895,25 @@
     },
     {
       "id": "pkg:schema/.#bigint",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1268523f1f4566582dfda9241d07917517b7124fd843e2b7c28fbae7189fc95a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1268523f1f4566582dfda9241d07917517b7124fd843e2b7c28fbae7189fc95a",
+      "rationale": "Derived by the interface gap detector: bigint is Go schema/builders.go#BigInt (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#BigInt"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#BigInt"
+      ],
+      "evidence": [
+        "test:schema/pi_main_bigint_upstream_test.go#TestExplainsBigIntsAgainstBoundsOfEitherKind",
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainBuildsABigIntWithBounds",
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainChecksMultipleOfOfBigIntsExactly"
+      ]
     },
     {
       "id": "pkg:schema/.#bigint::call:0",
