@@ -32781,6 +32781,28 @@
       ]
     },
     {
+      "id": "BF-a397ee9",
+      "title": "Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer…",
+      "symptom": "Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer ends the prompt with `interrupted system call` on macOS: the prompt enters and leaves raw mode through the same retrying calls as the main screen, as Node's `setRawMode` retries the call.",
+      "rootCause": "A stop and continue (Ctrl+Z, fg) during the API key prompt resumes inside the termios ioctl, which macOS reports as EINTR; readSecret called x/term directly, so the prompt ended with 'interrupted system call' where Node's setRawMode retries. coding/cli/auth_terminal.go reached the repository after the per-call-site EINTR audit (TestTerminalSyscallsThatCanSleepRetryEINTR), which flagged both calls.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer ends the prompt with `interrupted system call` on macOS: the prompt enters and leaves raw mode through the same retrying calls as the main screen, as Node's `setRawMode` retries the call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a397ee91ed",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/terminal_syscall_eintr_audit_test.go::TestTerminalSyscallsThatCanSleepRetryEINTR"
+      ]
+    },
+    {
       "id": "BF-a3bfab2",
       "title": "A Radius gateway config cached on an OAuth credential is sanitized as Pi does",
       "symptom": "A Radius gateway config cached on an OAuth credential is sanitized as Pi does.",
