@@ -85,3 +85,50 @@ func TestExpandedMessageComponentsWithoutATransformKeepTheirHeader(t *testing.T)
 		t.Fatalf("rendered %q", rendered)
 	}
 }
+
+// Pi's constructors take markdownTransformers, messageId and timestamp, not a surface: each builds createMarkdownTransform(messageType, false,
+// markdownTransformers, messageId, timestamp) with "summary" for a branch or compaction summary and "custom" for a skill block or a custom message.
+func TestPiShapedMessageComponentConstructorsRunTheTransformersAsTheirMessageType(t *testing.T) {
+	type expandable interface {
+		Component
+		SetExpanded(bool)
+	}
+	for _, tc := range []struct {
+		kind, messageType, content string
+		create                     func(transformers []markdowntransform.MarkdownTransformer, id, timestamp string) expandable
+	}{
+		{"compaction summary", "summary", "details", func(tr []markdowntransform.MarkdownTransformer, id, ts string) expandable {
+			return NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "details", TokensBefore: 1234}, nil, 1, tr, id, ts)
+		}},
+		{"branch summary", "summary", "details", func(tr []markdowntransform.MarkdownTransformer, id, ts string) expandable {
+			return NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "details"}, nil, 1, tr, id, ts)
+		}},
+		{"skill", "custom", "details", func(tr []markdowntransform.MarkdownTransformer, id, ts string) expandable {
+			return NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "example-skill", Content: "details"}, nil, 1, tr, id, ts)
+		}},
+		{"custom message", "custom", "details", func(tr []markdowntransform.MarkdownTransformer, id, ts string) expandable {
+			return NewCustomMessageComponent(&CustomMessage{CustomType: "test", Content: "details"}, nil, nil, 1, tr, id, ts)
+		}},
+	} {
+		t.Run(tc.kind, func(t *testing.T) {
+			var seen []markdowntransform.MarkdownTransformContext
+			transformers := []markdowntransform.MarkdownTransformer{func(markdown string, ctx markdowntransform.MarkdownTransformContext) string {
+				seen = append(seen, ctx)
+				return strings.Replace(markdown, tc.content, "transformed", 1)
+			}}
+			component := tc.create(transformers, "entry-7", "2025-01-15T10:30:00.000Z")
+			component.SetExpanded(true)
+			rendered := stripANSI(strings.Join(component.Render(80), "\n"))
+			if !strings.Contains(rendered, "transformed") || strings.Contains(rendered, tc.content) {
+				t.Fatalf("rendered %q: want the transformed content", rendered)
+			}
+			if len(seen) == 0 {
+				t.Fatal("the transformers never ran")
+			}
+			ctx := seen[0]
+			if string(ctx.MessageType) != tc.messageType || ctx.IsStreaming || ctx.MessageID != "entry-7" || ctx.Timestamp != "2025-01-15T10:30:00.000Z" {
+				t.Fatalf("transformer context %+v, want %q, not streaming, entry-7, 2025-01-15T10:30:00.000Z", ctx, tc.messageType)
+			}
+		})
+	}
+}
