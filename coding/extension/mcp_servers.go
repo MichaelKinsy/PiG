@@ -3,6 +3,7 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
+	"iter"
 	"regexp"
 	"slices"
 	"strings"
@@ -190,6 +191,18 @@ func (s *OrderedStrings) Get(key string) (string, bool) {
 	var v string
 	_ = json.Unmarshal(raw, &v)
 	return v, true
+}
+
+// All yields the entries in key order, as `Object.entries` of the JavaScript object lists them.
+func (s *OrderedStrings) All() iter.Seq2[string, string] {
+	return func(yield func(string, string) bool) {
+		for _, key := range s.Keys() {
+			value, _ := s.Get(key)
+			if !yield(key, value) {
+				return
+			}
+		}
+	}
 }
 
 // MarshalJSON writes the keys in order.

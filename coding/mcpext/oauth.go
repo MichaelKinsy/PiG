@@ -469,10 +469,10 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) error {
 	if err != nil || start.Kind == oauth.McpSignInKindAuthorized {
 		return err
 	}
-	wait := oauth.WaitForLoopbackSignInOptions{Callback: loopback.Callback, Authorization: start.McpSignInRedirect}
+	wait := oauth.WaitForLoopbackSignInOptions{Callback: loopback.Callback, Authorization: start.Redirect()}
 	if options.Prompt != nil {
 		wait.OnRegistered = func() {
-			u, err := oauth.ParseURL(start.McpSignInRedirect.AuthorizationURL)
+			u, err := oauth.ParseURL(start.AuthorizationURL)
 			if err == nil {
 				options.Prompt.ShowAuthorizationURL(u)
 			}
@@ -483,5 +483,5 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) error {
 	if err != nil {
 		return err
 	}
-	return oauth.CompleteMcpSignIn(ctx, oauth.McpCompleteSignInOptions{McpSignInOptions: signIn, Authorization: start.McpSignInRedirect, Response: response})
+	return oauth.CompleteMcpSignIn(ctx, oauth.McpCompleteSignInOptions{McpSignInOptions: signIn, Authorization: start.Redirect(), Response: response})
 }

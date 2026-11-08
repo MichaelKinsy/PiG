@@ -46,10 +46,10 @@ func startRedirect(t *testing.T, options oauth.McpSignInOptions) oauth.McpSignIn
 	if err != nil {
 		t.Fatal(err)
 	}
-	if started.Kind != oauth.McpSignInKindRedirect || started.McpSignInRedirect.Kind != oauth.McpSignInKindRedirect {
+	if started.Kind != oauth.McpSignInKindRedirect || started.Redirect().Kind != oauth.McpSignInKindRedirect {
 		t.Fatalf("Expected the browser step, got kind %q", started.Kind)
 	}
-	return started.McpSignInRedirect
+	return started.Redirect()
 }
 
 // The browser step is plain data an application persists: Pi's JSON names, with `kind`.
