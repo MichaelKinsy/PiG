@@ -115836,7 +115836,7 @@
       "evidence": [
         "test:chord/next/host/host_example_29_test.go#TestExample29Registries",
         "test:chord/next/host/host_registry_value_test.go#TestRegistryValueReadsRaceFreeWhileAContributionChanges",
-        "test:chord/next/host/remote_hold_reload_test.go#TestAHoldAfterItsObjectsLiveFailureFollowsAMemberReExposingAnotherObjectsSourceUntilTheAdmittedCommitsPublished"
+        "test:chord/next/host/host_writable_section_test.go#TestWritableSetInASectionNests"
       ]
     },
     {
@@ -115858,7 +115858,7 @@
       "evidence": [
         "test:chord/next/host/host_example_29_test.go#TestExample29Registries",
         "test:chord/next/host/host_registry_value_test.go#TestRegistryValueReadsRaceFreeWhileAContributionChanges",
-        "test:chord/next/host/remote_hold_reload_test.go#TestAHoldAfterItsObjectsLiveFailureFollowsAMemberReExposingAnotherObjectsSourceUntilTheAdmittedCommitsPublished"
+        "test:chord/next/host/host_writable_section_test.go#TestWritableSetInASectionNests"
       ]
     },
     {
