@@ -62,12 +62,18 @@ pub struct ModelImageResizeOptions {
     pub jpeg_quality: Option<u32>,
 }
 
+/// The stream `ReadOperations::create_read_stream` opens: the bytes of a file, read in chunks.
+pub type ReadStream = Box<dyn io::Read + Send>;
+
 /// Pi's `ReadOperations`: pluggable file reading. `detect_image_mime_type` returns a MIME type or `None` and is optional (without it every file is read as text).
+/// `create_read_stream` is Pi's `createReadStream` and is optional: the read tool then reads a text file through the stream, keeping only the lines it shows in
+/// memory, where `read_file` loads the whole file. The host reads the stream in chunks of at most 64 KB and drops it when the read ends or is aborted.
 #[derive(Clone)]
 pub struct ReadOperations {
     pub read_file: PathOperation<Vec<u8>>,
     pub access: PathOperation<()>,
     pub detect_image_mime_type: Option<PathOperation<Option<String>>>,
+    pub create_read_stream: Option<PathOperation<ReadStream>>,
 }
 
 /// Pi's `ReadToolOptions`. `auto_resize_images` `None` is Pi's default, true.
@@ -293,9 +299,72 @@ fn read_spec(cwd: &str, options: Option<ReadToolOptions>) -> Spec {
                 path_callback(detect, |mime| mime.map_or(Value::Null, Value::String)),
             );
         }
+        if let Some(create) = ops.create_read_stream.clone() {
+            names.push("createReadStream");
+            read_stream_callbacks(&mut spec, create);
+        }
         spec.operations(&names);
     }
     spec
+}
+
+/// The most a `operations.readStream` call returns: the 64 KB chunks `fs.createReadStream` yields.
+const READ_STREAM_CHUNK: usize = 64 * 1024;
+
+/// The callbacks of `create_read_stream`: the host opens a stream, reads it a chunk per call (an empty answer is the end) and closes it.
+fn read_stream_callbacks(spec: &mut Spec, create: PathOperation<ReadStream>) {
+    type Streams = Mutex<HashMap<String, ReadStream>>;
+    let streams: Arc<Streams> = Arc::new(Mutex::new(HashMap::new()));
+    let last = Arc::new(std::sync::atomic::AtomicU64::new(0));
+    let take = |streams: &Streams, args: &Value| -> Result<(String, ReadStream), String> {
+        let id = text_of(args, "stream").to_string();
+        let stream = streams
+            .lock()
+            .map_err(|_| "read streams are poisoned".to_string())?
+            .remove(&id);
+        stream
+            .map(|stream| (id.clone(), stream))
+            .ok_or_else(|| format!("read stream {id} is not open"))
+    };
+    let opened = Arc::clone(&streams);
+    spec.callback("operations.createReadStream", move |args| {
+        let stream = create(text_of(args, "path"))?;
+        let id = (last.fetch_add(1, Ordering::SeqCst) + 1).to_string();
+        opened
+            .lock()
+            .map_err(|_| "read streams are poisoned".to_string())?
+            .insert(id.clone(), stream);
+        Ok(Value::String(id))
+    });
+    let reading = Arc::clone(&streams);
+    spec.callback("operations.readStream", move |args| {
+        // The stream leaves the table while it reads, so a slow read holds no lock; the host reads one chunk at a time.
+        let (id, mut stream) = take(&reading, args)?;
+        let mut chunk = vec![0u8; READ_STREAM_CHUNK];
+        let read = loop {
+            match io::Read::read(&mut stream, &mut chunk) {
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+                other => break other,
+            }
+        };
+        reading
+            .lock()
+            .map_err(|_| "read streams are poisoned".to_string())?
+            .insert(id, stream);
+        let count = read.map_err(|error| error.to_string())?;
+        Ok(Value::String(base64(&chunk[..count])))
+    });
+    let closing = Arc::clone(&streams);
+    spec.callback("operations.closeStream", move |args| {
+        let id = text_of(args, "stream");
+        let removed = closing
+            .lock()
+            .map_err(|_| "read streams are poisoned".to_string())?
+            .remove(id);
+        removed
+            .map(|_| Value::Null)
+            .ok_or_else(|| format!("read stream {id} is not open"))
+    });
 }
 
 fn write_spec(cwd: &str, options: Option<WriteToolOptions>) -> Spec {
@@ -1144,6 +1213,62 @@ mod tests {
     // The behavior of the tools is the shared conformance row TestConformance_BuiltinToolDelegationAcrossSDKs; these cases pin what the SDK does before and after
     // the host call: which options cross the wire, which functions stay, and the tool-result shape of a host result.
 
+    // A stream the extension opens is read a chunk per call, ends with an empty chunk, and is dropped by closeStream.
+    #[test]
+    fn a_read_stream_is_read_in_chunks_until_an_empty_one_and_closed() {
+        let spec = read_spec(
+            "/c",
+            Some(ReadToolOptions {
+                operations: Some(ReadOperations {
+                    read_file: Arc::new(|_| Err("readFile must not be used".into())),
+                    access: Arc::new(|_| Ok(())),
+                    detect_image_mime_type: None,
+                    create_read_stream: Some(Arc::new(|path| {
+                        let bytes = vec![b'x'; READ_STREAM_CHUNK + 3];
+                        if path == "/missing" {
+                            return Err("ENOENT".into());
+                        }
+                        Ok(Box::new(io::Cursor::new(bytes)) as ReadStream)
+                    })),
+                }),
+                ..Default::default()
+            }),
+        );
+        assert_eq!(
+            Value::Object(spec.options.clone()),
+            json!({"operations": ["readFile", "access", "createReadStream"]})
+        );
+        let call = |member: &str, args: Value| spec.callbacks[member](&args);
+        assert_eq!(
+            call("operations.createReadStream", json!({"path": "/missing"})).unwrap_err(),
+            "ENOENT"
+        );
+        let id = call("operations.createReadStream", json!({"path": "/f"})).unwrap();
+        let stream = json!({"stream": id});
+        let chunk = |value: Value| base64_decode(value.as_str().unwrap()).unwrap().len();
+        assert_eq!(
+            chunk(call("operations.readStream", stream.clone()).unwrap()),
+            READ_STREAM_CHUNK
+        );
+        assert_eq!(
+            chunk(call("operations.readStream", stream.clone()).unwrap()),
+            3
+        );
+        assert_eq!(
+            call("operations.readStream", stream.clone()).unwrap(),
+            json!("")
+        );
+        assert_eq!(
+            call("operations.closeStream", stream.clone()).unwrap(),
+            Value::Null
+        );
+        assert!(
+            call("operations.readStream", stream)
+                .unwrap_err()
+                .contains("is not open")
+        );
+    }
+
     #[test]
     fn serializable_options_cross_and_functions_stay() {
         let spec = read_spec(
@@ -1158,6 +1283,7 @@ mod tests {
                     read_file: Arc::new(|path| Ok(format!("bytes of {path}").into_bytes())),
                     access: Arc::new(|path| Err(format!("denied: {path}"))),
                     detect_image_mime_type: None,
+                    create_read_stream: None,
                 }),
             }),
         );

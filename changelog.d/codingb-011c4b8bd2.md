@@ -1,3 +1,3 @@
 ### Changed
 
-- The Go, Python, Rust and Lisp SDKs no longer have a `readFile` member on the grep tool's operations; the host never called it since grep takes its context lines from ripgrep.
+- **Breaking (Go API):** `GrepOperations.ReadFile` is removed from the `sdk` package, and so are Python `GrepOperations.read_file`, Rust `GrepOperations::read_file` and the Lisp `:read-file` of `make-grep-operations`. Pi main takes grep's context lines from ripgrep and never calls the member, so the host never did either. Before: `sdk.GrepOperations{IsDirectory: isDir, ReadFile: read}`. After: `sdk.GrepOperations{IsDirectory: isDir}`. `pig upgrade` deletes the `ReadFile` entry of a literal and names any other use. A Node extension that still passes `readFile` is accepted and the member is ignored, as in Pi.
