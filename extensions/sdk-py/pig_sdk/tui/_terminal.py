@@ -75,7 +75,8 @@ def _detect_from_environment(env: Mapping[str, str], platform: str, tmux_forward
         return TerminalCapabilities("iterm2", True, True)
     if get("WT_SESSION"):
         return TerminalCapabilities(None, True, True)
-    if term_program in ("alacritty", "vscode", "zed"):
+    # Alacritty does not set TERM_PROGRAM: it sets TERM=alacritty when its terminfo entry is installed and ALACRITTY_WINDOW_ID on Unix and macOS (Pi 2af8a42f5).
+    if term_program in ("alacritty", "vscode", "zed") or term.startswith("alacritty") or get("ALACRITTY_WINDOW_ID"):
         return TerminalCapabilities(None, True, True)
     if terminal_emulator == "jetbrains-jediterm":
         return TerminalCapabilities(None, True, False)

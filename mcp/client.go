@@ -203,7 +203,7 @@ func objectFields(raw json.RawMessage) (map[string]json.RawMessage, bool) {
 		return nil, false
 	}
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(raw, &fields) != nil {
+	if deepFallback(json.Unmarshal(raw, &fields), raw, &fields) != nil {
 		return nil, false
 	}
 	return fields, true
@@ -228,7 +228,7 @@ func validateInitializeResult(raw json.RawMessage) (*InitializeResult, error) {
 		return nil, fail
 	}
 	var result InitializeResult
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := deepFallback(json.Unmarshal(raw, &result), raw, &result); err != nil {
 		return nil, fail
 	}
 	return &result, nil
@@ -249,7 +249,7 @@ func validateListPage(method, key string, value json.RawMessage, isItem func(map
 		return nil, invalidError("Invalid MCP " + method + " result")
 	}
 	var raws []json.RawMessage
-	if err := json.Unmarshal(fields[key], &raws); err != nil {
+	if err := deepFallback(json.Unmarshal(fields[key], &raws), fields[key], &raws); err != nil {
 		return nil, invalidError("Invalid MCP " + method + " result")
 	}
 	page := &listPage{raws: raws}
@@ -288,7 +288,7 @@ func isResourceTemplate(template map[string]json.RawMessage) bool {
 
 func decodeItem[T any](raw json.RawMessage, method string) (T, error) {
 	var out T
-	if err := json.Unmarshal(raw, &out); err != nil {
+	if err := deepFallback(json.Unmarshal(raw, &out), raw, &out); err != nil {
 		return out, invalidError("Invalid entry in MCP " + method + " result")
 	}
 	return out, nil
@@ -300,7 +300,7 @@ func validateReadResourceResult(raw json.RawMessage) (*ReadResourceResult, error
 		return nil, invalidError("Invalid MCP resources/read result")
 	}
 	var contents []json.RawMessage
-	if err := json.Unmarshal(fields["contents"], &contents); err != nil {
+	if err := deepFallback(json.Unmarshal(fields["contents"], &contents), fields["contents"], &contents); err != nil {
 		return nil, invalidError("Invalid MCP resources/read result")
 	}
 	for _, item := range contents {
@@ -310,7 +310,7 @@ func validateReadResourceResult(raw json.RawMessage) (*ReadResourceResult, error
 		}
 	}
 	var result ReadResourceResult
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := deepFallback(json.Unmarshal(raw, &result), raw, &result); err != nil {
 		return nil, invalidError("Invalid contents in MCP resources/read result")
 	}
 	for i := range result.Contents {
@@ -332,7 +332,7 @@ func validateCallToolResult(raw json.RawMessage) (*CallToolResult, error) {
 		return nil, fail
 	}
 	var result CallToolResult
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := deepFallback(json.Unmarshal(raw, &result), raw, &result); err != nil {
 		return nil, fail
 	}
 	result.Raw = raw
@@ -1063,7 +1063,7 @@ func (c *Client) handleProgress(params json.RawMessage) {
 		return
 	}
 	var notification ProgressNotification
-	if json.Unmarshal(params, &notification) != nil {
+	if deepFallback(json.Unmarshal(params, &notification), params, &notification) != nil {
 		notification = ProgressNotification{ProgressToken: token, Progress: progress}
 	}
 	if err := callListener(func() { onProgress(notification) }); err != nil {

@@ -315,6 +315,13 @@ impl ModelRuntime {
             .map(|_| ())
     }
 
+    /// Waits until the credential writes already in progress finish (Pi's `settleCredentialWrites`), e.g. an OAuth refresh a background catalog refresh started; it waits only for writes started before the call and takes no cancellation.
+    pub fn settle_credential_writes(&self) -> io::Result<()> {
+        self.object
+            .call_async("settleCredentialWrites", vec![])
+            .map(|_| ())
+    }
+
     /// `{"aborted", "errors"}`; `options` are Pi's `allowNetwork`, `providers` and `force`.
     pub fn refresh(&self, options: Option<Value>) -> io::Result<Value> {
         self.object
