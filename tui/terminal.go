@@ -813,12 +813,17 @@ func writeString(out io.Writer, data string) (int, error) {
 	buf := terminalWriteBuffers.Get().(*[]byte)
 	*buf = append((*buf)[:0], data...)
 	n, err := out.Write(*buf)
-	terminalWriteBuffers.Put(buf)
+	if cap(*buf) <= maxPooledTerminalWrite {
+		terminalWriteBuffers.Put(buf)
+	}
 	return n, err
 }
 
 // terminalWriteBuffers holds the byte copies of strings written to a writer that takes no strings.
 var terminalWriteBuffers = sync.Pool{New: func() any { return new([]byte) }}
+
+// pig additive (D112): maxPooledTerminalWrite bounds the copies terminalWriteBuffers keeps (golang/go#23199): one large write must not pin its buffer.
+const maxPooledTerminalWrite = 64 << 10
 
 // Columns returns the terminal width, falling back to COLUMNS or 80 when unavailable.
 func (t *ProcessTerminal) Columns() int {
