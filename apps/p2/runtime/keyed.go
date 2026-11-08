@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -84,20 +83,6 @@ func (keyed KeyedRegistry[V]) Contribute(self interface {
 	Contribute(registries.Registry[any, any], any) error
 }, entries ...registries.RecordEntry[V]) error {
 	return self.Contribute(keyed.Registry, Keyed[V](entries))
-}
-
-// Load is the registry's current table for code outside objects, read inside a section of the host's loop: the source
-// composes when it is read, and a read off the loop races a contribution added as a facet's object goes live.
-func (keyed KeyedRegistry[V]) Load(ctx context.Context, h host.Host) (*KeyedTable[V], error) {
-	value, err := h.RegistryValue(ctx, keyed.Registry, host.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	table, ok := value.(*KeyedTable[V])
-	if !ok {
-		return nil, fmt.Errorf("registry %s: value is %T", keyed.Registry.Name, value)
-	}
-	return table, nil
 }
 
 // Table is a registry value source's current table (the value `host.registry` and `self.registry` give).
