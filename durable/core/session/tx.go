@@ -220,24 +220,20 @@ func (tx *Tx) assertOpen() error {
 }
 
 // mint takes the next ID. Pi's Storage mints it `after` ticks into the Transaction method that began at tick `from` of the callback, so
-// the Storage's own counter has it from then on (Session.storageNextID). A host transaction's methods run as the host calls them: the
-// ticks are from now, and the host's callback starts HostCallbackLag ticks after the line is granted where Pi's starts at the grant.
+// the Storage's own counter has it from then on (Session.storageNextID). A host transaction's methods run as the host calls them, not as
+// the callback of Pi's job does: Pi's callback starts as the job does (a task's runtime.commit, `#gated`, after its decision region) and
+// the host's first call reaches the core hopcost.HostFirstOp ticks after the grant, which on an idle line is a tick before Pi's job starts
+// (Loop.HostStart). The method's own offset from its start is `after`, in either.
 func (tx *Tx) mint(from, after int) ID {
 	id := tx.s.nextID
 	tx.s.nextID++
 	if tx.scope.Host {
-		tx.s.mintsAt(after-HostCallbackLag, false)
+		tx.s.mintsAt(hopcost.HostCallbackStart(tx.scope.TaskID != 0)+tx.s.hostStart()+after, hopcost.HostFirstOp)
 	} else {
-		tx.s.mintsAt(from+after, true)
+		tx.s.mintsAt(from+after, 0)
 	}
 	return id
 }
-
-// HostCallbackLag is the ticks a host transaction's mint is noted late: the host's first operation runs a tick after the Session line is granted
-// (core/tx.go grant answers ready), and the mint asks the host's Storage for the ID first (txStorageRead), another tick. Pi's callback starts at the
-// grant and mints in place, so the offset of a mint, counted from the noting, is that many ticks shorter (E24: the ID a manual compaction mints
-// while the call before it reads its counter is in that call's next_id).
-const HostCallbackLag = 2
 
 // read gates a table read: it fails once the transaction has written a table.
 func (tx *Tx) read(method string) error {

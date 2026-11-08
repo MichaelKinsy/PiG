@@ -178,6 +178,8 @@ type job struct {
 	bare bool // the job takes no time of its own: no Elapsed, no outcome (a host transaction's turn on the line)
 	read bool // a Session.readOnLine job: no change callback, settle or commit
 	idle bool // queued while the line was idle: it starts a tick later
+	// hostIdle is set for a host transaction queued while the line was idle: the core grants it in the tick of the call, where Pi's job starts a tick later (HostStart).
+	hostIdle bool
 	// maintain is a job of the Session's own upkeep: no outcome to deliver, so no fence, no count against MaxOutstanding.
 	maintain bool
 	// exempt is a scheduler-internal job whose outcome goes only to scheduler code (session.ts commitInternal): when it admitted no
@@ -532,6 +534,7 @@ func (l *Loop) LineHost(grant func() error, done func(error)) *HostJob {
 func (l *Loop) LineHostLead(grant func() error, done func(error), lead int) *HostJob {
 	j := l.newJob(grant, done)
 	j.host, j.lead = true, uint8(min(max(lead, 0), hopcost.Delivery))
+	j.hostIdle = !l.Busy()
 	j.hj.j = j
 	l.enqueue(j)
 	return &j.hj
@@ -592,6 +595,15 @@ func (l *Loop) Consumed() int {
 		return 0
 	}
 	return l.cur.consumed
+}
+
+// HostStart is the ticks Pi's job starts after the grant the core gave the running host transaction: one when the transaction was queued while the line was idle
+// (`#tail.then(job)` starts it a tick after the call, where the core grants it in the call's tick), none when it waited for its turn.
+func (l *Loop) HostStart() int {
+	if l.cur != nil && l.cur.hostIdle && l.Hops != nil {
+		return 1
+	}
+	return 0
 }
 
 // Until is the ticks from now to the tick d of the running job's duration. The body of a job runs at once, in the tick the job starts, which for a
