@@ -45,6 +45,10 @@ type ReadOperations struct {
 	Access func(absolutePath string) error
 	// DetectImageMimeType returns the image MIME type, or "" for a non-image. A nil function treats every file as text.
 	DetectImageMimeType func(absolutePath string) (string, error)
+	// CreateReadStream streams the file contents (upstream createReadStream). When set, text files are read through it and only the
+	// lines that will be shown stay in memory; otherwise ReadFile loads the whole file. The read stops consuming the stream and
+	// closes it when ctx is done; an implementation should stop reading then too.
+	CreateReadStream func(ctx context.Context, absolutePath string) (io.ReadCloser, error)
 }
 
 func (t *ReadTool) Name() string  { return "read" }
@@ -223,28 +227,34 @@ func (t *ReadTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
-	var data []byte
-	var mime string
+	var src readSource
+	var failure string
 	if ops := t.Operations; ops != nil {
-		var failure string
-		if data, mime, failure = readThroughOperations(ops, path); failure != "" {
-			return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: failure}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
-		}
+		src, failure = readThroughOperations(ctx, ops, path, p)
 	} else {
-		var failure string
-		if data, mime, failure = readLocalFile(path); failure != "" {
-			return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: failure}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
-		}
+		src, failure = readLocalFile(path, isStreamableRange(p))
 	}
-	if ctx.Err() != nil {
+	if failure != "" {
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: failure}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
+	}
+	if src.stream != nil {
+		defer func() { _ = src.stream.Close() }()
+	}
+	if src.stream == nil && ctx.Err() != nil {
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
+	data, mime := src.data, src.mime
 	if mime != "" {
 		result := t.readImage(ctx, data, mime)
 		result.StructuredContent = readStructuredContent(result.Content)
 		return result, nil
 	}
-	result, err := readTextResult(p, data)
+	var result agent.AgentToolResult
+	if src.stream != nil {
+		result, err = readStreamedTextResult(ctx, p, src.stream)
+	} else {
+		result, err = readTextResult(p, data)
+	}
 	if err != nil {
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: err.Error()}}, Details: map[string]any{}, IsError: true, Thrown: true}, nil
 	}
@@ -252,51 +262,86 @@ func (t *ReadTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	return result, nil
 }
 
+// readSource is the file a read selected lines from: its bytes, or, when the range can be streamed, the stream that yields them.
+type readSource struct {
+	data   []byte
+	stream io.ReadCloser
+	mime   string
+}
+
 // readThroughOperations is upstream's access, image detection and read through pluggable operations, returning the failure text of
-// the first step that fails.
-func readThroughOperations(ops *ReadOperations, path string) ([]byte, string, string) {
+// the first step that fails. A text file is read through CreateReadStream when the operations have it and the range can be streamed,
+// otherwise through ReadFile (read.ts: ops.createReadStream && isStreamableRange).
+func readThroughOperations(ctx context.Context, ops *ReadOperations, path string, p readParams) (readSource, string) {
 	if err := ops.Access(path); err != nil {
-		return nil, "", NodeFSError(err, "access", path)
+		return readSource{}, NodeFSError(err, "access", path)
 	}
 	mime := ""
 	if ops.DetectImageMimeType != nil {
 		var err error
 		// upstream: read.ts:129 a detection failure is a failed read, as the surrounding try/catch reports it.
 		if mime, err = ops.DetectImageMimeType(path); err != nil {
-			return nil, "", nodeerrno.FromPathError(err).Error()
+			return readSource{}, nodeerrno.FromPathError(err).Error()
 		}
+	}
+	if mime == "" && ops.CreateReadStream != nil && isStreamableRange(p) {
+		stream, err := ops.CreateReadStream(ctx, path)
+		if err != nil {
+			return readSource{}, NodeFSError(err, "read", "")
+		}
+		return readSource{stream: stream}, ""
 	}
 	data, err := ops.ReadFile(path)
 	if err != nil {
-		return nil, "", NodeFSError(err, "read", "")
+		return readSource{}, NodeFSError(err, "read", "")
 	}
-	return data, mime, ""
+	return readSource{data: data, mime: mime}, ""
 }
 
 // readLocalFile is upstream's access(path, R_OK), image detection from the first ImageTypeSniffBytes bytes and readFile on one open
 // file: opening is the access check, the first read is the detection's read and the rest completes readFile, each failure reported
-// as that step reports it.
-func readLocalFile(path string) ([]byte, string, string) {
+// as that step reports it. With stream set, a text file longer than the sniffed bytes is returned as a stream instead of being loaded
+// (read.ts readLocalFileChunks): a regular file up to its size when opened, so text appended during the read is not counted, and a
+// file reporting size 0 or another file type until EOF.
+func readLocalFile(path string, stream bool) (readSource, string) {
 	f, err := nodefs.OpenFile(path, os.O_RDONLY, 0)
 	if err != nil {
-		return nil, "", NodeFSError(err, "access", path)
+		return readSource{}, NodeFSError(err, "access", path)
 	}
-	defer func() { _ = f.Close() }()
+	closeFile := true
+	defer func() {
+		if closeFile {
+			_ = f.Close()
+		}
+	}()
 	size := 0
 	//perf:ok fstat of the open fd once per read call, the one os.ReadFile makes to size its buffer; it replaces three opens and a stat
 	if info, err := f.Stat(); err == nil && info.Mode().IsRegular() {
 		size = int(info.Size())
 	}
-	// One byte past the size, so a file read whole sees EOF without growing the buffer (as os.ReadFile).
-	data := make([]byte, 0, max(size, imageprocessing.ImageTypeSniffBytes)+1)
+	// One byte past the size, so a file read whole sees EOF without growing the buffer (as os.ReadFile). A streamed read keeps only
+	// the sniffed bytes in memory.
+	capacity := max(size, imageprocessing.ImageTypeSniffBytes) + 1
+	if stream {
+		capacity = imageprocessing.ImageTypeSniffBytes
+	}
+	data := make([]byte, 0, capacity)
 	n, err := io.ReadFull(f, data[:imageprocessing.ImageTypeSniffBytes])
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 		// A failed read inside the detection is Node's fs error ("EISDIR: illegal operation on a directory, read").
-		return nil, "", nodeerrno.FromPathError(err).Error()
+		return readSource{}, nodeerrno.FromPathError(err).Error()
 	}
 	data = data[:n]
 	mime := imageprocessing.DetectSupportedImageMimeType(data)
 	if n == imageprocessing.ImageTypeSniffBytes {
+		if stream && mime == "" {
+			closeFile = false
+			stream := &sniffedFile{head: data, file: f}
+			if size > n {
+				stream.limited, stream.limit = true, size-n
+			}
+			return readSource{stream: stream}, ""
+		}
 		for {
 			if len(data) == cap(data) {
 				data = append(data, 0)[:len(data)]
@@ -307,12 +352,45 @@ func readLocalFile(path string) ([]byte, string, string) {
 				break
 			}
 			if err != nil {
-				return nil, "", NodeFSError(err, "read", "")
+				return readSource{}, NodeFSError(err, "read", "")
 			}
 		}
 	}
-	return data, mime, ""
+	return readSource{data: data, mime: mime}, ""
 }
+
+// sniffedFile is a stream of a file whose first bytes were already read: Read yields head, then the file, up to limit more bytes when
+// limited, and Close closes the file.
+type sniffedFile struct {
+	head    []byte
+	file    *os.File
+	limited bool
+	limit   int
+}
+
+func (s *sniffedFile) Read(p []byte) (int, error) {
+	// The first read fills p from the file after head, so the first chunk is as large as the others.
+	n := copy(p, s.head)
+	s.head = s.head[n:]
+	if n == len(p) {
+		return n, nil
+	}
+	rest := p[n:]
+	if s.limited {
+		if s.limit <= 0 {
+			if n > 0 {
+				return n, nil
+			}
+			return 0, io.EOF
+		}
+		rest = rest[:min(len(rest), s.limit)]
+	}
+	m, err := s.file.Read(rest)
+	s.limit -= m
+	return n + m, err
+}
+
+func (s *sniffedFile) Close() error { return s.file.Close() }
 
 // lineStart is the byte offset at which line `line` (0-based, split on "\n") of data starts, scanning forward from the start of line
 // `from` at offset `at`.
@@ -342,7 +420,6 @@ func readTextResult(p readParams, data []byte) (agent.AgentToolResult, error) {
 	if p.Offset != nil && *p.Offset != 0 {
 		startLine = math.Max(0, *p.Offset-1)
 	}
-	startLineDisplay := startLine + 1
 	if startLine >= lineCount {
 		return agent.AgentToolResult{}, fmt.Errorf("Offset %s is beyond end of file (%d lines total)", jsNumber(*p.Offset), totalFileLines)
 	}
@@ -376,17 +453,30 @@ func readTextResult(p readParams, data []byte) (agent.AgentToolResult, error) {
 		selected = selectedText(totalFileLines)
 	}
 	tr := TruncateHead(selected, TruncationOptions{})
+	if tr.FirstLineExceedsLimit && startLine != float64(sliceStart) {
+		// allLines[startLine] is undefined for a fractional index, so Buffer.byteLength throws (read.ts:181).
+		return agent.AgentToolResult{}, errors.New(`The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received undefined`)
+	}
+	firstLineBytes := 0
+	if tr.FirstLineExceedsLimit {
+		firstLineBytes = len(selectedText(sliceStart + 1))
+	}
+	return readSelectionResult(p, startLine, userLimitedLines, totalFileLines, tr, firstLineBytes), nil
+}
 
+// readSelectionResult is the text and details a read returns for its selected lines tr, whichever way they were selected: the notice for
+// a first line over the byte limit, for truncation, and for a user limit that stopped before the end of the file. firstLineBytes is the
+// size of the first selected line, used only when that line alone exceeds the byte limit.
+func readSelectionResult(p readParams, startLine, userLimitedLines float64, totalFileLines int, tr TruncationResult, firstLineBytes int) agent.AgentToolResult {
+	startLineDisplay := startLine + 1
+	lineCount := float64(totalFileLines)
+	hasUserLimit := p.Limit != nil
 	var output string
 	var truncation *TruncationResult
 	switch {
 	case tr.FirstLineExceedsLimit:
-		if startLine != float64(sliceStart) {
-			// allLines[startLine] is undefined for a fractional index, so Buffer.byteLength throws (read.ts:181).
-			return agent.AgentToolResult{}, errors.New(`The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received undefined`)
-		}
-		firstLineSize := FormatSize(len(selectedText(sliceStart + 1)))
-		line := itoa(sliceStart + 1)
+		firstLineSize := FormatSize(firstLineBytes)
+		line := jsNumber(startLineDisplay)
 		output = "[Line " + line + " is " + firstLineSize + ", exceeds " + FormatSize(DefaultMaxBytes) + " limit. Use bash: sed -n '" + line + "p' " +
 			p.Path + " | head -c " + itoa(DefaultMaxBytes) + "]"
 		truncation = &tr
@@ -414,7 +504,7 @@ func readTextResult(p readParams, data []byte) (agent.AgentToolResult, error) {
 		shareTruncatedContent(truncation, output)
 		result.Details = &ReadDetails{Truncation: truncation}
 	}
-	return result, nil
+	return result
 }
 
 var processReadImage = imageprocessing.ProcessImage
