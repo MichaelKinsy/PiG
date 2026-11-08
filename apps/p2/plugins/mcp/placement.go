@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
+	envsplugin "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
@@ -168,7 +170,7 @@ func Place(config OwnerConfig, leases []Lease, envs *chordjson.Object, work Work
 			if !set {
 				enabled = server.Enabled
 			}
-			if enabled && (!locked || contains(lock.MCP, server.Name)) {
+			if enabled && (!locked || slices.Contains(lock.MCP, server.Name)) {
 				use(ownerSpec(server, &lease, envs))
 			}
 		}
@@ -183,15 +185,6 @@ func Place(config OwnerConfig, leases []Lease, envs *chordjson.Object, work Work
 		placement.Leases = append(placement.Leases, placed)
 	}
 	return placement
-}
-
-func contains(list []string, item string) bool {
-	for _, each := range list {
-		if each == item {
-			return true
-		}
-	}
-	return false
 }
 
 // projectOf is the project configuration the lease's worker sent, checked.
@@ -365,7 +358,7 @@ func stdioSpec(who stdioPlaced, runsOn RunOn, config extension.McpServerConfig, 
 	revisionText := ""
 	if envConfig != nil {
 		// An edited environment (or a sandbox's edited host) is another connection: its instances start again on it.
-		revisionText = connectionRevision(envs, runsOn.Env)
+		revisionText = envsplugin.ConnectionRevision(envs, runsOn.Env)
 		revision = revisionText
 	}
 	spec.ID = idOf([]any{"stdio", who.source, who.server, owner, runsOnJSON, revision, hash})
