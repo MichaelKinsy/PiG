@@ -1157,7 +1157,7 @@ func (c *Workers) reload(hostName string, child *child, scripts []plugins.Plugin
 		c.loop.Run(func() {
 			settle := func(ended *ended) {
 				if ended.stopped {
-					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutStopped, Host: hostName})
+					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutStopped, Host: hostName, Stopped: true})
 				} else {
 					reload.resolve(plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: ended.err})
 				}

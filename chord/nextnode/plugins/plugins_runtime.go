@@ -129,6 +129,11 @@ type PluginError struct {
 	Problems []DiscoveryProblem
 }
 
+// NewPluginError is upstream's `new PluginError(required, failed, problems = [])`.
+func NewPluginError(required []host.PluginFailure, failed []host.PluginFailure, problems ...DiscoveryProblem) *PluginError {
+	return &PluginError{Required: required, Failed: failed, Problems: problems}
+}
+
 // Error is `required plugin failed at load: ` and the required plugins that failed, `"name": message`, and the problems,
 // `path: error`, each joined by `; `.
 func (e *PluginError) Error() string {
@@ -150,9 +155,14 @@ type PluginRuntime struct {
 	warm *warmState
 }
 
-// NewPluginRuntime is upstream's `createPluginRuntime()`: how its subprocesses are started.
-func NewPluginRuntime(node NodeOptions) *PluginRuntime {
-	return &PluginRuntime{node: node, warm: newWarmState()}
+// NewPluginRuntime is upstream's `createPluginRuntime()`: how its subprocesses are started is its optional argument (the Go
+// side starts them where Pi's runtime runs in the process: the zero NodeOptions without one).
+func NewPluginRuntime(node ...NodeOptions) *PluginRuntime {
+	runtime := &PluginRuntime{warm: newWarmState()}
+	if len(node) > 0 {
+		runtime.node = node[0]
+	}
+	return runtime
 }
 
 // loadRequest is the `load` control request of host.mjs.
@@ -350,7 +360,7 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 				if len(required) > 0 {
 					// The host's load settled (the others are loaded): the host is the caller's, as upstream's `host` is, to
 					// stop or keep.
-					return h, report, &PluginError{Required: required, Failed: report.Failed}
+					return h, report, NewPluginError(required, report.Failed)
 				}
 				return h, report, nil
 			}

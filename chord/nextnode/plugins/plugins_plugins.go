@@ -117,7 +117,9 @@ type RolloutHost struct {
 	Kind   RolloutHostKind
 	Host   string
 	Report host.ReloadReport
-	Error  error
+	// Stopped is true for a RolloutStopped host (Pi's `stopped: true`).
+	Stopped bool
+	Error   error
 }
 
 // StepResult is what a rollout step's reload returns: one result per host (D12).
@@ -436,13 +438,13 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		if len(problems) == 0 {
 			return h, report, err
 		}
-		return h, report, &PluginError{Required: failure.Required, Failed: failure.Failed, Problems: problems}
+		return h, report, NewPluginError(failure.Required, failure.Failed, problems...)
 	}
 	if err != nil {
 		return nil, host.LoadReport{}, err
 	}
 	if len(problems) > 0 {
-		return h, report, &PluginError{Required: []host.PluginFailure{}, Failed: report.Failed, Problems: problems}
+		return h, report, NewPluginError([]host.PluginFailure{}, report.Failed, problems...)
 	}
 	return h, report, nil
 }
@@ -599,8 +601,12 @@ func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 
 // WatchBase adds a running base artifact's record (a base bundle's inputs, beside Base; see Recorder): `base` is set while one
 // of its files differs from the bytes it read or is gone; each is compared once now. Files under `node_modules` are never
-// watched. The channel it returns closes once those comparisons ended (Pi's `watchBase` settles then).
-func (c *Plugins) WatchBase(inputs BaseInputs) <-chan struct{} {
+// watched.
+func (c *Plugins) WatchBase(inputs BaseInputs) { c.WatchBaseCompared(inputs) }
+
+// WatchBaseCompared is WatchBase that returns a channel closed once the comparisons of the record ended: where Pi's app reads
+// nothing of `watchBase`, the Go app's `BaseWatched` waits for them.
+func (c *Plugins) WatchBaseCompared(inputs BaseInputs) <-chan struct{} {
 	var compared <-chan struct{}
 	c.section(func() { compared = c.watcher.recordBase(inputs) })
 	return compared
