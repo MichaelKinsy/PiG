@@ -184,7 +184,9 @@ type launched struct {
 	code     chan int
 }
 
-// launch starts a launcher against port with credentials.
+// launch starts a launcher against port with credentials. Pairing waits for the owner's approval inside `StartTerminal`, so
+// that launcher starts on a goroutine of its own (its code shown on the terminal meanwhile); the others are started when launch
+// returns.
 func launch(t testing.TB, port int, credentials TerminalCredentials) *launched {
 	t.Helper()
 	terminal := newPipeTerminal()
@@ -195,15 +197,37 @@ func launch(t testing.TB, port int, credentials TerminalCredentials) *launched {
 			return nil
 		},
 	}
-	running, err := StartTerminal(background, options)
-	if err != nil {
-		t.Fatal(err)
+	ctx, cancel := context.WithCancel(background)
+	l := &launched{t: t, terminal: terminal, code: make(chan int, 1)}
+	begun := make(chan struct{})
+	start := func() {
+		defer close(begun)
+		running, err := StartTerminal(ctx, options)
+		if err != nil {
+			if ctx.Err() == nil {
+				t.Errorf("the launcher did not start: %v", err)
+			}
+			return
+		}
+		l.running = running
+		go func() { l.code <- <-running.Exited() }()
 	}
-	l := &launched{t: t, terminal: terminal, running: running, code: make(chan int, 1)}
-	go func() { l.code <- <-running.Exited() }()
+	if credentials.Kind == CredentialsPairing {
+		go start()
+	} else {
+		start()
+		if l.running == nil {
+			cancel()
+			t.FailNow()
+		}
+	}
 	t.Cleanup(func() {
-		running.Stop()
+		cancel()
 		_ = terminal.typed.Close()
+		<-begun
+		if l.running != nil {
+			l.running.Stop()
+		}
 	})
 	return l
 }

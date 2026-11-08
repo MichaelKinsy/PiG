@@ -3,6 +3,11 @@
 	"pin": "c23b9ec1ef12a63573d739d4c294f81a377b7d57",
 	"piSchema": "1.5.0",
 	"piTelemetry": "1.5.0",
+	"react": {
+		"react": "19.3.0",
+		"react-dom": "19.3.0",
+		"scheduler": "0.28.0"
+	},
 	"files": [
 		{
 			"path": "pi/chord/src/context/index.ts",
@@ -923,6 +928,70 @@
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/src/render.ts",
 			"sha256": "6d470393502b4a77a0f29f5d92ffa5260891ed2ad018fea19451a5570a7cb713"
+		},
+		{
+			"path": "pi/node_modules/react-dom/LICENSE",
+			"sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+		},
+		{
+			"path": "pi/node_modules/react-dom/cjs/react-dom-client.production.js",
+			"sha256": "8a8147c1cebdb19d82fd11bdb76391be9b20d00edf67cc8e8b30f44e850ce693"
+		},
+		{
+			"path": "pi/node_modules/react-dom/cjs/react-dom.production.js",
+			"sha256": "fd016e2c887f97b82f466ca435ae259d08cf7d4e7fef37e087963336d4770c01"
+		},
+		{
+			"path": "pi/node_modules/react-dom/client.js",
+			"sha256": "00e348ab3d6bc2eef908345d0bc4e008c95bcfecec060dfda5c4967953761396"
+		},
+		{
+			"path": "pi/node_modules/react-dom/index.js",
+			"sha256": "ba1a3e33489f868371561777607e3ee5091df0f7ea3f1a10f789d6b86e4c1505"
+		},
+		{
+			"path": "pi/node_modules/react-dom/package.json",
+			"sha256": "136d4af63de473392ea79d6a21932b0ed9eb37fe518ce70f4621250f3d79e9bb"
+		},
+		{
+			"path": "pi/node_modules/react/LICENSE",
+			"sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+		},
+		{
+			"path": "pi/node_modules/react/cjs/react-jsx-runtime.production.js",
+			"sha256": "1e46f15002696985e80c61d47aaa30dabb03c954270a690f5f7dfbbacfa9002b"
+		},
+		{
+			"path": "pi/node_modules/react/cjs/react.production.js",
+			"sha256": "6b28feb9dbe9781ab1e1b64dea7b29a7c70f03d2dc10eaa966363053d8a9b4e5"
+		},
+		{
+			"path": "pi/node_modules/react/index.js",
+			"sha256": "60caffdecbdc5db3bc4ec4e83df9488345ccb271d07533b9210bf5750918d97e"
+		},
+		{
+			"path": "pi/node_modules/react/jsx-runtime.js",
+			"sha256": "b392951a77d0a2e6a6bd017e49d768481ae5b63c4109c6c31f622cf7b2433edc"
+		},
+		{
+			"path": "pi/node_modules/react/package.json",
+			"sha256": "6e003e4e9ed25afa7fdd55613f8aa877cefa9b359d9c13f81ee704030248e24e"
+		},
+		{
+			"path": "pi/node_modules/scheduler/LICENSE",
+			"sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+		},
+		{
+			"path": "pi/node_modules/scheduler/cjs/scheduler.production.js",
+			"sha256": "679adff761d31e9426604f80c0e99be44a3e6f4c6834b0218ecf0312a67c171f"
+		},
+		{
+			"path": "pi/node_modules/scheduler/index.js",
+			"sha256": "145965504d60007bc25486ab930b0367867dcd5d579ccd343c148d69349a7cfb"
+		},
+		{
+			"path": "pi/node_modules/scheduler/package.json",
+			"sha256": "06290718f22bcd93f29eaa1ac8d2ec9a7592ba4fec12bf1230e7cdd9a871b324"
 		},
 		{
 			"path": "tui/bootstrap.cjs.in",
