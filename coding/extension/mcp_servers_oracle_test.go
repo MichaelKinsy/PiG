@@ -155,7 +155,7 @@ func TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberFor
 	}
 }
 
-// TestMcpHelpersMatchPi compares createToolNameMatcher, isMcpToolName, isLoopbackRedirectUri and mcpNamespace with Pi 1.0.4.
+// TestMcpHelpersMatchPi compares createToolNameMatcher, isMcpToolName, the loopback test of oauth.callbackUrl (Pi's isLoopbackRedirectUri, observed through validateMcpServerConfig) and mcpNamespace with Pi.
 func TestMcpHelpersMatchPi(t *testing.T) {
 	entrySets := [][]string{
 		{}, {"read"}, {"*"}, {"mcp__*"}, {"a*b"}, {"a.b", "c+d"}, {"[x]*", "(y)?"}, {"^*$"}, {"*\\*"}, {"a*", "*z"}, {"é*"}, {"a**b"},
@@ -174,7 +174,8 @@ const mod = await load("pi-coding-agent/core/mcp-servers.js");
 emit({
 	matches: input.entrySets.map((entries) => { const m = mod.createToolNameMatcher(entries); return input.names.map((n) => m(n)); }),
 	isMcp: input.names.map((n) => mod.isMcpToolName(n)),
-	loopback: input.uris.map((u) => mod.isLoopbackRedirectUri(u)),
+	// isLoopbackRedirectUri is not exported since Pi 76c040a2a (packages/mcp/src/config.ts): observed through the oauth.callbackUrl check.
+	loopback: input.uris.map((u) => { const r = mod.validateMcpServerConfig("s", { url: "https://x.example", oauth: { callbackUrl: u } }); return !(typeof r === "string" && r.includes("oauth.callbackUrl must be an http URI")); }),
 	namespaces: input.servers.map((s) => mod.mcpNamespace(s)),
 });`, map[string]any{"entrySets": entrySets, "names": names, "uris": uris, "servers": servers}, &want)
 	for i, entries := range entrySets {
