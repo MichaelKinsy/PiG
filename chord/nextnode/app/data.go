@@ -5,8 +5,6 @@ import (
 	"crypto/subtle"
 	_ "embed"
 	"encoding/json"
-	"errors"
-	"path/filepath"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -14,7 +12,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
-	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
@@ -125,18 +122,9 @@ func HostDataFacet(dir string, kit store.Store, token string) host.Facet {
 						if err := json.Unmarshal([]byte(object.Value("manifest").(string)), &manifest); err != nil {
 							return nil, err
 						}
-						// The plugins' store is the NodeHost's own file (store.sqlite): a store opened on it now reads its state at this point, beside
-						// the Go kit's (kit.sqlite).
-						database, err := node.OpenNodeSqliteDatabase(filepath.Join(dir, archiveStore), node.NodeSqliteDatabaseOptions{})
-						if err != nil {
-							return nil, err
-						}
-						plugins, err := store.OpenStore(store.SqliteBackend(database), ctx, store.StoreOptions{})
-						if err != nil {
-							return nil, errors.Join(err, database.Close())
-						}
-						packed := PackStore(ctx, plugins, kit, filepath.Join(dir, "files"), manifest, object.Value("path").(string))
-						return nil, errors.Join(packed, plugins.Close(ctx))
+						// The plugins' store is the NodeHost's own file (store.sqlite), read from a snapshot taken while the kit's store (kit.sqlite) is
+						// held: PackRunning.
+						return nil, PackRunning(ctx, dir, kit, manifest, object.Value("path").(string))
 					},
 				},
 			}}, nil

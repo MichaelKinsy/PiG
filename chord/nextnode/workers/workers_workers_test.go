@@ -284,6 +284,36 @@ func TestStopSuspendsWhileHeldHoldersFailWaitingSuspendedNothingStartsForgottenW
 	again.Release()
 }
 
+// Forgotten is how an app ends the per-address bookkeeping it made at Start: called once, for the address, when it has no worker, no
+// operation and no failure left: not while a holder keeps a stopped worker's address, not while the address is failed.
+func TestForgottenRunsOnceWhenAnAddressHasNothingLeftNotWhileItIsSuspendedWithAHolder(t *testing.T) {
+	f := newFleet(t, fleetOptions{})
+	held := f.get(fixtureNotes, "F1")
+	if err := f.workers.Stop(session("F1"), background); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.forgotten.all(); len(got) != 0 {
+		t.Fatalf("forgotten while a holder keeps the suspended address = %v", got)
+	}
+	held.Release()
+	until(t, func() bool { return len(f.forgotten.all()) > 0 })
+	if got := f.forgotten.all(); !reflect.DeepEqual(got, []string{"session|F1"}) {
+		t.Fatalf("forgotten = %v", got)
+	}
+}
+
+func TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds(t *testing.T) {
+	f := newFleet(t, fleetOptions{start: func(contracts.Address, context.Context) (delta.JsonValue, error) {
+		return nil, errors.New("no start")
+	}})
+	held := f.hold(fixtureNotes, "F2")
+	defer held.Release()
+	until(t, func() bool { return f.stateOf("F2") != nil && f.stateOf("F2").Status == WorkerFailed })
+	if got := f.forgotten.all(); len(got) != 0 {
+		t.Fatalf("forgotten while failed = %v", got)
+	}
+}
+
 func TestStopAStopDuringAStartWaitsForItThenStopsAStartDuringAStopWaitsForItsExit(t *testing.T) {
 	f := newFleet(t, fleetOptions{})
 	f.behaviours.set("S1", workerBehaviour{LoadMs: 300})

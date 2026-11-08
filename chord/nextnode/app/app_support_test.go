@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -83,6 +84,22 @@ func testWorker(t testing.TB, kind *contracts.HostKind, facet string) AppWorkerK
 type appErrors struct {
 	mu   sync.Mutex
 	list []AppError
+	// expected is set by a test that causes the app to report errors.
+	expected bool
+}
+
+// expect says the test makes the app report errors: its end does not require there to be none.
+func (e *appErrors) expect() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.expected = true
+}
+
+// all is what the app reported so far.
+func (e *appErrors) all() []AppError {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return slices.Clone(e.list)
 }
 
 func (e *appErrors) add(err AppError) {
@@ -162,6 +179,15 @@ func startUnbuilt(t testing.TB, plugins map[string]map[string]string, edit func(
 		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
 	})
 	t.Cleanup(func() { _ = app.Close(background) })
+	// Runs before the close: a started app that ran its test reported nothing (a close's own reports are not asked of it).
+	t.Cleanup(func() {
+		errs.mu.Lock()
+		expected := errs.expected
+		errs.mu.Unlock()
+		if got := errs.all(); len(got) != 0 && !expected {
+			t.Errorf("the app reported errors: %v", got)
+		}
+	})
 	var port int
 	_, _ = fmt.Sscanf(app.OwnerLink(), "http://127.0.0.1:%d/", &port)
 	return started{app: app, errors: errs, dataDir: options.DataDir, root: options.Root, port: port}

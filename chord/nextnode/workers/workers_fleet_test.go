@@ -79,6 +79,8 @@ type fleet struct {
 	starts *collector[string]
 	// output is the workers' stdout lines, each with its address key.
 	output *collector[string]
+	// forgotten is the address keys WorkersOptions.Forgotten ran for, in order.
+	forgotten *collector[string]
 	// behaviours is each address's behaviour (its start data); none: a plain worker.
 	behaviours *behaviours
 	clock      *switchClock
@@ -113,7 +115,7 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	root := t.TempDir()
 	f := &fleet{
 		t: t, root: root, errors: &collector[WorkersError]{}, hostErrors: &collector[host.HostError]{}, starts: &collector[string]{},
-		output: &collector[string]{}, behaviours: &behaviours{byID: map[string]workerBehaviour{}}, clock: newSwitchClock(),
+		output: &collector[string]{}, forgotten: &collector[string]{}, behaviours: &behaviours{byID: map[string]workerBehaviour{}}, clock: newSwitchClock(),
 	}
 	f.plugins = newPlugins(t, root)
 	serverAddress := fixtureServer.Address(nil)
@@ -171,8 +173,9 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 				f.output.add(address.Key + " " + string(trimSpace(chunk)))
 			}
 		},
-		OnError: f.errors.add,
-		clock:   f.clock,
+		OnError:   f.errors.add,
+		Forgotten: func(address contracts.Address) { f.forgotten.add(address.Key) },
+		clock:     f.clock,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
