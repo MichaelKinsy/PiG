@@ -101,7 +101,8 @@ func TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect(t *testing.T) {
 	l.typed("unsent draft")
 	poll(t, func() bool { return l.draft() == "unsent draft" })
 	selected := l.client.Snapshot().Session
-	l.terminal.Resize(80, 24)
+	// Pi resizes to 80x24; the rows are many here so that a rerun of the queue steps (below) cannot push the first answer off the screen.
+	l.terminal.Resize(80, 150)
 	// Alt+Up must meet the follow-up still queued, and the fake provider's slow stream lasts about 3 s (200 tokens/s, Pi's too). On a machine so loaded that
 	// the stream ended first, the follow-up went out as a message of its own and there is nothing to restore: the steps then run again on a fresh stream.
 	idle := func() {
