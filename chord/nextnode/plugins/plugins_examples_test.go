@@ -1489,8 +1489,9 @@ func TestExample50PluginImports(t *testing.T) {
 	for _, failure := range pluginError.Failed {
 		printed = append(printed, "   "+failure.Plugin+": "+exRefused(failure))
 	}
-	printed = append(printed, fmt.Sprintf("3. search hits: %v", server.read("acme.search", "hits", "int")))
-	printed = append(printed, fmt.Sprintf("   stats: %v", server.read("bob.stats", "text", "str")))
+	printed = append(printed,
+		fmt.Sprintf("3. search hits: %v", server.read("acme.search", "hits", "int")),
+		fmt.Sprintf("   stats: %v", server.read("bob.stats", "text", "str")))
 
 	// 5. The search plugin's builds: what each copied from the notes plugin (its server facet the shared file, its web facet
 	// the web file).
