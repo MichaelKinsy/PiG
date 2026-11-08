@@ -587,7 +587,7 @@ func tableOwner() *testOwner {
 	return &testOwner{scope: new(struct{}), queries: store.NewLiveQueries()}
 }
 func openFence() store.CommitFence {
-	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 }
 
 // rejection is the error err is, as ChordError JSON when it is one; the test fails when err is nil.
