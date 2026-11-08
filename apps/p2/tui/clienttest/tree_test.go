@@ -97,14 +97,11 @@ func TestTreeSwitchesBranchesWithTheChosenMessageInTheEditorDoubleEscapeFollowin
 		Facets: []host.Facet{tui.CoreFacet, chattui.Facet, sessionstui.Facet}, Columns: 100,
 	})
 	f.Do(func() { f.Runtime.Navigate("chat", "s", true, nil) })
-	surface := func() *chattui.ChatSurface {
-		var s *chattui.ChatSurface
-		f.Do(func() { s = f.Runtime.Ctx.Surface("chat").(*chattui.ChatSurface) })
-		return s
-	}
+	// surface is the chat surface; call it on the owner loop (inside Do).
+	surface := func() *chattui.ChatSurface { return f.Runtime.Ctx.Surface("chat").(*chattui.ChatSurface) }
 	editable := func() bool {
 		ok := false
-		f.Do(func() { ok = f.Runtime.Ctx.Surface("chat").(*chattui.ChatSurface).Editable() })
+		f.Do(func() { ok = surface().Editable() })
 		return ok
 	}
 	counts := func() (int, int) { mu.Lock(); defer mu.Unlock(); return len(navigated), len(renamed) }
