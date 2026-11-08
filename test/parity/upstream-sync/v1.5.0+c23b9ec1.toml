@@ -2496,9 +2496,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/surfaces/tui.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_kit_upstream_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/web.ts"
@@ -2517,9 +2517,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/tui/credentials.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_credentials_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/node/tui/filter.ts"
