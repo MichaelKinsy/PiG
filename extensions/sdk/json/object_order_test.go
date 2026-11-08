@@ -1,8 +1,10 @@
 package json
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -278,5 +280,76 @@ func TestObjectOrderLookupOfAnotherMapDoesNotSort(t *testing.T) {
 	}
 	if order.sorted == nil {
 		t.Error("a lookup of an object did not sort")
+	}
+}
+
+// sortOrderEntries sorts by pointer for every input shape a quicksort can be hurt by, including the heapsort fallback.
+func TestSortOrderEntriesSortsByPointer(t *testing.T) {
+	shapes := map[string]func(i, n int) uintptr{
+		"ascending":  func(i, n int) uintptr { return uintptr(i) * 64 },
+		"descending": func(i, n int) uintptr { return uintptr(n-i) * 64 },
+		"organ pipe": func(i, n int) uintptr { return uintptr(min(i, n-i)) * 64 },
+		"shuffled":   func(i, n int) uintptr { return uintptr(i*7919%n) * 64 },
+		"sawtooth":   func(i, n int) uintptr { return uintptr(i%17)*1000 + uintptr(i)*8 },
+	}
+	for name, pointerAt := range shapes {
+		for _, n := range []int{0, 1, 2, 12, 13, 100, 1000, 20011} {
+			s := make([]orderEntry, n)
+			for i := range s {
+				s[i].pointer = pointerAt(i, n)
+			}
+			want := make([]uintptr, n)
+			for i := range s {
+				want[i] = s[i].pointer
+			}
+			slices.Sort(want)
+			sortOrderEntries(s)
+			for i := range s {
+				if s[i].pointer != want[i] {
+					t.Fatalf("%s, n=%d: entry %d has pointer %d, want %d", name, n, i, s[i].pointer, want[i])
+				}
+			}
+		}
+	}
+	// The heapsort the quicksort falls back to sorts on its own.
+	s := make([]orderEntry, 5000)
+	for i := range s {
+		s[i].pointer = uintptr(i * 7919 % 5000)
+	}
+	heapOrderEntries(s)
+	for i := 1; i < len(s); i++ {
+		if s[i-1].pointer > s[i].pointer {
+			t.Fatalf("heapOrderEntries: entry %d is out of order", i)
+		}
+	}
+}
+
+// BenchmarkSortOrderEntries compares the local sort with slices.SortFunc, the copy of the standard library's sort it replaced, on the addresses of n objects:
+// "shuffled" in a random order, "runs" as a decode leaves them (ascending within each 64-object span, the spans in a random order).
+func BenchmarkSortOrderEntries(b *testing.B) {
+	for _, n := range []int{100, 2000, 50000} {
+		for _, shape := range []string{"shuffled", "runs"} {
+			source := make([]orderEntry, n)
+			for i := range source {
+				p := uintptr(i*7919%n) * 48
+				if shape == "runs" {
+					p = uintptr((i/64)*7919%(n/64+1))*64*48 + uintptr(i%64)*48
+				}
+				source[i].pointer = p
+			}
+			work := make([]orderEntry, n)
+			b.Run(fmt.Sprintf("local/%s/%d", shape, n), func(b *testing.B) {
+				for range b.N {
+					copy(work, source)
+					sortOrderEntries(work)
+				}
+			})
+			b.Run(fmt.Sprintf("slices/%s/%d", shape, n), func(b *testing.B) {
+				for range b.N {
+					copy(work, source)
+					slices.SortFunc(work, func(a, b orderEntry) int { return cmp.Compare(a.pointer, b.pointer) })
+				}
+			})
+		}
 	}
 }
