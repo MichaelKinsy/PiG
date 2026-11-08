@@ -837,7 +837,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/writes.ts` | `(type-only: the StoreWrite union; chord/next/store/writes.go StoreWrite interface)` | n/a |
 | `packages/chord/src/documents/address-source.ts` | `chord/next/documents/address_source.go` | ✅ |
 | `packages/chord/src/documents/definition.ts` | `chord/next/documents/definition.go` | ✅ |
-| `packages/chord/src/documents/documents.ts` | `chord/next/documents/documents.go` | 🟡 |
+| `packages/chord/src/documents/documents.ts` | `chord/next/documents/documents.go` | ✅ |
 | `packages/chord/src/documents/fence.ts` | `chord/next/documents/fence.go` | ✅ |
 | `packages/chord/src/documents/handles.ts` | `chord/next/documents/handles.go` | ✅ |
 | `packages/chord/src/documents/index.ts` | `(re-export barrel; the app-facing set is listed in doc.go)` | n/a |
@@ -854,7 +854,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/uuid.ts` | `chord/next/host/host_uuid.go` | ✅ |
 | `packages/chord/src/host/activity.ts` | `chord/next/host/host_activity.go` | 🟡 |
 | `packages/chord/src/host/revocation.ts` | `chord/next/host/host_revocation.go` | 🟡 |
-| `packages/chord/src/host/unbound.ts` | `chord/next/host/host_unbound.go` | 🟡 |
+| `packages/chord/src/host/unbound.ts` | `chord/next/host/host_unbound.go` | ✅ |
 | `packages/chord/src/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | ✅ |
 | `packages/chord/src/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | ✅ |
 | `packages/chord/src/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | ✅ |
@@ -867,16 +867,16 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
 | `packages/chord/src/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
 | `packages/chord/src/host/presence.ts` | `chord/next/host/host_presence.go` | 🟡 |
-| `packages/chord/src/host/route.ts` | `chord/next/host/host_route.go` | 🟡 |
+| `packages/chord/src/host/route.ts` | `chord/next/host/host_route.go` | ✅ |
 | `packages/chord/src/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
 | `packages/chord/src/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
 | `packages/chord/src/host/host.ts` | `chord/next/host/host_host.go, chord/next/host/host_error.go` | ✅ |
 | `packages/chord/src/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
 | `packages/chord/src/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
-| `packages/chord/src/host/reference.ts` | `chord/next/host/host_reference.go` | 🟡 |
+| `packages/chord/src/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
 | `packages/chord/src/jobs/definition.ts` | `chord/next/host/jobs_definition.go` | ✅ |
-| `packages/chord/src/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | 🟡 |
+| `packages/chord/src/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
 | `packages/chord/src/jobs/records.ts` | `chord/next/host/jobs_records.go` | ✅ |
 | `packages/chord/src/jobs/run-states.ts` | `chord/next/host/jobs_run_states.go` | ✅ |
 | `packages/chord/src/jobs/run.ts` | `chord/next/host/jobs_run.go, chord/next/documents/job.go` | ✅ |
@@ -885,16 +885,16 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/jobs/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above: DefineJob, JobAccepts, JobDefinition, JobError, JobOptions, Outcome, JobCtx, JobHandle, JobImplementation, RunState, StartOptions, BlockedReason, Run; RunningEntry is type-level (jobs_running.go))` | n/a |
 | `packages/chord/src/jobs/internal.ts` | `(barrel for host/remote: one package, Job, JobRecords, JobContext, Staging, ... are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
 | `packages/chord/src/remote/hold.ts` | `chord/next/host/remote_hold.go` | ✅ |
-| `packages/chord/src/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` | 🟡 |
+| `packages/chord/src/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` | ✅ |
 | `packages/chord/src/remote/host-link.ts` | `chord/next/host/remote_host_link.go` | ✅ |
 | `packages/chord/src/remote/path.ts` | `chord/next/host/remote_path.go` | ✅ |
 | `packages/chord/src/remote/calls.ts` | `chord/next/host/remote_calls.go` | ✅ |
-| `packages/chord/src/remote/provider.ts` | `chord/next/host/remote_provider.go` | 🟡 |
+| `packages/chord/src/remote/provider.ts` | `chord/next/host/remote_provider.go` | ✅ |
 | `packages/chord/src/remote/consumer.ts` | `chord/next/host/remote_consumer.go` | ✅ |
 | `packages/chord/src/remote/relay.ts` | `chord/next/host/remote_relay.go` | ✅ |
 | `packages/chord/src/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
 | `packages/chord/src/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
-| `packages/chord/src/jobs/job.ts` | `chord/next/host/jobs_job.go` | 🟡 |
+| `packages/chord/src/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
 | `packages/chord/test/examples/01-objects.ts` | `chord/next/host/host_example_01_test.go`, `chord/next/host/host_host.go`, `chord/next/host/host_object.go`, `chord/next/data/args.go` | ✅ |
 | `packages/chord/test/examples/02-documents.ts` | `chord/next/host/host_example_02_test.go`, `chord/next/documents/transaction.go`, `chord/next/documents/slot.go`, `chord/next/documents/handles.go` | ✅ |
 | `packages/chord/test/examples/03-derives.ts` | `chord/next/host/host_example_03_test.go`, `chord/next/state/derive.go` | ✅ |
