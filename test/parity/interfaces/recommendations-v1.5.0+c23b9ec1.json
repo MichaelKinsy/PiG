@@ -153436,7 +153436,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "84 normalized-name Pig candidates are ambiguous."
+        "85 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -153453,6 +153453,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetries.Store",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetryDelayMs.Store",
         "go:github.com/MichaelKinsy/PiG/ai#encodedMessageCache.store",
+        "go:github.com/MichaelKinsy/PiG/ai#expandedCatalogChunks.Store",
         "go:github.com/MichaelKinsy/PiG/ai#googleGenerativeToolCallCounter.Store",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexToolCallCounter.Store",
         "go:github.com/MichaelKinsy/PiG/ai#openRouterVariants.Store",
@@ -158390,7 +158391,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "111 normalized-name Pig candidates are ambiguous."
+        "112 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -158409,6 +158410,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetries.Add",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetryDelayMs.Add",
         "go:github.com/MichaelKinsy/PiG/ai#dayComposer.add",
+        "go:github.com/MichaelKinsy/PiG/ai#expandedCatalogChunks.Add",
         "go:github.com/MichaelKinsy/PiG/ai#googleGenerativeToolCallCounter.Add",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexToolCallCounter.Add",
         "go:github.com/MichaelKinsy/PiG/ai#oauthRefreshWork.Add",
@@ -158558,7 +158560,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "24 normalized-name Pig candidates are ambiguous."
+        "25 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -158572,6 +158574,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#configuredHTTPIdleTimeoutMs.And",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetries.And",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetryDelayMs.And",
+        "go:github.com/MichaelKinsy/PiG/ai#expandedCatalogChunks.And",
         "go:github.com/MichaelKinsy/PiG/ai#googleGenerativeToolCallCounter.And",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexToolCallCounter.And",
         "go:github.com/MichaelKinsy/PiG/ai#responsesSlotObjects.And",
@@ -162753,7 +162756,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "28 normalized-name Pig candidates are ambiguous."
+        "29 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -162767,6 +162770,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#configuredHTTPIdleTimeoutMs.Or",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetries.Or",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetryDelayMs.Or",
+        "go:github.com/MichaelKinsy/PiG/ai#expandedCatalogChunks.Or",
         "go:github.com/MichaelKinsy/PiG/ai#googleGenerativeToolCallCounter.Or",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexToolCallCounter.Or",
         "go:github.com/MichaelKinsy/PiG/ai#responsesSlotObjects.Or",
