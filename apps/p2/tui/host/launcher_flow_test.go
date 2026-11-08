@@ -382,11 +382,10 @@ func TestLauncherClipboardIsWrittenOnlyAfterTheCopyKeyOrAConfirmationTheEditorRe
 	if l.copied()[0] != "the answer" {
 		t.Fatalf("copied %q", l.copied())
 	}
+	// The launcher's summary notice holds the keys until it goes; the runtime then redraws.
+	l.until(10*time.Second, "the copy summary gone", func() bool { return !contains(l.terminal.screen(), "Copied ") && contains(l.terminal.screen(), "READY") })
 	l.terminal.SendInput("r")
-	pollFor(t, 10*time.Second, func() bool {
-		return contains(l.terminal.screen(), "requested text") || contains(l.terminal.screen(), "Copy ")
-	})
-	t.Logf("consent screen:\n%s", l.terminal.screen())
+	l.until(10*time.Second, "the consent prompt", func() bool { return contains(l.terminal.written(), "requested text") })
 	if len(l.copied()) != 1 {
 		t.Fatal("a request copied before the confirmation")
 	}
