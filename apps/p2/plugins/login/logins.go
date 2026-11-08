@@ -92,9 +92,9 @@ type Logins struct {
 	// version counts the changes told; a listener that reads the state and publishes it outside the lock may be overtaken by a
 	// newer change's publication, so it runs again until no change happened meanwhile (the last published state is the latest).
 	version uint64
-	active    *attempt
-	current   loginsState
-	device    sync.Mutex
+	active  *attempt
+	current loginsState
+	device  sync.Mutex
 }
 
 // NewLogins is the logins keeping their device identity in directory. The resources a method works on come from its caller,
