@@ -1376,7 +1376,7 @@ func (h *chordHost) startTicking() {
 			return
 		}
 		now := h.events.Now()
-		// pig divergence (D391): Pi 9f7d909f8, not in Pi 1.5.0; the pause is truncated to whole milliseconds where Pi keeps the fraction.
+		// Pi keeps the fraction of the pause (performance.now()); the host clock is whole milliseconds.
 		// A tick a whole interval late is time this process did not run (a sleeping laptop, a blocked event loop).
 		late := float64(now-last) - float64(interval)/float64(time.Millisecond)
 		var paused int64
@@ -2101,7 +2101,6 @@ func (h *chordHost) commit(plan *reloadPlan, ctx context.Context) ([]startedFate
 	return started, nil
 }
 
-// pig divergence (D392): fates start dependents first (Pi 0c2b568fd, not in Pi 1.5.0).
 // startFates starts fates (in the order of the host's objects: providers before their dependents, `wentLive`) and returns them
 // in that order, for the report. The removals first, then the others dependents first (decision "Swaps: dependents first"): a
 // dependent's new attempt binds its provider while that is still live, so it does not park on the provider's own swap or
