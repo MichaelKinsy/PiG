@@ -949,7 +949,7 @@
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling. SCRUTINIZED:approved by the lead ruling LEAD-RULINGS 13:05Z 2026-10-09 (compat-schema: only the type-level cases are designed out): the case asserts TypeScript Static<> property types with expectTypeOf, which has no runtime behavior; the Go compat structs are typed and the compiler checks their property types.",
       "designedOutCases": [
-        "compatibility schemas \u203a preserves property types in the provider superset"
+        "compatibility schemas › preserves property types in the provider superset"
       ]
     },
     {
@@ -1217,7 +1217,7 @@
         "hot-path"
       ],
       "designedOutCases": [
-        "Models with image models \u203a rejects chat models at the image entry point at runtime"
+        "Models with image models › rejects chat models at the image entry point at runtime"
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, 'Yes go with recommendations'): the case 'rejects chat models at the image entry point at runtime' is designed out because it is unreachable in Go: GenerateImages takes *ImageModel, so a chat model cannot reach the image entry point."
     },
@@ -2097,7 +2097,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: every probe runs validateToolArguments, i.e. ai.ValidateToolArguments (ai/validate_arguments.go) over ai/validate.go's schema.CompileCoercing validators, the tool-argument admission of agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [reviewer probes (Sol) \u203a keeps the validator of a schema object, as before, also when the schema is changed later]: object-identity caching: Pi keys its validator cache by the schema object's identity (a WeakMap), so an object mutated in place keeps its stale validator; PiG tool schemas are values read on every call and its cache is keyed by the schema text (ai/validate_arguments.go), so no Go product path holds a schema object that changes under a cached validator except an in-process AgentTool that mutates the map it returns; the rest of the case (the first outcome, and that the schema a call is given is the one it validates against) runs in TestValidateToolArgumentsValidatesTheSchemaItIsGiven."
+      "rationale": "Production-path review at Pi 1.5.0: every probe runs validateToolArguments, i.e. ai.ValidateToolArguments (ai/validate_arguments.go) over ai/validate.go's schema.CompileCoercing validators, the tool-argument admission of agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [reviewer probes (Sol) › keeps the validator of a schema object, as before, also when the schema is changed later]: object-identity caching: Pi keys its validator cache by the schema object's identity (a WeakMap), so an object mutated in place keeps its stale validator; PiG tool schemas are values read on every call and its cache is keyed by the schema text (ai/validate_arguments.go), so no Go product path holds a schema object that changes under a cached validator except an in-process AgentTool that mutates the map it returns; the rest of the case (the first outcome, and that the schema a call is given is the one it validates against) runs in TestValidateToolArgumentsValidatesTheSchemaItIsGiven."
     },
     {
       "path": "packages/ai/test/validation.test.ts",
@@ -2188,6 +2188,61 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/chord/test/contracts/accepts.test.ts",
+      "upstreamTestHash": "sha256:8c2441b7f54f0e44c07edb67b72b29bc70b654ed8cd8f918fb53ae6302d67baf",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/contracts/contract.test.ts",
+      "upstreamTestHash": "sha256:d9a04b63f3e80861aa7d973df83da66075b509e7108e09367c305eadc940a887",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/contracts/declare.test.ts",
+      "upstreamTestHash": "sha256:179bf56414a9a95212c04b6e137f7b778532a97bda8f956364dada4915253df1",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by owner 2026-10-29 class approval (TypeScript type-level checks, verified per row): the designed-out case 'refuse a keyed member in a remote contract, at the type level and at declaration' is enforced in Go by the type system: Keyed() returns *contracts.KeyedMember, which is not a contracts.TSchema, so contracts.Prop, VariantDeclaration.State and RemoteEditor.State refuse it at compile time (`cannot use contracts.Keyed(contracts.Str()) (value of type *contracts.KeyedMember) as contracts.TSchema value in argument to contracts.Prop`); upstream's runtime throw has no Go counterpart.",
+      "designedOutCases": [
+        "keyed members (slice 6a §12) › refuse a keyed member in a remote contract, at the type level and at declaration"
+      ]
+    },
+    {
+      "path": "packages/chord/test/contracts/history.test.ts",
+      "upstreamTestHash": "sha256:bc4d85db829570df8dc8830a67ba1f811c3f6ea69de4e7b54c734dd896fa26dc",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/contracts/host-kind.test.ts",
+      "upstreamTestHash": "sha256:b603dda0ba6034c3e9900a190509c2c91f28d7effbc2f3134e69f039cdd21a79",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/data/args.test.ts",
+      "upstreamTestHash": "sha256:f980f2518c939d6a6c611d58c4bf3d12441cf8f8e38d2ac91b0cdad21ee2400d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by owner 2026-10-29 class approval (TypeScript type-level checks, verified per row): the designed-out case \"types a call replacement's arguments as values\" is enforced in Go by the signature: CheckedArgs.Call is contracts.CallFunc, so a call with wrong argument types does not compile (`cannot use func(args string, ...) ... as contracts.CallFunc value`); TestCallReplacementArgumentsAreValues pins it.",
+      "designedOutCases": [
+        "checkArgs › types a call replacement's arguments as values"
+      ]
+    },
+    {
+      "path": "packages/chord/test/data/failure.test.ts",
+      "upstreamTestHash": "sha256:057a4956c96187ee0fd6456218cc00c5d85f6b3621992c5843d721a16b84be37",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/delta-append-text.test.ts",
       "upstreamTestHash": "sha256:1dace17c787a5a7ac6c97dbd705e967f4a80be0faf9e50648ca5d1983405ba66",
       "area": "sessions",
@@ -2269,6 +2324,184 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing. Every case is ported. Per owner direction the two inherited-setter cases are Go equivalence tests: a Go map has no prototype chain, so they assert that reserved and inherited names are stored and imported as own data, byte-identical to Pi 1.0.0 output for the same inputs; see the mapping rationale."
     },
     {
+      "path": "packages/chord/test/documents/address-source.test.ts",
+      "upstreamTestHash": "sha256:cdbeb08580543cc2485cea4a2bd6f975e6a02ffcb5ac5f6fe94522f4f587f50a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/documents/definition.test.ts",
+      "upstreamTestHash": "sha256:c9e29008c2cf720b097652f5419de094ee37298800053bc7fc19e752d660d634",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/documents/fence.test.ts",
+      "upstreamTestHash": "sha256:3ae48c03edb122a2887c61ab9c10189a9ae5f355461e6a88ac1f23a4cf8602ac",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/documents/handles.test.ts",
+      "upstreamTestHash": "sha256:ed42c7bb95e25f057a9bcf928473ce58ee0caca66fa17c00ea9b34e27ca49c71",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/documents/keyed-slot.test.ts",
+      "upstreamTestHash": "sha256:bf09928cbf58dfb47aaac1e2407045aa4871b4153807966a33e0a8e504234c3e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/documents/line.test.ts",
+      "upstreamTestHash": "sha256:9a82f5ebeaf6433bbd665354ba51fd6df251ca9183df734aa760536d0ef2614e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/documents/persistence.test.ts",
+      "upstreamTestHash": "sha256:b8b2bcde0ee6f2b20e8f1bf5298d7afde8aff4de3c0a0e65f044ba06e26393f7",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/documents/residency.test.ts",
+      "upstreamTestHash": "sha256:f303fcb7995b83a5d5cc7a41fc9b1caa07669bf3cadc2dca90584772681b0ede",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/documents/slot.test.ts",
+      "upstreamTestHash": "sha256:6a7e710e9aef3fab2dadd786accf79e7abebcbc9f282a8383974ebcd9ccc0db3",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/documents/transaction.test.ts",
+      "upstreamTestHash": "sha256:e2ff8f793ed9a9bef40201ba2173c2783ccca53ed265886723bfd4b96835c7e3",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/activity.test.ts",
+      "upstreamTestHash": "sha256:afc9dcd2fc3a8f01caa8a368636733a545a86435d2346cd9cdb6f659f2047d31",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/backoff.test.ts",
+      "upstreamTestHash": "sha256:8d3a5600b98dd5859986cd83220dce110b00bd75feb6723714aefcf01e691f65",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/deadline.test.ts",
+      "upstreamTestHash": "sha256:9863d41bbe2c0fc380111fb29880f93bc707b5066912313b76d119a5fa320070",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/follow.test.ts",
+      "upstreamTestHash": "sha256:7163597e13d8d64375d364e40bcab6099b3aea1cd82bf1bee2269fccf6934df7",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types › infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types › infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types › infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types › infers the value type from the attachment, without a type argument]: type-level check (expectTypeOf); Go form: generic FollowAttach[T]/FollowAttachment[T], named by TestFollowAttachIsTypedByItsAttachment",
+      "designedOutCases": [
+        "types › infers the value type from the attachment, without a type argument"
+      ]
+    },
+    {
+      "path": "packages/chord/test/host/members.test.ts",
+      "upstreamTestHash": "sha256:3be9818adbdda664c94eb5eb4d1512d267dc864402817182faa1836a1ba8b23f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/parked.test.ts",
+      "upstreamTestHash": "sha256:a0c32e31cb2bb99a1969d4d25114f125a9cb67e2f9463df152a4065ede57c761",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/presence.test.ts",
+      "upstreamTestHash": "sha256:97ff095839de8be5975399d721b19e6754231ffc87e174676fff1176ec770c87",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/ref-state.test.ts",
+      "upstreamTestHash": "sha256:0f32607aa90e256bfdcfe2e2ff1dae496adee49f56fb791451d2a3b07e1f8275",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/reference-source.test.ts",
+      "upstreamTestHash": "sha256:79b50f2e28198a3f3920a2336524c984e7645eb10eeb002ebf2ac1d57a704336",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/retry-on.test.ts",
+      "upstreamTestHash": "sha256:68f3dea01c729df8701716cdfcb804a617eaae0a0c0bf6e9d2c093aee1e185b0",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/revocation.test.ts",
+      "upstreamTestHash": "sha256:3da59533e7ae48a7a7bcd407482080cc5e5798aff9cf51c9807e7c0ea9d7dc6c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/sleep.test.ts",
+      "upstreamTestHash": "sha256:1ec0f1066f4027620c3a3fe3f703fb4f398a55d85f7cd0964c89ddd71084d7f6",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/jobs/definition.test.ts",
+      "upstreamTestHash": "sha256:281371fa39c648ec4ffef194a4ec22aa94f7890caa52f132ea6cb8ff08579e19",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/jobs/run.test.ts",
+      "upstreamTestHash": "sha256:2eb2fedc529686609885cac9dc1af58e1f6853c3404f0c35020b4eb5c7b9060c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/jobs/running.test.ts",
+      "upstreamTestHash": "sha256:1b89073d790879e0d2ea2e51159d105f68fcc9e2a99c15542065728af4edb580",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/json.test.ts",
       "upstreamTestHash": "sha256:59f61ff559a3fe70f9796bf7ee375ca59b74c98c09b7f2321d19ad39f0bbff93",
       "area": "cli",
@@ -2276,6 +2509,90 @@
         "hot-path"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing. Every case is ported. Per owner direction the omitUndefinedProperties case is a Go equivalence test: unset object entries (nil pointers, omitempty fields) are omitted by Stored and rejected by Copy, and array elements and null values are never dropped, matching Pi 1.0.0 output for the same inputs; see the mapping rationale."
+    },
+    {
+      "path": "packages/chord/test/link/errors.test.ts",
+      "upstreamTestHash": "sha256:178b9c284e506085a5d9e1cbb176bc51c865973ae33247a8241e65a04e94652a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/link/ipc.test.ts",
+      "upstreamTestHash": "sha256:39f1e430753b62f2d3b64c9e9a0e26ed976016b28f47a4eb2ba524d05afd352b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/link/link.test.ts",
+      "upstreamTestHash": "sha256:9ce7be5c9e33f214a1b92d3ee6db6136991bc7a40fba3a743780949f5be77bab",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/link/part.test.ts",
+      "upstreamTestHash": "sha256:9804b66b81c76ed6fcab117368b6265db12ce1503e32575bfa4055c192d2e7d3",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/link/websocket.test.ts",
+      "upstreamTestHash": "sha256:8cad040a7cc000888f20c79148cc6e2c470d7aa02da73d467a499e2337ab97fa",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/compression.test.ts",
+      "upstreamTestHash": "sha256:c99da4c14c90c85a73f3805dc41f70a1752506027cf3ca20aabdba686130f4cc",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/http/admission.test.ts",
+      "upstreamTestHash": "sha256:389cdda8c4dfbe99a13a6fb6786bc2981c407a25d9511f6efc63ea9d05a9b304",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/http/authenticate.test.ts",
+      "upstreamTestHash": "sha256:7d2cbf96ed37f3279d0c217ae192164589ba560e64fafa29f60e11d8b831178f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/http/cookies.test.ts",
+      "upstreamTestHash": "sha256:15544c658be6c62870ed236d96a15d007d17bbd620f69d8a3367fb0b9f29cb2a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/http/headers.test.ts",
+      "upstreamTestHash": "sha256:64825b54655e1ace14f048b81075a3d83c3658055490d035cdf7d8513b2d5703",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/plugins/stack.test.ts",
+      "upstreamTestHash": "sha256:613deaec9a13375257e406034a07102aeb89088ed41ba3998e0eaaf0bc608937",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/workers/process.test.ts",
+      "upstreamTestHash": "sha256:3d2965a061584446c91dd22387b730f28f5d78879874dffa793f742802a49279",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..b556cfe5) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/output-skip.test.ts",
@@ -2294,6 +2611,48 @@
         "hot-path"
       ],
       "rationale": "Production-path review at Pi 1.3.0: chord/output OutputBuffer, Progress, BoundOutput and SanitizeOutput, which Pi Durable's tool harness (harness/tool.ts) and the bash and read tools use for every tool call's output window, spill file and progress commits. Pi 4a5d3729 moved them from packages/durable/src/harness/output.ts; area and tags follow the harness-output rows they replace."
+    },
+    {
+      "path": "packages/chord/test/registries/entries.test.ts",
+      "upstreamTestHash": "sha256:d51803aa69df34c8d43cac3f5e02b489b44166a5f938682dd2edf53c35c364b1",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/remote/calls.test.ts",
+      "upstreamTestHash": "sha256:76761bad6a17f31315542cc0a91072a6245866ea7c1db9c9999f62675a67ce5d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/remote/host-link.test.ts",
+      "upstreamTestHash": "sha256:17413b4d8362afbd7c44e039828062f336815b8ab96c521a5069bef548d4fe6d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/remote/path.test.ts",
+      "upstreamTestHash": "sha256:eb561879506fa4afc5c7208f399c7f21b1ae3257cfb23c6c49493cd3be6164ad",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/remote/replica.test.ts",
+      "upstreamTestHash": "sha256:cd1b49616bc07bad285ba1d2bb0249dd585125e7a41b2011c88d400ea92c9ca4",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/schema/schema-switch.test.ts",
+      "upstreamTestHash": "sha256:c19b9cea231549ffe79b1d3401bd968dba9910a008e4dedd681445b5f8ae793d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Production-path review at Pi 1.5.0: the test runs Chord next contracts, documents, store tables, jobs and host (chord/next/contracts fingerprints and SnapshotSchema, chord/next/store DefineTable/EvolveTable/ImportStore, chord/next/documents, chord/next/host) over Pi's recorded fixtures. No pig product path imports them (only chord/nextnode and durable/storage/store do, and nothing outside tests imports those); siblings under chord/test/next/ are area extensions with no hot-path tag."
     },
     {
       "path": "packages/chord/test/sqlite/cloudflare.test.ts",
@@ -2359,6 +2718,205 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/chord/test/state/batch.test.ts",
+      "upstreamTestHash": "sha256:f47b62f587e900a0b9d2b40649e5aa9dd8e8a3a7539b3b27bf40fd743a847e94",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/state/derive.test.ts",
+      "upstreamTestHash": "sha256:310a73a70cf3f632d7188805bf901b00a4fb1b5053f88e159a16f41d145fd659",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/state/watchable.test.ts",
+      "upstreamTestHash": "sha256:2742844ed86fdfe8d53c05d12a71a93cc710158696595e424c112f5a0f289147",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/allocator.test.ts",
+      "upstreamTestHash": "sha256:43690f0abd06537ae9b768627f7619645b8f53319af285476f9bcdb9f71d0b78",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/applier.test.ts",
+      "upstreamTestHash": "sha256:f2bd7c675465d7c64fc61c29a1f56580bfc7197eb2c9e08588a5094b804c4aba",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/apply-batch.test.ts",
+      "upstreamTestHash": "sha256:f190d6e378a518bffc330ca95e34f249885ee632c36d42ca0c8e429ba8192e93",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/archive.test.ts",
+      "upstreamTestHash": "sha256:367c4afa6ccd4bd2fb5f75ba32ac2da24cff66577beaf620b9c42d1fc6d2f972",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/catalog.test.ts",
+      "upstreamTestHash": "sha256:f4114abaff9969590630dfde7bee52db3c940c11fa45171b6498e08e8b99ca6c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/claims.test.ts",
+      "upstreamTestHash": "sha256:d0f5b27f80bc4d5db9855a083b16bec1f70c51c80d5475306161ad4b57c1f119",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/columns.test.ts",
+      "upstreamTestHash": "sha256:6b2e106cb68743e54c7d3f603a940d98e4558f3082ee4e36e708136842a3146c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) store: used by Durable's store adapter. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): the designed-out case 'row types › types rows with optional opt(...) fields and puts with optional defaulted fields' is a TypeScript type-level check; the Go mechanism is the typed API (Row = map[string]any; an optional column is a ColumnSchema made by Opt with Optional set, carried by Column and ColumnRecord) with compile-time assertions and a runtime check, TestEvidenceStoreAColumnsOptionalRowType in chord/next/store/evidence_storeA_test.go.",
+      "designedOutCases": [
+        "row types › types rows with optional opt(...) fields and puts with optional defaulted fields"
+      ]
+    },
+    {
+      "path": "packages/chord/test/store/engine.test.ts",
+      "upstreamTestHash": "sha256:4900b5df130cad43a4d44e9080070cec63fe7e5235a5987fb8ff211dae7279d9",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/evaluate.test.ts",
+      "upstreamTestHash": "sha256:47ab0bdb1f5971bcc9c39777ac2c6b0c390f540228d4bdfb364d7219764b4b97",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/export.test.ts",
+      "upstreamTestHash": "sha256:54dc19bd46c2513400e4fbb45db7e0a6f8c33f69a1d1a353f28ca6c7c492bab7",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/expression.test.ts",
+      "upstreamTestHash": "sha256:a7e087452f05312600e16f7978decae38e5b6161947406399dceb99a824798f4",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/import.test.ts",
+      "upstreamTestHash": "sha256:3628629f906117402a67991b301d6528c3ae03d6c7ede7e9479913a7ce01f7d1",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/json-column.test.ts",
+      "upstreamTestHash": "sha256:6e48a89541511df505d3c34423eb263ea43869dc54f2157be1c8cdb3abf27443",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/jsonl.test.ts",
+      "upstreamTestHash": "sha256:2c83c168d1c38cb1c367dd750e3a9b13f78976bd6ed49edd25c8803b2d69b16c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/outbox.test.ts",
+      "upstreamTestHash": "sha256:4e6ee55b2bbada0c6dbd0a6352f1f63409d0bb41768d8f61aa72e632d37c841e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/query.test.ts",
+      "upstreamTestHash": "sha256:36b305a0d13ded8329706204acb06e3f1e07149e23ca8d7de7d00273eb749e0f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/refusal.test.ts",
+      "upstreamTestHash": "sha256:a2206f169e8635646b8afd83b586471cf44a51977e726ec3938f70d225c307f2",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/rows.test.ts",
+      "upstreamTestHash": "sha256:ff6ffda5872273f8068b2549d16e903f8f8f4e2fb3e64ba5d581ea153639e1df",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/sql.test.ts",
+      "upstreamTestHash": "sha256:f6129bfd99edb9cfe12076bd6ac46a77abc7546c6337939a1475843da1ebd47e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/table-changes.test.ts",
+      "upstreamTestHash": "sha256:9b5dc907c42da0d10b91336b1bb9036312871f753cea51834b0aa14cab33f043",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/table-evolve.test.ts",
+      "upstreamTestHash": "sha256:b0df9187587e080277fc7b0fb5e6b37a5f119222ff35109e3deff583fadad2dc",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/table-handle.test.ts",
+      "upstreamTestHash": "sha256:676d009798d7e1df15b0ea2ba2d32dfed3f6246ad92e3592446162547edc2647",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/table-history.test.ts",
+      "upstreamTestHash": "sha256:eebf25d0c26fdc250aad5514a1a6fc93cf6d963f422f10084e6bc095f9983940",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/table-writes.test.ts",
+      "upstreamTestHash": "sha256:0073b6aa0fccfea5a30348c8623b02e03f0fe2bd834ba056d3df11d7b0c44f95",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/text.test.ts",
+      "upstreamTestHash": "sha256:134a8e79e8fc1cb26149656ac108835e3be3e70a7548cbd35d1f4c93fec14df4",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/telemetry-sqlite-store.test.ts",
       "upstreamTestHash": "sha256:27b7a989b1a4f0450f2db936805f27bd23f89e444cd0d784d01c94120a472b4b",
       "area": "cli",
@@ -2421,9 +2979,9 @@
       ],
       "rationale": "Codemode sandbox execution reached on coding turns: the built-in codemode tool runs every script through codemode.NewSandbox (coding/extension/builtin/codemode/execute.go); the inline and remote backends serve the durable and Cloudflare hosts. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, 'Yes go with recommendations'): the cases 'accepts a worker path string' and 'reports a missing worker file as a sandbox error' are designed out because the Go engine runs QuickJS on wazero in process and has no worker file. Carried to 1.2.0: both cases are unchanged in the 1.2.0 'worker host' describe and the Go engine still has no worker file. The 1.2.0 case 'ignores Node --watch notifications from the worker' is designed out on the same mechanic: the in-process wazero QuickJS engine has no worker message channel, so no Node --watch notification can arrive (nodejs/node#65044 is the Node behavior the case guards against). SCRUTINIZED:approved by the lead ruling of 2026-10-11T18:42Z (Q5, commit 4c6bb3897f), confirmed for 1.2.0 by the lead on 2026-10-12.",
       "designedOutCases": [
-        "worker host \u203a accepts a worker path string",
-        "worker host \u203a ignores Node --watch notifications from the worker",
-        "worker host \u203a reports a missing worker file as a sandbox error"
+        "worker host › accepts a worker path string",
+        "worker host › ignores Node --watch notifications from the worker",
+        "worker host › reports a missing worker file as a sandbox error"
       ]
     },
     {
@@ -3123,10 +3681,10 @@
         "hot-path"
       ],
       "designedOutCases": [
-        "shouldRunFirstTimeSetup \u203a returns true when experimental, default agent dir, and no settings.json",
-        "shouldRunFirstTimeSetup \u203a returns false when experimental features are disabled",
-        "shouldRunFirstTimeSetup \u203a returns false when a custom agent dir is set",
-        "shouldRunFirstTimeSetup \u203a returns false when settings.json already exists"
+        "shouldRunFirstTimeSetup › returns true when experimental, default agent dir, and no settings.json",
+        "shouldRunFirstTimeSetup › returns false when experimental features are disabled",
+        "shouldRunFirstTimeSetup › returns false when a custom agent dir is set",
+        "shouldRunFirstTimeSetup › returns false when settings.json already exists"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing. Four official-distribution cases are designed out, SCRUTINIZED:approved by owner Michael Kinsy on 2026-09-29: Pi shows first-time setup only for its official distribution identity (src/cli/startup-ui.ts:122-140; caller src/main.ts:661), which PiG never has. The mapping row test-mapping-v0.99.1.json#packages/coding-agent/test/first-time-setup.test.ts must list exactly these ids."
     },
@@ -5825,7 +6383,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the three designed-out cases test JS promise and thenable handling of a listener or onReport; Go callbacks return no value, so a failing listener is a panic that session.Contained recovers and reports once, asserted by harness TestListenerAndReportErrors and TestSafeNow. [listener and report errors \u203a reports a listener or onReport whose promise rejects, without an unhandled rejection] Go callbacks (SubscribeCommits/OnReport listeners) return no promise, so there is no rejection to observe; a Go listener's failure is a panic, which session.Contained recovers and reports once: asserted by harness TestListenerAndReportErrors 'reports a throwing commit or close listener and runs the others; the commit stands' and TestSafeNow [listener and report errors \u203a contains a fulfilled thenable that calls only its fulfillment handler] Go has no thenables: every listener is a plain func run inside session.Contained, which recovers its panic (TestListenerAndReportErrors 'reports a throwing commit or close listener...') [listener and report errors \u203a contains a rejected promise from another realm] Go has no promises or node:vm realms; a panic in a listener from any goroutine/package is recovered by the same session.Contained path (TestListenerAndReportErrors 'reports a throwing commit or close listener...')"
+      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the three designed-out cases test JS promise and thenable handling of a listener or onReport; Go callbacks return no value, so a failing listener is a panic that session.Contained recovers and reports once, asserted by harness TestListenerAndReportErrors and TestSafeNow. [listener and report errors › reports a listener or onReport whose promise rejects, without an unhandled rejection] Go callbacks (SubscribeCommits/OnReport listeners) return no promise, so there is no rejection to observe; a Go listener's failure is a panic, which session.Contained recovers and reports once: asserted by harness TestListenerAndReportErrors 'reports a throwing commit or close listener and runs the others; the commit stands' and TestSafeNow [listener and report errors › contains a fulfilled thenable that calls only its fulfillment handler] Go has no thenables: every listener is a plain func run inside session.Contained, which recovers its panic (TestListenerAndReportErrors 'reports a throwing commit or close listener...') [listener and report errors › contains a rejected promise from another realm] Go has no promises or node:vm realms; a panic in a listener from any goroutine/package is recovered by the same session.Contained path (TestListenerAndReportErrors 'reports a throwing commit or close listener...')"
     },
     {
       "path": "packages/durable/test/harness-structured-output.test.ts",
@@ -5906,9 +6464,9 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f). SCRUTINIZED:approved by the owner (2026-10-20) \u2014 Durable telemetry: only the async-listener case (:899) is designed out: Go commit listeners (SubscribeCommits) return no value, so a Promise-returning listener has no Go form.",
+      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f). SCRUTINIZED:approved by the owner (2026-10-20) — Durable telemetry: only the async-listener case (:899) is designed out: Go commit listeners (SubscribeCommits) return no value, so a Promise-returning listener has no Go form.",
       "designedOutCases": [
-        "Durable telemetry \u203a preserves async listener error containment and report counting"
+        "Durable telemetry › preserves async listener error containment and report counting"
       ]
     },
     {
@@ -5965,7 +6523,7 @@
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by Main (lead ruling by IRC, 2026-11-02; owner confirmation pending): the case 'rejects window bounds that are not integers or put `max` below `min`' is designed out for two of its inputs, `min: 1.5` and `from: NaN`, because they are unreachable in Go: ConversationWindow takes Min and Max as *int and From as durable.EntryId, so the type system already excludes a non-integer bound. This is a Go type-system mechanic, not a behavior difference. The case's other inputs (min 0, max below min, observeConversation max 0, max equal to min) are asserted in TestConversationView.",
       "designedOutCases": [
-        "conversation view window \u203a rejects window bounds that are not integers or put `max` below `min`"
+        "conversation view window › rejects window bounds that are not integers or put `max` below `min`"
       ]
     },
     {
@@ -6036,7 +6594,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: the Session read cache of task and conversation records; the Go test drives durable/session/cached_storage.go (CachedStorage: written-record cache, ended-task table, live and awaited tasks, reads in flight, Published) over a counting backend. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [cached storage \u203a keeps the written record itself, frozen: no copy]: Go has no Object.isFrozen: CachedStorage (durable/session/cached_storage.go) keeps the written record by shared referent and a caller who mutates a published record changes what the cache serves, so the frozen-state assertion on record.state has no Go form; the rest of the case (the identity of the task and the conversation the cache serves, no copy) runs in TestCachedStorageKeepsWrittenRecordItselfShared."
+      "rationale": "Production-path review at Pi 1.5.0: the Session read cache of task and conversation records; the Go test drives durable/session/cached_storage.go (CachedStorage: written-record cache, ended-task table, live and awaited tasks, reads in flight, Published) over a counting backend. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [cached storage › keeps the written record itself, frozen: no copy]: Go has no Object.isFrozen: CachedStorage (durable/session/cached_storage.go) keeps the written record by shared referent and a caller who mutates a published record changes what the cache serves, so the frozen-state assertion on record.state has no Go form; the rest of the case (the identity of the task and the conversation the cache serves, no copy) runs in TestCachedStorageKeepsWrittenRecordItselfShared."
     },
     {
       "path": "packages/durable/test/session-checkpoints-migrations.test.ts",
@@ -6054,9 +6612,9 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: the Session newest-entry and head-marker cache of each conversation; the Go test drives durable/session/conversation_tails.go (ConversationTails: newest entry and newest head marker per conversation, bounded LRU) used by the Session for LatestEntryId and LatestHeadMarker. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [conversation tails \u203a freezes the markers it keeps]: Go has no Object.freeze: ConversationTails (durable/session/conversation_tails.go) shares the kept markers and records are immutable by convention, so a mutation after apply neither throws nor is refused, and no Go production path can express the frozen-record input; the remaining behavior of the markers (kept, bounded, cutoff answers) runs in TestConversationTailsReadsOnceThenFollowsCommits, TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt and TestConversationTailsKeepsBoundedNumberOfConversationsFewerWithMarkers.",
+      "rationale": "Production-path review at Pi 1.5.0: the Session newest-entry and head-marker cache of each conversation; the Go test drives durable/session/conversation_tails.go (ConversationTails: newest entry and newest head marker per conversation, bounded LRU) used by the Session for LatestEntryId and LatestHeadMarker. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [conversation tails › freezes the markers it keeps]: Go has no Object.freeze: ConversationTails (durable/session/conversation_tails.go) shares the kept markers and records are immutable by convention, so a mutation after apply neither throws nor is refused, and no Go production path can express the frozen-record input; the remaining behavior of the markers (kept, bounded, cutoff answers) runs in TestConversationTailsReadsOnceThenFollowsCommits, TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt and TestConversationTailsKeepsBoundedNumberOfConversationsFewerWithMarkers.",
       "designedOutCases": [
-        "conversation tails \u203a freezes the markers it keeps"
+        "conversation tails › freezes the markers it keeps"
       ]
     },
     {
@@ -6086,7 +6644,7 @@
       ],
       "rationale": "Production-path review at Pi 1.2.0: Durable session document cache retention, on every durable turn's state; hot-path with the sibling packages/durable/test/ rows. SCRUTINIZED:approved by the tern lead ruling 2026-10-13 (tests-120-b): :451 is designed out (it tests Node's unreferenced-timer mechanism, runtime mechanics).",
       "designedOutCases": [
-        "document cache retention \u203a keeps no timer where timers cannot be unreferenced, and evicts on commits"
+        "document cache retention › keeps no timer where timers cannot be unreferenced, and evicts on commits"
       ]
     },
     {
@@ -6114,7 +6672,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: group commit on the Session line (docs/group-commit.md); the Go test drives durable/session/session.go, writer.go, transaction.go and cached_storage.go (the Session line, group commit writer, gates, outcome fences, publication, upkeep, held documents) and conversation_tails.go over a controlled MemoryStorage. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [group commit: failures per part \u203a rejects every part of a call with its rejection value, ${value} included] [group commit: failures per part \u203a rejects a refused part with its refusal, ${value} included, and the parts after it with SessionFailed]: a Go error cannot be present but nil: Pi tells `{stored, refused: undefined}` (rejects with undefined) from `{stored}` (\"Storage committed without adopting the batch\"), while Go's Commit returns a non-nil error on every failure and the writer (writer.go) requires result.Refused != nil, so a rejection or refusal of undefined or null has no Go form; the rest of both cases (every part rejected with the call's rejection value, the refused part's refusal and the parts after it failing SessionFailed) runs with non-nil values in TestGroupCommitFailuresPerPart."
+      "rationale": "Production-path review at Pi 1.5.0: group commit on the Session line (docs/group-commit.md); the Go test drives durable/session/session.go, writer.go, transaction.go and cached_storage.go (the Session line, group commit writer, gates, outcome fences, publication, upkeep, held documents) and conversation_tails.go over a controlled MemoryStorage. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [group commit: failures per part › rejects every part of a call with its rejection value, ${value} included] [group commit: failures per part › rejects a refused part with its refusal, ${value} included, and the parts after it with SessionFailed]: a Go error cannot be present but nil: Pi tells `{stored, refused: undefined}` (rejects with undefined) from `{stored}` (\"Storage committed without adopting the batch\"), while Go's Commit returns a non-nil error on every failure and the writer (writer.go) requires result.Refused != nil, so a rejection or refusal of undefined or null has no Go form; the rest of both cases (every part rejected with the call's rejection value, the refused part's refusal and the parts after it failing SessionFailed) runs with non-nil values in TestGroupCommitFailuresPerPart."
     },
     {
       "path": "packages/durable/test/session-observers.test.ts",
@@ -6123,7 +6681,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the designed-out case tests a JS promise returned by an observer's call; a Go observer's Advance returns no value, so a failing observer is a panic that the Session reports once, detaches and ends listener_error, asserted by session TestObserveDoc (reports a throwing observer, detaches it and ends it with the error). [observeDoc throwing asynchronously \u203a reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`] The call returns a Promise upstream and Go has none, so the rejection has no counterpart."
+      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the designed-out case tests a JS promise returned by an observer's call; a Go observer's Advance returns no value, so a failing observer is a panic that the Session reports once, detaches and ends listener_error, asserted by session TestObserveDoc (reports a throwing observer, detaches it and ends it with the error). [observeDoc throwing asynchronously › reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`] The call returns a Promise upstream and Go has none, so the rejection has no counterpart."
     },
     {
       "path": "packages/durable/test/session-tables.test.ts",
@@ -6433,7 +6991,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders \u203a carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders \u203a carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go"
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go"
     },
     {
       "path": "packages/schema/test/coerce-typebox.test.ts",
@@ -6485,7 +7043,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [values \u203a treats a property set to undefined as absent]: Go has no undefined: a Go value is JSON null or an absent *Object member, never a present-but-undefined member, and no Go production path (tool arguments decode through chordjson into nil, bool, float64, string, []any or *Object) can carry one; the rest of the values group (absent versus null members, required, additional properties) runs in TestValues (schema/validator_upstream_test.go)."
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [values › treats a property set to undefined as absent]: Go has no undefined: a Go value is JSON null or an absent *Object member, never a present-but-undefined member, and no Go production path (tool arguments decode through chordjson into nil, bool, float64, string, []any or *Object) can carry one; the rest of the values group (absent versus null members, required, additional properties) runs in TestValues (schema/validator_upstream_test.go)."
     },
     {
       "path": "packages/telemetry/test/conformance.test.ts",
