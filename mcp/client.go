@@ -203,7 +203,7 @@ func objectFields(raw json.RawMessage) (map[string]json.RawMessage, bool) {
 		return nil, false
 	}
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(raw, &fields) != nil {
+	if unmarshalJSON(raw, &fields) != nil {
 		return nil, false
 	}
 	return fields, true
@@ -211,7 +211,7 @@ func objectFields(raw json.RawMessage) (map[string]json.RawMessage, bool) {
 
 func isJSONString(raw json.RawMessage) bool {
 	var s string
-	return raw != nil && json.Unmarshal(raw, &s) == nil && len(raw) > 0 && raw[0] == '"'
+	return raw != nil && unmarshalJSON(raw, &s) == nil && len(raw) > 0 && raw[0] == '"'
 }
 
 func validateInitializeResult(raw json.RawMessage) (*InitializeResult, error) {
@@ -228,7 +228,7 @@ func validateInitializeResult(raw json.RawMessage) (*InitializeResult, error) {
 		return nil, fail
 	}
 	var result InitializeResult
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := unmarshalJSON(raw, &result); err != nil {
 		return nil, fail
 	}
 	return &result, nil
@@ -249,7 +249,7 @@ func validateListPage(method, key string, value json.RawMessage, isItem func(map
 		return nil, invalidError("Invalid MCP " + method + " result")
 	}
 	var raws []json.RawMessage
-	if err := json.Unmarshal(fields[key], &raws); err != nil {
+	if err := unmarshalJSON(fields[key], &raws); err != nil {
 		return nil, invalidError("Invalid MCP " + method + " result")
 	}
 	page := &listPage{raws: raws}
@@ -265,7 +265,7 @@ func validateListPage(method, key string, value json.RawMessage, isItem func(map
 		if !isJSONString(cursor) {
 			return nil, invalidError("Invalid MCP " + method + " cursor")
 		}
-		_ = json.Unmarshal(cursor, &page.nextCursor)
+		_ = unmarshalJSON(cursor, &page.nextCursor)
 		page.hasNext = page.nextCursor != ""
 	}
 	return page, nil
@@ -288,7 +288,7 @@ func isResourceTemplate(template map[string]json.RawMessage) bool {
 
 func decodeItem[T any](raw json.RawMessage, method string) (T, error) {
 	var out T
-	if err := json.Unmarshal(raw, &out); err != nil {
+	if err := unmarshalJSON(raw, &out); err != nil {
 		return out, invalidError("Invalid entry in MCP " + method + " result")
 	}
 	return out, nil
@@ -300,7 +300,7 @@ func validateReadResourceResult(raw json.RawMessage) (*ReadResourceResult, error
 		return nil, invalidError("Invalid MCP resources/read result")
 	}
 	var contents []json.RawMessage
-	if err := json.Unmarshal(fields["contents"], &contents); err != nil {
+	if err := unmarshalJSON(fields["contents"], &contents); err != nil {
 		return nil, invalidError("Invalid MCP resources/read result")
 	}
 	for _, item := range contents {
@@ -310,7 +310,7 @@ func validateReadResourceResult(raw json.RawMessage) (*ReadResourceResult, error
 		}
 	}
 	var result ReadResourceResult
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := unmarshalJSON(raw, &result); err != nil {
 		return nil, invalidError("Invalid contents in MCP resources/read result")
 	}
 	for i := range result.Contents {
@@ -332,7 +332,7 @@ func validateCallToolResult(raw json.RawMessage) (*CallToolResult, error) {
 		return nil, fail
 	}
 	var result CallToolResult
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := unmarshalJSON(raw, &result); err != nil {
 		return nil, fail
 	}
 	result.Raw = raw
@@ -1046,7 +1046,7 @@ func (c *Client) handleProgress(params json.RawMessage) {
 	}
 	var token JSONRPCID
 	var progress float64
-	if token.UnmarshalJSON(fields["progressToken"]) != nil || json.Unmarshal(fields["progress"], &progress) != nil || !isNumber(fields["progress"]) {
+	if token.UnmarshalJSON(fields["progressToken"]) != nil || unmarshalJSON(fields["progress"], &progress) != nil || !isNumber(fields["progress"]) {
 		return
 	}
 	c.mu.Lock()
@@ -1063,7 +1063,7 @@ func (c *Client) handleProgress(params json.RawMessage) {
 		return
 	}
 	var notification ProgressNotification
-	if json.Unmarshal(params, &notification) != nil {
+	if unmarshalJSON(params, &notification) != nil {
 		notification = ProgressNotification{ProgressToken: token, Progress: progress}
 	}
 	if err := callListener(func() { onProgress(notification) }); err != nil {
@@ -1074,7 +1074,7 @@ func (c *Client) handleProgress(params json.RawMessage) {
 // isNumber is `typeof value === "number"` for a decoded JSON value: a string and null are not numbers, though Go decodes null into a float64.
 func isNumber(raw json.RawMessage) bool {
 	var f float64
-	return len(raw) > 0 && raw[0] != '"' && !bytes.Equal(bytes.TrimSpace(raw), []byte("null")) && json.Unmarshal(raw, &f) == nil && !math.IsNaN(f)
+	return len(raw) > 0 && raw[0] != '"' && !bytes.Equal(bytes.TrimSpace(raw), []byte("null")) && unmarshalJSON(raw, &f) == nil && !math.IsNaN(f)
 }
 
 func (c *Client) handleCancelled(params json.RawMessage) {
@@ -1089,7 +1089,7 @@ func (c *Client) handleCancelled(params json.RawMessage) {
 	var reason string
 	if raw, present := fields["reason"]; present {
 		if isJSONString(raw) {
-			_ = json.Unmarshal(raw, &reason)
+			_ = unmarshalJSON(raw, &reason)
 		} else {
 			reason = string(raw)
 		}

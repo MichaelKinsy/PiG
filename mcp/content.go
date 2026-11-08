@@ -93,13 +93,13 @@ type contentBlockWire struct {
 func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 	*b = ContentBlock{raw: append(json.RawMessage(nil), data...)}
 	var members map[string]json.RawMessage
-	if err := json.Unmarshal(data, &members); err != nil {
+	if err := unmarshalJSON(data, &members); err != nil {
 		return nil
 	}
 	str := func(name string) (string, bool) {
 		var v string
 		raw, ok := members[name]
-		if !ok || json.Unmarshal(raw, &v) != nil || len(raw) == 0 || raw[0] != '"' {
+		if !ok || unmarshalJSON(raw, &v) != nil || len(raw) == 0 || raw[0] != '"' {
 			return "", false
 		}
 		return v, true
@@ -116,7 +116,7 @@ func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 	b.Description, _ = str("description")
 	if raw, ok := members["size"]; ok && len(raw) > 0 && raw[0] != '"' {
 		var n float64
-		if json.Unmarshal(raw, &n) == nil {
+		if unmarshalJSON(raw, &n) == nil {
 			b.Size = &n
 		}
 	}
@@ -125,7 +125,7 @@ func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 	}
 	if raw, ok := members["annotations"]; ok {
 		var a ContentAnnotations
-		if json.Unmarshal(raw, &a) == nil {
+		if unmarshalJSON(raw, &a) == nil {
 			b.Annotations = &a
 		}
 	}
@@ -136,13 +136,13 @@ func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 // lenientResource decodes the embedded resource of a block, keeping the members that have their declared type.
 func lenientResource(raw json.RawMessage) *ResourceContents {
 	var members map[string]json.RawMessage
-	if json.Unmarshal(raw, &members) != nil || members == nil {
+	if unmarshalJSON(raw, &members) != nil || members == nil {
 		return nil
 	}
 	str := func(name string) *string {
 		var v string
 		m, ok := members[name]
-		if !ok || len(m) == 0 || m[0] != '"' || json.Unmarshal(m, &v) != nil {
+		if !ok || len(m) == 0 || m[0] != '"' || unmarshalJSON(m, &v) != nil {
 			return nil
 		}
 		return &v
@@ -198,13 +198,13 @@ type CallToolResult struct {
 // (client.ts passes the server's value through and tools.ts tests `result.isError`), and no member is rejected for its type.
 func (r *CallToolResult) UnmarshalJSON(data []byte) error {
 	var members map[string]json.RawMessage
-	if err := json.Unmarshal(data, &members); err != nil {
+	if err := unmarshalJSON(data, &members); err != nil {
 		return err
 	}
 	*r = CallToolResult{StructuredContent: members["structuredContent"], Meta: members["_meta"]}
 	if raw, ok := members["content"]; ok {
 		var blocks []ContentBlock
-		if err := json.Unmarshal(raw, &blocks); err == nil {
+		if err := unmarshalJSON(raw, &blocks); err == nil {
 			r.Content = blocks
 		}
 	}
@@ -218,7 +218,7 @@ func (r *CallToolResult) UnmarshalJSON(data []byte) error {
 // jsTruthy is JavaScript's truthiness of a JSON value: false, null, 0, -0 and "" are falsy.
 func jsTruthy(raw json.RawMessage) bool {
 	var v any
-	if err := json.Unmarshal(raw, &v); err != nil {
+	if err := unmarshalJSON(raw, &v); err != nil {
 		return true
 	}
 	switch v := v.(type) {
@@ -248,7 +248,7 @@ func jsString(raw json.RawMessage, present bool) string {
 		return "undefined"
 	}
 	var v any
-	if err := json.Unmarshal(raw, &v); err != nil {
+	if err := unmarshalJSON(raw, &v); err != nil {
 		return "undefined"
 	}
 	return jsValueString(v)
@@ -343,7 +343,7 @@ func blockToLLMContent(block ContentBlock) LLMContent {
 // is a TypeError upstream, which has no Go result, so it renders the unsupported placeholder.
 func decodedBlockToLLMContent(block ContentBlock) LLMContent {
 	var members map[string]json.RawMessage
-	_ = json.Unmarshal(block.raw, &members)
+	_ = unmarshalJSON(block.raw, &members)
 	text := func(name string) string { return stringOrUndefined(members[name]) }
 	member := func(name string) string {
 		raw, ok := members[name]
@@ -361,7 +361,7 @@ func decodedBlockToLLMContent(block ContentBlock) LLMContent {
 		return LLMContent{Type: LLMContentTypeText, Text: member("name") + ": " + member("uri")}
 	case "resource":
 		var resource map[string]json.RawMessage
-		if json.Unmarshal(members["resource"], &resource) != nil || resource == nil {
+		if unmarshalJSON(members["resource"], &resource) != nil || resource == nil {
 			return LLMContent{Type: LLMContentTypeText, Text: "[unsupported MCP content resource]"}
 		}
 		if raw, ok := resource["text"]; ok {
