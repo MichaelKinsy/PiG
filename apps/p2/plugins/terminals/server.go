@@ -25,6 +25,12 @@ const (
 	agentRows = 30
 )
 
+// heldView is an open view with the service that made it.
+type heldView struct {
+	view    *TerminalView
+	service *TerminalService
+}
+
 // ServiceParts is what the open `TerminalServiceObject` contributes to `TerminalServices`: the service, read at each use.
 type ServiceParts struct {
 	Service func() (*TerminalService, error)
@@ -149,14 +155,17 @@ func serveTerminals(params *delta.JsonObject, principal data.Principal, self hos
 			if err != nil {
 				return nil, err
 			}
-			return terminals.Open(ctx, id)
+			opened, err := terminals.Open(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+			// The service is kept with the view: reading the native while the object closes would read a registry that is
+			// composing.
+			return &heldView{view: opened, service: terminals}, nil
 		},
 		func(value any, _ host.NativeCloseReason, _ context.Context) error {
-			if terminals, err := service(); err == nil {
-				terminals.Release(value.(*TerminalView))
-			} else {
-				value.(*TerminalView).Close()
-			}
+			held := value.(*heldView)
+			held.service.Release(held.view)
 			return nil
 		},
 	)
@@ -166,7 +175,7 @@ func serveTerminals(params *delta.JsonObject, principal data.Principal, self hos
 		if err != nil {
 			return nil, err
 		}
-		return nil, value.(*TerminalView).Command(ctx, request)
+		return nil, value.(*heldView).view.Command(ctx, request)
 	}
 	return contracts.Implementation{Variant: "owner", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 		"channel": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -178,7 +187,7 @@ func serveTerminals(params *delta.JsonObject, principal data.Principal, self hos
 			if err != nil {
 				return nil, err
 			}
-			token, err := terminals.Channel(ctx, value.(*TerminalView))
+			token, err := terminals.Channel(ctx, value.(*heldView).view)
 			if err != nil {
 				return nil, err
 			}

@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -311,6 +311,9 @@ func TestTerminalsSurviveCompatibleReloadAndServerRestartControlsStaySessionScop
 	if _, err := server.Reload([]string{"terminals"}, p2test.Background); err != nil {
 		t.Fatal(err)
 	}
+	// Go form: a reload renews the plugin's facets (Pi's reload of unchanged code is a no-op, hosts/reload.go), so the view's
+	// objects start again and attach to the terminal anew before the resize.
+	call(view, "attach", delta.JsonObjectOf("terminalId", id))
 	call(view, "resize", delta.JsonObjectOf("cols", float64(70), "rows", float64(12)))
 	_ = client.Close(p2test.Background)
 	_ = bytes.conn.Close()
@@ -332,10 +335,16 @@ func TestTerminalsSurviveCompatibleReloadAndServerRestartControlsStaySessionScop
 	})
 }
 
-func itoa(value int) string { return strconv.Itoa(value) }
 
 func randomView() string {
 	var bytes [16]byte
 	_, _ = rand.Read(bytes[:])
 	return hex.EncodeToString(bytes[:])
+}
+
+func realpathOf(path string) (string, error) { return filepath.EvalSymlinks(path) }
+
+func jsonString(text string) string {
+	quoted, _ := chordjson.Marshal(text)
+	return string(quoted)
 }
