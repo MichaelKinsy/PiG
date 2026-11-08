@@ -63,7 +63,7 @@ precedence = "closest"
 SPDX-FileCopyrightText = "Copyright Michael Kinsy"
 SPDX-License-Identifier = "MIT"
 
-# The Mermaid renderer is a Go port of grok-mermaid 0.2.2. Files with more
+# The Mermaid renderer is a Go port of lovely-mermaid 0.3.3. Files with more
 # exact in-file declarations, including unicode-width data, take precedence.
 [[annotations]]
 path = "internal/mermaid/**"

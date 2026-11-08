@@ -61,13 +61,13 @@ Distributed file: `.github/CODE_OF_CONDUCT.md`
 
 PiG customizes the enforcement contact and preserves the required source and license attribution in the document.
 
-## grok-mermaid 0.2.2
+## lovely-mermaid 0.3.3
 
-Source: <https://github.com/xl0/grok-mermaid/tree/v0.2.2>
+Source: <https://github.com/xl0/lovely-mermaid/tree/v0.3.3>
 
-Reviewed source revision: `3430584a71350d72b5a0310e91bcd55578a9f981`
+Reviewed source revision: `a28f683ef3d9eda3497e5818f4f18dfdc3a87ed9`
 
-Published npm integrity: `sha512-XcJEP5dDC8liHBh52mlLjU18fNvu1ckFsu0QpIG3+APZ270fsj9wxpiA6cOURmbUEuoMVgjbC2+UYgTdCqqgzA==`
+Published npm integrity: `sha512-EMLJS934qwt2MLO/a5o+T/89HGbuXZPwmCpHIhHO+DVrm+y5tHlEHgpZzlC2o4yW/rFPHRFO9xSMafzqH4wH5A==`
 
 Distributed files: `internal/mermaid/**`
 
@@ -86,7 +86,7 @@ Distributed file: `internal/mermaid/width_data.go`
 - Copyright (c) 2015 The Rust Project Developers
 - License: Apache-2.0 OR MIT; PiG uses the MIT option for this derived data
 
-The width table is generated through `grok-mermaid` from the exact `unicode-width` 0.2.0 crate pinned by `grok-mermaid`'s width oracle. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+The width table is generated through `lovely-mermaid` from the exact `unicode-width` 0.2.0 crate pinned by `lovely-mermaid`'s width oracle. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
 
 ## png 0.17.14 and fdeflate 0.3.6
 

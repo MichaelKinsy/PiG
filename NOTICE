@@ -44,9 +44,9 @@ The Node extension runtime embeds the third-party packages Pi 0.87.1 depends on 
 
 See `THIRD_PARTY_NOTICES.md` for the applicable license texts. Dependencies included in a release are recorded in that release's SPDX SBOM.
 
-PiG also contains a Go port of `grok-mermaid` 0.2.2 and data generated from its width table:
+PiG also contains a Go port of `lovely-mermaid` 0.3.3 and data generated from its width table:
 
-- Source: <https://github.com/xl0/grok-mermaid/tree/v0.2.2>
+- Source: <https://github.com/xl0/lovely-mermaid/tree/v0.3.3>
 - Copyright 2023-2026 SpaceXAI
 - Copyright 2026 Alexey Zaytsev
 - License: Apache-2.0
