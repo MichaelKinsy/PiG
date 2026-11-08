@@ -1008,6 +1008,8 @@ type rawLinkedOptions struct {
 	// Trusted is `trusted: true` on the link: its calls' old-work mark is honoured.
 	Trusted bool
 	Loop    sectionLoop
+	// Telemetry is the server's adapter (Pi's `{ telemetry }`); nil has none.
+	Telemetry telemetry.TelemetryContext
 }
 
 // rawLinkedHost is what `rawLinked` returns: Pi's `{ server, peer, errors }`.
@@ -1027,6 +1029,7 @@ func rawLinked(t testing.TB, setup func(host FacetHost) error, options rawLinked
 		ReadyTimeout: options.ReadyTimeout,
 		Compression:  options.Compression,
 		OnError:      errs.push,
+		Telemetry:    options.Telemetry,
 		loop:         options.Loop,
 	})
 	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
@@ -1297,7 +1300,7 @@ type rawProviderHost struct {
 func rawProvider(t testing.TB, options rawLinkedOptions) *rawProviderHost {
 	t.Helper()
 	errs := &hostErrors{}
-	client := newHost(t, HostOptions{ReadyTimeout: options.ReadyTimeout, Compression: options.Compression, OnError: errs.push, loop: options.Loop})
+	client := newHost(t, HostOptions{ReadyTimeout: options.ReadyTimeout, Compression: options.Compression, OnError: errs.push, Telemetry: options.Telemetry, loop: options.Loop})
 	mustLoad(t)(client.Load(nil, background))
 	return &rawProviderHost{Client: client, Peer: rawParent(t, client, options.Limits), Errors: errs}
 }

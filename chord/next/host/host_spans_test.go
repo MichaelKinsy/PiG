@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -418,5 +419,141 @@ func TestNativeSpansMarkACloseThatFailedFailed(t *testing.T) {
 	}
 	if status := closed.Status; status.Error == nil || status.Error.Name != "close_failed" || status.Error.Message != "stuck" {
 		t.Errorf("status = %+v, want error close_failed: stuck", status)
+	}
+}
+
+// --- who a span was for (principalAttributes) ---------------------------------------------------------------------------
+
+// whoMethodSpan is the attributes of the chord.method span of a call to a host acting as u1, recording on recorder.
+func whoMethodSpan(t *testing.T, recorder *telemetry.InMemoryTelemetryContext, hook func(data.Principal) telemetry.SpanAttributes) telemetry.RecordedTelemetrySpan {
+	t.Helper()
+	host := newHost(t, HostOptions{
+		Principal: delta.JsonObjectOf("kind", "user", "id", "u1", "name", "Ada"), Telemetry: recorder,
+		PrincipalAttributes: hook, OnError: noopOnError,
+	})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/traced", Facet: tracedFacet(nil, nil)}}, background))
+	ref := mustGet(t, host, tracedType, jsonObject())
+	tracedUnder(t, recorder, "work", func(ctx context.Context) {
+		_, err := ref.Call("work", nil, ctx)
+		must(t, err)
+	})
+	return spanWhere(t, recorder, "chord.method", map[string]any{"type": "app.traced"})
+}
+
+// host.test.ts › who a span was for (principalAttributes) › records a method's principal key as `chord.principal` by default
+func TestPrincipalAttributesRecordAMethodsPrincipalKeyAsChordPrincipalByDefault(t *testing.T) {
+	span := whoMethodSpan(t, telemetry.NewInMemoryTelemetryContext(), nil)
+	if got, _ := span.Attributes.Get("chord.principal"); got != `{"id":"u1","kind":"user","name":"Ada"}` {
+		t.Errorf("chord.principal = %v", got)
+	}
+}
+
+// › records the hook's attributes in its place, called once per recorded span
+func TestPrincipalAttributesRecordTheHooksAttributesInItsPlaceCalledOncePerRecordedSpan(t *testing.T) {
+	var calls atomic.Int32
+	span := whoMethodSpan(t, telemetry.NewInMemoryTelemetryContext(), func(principal data.Principal) telemetry.SpanAttributes {
+		calls.Add(1)
+		return telemetry.SpanAttributes{telemetry.Attr("chord.principal", principalKind(principal)), telemetry.Attr("user.name", "Ada")}
+	})
+	attributesWant(t, span, map[string]any{"chord.principal": "user", "user.name": "Ada"})
+	if got := calls.Load(); got != 1 {
+		t.Errorf("hook calls = %d, want 1", got)
+	}
+}
+
+// › records nothing of the principal when the hook returns {}
+func TestPrincipalAttributesRecordNothingOfThePrincipalWhenTheHookReturnsNothing(t *testing.T) {
+	span := whoMethodSpan(t, telemetry.NewInMemoryTelemetryContext(), func(data.Principal) telemetry.SpanAttributes { return nil })
+	for _, name := range []string{"chord.principal", "user.name"} {
+		if got, ok := span.Attributes.Get(name); ok {
+			t.Errorf("%s = %v, want none", name, got)
+		}
+	}
+	attributesWant(t, span, map[string]any{"principal.kind": "user"})
+}
+
+// › never calls the hook when nothing records (the NOOP adapter)
+func TestPrincipalAttributesNeverCallTheHookWhenNothingRecords(t *testing.T) {
+	var calls atomic.Int32
+	host := newHost(t, HostOptions{
+		Principal: delta.JsonObjectOf("kind", "user"), OnError: noopOnError,
+		PrincipalAttributes: func(data.Principal) telemetry.SpanAttributes {
+			calls.Add(1)
+			return telemetry.SpanAttributes{telemetry.Attr("chord.principal", "x")}
+		},
+	})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/traced", Facet: tracedFacet(nil, nil)}}, background))
+	_, err := mustGet(t, host, tracedType, jsonObject()).Call("work", nil, background)
+	must(t, err)
+	if got := calls.Load(); got != 0 {
+		t.Errorf("hook calls = %d, want 0", got)
+	}
+}
+
+// › records a call span's principal: whom its reference acts for
+func TestPrincipalAttributesRecordACallSpansPrincipalWhomItsReferenceActsFor(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	client := newHost(t, HostOptions{
+		Principal: delta.JsonObjectOf("kind", "user", "id", "u1"), Telemetry: recorder, OnError: noopOnError,
+		PrincipalAttributes: func(principal data.Principal) telemetry.SpanAttributes {
+			return telemetry.SpanAttributes{telemetry.Attr("chord.principal", principalKind(principal)+":"+principal.Value("id").(string))}
+		},
+	})
+	mustLoad(t)(client.Load(nil, background))
+	peer := rawParent(t, client, link.PartLimits{})
+	tracedUnder(t, recorder, "click", func(ctx context.Context) {
+		got := make(chan *Reference, 1)
+		go func() {
+			notes, err := client.Get(ctx, Notes, jsonObject("session", "S1"), GetOptions{})
+			must(t, err)
+			got <- notes
+		}()
+		bindHold(t, peer, peer.Next("hold").(*link.HoldMessage).Hold)
+		notes := <-got
+		pending := startCall(t, notes, "add", jsonObject("text", "a"), ctx)
+		call := peer.Next("call").(*link.CallMessage)
+		resultPart, err := link.JsonPart(float64(1))
+		must(t, err)
+		peer.Send(&link.ResultMessage{Call: call.Call, Value: resultPart})
+		if _, err := pending.wait(background); err != nil {
+			t.Error(err)
+		}
+	})
+	attributesWant(t, spanWhere(t, recorder, "chord.call", nil), map[string]any{"chord.principal": "user:u1"})
+}
+
+// facet.test.ts › serve options › starts no method span for a type served `untraced`
+func TestServeOptionsStartNoMethodSpanForATypeServedUntraced(t *testing.T) {
+	quiet := mustContract(contracts.Local("app.quiet", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{},
+		Members: []contracts.LocalEntry{contracts.Mem("ping", contracts.NewMethod())}}))
+	loud := mustContract(contracts.Local("app.loud", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{},
+		Members: []contracts.LocalEntry{contracts.Mem("ping", contracts.NewMethod())}}))
+	ping := func() contracts.Implementation {
+		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			"ping": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
+		}}}
+	}
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	host := newHost(t, HostOptions{Telemetry: recorder, OnError: noopOnError})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		if err := h.Serve(quiet, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return ping(), nil }, ServeOptions{Untraced: true}); err != nil {
+			return err
+		}
+		return h.Serve(loud, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return ping(), nil }, ServeOptions{})
+	})}}, background))
+	quietRef, loudRef := mustGet(t, host, quiet, jsonObject()), mustGet(t, host, loud, jsonObject())
+	tracedUnder(t, recorder, "work", func(ctx context.Context) {
+		for _, ref := range []*Reference{quietRef, loudRef} {
+			_, err := ref.Call("ping", nil, ctx)
+			must(t, err)
+		}
+	})
+	var types []any
+	for _, span := range spansNamed(recorder, "chord.method") {
+		typ, _ := span.Attributes.Get("type")
+		types = append(types, typ)
+	}
+	if !reflect.DeepEqual(types, []any{"app.loud"}) {
+		t.Errorf("chord.method types = %v, want [app.loud]", types)
 	}
 }
