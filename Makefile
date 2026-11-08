@@ -808,7 +808,7 @@ pin-bump: ## Move the pin to PI_UPSTREAM_REF=<tag|commit>, regenerate what deriv
 	@old=$$(env -u PI_UPSTREAM_REF $(PIN_TOOL) get ref); env -u PI_UPSTREAM_REF $(PIN_TOOL) bump "$(PI_UPSTREAM_REF)"; \
 		$(MAKE) --no-print-directory PI_UPSTREAM_REF= upstream-mirror interface-proposals test-inventory-generate && \
 		$(MAKE) --no-print-directory PI_UPSTREAM_REF= PIN_FROM="$$old" pin-ledgers && \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-dist vendor-chord-plugins-node model-catalogs intl-tables && \
+		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-dist vendor-chord-plugins-node vendor-chord-surfaces-client model-catalogs intl-tables && \
 		./automation/gen/regenerate-observation-oracles.sh && \
 		./automation/gen/refresh-pi-test-sources.sh
 
@@ -817,6 +817,9 @@ vendor-pi-dist: parity-deps ## Regenerate the vendored Pi runtime (runtime-node/
 
 vendor-chord-plugins-node: parity-deps upstream-mirror ## Regenerate chord/nextnode/plugins/node/pi, Pi's chord sources for the plugins component's Node subprocess
 	@./automation/gen/vendor-chord-plugins-node.sh
+
+vendor-chord-surfaces-client: parity-deps upstream-mirror ## Regenerate chord/nextnode/surfaces/client/pi, Pi's chord sources of the page's and the terminal's client runtimes (D476)
+	@./automation/gen/vendor-chord-surfaces-client.sh
 
 generate-schemas: ## Regenerate schemas/*.schema.json, the JSON Schemas of models.json, settings.json, keybindings.json and themes (Pi scripts/generate-schemas.ts)
 	@go run ./cmd/generate-schemas
@@ -889,7 +892,7 @@ parity-deps: interface-deps durable-interop-deps ## Build the Pi comparator from
 	@test -d "$(PI_PACKAGE_ROOT)" || { echo "exact Pi package not found: $(PI_PACKAGE_ROOT)" >&2; exit 1; }
 	@$(PIN_TOOL) check-oracle
 
-.PHONY: bug-ledger-refresh port-lens pin-show pin-sync pin-check pin-bump pin-ledgers vendor-pi-dist vendor-chord-plugins-node bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
+.PHONY: bug-ledger-refresh port-lens pin-show pin-sync pin-check pin-bump pin-ledgers vendor-pi-dist vendor-chord-plugins-node vendor-chord-surfaces-client bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
 
 include automation/make/parity.mk
 include automation/make/ci.mk
