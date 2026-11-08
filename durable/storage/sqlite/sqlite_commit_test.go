@@ -815,7 +815,7 @@ func TestSqliteStorageBatchCommitRegressions(t *testing.T) {
 		createRoot(t, s)
 		id := mint[durable.DocumentId](t, s)
 		commit(t, s, durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: id, Kind: "slot", Scope: sessionScope}, Content: base(chorddelta.JsonObjectOf())})
-		mustDo(t, database.Run("UPDATE documents SET record = ? WHERE id = ?", "not json", int64(id)))
+		mustDo(t, database.Run("UPDATE documents SET record = ? WHERE id = ?", "[1]", int64(id)))
 		entryId := mint[durable.EntryId](t, s)
 		var receipts []int
 		_, err := s.Commit(testContext, [][]durable.StorageWrite{
