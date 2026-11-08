@@ -5686,6 +5686,11 @@
  "packages/ai/src/utils/streaming-json.ts": [
   {
    "file": "ai/streaming_json_parser.go",
+   "old": "return parseToolCallArguments(stream.text.String())",
+   "new": "return stream.arguments, stream.order, \"\""
+  },
+  {
+   "file": "ai/streaming_json_parser.go",
    "old": "return &ToolCallArgumentsStream{arguments: JsonObject{}, valid: true}",
    "new": "return &ToolCallArgumentsStream{arguments: JsonObject{\"x\": nil}, valid: true}"
   }
