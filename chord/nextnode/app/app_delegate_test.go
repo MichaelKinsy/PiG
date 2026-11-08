@@ -1,10 +1,9 @@
 package app
 
 import (
+	"strconv"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/chord/next/contracts"
-	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
+	"time"
 )
 
 // Not upstream's (D605): the server host the kit gives the app is two hosts with the server's address, the Go host (the app's
@@ -36,49 +35,50 @@ export default defineFacet((host) => host.serve(Lang, (_params, _principal, self
 }));
 `
 
-// languageContract is `probe.lang` as the page declares it.
-var languageContract = mustRemote("probe.lang", contracts.RemoteDeclaration{
-	Version: 1, Params: contracts.Params{}, HostAddress: counterAddress("server"),
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		State: []contracts.Property{contracts.Prop("pick", contracts.Str()), contracts.Prop("theme", contracts.Str())},
-		Methods: []contracts.MethodEntry{contracts.Meth("choose", contracts.NewMethod(contracts.Union([]contracts.Schema{
-			contracts.Str(contracts.Max(35), contracts.Pattern("^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$")), contracts.Nul(),
-		})))},
-	})},
-})
+// languageWeb is the page's side of languagePlugin: the contracts it holds, registered for the probe (a page's own copies of them).
+const languageWeb = `import { defineFacet, hostKind, method, nul, remote, str, union } from "@test/app/v1";
+import { probe } from "@test/app/v1/web";
+const Server = hostKind("server");
+const Pick = union([str({ max: 35, pattern: "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$" }), nul()]);
+probe.contracts.choice = remote("chord.locale.choice", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: { pick: Pick }, methods: { choose: method(Pick) } } } });
+probe.contracts.lang = remote("probe.lang", { version: 1, params: {}, hostAddress: () => Server(), variants: { main: { state: { pick: str(), theme: str() }, methods: { choose: method(Pick) } } } });
+export default defineFacet(() => {});
+`
 
-// memberText is the member's current value of the page's view as JSON, "" while it has none.
-func memberText(page *reloadPage, name, member string) string {
-	value, err := page.view(name).ref.Member(member).Value()
-	if err != nil {
-		return ""
-	}
-	return jsonText(value)
+// lastFrame is the last value the probe recorded of the view's watched member, as JSON ("" while it has none).
+func lastFrame(tab *reloadTab, name string) string {
+	return evalAs[string](tab, `JSON.stringify(globalThis.reload.frames[`+quoted(name)+`]?.at(-1)) ?? ""`)
+}
+
+// waitFrame waits until the view's last frame is the JSON text want.
+func waitFrame(tab *reloadTab, name, want string) {
+	tab.t.Helper()
+	tab.browser.Wait(`JSON.stringify(globalThis.reload.frames[` + quoted(name) + `]?.at(-1)) === ` + quoted(want))
 }
 
 func TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer(t *testing.T) {
-	s := startReloadApp(t, map[string]map[string]string{"lang": {"server.ts": languagePlugin}})
-	page := reloadSignIn(t, s)
+	tab := startReloadTab(t)
+	s := startReload(t, map[string]map[string]string{"lang": {"server.ts": languagePlugin, "web.ts": languageWeb}})
+	tab.signIn(s)
 	// The page holds the Go server's choice itself, as the owner.
-	page.hold("choice", surfaces.LocaleChoice, "", 0, "pick")
-	page.waitState("choice", "live")
-	page.until("the choice's first value", reloadWait, func() bool { return memberText(page, "choice", "pick") == "null" })
+	tab.hold("choice", "choice", 10*time.Second, "", "pick")
+	tab.waitState("choice", "live")
+	waitFrame(tab, "choice", "null")
 	// The plugin's object holds the Go server's choice through the Node host's link to the Go host: it binds.
-	page.hold("lang", languageContract, "", 0, "pick")
-	page.waitState("lang", "live")
-	page.until("the plugin's view of the choice", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=null"` })
+	tab.hold("lang", "lang", 10*time.Second, "", "pick")
+	tab.waitState("lang", "live")
+	waitFrame(tab, "lang", `"pick=null"`)
 	// The theme choice, the other Go-served type the plugin's object holds.
-	page.until("the plugin's view of the theme choice", reloadWait, func() bool {
-		return memberText(page, "lang", "theme") == "\"{\\\"dark\\\":null,\\\"light\\\":null}\""
-	})
+	tab.hold("theme", "lang", 10*time.Second, "", "theme")
+	waitFrame(tab, "theme", strconv.Quote(`{"dark":null,"light":null}`))
 	// A call of the plugin's object reaches the Go server's object it holds and its view follows.
-	if got := page.result(page.call("lang", "choose", "de")); got.Status != "ok" {
+	if got := tab.result(tab.call("lang", "choose", "de")); got.Status != "ok" {
 		t.Fatalf("the plugin's choose = %+v, want ok", got)
 	}
-	page.until("the plugin's view follows its own call", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=de"` })
+	waitFrame(tab, "lang", `"pick=de"`)
 	// The difference from Pi's one host that D605 records: a hold over the Node host's link acts as the link's principal, the
 	// server's (a child cannot claim to be someone else, §4), where Pi's one host acts as the object's own principal. The plugin
 	// object's choice is the server principal's, so the owner's, which the page holds, is untouched.
-	page.waitState("choice", "live")
-	expectEqual(t, "the owner's choice", memberText(page, "choice", "pick"), "null")
+	tab.waitState("choice", "live")
+	expectEqual(t, "the owner's choice", lastFrame(tab, "choice"), "null")
 }

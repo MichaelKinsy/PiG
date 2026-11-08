@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,29 +16,18 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/gorilla/websocket"
-
-	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
-	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
-// The reload suite's kit (Pi's test/node/fixtures/reload/{app,plugins,web-api}.ts, packages/chord test/node/reload/*, pin c23b9ec1):
-// an app with project workers, short host timeouts, its root holding the suite's plugins (Pi's TypeScript, as testdata/reload
-// templates); the test's hands (edit a plugin on disk and apply the changes, the latches of calls in flight); and the page.
-//
-// Go difference, for now (D606: sequencing, T11's Chromium harness is not on follow/chord-int yet): Pi's page is a Chromium tab running
-// the base bundle and the web plugins' React components, driven through CDP. Here it is a tab host connected to the server's links
-// endpoint as the owner (a device session's token), which holds the counter and the other objects through its own references,
-// tracks each reference's states and the values of its members, and calls from them: what a web plugin's component shows is the
-// reference's last label, count and state. Page-only things (DOM, typing, scroll, page loads, a link dropped from the page's script,
-// the web step of the rollout) are the browser rows, run in real Chromium through the Go CDP driver (chord/nextnode/internal/browsertest,
-// the web surface; fix/chord-reload-web). The server's latches are reached through a latch facet on the server's plugins' process
-// (`reload.servercontrol`): Pi's server plugins run in the test's own process (D462).
+// The reload suite's kit (Pi's test/node/fixtures/reload/{app,plugins}.ts, packages/chord test/node/reload/*, pin c23b9ec1): an app with
+// project workers, short host timeouts, its root holding the suite's plugins (Pi's TypeScript, as testdata/reload templates); the test's
+// hands (edit a plugin on disk and apply the changes, the latches of calls in flight); and the page, a real Chromium tab running the
+// base bundle and the web plugins' React components, driven through the DevTools protocol (reload_web_support_test.go: `reloadTab`, Pi's
+// `ReloadPage`). The server's latches are reached through a latch facet on the server's plugins' process (`reload.servercontrol`): Pi's
+// server plugins run in the test's own process (D462).
 
 // reloadTimeouts are the hosts' timeouts of the suite's apps (the server's and the workers'): a call outliving a restart's drain is cut
 // off after 1 s, an object's close takes at most 2 s, a call waits at most 5 s for its object to go live.
@@ -127,10 +114,9 @@ func tasksPlugin(t testing.TB, code string, native bool) map[string]string {
 	return map[string]string{
 		"contract.ts": reloadTemplate(t, "tasks-contract.ts", nil),
 		"worker.ts":   reloadTemplate(t, "tasks-worker.ts", map[string]any{"Code": code, "CodeJSON": strconv.Quote(code), "Native": native, "Latch": reloadLatchSource(t)}),
+		"web.ts":      reloadTemplate(t, "tasks-web.ts", nil),
 	}
 }
-
-// The page's copies of the contracts (an old page keeps its copy of a contract while the counter moves).
 
 func counterAddress(placement string) func(*delta.JsonObject) (contracts.Address, error) {
 	if placement == "server" {
@@ -142,54 +128,6 @@ func counterAddress(placement string) func(*delta.JsonObject) (contracts.Address
 }
 
 var serverKind = mustHostKind("server")
-
-// counterContract is the counter's contract as a version of its code has it: v1; v2 evolved (its label an object, `add` taking and
-// returning objects).
-func counterContract(t testing.TB, placement, version string) *contracts.Contract {
-	t.Helper()
-	v1 := mustRemote("reload.counter", contracts.RemoteDeclaration{
-		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())}, HostAddress: counterAddress(placement),
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			State: []contracts.Property{contracts.Prop("label", contracts.Str()), contracts.Prop("count", contracts.Int())},
-			Methods: []contracts.MethodEntry{
-				contracts.Meth("add", contracts.NewMethod(contracts.Int(), contracts.Str())),
-				contracts.Meth("slow", contracts.NewMethod(contracts.Str(), contracts.Str())),
-				contracts.Meth("slowAdd", contracts.NewMethod(contracts.Str(), contracts.Str())),
-				contracts.Meth("code", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
-				contracts.Meth("visits", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
-			},
-		})},
-	})
-	if version != "v2" {
-		return v1
-	}
-	v2, err := contracts.Evolve(v1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-		return e.State("main", "label", contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("code", contracts.Str()))).
-			Method("add", contracts.Obj(contracts.Prop("n", contracts.Int())), contracts.Obj(contracts.Prop("text", contracts.Str())))
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return v2
-}
-
-// summaryContract is the summary's contract: on the server, its label the counter's seen through the summary's code.
-var summaryContract = mustRemote("reload.summary", contracts.RemoteDeclaration{
-	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())}, HostAddress: counterAddress("server"),
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		State:   []contracts.Property{contracts.Prop("label", contracts.Str()), contracts.Prop("count", contracts.Int())},
-		Methods: []contracts.MethodEntry{contracts.Meth("code", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
-	})},
-})
-
-// tasksContract is the tasks' contract: on project `id`'s worker, the finished runs' entries and how many run.
-var tasksContract = mustRemote("reload.tasks", contracts.RemoteDeclaration{
-	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())}, HostAddress: counterAddress("worker"),
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		State:   []contracts.Property{contracts.Prop("entries", contracts.Arr(contracts.Str())), contracts.Prop("running", contracts.Int())},
-		Methods: []contracts.MethodEntry{contracts.Meth("start", contracts.NewMethod(contracts.Str(), contracts.Str()))},
-	})},
-})
 
 // controlContract is the latch plugin's contract, declared again for the test (contracts are data): on project `id`'s worker
 // (`reload.control`) or on the server (`reload.servercontrol`).
@@ -205,15 +143,6 @@ func controlContract(placement string) *contracts.Contract {
 			contracts.Meth("open", contracts.NewMethod(contracts.Str())),
 			contracts.Meth("natives", contracts.NewMethod(contracts.Schema{}, contracts.Obj(contracts.Prop("opens", contracts.Arr(contracts.Str())), contracts.Prop("closes", contracts.Arr(contracts.Str()))))),
 		}})},
-	})
-}
-
-// startReloadApp starts the suite's app with plugins (directory name to files; each plugin is `@test/<dir>`) and project workers.
-func startReloadApp(t testing.TB, plugins map[string]map[string]string) started {
-	t.Helper()
-	return startTestApp(t, plugins, func(o *AppOptions) {
-		o.Workers = []AppWorkerKind{testWorker(t, project, "")}
-		o.Timeouts = reloadTimeouts
 	})
 }
 
@@ -379,448 +308,6 @@ func okResult(value any) callResult {
 
 var pendingResult = callResult{Status: "pending"}
 
-// pageView is what a web plugin's component shows of a reference it holds, and the probe's record of it (Pi's PageProbe: every state
-// the reference went through, every value of its watched member).
-type pageView struct {
-	ref *host.Reference
-	// states are every state the reference went through, as `live`, `loading`, `failed:<kind>:<reason or code>`, `ended:<code>`.
-	states []string
-	// frames are every value (or `failed:<reason>`) of the watched member.
-	frames []delta.JsonValue
-	label  delta.JsonValue
-	count  delta.JsonValue
-	state  string
-}
-
-// stateText is a reference's state as one string.
-func stateText(state *host.RefState) string {
-	switch state.Kind {
-	case host.RefStateFailed:
-		reason := string(state.Cause.Error.Reason)
-		if reason == "" {
-			reason = string(state.Cause.Error.Code)
-		}
-		return fmt.Sprintf("failed:%s:%s", state.Cause.Kind, reason)
-	case host.RefStateEnded:
-		return "ended:" + string(state.Error.Code)
-	}
-	return string(state.Kind)
-}
-
-// failureText is a watch failure's error as text: a Chord error's reason or code, else its message.
-func failureText(err error) string {
-	if chordErr, ok := data.IsChordError(err); ok {
-		if chordErr.Reason != "" {
-			return string(chordErr.Reason)
-		}
-		return string(chordErr.Code)
-	}
-	return err.Error()
-}
-
-// reloadPage is the page as the tests see and drive it: a tab host on the server's links endpoint, its tracked references, their
-// states and member values, and the answers of calls from them.
-type reloadPage struct {
-	t      testing.TB
-	tab    host.Host
-	socket *pageSocket
-
-	ctx      context.Context
-	watchers sync.WaitGroup
-
-	mu      sync.Mutex
-	changed chan struct{}
-	views   map[string]*pageView
-	results []callResult
-}
-
-// reloadSignIn opens a page as the owner: a device session's token on the links endpoint.
-func reloadSignIn(t testing.TB, s started) *reloadPage {
-	t.Helper()
-	sessions, err := s.app.Host.Get(background, Sessions, delta.NewJsonObject(0), host.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer sessions.Release()
-	issued, err := sessions.Call("issue", delta.JsonObjectOf("principal", testOwner, "label", "page", "kind", "device"), background)
-	if err != nil {
-		t.Fatal(err)
-	}
-	token := issued.(*delta.JsonObject).Value("token").(string)
-	tab, err := host.CreateHost(host.HostOptions{OnError: func(host.HostError) {}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tab.Load(nil, background); err != nil {
-		t.Fatal(err)
-	}
-	socket, err := dialPage(s.port, token)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := tab.Connect(link.WebSocketLink(socket), host.LinkOptions{Principal: testServer}, background); err != nil {
-		t.Fatal(err)
-	}
-	socket.start()
-	ctx, cancel := context.WithCancel(background)
-	page := &reloadPage{t: t, tab: tab, socket: socket, ctx: ctx, changed: make(chan struct{}), views: map[string]*pageView{}}
-	// Registered after the app's, so it runs before the app closes: nothing of the page outlives the test.
-	t.Cleanup(func() {
-		cancel()
-		_ = tab.Close(background)
-		socket.Close()
-		page.watchers.Wait()
-	})
-	return page
-}
-
-// notify wakes every wait on the page.
-func (p *reloadPage) notify() {
-	close(p.changed)
-	p.changed = make(chan struct{})
-}
-
-// record runs edit on the view name under the page's lock and wakes the waits.
-func (p *reloadPage) record(name string, edit func(*pageView)) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if view := p.views[name]; view != nil {
-		edit(view)
-	}
-	p.notify()
-}
-
-// hold holds the object of project id (or the server's) as contract, tracked as name, its calls parking readyTimeout (0: the host's),
-// its member `member` watched for frames; it also follows `label` and `count` as a view of the counter shows them.
-func (p *reloadPage) hold(name string, contract *contracts.Contract, id string, readyTimeout time.Duration, member string) {
-	p.t.Helper()
-	options := host.GetOptions{}
-	if readyTimeout != 0 {
-		options.ReadyTimeout = &readyTimeout
-	}
-	params := delta.NewJsonObject(0)
-	if id != "" {
-		params = delta.JsonObjectOf("id", id)
-	}
-	ref, err := p.tab.Hold(background, contract, params, options)
-	if err != nil {
-		p.t.Fatal(err)
-	}
-	p.t.Cleanup(ref.Release)
-	view := &pageView{ref: ref, state: "none"}
-	p.mu.Lock()
-	if old := p.views[name]; old != nil {
-		// A new reference takes the name: the old component unmounted and released its reference.
-		view.states, view.frames = old.states, old.frames
-		view.states = append(view.states, "remount")
-		old.ref.Release()
-	}
-	p.views[name] = view
-	initial := ref.State().Value()
-	view.states = append(view.states, stateText(initial))
-	view.state = string(initial.Kind)
-	p.mu.Unlock()
-	stateWatch, err := ref.State().Watch(p.ctx)
-	if err != nil {
-		p.t.Fatal(err)
-	}
-	stateWatch.Start(func(_ context.Context, call chord.NativeWatchCall[*host.RefState]) error {
-		if call.Kind == chord.WatchCallValue {
-			p.record(name, func(v *pageView) {
-				if v.ref == ref {
-					v.states = append(v.states, stateText(call.Value))
-					v.state = string(call.Value.Kind)
-				}
-			})
-		}
-		return nil
-	})
-	follows := []string{"label", "count"}
-	if !slices.Contains(follows, member) {
-		follows = append(follows, member)
-	}
-	for _, follow := range follows {
-		if follow == "" || ref.Member(follow) == nil {
-			continue
-		}
-		// A member's watch waits until the reference binds (Pi's probe awaits it as a promise): a goroutine of the page's own.
-		p.watchers.Add(1)
-		go func() {
-			defer p.watchers.Done()
-			watch, err := ref.Member(follow).Watch(p.ctx)
-			if err != nil {
-				return
-			}
-			if value, err := ref.Member(follow).Value(); err == nil {
-				p.record(name, func(v *pageView) { v.set(follow, value) })
-			}
-			watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-				p.record(name, func(v *pageView) {
-					if v.ref != ref {
-						return
-					}
-					if call.Kind == chord.WatchCallValue {
-						v.set(follow, call.Value)
-						if follow == member {
-							v.frames = append(v.frames, call.Value)
-						}
-					} else if follow == member {
-						v.frames = append(v.frames, "failed:"+failureText(call.Error))
-					}
-				})
-				return nil
-			})
-		}()
-	}
-}
-
-func (v *pageView) set(member string, value delta.JsonValue) {
-	switch member {
-	case "label":
-		v.label = value
-	case "count":
-		v.count = value
-	}
-}
-
-// view is the tracked view name.
-func (p *reloadPage) view(name string) *pageView {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.views[name]
-}
-
-// labelText is the text of the view's label as a component shows it: a string as is, an object as JSON, `none` before a value.
-func (p *reloadPage) labelText(name string) string {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	label := p.views[name].label
-	switch label := label.(type) {
-	case nil:
-		return "none"
-	case string:
-		return label
-	default:
-		return jsonText(label)
-	}
-}
-
-// countText is the text of the view's count: the number, `none` before a value.
-func (p *reloadPage) countText(name string) string {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if count := p.views[name].count; count != nil {
-		return jsonText(count)
-	}
-	return "none"
-}
-
-// stateKind is the view's reference's state as a component shows it (its kind).
-func (p *reloadPage) stateKind(name string) string {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.views[name].state
-}
-
-// states are every state the view's reference went through.
-func (p *reloadPage) states(name string) []string {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return slices.Clone(p.views[name].states)
-}
-
-// frames are every value of the view's watched member.
-func (p *reloadPage) frames(name string) []delta.JsonValue {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return slices.Clone(p.views[name].frames)
-}
-
-// until returns once ok holds, woken by every change of the page (no polling); it fails the test after reloadWait.
-func (p *reloadPage) until(what string, timeout time.Duration, ok func() bool) {
-	p.t.Helper()
-	deadline := time.NewTimer(timeout)
-	defer deadline.Stop()
-	for {
-		p.mu.Lock()
-		changed := p.changed
-		p.mu.Unlock()
-		if ok() {
-			return
-		}
-		select {
-		case <-changed:
-		case <-deadline.C:
-			p.t.Fatalf("timed out waiting for %s; the page: %s", what, p.dump())
-		}
-	}
-}
-
-// waitLabel waits until the view's label shows text.
-func (p *reloadPage) waitLabel(name, text string) {
-	p.t.Helper()
-	p.until(fmt.Sprintf("%s's label %q (now %q)", name, text, p.labelText(name)), reloadWait, func() bool { return p.labelText(name) == text })
-}
-
-// waitState waits until the view's reference is in kind (`live`, `loading`, `failed`).
-func (p *reloadPage) waitState(name, kind string) {
-	p.t.Helper()
-	p.until(fmt.Sprintf("%s's state %q", name, kind), reloadWait, func() bool { return p.stateKind(name) == kind })
-}
-
-// waitStateText waits until the reference's last state is state as the probe writes it (`failed:waiting:contract_mismatch`).
-func (p *reloadPage) waitStateText(name, state string, timeout time.Duration) {
-	p.t.Helper()
-	p.until(fmt.Sprintf("%s reaching %s (states %v)", name, state, p.states(name)), timeout, func() bool {
-		states := p.states(name)
-		return len(states) > 0 && states[len(states)-1] == state
-	})
-}
-
-// call calls method with args on the view's reference: the number of its answer in the page's results. The call runs on a goroutine
-// of its own; its answer is kept by number.
-func (p *reloadPage) call(name, method string, args delta.JsonValue) int {
-	p.t.Helper()
-	view := p.view(name)
-	p.mu.Lock()
-	index := len(p.results)
-	p.results = append(p.results, pendingResult)
-	p.notify()
-	p.mu.Unlock()
-	go func() {
-		value, err := view.ref.Call(method, args, background)
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		if err == nil {
-			p.results[index] = callResult{Status: "ok", Value: jsonText(value)}
-		} else if chordErr, ok := data.IsChordError(err); ok {
-			p.results[index] = callResult{Status: "error", Code: string(chordErr.Code), Reason: string(chordErr.Reason)}
-		} else {
-			p.results[index] = callResult{Status: "error", Code: "thrown", Reason: err.Error()}
-		}
-		p.notify()
-	}()
-	return index
-}
-
-// peek is call index's answer now (pending or not).
-func (p *reloadPage) peek(index int) callResult {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.results[index]
-}
-
-// result is call index's answer, once it has one.
-func (p *reloadPage) result(index int) callResult {
-	p.t.Helper()
-	p.until(fmt.Sprintf("call %d's answer", index), reloadWait, func() bool { return p.peek(index).Status != "pending" })
-	return p.peek(index)
-}
-
-// pageSocket is a gorilla WebSocket as a link's socket: binary frames, a reader started once the link is attached (the server's
-// `hello` comes with the upgrade, so the link must listen before the first frame is read).
-type pageSocket struct {
-	conn  *websocket.Conn
-	write sync.Mutex
-
-	mu        sync.Mutex
-	next      int
-	listeners map[link.WebSocketEvent]map[int]func(any)
-	closed    bool
-}
-
-// dialPage opens the links endpoint of the app on port as the bearer of token.
-func dialPage(port int, token string) (*pageSocket, error) {
-	header := http.Header{"Authorization": {"Bearer " + token}}
-	dialer := websocket.Dialer{HandshakeTimeout: 10 * time.Second}
-	conn, response, err := dialer.Dial("ws://"+net.JoinHostPort("127.0.0.1", strconv.Itoa(port))+"/chord", header) //nolint:bodyclose // the dialer documents its handshake response body as needing no close
-	if err != nil {
-		if response != nil {
-			return nil, fmt.Errorf("the links endpoint refused with %d: %w", response.StatusCode, err)
-		}
-		return nil, err
-	}
-	return &pageSocket{conn: conn, listeners: map[link.WebSocketEvent]map[int]func(any){}}, nil
-}
-
-// ReadyState implements link.WebSocketLike.
-func (s *pageSocket) ReadyState() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.closed {
-		return 3
-	}
-	return 1
-}
-
-// SetBinaryType implements link.WebSocketLike.
-func (s *pageSocket) SetBinaryType(string) {}
-
-// Send implements link.WebSocketLike.
-func (s *pageSocket) Send(frame []byte) error {
-	s.write.Lock()
-	defer s.write.Unlock()
-	return s.conn.WriteMessage(websocket.BinaryMessage, frame)
-}
-
-// Close implements link.WebSocketLike.
-func (s *pageSocket) Close() {
-	s.write.Lock()
-	_ = s.conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
-	s.write.Unlock()
-	_ = s.conn.Close()
-}
-
-// AddEventListener implements link.WebSocketLike.
-func (s *pageSocket) AddEventListener(event link.WebSocketEvent, listener func(data any)) func() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.listeners[event] == nil {
-		s.listeners[event] = map[int]func(any){}
-	}
-	id := s.next
-	s.next++
-	s.listeners[event][id] = listener
-	return func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		delete(s.listeners[event], id)
-	}
-}
-
-func (s *pageSocket) emit(event link.WebSocketEvent, payload any) {
-	s.mu.Lock()
-	listeners := make([]func(any), 0, len(s.listeners[event]))
-	for _, listener := range s.listeners[event] {
-		listeners = append(listeners, listener)
-	}
-	s.mu.Unlock()
-	for _, listener := range listeners {
-		listener(payload)
-	}
-}
-
-// start reads frames until the socket closes.
-func (s *pageSocket) start() {
-	go func() {
-		for {
-			kind, frame, err := s.conn.ReadMessage()
-			if err != nil {
-				s.mu.Lock()
-				s.closed = true
-				s.mu.Unlock()
-				s.emit(link.WebSocketClose, nil)
-				return
-			}
-			if kind == websocket.BinaryMessage {
-				s.emit(link.WebSocketMessage, frame)
-			} else {
-				s.emit(link.WebSocketMessage, string(frame))
-			}
-		}
-	}()
-}
-
 // sleepFor is how long a test lets something that must not happen have to happen (Pi's `setTimeout` before a negative assertion).
 func sleepFor(d time.Duration) { <-time.After(d) }
 
@@ -863,17 +350,6 @@ func expectFailure(t *testing.T, scenario func(testing.TB)) {
 		t.Fatal("the scenario passed: Pi marks it `it.fails` (a documented gap), so a passing run means the gap closed")
 	}
 	t.Logf("failed as expected: %s", g.failed)
-}
-
-// dump is every view's states and label, for a failure's message.
-func (p *reloadPage) dump() string {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	var out []string
-	for name, view := range p.views {
-		out = append(out, fmt.Sprintf("%s{states %v, label %v, count %v, frames %v}", name, view.states, jsonText(view.label), jsonText(view.count), view.frames))
-	}
-	return strings.Join(out, " ")
 }
 
 // reported is what the app reported so far.

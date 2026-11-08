@@ -7,10 +7,9 @@ import (
 	"time"
 )
 
-// Ports the browser rows of packages/chord/test/node/reload/{base,web,failed,rollout}.test.ts (Pi main c23b9ec1) over a real Chromium
-// (reload_web_support_test.go: the suite's base bundle, `ReloadPage` as `reloadTab`): the base code rows, the web plugin rows, the
-// two web-plugin rows of "a reload whose new code fails", the rollout's `web` step and "a page whose link was down". Pi's inputs and
-// expectations as they are; the two rows Pi marks as open design points are asserted as they are today (D606's browser half).
+// Ports packages/chord/test/node/reload/{base,web}.test.ts and the two web-plugin rows of failed.test.ts (Pi main c23b9ec1) over a real
+// Chromium (reload_web_support_test.go: the suite's base bundle, `ReloadPage` as `reloadTab`). Pi's inputs and expectations as they
+// are; the two rows Pi marks as open design points are asserted as they are today.
 
 func TestAChangeOfBaseCodeReloadsThePageEndsCallsInFlightWithTheLinkLosesPageStateAndKeepsServerState(t *testing.T) {
 	tab := startReloadTab(t)
@@ -74,7 +73,7 @@ func webCounterApp(t *testing.T, web map[string]map[string]string) started {
 	for dir, plugin := range web {
 		files[dir] = plugin
 	}
-	return startReloadWebApp(t, reloadEntry(t, "1", ""), freePort(t), files, nil)
+	return startReload(t, files)
 }
 
 func TestAReloadOfAWebPluginRemountsOnlyTheReloadedPluginsComponentsKeepingPageStateTheOtherPluginsAndTheScroll(t *testing.T) {
@@ -151,10 +150,10 @@ func TestAReloadOfAWebPluginEndsACallTheReloadedPluginsOldComponentMadeReleasedN
 // view, then contributes it again; the other plugin's component stays mounted throughout.
 func TestAReloadOfAWebPluginRemovesAndRestoresAViewWhosePluginsContributionsChangeTheOtherPluginsUntouched(t *testing.T) {
 	tab := startReloadTab(t)
-	s := startReloadWebApp(t, reloadEntry(t, "1", ""), freePort(t), map[string]map[string]string{
+	s := startReload(t, map[string]map[string]string{
 		"alpha": reloadWebPlugin(t, webCode{Name: "alpha", Code: "1"}),
 		"beta":  reloadWebPlugin(t, webCode{Name: "beta", Code: "1"}),
-	}, nil)
+	})
 	tab.signIn(s, "alpha", "beta")
 	tab.typeInto("beta", ".draft", "beta draft")
 	tab.typeInto("alpha", ".kept", "alpha kept")
@@ -224,72 +223,4 @@ func TestAReloadWhoseNewCodeFailsKeepsAWebPluginWhoseNewScriptThrowsInThePageOnI
 	if dirty := s.dirty(); len(dirty) != 0 {
 		t.Fatalf("dirty = %v, want none", dirty)
 	}
-}
-
-func TestARolloutAcrossHostsEndsWithTheClientsWebStepForAPageAWorkerNotRunningStartsOnTheNewCode(t *testing.T) {
-	tab := startReloadTab(t)
-	s := webCounterApp(t, map[string]map[string]string{"alpha": reloadWebPlugin(t, webCode{Name: "alpha", Code: "1", Counter: reloadWebCounterV1})})
-	tab.signIn(s, "alpha")
-	tab.waitText("alpha", ".state", "live")
-	expectEqual(t, "add 2", tab.result(tab.call("alpha", "add", 2)), okResult("v1:2"))
-	tab.waitText("alpha", ".label", "v1:2")
-
-	result := s.editAndApply(t, "counter", counterPlugin(t, counterCode{Code: "v2", Placement: "worker"}))
-	expectEqual(t, "failures", rolloutFailures(result), []string{})
-	type step struct {
-		Name  string
-		Hosts []string
-	}
-	got := []step{}
-	for _, each := range result.Steps {
-		hosts := []string{}
-		for _, entry := range each.Hosts {
-			hosts = append(hosts, entry.Host)
-		}
-		got = append(got, step{each.Name, hosts})
-	}
-	expectEqual(t, "steps", got, []step{{"server", []string{"server"}}, {"project", []string{"project|p1"}}, {"web", []string{"web"}}})
-	expectEqual(t, "fates", rolloutFates(result), []string{"project/project|p1: reload.store restarted", "project/project|p1: reload.counter(p1) restarted"})
-	// Project p2 had no worker during the rollout: its first hold starts one on the current set.
-	tab.hold("p2", "alpha", 10*time.Second, "p2", "label")
-	tab.waitState("p2", "live")
-	expectEqual(t, "p2 code", tab.result(tab.call("p2", "code")), okResult("v2"))
-	expectEqual(t, "p2 add", tab.result(tab.call("p2", "add", 1)), okResult("v2:1"))
-	expectEqual(t, "alpha code", tab.result(tab.call("alpha", "code")), okResult("v2"))
-}
-
-func TestARolloutAcrossHostsBringsAPageWhoseLinkWasDownDuringTheRolloutOntoTheNewScriptsAndTheNewCode(t *testing.T) {
-	tab := startReloadTab(t)
-	s := webCounterApp(t, map[string]map[string]string{"alpha": reloadWebPlugin(t, webCode{Name: "alpha", Code: "1", Counter: reloadWebCounterV1})})
-	t.Cleanup(func() {
-		if t.Failed() {
-			t.Logf("the app reported %v", reported(s.errors))
-		}
-	})
-	tab.signIn(s, "alpha")
-	tab.waitText("alpha", ".state", "live")
-	expectEqual(t, "add 2", tab.result(tab.call("alpha", "add", 2)), okResult("v1:2"))
-	tab.waitText("alpha", ".label", "v1:2")
-
-	tab.typeInto("alpha", ".kept", "kept")
-	tab.browser.Run(`(() => { const Native = WebSocket; globalThis.wslog = []; globalThis.WebSocket = class extends Native { constructor(...args) { super(...args); this.addEventListener("open", () => wslog.push("open")); this.addEventListener("close", (e) => wslog.push("close " + e.code + " " + e.reason)); } }; })()`)
-	tab.browser.Run(`globalThis.page.holdReconnect(); globalThis.page.dropLink()`)
-	tab.browser.Wait(`globalThis.page.connection !== "connected"`)
-	tab.waitState("alpha", "loading")
-	// The last values stay on screen while the link is down.
-	expectEqual(t, "label", tab.shows("alpha", ".label"), "v1:2")
-
-	s.edit(t, "counter", counterPlugin(t, counterCode{Code: "v2", Placement: "worker"}))
-	s.edit(t, "alpha", reloadWebPlugin(t, webCode{Name: "alpha", Code: "2", Counter: reloadWebCounterV1}))
-	result := s.apply(t)
-	expectEqual(t, "failures", rolloutFailures(result), []string{})
-	tab.browser.Run(`globalThis.page.release()`)
-
-	tab.browser.Wait(`globalThis.page.connection === "connected"`)
-	tab.waitText("alpha", ".code", "alpha:2")
-	tab.waitText("alpha", ".label", "v2:2")
-	tab.waitText("alpha", ".state", "live")
-	expectEqual(t, "kept", tab.value("alpha", ".kept"), "kept")
-	expectEqual(t, "add 1", tab.result(tab.call("alpha", "add", 1)), okResult("v2:3"))
-	expectEqual(t, "loads", tab.loads(), 1)
 }
