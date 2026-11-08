@@ -339,6 +339,33 @@ func TestM1WorkingChat(t *testing.T) {
 		}, 0)
 	})
 
+	t.Run("stops a session's worker through p2.hosts right after a reload of a server plugin", func(t *testing.T) {
+		// Hosts.stop waits for the worker's exit; without chordctx.Suspend it blocked the server loop that delivers the exit, and
+		// hung right after P2Server.Reload.
+		if _, err := fixture.Server.Reload([]string{"status"}, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		stopped := make(chan error, 1)
+		go func() {
+			_, err := fixture.Server.Host.Root(func(ctx host.Ctx) (any, error) {
+				workers, err := ctx.Get(p2runtime.Hosts, delta.NewJsonObject(0), host.GetOptions{})
+				if err != nil {
+					return nil, err
+				}
+				return workers.Call("stop", delta.JsonObjectOf("session", sessionID), ctx)
+			}, p2test.Background, host.RootOptions{})
+			stopped <- err
+		}()
+		select {
+		case err := <-stopped:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(30 * time.Second):
+			t.Fatal("Hosts.stop did not return after a reload")
+		}
+	})
+
 	t.Run("stops the worker when idle and reopens the session from its storage", func(t *testing.T) {
 		released := time.Now()
 		chat().Release()
