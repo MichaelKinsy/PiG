@@ -170,7 +170,9 @@ type PluginsLoad struct {
 	// CloseTimeout, ReadyTimeout and Compression are the Node host's (RuntimeLoad).
 	CloseTimeout *time.Duration
 	ReadyTimeout *time.Duration
-	Compression  bool
+	// ReloadDrainTimeout is the Node host's `reloadDrainTimeout` (RuntimeLoad).
+	ReloadDrainTimeout *time.Duration
+	Compression        bool
 	// Store is the Node host's store (RuntimeLoad).
 	Store *StoreOptions
 	// GoPackages, Telemetry, PrincipalKey and RevokedBy are the app's callbacks the Node host calls (RuntimeLoad).
@@ -419,7 +421,7 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 	h, report, err := c.runtime.Load(RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: scripts, Modules: options.Modules,
 		Address: options.Address, Principal: options.Principal, Peer: options.Peer, Heartbeat: options.Heartbeat,
-		CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, Compression: options.Compression,
+		CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout, Compression: options.Compression,
 		Store:      options.Store,
 		GoPackages: options.GoPackages, Telemetry: options.Telemetry, PrincipalKey: options.PrincipalKey, RevokedBy: options.RevokedBy,
 		Bridged: options.Bridged,
