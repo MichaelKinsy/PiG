@@ -399,3 +399,21 @@ func TestSetRemoteEditorKeepsCollapsedPasteContent(t *testing.T) {
 		t.Fatalf("replacement editor calls = %q, want setText of the expanded draft", custom.calls)
 	}
 }
+
+// pi main 51313540a "between the default and a replacement editor", the second half: a draft pasted into the replacement and carried back to the
+// default editor by setCustomEditorComponent(undefined) submits intact (D251). The replacement reports its text with the marker and the expanded paste.
+func TestSetRemoteEditorBackToTheDefaultKeepsCollapsedPasteContent(t *testing.T) {
+	mode, _ := newCustomEditorDispatchMode(t)
+	custom := &fakeRemoteEditor{}
+	mode.setRemoteEditor(custom)
+	draft := pastedDraft("back to default")
+	custom.host.EditorChanged("[paste #1 +12 lines]", draft)
+	runPostedTasks(t, mode)
+	if got := mode.editor.GetExpandedText(); got != draft {
+		t.Fatalf("draft in the replacement = %q, want %q", got, draft)
+	}
+	mode.setRemoteEditor(nil)
+	if got := mode.editor.GetExpandedText(); got != draft {
+		t.Fatalf("draft back in the default editor = %q, want %q", got, draft)
+	}
+}
