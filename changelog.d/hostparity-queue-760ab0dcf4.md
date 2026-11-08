@@ -1,0 +1,3 @@
+### Fixed
+
+- Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls (a write and an append of one note) could register in the other order in a Go, Rust, Python or Lisp extension, where Pi registers them in call order. Each SDK's context now has the ordered form, `Context.WithFileMutationQueue` (Go), `ctx.with_file_mutation_queue` (Rust, Python), `pig:ctx-with-file-mutation-queue` (Lisp) and `ctx.withFileMutationQueue` (Node): the host registers the call after the extension tools before it in its batch (D187). The free `withFileMutationQueue` is unchanged and registers in the order the calls reach the host. <!-- fix: 760ab0dcf4 -->
