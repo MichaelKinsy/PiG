@@ -115820,9 +115820,9 @@
       "id": "pkg:chord/.#SetOf",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:855bae9aa50a770633357711518c4f1c405149bbb6bd9d633f257569d7c169d2",
-      "rationale": "TL: SetOf<C, K> is a TypeScript type-level computation over its type parameters ({ readonly [P in Exclude<keyof C & string, K[number]>]?: C[P] extends TOptional<TSchema> ? ValueOf<C[P]> | Expression<Va...); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/next/contracts/schema.go#Schema. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
+      "rationale": "TL: SetOf<C, K> is a TypeScript type-level computation over its type parameters ({ readonly [P in Exclude<keyof C & string, K[number]>]?: C[P] extends TOptional<TSchema> ? ValueOf<C[P]> | Expression<Va...); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. The check it makes at compile time (a set patch names non-key columns and fitting values) is made at run time by store.CompileSet (chord/next/store/expression.go#CompileSet). Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
       "pigTargets": [
-        "chord/next/contracts/schema.go#Schema"
+        "chord/next/store/expression.go#CompileSet"
       ]
     },
     {
