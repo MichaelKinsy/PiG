@@ -15,7 +15,7 @@ import (
 // with a refresh token is refreshed before the request; a failed refresh falls through to the stored token. Every refresh runs under the store's
 // refresh lock, so the lock's calls count the refreshes.
 type lockCountingStore struct {
-	mcpext.McpOAuthServerStore
+	oauth.McpOAuthServerStore
 	locks int
 }
 
@@ -54,8 +54,8 @@ func TestTokenRefreshesAheadOfExpiryOnlyInsideTheSkew(t *testing.T) {
 			counting := &lockCountingStore{McpOAuthServerStore: store}
 			provider := mcpext.NewMcpAuthProvider(mcpext.McpAuthProviderOptions{
 				ServerURL: "https://mcp.example/mcp", Store: counting,
-				Settings: func() (mcpext.McpOAuthSettings, error) {
-					return mcpext.McpOAuthSettings{}, errors.New("no refresh in this test")
+				Settings: func() (oauth.McpOAuthSettings, error) {
+					return oauth.McpOAuthSettings{}, errors.New("no refresh in this test")
 				},
 				OnChallenge: func(oauth.OAuthChallenge) {},
 			})

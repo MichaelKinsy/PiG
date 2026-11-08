@@ -361,6 +361,37 @@ func TestKeepsLoadedToolsPerBranchAndInTheBaselineAfterAReset(t *testing.T) {
 	equal(t, "baseline", addedNames(system[len(system)-1]), []string{"alpha", "omega", "tool_search", "github_get_issue"})
 }
 
+// Pi main 6d3e342b2 packages/durable/test/tool-search.test.ts "finds a tool by a parameter description behind a local reference, and not by
+// unreferenced definitions" (#11803)
+func TestFindsAToolByAParameterDescriptionBehindALocalReferenceAndNotByUnreferencedDefinitions(t *testing.T) {
+	c := chatSetup()
+	var parameters map[string]any
+	if err := json.Unmarshal([]byte(`{"type":"object","properties":{"options":{"$ref":"#/$defs/options"}},"$defs":{"options":{"type":"object","properties":{"mode":{"type":"string","description":"reconciliation"}}},"unused":{"description":"forecast"}}}`), &parameters); err != nil {
+		t.Fatal(err)
+	}
+	addTool(t, c.registry, harness.DefineTool(durable.ToolRegistration{
+		ToolSchema: ai.ToolSchema{Name: "ledger_inspect", Description: "Inspect records", Parameters: parameters},
+		Deferred:   true,
+		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "ledger_inspect ran"}}}, nil
+		},
+	}))
+	if err := c.registry.Install(CreateExtension()); err != nil {
+		t.Fatal(err)
+	}
+	c.faux.SetResponses([]ai.FauxResponseStep{
+		call("tool_search", map[string]any{"query": "forecast"}, "c1"),
+		call("tool_search", map[string]any{"query": "reconciliation"}, "c2"),
+		done(),
+	})
+	_, root := c.open(t)
+	run(t, root, "go")
+	want := []string{"No matching tools found.", "Loaded 1 tool. They are available from your next call:\n- ledger_inspect: Inspect records"}
+	if got := toolResultTexts(allEntries(t, root)); !slices.Equal(got, want) {
+		t.Errorf("results = %q, want %q", got, want)
+	}
+}
+
 // Pi 1.2.0 packages/durable/test/tool-search.test.ts:195 "finds nothing for an unrelated query and loads nothing"
 func TestFindsNothingForAnUnrelatedQueryAndLoadsNothing(t *testing.T) {
 	c := setup(t)

@@ -3,12 +3,9 @@ package mcpext
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
-	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -50,12 +47,6 @@ func ToToolExposure(exposure extension.McpExposure) extension.ToolExposure {
 }
 
 const (
-	// maxToolNameLength: provider tool names are limited to 64 characters of `[A-Za-z0-9_-]`.
-	// upstream: packages/coding-agent/src/extensions/mcp/tools.ts:MAX_TOOL_NAME_LENGTH
-	maxToolNameLength = 64
-	// McpOutputMaxBytes: model-facing text of an MCP result beyond this is cut in the middle.
-	// upstream: packages/coding-agent/src/extensions/mcp/tools.ts:MCP_OUTPUT_MAX_BYTES
-	McpOutputMaxBytes = 20 * 1024
 	// ReadMcpResourceTool is the tool that reads the resources named by resource links.
 	ReadMcpResourceTool = extension.ReadMcpResourceTool
 )
@@ -69,12 +60,7 @@ type McpToolDetails struct {
 	FullOutputPath string `json:"fullOutputPath,omitempty"`
 }
 
-// McpOutputSaver saves the full text of a truncated result, or a binary
-// resource, and returns the file path. extension includes the dot, for example
-// `.txt`.
-type McpOutputSaver func(data []byte, extension string) (string, error)
-
-// SaveToTempFile is the default [McpOutputSaver]. Results can carry private
+// SaveToTempFile is the [mcp.McpOutputSaver] that saves to a temp file. Results can carry private
 // data, so only the user may read the file.
 func SaveToTempFile(data []byte, extension string) (string, error) {
 	return outputfiles.WriteFile("pi-mcp", extension, data)
@@ -83,37 +69,6 @@ func SaveToTempFile(data []byte, extension string) (string, error) {
 // McpToolCaller calls tools of one server.
 type McpToolCaller interface {
 	CallTool(ctx context.Context, name string, args any, options mcp.RequestOptions) (*mcp.CallToolResult, error)
-}
-
-var toolNameUnsafe = lazyregexp.New(`[^A-Za-z0-9_]`)
-
-// sanitizeToolName replaces every character outside `[A-Za-z0-9_]` with an
-// underscore per UTF-16 code unit, as the JavaScript regular expression does.
-func sanitizeToolName(name string) string {
-	var b strings.Builder
-	for _, r := range name {
-		if r < 0x80 && !toolNameUnsafe.MatchString(string(r)) {
-			b.WriteRune(r)
-			continue
-		}
-		b.WriteString(strings.Repeat("_", utf16.RuneLen(r)))
-	}
-	return b.String()
-}
-
-// CreateMcpToolName is `mcp__<server>__<tool>`, sanitized and shortened with a
-// hash suffix when too long. Like Codex, everything but `[A-Za-z0-9_]` becomes
-// `_`, so the name is also the identifier codemode scripts call it by. isTaken
-// reports names used by a different MCP tool: sanitizing can map two tools to
-// one name (`a-b` and `a_b`), which then get the hash suffix.
-func CreateMcpToolName(server, tool string, isTaken func(string) bool) string {
-	name := sanitizeToolName("mcp__" + server + "__" + tool)
-	if len(name) <= maxToolNameLength && (isTaken == nil || !isTaken(name)) {
-		return name
-	}
-	digest := sha256.Sum256([]byte(server + "\x00" + tool))
-	hash := hex.EncodeToString(digest[:])[:8]
-	return name[:min(len(name), maxToolNameLength-len(hash)-1)] + "_" + hash
 }
 
 func textOf(content []ai.ToolResultMessageContent) string {
@@ -244,40 +199,29 @@ func mcpToLLM(content []mcp.LLMContent) []ai.ToolResultMessageContent {
 	return out
 }
 
-// LimitMcpContent keeps model-facing text within [McpOutputMaxBytes]. Longer
-// text becomes one text block in Codex's truncation format, followed by the
-// path of the file with the full text; images follow it.
-func LimitMcpContent(content []ai.ToolResultMessageContent, saveOutput McpOutputSaver) ([]ai.ToolResultMessageContent, string) {
-	if saveOutput == nil {
-		saveOutput = SaveToTempFile
-	}
-	combined := textOf(content)
-	truncation := tools.TruncateMiddle(combined, McpOutputMaxBytes)
-	if !truncation.Truncated {
-		return content, ""
-	}
-	var fullOutputPath, where string
-	if path, err := saveOutput([]byte(combined), ".txt"); err == nil {
-		fullOutputPath = path
-		where = "[Full output: " + path + " (read it with offset/limit)]"
-	} else {
-		where = "[Could not save the full output: " + err.Error() + "]"
-	}
-	tokens := (truncation.TotalBytes + 3) / 4
-	text := fmt.Sprintf("Warning: truncated output (original token count: %d)\nTotal output lines: %d\n\n%s\n\n%s", tokens, truncation.TotalLines, truncation.Content, where)
-	limited := []ai.ToolResultMessageContent{ai.TextContent{Text: text}}
+// limitMcpContent is [mcp.LimitMcpContent] on model content: text beyond [mcp.McpOutputMaxBytes] is cut in the middle, and saveOutput saves the full
+// text. It returns the content as it is when it is within the limit.
+func limitMcpContent(content []ai.ToolResultMessageContent, saveOutput mcp.McpOutputSaver) ([]ai.ToolResultMessageContent, string) {
+	llm := make([]mcp.LLMContent, 0, len(content))
 	for _, block := range content {
-		if _, ok := block.(ai.ImageContent); ok {
-			limited = append(limited, block)
+		switch block := block.(type) {
+		case ai.TextContent:
+			llm = append(llm, mcp.LLMContent{Type: mcp.LLMContentTypeText, Text: block.Text})
+		case ai.ImageContent:
+			llm = append(llm, mcp.LLMContent{Type: mcp.LLMContentTypeImage, Data: block.Data, MimeType: block.MimeType})
 		}
 	}
-	return limited, fullOutputPath
+	limited := mcp.LimitMcpContent(llm, saveOutput)
+	if !limited.Truncated {
+		return content, ""
+	}
+	return mcpToLLM(limited.Content), limited.FullOutputPath
 }
 
 // ConvertMcpResultOptions configure [ConvertMcpResult].
 type ConvertMcpResultOptions struct {
 	// SaveOutput saves truncated text and binary resources. Default: a temp file.
-	SaveOutput McpOutputSaver
+	SaveOutput mcp.McpOutputSaver
 	// ReadableResources says whether the server's resources can be read with
 	// `read_mcp_resource`, which resource links then name.
 	ReadableResources bool
@@ -403,7 +347,11 @@ func ConvertMcpResult(server, tool string, result *mcp.CallToolResult, options C
 	if isError && textOf(converted) == "" {
 		converted = append(converted, ai.TextContent{Text: fmt.Sprintf("MCP tool %s/%s returned an error", server, tool)})
 	}
-	content, fullOutputPath := LimitMcpContent(converted, options.SaveOutput)
+	saveOutput := options.SaveOutput
+	if saveOutput == nil {
+		saveOutput = SaveToTempFile
+	}
+	content, fullOutputPath := limitMcpContent(converted, saveOutput)
 	structured, err := scriptResultOf(result)
 	if err != nil {
 		return agent.AgentToolResult{}, err
@@ -414,23 +362,6 @@ func ConvertMcpResult(server, tool string, result *mcp.CallToolResult, options C
 		StructuredContent: structured,
 		IsError:           isError,
 	}, nil
-}
-
-// toParameters: tool input schemas must be objects. MCP servers may omit
-// `type`, and some providers reject object schemas without `properties`.
-func toParameters(schema json.RawMessage) json.RawMessage {
-	obj, err := orderedjson.Parse(schema)
-	if err != nil {
-		obj = orderedjson.New()
-	}
-	if raw, ok := obj.Get("type"); !ok || string(raw) == "null" {
-		_ = obj.SetValue("type", "object")
-	}
-	if !obj.Has("properties") {
-		obj.Set("properties", json.RawMessage("{}"))
-	}
-	raw, _ := obj.MarshalJSON()
-	return raw
 }
 
 // toToolAnnotations are the boolean hints of an MCP tool's annotations, or nil
@@ -495,7 +426,7 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 		Name:         options.Name,
 		Label:        server + "/" + tool.Name,
 		Description:  description,
-		Parameters:   toParameters(tool.InputSchema),
+		Parameters:   mcp.NormalizeMcpInputSchema(tool.InputSchema),
 		OutputSchema: CreateMcpResultSchema(tool.OutputSchema),
 		Exposure:     ToToolExposure(options.Exposure),
 		Namespace:    &namespace,
