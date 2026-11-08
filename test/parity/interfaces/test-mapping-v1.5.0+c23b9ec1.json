@@ -2850,26 +2850,18 @@
     },
     {
       "path": "packages/chord/test/node/app/app.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:f37461c6de1d420c72b433c29f3012ffa117b441ed39bbc44c5cedec6c43cc28",
       "evidence": [
         "chord/nextnode/app/app_test.go",
         "chord/nextnode/app/app_workers_test.go",
         "chord/nextnode/app/app_export_test.go"
       ],
-      "rationale": "12 of 23 upstream cases are ported on the lane branches; the 11 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "starting and closing › refuses a second server on the same data directory through a symbolic link (review L3)",
-        "starting and closing › makes the data directory private at every start, also when it existed looser (review M3)",
-        "starting and closing › refuses a data directory the kit must not tighten: home, root, another user's, also through a link (recheck N4)",
-        "starting and closing › names the address listened on in the owner link (review L4)",
-        "applying changes one after another › starts a later applyChanges after the earlier one rolled out, so the newest build stays deployed",
+      "rationale": "All 23 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). 3 case(s) designed out by D603 (draft, owner sign-off pending; rows/chord-appcases.md): the Go server is one executable with no import graph to scan.",
+      "designedOutCases": [
         "base code › compares the server's own code from its entry, the start script and what it imports, with no `base` given",
         "base code › starts with an entry whose inactive optional import is missing: the import is left out, the rest compared",
-        "base code › starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared",
-        "base code › marks base for a change of `base`'s files and directories and of a file a worker kind's base was built from, not for a rewrite with the same bytes",
-        "export and import per address › exports without a worker under its lock: a hold arriving meanwhile starts the worker after it (review M1)",
-        "export and import per address › leaves a failed address failed after an export (recheck N5)"
+        "base code › starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared"
       ]
     },
     {
@@ -2974,31 +2966,21 @@
     },
     {
       "path": "packages/chord/test/node/app/owner.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:9d486441db82ea400bf24dfc845197d27f1d1e9d4be8a3289daa2a824ec6fb36",
       "evidence": [
         "chord/nextnode/app/owner_upstream_test.go"
       ],
-      "rationale": "7 of 9 upstream cases are ported on the lane branches; the 2 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "the owner token file › is replaced at the next start when its secret no longer matches its session (review L6)",
-        "an owner the app chooses › keeps a user owner's token file across starts, also with the owner's fields in another order"
-      ]
+      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/app/pairing.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:b80b2cf65d8b194475143fcede004c85192b64475b00c08a8d75ac05fdfb554b",
       "evidence": [
         "chord/nextnode/app/pairing_upstream_test.go"
       ],
-      "rationale": "4 of 8 upstream cases are ported on the lane branches; the 4 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "an owner the app chooses › lets only that principal approve, issues the device session for it, and does not count its pairings",
-        "limits › frees a client address's place once its pairing ends",
-        "limits › lets the signed-in owner pair past the caps, without counting it (recheck N2)",
-        "pairing codes › are distinct"
-      ]
+      "rationale": "All 8 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/app/secrets.test.ts",
@@ -3012,21 +2994,12 @@
     },
     {
       "path": "packages/chord/test/node/app/sessions.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:80ef31c8fdfc51eed65bf752cb66e2e3839dfa8846cac85d4c345d5e4487c77f",
       "evidence": [
         "chord/nextnode/app/sessions_upstream_test.go"
       ],
-      "rationale": "2 of 9 upstream cases are ported on the lane branches; the 7 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "issuing, listing and revoking › issues a session whose token authenticates as a bearer and as the cookie, lists it without its hash, revokes it",
-        "issuing, listing and revoking › refuses a token with a wrong secret, an unknown id and a forged cookie",
-        "issuing, listing and revoking › keeps only the token's hash in the store",
-        "rolling cookies › renews a browser's session cookie once it is older than a day, with a fresh signed expiry (recheck N3)",
-        "rolling cookies › does not renew an ephemeral session's cookie, nor a revoked session's",
-        "expiry and malformed tokens › ends a persisted session unused for 400 days, at its next use",
-        "expiry and malformed tokens › answers a malformed token or a prototype key as an id with a plain 401, reporting nothing"
-      ]
+      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/app/tar.test.ts",
@@ -3152,8 +3125,17 @@
     },
     {
       "path": "packages/chord/test/node/http/request.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d12a18b57fd0cf9af458e7365a0751c88a46e2566955c26a9ee81e770d0e9461"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:d12a18b57fd0cf9af458e7365a0751c88a46e2566955c26a9ee81e770d0e9461",
+      "evidence": [
+        "chord/nextnode/http/request_test.go"
+      ],
+      "rationale": "1 of 4 upstream cases are ported on the lane branches; the 3 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "missingCases": [
+        "the request a route gets › has its method, path, params, query, headers, origin, provenance and the response's nonce",
+        "bodies › parses JSON within its limit; malformed is 400, larger is 413 (declared or streamed)",
+        "bodies › drains a small body nobody read and keeps the connection; a large one closes it"
+      ]
     },
     {
       "path": "packages/chord/test/node/http/response.test.ts",
@@ -3439,8 +3421,16 @@
     },
     {
       "path": "packages/chord/test/node/tui/pipe.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d5ea97db17f981a194be5860668fdb66f7b516b0094e1b2fabd7ca6a5fd13f38"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:d5ea97db17f981a194be5860668fdb66f7b516b0094e1b2fabd7ca6a5fd13f38",
+      "evidence": [
+        "chord/nextnode/tui/tui_pipe_test.go"
+      ],
+      "rationale": "1 of 3 upstream cases are ported on the lane branches; the 2 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "missingCases": [
+        "reading the sandbox's frames › cuts messages from chunks of any size, a byte at a time included",
+        "reading the sandbox's frames › refuses a frame over 17 MiB before reading it, and messages of no known shape"
+      ]
     },
     {
       "path": "packages/chord/test/node/tui/sandbox.test.ts",
@@ -4120,27 +4110,21 @@
     },
     {
       "path": "packages/chord/test/surfaces/active-language.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:9e2b73e4007163ac09df66f6572202d25e6e55db3f8cfabc70d0cf30e13e5ff4",
       "evidence": [
         "chord/next/surfaces/surfaces_active_language_test.go"
       ],
-      "rationale": "1 of 2 upstream cases are ported on the lane branches; the 1 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "following the active language › follows the device's languages, the principal's pick and the catalogs, kept as the host's page state"
-      ]
+      "rationale": "All 2 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/surfaces/active-theme.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:c33fe6fcea6078ca55762614ecf5f4bdca94c463ed0c00cadaf765a38041b717",
       "evidence": [
         "chord/next/surfaces/surfaces_active_theme_test.go"
       ],
-      "rationale": "2 of 3 upstream cases are ported on the lane branches; the 1 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "theme choices › refuse an id over 128 characters (Opus M4, Fable L7)"
-      ]
+      "rationale": "All 3 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/surfaces/client.test.ts",
@@ -4153,33 +4137,34 @@
     },
     {
       "path": "packages/chord/test/surfaces/connection.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:b30dd3c9989390028c4ef27fb7365b5ee437f6155df14337b1986667b7a85274",
       "evidence": [
         "chord/next/surfaces/surfaces_connection_test.go"
       ],
-      "rationale": "7 of 8 upstream cases are ported on the lane branches; the 1 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "reconnecting › reconnects after a growing pause, 250 ms doubling to 5 s, and reports its states"
-      ]
+      "rationale": "All 8 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/surfaces/format.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:bd72b1edce3512483cac854712c5b44ac60980582d168f15fdac002239c1614a",
       "evidence": [
         "chord/next/surfaces/surfaces_format_test.go"
       ],
-      "rationale": "1 of 3 upstream cases are ported on the lane branches; the 2 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "formatting in the current language › formats times and numbers in the render's locale",
-        "formatting in the current language › formats in the platform's default locale outside a render"
-      ]
+      "rationale": "All 3 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/surfaces/language.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:30d6d83b3c2fef27e9512e79ebad8edfff7d23067426cde4917bd4da581c915c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:30d6d83b3c2fef27e9512e79ebad8edfff7d23067426cde4917bd4da581c915c",
+      "evidence": [
+        "chord/next/surfaces/surfaces_active_language_test.go",
+        "chord/next/surfaces/surfaces_language_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). 1 case(s) designed out by D450 (rows/chord-appcases.md, owner sign-off pending): Go has no goroutine-local render scope; a message function receives its language.",
+      "designedOutCases": [
+        "the render scope › is current only while a render runs, and a nested render restores the outer"
+      ]
     },
     {
       "path": "packages/chord/test/surfaces/locale-choice.test.ts",
@@ -4192,29 +4177,21 @@
     },
     {
       "path": "packages/chord/test/surfaces/messages.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:dc0e01ea71ba913db7077f354f65ffd7299553e96b3b255538b9a7dd49dba0ce",
       "evidence": [
         "chord/next/surfaces/surfaces_messages_test.go"
       ],
-      "rationale": "11 of 14 upstream cases are ported on the lane branches; the 3 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "rendering in a language › reports a contributed message that throws and goes on (here: the plugin's own catalog)",
-        "messages as data › builds typed data for the keys whose arguments are data",
-        "messages as data › renders a message in the viewer's language"
-      ]
+      "rationale": "All 14 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/surfaces/page-state.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:bb0b6c79b14f670c565ea5cbaf9e6f1bfccd9afbb1cd1a055e79be7ab3fadaed",
       "evidence": [
         "chord/next/surfaces/surfaces_page_state_test.go"
       ],
-      "rationale": "4 of 5 upstream cases are ported on the lane branches; the 1 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "a host's page state by key › keeps a key's value for whoever asks next, its own initial value ignored"
-      ]
+      "rationale": "All 5 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/surfaces/preference.test.ts",
@@ -4245,17 +4222,12 @@
     },
     {
       "path": "packages/chord/test/surfaces/translations.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:3263b221c526f24f29cd5b2eb7636fb0e91b8895de1030e89358e5635f1decca",
       "evidence": [
         "chord/next/surfaces/surfaces_translations_test.go"
       ],
-      "rationale": "2 of 5 upstream cases are ported on the lane branches; the 3 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "composing translations › keeps the first by plugin name for a namespace and locale, reporting the other",
-        "composing translations › lets `override: true` win over a catalog without it, unreported",
-        "the kit's facet › serves the registry on a host, composing its plugins' contributions"
-      ]
+      "rationale": "All 5 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/sync/lines.test.ts",
