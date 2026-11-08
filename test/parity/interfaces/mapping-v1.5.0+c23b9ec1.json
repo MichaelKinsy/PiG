@@ -125005,48 +125005,193 @@
     },
     {
       "id": "pkg:chord/surfaces#BaseBundle",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:be4a0ae4f1a8cc1af58a98cb1fa39db9750f439ac56d42a82ab1565073812bf4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:be4a0ae4f1a8cc1af58a98cb1fa39db9750f439ac56d42a82ab1565073812bf4",
+      "rationale": "Derived by the interface gap detector: BaseBundle is Go chord/nextnode/surfaces/surfaces_bundle.go#BaseBundle (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_bundle.go#BaseBundle"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_build.go#publicOutcome"
+      ],
+      "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash",
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions",
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedNODEOPTIONS"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#PageAssets",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:91cfddc91d036d5e60b486298d1d6197ebfd1df41b9b11537793508ea298465f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:91cfddc91d036d5e60b486298d1d6197ebfd1df41b9b11537793508ea298465f",
+      "rationale": "Derived by the interface gap detector: PageAssets is Go chord/nextnode/surfaces/surfaces_web.go#PageAssets (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_web.go#PageAssets"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_web.go#PageScripts"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn",
+        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#pageScripts",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9f2731abc5e110b7245c85c3bb46dd6ffecdfef3a19a5da1f695713b7023d8f0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9f2731abc5e110b7245c85c3bb46dd6ffecdfef3a19a5da1f695713b7023d8f0",
+      "rationale": "Derived by the interface gap detector: pageScripts is Go chord/nextnode/surfaces/surfaces_web.go#PageScripts (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_web.go#PageScripts"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_web.go#PageScripts"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#pageScripts::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:31f189719e7d89af529c82f1e8196cb0456f7fb1f50450deb4a1c5b31b6d930f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:31f189719e7d89af529c82f1e8196cb0456f7fb1f50450deb4a1c5b31b6d930f",
+      "rationale": "Derived by the interface gap detector: pageScripts::call:0 is Go chord/nextnode/surfaces/surfaces_web.go#PageScripts (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_web.go#PageScripts"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_web.go#PageScripts"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#processConditions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5ef723179b1dec6eeabdd27d4165ce4aad762d9dcd13d7a4fbada8a32976095c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5ef723179b1dec6eeabdd27d4165ce4aad762d9dcd13d7a4fbada8a32976095c",
+      "rationale": "Derived by the interface gap detector: processConditions is Go chord/nextnode/surfaces/surfaces_bundle.go#ProcessConditions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_bundle.go#ProcessConditions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_bundle.go#ProcessConditions"
+      ],
+      "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedNODEOPTIONS"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#processConditions::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2a0900bf57c300a9db9cfec365b1313ee40549b806a68b64925e82d154e63898"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2a0900bf57c300a9db9cfec365b1313ee40549b806a68b64925e82d154e63898",
+      "rationale": "Derived by the interface gap detector: processConditions::call:0 is Go chord/nextnode/surfaces/surfaces_bundle.go#ProcessConditions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_bundle.go#ProcessConditions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_bundle.go#ProcessConditions"
+      ],
+      "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedNODEOPTIONS"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#ServedFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ba86287cc4ea157b5993b4f85622ca8df1c86c7432b320e4441d2ee9c0581d5e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ba86287cc4ea157b5993b4f85622ca8df1c86c7432b320e4441d2ee9c0581d5e",
+      "rationale": "Derived by the interface gap detector: ServedFile is Go chord/nextnode/surfaces/surfaces_served.go#ServedFile (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_served.go#ServedFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_bundle.go#BuildBase"
+      ],
+      "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions",
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash",
+        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedNODEOPTIONS"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#TUI_PREFIX",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5d6d944ee8c473ee95086710dc9a93ad483dca9d0252012e6b3a9acce839475d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5d6d944ee8c473ee95086710dc9a93ad483dca9d0252012e6b3a9acce839475d",
+      "rationale": "Derived by the interface gap detector: TUI_PREFIX is Go chord/nextnode/surfaces/surfaces_tui.go#TuiPrefix (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_tui.go#TuiPrefix"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#TuiStart",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1a80ace86cc1656cf4a5eee789992946de8d6560207b46453d2c2909ddb4d2f7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1a80ace86cc1656cf4a5eee789992946de8d6560207b46453d2c2909ddb4d2f7",
+      "rationale": "Derived by the interface gap detector: TuiStart is Go chord/nextnode/surfaces/surfaces_tui.go#TuiStart (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_tui.go#TuiStart"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#tuiSurface",
@@ -125065,13 +125210,45 @@
     },
     {
       "id": "pkg:chord/surfaces#TuiSurfaceOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:383000f7b74fb23969cd59a0ce5093c636b7ca8d24e81a2429e9eefa91b9897c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:383000f7b74fb23969cd59a0ce5093c636b7ca8d24e81a2429e9eefa91b9897c",
+      "rationale": "Derived by the interface gap detector: TuiSurfaceOptions is Go chord/nextnode/surfaces/surfaces_tui.go#TuiSurfaceOptions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_tui.go#TuiSurfaceOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#WEB_PREFIX",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0d4f252f3cca704b223b379cb1c01ca4aefc088fe1e15320e26df59582d7195e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0d4f252f3cca704b223b379cb1c01ca4aefc088fe1e15320e26df59582d7195e",
+      "rationale": "Derived by the interface gap detector: WEB_PREFIX is Go chord/nextnode/surfaces/surfaces_web.go#WebPrefix (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_web.go#WebPrefix"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
+      ],
+      "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost",
+        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter",
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#webSurface",
@@ -125090,8 +125267,23 @@
     },
     {
       "id": "pkg:chord/surfaces#WebSurfaceOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fc7299fd1de158828c553c8b2aaea8fcac1a374addc92427651aad640353160e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fc7299fd1de158828c553c8b2aaea8fcac1a374addc92427651aad640353160e",
+      "rationale": "Derived by the interface gap detector: WebSurfaceOptions is Go chord/nextnode/surfaces/surfaces_web.go#WebSurfaceOptions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_web.go#WebSurfaceOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
+      ]
     },
     {
       "id": "pkg:chord/sync#APPLY_BYTES",

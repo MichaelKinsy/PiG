@@ -503,20 +503,8 @@ pkg:chord/react#useWatch	chord	no-go-symbol
 pkg:chord/react#useWatch::call:0	chord	child-gap	
 pkg:chord/react#watchStore	chord	no-go-symbol	
 pkg:chord/react#watchStore::call:0	chord	child-gap	
-pkg:chord/surfaces#BaseBundle	chord	no-go-symbol	
-pkg:chord/surfaces#PageAssets	chord	no-go-symbol	
-pkg:chord/surfaces#ServedFile	chord	no-go-symbol	
-pkg:chord/surfaces#TUI_PREFIX	chord	no-go-symbol	
-pkg:chord/surfaces#TuiStart	chord	no-go-symbol	
-pkg:chord/surfaces#TuiSurface	chord	type-mismatch	chord/nextnode/app/app_surfaces.go#surface
-pkg:chord/surfaces#TuiSurfaceOptions	chord	no-go-symbol	
-pkg:chord/surfaces#WEB_PREFIX	chord	no-go-symbol	
-pkg:chord/surfaces#WebSurface	chord	no-go-symbol	
-pkg:chord/surfaces#WebSurfaceOptions	chord	no-go-symbol	
-pkg:chord/surfaces#pageScripts	chord	no-go-symbol	
-pkg:chord/surfaces#pageScripts::call:0	chord	child-gap	
-pkg:chord/surfaces#processConditions	chord	no-go-symbol	
-pkg:chord/surfaces#processConditions::call:0	chord	child-gap	
+pkg:chord/surfaces#TuiSurface	chord	type-mismatch	chord/nextnode/surfaces/surfaces_tui.go#TuiSurface
+pkg:chord/surfaces#WebSurface	chord	type-mismatch	chord/nextnode/surfaces/surfaces_web.go#WebSurface
 pkg:chord/surfaces#tuiSurface	chord	no-go-symbol	
 pkg:chord/surfaces#tuiSurface::call:0	chord	child-gap	
 pkg:chord/surfaces#webSurface	chord	no-go-symbol	
