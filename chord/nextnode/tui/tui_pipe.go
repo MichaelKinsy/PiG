@@ -131,30 +131,47 @@ func (r *FrameReader) append(chunk []byte) {
 	r.end += len(chunk)
 }
 
-// safeInteger is Number.isSafeInteger for a decoded JSON value.
-func safeInteger(value any) (int, bool) {
-	number, ok := value.(float64)
-	if !ok || number != math.Trunc(number) || math.Abs(number) > 1<<53-1 {
+// safeInteger is Number.isSafeInteger for a field of the header: false for anything but a JSON number (a missing field, null, a
+// string, a boolean, an array, an object), and for a number that is not an integer or is beyond 2^53 - 1 (or beyond a float64).
+func safeInteger(field json.RawMessage) (int, bool) {
+	if len(field) == 0 || (field[0] != '-' && (field[0] < '0' || field[0] > '9')) {
+		return 0, false
+	}
+	var number float64
+	if err := json.Unmarshal(field, &number); err != nil || number != math.Trunc(number) || math.Abs(number) > 1<<53-1 {
 		return 0, false
 	}
 	//portlint:allow numbers number is a JSON number already checked to be a finite integer within the frame limits above (the checks before this line), so the conversion cannot overflow
 	return int(number), true
 }
 
+// stringField is the field's value when it is a JSON string; false for anything else (a missing field, null, a number, ...).
+func stringField(field json.RawMessage) (string, bool) {
+	if len(field) == 0 || field[0] != '"' {
+		return "", false
+	}
+	var text string
+	if err := json.Unmarshal(field, &text); err != nil {
+		return "", false
+	}
+	return text, true
+}
+
 // sandboxMessage is the message in payload (a frame from the sandbox, without its length); it fails for anything else. Trust
-// boundary: the sandbox's pipe.
+// boundary: the sandbox's pipe. The header's fields stay raw until a message kind asks for one, so nothing of it is decoded into an
+// interface value.
 func sandboxMessage(payload []byte) (SandboxMessage, error) {
 	headerLength := int(binary.BigEndian.Uint32(payload))
 	if headerLength > maxHeader || 4+headerLength > len(payload) {
 		return SandboxMessage{}, ErrMalformedMessage
 	}
-	var header map[string]any
+	var header map[string]json.RawMessage
 	if err := json.Unmarshal(payload[4:4+headerLength], &header); err != nil || header == nil {
 		return SandboxMessage{}, ErrMalformedMessage
 	}
 	body := payload[4+headerLength:]
 	socket, socketOK := safeInteger(header["socket"])
-	kind, _ := header["kind"].(string)
+	kind, _ := stringField(header["kind"])
 	switch kind {
 	case "write":
 		return SandboxMessage{Kind: kind, Data: string(body)}, nil
@@ -190,35 +207,43 @@ func sandboxMessage(payload []byte) (SandboxMessage, error) {
 	return SandboxMessage{}, ErrMalformedMessage
 }
 
-// jsString is String(value) for a decoded JSON value.
-func jsString(value any) string {
-	switch v := value.(type) {
-	case nil:
+// jsString is String(value) for a field of the header: "undefined" for a missing field or null, the text of a string, else the
+// value's JSON.
+func jsString(field json.RawMessage) string {
+	if len(field) == 0 || string(field) == "null" {
 		return "undefined"
-	case string:
-		return v
+	}
+	if text, ok := stringField(field); ok {
+		return text
+	}
+	value, err := delta.DecodeJson(field)
+	if err != nil {
+		return "undefined"
 	}
 	text, _ := jsstring.MarshalJSON(value)
 	return string(text)
 }
 
-// bridgeRequest is the request value names; false for anything else.
-func bridgeRequest(value any) (BridgeRequest, bool) {
-	request, _ := value.(map[string]any)
-	kind, _ := request["kind"].(string)
+// bridgeRequest is the request the field names; false for anything else.
+func bridgeRequest(field json.RawMessage) (BridgeRequest, bool) {
+	var request map[string]json.RawMessage
+	if len(field) == 0 || field[0] != '{' || json.Unmarshal(field, &request) != nil {
+		return BridgeRequest{}, false
+	}
+	kind, _ := stringField(request["kind"])
 	switch kind {
 	case "base":
 		return BridgeRequest{Kind: kind}, true
 	case "fetch", "attach":
-		if path, ok := request["path"].(string); ok {
+		if path, ok := stringField(request["path"]); ok {
 			return BridgeRequest{Kind: kind, Path: path}, true
 		}
 	case "copy":
-		if text, ok := request["text"].(string); ok {
+		if text, ok := stringField(request["text"]); ok {
 			return BridgeRequest{Kind: kind, Text: text}, true
 		}
 	case "open":
-		if url, ok := request["url"].(string); ok {
+		if url, ok := stringField(request["url"]); ok {
 			return BridgeRequest{Kind: kind, URL: url}, true
 		}
 	}
