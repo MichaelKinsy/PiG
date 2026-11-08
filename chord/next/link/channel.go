@@ -246,9 +246,14 @@ func (c *Channel) Send(message Message) error {
 func (c *Channel) Close() { c.link.Close() }
 
 // Tick is the heartbeat, at now (milliseconds): a link silent for close ms (the handshake included) closes; an open
-// one silent for ping ms sends one `ping`.
-func (c *Channel) Tick(now, ping, close int64) {
+// one silent for ping ms sends one `ping`. paused ms this process did not run before it are no silence: what the peer sent
+// meanwhile is still unread (timers run before I/O). The silence stays what it was before the pause, at least ping ms, so
+// a dead peer (a dropped TCP connection) is found close - ping ms later.
+func (c *Channel) Tick(now, paused, ping, close int64) {
 	c.mu.Lock()
+	if paused > 0 {
+		c.lastReceived = min(c.lastReceived+paused, now-ping)
+	}
 	silent := now - c.lastReceived
 	sendPing := false
 	if silent >= close {
