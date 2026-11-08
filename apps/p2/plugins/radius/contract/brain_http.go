@@ -445,6 +445,12 @@ func (b *Brain) openChannelSocket(s *session, id string, head requestHead, heade
 			end(code, reason, byDefault)
 		}()
 		pipes.Wait()
+		mu.Lock()
+		all := slices.Clone(sockets)
+		mu.Unlock()
+		for _, socket := range all {
+			socket.release()
+		}
 		_ = channelConn.Close()
 		_ = upstreamConn.Close()
 	})
@@ -518,6 +524,7 @@ func (b *Brain) openWebSocket(s *session, id string, head requestHead, headers m
 			return
 		}
 		upstream = newWsConn(conn)
+		defer upstream.release()
 		for _, item := range queued {
 			kind := websocket.BinaryMessage
 			if item.end {

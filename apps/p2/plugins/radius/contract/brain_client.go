@@ -123,6 +123,7 @@ func (b *Brain) openClientChannel(s *session, id string) {
 		paired = true
 		out = newWsConn(conn)
 		mu.Unlock()
+		defer out.release()
 		kind, first, err := conn.ReadMessage()
 		if err != nil {
 			code, _ := closeInfo(err)
@@ -305,6 +306,7 @@ func (b *Brain) clientSocket(conn *websocket.Conn, out *wsConn, path string, hea
 	defer upstream.Close()
 	answer(http.StatusSwitchingProtocols, nil)
 	toUpstream := newWsConn(upstream)
+	defer toUpstream.release()
 	var group sync.WaitGroup
 	group.Add(2)
 	go func() {

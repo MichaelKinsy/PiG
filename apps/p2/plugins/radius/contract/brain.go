@@ -772,10 +772,11 @@ func (s *session) sendData(id string, payload []byte, kind byte) {
 
 // congest pauses every loopback source on the host socket until it has drained below congestionLowBytes.
 func (s *session) congest() {
-	for _, c := range s.snapshot() {
-		c.congested(true)
-	}
 	s.brain.spawn(func() {
+		// Off the sender's goroutine: a channel that is flushing holds its own lock, which pausing it takes.
+		for _, c := range s.snapshot() {
+			c.congested(true)
+		}
 		timer := time.NewTicker(pollInterval)
 		defer timer.Stop()
 		for {
