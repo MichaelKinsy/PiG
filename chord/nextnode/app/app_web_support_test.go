@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	nextsurfaces "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
-	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/browsertest"
+	"github.com/MichaelKinsy/PiG/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -23,7 +23,7 @@ import (
 // Test support for the web surface in a real browser (Pi's test/node/web/support.ts; slice 11 §6): a kit app with the web
 // surface whose entry imports the fixture's web entry and a version (changing it changes the base bundle), its page template, a
 // web plugin, and the browser signed in as the owner through the owner link. The browser is headless Chromium over the DevTools
-// protocol (chord/nextnode/internal/browsertest); the tests are skipped without one (`CHROMIUM_BIN`).
+// protocol (internal/browsertest); the tests are skipped without one (`CHROMIUM_BIN`).
 
 // panelPlugin is a web plugin contributing the panel title and the themes accent colours.
 func panelPlugin(title, accent string) map[string]string {

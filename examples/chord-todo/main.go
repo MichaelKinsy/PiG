@@ -19,21 +19,29 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 )
 
 // here is this directory: the API's modules are files of it.
 var _, thisFile, _, _ = runtime.Caller(0)
 var here = filepath.Dir(thisFile)
 
-// The app's principals: its server and its owner (chapter II adds its list workers, chapter VII its users).
+// The app's principals: its server, its owner, one for each list's worker, and a user who signed in with a name (chapter VII).
 var (
 	serverPrincipal data.Principal = delta.JsonObjectOf("kind", "server")
 	ownerPrincipal  data.Principal = delta.JsonObjectOf("kind", "owner")
 )
+
+// workerPrincipal is the principal of the worker of the list at address.
+func workerPrincipal(address contracts.Address) data.Principal {
+	return delta.JsonObjectOf("kind", "worker", "list", address.Key)
+}
 
 // api is the app's API: its name, its versions (newest first), and this process's modules of them.
 func api() app.AppAPI {
@@ -49,11 +57,20 @@ func kinds() []app.AppKind {
 	return []app.AppKind{
 		{Name: "server", Platform: plugins.PlatformNode},
 		{Name: "worker", Platform: plugins.PlatformNode},
+		{Name: "tui", Platform: plugins.PlatformNode, Packages: plugins.HostPackages{"@todo/app/v1/tui": filepath.Join(here, "client", "tui.ts")}},
+		{Name: "web", Platform: plugins.PlatformBrowser, Packages: plugins.HostPackages{
+			"react": "", "react/jsx-runtime": "",
+			"@todo/app/v1/web": filepath.Join(here, "client", "web.ts"),
+		}},
 	}
 }
 
 // startTodo starts the todo app on a free loopback port, with its data in dataDir and its built-in plugins in root.
 func startTodo(ctx context.Context, dataDir, root string) (*app.App, error) {
+	executable, err := os.Executable()
+	if err != nil {
+		return nil, err
+	}
 	return app.StartServer(app.AppOptions{
 		Name:    "todo",
 		DataDir: dataDir,
@@ -63,17 +80,57 @@ func startTodo(ctx context.Context, dataDir, root string) (*app.App, error) {
 		Kinds:   kinds(),
 		Principal: app.AppPrincipals{
 			Server: serverPrincipal,
+			Worker: workerPrincipal,
 			Owner:  ownerPrincipal,
 		},
+		Workers: []app.AppWorkerKind{{
+			Kind:  listKind,
+			Entry: executable,
+			Env:   map[string]string{workerEnv: "1"},
+			Start: func(contracts.Address, context.Context) (delta.JsonValue, error) { return delta.NewJsonObject(0), nil },
+			// Who may reach a list's worker: everyone signed in, and the server itself.
+			Authorize: func(principal data.Principal, _ contracts.Address) bool {
+				return principal.Value("kind") != "worker"
+			},
+		}},
+		// The kit's pick-a-name login (a Go app loads it itself, where Pi's app has a one-line plugin) and the lists' routes.
+		Facets: []host.HostFacet{
+			{Name: "chord.app.ephemeral", Facet: app.EphemeralLoginFacet()},
+			{Name: "@todo/routes", Facet: routes()},
+		},
+		// The page: the app's own HTML around the assets the kit made.
+		Web:     &app.AppWeb{Entry: filepath.Join(here, "client", "page.ts"), Page: page, Conditions: []string{"source"}},
+		Tui:     &app.AppTui{Entry: filepath.Join(here, "client", "terminal.ts"), Conditions: []string{"source"}},
 		OnError: func(err app.AppError) { fmt.Fprintln(os.Stderr, "todo:", err.Kind, err.Error) },
 	}, ctx)
+}
+
+// page is the page's template: the app's own HTML around the assets the kit made (the base bundle, the plugins' scripts and styles).
+func page(request chordhttp.HttpRequest, assets nodesurfaces.PageAssets) (string, error) {
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Todo</title>` + nodesurfaces.PageScripts(assets, request.Nonce()) +
+		`</head><body><div id="root"></div></body></html>`, nil
+}
+
+// workerEnv is set in a worker's environment: the program is the worker of a list then, not the app.
+const workerEnv = "TODO_ROLE_WORKER"
+
+// startWorker runs this process as a list's worker: it opens the list's store in its directory, connects to the server and loads
+// the plugins' worker facets. It does not return.
+func startWorker() {
+	app.StartWorker(app.WorkerOptions{
+		API: api(),
+		// A worker runs the plugins' worker facets only: the page's and the terminal's packages are not its.
+		Kinds:       kinds()[:2],
+		WorkerKinds: []*contracts.HostKind{listKind},
+		OnError:     func(err any) { fmt.Fprintln(os.Stderr, "list:", err) },
+	})
 }
 
 // run is the tutorial's steps, printing what each does to out; with serve it then keeps the app running until interrupted. The data
 // directory and the plugins root are new directories in base.
 func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 	dataDir, root := filepath.Join(base, "data"), filepath.Join(base, "plugins")
-	if err := os.MkdirAll(root, 0o755); err != nil {
+	if err := os.CopyFS(root, os.DirFS(filepath.Join(here, "plugins"))); err != nil {
 		return err
 	}
 
@@ -130,6 +187,14 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 	_ = signedIn.Body.Close()
 	fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
 
+	s := &session{ctx: ctx, out: out, app: server, dataDir: dataDir, root: root, base: base, origin: origin}
+	defer s.stop()
+	for _, step := range []func() error{s.listsStep, s.routesStep, s.pageStep, s.terminalStep, s.themeStep, s.userStep, s.languagesStep, s.reloadStep, s.exportStep} {
+		if err := step(); err != nil {
+			return err
+		}
+	}
+
 	if serve {
 		fmt.Fprintln(out, "serving; the owner link:", server.OwnerLink())
 		interrupted, stop := signal.NotifyContext(ctx, os.Interrupt)
@@ -140,6 +205,10 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 }
 
 func main() {
+	if os.Getenv(workerEnv) != "" {
+		startWorker()
+		return
+	}
 	base, err := os.MkdirTemp("", "todo-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "todo:", err)

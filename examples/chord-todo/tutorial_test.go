@@ -144,3 +144,11 @@ func TestTheTutorialsStepsPrintWhatTheBookShows(t *testing.T) {
 		t.Fatal("the book shows no output of main")
 	}
 }
+
+func TestMain(m *testing.M) {
+	if os.Getenv(workerEnv) != "" {
+		startWorker()
+		return
+	}
+	os.Exit(m.Run())
+}

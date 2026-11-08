@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/browsertest"
+	"github.com/MichaelKinsy/PiG/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/chord/telemetrysqlite"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/test/node/react/hooks.test.ts, web/language.test.ts and the first two cases of web/page.test.ts (Pi main
-// c23b9ec1) over a real Chromium (the DevTools driver, chord/nextnode/internal/browsertest; skipped without one: `CHROMIUM_BIN`).
+// c23b9ec1) over a real Chromium (the DevTools driver, internal/browsertest; skipped without one: `CHROMIUM_BIN`).
 // The page's third case (a click as the root of one trace through the server into the worker) runs the vendored fixture web/telemetry.ts
 // against the app's SQLite telemetry store; web/styles.test.ts in app_web_styles_test.go.
 //

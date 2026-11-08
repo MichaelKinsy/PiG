@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/browsertest"
+	"github.com/MichaelKinsy/PiG/internal/browsertest"
 )
 
 // Ports packages/chord/test/node/web/styles.test.ts (Pi main c23b9ec1): a page's plugin stylesheets in a real browser, every frame
