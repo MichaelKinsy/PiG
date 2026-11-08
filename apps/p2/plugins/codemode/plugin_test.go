@@ -28,12 +28,13 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 	})
 	// A registry's value is read inside a section of the host's loop (`RegistryValue`): its contributions change there.
 	extension := func() *p2runtime.P2Extension {
-		value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
+		source, err := fixture.Host.Registry(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
 		if err != nil {
 			t.Logf("registry: %v", err)
 			return nil
 		}
-		table, ok := value.(*p2runtime.KeyedTable[*p2runtime.P2Extension])
+		table, tableErr := p2runtime.Extensions.Table(source)
+		ok := tableErr == nil
 		if !ok {
 			return nil
 		}
@@ -42,11 +43,12 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 	}
 	switchIs := func(want bool) func() (bool, error) {
 		return func() (bool, error) {
-			value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
+			source, err := fixture.Host.Registry(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
 			if err != nil {
 				return false, nil
 			}
-			table, ok := value.(*p2runtime.KeyedTable[*bool])
+			table, tableErr := p2runtime.ExtensionSwitches.Table(source)
+			ok := tableErr == nil
 			if !ok {
 				return false, nil
 			}
