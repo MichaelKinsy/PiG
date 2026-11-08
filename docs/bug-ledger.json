@@ -45662,6 +45662,29 @@
       ]
     },
     {
+      "id": "BF-e38ea7c",
+      "title": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its…",
+      "symptom": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its last lines changed or a second fence that repeats the start of the first, is highlighted as a whole run highlights it, in every language.",
+      "rootCause": "hlFindResume matched a stored state on the text up to the resume point alone. The run's decisions before that point read past it, up to the end of the code of that run, so a block that began with the same text and then differed (a file rewritten with its last lines changed, an edit, a truncation, another fence with the same beginning) resumed with decisions the new text does not make. Streaming only appends, and every resume of an append is kept.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its last lines changed or a second fence that repeats the start of the first, is highlighted as a whole run highlights it, in every language. The highlighter restarted from a state of the earlier block that only matched the text before its resume point, and highlight.js reads past that point, so the new block could take a state it does not hold: python, bash, SQL, Kotlin and about 70 other languages showed it, and JavaScript and TypeScript would have with the resumable highlighting of the same release.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e38ea7c9db",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/highlight_resume_blocks_test.go::TestResumeStateDoesNotServeCodeThatOnlySharesItsPrefix",
+        "tui/highlight_resume_blocks_test.go::TestStreamedHighlightIsAWholeRunAcrossBlocksAndEdits"
+      ]
+    },
+    {
       "id": "BF-e3f39b7",
       "title": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\"",
       "symptom": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\".",

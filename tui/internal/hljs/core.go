@@ -730,6 +730,15 @@ func languageReach(language *Mode) reach {
 		props.reach = reach{}
 		for _, source := range props.sources {
 			r := patternReach(source)
+			if guard, ok := guardedSources[source]; ok && r.unbounded {
+				// The check bounds what the pattern reads past a point; what stays is the line break of its own, as the
+				// patterns that match one count.
+				r.unbounded, r.lines = false, 1
+				props.reach.guards |= guard
+			}
+			if source == xmlTagBegin {
+				props.reach.guards |= guardAngle
+			}
 			props.reach.lines = max(props.reach.lines, r.lines)
 			props.reach.unbounded = props.reach.unbounded || r.unbounded
 			props.reach.spaceRun = props.reach.spaceRun || r.spaceRun
