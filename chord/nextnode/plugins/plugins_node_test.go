@@ -290,7 +290,7 @@ func TestNodeTreeIsExtractedOncePerContent(t *testing.T) {
 	if err != nil || second != first {
 		t.Fatalf("second = %q, %v; want %q", second, err, first)
 	}
-	if _, err := os.Stat(filepath.Join(first, "pi", "chord", "src", "next-node", "plugins", "evaluate.ts")); err != nil {
+	if _, err := os.Stat(filepath.Join(first, "pi", "chord", "src", "node", "plugins", "evaluate.ts")); err != nil {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(cache)
@@ -629,7 +629,7 @@ func TestNodeTreeIsRepairedWhenItIsPartialOrHasNoMarker(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, completeMarker)); err != nil {
 		t.Fatalf("a marker is written last: %v", err)
 	}
-	evaluate := filepath.Join(dir, "pi", "chord", "src", "next-node", "plugins", "evaluate.ts")
+	evaluate := filepath.Join(dir, "pi", "chord", "src", "node", "plugins", "evaluate.ts")
 	for _, damage := range []struct {
 		what string
 		do   func() error

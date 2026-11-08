@@ -276,7 +276,7 @@ func TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime := filepath.Join(tree, "pi", "chord", "src", "next-node", "plugins", "runtime.ts")
+	runtime := filepath.Join(tree, "pi", "chord", "src", "node", "plugins", "runtime.ts")
 	script := strings.Join([]string{
 		`import { registerHooks } from "node:module";`,
 		"registerHooks({ resolve(specifier, context, next) {",
