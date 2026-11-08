@@ -368,9 +368,9 @@ rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case 
 [[files]]
 path = "packages/chord/src/documents/documents.ts"
 change = "added"
-disposition = "ported"
+disposition = "pending"
 evidence = ["test:chord/next/documents/documents_test.go", "test:chord/next/documents/documents_telemetry_test.go", "test:chord/next/host/host_documents_cancel_test.go"]
-rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
+rationale = "Pending until fix/chord-gap-b lands (not a 0.8.0 release deferral; the row becomes ported when it does): the twin test file test/documents/documents.test.ts is partial in test-mapping; its 2 missing cases have a Go test only on that lane: \"transactions their context's end cancelled (decision \\\"Mistakes that wait are reported at once\\\" (e)) › cost nothing on the committed path: no check of the context beyond the commit's own (cost guard)\" (chord/next/documents/documents_cost_test.go TestTransactionsTheirContextsEndCancelledCostNothingOnTheCommittedPath…) and \"commits in telemetry (slice 9) › times nothing when nothing records\" (chord/next/documents/documents_telemetry_test.go TestCommitsInTelemetryTimesNothingWhenNothingRecords). Otherwise the module is ported; evidence is the Go twin."
 
 [[files]]
 path = "packages/chord/src/documents/fence.ts"
@@ -3125,12 +3125,11 @@ evidence = ["test:chord/next/surfaces/surfaces_active_theme_test.go"]
 rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
-
 path = "packages/chord/src/surfaces/client.ts"
 change = "added"
-disposition = "pending"
+disposition = "ported"
 evidence = ["test:chord/next/surfaces/surfaces_client_test.go"]
-rationale = "Pending until fix/chord-tui-cases lands (not a 0.8.0 release deferral; the row becomes ported when it does): the twin test file test/surfaces/client.test.ts is partial in test-mapping; its 1 missing case(s): \"applying a new set in place › keeps a plugin's old facet when its new script fails, and reports it\" (Go test only on fix/chord-tui-cases: surfaces_client_test.go TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt). Otherwise the module is ported; evidence is the Go twin."
+rationale = "Ported: every upstream case of test/surfaces/client.test.ts has a Go test in surfaces_client_test.go (test-mapping disposition ported), the plugin-facet case as TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt."
 
 [[files]]
 path = "packages/chord/src/surfaces/connection.ts"

@@ -837,7 +837,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/writes.ts` | `(type-only: the StoreWrite union; chord/next/store/writes.go StoreWrite interface)` | n/a |
 | `packages/chord/src/documents/address-source.ts` | `chord/next/documents/address_source.go` | ✅ |
 | `packages/chord/src/documents/definition.ts` | `chord/next/documents/definition.go` | ✅ |
-| `packages/chord/src/documents/documents.ts` | `chord/next/documents/documents.go` | ✅ |
+| `packages/chord/src/documents/documents.ts` | `chord/next/documents/documents.go` | 🟡 |
 | `packages/chord/src/documents/fence.ts` | `chord/next/documents/fence.go` | ✅ |
 | `packages/chord/src/documents/handles.ts` | `chord/next/documents/handles.go` | ✅ |
 | `packages/chord/src/documents/index.ts` | `(re-export barrel; the app-facing set is listed in doc.go)` | n/a |
@@ -1010,7 +1010,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go (D431)` | ✅ |
 | `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go` | ✅ |
 | `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
-| `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go` | 🟡 |
+| `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go` | ✅ |
 | `packages/chord/src/surfaces/connection.ts` | `chord/next/surfaces/surfaces_connection.go` | ✅ |
 | `packages/chord/src/surfaces/format.ts` | `chord/next/surfaces/surfaces_format.go` | ✅ |
 | `packages/chord/src/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
