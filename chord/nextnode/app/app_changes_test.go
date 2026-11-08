@@ -20,11 +20,11 @@ import (
 )
 
 // Ports the "applies changes", "applying changes one after another" and "base code" tests of
-// packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1). Designed out (D603): the three base-code tests that scan the server's own
-// start script (`runStart`): the Go server is this process's binary, its `Base` files are listed by the app (nothing is scanned, so
-// there is no `server_scan` report); the worker kind's built-from files (a worker's entry is an executable, not a script built by the plugins
-// component). The serialization test holds the first build through App's `build` and `rollout` fields, where Pi replaces the
-// component's methods. The "installs" test is ported below.
+// packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1). The base-code tests that start a server with no `base` given are in
+// app_executable_test.go; the one with a lazy optional import has no Go form (D603: an executable has no import graph). The worker
+// kind's built-from files (a worker's entry is an executable, not a script built by the plugins component) are D600. The
+// serialization test holds the first build through App's `build` and `rollout` fields, where Pi replaces the component's methods.
+// The "installs" test is ported below.
 
 // untilMarks returns once the plugins' marks satisfy ok; the state's watch wakes it (no polling).
 func untilMarks(t testing.TB, app *App, what string, ok func(plugins.PluginsState) bool) {
@@ -172,6 +172,8 @@ func TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed(t *testin
 	}
 	apply()
 	<-built
+	// Pi waits for the plugins' marks to change after this edit; here the marks do not (they hold `echo` dirty from the first edit
+	// already) and build 2 reads the files when it runs, after the first rollout, so the edit is in it whenever the watcher sees it.
 	editEcho(t, s.root, "v3")
 	apply()
 	// The second waits for the first to roll out: it does not build meanwhile (Pi waits 100 ms for it to show).

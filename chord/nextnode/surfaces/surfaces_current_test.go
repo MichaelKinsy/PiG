@@ -22,7 +22,7 @@ func TestScriptsFacetRefusesAnUnknownSurface(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer server.Close(context.Background())
+	defer func() { _ = server.Close(context.Background()) }()
 	facet := ScriptsFacet("desktop", func() next.ScriptSet { return next.ScriptSet{} })
 	report, err := server.Load([]host.HostFacet{{Name: "chord.desktop", Facet: facet}}, context.Background())
 	if err != nil {
