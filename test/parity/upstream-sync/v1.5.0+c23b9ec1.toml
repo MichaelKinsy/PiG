@@ -618,12 +618,11 @@ evidence = ["test:chord/next/host/host_reference_source_test.go"]
 rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
-
 path = "packages/chord/src/host/reference.ts"
 change = "added"
-disposition = "deferred"
+disposition = "ported"
 evidence = ["test:chord/next/host/host_reference_test.go"]
-rationale = "Missing cases: the twin test file test/host/reference.test.ts is partial in test-mapping (1 of its cases have no Go test on this branch): \"a hold released while it waits unbound keeps nothing: the reference and its contract leave the index and its c\". Otherwise the module is ported; evidence is the Go twin."
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/host/reload-cycle.ts"
@@ -2121,12 +2120,11 @@ evidence = []
 rationale = "Pi deletes the v1 chord layer (src/node.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
-
 path = "packages/chord/src/node/app/app.ts"
 change = "added"
-disposition = "deferred"
+disposition = "ported"
 evidence = ["test:chord/nextnode/app/app_test.go", "test:chord/nextnode/app/app_workers_test.go", "test:chord/nextnode/app/app_export_test.go"]
-rationale = "Missing cases: the twin test file test/node/app/app.test.ts is partial in test-mapping (3 of its cases have no Go test on this branch): \"rejects when a worker kind's entry does not build, with everything closed\"; \"starts without worker kinds and without `principal.worker`; worker kinds need it (a type error)\"; \"installs a plugin from git into the user's root; applying changes loads it\". Otherwise the module is ported; evidence is the Go twin."
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/node/app/archive.ts"
@@ -2826,12 +2824,11 @@ evidence = ["test:chord/next/host/host_batch_test.go", "test:chord/next/state/ba
 rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
-
 path = "packages/chord/src/state/derive.ts"
 change = "added"
-disposition = "deferred"
+disposition = "ported"
 evidence = ["test:chord/next/state/derive_own_test.go", "test:chord/next/state/derive_sources_own_test.go", "test:chord/next/state/derive_test.go"]
-rationale = "Missing cases: the twin test file test/state/derive.test.ts is partial in test-mapping (1 of its cases have no Go test on this branch): \"a failure call's fresh error kept by its listener keeps nothing of its host once the host closes\". Otherwise the module is ported; evidence is the Go twin."
+rationale = "Moved from packages/chord/src/next/state/derive.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/state/derive.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/state/index.ts"
