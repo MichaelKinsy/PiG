@@ -44,7 +44,7 @@ func everyKind() []link.Message {
 	origin := hold(0, link.Text("{}"))
 	origin.Type = "t"
 	origin.Origin = some(2)
-	oldOrigin := &link.CallMessage{Origin: some(2), Call: 1, Hold: 3, Method: 0, Args: link.Text("[1]"), Old: true}
+	oldOrigin := &link.CallMessage{Origin: some(2), Call: 10, Hold: 3, Method: 0, Old: true}
 	return []link.Message{
 		&link.HelloMessage{Protocol: 1, Incarnation: incarnation, Calls: 256},
 		first,
@@ -53,7 +53,7 @@ func everyKind() []link.Message {
 		&link.ReleaseMessage{Hold: 0},
 		&link.CallMessage{Call: 3, Hold: 0, Method: 1, Args: link.Text(`{"text":"x"}`)},
 		&link.CallMessage{Call: 4, Hold: 0, Method: 0},
-		// A call that is old work (a restart's), alone and under an origin (Pi's also carries a trace: T6, no Trace here).
+		// A call that is old work (a restart's), alone and under an origin (Pi's also carries a trace: T6, no Trace here; no args, the text decoder's own branch).
 		&link.CallMessage{Call: 9, Hold: 0, Method: 1, Args: link.Text(`{"text":"x"}`), Old: true},
 		oldOrigin,
 		&link.AbortMessage{Call: 3},
