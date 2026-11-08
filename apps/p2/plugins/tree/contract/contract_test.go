@@ -8,7 +8,7 @@ import (
 )
 
 // Contract fingerprints equal Pi's (see sessions/contract).
-func TestTreeContractsFingerprintAsPi(t *testing.T) {
+func TestTreeContractFingerprintsAsPi(t *testing.T) {
 	const module = "plugins/tree/contract.ts"
 	pi := oracle.Fingerprints(t, module)
 	for name, contract := range map[string]*contracts.Contract{"SessionTree": SessionTree} {

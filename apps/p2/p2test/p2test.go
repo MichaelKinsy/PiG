@@ -29,6 +29,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Main is a test package's TestMain: the test binary is also the session worker (`p2 worker`: the server forks its own
@@ -407,9 +408,18 @@ func Until(source JSONSource, predicate func(delta.JsonValue) bool, timeout time
 				return value, nil
 			}
 		case <-ctx.Done():
-			return nil, fmt.Errorf("timed out after %s; last value: %.500v", timeout, last)
+			return nil, fmt.Errorf("timed out after %s; last value: %.800s", timeout, describe(last))
 		}
 	}
+}
+
+// describe is a value as JSON for a failure message (a delta value prints as pointers otherwise).
+func describe(value delta.JsonValue) string {
+	encoded, err := chordjson.Marshal(value)
+	if err != nil {
+		return fmt.Sprint(value)
+	}
+	return string(encoded)
 }
 
 // UntilNative is Until for a native watchable (a reference's state, a registry's value).

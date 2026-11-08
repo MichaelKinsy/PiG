@@ -6620,6 +6620,27 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
             }),
         });
     }
+    if case["ops"].as_str() == Some("grepdir") {
+        options.grep.operations = Some(pig_sdk::GrepOperations {
+            is_directory: path_op(log, "isDirectory", |_| Ok(true)),
+        });
+        return options;
+    }
+    if case["ops"].as_str() == Some("stream") {
+        options.read.operations = Some(pig_sdk::ReadOperations {
+            read_file: path_op(log, "readFile", |path| {
+                Ok(format!("OPS:{path}").into_bytes())
+            }),
+            access: path_op(log, "access", |_| Ok(())),
+            detect_image_mime_type: None,
+            create_read_stream: Some(path_op(log, "createReadStream", |path| {
+                Ok(Box::new(std::io::Cursor::new(
+                    format!("STREAM:{path}\n").into_bytes(),
+                )) as pig_sdk::ReadStream)
+            })),
+        });
+        return options;
+    }
     if !custom {
         return options;
     }
@@ -6629,6 +6650,7 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
         }),
         access: path_op(log, "access", |_| Ok(())),
         detect_image_mime_type: None,
+        create_read_stream: None,
     });
     options.write.operations = Some(pig_sdk::WriteOperations {
         write_file: write_op(log),
@@ -6658,7 +6680,6 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
         is_directory: path_op(log, "isDirectory", |_| {
             Err("no such path for the probe".to_string())
         }),
-        read_file: None,
     });
     let glob_log = log.clone();
     options.find.operations = Some(pig_sdk::FindOperations {
