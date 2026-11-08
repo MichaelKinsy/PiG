@@ -939,15 +939,15 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
 | `packages/chord/src/node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
 | `packages/chord/src/node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
-| `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go, chord/nextnode/plugins/plugins_sourcemap.go; pending at Pi c23b9ec1: css-modules.ts scoped stylesheets and url() assets of stylesheets (slice 11) are not ported` | 🟡 |
+| `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go (scoped CSS modules through ScopeCSSModule, url() assets of stylesheets in a browser build), chord/nextnode/plugins/plugins_sourcemap.go` | ✅ |
 | `packages/chord/src/node/plugins/discover.ts` | `chord/nextnode/plugins/plugins_discover.go` | ✅ |
 | `packages/chord/src/node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts, node/host.mjs` | ✅ |
 | `packages/chord/src/node/plugins/index.ts` | `(barrel: Go imports the package)` | n/a |
 | `packages/chord/src/node/plugins/install.ts` | `chord/nextnode/plugins/plugins_install.go` | ✅ |
-| `packages/chord/src/node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go; pending at Pi c23b9ec1: watchBase and base-inputs (base marks) are not ported` | 🟡 |
+| `packages/chord/src/node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go (Plugins.WatchBase)` | ✅ |
 | `packages/chord/src/node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/runtime.ts` | ✅ |
 | `packages/chord/src/node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
-| `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go; pending at Pi c23b9ec1: the base marks (recordBase, ancestor directories watched by identity) are not ported` | 🟡 |
+| `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go (base marks: recordBase/recordOwn, locations and ancestors watched alone, comparisons by at most 8 goroutines; an entry on the way to base code is renewed on a Create, Remove or Rename event of fsnotify, which reports an attribute change as Chmod, where fs.watch reports `rename` and Pi compares inode and birth time)` | ✅ |
 | `packages/chord/src/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
 | `packages/chord/src/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
@@ -985,8 +985,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/app/uploads.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/users.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/app/worker.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/plugins/base-inputs.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/plugins/css-modules.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/plugins/base-inputs.ts` | `chord/nextnode/plugins/plugins_baseinputs.go (BaseInputs, ContentHash, Recorder: the one read of a file, kept under a lock for esbuild's goroutines)` | ✅ |
+| `packages/chord/src/node/plugins/css-modules.ts` | `chord/nextnode/plugins/plugins_cssmodules.go (ScopeCSSModule; the mapping is read from esbuild's object literal by parseClassMap, where Pi runs it in a vm context)` | ✅ |
 | `packages/chord/src/node/plugins/testing.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/surfaces/bundle.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 | `packages/chord/src/node/surfaces/current.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |

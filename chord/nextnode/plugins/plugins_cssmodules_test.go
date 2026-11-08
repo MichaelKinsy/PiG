@@ -1,0 +1,107 @@
+package plugins
+
+// pi: packages/chord/src/node/plugins/css-modules.ts
+
+import (
+	"regexp"
+	"strings"
+	"testing"
+)
+
+// Ports packages/chord/test/node/plugins/build.test.ts's CSS cases (slice 11 §4b, fix round 1 Opus L1): a plugin's
+// `*.module.css` has its class names scoped to the plugin and the file, the import giving the mapping.
+
+// Ports build.test.ts "scopes a CSS module's class names to its file, the import giving the mapping (slice 11 §4b)".
+func TestEsbuildBuildScopesACSSModulesClassNamesToItsFileTheImportGivingTheMapping(t *testing.T) {
+	root := tempRoot(t)
+	writePlugin(t, root, "web", "@test/web", map[string]string{
+		"web.ts":           "import styles from \"./notes.module.css\";\nexport default { setup: () => styles.card };",
+		"notes.module.css": ".card { color: var(--accent); }",
+	}, nil)
+	_, plugin := esbuildDiscovered(t, "@test/web", root)
+	built := esbuildScript(t, esbuildBuild(t, plugin, "web", esbuildBrowser))
+	if built.CSS == nil {
+		t.Fatal("no stylesheet")
+	}
+	scoped := regexp.MustCompile(`\.(chord_[0-9a-f]{8}_notes_card)\{color:var\(--accent\)\}`).FindStringSubmatch(built.CSS.Text)
+	if scoped == nil {
+		t.Fatalf("css = %q", built.CSS.Text)
+	}
+	if want := `card:"` + scoped[1] + `"`; !strings.Contains(built.Source, want) {
+		t.Errorf("source lacks %s", want)
+	}
+	// Another plugin's `notes.module.css` gets other names.
+	writePlugin(t, root, "other", "@test/other", map[string]string{
+		"web.ts":           "import styles from \"./notes.module.css\";\nexport default { setup: () => styles.card };",
+		"notes.module.css": ".card { color: red; }",
+	}, nil)
+	_, otherPlugin := esbuildDiscovered(t, "@test/other", root)
+	other := esbuildScript(t, esbuildBuild(t, otherPlugin, "web", esbuildBrowser))
+	if other.CSS == nil || !regexp.MustCompile(`\.chord_[0-9a-f]{8}_notes_card\{`).MatchString(other.CSS.Text) {
+		t.Fatalf("other css = %+v", other.CSS)
+	}
+	if strings.Contains(other.CSS.Text, scoped[1]) {
+		t.Errorf("both plugins' classes are named %s", scoped[1])
+	}
+}
+
+// Ports build.test.ts "gives a CSS module's url() assets, its @import, composes and escaped class names (Opus L1)".
+func TestEsbuildBuildGivesACSSModulesURLAssetsItsImportComposesAndEscapedClassNames(t *testing.T) {
+	root := tempRoot(t)
+	writePlugin(t, root, "web", "@test/web", map[string]string{
+		"web.ts": "import styles from \"./notes.module.css\";\nexport default { setup: () => styles };",
+		"notes.module.css": strings.Join([]string{
+			`@import "./plain.css";`,
+			".base { color: red; }",
+			".card { composes: base; background: url(./bg.png); }",
+			".café { color: blue; }",
+		}, "\n"),
+		"plain.css": ".plain { color: green; }",
+		"bg.png":    "PNG",
+	}, nil)
+	_, plugin := esbuildDiscovered(t, "@test/web", root)
+	built := esbuildScript(t, esbuildBuild(t, plugin, "web", esbuildBrowser))
+	if built.CSS == nil {
+		t.Fatal("no stylesheet")
+	}
+	css := built.CSS.Text
+	card := regexp.MustCompile(`\.(chord_[0-9a-f]{8}_notes_card)\{`).FindStringSubmatch(css)
+	base := regexp.MustCompile(`\.(chord_[0-9a-f]{8}_notes_base)\{`).FindStringSubmatch(css)
+	if card == nil || base == nil {
+		t.Fatalf("css = %q", css)
+	}
+	// composes: the class names both; the escaped name maps from the real one.
+	if want := `card:"` + base[1] + " " + card[1] + `"`; !strings.Contains(built.Source, want) {
+		t.Errorf("source lacks %s", want)
+	}
+	if !regexp.MustCompile(`caf\\u00E9:"chord_[0-9a-f]{8}_notes_caf\\xE9"`).MatchString(built.Source) {
+		t.Errorf("source lacks the escaped class name")
+	}
+	if !strings.Contains(css, ".plain{color:green}") {
+		t.Errorf("css = %q", css)
+	}
+	if len(built.Assets) != 1 || !regexp.MustCompile(`^bg-[A-Z0-9]+\.png$`).MatchString(built.Assets[0].Name) {
+		t.Fatalf("assets = %+v", built.Assets)
+	}
+	if want := `url("/assets/` + built.Assets[0].Name + `")`; !strings.Contains(css, want) {
+		t.Errorf("css lacks %s: %q", want, css)
+	}
+}
+
+// Ports build.test.ts "gives a plain stylesheet's url() an asset".
+func TestEsbuildBuildGivesAPlainStylesheetsURLAnAsset(t *testing.T) {
+	root := tempRoot(t)
+	writePlugin(t, root, "web", "@test/web", map[string]string{
+		"web.ts": "import \"./a.css\";\nexport default { setup: () => {} };",
+		"a.css":  ".x { background: url(./bg.png); }",
+		"bg.png": "PNG",
+	}, nil)
+	_, plugin := esbuildDiscovered(t, "@test/web", root)
+	built := esbuildScript(t, esbuildBuild(t, plugin, "web", esbuildBrowser))
+	if built.CSS == nil || len(built.Assets) != 1 {
+		t.Fatalf("css = %+v, assets = %+v", built.CSS, built.Assets)
+	}
+	if want := `url("/assets/` + built.Assets[0].Name + `")`; !strings.Contains(built.CSS.Text, want) {
+		t.Errorf("css lacks %s: %q", want, built.CSS.Text)
+	}
+}
