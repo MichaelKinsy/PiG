@@ -4,6 +4,8 @@ package host
 // modes are undone like on any exit. Pi's sandbox reported "TUI sandbox crashed with an uncaught exception" / "message handler threw" (a TypeError stack with
 // control characters stripped and no data: URLs); the runtime runs in this process, so the panic is caught on its owner loop.
 //
+// pig divergence (D611): a crash is caught on the owner loop of the shared process, not as a worker's exit; see docs/parity/divergences/D611.md.
+//
 // Go-only: pi: apps/p2/src/hosts/tui-sandbox.ts (D611).
 
 import (
