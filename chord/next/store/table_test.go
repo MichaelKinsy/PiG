@@ -182,6 +182,7 @@ func TestKeysTypeAnIntKeyColumnAsANumberAndAStrOneAsAString(t *testing.T) {
 // A TableDefinition keeps what NewTableDefinition was given: its columns by name (ByName, Column), its Indexes and, for a table
 // built with one, the Evolution it came about by; a base has no Evolution.
 func TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition(t *testing.T) {
+	var _ *TableDefinition // the type whose fields these are
 	indexes := IndexRecords{{Name: "by_path", Columns: []string{"path", "at"}}}
 	base, err := NewTableDefinition("edits", TableOptions{Version: 1, Columns: tableColumns(), Key: []string{"id"}, Indexes: indexes}, nil)
 	if err != nil {

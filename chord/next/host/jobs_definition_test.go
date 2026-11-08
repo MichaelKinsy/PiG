@@ -200,6 +200,7 @@ func TestJobTypesAreOneConcreteShapeTheCompilerChecks(t *testing.T) {
 // A JobDefinition keeps every option it was declared with: its Accepts adapters, its Concurrency limit and its Persist rule
 // survive DefineJob (Pi's `defineJob` returns them on the definition), and a definition without them has none.
 func TestJobDefinitionKeepsItsAcceptsConcurrencyAndPersistOptionsAfterDefineJob(t *testing.T) {
+	var _ *JobDefinition // the type whose options these are
 	adapter := JobAdapter{
 		Args:   func(old any) (any, error) { return old, nil },
 		Result: func(old any) (any, error) { return old, nil },

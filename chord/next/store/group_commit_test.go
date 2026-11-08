@@ -728,9 +728,3 @@ func TestGroupCommit(t *testing.T) {
 		}
 	})
 }
-
-// panickedWith reports whether a recovered value is want.
-func panickedWith(recovered any, want error) bool {
-	err, ok := recovered.(error)
-	return ok && errors.Is(err, want)
-}

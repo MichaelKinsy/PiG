@@ -217,6 +217,7 @@ func TestStateDefinitionInitialIsSafeToShareBetweenHosts(t *testing.T) {
 // A StateDefinition keeps every option it was declared with: Keyed, Persist, and the Initial, Migrate and CheckpointWhen
 // functions it was given are the ones its methods call (Pi's `defineState` returns them on the definition).
 func TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions(t *testing.T) {
+	var _ *StateDefinition // the type whose options these are
 	checkpointed := 0
 	definition := mustDefine(t, "kept", StateOptions{
 		Schema:  contracts.Obj(contracts.Prop("n", contracts.Int())),
