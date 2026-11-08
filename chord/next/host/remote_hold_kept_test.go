@@ -540,7 +540,7 @@ func keptServePlaced(t testing.TB, h FacetHost, n int, ran *keptRan, opened, gat
 
 func TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay(t *testing.T) {
 	key := Session.Address(jsonObject("id", "S1")).Key
-	// start is a relay whose worker serves `PlacedKept` as code 1, its `ping` waiting for gate.
+	// start is a relay whose worker serves `PlacedKept` as code 1, its `ping` waiting for gate (nil: not waiting).
 	start := func(t *testing.T, ran *keptRan, gate signal) *relayed {
 		return relay(t, relayedOptions{Worker: func(h FacetHost) error { return keptServePlaced(t, h, 1, ran, nil, gate) }})
 	}
@@ -556,28 +556,19 @@ func TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay(t *testing.T) {
 	}
 
 	// hold.test.ts: calls in flight across a `loading` unbind › through a relay › a worker's restart: the tab's kept call crosses the forwarded loading and is answered by the new code
-	// Pi sends the call in the turn of the reload, before the `loading` takes its hops; a running call keeps the old instance
-	// draining here, so the order does not depend on a goroutine's start.
+	// Pi's inputs: no call is running before the reload, the call is sent after it. Whether the call goes out before the
+	// forwarded `loading` reaches the tab or after it, it waits for the new code (at the worker's gate, or at the reference),
+	// so the test waits for the `loading` where Pi's `transported()` has delivered it.
 	t.Run("a worker's restart: the tab's kept call crosses the forwarded loading and is answered by the new code", func(t *testing.T) {
-		ran, gate, opened := &keptRan{}, newSignal(), newSignal()
-		t.Cleanup(gate.fire)
+		ran, opened := &keptRan{}, newSignal()
 		t.Cleanup(opened.fire)
-		rel := start(t, ran, gate)
+		rel := start(t, ran, nil)
 		kept := refGet(t, rel.Tab, keptPlaced, jsonObject("session", "S1"))
 		watch, err := refStateWatch(kept, background)
 		must(t, err)
 		states := statesOf(t, watch)
-		old := startCallWith(t, kept, "ping", nil)
-		rel.Transported()
 		reloadWorker(rel, 2, ran, opened)
-		// Still live during the drain: the call goes out and waits at the worker's gate.
 		answer := startCallWith(t, kept, "ping", nil)
-		rel.Transported()
-		rhEqual(t, "states", states.All(), []string(nil))
-		gate.fire()
-		if got, err := old.wait(background); err != nil || got != 1.0 {
-			t.Fatalf("old ping = %v, %v, want 1", got, err)
-		}
 		rhWaitFor(t, func() bool { rel.Transported(); return len(states.All()) >= 1 })
 		rhEqual(t, "states", states.All(), []string{"loading"})
 		opened.fire()
@@ -586,33 +577,43 @@ func TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay(t *testing.T) {
 		}
 		rhWaitFor(t, func() bool { rel.Transported(); return len(states.All()) >= 2 })
 		rhEqual(t, "states", states.All(), []string{"loading", "live"})
-		keptWant(t, "ran", ran.all(), []string{"1", "2"})
+		keptWant(t, "ran", ran.all(), []string{"2"})
 	})
 
 	// hold.test.ts: calls in flight across a `loading` unbind › through a relay › a downstream drop while the call is kept aborts it on the worker: it never runs
+	// Pi's inputs. In Pi the call goes out in the turn of the reload, before the forwarded `loading` has taken its hops
+	// (its microtasks run at `await transported()`). The relay's hops here are goroutines that would race the test: a call
+	// issued after the tab saw the `loading` waits at the tab, where the dropped link answers it only at the ready timeout.
+	// So the route link's queue is held across the reload and the call, as Pi's microtask queue is: the `loading` and the
+	// call are both posted, in Pi's order, before either is delivered.
 	t.Run("a downstream drop while the call is kept aborts it on the worker: it never runs", func(t *testing.T) {
-		ran, gate, opened := &keptRan{}, newSignal(), newSignal()
-		t.Cleanup(gate.fire)
+		ran, opened := &keptRan{}, newSignal()
 		t.Cleanup(opened.fire)
-		rel := start(t, ran, gate)
+		queue := newHeldQueue()
+		rel := relay(t, relayedOptions{RoutePair: queue.pair, Worker: func(h FacetHost) error { return keptServePlaced(t, h, 1, ran, nil, nil) }})
 		kept := refGet(t, rel.Tab, keptPlaced, jsonObject("session", "S1"))
-		startCallWith(t, kept, "ping", nil)
-		rel.Transported()
+		queue.hold()
+		t.Cleanup(queue.release)
 		reloadWorker(rel, 2, ran, opened)
+		// The reload's `loading` for the tab is posted on the held route link.
+		rhWaitFor(t, func() bool { return queue.pending() >= 1 })
+		posted := queue.pending()
 		answer := startCallWith(t, kept, "ping", nil)
+		// The call crossed the tab link and the server, and is posted behind the `loading`.
+		rhWaitFor(t, func() bool { transported(rel.TabLink); return queue.pending() > posted })
+		queue.release()
 		rel.Transported()
 		rel.TabLink.Close()
-		rel.Transported()
 		_, err := answer.wait(background)
 		if _, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok {
 			t.Fatalf("ping error = %v, want unavailable", err)
 		}
-		gate.fire()
-		rhWaitFor(t, func() bool { rel.Transported(); return len(ran.all()) >= 1 })
+		rel.Transported()
 		opened.fire()
 		rel.Transported()
-		// Only the call that ran on the old code ran: the kept one was aborted at the worker.
-		keptWant(t, "ran", ran.all(), []string{"1"})
+		if got := ran.all(); len(got) != 0 {
+			t.Fatalf("ran = %v, want nothing: the kept call was aborted at the worker", got)
+		}
 	})
 }
 

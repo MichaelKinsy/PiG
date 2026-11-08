@@ -3,7 +3,6 @@ package host
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 	"strings"
 	"testing"
 	"weak"
@@ -335,11 +334,12 @@ func TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver(t *te
 		t.Fatalf("objects = %+v, failed = %+v, plugins = %+v", report.Objects, report.Failed, report.Plugins)
 	}
 	turn(b.host)
-	// The restart's old attempt ends first and the successor, a new instance, runs its factory then: `await flushed()`
-	// is the wait for the new attempt's query to take over.
-	eventually(t, "the new attempt's query to take over", func() bool {
-		value, err := b.board.Member("items").Value()
-		return err == nil && reflect.DeepEqual(idsOf(value.([]any)), []int{3, 2})
+	// The old attempt detaches once the restart's teardown ran (Pi's `await flushed()`); the new attempt's query serves
+	// once it is live (a restart's new attempt starts after the old one's drain).
+	eventually(t, "the old attempt's query to detach", func() bool { _, err := queries.live[0].Value(); return err != nil })
+	eventually(t, "the new attempt's query to serve its limit", func() bool {
+		ids := idsOf(b.items(t))
+		return len(ids) == 2 && ids[0] == 3 && ids[1] == 2
 	})
 	equalInts(t, "ids", idsOf(b.items(t)), 3, 2)
 	runs := b.counts()["chord.query.runs"]
