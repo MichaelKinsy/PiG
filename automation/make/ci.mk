@@ -92,11 +92,11 @@ portmap-check-8:
 ci-chord-tui:
 	CHORD_TUI_NODE="$$(command -v node)" CHORD_REQUIRE_TUI_NODE=1 go test -count=1 ./chord/nextnode/tui
 
-# ci-chord-web runs the web surface's tests in a real Chromium (the page, React hooks, language, stylesheets) and the React stores under
-# the Node on the PATH. CI sets CHORD_REQUIRE_CHROMIUM, so a missing browser fails them rather than skipping them.
+# ci-chord-web runs the web surface's tests in a real Chromium (the page, React hooks, language, stylesheets, and the reload suite's rows
+# with the delegate test: reload_*_test.go, app_delegate_test.go) and the React stores under the Node on the PATH. CI sets CHORD_REQUIRE_CHROMIUM, so a missing browser fails them rather than skipping them.
 ci-chord-web:
 	CHROMIUM_BIN="$${CHROMIUM_BIN:-$$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)}" CHORD_REQUIRE_CHROMIUM=1 \
-		go test -count=1 ./chord/nextnode/app -run '^Test(React|ThePagesLanguage|APage)'
+		go test -count=1 ./chord/nextnode/app -run '^Test(React|ThePagesLanguage|APage|AChangeOfBaseCode|AReload|ARollout|AJobRunning|AServerPluginsObject)'
 	go test -count=1 ./chord/nextnode/surfaces -run '^TestReact'
 
 ci-node-runtime:
