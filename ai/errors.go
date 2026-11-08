@@ -71,7 +71,8 @@ func NormalizeProviderError(value any) NormalizedProviderError {
 	return result
 }
 
-// maxCauseDepth is error-body.ts MAX_CAUSE_DEPTH.
+// maxCauseDepth is how many causes WithCauseDetail follows.
+// upstream: packages/ai/src/utils/error-body.ts:MAX_CAUSE_DEPTH
 const maxCauseDepth = 5
 
 // WithCauseDetail is error-body.ts withCauseDetail. Connection-level failures carry no status or body, and an SDK replaces the reason

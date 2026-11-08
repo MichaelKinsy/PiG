@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Message threads: the server keeps the conversation of a thread, so a request can continue from the previous reply and send only the new
+// pig divergence (D352): Pi main a758f3ae4 (not in Pi 1.5.0). Message threads: the server keeps the conversation of a thread, so a request can continue from the previous reply and send only the new
 // messages. PiG still builds the full request; prepareThread compares it with the previous request of the session and sends only the new
 // part when nothing earlier changed. The payload is handled as the JSON the hook left, so a replacement payload is threaded like the
 // provider's own request.
@@ -26,6 +26,7 @@ const messageThreadsBeta = "message-threads-2026-08-12"
 // maxThreadStateEntries bounds the sessions whose thread state is kept. State is normally freed by CleanupSessionResources when a session
 // ends; the cap bounds memory for library users that never call it. Dropping the least recently updated session is cheap: its thread has
 // most likely expired on the server already, and otherwise its next request just starts a new thread.
+// upstream: packages/ai/src/api/anthropic-messages.ts:MAX_THREAD_STATE_ENTRIES
 const maxThreadStateEntries = 10_000
 
 // anthThreadNewThreadErrors are the rejections of a continue that a new thread fixes: expired, raced, or a fixed setting changed.
