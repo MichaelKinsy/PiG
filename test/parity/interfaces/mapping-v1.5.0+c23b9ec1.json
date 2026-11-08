@@ -112101,8 +112101,8 @@
       ],
       "evidence": [
         "test:chord/next/documents/definition_test.go#TestDefineStateTakesARestrictedNameOnly",
-        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric",
-        "test:chord/next/documents/documents_telemetry_test.go#TestTransactionsTheirContextsEndCancelledAreReportedForACallersCancellationWhileTheChangeWaitsOnTheLine"
+        "test:chord/next/documents/documents_cost_test.go#TestTransactionsTheirContextsEndCancelledCostNothingOnTheCommittedPathNoCheckOfTheContextBeyondTheCommitsOwn",
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric"
       ]
     },
     {

@@ -1593,6 +1593,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e2db931](#bf-e2db931) | On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is… | PiG's own defect | Windows | 0.5.0 |
 | [BF-e32c60c](#bf-e32c60c) | A Piglet or Package installed under a symlinked agent directory keeps the origin integrity recorded in its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e33dbb0](#bf-e33dbb0) | fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing | PiG's own defect | All platforms | Unreleased |
+| [BF-e3b5d44](#bf-e3b5d44) | fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close | PiG's own defect | All platforms | Unreleased |
 | [BF-e3f39b7](#bf-e3f39b7) | Automatic retry now triggers for the gateway error "Unable to forward upstream stream" | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e4252b4](#bf-e4252b4) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e42ae82](#bf-e42ae82) | `SettingsManager` structured getters (settings-manager.ts getBranchSummarySettings, getRetrySettings… | PiG's own defect | All platforms | 0.5.0 |
@@ -1610,6 +1611,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e5b8ad5](#bf-e5b8ad5) | `chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e5b8ad5-2](#bf-e5b8ad5-2) | `chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e5bfd24](#bf-e5bfd24) | fix(chord): Arr, Map, Union, Keyed and NewMethod refuse opt(...); Check returns pi-schema's error; record and… | PiG's own defect | All platforms | Unreleased |
+| [BF-e5d242d](#bf-e5d242d) | fix(chord/nextnode/workers): check the base copy's source close | PiG's own defect | All platforms | Unreleased |
 | [BF-e5f9fdd](#bf-e5f9fdd) | The provider retry transport no longer replaces `Body` on the caller's request when it retries | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-e64d2cf](#bf-e64d2cf) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
@@ -23652,6 +23654,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e33dbb0ad0` (2026-11-01)
 - **Tests:** `chord/delta/append_text_retention_norace_test.go::TestTrackerAppendTextReleasesBuffersOfReleasedKeys`, `chord/delta/text_tails_test.go::TestTextTailsForgetCollectedBuffers`, `chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions`
 
+### BF-e3b5d44
+
+**fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close
+- **Root cause:** Ports Pi's 'a worker started after an edit of the entry's imported source runs the code the component was created with'.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e3b5d44443` (2026-11-08)
+- **Tests:** `chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheComponentWasCreatedWith`
+
 ### BF-e3f39b7
 
 **Automatic retry now triggers for the gateway error "Unable to forward upstream stream"**
@@ -23884,6 +23899,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e5bfd245d4` (2026-11-01)
 - **Tests:** `chord/next/data/validator_test.go::TestFailedChecks`
+
+### BF-e5d242d
+
+**fix(chord/nextnode/workers): check the base copy's source close**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/nextnode/workers): check the base copy's source close
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e5d242d8a4` (2026-11-08)
+- **Tests:** None recorded.
 
 ### BF-e5f9fdd
 
