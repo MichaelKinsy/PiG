@@ -27,22 +27,7 @@ const (
 	// ErrorContributionRefused: a contribution of a version the provider does not accept (newer, or older without an
 	// adapter) is left out.
 	ErrorContributionRefused RegistryErrorKind = "contribution_refused"
-	// ErrorRegistryUndeclared: at a publication, or when a host-lifetime object's contributions enter, the registry has
-	// contributions and no plugin here serves it (`unavailable/undeclared` for its readers): its contributing plugins in
-	// table order; again only once they change.
-	ErrorRegistryUndeclared RegistryErrorKind = "registry_undeclared"
 )
-
-// UnboundClock is the host's clock of unbound waits (the `unbound_long` report): a value of a registry waited for
-// while it has none is on it. request tells waits apart and must be comparable (a pointer).
-type UnboundClock interface {
-	// Start puts request on the clock waiting for waitingFor with err (once; a second start keeps the first).
-	Start(request any, waitingFor string, err *data.ChordError)
-	// Failed gives request's wait a new error: the report names the latest.
-	Failed(request any, err *data.ChordError)
-	// Stop takes request off the clock.
-	Stop(request any)
-}
 
 // RegistryError is what a registry reports to its host's `onError`, by Kind; each once per episode. Upstream's tagged
 // union is one struct tagged by Kind: every kind has Registry; registry_conflict also Message and Plugins;
@@ -113,23 +98,26 @@ type RegistryRecord struct {
 	// values are the values readers follow, by version, in the order their versions were first read.
 	values        map[int]*RegistryValueSource
 	valueVersions []int
-	// clock is the host's clock of unbound waits.
-	clock UnboundClock
-	// undeclared is the contributing plugins `registry_undeclared` named last (joined); "" since a provider served it.
-	undeclared string
 }
 
 // NewRegistryRecord makes the record of registry name on the host whose batch is batch; report receives its
-// RegistryErrors and clock the waits of its values.
-func NewRegistryRecord(name string, batch *state.Batch, report func(RegistryError), clock UnboundClock) *RegistryRecord {
+// RegistryErrors.
+func NewRegistryRecord(name string, batch *state.Batch, report func(RegistryError)) *RegistryRecord {
 	return &RegistryRecord{
-		clock:  clock,
 		Name:   name,
 		batch:  batch,
 		report: report,
 		dirty:  true,
 		values: map[int]*RegistryValueSource{},
 	}
+}
+
+// ProvidedVersion is the provider's version; false while none serves it.
+func (r *RegistryRecord) ProvidedVersion() (int, bool) {
+	if r.provider == nil {
+		return 0, false
+	}
+	return r.provider.version, true
 }
 
 // NewestContribution is the newest registry version its contributions were built against; false without contributions.
@@ -142,39 +130,6 @@ func (r *RegistryRecord) NewestContribution() (int, bool) {
 		newest = max(newest, contribution.Version)
 	}
 	return newest, true
-}
-
-// ReportUndeclared is, after a publication's batch or a batch where an object's contributions entered: with
-// contributions and no provider, `registry_undeclared` naming the contributing plugins, unless the same ones were
-// reported since a provider last served it.
-func (r *RegistryRecord) ReportUndeclared() {
-	if r.provider != nil {
-		r.undeclared = ""
-		return
-	}
-	if len(r.contributions) == 0 {
-		return
-	}
-	var plugins []string
-	for _, contribution := range r.contributions {
-		if !slices.Contains(plugins, contribution.Contributor.Plugin) {
-			plugins = append(plugins, contribution.Contributor.Plugin)
-		}
-	}
-	key := strings.Join(plugins, "\x00")
-	if key == r.undeclared {
-		return
-	}
-	r.undeclared = key
-	r.report(RegistryError{Kind: ErrorRegistryUndeclared, Registry: r.Name, Plugins: plugins})
-}
-
-// ProvidedVersion is the provider's version; false while none serves it.
-func (r *RegistryRecord) ProvidedVersion() (int, bool) {
-	if r.provider == nil {
-		return 0, false
-	}
-	return r.provider.version, true
 }
 
 // Value is the value readers of version follow; made by the first reader of a version.
@@ -460,25 +415,4 @@ func compareContributors(a, b *RegistryContribution) int {
 		return strings.Compare(left.Plugin, right.Plugin)
 	}
 	return strings.Compare(left.Type, right.Type)
-}
-
-// clockStart puts a wait of value on the host's clock, for waitingFor with err.
-func (r *RegistryRecord) clockStart(request any, waitingFor string, err *data.ChordError) {
-	if r.clock != nil {
-		r.clock.Start(request, waitingFor, err)
-	}
-}
-
-// clockFailed gives a wait of value on the clock its latest error.
-func (r *RegistryRecord) clockFailed(request any, err *data.ChordError) {
-	if r.clock != nil {
-		r.clock.Failed(request, err)
-	}
-}
-
-// clockStop takes a wait of value off the clock.
-func (r *RegistryRecord) clockStop(request any) {
-	if r.clock != nil {
-		r.clock.Stop(request)
-	}
 }

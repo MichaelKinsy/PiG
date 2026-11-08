@@ -40,7 +40,7 @@ func newModelsEnv(t *testing.T) *modelsEnv {
 	t.Helper()
 	e := &modelsEnv{t: t}
 	e.batch = state.NewBatch(func(err state.BatchError) { t.Errorf("batch reported %s: %v", err.Kind, err.Error) }, nil)
-	e.record = registries.NewRegistryRecord("app.models", e.batch, func(registries.RegistryError) {}, nil)
+	e.record = registries.NewRegistryRecord("app.models", e.batch, func(registries.RegistryError) {})
 	e.record.Serve(1, registries.RegistryProvider[any, any]{
 		Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (any, error) {
 			sum := 0

@@ -270,7 +270,7 @@ func TestCheckImplementationChecksARemoteContractsVariant(t *testing.T) {
 // cycle of registries is refused `invalid/cycle`.
 func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue(t *testing.T) {
 	h := newMemberHarness(t)
-	record := registries.NewRegistryRecord("app.menu", h.batch, func(registries.RegistryError) {}, nil)
+	record := registries.NewRegistryRecord("app.menu", h.batch, func(registries.RegistryError) {})
 	contributor := registries.Contributor{Plugin: "@test/app"}
 	constant := state.NewConstant(float64(1))
 	native := state.NewWritableSource[any](1, membersOwner{}, h.batch)
