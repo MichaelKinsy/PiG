@@ -111,7 +111,7 @@ for (const c of input) {
 		ttlMs: getPromptCacheTtlMs(model, options) ?? null,
 		replay: isReplayable(model, options),
 		status: formatCacheWarmingStatus(status, c.now),
-		usage: formatCacheWarmingUsage({ note: c.usageNote || undefined, usage: { cost: { total: c.usageCost } } }),
+		usage: formatCacheWarmingUsage(c.usageCost, c.usageNote || undefined),
 	});
 }
 emit(out);`
