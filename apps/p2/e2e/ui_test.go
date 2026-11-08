@@ -38,3 +38,19 @@ func TestWebClientRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Ports the in-browser case of test/p2/web.test.ts: the app runs under its CSP, and another origin cannot frame it
+// (ui/frame.mjs). The headers themselves are hosts/web_test.go's.
+func TestWebClientRunsUnderItsCSPAndCannotBeFramed(t *testing.T) {
+	modules := os.Getenv("P2_UI_NODE_PATH")
+	if modules == "" {
+		t.Skip("P2_UI_NODE_PATH (node_modules with playwright-core) is not set")
+	}
+	enabled := true
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Web: &enabled})
+	output, err := exec.Command("node", "ui/frame.mjs", "http://127.0.0.1:"+strconv.Itoa(fixture.Server.Port)).CombinedOutput()
+	t.Logf("%s", output)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
