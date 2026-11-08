@@ -818,7 +818,7 @@ vendor-pi-dist: parity-deps ## Regenerate the vendored Pi runtime (runtime-node/
 vendor-chord-plugins-node: parity-deps upstream-mirror ## Regenerate chord/nextnode/plugins/node/pi, Pi's chord sources for the plugins component's Node subprocess
 	@./automation/gen/vendor-chord-plugins-node.sh
 
-generate-schemas: ## Regenerate schemas/*.schema.json, the JSON Schemas of models.json, settings.json, keybindings.json and themes (Pi scripts/generate-schemas.ts)
+generate-schemas: ## Regenerate schemas/*.schema.json, the JSON Schemas of models.json, settings.json, keybindings.json and themes, and docs/site/docs/models-configuration.md (Pi scripts/generate-schemas.ts and generate-references.ts)
 	@go run ./cmd/generate-schemas
 
 model-catalogs: parity-deps ## Regenerate model catalogs from the pinned published Pi package
