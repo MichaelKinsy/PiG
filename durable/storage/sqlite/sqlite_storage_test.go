@@ -629,13 +629,13 @@ func TestSqliteStorageKeepsRecordKeyOrder(t *testing.T) {
 	}
 }
 
-// faultyDatabase fails the check reads of record types, as a driver fails a read in a batch's checks. A fault is armed
-// for the next batch call; failOn picks which read fails (every one when it is nil).
+// faultyDatabase fails the reads of a transaction that match fails, as a driver fails a read in a batch's checks. A fault
+// is armed for the next batch call.
 type faultyDatabase struct {
 	sqlite.SqliteDatabase
-	armed  *bool
-	reads  *int
-	failOn func(read int) bool
+	armed *bool
+	// match picks the reads that fail: the method ("get" or "all") and the SQL of the call.
+	match func(method, sqlText string) bool
 	// fail is how the read fails (an error, or a panic for a synchronous throw); nil is an error "disk I/O error".
 	fail func() error
 }
@@ -651,25 +651,35 @@ type faultyExecutor struct {
 	database faultyDatabase
 }
 
+func (executor faultyExecutor) failure(method, sqlText string) error {
+	if !*executor.database.armed || !executor.database.match(method, sqlText) {
+		return nil
+	}
+	if executor.database.fail != nil {
+		return executor.database.fail()
+	}
+	return fmt.Errorf("disk I/O error")
+}
+
 func (executor faultyExecutor) Get(sqlText string, params ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
-	if *executor.database.armed && strings.Contains(sqlText, "record_type") {
-		*executor.database.reads++
-		if executor.database.failOn == nil || executor.database.failOn(*executor.database.reads) {
-			if executor.database.fail != nil {
-				return nil, executor.database.fail()
-			}
-			return nil, fmt.Errorf("disk I/O error")
-		}
+	if err := executor.failure("get", sqlText); err != nil {
+		return nil, err
 	}
 	return executor.SqliteExecutor.Get(sqlText, params...)
 }
 
-func openFaultyStorage(t *testing.T, failOn func(read int) bool, fail func() error) (*sqlite.SqliteStorage, *bool) {
+func (executor faultyExecutor) All(sqlText string, params ...sqlite.SqliteValue) ([]sqlite.SqliteRow, error) {
+	if err := executor.failure("all", sqlText); err != nil {
+		return nil, err
+	}
+	return executor.SqliteExecutor.All(sqlText, params...)
+}
+
+func openFaultyStorage(t *testing.T, match func(method, sqlText string) bool, fail func() error) (*sqlite.SqliteStorage, *bool) {
 	t.Helper()
 	database := must(node.OpenNodeSqliteDatabase(filepath.Join(t.TempDir(), "storage.sqlite"), node.NodeSqliteDatabaseOptions{}))
 	armed := false
-	reads := 0
-	storage := must(sqlite.Open(faultyDatabase{SqliteDatabase: database, armed: &armed, reads: &reads, failOn: failOn, fail: fail}))
+	storage := must(sqlite.Open(faultyDatabase{SqliteDatabase: database, armed: &armed, match: match, fail: fail}))
 	t.Cleanup(func() { _ = storage.Close(testContext) })
 	return storage, &armed
 }
@@ -720,11 +730,31 @@ func TestSqliteStorageBatches(t *testing.T) {
 		if failure.name != "an undefined rejection" && failure.name != "a synchronous throw" {
 			continue
 		}
-		t.Run("rejects the whole call, the batches before it included, when a later batch's check read fails with a "+strings.TrimPrefix(strings.TrimPrefix(failure.name, "an "), "a "), func(t *testing.T) {
-			// The first batch passes its checks and is written; the second batch's check read fails.
-			storage, armed := openFaultyStorage(t, func(read int) bool { return read == 2 }, failure.fail)
+		t.Run("rejects the whole call, the batches written before it included, when a copy's source read fails with a "+strings.TrimPrefix(strings.TrimPrefix(failure.name, "an "), "a "), func(t *testing.T) {
+			// The first batch passes its checks; the second batch's copy reads its source from the database, so the first
+			// is written before that read, which fails.
+			storage, armed := openFaultyStorage(t, func(method, sqlText string) bool {
+				return method == "get" && strings.Contains(sqlText, "SELECT record FROM documents WHERE id = ?")
+			}, failure.fail)
 			createRoot(t, storage)
-			ids, batches := noteBatches(t, storage, 2)
+			record := func(id durable.DocumentId, conversationId durable.ConversationId) durable.DocumentCreate {
+				return durable.DocumentCreate{
+					Id: id, Kind: "copied", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: conversationId},
+					History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
+				}
+			}
+			sourceId := mint[durable.DocumentId](t, storage)
+			commit(t, storage, durable.DocumentCreateWrite{Record: record(sourceId, durable.ROOT_CONVERSATION_ID), Content: base(chorddelta.JsonObjectOf("n", float64(1)))})
+			entryId := mint[durable.EntryId](t, storage)
+			childId := mint[durable.ConversationId](t, storage)
+			copyId := mint[durable.DocumentId](t, storage)
+			batches := [][]durable.StorageWrite{
+				{durable.EntryWrite{Value: durable.EntryRecord{Id: entryId, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "note"}}},
+				{
+					durable.ConversationWrite{Value: durable.ConversationRecord{Id: childId}},
+					durable.DocumentCopyWrite{Record: record(copyId, childId), Source: durable.DocumentCopySource{Id: sourceId, At: durable.DocumentPoint{Current: true}}},
+				},
+			}
 			*armed = true
 			var receipts []int
 			rejected := commitOutcome(storage, batches, &receipts)
@@ -735,15 +765,44 @@ func TestSqliteStorageBatches(t *testing.T) {
 			if len(receipts) != 0 {
 				t.Fatalf("receipts = %v, want none", receipts)
 			}
-			if must(storage.Entry(testContext, ids[0])) != nil {
+			if must(storage.Entry(testContext, entryId)) != nil {
 				t.Fatal("a batch of a failed call was stored")
+			}
+			if must(storage.Conversation(testContext, childId)) != nil {
+				t.Fatal("the conversation of a failed call was stored")
 			}
 		})
 	}
 
+	t.Run("stores pointer-form writes as it stores their value forms", func(t *testing.T) {
+		storage := openCommitStorage(t, openCommitDatabase(t))
+		createRoot(t, storage)
+		id := mint[durable.DocumentId](t, storage)
+		commit(t, storage, durable.DocumentCreateWrite{
+			Record:  durable.DocumentCreate{Id: id, Kind: "pointer", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID}, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+			Content: base(chorddelta.JsonObjectOf("n", float64(1))),
+		})
+		duplicate := mint[durable.DocumentId](t, storage)
+		result, err := storage.Commit(testContext, [][]durable.StorageWrite{
+			{&durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("n", float64(2)))}},
+			{&durable.DocumentRetireWrite{Id: id}},
+			{&durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: duplicate, Kind: "pointer", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID}, History: durable.HistoryRewindable, Fork: durable.ForkAsOf}, Content: base(chorddelta.JsonObjectOf("n", float64(1)))}},
+			{&durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: duplicate, Kind: "pointer", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID}, History: durable.HistoryRewindable, Fork: durable.ForkAsOf}, Content: base(chorddelta.JsonObjectOf("n", float64(1)))}},
+		}, func(int, durable.Seq) {})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.Stored != 3 {
+			t.Fatalf("stored = %d, refused = %v, want 3 stored (change, retire, create) and the duplicate refused", result.Stored, result.Refused)
+		}
+		if result.Refused == nil {
+			t.Fatal("the duplicate create of a pointer-form write was not refused")
+		}
+	})
+
 	for _, failure := range readFailures {
 		t.Run("rejects a batch call whose check read fails in the database with "+failure.name+", and refuses only for its own checks", func(t *testing.T) {
-			storage, armed := openFaultyStorage(t, nil, failure.fail)
+			storage, armed := openFaultyStorage(t, func(_, sqlText string) bool { return strings.Contains(sqlText, "record_type") }, failure.fail)
 			createRoot(t, storage)
 			ids, batches := noteBatches(t, storage, 2)
 			*armed = true

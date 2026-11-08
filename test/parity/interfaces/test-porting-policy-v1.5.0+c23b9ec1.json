@@ -6977,6 +6977,15 @@
       "rationale": "New in 1.1.0; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
     },
     {
+      "path": "packages/durable/test/sqlite-commit.test.ts",
+      "upstreamTestHash": "sha256:9722217086fe556301114e5662dd2ce34307534f5341bcaecb0f64c970457897",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "CLI startup, selected execution mode, settings, or command routing."
+    },
+    {
       "path": "packages/durable/test/sqlite-facade.test.ts",
       "upstreamTestHash": "sha256:e4f4d1180663100314b89e7ca77c6ca543cb1fa082093886e9269aecddc42a70",
       "area": "cli",

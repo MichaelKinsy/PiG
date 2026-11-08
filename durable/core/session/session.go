@@ -217,10 +217,10 @@ func (m *mintClock) Resume() {
 	}
 }
 
-// mintsAt notes that the ID just minted is minted by Pi's Storage `after` ticks from now, or at that offset of the running job's duration
-// when inJob is set (a body that runs the whole callback at the job's start). An ID the callback minted before it ran again is minted by Pi
-// once.
-func (s *Session) mintsAt(after int, inJob bool) {
+// mintsAt notes that the ID just minted is minted by Pi's Storage at tick `at` of the running job's duration, for a body that is at tick `late` of it
+// when it mints (a host transaction's callback runs hopcost.HostFirstOp ticks into the job, where the Loop runs a core body at its start). An ID the
+// callback minted before it ran again is minted by Pi once.
+func (s *Session) mintsAt(at, late int) {
 	if s.keptNow() > 0 {
 		s.kept--
 		return
@@ -228,13 +228,18 @@ func (s *Session) mintsAt(after int, inJob bool) {
 	if s.loop == nil || !s.inJob {
 		return
 	}
-	if inJob {
-		after = s.loop.Until(after)
-	}
-	if after > 0 {
+	if after := s.loop.Until(at) - late; after > 0 {
 		s.latent++
 		s.loop.Wait(after, &s.mints)
 	}
+}
+
+// hostStart is Loop.HostStart of the running job.
+func (s *Session) hostStart() int {
+	if s.loop == nil {
+		return 0
+	}
+	return s.loop.HostStart()
 }
 
 // storageNextID is the next ID Pi's Storage would mint now: the IDs a job's callback has not reached yet are not minted, and the ones

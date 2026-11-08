@@ -1,7 +1,7 @@
 // Ports packages/durable/src/session/keys.ts GatedStorage: the Storage a job on the Session line reads through. Every read first touches its
 // key, which waits while the key has an unpublished writer in the core's writer, so the read sees what the line admitted before it. Scans
 // that cannot be keyed touch ALL_KEYS. The keys are the strings the core names them with (session/keys.go).
-import type { Context } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
 import { addressId, type DocumentAddress } from "./documents.ts"
 
 /** Every unpublished write: what a read that cannot be keyed, such as a scan, touches. */

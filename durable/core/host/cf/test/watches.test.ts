@@ -192,10 +192,9 @@ test("the task graph watch and a conversation's view watch name their targets", 
   await h.watchTaskGraph(context)
   const viewCore = watching({ messages: [] })
   const h2 = await open(viewCore)
-  await (h2 as any).conversationState(7, context)
   await (h2 as any).watchConversation(7, context, { min: 10, max: 20, from: 5 })
-  assert.deepEqual(apis(core).map(e => e.body.target), [{ kind: "graph" }], "the state and the watch of the graph share its mount")
-  assert.deepEqual(viewOpens(viewCore).map(e => e.body.target), [{ kind: "view", conversationId: 7 }, { kind: "view", conversationId: 7, window: { min: 10, max: 20, from: 5 } }], "each observer of a conversation's view opens its own watch, with its own window")
+  assert.deepEqual(apis(core).map(e => e.body.target), [{ kind: "graph" }], "the graph watch names its target")
+  assert.deepEqual(viewOpens(viewCore).map(e => e.body.target), [{ kind: "view", conversationId: 7, window: { min: 10, max: 20, from: 5 } }], "a conversation's view watch opens with its own window")
 })
 
 test("a rejected watch.open surfaces the core's error and leaves no watch behind", async () => {
@@ -258,12 +257,14 @@ const viewOpens = (core: ScriptedCore) => apis(core).filter(e => e.body.op === "
 test("observers of one conversation's view each open and close a watch of their own", async () => {
   const core = watching({ conversation: { id: 1 }, entries: [], docs: {} })
   const h = await open(core)
-  const [first, second] = await Promise.all([(h as any).conversationState(1, context), (h as any).conversationState(1, context)]) as any[]
+  const [first, second] = await Promise.all([(h as any).watchConversation(1, context), (h as any).watchConversation(1, context)]) as any[]
+  first.start(async () => {})
+  second.start(async () => {})
   assert.equal(viewOpens(core).length, 2)
-  first.dispose()
+  await first.stop()
   await tick()
   assert.deepEqual(closes(core).map(e => e.body.watchId), [viewOpens(core)[0]!.body.watchId], "the first observer's watch closes with it")
-  second.dispose()
+  await second.stop()
   await tick()
   assert.deepEqual(closes(core).map(e => e.body.watchId), viewOpens(core).map(e => e.body.watchId))
 })

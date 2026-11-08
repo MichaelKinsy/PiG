@@ -96,25 +96,25 @@ func (h *handler) batchWrites(writes []session.Write) hopcost.Writes {
 	for i := range writes {
 		wr := &writes[i]
 		switch wr.Kind {
-		case session.WriteConversation, session.WriteEntry, session.WriteSubmission, session.WriteTask:
-			w.Tables++
-		case session.WriteDocCreate:
-			w.DocCreates++
+		case session.WriteConversation:
+			w.Conversations++
+		case session.WriteEntry:
+			w.Entries++
+		case session.WriteSubmission:
+			w.Submissions++
+		case session.WriteTask:
+			w.Tasks++
 		case session.WriteDocCopy:
-			w.DocCreates++
 			if copies == nil {
 				copies = map[session.ID]bool{}
 			}
 			copies[session.ID(numOf(wr.Record, "id"))] = true
-		case session.WriteDocChange, session.WriteDocRetire:
-			w.DocEdits++
 		}
 	}
 	actions, order, err := h.mir.prepareDocActions(h.mir.resolveCopies(writes))
 	if err != nil {
 		return w
 	}
-	var seen map[string]bool
 	for _, id := range order {
 		a := actions[id]
 		rec := a.create
@@ -123,7 +123,7 @@ func (h *handler) batchWrites(writes []session.Write) hopcost.Writes {
 				rec = d.record
 			}
 		}
-		act := hopcost.Action{Create: a.create != nil, Copy: copies[id], Retire: a.retire}
+		act := hopcost.Action{Doc: id, Create: a.create != nil, Copy: copies[id], Retire: a.retire}
 		if a.content != nil {
 			act.Content = hopcost.Delta
 			if a.content.Base {
@@ -135,12 +135,6 @@ func (h *handler) batchWrites(writes []session.Write) hopcost.Writes {
 		}
 		if rec != nil {
 			act.CurrentOnly = strOf(objOf(rec, "scope"), "kind") != "conversation" || strOf(rec, "history") == "latest"
-			key := recordAddrKey(rec)
-			act.KnownAddress = seen[key]
-			if seen == nil {
-				seen = map[string]bool{}
-			}
-			seen[key] = true
 		}
 		w.Actions = append(w.Actions, act)
 	}

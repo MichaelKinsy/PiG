@@ -387,6 +387,40 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
+	t.Run("reads a submission by ID in a commit, with the entry its input was placed at", func(t *testing.T) {
+		setup := chatSetup(t)
+		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("answer")})
+		harness, root := openChat(t, newControlledStorage(), setup)
+		id := must(sicSubmitIn(harness, root, inputDraft("hi")))
+		sicSettledStatus(t, harness, id)
+		type found struct {
+			status         durable.SubmissionStatus
+			conversationId durable.ConversationId
+			kind           string
+		}
+		got := must(durable.Commit(testContext, harness, func(tx durable.Tx) (found, error) {
+			submission, err := tx.Submission(id)
+			if err != nil || submission == nil || submission.Entry == nil {
+				return found{}, errors.New("submission has no entry")
+			}
+			entry, err := tx.Entry(*submission.Entry)
+			if err != nil || entry == nil {
+				return found{}, errors.New("entry missing")
+			}
+			return found{submission.Status, entry.ConversationId, entry.Kind}, nil
+		}))
+		if want := (found{durable.SubmissionDone, root.Id(), "pi.user"}); got != want {
+			t.Fatalf("found = %+v, want %+v", got, want)
+		}
+		missing := must(durable.Commit(testContext, harness, func(tx durable.Tx) (*durable.SubmissionRecord, error) {
+			return tx.Submission(999_999)
+		}))
+		if missing != nil {
+			t.Fatalf("unknown submission = %+v, want nil", missing)
+		}
+		closeHarness(t, harness)
+	})
+
 	// #11149
 	t.Run("queues a model-visible write while busy and places it at the next boundary", func(t *testing.T) {
 		setup := chatSetup(t)

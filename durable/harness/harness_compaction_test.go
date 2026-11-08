@@ -4,6 +4,7 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"reflect"
@@ -3138,7 +3139,7 @@ func TestPerModelCompactionOverrides(t *testing.T) {
 			// Harness-wide: blocking only above the full window; the override for faux-1 blocks above 700.
 			policy := blockingPolicy()
 			policy.ReserveTokens = new(0)
-			policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{key: {ReserveTokens: new(300)}}
+			policy.ModelOverrides = durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: key, Override: durable.CompactionPolicyOverride{ReserveTokens: new(300)}})
 			chat.setPolicy(policy)
 			chat.faux.pushSummary(scriptSummary())
 			chat.turn(t, sized("u4", 200), "a4")
@@ -3157,7 +3158,7 @@ func TestPerModelCompactionOverrides(t *testing.T) {
 		chat := openCompaction(t)
 		chat.history(t)
 		policy := manualPolicy()
-		policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{"faux/faux-1": {Enabled: new(true)}}
+		policy.ModelOverrides = durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{Enabled: new(true)}})
 		chat.setPolicy(policy)
 		chat.faux.pushSummary(scriptSummary())
 		chat.faux.pushAgent(scriptFailure(overflowText), scriptAnswer("fits"))
@@ -3173,7 +3174,7 @@ func TestPerModelCompactionOverrides(t *testing.T) {
 		chat.history(t)
 		policy := manualPolicy()
 		policy.KeepRecentTokens = new(100_000)
-		policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{"faux/faux-1": {KeepRecentTokens: new(150), ReserveTokens: new(500)}}
+		policy.ModelOverrides = durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{KeepRecentTokens: new(150), ReserveTokens: new(500)}})
 		chat.setPolicy(policy)
 		chat.faux.pushSummary(scriptSummary())
 		if outcome := chat.outcome(t, chat.compact(t, nil)); outcome.Status != durable.OutcomeCompleted {
@@ -3189,6 +3190,169 @@ func TestPerModelCompactionOverrides(t *testing.T) {
 		}
 		if want := []string{sized("u3", 100), sized("a3", 100)}; !slices.Equal(texts, want) {
 			t.Fatalf("kept %q, want %q", texts, want)
+		}
+		chat.close(t)
+	})
+}
+
+// harness-compaction.test.ts "per-conversation compaction settings" (Pi 922c3ff2, #11771).
+func TestPerConversationCompactionSettings(t *testing.T) {
+	configure := func(t *testing.T, chat *compactionChat, change durable.CompactionSettings) {
+		t.Helper()
+		must0(t, chat.root.Configure(testContext, AgentChange{Compaction: SetTo(change)}))
+	}
+	t.Run("resolves model-specific over general, and the conversation over the harness at the same level", func(t *testing.T) {
+		// The summary's maxTokens is 0.8 * the resolved reserveTokens, below the model's 900.
+		overrides := func(reserve int) durable.CompactionOverrides {
+			return durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{ReserveTokens: new(reserve)}})
+		}
+		cases := []struct {
+			harness      durable.CompactionOverrides
+			conversation durable.CompactionSettings
+			maxTokens    int
+		}{
+			{durable.CompactionOverrides{}, durable.CompactionSettings{ReserveTokens: new(500)}, 400},
+			{overrides(250), durable.CompactionSettings{ReserveTokens: new(500)}, 200},
+			{overrides(250), durable.CompactionSettings{ReserveTokens: new(500), ModelOverrides: overrides(125)}, 100},
+			{durable.CompactionOverrides{}, durable.CompactionSettings{ReserveTokens: new(500), ModelOverrides: durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/other", Override: durable.CompactionPolicyOverride{ReserveTokens: new(125)}})}, 400},
+		}
+		for _, c := range cases {
+			chat := openCompaction(t)
+			chat.history(t)
+			policy := manualPolicy()
+			policy.ModelOverrides = c.harness
+			chat.setPolicy(policy)
+			configure(t, chat, c.conversation)
+			chat.faux.pushSummary(scriptSummary())
+			if outcome := chat.outcome(t, chat.compact(t, nil)); outcome.Status != durable.OutcomeCompleted {
+				t.Fatalf("outcome %s", jsonText(t, outcome))
+			}
+			if got := chat.faux.summaryRequestsCopy()[0].options.MaxTokens; got != c.maxTokens {
+				t.Fatalf("summary maxTokens %d, want %d", got, c.maxTokens)
+			}
+			chat.close(t)
+		}
+	})
+
+	t.Run("lets the conversation's enabled: false beat the harness's model override, and its own model override beat that", func(t *testing.T) {
+		cases := []struct {
+			conversation *durable.CompactionSettings
+			summaries    int
+		}{
+			{nil, 1},
+			{&durable.CompactionSettings{Enabled: new(false)}, 0},
+			{&durable.CompactionSettings{Enabled: new(false), ModelOverrides: durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{Enabled: new(true)}})}, 1},
+		}
+		for _, c := range cases {
+			chat := openCompaction(t, compactionOptions{contextWindow: 1000})
+			chat.history(t)
+			policy := blockingPolicy()
+			policy.ReserveTokens = new(0)
+			policy.ModelOverrides = durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{Enabled: new(true), ReserveTokens: new(300)}})
+			chat.setPolicy(policy)
+			if c.conversation == nil {
+				must0(t, chat.root.Configure(testContext, AgentChange{Compaction: Cleared[durable.CompactionSettings]()}))
+			} else {
+				configure(t, chat, *c.conversation)
+			}
+			chat.faux.pushSummary(scriptSummary())
+			chat.turn(t, sized("u4", 200), "a4")
+			if got := len(chat.faux.summaryRequestsCopy()); got != c.summaries {
+				t.Fatalf("%d summary requests, want %d", got, c.summaries)
+			}
+			chat.close(t)
+		}
+	})
+
+	t.Run("skips overflow compaction when the conversation turns compaction off", func(t *testing.T) {
+		chat := openCompaction(t)
+		chat.history(t)
+		policy := manualPolicy()
+		policy.Enabled = new(true)
+		chat.setPolicy(policy)
+		configure(t, chat, durable.CompactionSettings{Enabled: new(false)})
+		chat.faux.pushAgent(scriptFailure(overflowText))
+		expectSettled(t, must(submitInput(t, chat.root, sized("u4", 100)).Wait(testContext)), durable.SubmissionUnanswered, "")
+		if got := len(chat.faux.summaryRequestsCopy()); got != 0 {
+			t.Fatalf("%d summary requests, want 0", got)
+		}
+		chat.close(t)
+	})
+
+	t.Run("drops undefined fields, rejects token counts that are not integers 0 or more, and clears on null", func(t *testing.T) {
+		chat := openCompaction(t)
+		settings := durable.CompactionSettings{KeepRecentTokens: new(0), ModelOverrides: durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{ReserveTokens: new(10)}})}
+		configure(t, chat, settings)
+		stored := func() string {
+			state := must(durable.Snapshot(testContext, chat.harness, AgentDoc, chat.root.Id()))
+			if state == nil || state.Compaction == nil {
+				return "undefined"
+			}
+			return encodedJSON(t, state.Compaction)
+		}
+		expected := `{"keepRecentTokens":0,"modelOverrides":{"faux/faux-1":{"reserveTokens":10}}}`
+		if got := stored(); got != expected {
+			t.Fatalf("stored = %s, want %s", got, expected)
+		}
+		// Pi's twin gives 1.5, which the *int API cannot express; -1 is the other non-integer-0-or-more input (a deviation
+		// noted in the test mapping).
+		for _, bad := range []struct {
+			settings durable.CompactionSettings
+			field    string
+		}{
+			{durable.CompactionSettings{ReserveTokens: new(-1)}, "compaction.reserveTokens"},
+			{durable.CompactionSettings{ModelOverrides: durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{BackgroundTokens: new(-1)}})}, "compaction.backgroundTokens"},
+		} {
+			// Pi names the field as compaction.<field> for a model override's too (agent.ts compactionFields).
+			if err := chat.root.Configure(testContext, AgentChange{Compaction: SetTo(bad.settings)}); err == nil || !strings.Contains(err.Error(), bad.field+" must be") {
+				t.Fatalf("configure of %+v: error %v, want one naming %s", bad.settings, err, bad.field)
+			}
+		}
+		// The intention of Pi's 1.5 (a token count that is not an integer is refused, not rounded) is kept for the one way a
+		// fractional count reaches the Go API: decoded JSON, as the SDKs and the wire send it.
+		for _, text := range []string{`{"reserveTokens":1.5}`, `{"modelOverrides":{"faux/faux-1":{"backgroundTokens":1.5}}}`} {
+			var decoded durable.CompactionSettings
+			if err := json.Unmarshal([]byte(text), &decoded); err == nil {
+				t.Fatalf("decoded %s as %+v", text, decoded)
+			}
+		}
+		// A rejected change leaves the stored settings as they were.
+		if got := stored(); got != expected {
+			t.Fatalf("stored after rejection = %s, want %s", got, expected)
+		}
+		must0(t, chat.root.Configure(testContext, AgentChange{Compaction: Cleared[durable.CompactionSettings]()}))
+		if got := stored(); got != "undefined" {
+			t.Fatalf("stored after null = %s, want undefined", got)
+		}
+		chat.close(t)
+	})
+
+	// Pi stores modelOverrides as the JavaScript object it was given: its keys in the order they were set (agent.ts compactionSettings
+	// copies them with Object.entries), not sorted. The ordered set keeps that order through the stored JSON and the snapshot.
+	t.Run("stores modelOverrides in the order they were set", func(t *testing.T) {
+		chat := openCompaction(t)
+		overrides := durable.NewCompactionOverrides(
+			durable.CompactionModelOverride{Model: "zeta/big", Override: durable.CompactionPolicyOverride{ReserveTokens: new(10)}},
+			durable.CompactionModelOverride{Model: "alpha/small", Override: durable.CompactionPolicyOverride{Enabled: new(false)}},
+			durable.CompactionModelOverride{Model: "mid/model", Override: durable.CompactionPolicyOverride{KeepRecentTokens: new(5)}},
+		)
+		configure(t, chat, durable.CompactionSettings{ModelOverrides: overrides})
+		state := must(durable.Snapshot(testContext, chat.harness, AgentDoc, chat.root.Id()))
+		if state == nil || state.Compaction == nil {
+			t.Fatal("no stored compaction settings")
+		}
+		const expected = `{"modelOverrides":{"zeta/big":{"reserveTokens":10},"alpha/small":{"enabled":false},"mid/model":{"keepRecentTokens":5}}}`
+		if got := encodedJSON(t, state.Compaction); got != expected {
+			t.Fatalf("stored = %s, want %s", got, expected)
+		}
+		var decoded durable.CompactionSettings
+		must0(t, json.Unmarshal([]byte(expected), &decoded))
+		var order []string
+		for model := range decoded.ModelOverrides.All() {
+			order = append(order, model)
+		}
+		if !slices.Equal(order, []string{"zeta/big", "alpha/small", "mid/model"}) {
+			t.Fatalf("decoded order = %v", order)
 		}
 		chat.close(t)
 	})

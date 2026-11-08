@@ -1,7 +1,7 @@
 // Agent state, settings and resolution (src/harness/agent.ts). Resolution is host code in pi-durable, wraps included, so it
 // stays in the host here: the core asks for it with the `resolveAgent` hook (PROTOCOL.md) and caches the answer per registry
 // publication and stored state.
-import { copyJson } from "@earendil-works/chord"
+import { copyJson } from "@earendil-works/chord/json"
 import { defineDoc } from "./documents.ts"
 import type { HostExtension, HostRegistrySource, HostSection, HostTool } from "../registry.ts"
 
@@ -12,7 +12,9 @@ export const INSTRUCTIONS_KEY = "instructions"
 
 export const AgentDoc = defineDoc({ kind: "pi.agent", version: 1, scope: "conversation", history: "rewindable", fork: "asOf", initial: () => ({}), checkpointWhen: () => true })
 
-export type AgentState = { model?: { provider: string; modelId: string }; thinkingLevel?: string; extensions?: string[] | { add?: string[]; remove?: string[] }; tools?: string[] | { remove: string[] }; modelTools?: string[] | { remove?: string[]; add?: string[] }; instructions?: string; cwd?: string; maxTurns?: number }
+export type CompactionPolicyFields = { enabled?: boolean; reserveTokens?: number; keepRecentTokens?: number; backgroundTokens?: number }
+export type CompactionSettings = CompactionPolicyFields & { modelOverrides?: Record<string, CompactionPolicyFields> }
+export type AgentState = { model?: { provider: string; modelId: string }; thinkingLevel?: string; extensions?: string[] | { add?: string[]; remove?: string[] }; tools?: string[] | { remove: string[] }; modelTools?: string[] | { remove?: string[]; add?: string[] }; instructions?: string; cwd?: string; maxTurns?: number; compaction?: CompactionSettings }
 type Named = { readonly name: string }
 
 /** Default `settings.contextRetentionMs`: ten minutes (harness/agent.ts). */
@@ -116,6 +118,30 @@ export function applyChange(state: Record<string, any>, change: any): void {
   const maxTurns = change.maxTurns
   if (maxTurns !== undefined && maxTurns !== null && !(Number.isSafeInteger(maxTurns) && maxTurns >= 1)) throw new RangeError(`maxTurns must be an integer 1 or more, got ${String(maxTurns)}`)
   set("maxTurns", maxTurns)
+  const compaction = change.compaction
+  set("compaction", compaction === undefined || compaction === null ? compaction : compactionSettings(compaction))
+}
+
+/** agent.ts compactionSettings: a stored copy of a conversation's compaction settings, without undefined fields. */
+function compactionSettings(settings: CompactionSettings): CompactionSettings {
+  const { modelOverrides, ...policy } = settings
+  if (modelOverrides === undefined) return compactionFields(policy)
+  const overrides = Object.entries(modelOverrides).map(([key, override]) => [key, compactionFields(override)])
+  return { ...compactionFields(policy), modelOverrides: Object.fromEntries(overrides) }
+}
+
+const TOKEN_FIELDS = ["reserveTokens", "keepRecentTokens", "backgroundTokens"] as const
+
+/** agent.ts compactionFields: the set fields of `policy`; throws a RangeError for a token count that is not an integer 0 or more. */
+function compactionFields(policy: CompactionPolicyFields): CompactionPolicyFields {
+  const fields: CompactionPolicyFields = policy.enabled === undefined ? {} : { enabled: policy.enabled }
+  for (const key of TOKEN_FIELDS) {
+    const value = policy[key]
+    if (value === undefined) continue
+    if (!(Number.isSafeInteger(value) && value >= 0)) throw new RangeError(`compaction.${key} must be an integer 0 or more, got ${String(value)}`)
+    fields[key] = value
+  }
+  return fields
 }
 
 /** `configure(tx, conversationId, change)`: one change to `pi.agent` inside a commit. */
@@ -123,7 +149,7 @@ export async function configure(tx: { doc(token: unknown, ...args: unknown[]): P
   applyChange(await tx.doc(AgentDoc, conversationId), change)
 }
 
-export type ResolvedAgent = { model?: unknown; thinkingLevel: string; extensions: HostExtension[]; tools: HostTool[]; callable: HostTool[]; deferred: HostTool[]; sections: HostSection[]; instructions?: string; cwd?: string; maxTurns?: number }
+export type ResolvedAgent = { model?: unknown; thinkingLevel: string; extensions: HostExtension[]; tools: HostTool[]; callable: HostTool[]; deferred: HostTool[]; sections: HostSection[]; instructions?: string; cwd?: string; maxTurns?: number; compaction?: CompactionSettings }
 
 /** Resolve an agent from its stored state, a registry snapshot and resolved settings. A wrapper that throws or renames drops its target and is reported. */
 export function resolveAgent(state: AgentState | undefined, snapshot: ReturnType<HostRegistrySource["snapshot"]>, settings: ReturnType<typeof resolveSettings>, report: (e: unknown, extension: string | undefined) => void): ResolvedAgent {
@@ -152,7 +178,7 @@ export function resolveAgent(state: AgentState | undefined, snapshot: ReturnType
   return {
     ...(state?.model === undefined ? {} : { model: state.model }),
     thinkingLevel: state?.thinkingLevel ?? "off", extensions, tools, callable, deferred, sections: all,
-    ...(instructions === undefined ? {} : { instructions }), ...(state?.cwd === undefined ? {} : { cwd: state.cwd }), ...(state?.maxTurns === undefined ? {} : { maxTurns: state.maxTurns }),
+    ...(instructions === undefined ? {} : { instructions }), ...(state?.cwd === undefined ? {} : { cwd: state.cwd }), ...(state?.maxTurns === undefined ? {} : { maxTurns: state.maxTurns }), ...(state?.compaction === undefined ? {} : { compaction: state.compaction }),
   }
 }
 
@@ -227,6 +253,7 @@ export function agentJSON(agent: ResolvedAgent, id: (object: unknown) => number)
     ...(agent.instructions === undefined ? {} : { instructions: agent.instructions }),
     ...(agent.cwd === undefined ? {} : { cwd: agent.cwd }),
     ...(agent.maxTurns === undefined ? {} : { maxTurns: agent.maxTurns }),
+    ...(agent.compaction === undefined ? {} : { compaction: agent.compaction }),
   }
 }
 export { copyJson }
