@@ -3410,7 +3410,7 @@
       "evidence": [
         "chord/nextnode/app/app_web_browser_test.go"
       ],
-      "rationale": "All 3 upstream cases run in app_web_browser_test.go over Chromium (skipped without CHROMIUM_BIN); \"a page › records a click as the root of one trace through the server into the worker, stored by the server\" is TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer: the vendored fixture web/telemetry.ts clicks, host.Root traces it as page.write, and the SQLite store the server writes holds the one trace page -> chord.call -> chord.relay -> two chord.method spans, the click's id browser:<uuid>:<n> and principal {\"kind\":\"owner\"}."
+      "rationale": "All 3 upstream cases run in app_web_browser_test.go over Chromium (skipped without CHROMIUM_BIN); \"a page › records a click as the root of one trace through the server into the worker, stored by the server\" is TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer: the vendored fixture web/telemetry.ts clicks, host.Root traces it as page.write, and the SQLite store the server writes holds the one trace page.write -> chord.call -> chord.relay (server) -> chord.relay (the worker's Go host) -> two chord.method spans (forced difference D460: the worker's Go host relays to the NodeHost that runs the plugin's types, one chord.relay span more than Pi's worker host), the click's id browser:<uuid>:<n> and principal {\"kind\":\"owner\"}."
     },
     {
       "path": "packages/chord/test/node/web/styles.test.ts",

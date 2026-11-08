@@ -275,12 +275,15 @@ func TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStore
 			tree = append(tree, line)
 		}
 	}
+	// Forced difference (D460): the worker's Go host is a relay to the NodeHost that runs the plugin's types, so its own
+	// chord.relay span sits between the server's and the two chord.method spans Pi's worker host records directly.
 	want := []string{
 		`page.write host="browser"`,
 		`  chord.call host="browser"`,
 		`    chord.relay host="server"`,
-		`      chord.method host="project|p1"`,
+		`      chord.relay host="project|p1"`,
 		`        chord.method host="project|p1"`,
+		`          chord.method host="project|p1"`,
 	}
 	if !reflect.DeepEqual(tree, want) {
 		t.Fatalf("the click's trace =\n%s\nwant\n%s", strings.Join(tree, "\n"), strings.Join(want, "\n"))
