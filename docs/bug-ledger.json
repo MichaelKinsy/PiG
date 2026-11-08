@@ -3430,6 +3430,25 @@
       ]
     },
     {
+      "id": "BF-176542a",
+      "title": "fix: the chord boundary allows internal/sortx, a stdlib-only helper that jsstring and ecmaregex link…",
+      "symptom": "fix: the chord boundary allows internal/sortx, a stdlib-only helper that jsstring and ecmaregex link; chord/delta keeps it",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "176542ac65",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-1827831",
       "title": "The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order…",
       "symptom": "The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order the model wrote it, as Pi passes `event.input`, instead of sorted by member name.",
@@ -5741,6 +5760,25 @@
         "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes",
         "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt"
       ]
+    },
+    {
+      "id": "BF-270da2f",
+      "title": "fix: raw content blocks sized without continue or discarded errors, tsruntime in a race group, provenance of…",
+      "symptom": "fix: raw content blocks sized without continue or discarded errors, tsruntime in a race group, provenance of the v3 differences list, owner approval on huff0",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "270da2fced",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-27a1650",
@@ -11937,6 +11975,29 @@
       "tests": [
         "coding/extension/host/subprocess/run_signal_stale_read_test.go::TestRunSignalKeepsOneNumberForARunWhenAnotherRuntimesReadIsStale",
         "test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK"
+      ]
+    },
+    {
+      "id": "BF-4aaa810",
+      "title": "fix: go fix the five test and testenv files; the v3 differential corpus counts its 40th file document",
+      "symptom": "fix: go fix the five test and testenv files; the v3 differential corpus counts its 40th file document",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4aaa8104e5",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/tsruntime/digestcache_test.go::TestConcurrentStartsLeaveOneWholeRecord",
+        "coding/extension/host/tsruntime/executable_linux_test.go::TestConcurrentExecLinksDoNotCollide",
+        "coding/piglet/schema_test.go::TestValidateAgainstSchemaNamesTheRootAndNestedPaths"
       ]
     },
     {
@@ -49607,6 +49668,28 @@
       ]
     },
     {
+      "id": "BF-f927290",
+      "title": "`durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a…",
+      "symptom": "`durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a transient error (HTTP 408, 429, 5xx).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a transient error (HTTP 408, 429, 5xx). A single 504 from GitHub's release CDN made the `wasm-tinygo` row of the Durable contract job fail with \"tinygo not found\" in CI.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f927290d26",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame"
+      ]
+    },
+    {
       "id": "BF-f9648c6",
       "title": "On Windows, stopping a terminal reader whose input is a pipe no longer hangs",
       "symptom": "On Windows, stopping a terminal reader whose input is a pipe no longer hangs.",
@@ -51199,6 +51282,25 @@
         "coding/cli/rpc_resume_tools_test.go::TestRPCResumeKeepsDynamicallyActivatedTools",
         "coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort"
       ]
+    },
+    {
+      "id": "BF-fdaba00",
+      "title": "fix: chord/delta sorts with package slices, customContentChars decodes without any, REUSE and provenance…",
+      "symptom": "fix: chord/delta sorts with package slices, customContentChars decodes without any, REUSE and provenance entries for the yaml12 corpus",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "fdaba00031",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-fdbd6ca",
