@@ -274,6 +274,8 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 	}
 	facets := []host.HostFacet{
 		{Name: "@p2/core", Facet: p2runtime.ServerCore(h, info, parts)},
+		// The terminal client's server defaults (`<data>/tui.json`).
+		{Name: "@p2/tui-preferences", Facet: tuiPreferencesFacet(dataDir)},
 		// The server's files (the kit's `Files`): `<data>/server/files/`.
 		{Name: "chord.app.files", Facet: app.FilesFacet(p2runtime.HostFiles(p2runtime.ServerDirectory(dataDir)), app.FilesCaps{}, 0)},
 	}
@@ -641,6 +643,24 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 			return p2runtime.SendJSON(response, http.StatusConflict, DevResult{Message: "Dev mode is not enabled"}, nil)
 		} else {
 			return p2runtime.SendJSON(response, http.StatusOK, nil, nil)
+		}
+		return nil
+	}
+	// The terminal client's admission check (`/__p2_tui` upstream also served the TUI bundle, which is compiled in here, D473): admitted owners and guests
+	// get 200 on GET and HEAD; a guest not admitted gets 403 and anyone else the sign-in.
+	if path == "/__p2_tui" {
+		_, isGuest := principal.(p2runtime.GuestPrincipal)
+		switch {
+		case (p2runtime.IsOwner(principal) || isGuest) && get:
+			response.Header().Set("Content-Type", "application/json")
+			response.WriteHeader(http.StatusOK)
+			if request.Method != http.MethodHead {
+				_, _ = response.Write([]byte(`{"compiledIn":true}`))
+			}
+		case isGuest:
+			response.WriteHeader(http.StatusForbidden)
+		default:
+			p2runtime.SignIn(response, request, http.StatusUnauthorized)
 		}
 		return nil
 	}
