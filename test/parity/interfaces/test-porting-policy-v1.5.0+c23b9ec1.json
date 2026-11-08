@@ -6590,10 +6590,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f). SCRUTINIZED:approved by the owner (2026-10-20) — Durable telemetry: only the async-listener case (:899) is designed out: Go commit listeners (SubscribeCommits) return no value, so a Promise-returning listener has no Go form.",
-      "designedOutCases": [
-        "Durable telemetry › preserves async listener error containment and report counting"
-      ]
+      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f). All cases run; the async-listener case (:911) runs in PiG's own form: a Go commit listener returns nothing from Advance and fails by panic, so the failure that arrives after every span settled is a listener that fails on a later commit (TestDurableTelemetryCountsAListenerFailureThatArrivesAfterEverySpanSettled)."
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
@@ -6738,10 +6735,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: the Session newest-entry and head-marker cache of each conversation; the Go test drives durable/session/conversation_tails.go (ConversationTails: newest entry and newest head marker per conversation, bounded LRU) used by the Session for LatestEntryId and LatestHeadMarker. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [conversation tails › freezes the markers it keeps]: Go has no Object.freeze: ConversationTails (durable/session/conversation_tails.go) shares the kept markers and records are immutable by convention, so a mutation after apply neither throws nor is refused, and no Go production path can express the frozen-record input; the remaining behavior of the markers (kept, bounded, cutoff answers) runs in TestConversationTailsReadsOnceThenFollowsCommits, TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt and TestConversationTailsKeepsBoundedNumberOfConversationsFewerWithMarkers.",
-      "designedOutCases": [
-        "conversation tails › freezes the markers it keeps"
-      ]
+      "rationale": "Production-path review at Pi 1.5.0: the Session newest-entry and head-marker cache of each conversation; the Go test drives durable/session/conversation_tails.go (ConversationTails: newest entry and newest head marker per conversation, bounded LRU) used by the Session for LatestEntryId and LatestHeadMarker. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). All cases run; 'freezes the markers it keeps' runs in PiG's own form (TestConversationTailsFreezesTheMarkersItKeeps): Go has no Object.freeze, so the test holds what it protects, that no caller mutation of the written record or of a returned marker changes the kept marker (Apply keeps a detached copy, Marker returns one)."
     },
     {
       "path": "packages/durable/test/session-deferred-commits.test.ts",
@@ -6768,10 +6762,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.2.0: Durable session document cache retention, on every durable turn's state; hot-path with the sibling packages/durable/test/ rows. SCRUTINIZED:approved by the tern lead ruling 2026-10-13 (tests-120-b): :451 is designed out (it tests Node's unreferenced-timer mechanism, runtime mechanics).",
-      "designedOutCases": [
-        "document cache retention › keeps no timer where timers cannot be unreferenced, and evicts on commits"
-      ]
+      "rationale": "Production-path review at Pi 1.2.0: Durable session document cache retention, on every durable turn's state; hot-path with the sibling packages/durable/test/ rows. All cases run; :468 runs in PiG's own form (TestSessionDocumentCacheKeepsNoTimerWhereTimersCannotBeBackground): a SetTimer hook that declines background timers stands for Pi's setTimeout without unref."
     },
     {
       "path": "packages/durable/test/session-documents.test.ts",
