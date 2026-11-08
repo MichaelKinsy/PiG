@@ -163,7 +163,7 @@ func (offlineFetch) Do(request *http.Request) (*http.Response, error) {
 	if strings.HasSuffix(request.URL.Path, "/token") {
 		return nil, errors.New("fetch failed")
 	}
-	return http.DefaultClient.Do(request)
+	return http.DefaultClient.Do(request) //nolint:gosec // G704: test-only fixture that reaches the loopback authorization server; no external request.
 }
 
 func TestAuthProviderKeepsTheTokensAndThePendingSignInAfterANetworkError(t *testing.T) {

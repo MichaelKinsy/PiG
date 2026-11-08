@@ -4,11 +4,12 @@ package extension
 
 import (
 	"encoding/json"
-	"github.com/MichaelKinsy/PiG/mcp"
 	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/mcp"
 )
 
 // Not upstream tests: guards for packages/coding-agent/src/core/mcp-servers.ts.
