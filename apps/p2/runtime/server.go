@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -395,6 +396,9 @@ func ServerCore(h host.Host, info ServerInfo, parts *ServerParts) host.Facet {
 				Methods: map[string]contracts.MethodFunction{
 					"stop": methodOf(func(args *delta.JsonObject, ctx context.Context) error {
 						session, _ := args.Value("session").(string)
+						// Stopping waits for the worker's exit, which the server loop must be free to deliver (this handler would
+						// otherwise be a synchronous block of the section that admits its call).
+						chordctx.Suspend(ctx)
 						return parts.Workers.Stop(ctx, session)
 					}),
 				},
