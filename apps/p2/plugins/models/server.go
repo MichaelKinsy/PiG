@@ -86,11 +86,40 @@ func scopedModelsOf(summary, snapshot any) []any {
 
 // resourcesNative is the opened resources of a factory, read at each use.
 func resourcesNative(native host.Native[any]) *Resources {
-	value, err := native.Value()
+	resources, err := resourcesOf(native)
 	if err != nil {
 		panic(err)
 	}
-	return value.(*Resources)
+	return resources
+}
+
+// resourcesOf is resourcesNative that reports a native not ready or released (its close started) as an error: a change
+// published while the facet closes reaches the follow's listener after the close began, and the follow fails then (Pi's
+// getter throws into the listener) instead of crashing the process.
+func resourcesOf(native host.Native[any]) (*Resources, error) {
+	value, err := native.Value()
+	if err != nil {
+		return nil, err
+	}
+	return value.(*Resources), nil
+}
+
+// subscribeResources is resources' Subscribe through the native; released, there is nothing to stop.
+func subscribeResources(native host.Native[any], changed func()) func() {
+	resources, err := resourcesOf(native)
+	if err != nil {
+		return func() {}
+	}
+	return resources.Subscribe(changed)
+}
+
+// readResources is read of the native's resources, or the error of a native not ready or released.
+func readResources(native host.Native[any], read func(*Resources) (delta.JsonValue, error)) (delta.JsonValue, error) {
+	resources, err := resourcesOf(native)
+	if err != nil {
+		return nil, err
+	}
+	return read(resources)
 }
 
 var serverFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
@@ -132,18 +161,15 @@ func serveModelConfig(_ *delta.JsonObject, self host.Self) (contracts.Implementa
 	// The configuration files' state as the resources hold it: a save below resolves after its reload, which told this
 	// source, so the caller's answer comes with the new state.
 	state := p2runtime.FollowNative(self,
-		func(changed func()) func() { return resourcesNative(opened).Subscribe(changed) },
+		func(changed func()) func() { return subscribeResources(opened, changed) },
 		func() (delta.JsonValue, error) {
-			// A change published as the object closes finds the native closed: an error, not a panic (the source fails).
-			value, err := opened.Value()
-			if err != nil {
-				return nil, err
-			}
-			state, err := StateOf(value.(*Resources), fake)
-			if err != nil {
-				return nil, err
-			}
-			return delta.JsonObjectOf("summary", state.Summary.JSON(), "snapshot", state.Snapshot.JSON()), nil
+			return readResources(opened, func(resources *Resources) (delta.JsonValue, error) {
+				state, err := StateOf(resources, fake)
+				if err != nil {
+					return nil, err
+				}
+				return delta.JsonObjectOf("summary", state.Summary.JSON(), "snapshot", state.Snapshot.JSON()), nil
+			})
 		},
 	)
 	member := func(key string) chord.Watchable[delta.JsonValue] {
