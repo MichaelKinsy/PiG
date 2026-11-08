@@ -196,6 +196,18 @@ function subscribeSprite(listener: () => void): () => void {
 	}
 	return () => listeners.delete(listener);
 }
+// The page theme (the sidebar's choice or the system's; the page sets data-theme), which the banner's wordmark colors follow.
+const themeListeners = new Set<() => void>();
+let themeObserver: MutationObserver | undefined;
+const pageTheme = (): "light" | "dark" => (root.dataset.theme === "light" ? "light" : "dark");
+function subscribeTheme(listener: () => void): () => void {
+	themeListeners.add(listener);
+	themeObserver ??= new MutationObserver(() => {
+		for (const each of themeListeners) each();
+	});
+	themeObserver.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+	return () => themeListeners.delete(listener);
+}
 const useSprite = (): SpriteInfo | null => {
 	useSyncExternalStore(subscribeSprite, () => root.dataset.brandSprite ?? "");
 	return spriteInfo();
@@ -204,6 +216,7 @@ const useSprite = (): SpriteInfo | null => {
 /** The empty state's head: the sprite's banner (the pig beside its "PiG." wordmark), its tagline, then the question. */
 export function PiHero({ title }: { title: string }) {
 	const sprite = useSprite();
+	const theme = useSyncExternalStore(subscribeTheme, pageTheme);
 	if (!sprite)
 		return (
 			<div className="hero-title">
@@ -213,7 +226,7 @@ export function PiHero({ title }: { title: string }) {
 		);
 	return (
 		<div className="hero-title brand-hero">
-			<img className="brand-banner" src={\`/__p2_brand/login.svg?v=\${sprite.key}\`} alt={sprite.name} />
+			<img className="brand-banner" src={\`/__p2_brand/login.svg?v=\${sprite.key}&theme=\${theme}\`} alt={sprite.name} />
 			{sprite.tagline && <p className="brand-tagline">{sprite.tagline}</p>}
 			<h2>{title}</h2>
 		</div>

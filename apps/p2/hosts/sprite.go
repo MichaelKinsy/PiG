@@ -17,8 +17,9 @@ import (
 // another site's page.
 const SpriteAssetPath = "/__p2_brand/sprite.svg"
 
-// LoginAssetPath is the empty state's banner as an SVG: the sprite beside its "PiG." wordmark in the sprite's palette, on a
-// plate that keeps the palette legible in either theme. Served like SpriteAssetPath.
+// LoginAssetPath is the empty state's banner as an SVG: the sprite beside its "PiG." wordmark in the sprite's palette, no
+// background of its own, the wordmark's colors adapted to the page theme (`?theme=light|dark`, dark when absent). Served like
+// SpriteAssetPath.
 const LoginAssetPath = "/__p2_brand/login.svg"
 
 // SpriteEventsPath is a server-sent event stream for a signed-in page: each message is the current sprite's info (SpriteInfo as
@@ -26,13 +27,15 @@ const LoginAssetPath = "/__p2_brand/login.svg"
 const SpriteEventsPath = "/__p2_brand/sprite/events"
 
 // SpriteAsset is a rendered sprite: a key that names its content, its name and tagline, the sprite's SVG and the empty state's
-// banner SVG.
+// banner SVG for each page theme.
 type SpriteAsset struct {
 	Key     string
 	Name    string
 	Tagline string
 	SVG     []byte
-	Login   []byte
+	// LoginLight and LoginDark are the banner for the light and the dark page theme.
+	LoginLight []byte
+	LoginDark  []byte
 }
 
 // SpriteInfo is what the page learns of the current sprite (the page's `data-brand-sprite` attribute and every event): the key
@@ -122,7 +125,11 @@ func (h *spriteHub) serveAsset(response http.ResponseWriter, request *http.Reque
 	svg := asset.SVG
 	etag := `"` + asset.Key + `"`
 	if request.URL.EscapedPath() == LoginAssetPath {
-		svg, etag = asset.Login, `"`+asset.Key+`-login"`
+		if request.URL.Query().Get("theme") == "light" {
+			svg, etag = asset.LoginLight, `"`+asset.Key+`-login-light"`
+		} else {
+			svg, etag = asset.LoginDark, `"`+asset.Key+`-login-dark"`
+		}
 	}
 	header := response.Header()
 	header.Set("Content-Type", "image/svg+xml")
