@@ -233,16 +233,7 @@ func startLoad(host Host, facets ...HostFacet) <-chan error {
 		_, err := host.Load(facets, background)
 		done <- err
 	}()
-	// `host.load(...)` runs synchronously up to its first await: the host is loading (or `load` failed) when it returns.
-	h := host.(*chordHost)
-	for {
-		var started bool
-		h.enter(func() { started = h.state != hostNew })
-		if started || len(done) > 0 {
-			return done
-		}
-		runtime.Gosched()
-	}
+	return done
 }
 
 // notDone fails unless the load has not returned.
@@ -282,8 +273,8 @@ func failedMessages(failed []PluginFailure) [][2]string {
 	return out
 }
 
-// Mirrors "load › leaves out and reports duplicate plugin names and double serves (the later); refuses a second load".
-func TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad(t *testing.T) {
+// Mirrors "load › leaves out and reports invalid and duplicate plugin names and double serves (the later); refuses a second load".
+func TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad(t *testing.T) {
 	empty := DefineFacet(func(FacetHost, FacetSelf) error { return nil })
 	info := DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })
 	loadedFailed := func(facets []HostFacet) [][2]string {
@@ -292,6 +283,9 @@ func TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterR
 		must(t, err)
 		closeHosts(t, host)
 		return failedMessages(report.Failed)
+	}
+	if got, want := loadedFailed([]HostFacet{{Name: "Bad Name", Facet: empty}}), [][2]string{{"Bad Name", `"Bad Name" is not a valid plugin name`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
 	}
 	twice := []HostFacet{{Name: "a", Facet: empty}, {Name: "a", Facet: empty}}
 	if got, want := loadedFailed(twice), [][2]string{{"a", `plugin "a" is loaded twice`}}; !reflect.DeepEqual(got, want) {
@@ -322,59 +316,21 @@ func TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterR
 	}
 }
 
-// Mirrors "load › throws for an invalid plugin name before it changes anything; the host loads afterwards (decision (d))".
-func TestHostLoadThrowsForAnInvalidPluginNameBeforeItChangesAnythingTheHostLoadsAfterwardsDecisionD(t *testing.T) {
-	empty := DefineFacet(func(FacetHost, FacetSelf) error { return nil })
-	info := DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })
+// Mirrors "load › makes a get before it resolves wait for it".
+func TestHostLoadMakesAGetBeforeItResolvesWaitForIt(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: noopOnError})
-	_, err := host.Load([]HostFacet{{Name: "@app/info", Facet: info}, {Name: "tui:core", Facet: empty}}, background)
-	if err == nil || err.Error() != `"tui:core" is not a valid plugin name` {
-		t.Fatalf("load = %v, want \"tui:core\" is not a valid plugin name", err)
-	}
-	// Nothing was staged or published: the same host loads the fixed set.
-	if report := mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: info}}, background)); len(report.Failed) != 0 {
-		t.Fatalf("failed = %v, want none", report.Failed)
-	}
-	_, err = host.Reload([]HostFacet{{Name: "Bad Name", Facet: empty}}, background, ReloadOptions{})
-	if err == nil || err.Error() != `"Bad Name" is not a valid plugin name` {
-		t.Fatalf("reload = %v, want \"Bad Name\" is not a valid plugin name", err)
-	}
-	// The reload changed nothing: the loaded plugin still serves.
-	if title := memberOf(t, mustGet(t, host, hostInfo, jsonObject()), "title"); title != "t" {
+	defer closeHosts(t, host)
+	got := make(chan *Reference, 1)
+	go func() {
+		ref, err := host.Get(background, hostInfo, jsonObject(), GetOptions{})
+		must(t, err)
+		got <- ref
+	}()
+	awaitUnbound(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "a", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })}}, background))
+	if title := memberOf(t, <-got, "title"); title != "t" {
 		t.Fatalf("title = %v, want t", title)
 	}
-	closeHosts(t, host)
-}
-
-// Mirrors "load › is called first: get, hold, registry and a root's ctx.get throw not_ready before it (decision (a))".
-func TestHostLoadIsCalledFirstGetHoldRegistryAndARootsCtxGetThrowNotReadyBeforeItDecisionA(t *testing.T) {
-	names, err := registries.DefineRegistry[any, any]("app.names", registries.DefineRegistryOptions{Version: 1})
-	must(t, err)
-	host := newHost(t, HostOptions{OnError: noopOnError})
-	fix := "the host has not loaded; call host.load first (a host with nothing to load calls load([]))"
-	wantNotReady := func(what string, err error, message string) {
-		t.Helper()
-		chordErr, ok := data.IsChordErrorCode(err, data.CodeNotReady)
-		if !ok || (message != "" && chordErr.Message != message) {
-			t.Fatalf("%s = %v, want not_ready %q", what, err, message)
-		}
-	}
-	_, err = host.Get(background, hostInfo, jsonObject(), GetOptions{})
-	wantNotReady("get", err, "app.info: "+fix)
-	_, err = host.Hold(background, hostInfo, jsonObject(), GetOptions{})
-	wantNotReady("hold", err, "app.info: "+fix)
-	_, err = host.Registry(background, names, GetOptions{})
-	wantNotReady("registry", err, "registry app.names: "+fix)
-	_, err = host.Root(func(ctx Ctx) (any, error) { return ctx.Get(hostInfo, jsonObject(), GetOptions{}) }, background, RootOptions{})
-	wantNotReady("root ctx.get", err, "")
-	// A client with nothing to load calls `load([])`: then its requests wait as any does.
-	mustLoad(t)(host.Load(nil, background))
-	held, err := host.Hold(background, hostInfo, jsonObject(), GetOptions{})
-	must(t, err)
-	if state := refStateOf(held); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
-		t.Fatalf("hold state = %+v, want failed waiting", state)
-	}
-	closeHosts(t, host)
 }
 
 // Mirrors "the start barrier › resolves once every host-lifetime object had its first outcome; a failed one is reported and retried".
@@ -687,11 +643,18 @@ func TestHostStartupAcrossHostsPlacesAHoldArrivingBeforeThePublicationHereNotOve
 		Hold: 0, Type: PlacedNotes.Name, Version: PlacedNotes.Version, Fingerprint: PlacedNotes.Fingerprint, Params: params,
 		Address: link.WireAddress{Kind: "session", Params: jsonObject("id", "S1")},
 	})
+	mine, err := worker.Hold(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
+	must(t, err)
 	transported(a, b, c, d)
+	if kind := refStateOf(mine).Kind; kind != RefStateLoading {
+		t.Fatalf("state = %s, want loading", kind)
+	}
 	mustLoad(t)(worker.Load([]HostFacet{{Name: "@test/w", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, PlacedNotes); return err })}}, background))
 	if bound := child.Next("bound").(*link.BoundMessage); bound.Holds[0].Hold != 0 {
 		t.Fatalf("bound hold = %d, want 0", bound.Holds[0].Hold)
 	}
+	transported(a, b, c, d)
+	awaitRefState(t, "live", mine, func(s *RefState) bool { return s.Kind == RefStateLive })
 	if kinds := parent.Kinds(); !reflect.DeepEqual(kinds, []string{"hello"}) {
 		t.Fatalf("parent kinds = %v, want [hello]", kinds)
 	}
@@ -824,6 +787,21 @@ func awaitUnboundOrObject(t testing.TB, host Host) {
 	}
 }
 
+// Mirrors "deadlines of gets › include the wait for load".
+func TestHostDeadlinesOfGetsIncludeTheWaitForLoad(t *testing.T) {
+	loop := newScopeLoop()
+	host := newHost(t, HostOptions{OnError: noopOnError, loop: loop})
+	defer closeHosts(t, host)
+	waiting := make(chan error, 1)
+	go func() {
+		_, err := host.Get(background, hostInfo, jsonObject(), GetOptions{ReadyTimeout: new(100 * time.Millisecond)})
+		waiting <- err
+	}()
+	awaitUnbound(t, host)
+	loop.AdvanceAsync(100)
+	wantChordError(t, <-waiting, data.CodeUnavailable, "", "app.info: did not become live within 100 ms")
+}
+
 // Mirrors "deadlines of gets › are per getter: the first to pass releases only its own reference, the attempt goes on for the other".
 func TestHostDeadlinesOfGetsArePerGetter(t *testing.T) {
 	loop := newScopeLoop()
@@ -925,6 +903,16 @@ func TestHostCloseEndsEveryObjectTheLastToGoLiveFirstAndRejectsNewCalls(t *testi
 	if _, err := info.Member("title").Value(); err == nil || err.Error() != "app.info: ended" {
 		t.Fatalf("a read after the close = %v, want app.info: ended", err)
 	}
+}
+
+// Mirrors "close › fails a get waiting for load".
+func TestHostCloseFailsAGetWaitingForLoad(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	got := make(chan error, 1)
+	go func() { _, err := host.Get(background, hostInfo, jsonObject(), GetOptions{}); got <- err }()
+	awaitUnbound(t, host)
+	must(t, host.Close(background))
+	wantChordError(t, <-got, data.CodeReleased, data.ReasonClosed, "the host is closed")
 }
 
 // Mirrors "close › ends every object at once: calls fail released before any close ran".
@@ -1532,6 +1520,19 @@ func TestHostRegistryEndsAWaitingHostRegistryAtTheCloseWithReleasedClosed(t *tes
 	}
 }
 
+// Mirrors "› ends one still waiting for the publication at the close".
+func TestHostRegistryEndsOneStillWaitingForThePublicationAtTheClose(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	waiting := make(chan error, 1)
+	go func() {
+		_, err := host.Registry(background, absentRegistry, GetOptions{ReadyTimeout: new(time.Minute)})
+		waiting <- err
+	}()
+	turn(host)
+	must(t, host.Close(background))
+	wantChordError(t, <-waiting, data.CodeReleased, data.ReasonClosed, "")
+}
+
 var (
 	hereKind        = mustKind(contracts.NewHostKind("app-here"))
 	elsewhereKind   = mustKind(contracts.NewHostKind("app-elsewhere"))
@@ -1676,16 +1677,82 @@ func TestHostAcquiringInvalidParamsAtOnceALocalTypeNotServedHereHoldWaitsGetReje
 	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting || state.Cause.Error.Message != "app.info is not served here" || state.RetryAt != nil {
 		t.Fatalf("state = %+v, want failed waiting: app.info is not served here", state)
 	}
-	armed := loop.TimerCount()
 	got := make(chan error, 1)
 	go func() {
 		_, err := host.Get(background, hostInfo, jsonObject(), GetOptions{ReadyTimeout: new(5 * time.Millisecond)})
 		got <- err
 	}()
-	// The getter's deadline timer is set in the section that made its reference (the unbound clock's is armed already).
-	scopeEventually(t, "the getter's deadline timer was set", func() bool { return loop.TimerCount() > armed })
+	// The getter's deadline timer is set in the section that made its reference.
+	scopeEventually(t, "the getter's deadline timer was set", func() bool { return loop.TimerCount() > 0 })
 	loop.AdvanceAsync(5)
 	wantChordError(t, <-got, data.CodeUnavailable, "", "app.info is not served here")
+}
+
+// Mirrors "acquiring › before load resolved: hold is loading, get waits; once it resolved both bind, or an unserved type waits".
+func TestHostAcquiringBeforeLoadResolvedHoldIsLoadingGetWaits(t *testing.T) {
+	loop := newScopeLoop()
+	host := newHost(t, HostOptions{OnError: noopOnError, loop: loop})
+	defer closeHosts(t, host)
+	held, err := host.Hold(background, hostInfo, jsonObject(), GetOptions{})
+	must(t, err)
+	unserved, err := host.Hold(background, hostPage, jsonObject("id", float64(1)), GetOptions{})
+	must(t, err)
+	got := make(chan *Reference, 1)
+	go func() {
+		ref, err := host.Get(background, hostInfo, jsonObject(), GetOptions{})
+		must(t, err)
+		got <- ref
+	}()
+	refused := make(chan error, 1)
+	go func() {
+		_, err := host.Get(background, hostPage, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(50 * time.Millisecond)})
+		refused <- err
+	}()
+	scopeEventually(t, "both getters wait", func() bool { return len(indexedBindings(host)) >= 4 })
+	for _, ref := range []*Reference{held, unserved} {
+		if kind := refStateOf(ref).Kind; kind != RefStateLoading {
+			t.Fatalf("state before the load = %s, want loading", kind)
+		}
+	}
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })}}, background))
+	turn(host)
+	awaitRefState(t, "held live", held, func(s *RefState) bool { return s.Kind == RefStateLive })
+	if title := memberOf(t, <-got, "title"); title != "t" {
+		t.Fatalf("title = %v, want t", title)
+	}
+	state := awaitRefState(t, "unserved waits", unserved, func(s *RefState) bool { return s.Kind == RefStateFailed })
+	if state.Cause.Kind != data.FailureWaiting || state.Cause.Error.Message != "app.page is not served here" || state.RetryAt != nil {
+		t.Fatalf("state = %+v, want failed waiting: app.page is not served here", state)
+	}
+	loop.AdvanceAsync(50)
+	wantChordError(t, <-refused, data.CodeUnavailable, "", "app.page is not served here")
+}
+
+// Mirrors "acquiring › invalid params before load resolved: hold throws and get rejects invalid/params at once (audit, 7a)".
+func TestHostAcquiringInvalidParamsBeforeLoadResolvedHoldThrowsAndGetRejectsInvalidParamsAtOnce(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	if _, err := host.Hold(background, hostPage, jsonObject("id", "x"), GetOptions{}); err == nil || !strings.Contains(err.Error(), "params") {
+		t.Fatalf("hold = %v, want an error naming params", err)
+	}
+	_, err := host.Get(background, hostPage, jsonObject("id", "x"), GetOptions{})
+	wantChordError(t, err, data.CodeInvalid, data.ReasonParams, "")
+	mustLoad(t)(host.Load(nil, background))
+	closeHosts(t, host)
+}
+
+// Mirrors "acquiring › a hold released before load resolved makes nothing once it did".
+func TestHostAcquiringAHoldReleasedBeforeLoadResolvedMakesNothingOnceItDid(t *testing.T) {
+	var factories atomic.Int32
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	ref, err := host.Hold(background, hostPage, jsonObject("id", float64(1)), GetOptions{})
+	must(t, err)
+	ref.Release()
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return servePage(h, func() { factories.Add(1) }) })}}, background))
+	turn(host)
+	must(t, host.Close(background))
+	if got := factories.Load(); got != 0 {
+		t.Fatalf("factory runs = %d, want 0", got)
+	}
 }
 
 // Mirrors "acquiring › through transient failures: hold is failed with retryAt, then loading; get waits, then rejects with the last cause".
@@ -2740,7 +2807,7 @@ func TestHostReportsABatchAndARegistryFailureToOnErrorWithTheirOwnFields(t *test
 	// The reload changes the title: its frame is the one the failing listener gets.
 	_, err = host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}, {Name: "@app/names", Facet: registry}}, background, ReloadOptions{})
 	must(t, err)
-	_, _ = host.Registry(background, registries.Registry[any, any](names), GetOptions{ReadyTimeout: new(10 * time.Millisecond)})
+	_, _ = host.Registry(background, registries.Registry[any, any](names), GetOptions{})
 
 	eventually(t, "a listener_error and a registry_failed are reported", func() bool {
 		var kinds []HostErrorKind

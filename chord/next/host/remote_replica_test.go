@@ -16,12 +16,10 @@ import (
 
 // Ports packages/chord/test/next/remote/replica.test.ts: replicas.
 
-// replicaOfN is a replica of `{ n }` on a fresh batch, with a derive over it attached. The batch's watches deliver on
-// the returned scheduler, whose Wait is the barrier a test waits for deliveries with (upstream's `delivered()`).
-func replicaOfN(t *testing.T) (*state.Batch, *replica, *state.Derive, *chord.DeliveryScheduler) {
+// replicaOfN is a replica of `{ n }` on a fresh batch, with a derive over it attached.
+func replicaOfN(t *testing.T) (*state.Batch, *replica, *state.Derive) {
 	t.Helper()
-	scheduler := chord.NewDeliveryScheduler()
-	batch := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(scheduler)
+	batch := state.NewBatch(func(state.BatchError) {}, nil)
 	source := newReplica(batch, memberSnapshot{kind: "value", value: delta.JsonObjectOf("n", 1.0)})
 	double := state.NewDerive([]any{source}, func(values []any) (delta.JsonValue, error) {
 		return values[0].(*delta.JsonObject).Value("n").(float64) * 2, nil
@@ -29,7 +27,7 @@ func replicaOfN(t *testing.T) (*state.Batch, *replica, *state.Derive, *chord.Del
 	if err := double.Attach(func(declared any, _ int) (state.DeriveInput, error) { return declared.(*replica), nil }, func(error) {}); err != nil {
 		t.Fatal(err)
 	}
-	return batch, source, double, scheduler
+	return batch, source, double
 }
 
 func replicaCommit(t *testing.T, batch *state.Batch, adopt func()) {
@@ -51,12 +49,12 @@ func replicaWatch(t *testing.T, source interface {
 }
 
 func TestReplicasAdoptAValueAndItsOpsInsideABatchOneFrameDerivesRecomputed(t *testing.T) {
-	batch, source, double, scheduler := replicaOfN(t)
+	batch, source, double := replicaOfN(t)
 	frames := nexttest.FramesOf(replicaWatch(t, source))
 	doubles := nexttest.FramesOf(replicaWatch(t, double))
 	ops := []delta.Op{{"s", []any{"n"}, 2.0}}
 	replicaCommit(t, batch, func() { source.adopt(delta.JsonObjectOf("n", 2.0), ops, false) })
-	scheduler.Wait()
+	nexttest.Delivered()
 	got := frames.Items()
 	if len(got) != 1 {
 		t.Fatalf("frames = %d, want 1", len(got))
@@ -72,12 +70,12 @@ func TestReplicasAdoptAValueAndItsOpsInsideABatchOneFrameDerivesRecomputed(t *te
 }
 
 func TestReplicasFailReadsReturnTheErrorWatchesAndDerivesOverItGetOneFailureCallAndRecoverWithARootReplacement(t *testing.T) {
-	batch, source, double, scheduler := replicaOfN(t)
+	batch, source, double := replicaOfN(t)
 	calls := nexttest.ChangesOf(replicaWatch(t, source))
 	derived := nexttest.ChangesOf(replicaWatch(t, double))
 	failure := errors.New("member failed")
 	replicaCommit(t, batch, func() { source.fail(failure) })
-	scheduler.Wait()
+	nexttest.Delivered()
 	for name, got := range map[string][]chord.WatchCall[delta.JsonValue]{"source": calls.Items(), "derive": derived.Items()} {
 		if len(got) != 1 || got[0].Kind != chord.WatchCallFailed || !errors.Is(got[0].Error, failure) {
 			t.Fatalf("%s calls = %+v, want one failure with the error", name, got)
@@ -95,7 +93,7 @@ func TestReplicasFailReadsReturnTheErrorWatchesAndDerivesOverItGetOneFailureCall
 		t.Fatal(err)
 	}
 	replicaCommit(t, batch, func() { source.adopt(value, ops, false) })
-	scheduler.Wait()
+	nexttest.Delivered()
 	last := calls.Items()[calls.Len()-1]
 	if last.Kind != chord.WatchCallValue || last.Retired {
 		t.Fatalf("last source call = %+v, want a value call, not retired", last)
@@ -111,12 +109,12 @@ func TestReplicasFailReadsReturnTheErrorWatchesAndDerivesOverItGetOneFailureCall
 }
 
 func TestReplicasFailOncePerEpisodeASecondFailureWhileFailedGivesNoCallARetirementMeanwhileWaitsForTheValue(t *testing.T) {
-	batch, source, _, scheduler := replicaOfN(t)
+	batch, source, _ := replicaOfN(t)
 	calls := nexttest.ChangesOf(replicaWatch(t, source))
 	first := errors.New("first")
 	replicaCommit(t, batch, func() { source.fail(first) })
 	replicaCommit(t, batch, func() { source.fail(errors.New("second")) })
-	scheduler.Wait()
+	nexttest.Delivered()
 	// A retirement alone while failed: the value is not read, the flag waits.
 	replicaCommit(t, batch, func() { source.retireAlone() })
 	value, ops, err := source.decode([]any{[]any{"r", delta.JsonObjectOf("n", 5.0)}})
@@ -124,7 +122,7 @@ func TestReplicasFailOncePerEpisodeASecondFailureWhileFailedGivesNoCallARetireme
 		t.Fatal(err)
 	}
 	replicaCommit(t, batch, func() { source.adopt(value, ops, false) })
-	scheduler.Wait()
+	nexttest.Delivered()
 	got := calls.Items()
 	if len(got) != 2 {
 		t.Fatalf("calls = %+v, want a failure and a value", got)
@@ -140,13 +138,13 @@ func TestReplicasFailOncePerEpisodeASecondFailureWhileFailedGivesNoCallARetireme
 }
 
 func TestReplicasOpenANewWatchWhileFailedAtTheLastValueTheFailureFirstWithNoValueYetRejectIt(t *testing.T) {
-	batch, source, _, scheduler := replicaOfN(t)
+	batch, source, _ := replicaOfN(t)
 	failure := errors.New("member failed")
 	replicaCommit(t, batch, func() { source.fail(failure) })
 	watch := replicaWatch(t, source)
 	nexttest.RequireJSONEqual(t, watch.Value(), delta.JsonObjectOf("n", 1.0))
 	calls := nexttest.ChangesOf(watch)
-	scheduler.Wait()
+	nexttest.Delivered()
 	got := calls.Items()
 	if len(got) != 1 || got[0].Kind != chord.WatchCallFailed || !errors.Is(got[0].Error, failure) {
 		t.Fatalf("calls = %+v, want one failure", got)
@@ -159,7 +157,7 @@ func TestReplicasOpenANewWatchWhileFailedAtTheLastValueTheFailureFirstWithNoValu
 }
 
 func TestReplicasEndWithTheirHoldReadsReturnItsErrorWatchesEnd(t *testing.T) {
-	_, source, _, _ := replicaOfN(t)
+	_, source, _ := replicaOfN(t)
 	watch := replicaWatch(t, source)
 	ended := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Message: "app.notes: ended"}, nil)
 	source.end(ended)

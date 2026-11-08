@@ -212,7 +212,7 @@ func (h *hold) start(request holdRequest) {
 	host := hl.host
 	if !host.published() {
 		h.state = holdState{kind: holdUnplaced, request: owned(request)}
-		host.index(request.Type, h, nil)
+		host.index(request.Type, h)
 		return
 	}
 	var served Serving
@@ -752,7 +752,7 @@ func (h *hold) touch() {
 func (h *hold) refuse(request holdRequest, cause data.FailureCause) {
 	h.state = holdState{kind: holdRefused, request: owned(request), cause: cause}
 	if cause.Kind == data.FailureWaiting {
-		h.provider.link.host.index(request.Type, h, &cause)
+		h.provider.link.host.index(request.Type, h)
 	}
 	h.provider.send(&link.FailedMessage{
 		Hold:  h.id,
