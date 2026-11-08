@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 )
 
 // A built-in catalog row's Record is a three-byte reference (NUL, then the row index in two bytes, big endian), not the 600 bytes of JSON it stands for: the records of all 1,629 rows were 0.9 MB of the binary and compress to 55 KB. cmd/gen-models writes them to catalog_records/NN.gz, one gzip stream per catalogRecordChunk rows, one record per line. ResolveCatalogRecord returns the JSON and expands a chunk on its first use, so a start that reads no record expands none and a start that reads one expands 64.
@@ -64,7 +65,8 @@ func ResolveCatalogRecord(record string) string {
 		if err != nil {
 			panic("ai: " + name + ": " + err.Error())
 		}
-		chunk.lines = strings.Split(string(raw), "\n")
+		// raw is never written again, so the lines may alias it: a copy of each 38 KB chunk would double what a start that reads every record allocates.
+		chunk.lines = strings.Split(unsafe.String(unsafe.SliceData(raw), len(raw)), "\n") //nolint:gosec // G103: raw is the chunk's own buffer, read-only from here on and kept alive by the strings cut from it.
 		expandedCatalogChunks.Add(1)
 	})
 	base := chunk.lines[row%catalogRecordChunk]
