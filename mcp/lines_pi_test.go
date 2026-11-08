@@ -116,3 +116,20 @@ func TestLineReaderDropsAnOversizedLineThatArrivesInOneChunk(t *testing.T) {
 		t.Fatalf("messages = %q", got)
 	}
 }
+
+// An oversized message does not pin its buffer: once it is consumed the splitter keeps at most splitterKeepBytes while idle.
+func TestLineReaderReleasesTheBufferOfAnOversizedMessage(t *testing.T) {
+	reader, recorded := startLineReader(1 << 20)
+	reader.readStdout([]byte(strings.Repeat("a", 4*splitterKeepBytes) + "\n"))
+	if cap(reader.splitter.buf) <= splitterKeepBytes {
+		t.Fatalf("the test message did not outgrow the keep limit: cap %d", cap(reader.splitter.buf))
+	}
+	next := `{"jsonrpc":"2.0","id":2,"result":{}}`
+	reader.readStdout([]byte(next + "\n"))
+	if got := cap(reader.splitter.buf); got > splitterKeepBytes {
+		t.Fatalf("the splitter keeps %d bytes while idle, limit %d", got, splitterKeepBytes)
+	}
+	if got := messageJSON(recorded); !reflect.DeepEqual(got, []string{next}) {
+		t.Fatalf("messages = %q", got)
+	}
+}
