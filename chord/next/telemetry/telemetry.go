@@ -15,6 +15,8 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -76,6 +78,12 @@ func NewOpenSpan(parent pitelemetry.TelemetryContext, name string, attributes pi
 	open := &OpenSpan{span: pitelemetry.NoopTelemetryContext, done: make(chan struct{})}
 	if Untraced(parent) {
 		return open
+	}
+	// A link names the work itself: an extracted parent wrapped as a span (AsSpan) is the parent.
+	for index := range links {
+		if wrapped, ok := links[index].Context.(parentSpan); ok {
+			links[index].Context = wrapped.TelemetryContext
+		}
 	}
 	started := make(chan struct{})
 	go func() {
@@ -142,6 +150,9 @@ func (open *OpenSpan) EndWith(err error, category string, ctx context.Context) {
 
 // Capped returns text as a span attribute: its first 256 characters (UTF-16 units, as upstream's slice).
 func Capped(text string) string { return truncate(text, attributeLength) }
+
+// Message returns text as a span event's message: its first MaxMessage characters (Pi's MAX_MESSAGE).
+func Message(text string) string { return truncate(text, MaxMessage) }
 
 // HostAttribute is the `chord.host` attribute of the spans of a host at address: its key, `client` without one; capped.
 func HostAttribute(address *contracts.Address) string {
@@ -221,29 +232,47 @@ func ParentOf(carrier pitelemetry.TelemetryCarrier, adapter pitelemetry.Telemetr
 	return parent
 }
 
+// parentSpan is a parent context (a carrier's, extracted by an adapter) as the span a ctx carries: it starts children and
+// propagates as it does; setting attributes, links or events on it, which Pi's context (a TelemetryContext without those
+// members) cannot, does nothing.
+type parentSpan struct{ pitelemetry.TelemetryContext }
+
+func (parentSpan) AddLink(pitelemetry.SpanLink)                {}
+func (parentSpan) AddEvent(string, pitelemetry.SpanAttributes) {}
+func (parentSpan) SetAttributes(pitelemetry.SpanAttributes)    {}
+func (parentSpan) SetStatus(pitelemetry.SpanStatus)            {}
+
+// AsSpan is parent as the span a ctx carries (`chordctx.WithTelemetry`). parent is traced: not the no-op context.
+func AsSpan(parent pitelemetry.TelemetryContext) pitelemetry.TelemetrySpan {
+	return parentSpan{parent}
+}
+
 // Instruments are Chord's instruments on one adapter's metrics, each made once per name.
 type Instruments struct {
 	typed *pitelemetry.TypedTelemetryMetrics
 	mu    sync.Mutex
-	made  map[string]any
+	made  map[instrumentKey]any
+}
+
+// instrumentKey names one made instrument: its kind (`c`, `u` or `h`) and name.
+type instrumentKey struct {
+	kind byte
+	name string
 }
 
 // noopInstruments is shared: no adapter, nothing made per use.
-var noopInstruments = &Instruments{typed: pitelemetry.CreateTypedMetrics(pitelemetry.NoopTelemetryMetrics, Schema)}
+var noopInstruments = &Instruments{}
 
 // Metrics is Chord's instruments on metrics (an adapter's, or nil: no-op).
 func Metrics(metrics pitelemetry.TelemetryMetrics) *Instruments {
 	if metrics == nil || metrics == pitelemetry.NoopTelemetryMetrics {
 		return noopInstruments
 	}
-	return &Instruments{typed: pitelemetry.CreateTypedMetrics(metrics, Schema), made: map[string]any{}}
+	return &Instruments{typed: pitelemetry.CreateTypedMetrics(metrics, Schema), made: map[instrumentKey]any{}}
 }
 
-func once[T any](instruments *Instruments, kind, name string, make func() T) T {
-	if instruments.made == nil {
-		return make()
-	}
-	key := kind + name
+func once[T any](instruments *Instruments, kind byte, name string, make func() T) T {
+	key := instrumentKey{kind, name}
 	instruments.mu.Lock()
 	defer instruments.mu.Unlock()
 	if instrument, ok := instruments.made[key]; ok {
@@ -254,17 +283,54 @@ func once[T any](instruments *Instruments, kind, name string, make func() T) T {
 	return instrument
 }
 
+// noop is whether these are the shared no-op instruments: they are the adapter's own no-op ones, with no metadata of the
+// schema to hand them (a call that records nothing allocates nothing for it).
+func (instruments *Instruments) noop() bool { return instruments.made == nil }
+
 // Counter is the counter name.
 func (instruments *Instruments) Counter(name string) pitelemetry.TelemetryCounter {
-	return once(instruments, "c", name, func() pitelemetry.TelemetryCounter { return instruments.typed.Counter(name) })
+	if instruments.noop() {
+		return pitelemetry.NoopTelemetryMetrics.Counter(name, pitelemetry.InstrumentOptions{})
+	}
+	return once(instruments, 'c', name, func() pitelemetry.TelemetryCounter { return instruments.typed.Counter(name) })
 }
 
 // UpDownCounter is the up/down counter name.
 func (instruments *Instruments) UpDownCounter(name string) pitelemetry.TelemetryUpDownCounter {
-	return once(instruments, "u", name, func() pitelemetry.TelemetryUpDownCounter { return instruments.typed.UpDownCounter(name) })
+	if instruments.noop() {
+		return pitelemetry.NoopTelemetryMetrics.UpDownCounter(name, pitelemetry.InstrumentOptions{})
+	}
+	return once(instruments, 'u', name, func() pitelemetry.TelemetryUpDownCounter { return instruments.typed.UpDownCounter(name) })
 }
 
 // Histogram is the histogram name.
 func (instruments *Instruments) Histogram(name string) pitelemetry.TelemetryHistogram {
-	return once(instruments, "h", name, func() pitelemetry.TelemetryHistogram { return instruments.typed.Histogram(name) })
+	if instruments.noop() {
+		return pitelemetry.NoopTelemetryMetrics.Histogram(name, pitelemetry.HistogramOptions{})
+	}
+	return once(instruments, 'h', name, func() pitelemetry.TelemetryHistogram { return instruments.typed.Histogram(name) })
+}
+
+// CarrierKeys are the keys of carrier in order: order when it is exactly its keys (the insertion order a carrier came with:
+// Pi's object keeps it, a Go map has none), otherwise sorted.
+func CarrierKeys(carrier map[string]string, order []string) []string {
+	if len(order) == len(carrier) {
+		seen := make(map[string]struct{}, len(order))
+		exact := true
+		for _, key := range order {
+			if _, ok := carrier[key]; !ok {
+				exact = false
+				break
+			}
+			if _, dup := seen[key]; dup {
+				exact = false
+				break
+			}
+			seen[key] = struct{}{}
+		}
+		if exact {
+			return order
+		}
+	}
+	return slices.Sorted(maps.Keys(carrier))
 }

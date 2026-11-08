@@ -123,3 +123,65 @@ func FuzzFrameReader(f *testing.F) {
 		}
 	})
 }
+
+// The header's fields are checked one by one, as Pi's `Number.isSafeInteger`, `typeof ... === "string"` and `String(value)` do:
+// what is no JSON number is no integer, a number that is not an integer or is beyond 2^53 - 1 is refused for a socket or a request
+// id, and an exit code that is none is 1. A header that is no JSON object is malformed.
+func TestReadingTheSandboxsHeaderChecksEachFieldAsPiDoes(t *testing.T) {
+	accepted := func(header string) (SandboxMessage, error) {
+		messages, err := NewFrameReader().Push(sandboxFrame(t, json.RawMessage(header), []byte("body")))
+		if err != nil {
+			return SandboxMessage{}, err
+		}
+		if len(messages) != 1 {
+			t.Fatalf("header %s: %d messages", header, len(messages))
+		}
+		return messages[0], nil
+	}
+	for _, header := range []string{
+		`[]`, `"write"`, `7`, `null`, `{"kind":7}`, `{"kind":null}`, `{}`,
+		`{"kind":"socket_open","socket":1.5}`, `{"kind":"socket_open","socket":"1"}`, `{"kind":"socket_open","socket":null}`,
+		`{"kind":"socket_open","socket":true}`, `{"kind":"socket_open","socket":[1]}`, `{"kind":"socket_open"}`,
+		`{"kind":"socket_close","socket":9007199254740992}`, `{"kind":"socket_close","socket":1e999}`,
+		`{"kind":"socket_send","socket":-1.0e400}`,
+		`{"kind":"request","id":1.5,"request":{"kind":"base"}}`, `{"kind":"request","id":1}`, `{"kind":"request","id":1,"request":null}`,
+		`{"kind":"request","id":1,"request":[]}`, `{"kind":"request","id":1,"request":"base"}`, `{"kind":"request","id":1,"request":{"kind":7}}`,
+		`{"kind":"request","id":1,"request":{"kind":"fetch","path":null}}`, `{"kind":"request","id":1,"request":{"kind":"open","url":["x"]}}`,
+		`{"kind":"request","id":"1","request":{"kind":"base"}}`,
+	} {
+		if _, err := accepted(header); !errors.Is(err, ErrMalformedMessage) {
+			t.Fatalf("header %s: error = %v, want a malformed message", header, err)
+		}
+	}
+	for header, want := range map[string]SandboxMessage{
+		`{"kind":"socket_open","socket":9007199254740991}`:                     {Kind: "socket_open", Socket: 9007199254740991},
+		`{"kind":"socket_close","socket":-3}`:                                  {Kind: "socket_close", Socket: -3},
+		`{"kind":"socket_open","socket":2.0}`:                                  {Kind: "socket_open", Socket: 2},
+		`{"kind":"socket_open","socket":2e0,"extra":1e999}`:                    {Kind: "socket_open", Socket: 2},
+		`{"kind":"socket_send","socket":4}`:                                    {Kind: "socket_send", Socket: 4, Bytes: []byte("body")},
+		`{"kind":"request","id":6,"request":{"kind":"base"}}`:                  {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "base"}},
+		`{"kind":"request","id":6,"request":{"kind":"fetch","path":"/p"}}`:     {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "fetch", Path: "/p"}},
+		`{"kind":"request","id":6,"request":{"kind":"attach","path":"/a"}}`:    {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "attach", Path: "/a"}},
+		`{"kind":"request","id":6,"request":{"kind":"copy","text":"t\u00e9"}}`: {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "copy", Text: "té"}},
+		`{"kind":"request","id":6,"request":{"kind":"open","url":"u"}}`:        {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "open", URL: "u"}},
+		`{"kind":"outdated"}`:                                                  {Kind: "outdated"},
+		`{"kind":"exit","code":3}`:                                             {Kind: "exit", Code: 3},
+		`{"kind":"exit","code":3.5}`:                                           {Kind: "exit", Code: 1},
+		`{"kind":"exit","code":"3"}`:                                           {Kind: "exit", Code: 1},
+		`{"kind":"exit"}`:                                                      {Kind: "exit", Code: 1},
+		`{"kind":"failed","message":"boom"}`:                                   {Kind: "failed", Message: "boom"},
+		`{"kind":"failed"}`:                                                    {Kind: "failed", Message: "undefined"},
+		`{"kind":"failed","message":null}`:                                     {Kind: "failed", Message: "undefined"},
+		`{"kind":"failed","message":5}`:                                        {Kind: "failed", Message: "5"},
+		`{"kind":"failed","message":true}`:                                     {Kind: "failed", Message: "true"},
+		`{"kind":"write"}`:                                                     {Kind: "write", Data: "body"},
+	} {
+		got, err := accepted(header)
+		if err != nil {
+			t.Fatalf("header %s: %v", header, err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("header %s: message = %+v, want %+v", header, got, want)
+		}
+	}
+}

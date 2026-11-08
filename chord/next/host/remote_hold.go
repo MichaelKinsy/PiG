@@ -35,6 +35,10 @@ type holdRequest struct {
 	Address     link.WireAddress
 	Chain       []string
 	Limit       link.Optional[int]
+	// Trace is the carrier of the caller's span (absent: none).
+	Trace map[string]string
+	// TraceOrder is the order of Trace's keys as it arrived (a relay sends the carrier on as it came).
+	TraceOrder []string
 }
 
 // holdFollowed is a state member a bound hold follows: its index in the bound version, its source and subscription (which
@@ -146,6 +150,7 @@ var (
 func newHold(id int, provider *providerSide, from caller, limits link.Limits) *hold {
 	h := &hold{id: id, provider: provider, from: from, limits: limits, state: holdState{kind: holdPending}, counted: true}
 	provider.link.host.count("references", 1)
+	provider.link.host.metrics.UpDownCounter("chord.holds.active").Add(1, nil)
 	return h
 }
 
@@ -426,13 +431,13 @@ func (h *hold) restart(request holdRequest) {
 
 // call calls a method of the held object as the hold's caller, started inside the section that dispatches the call (in
 // message order, as Pi's synchronous start of the handler); the result settles in a later section.
-func (h *hold) call(method string, args any, ctx context.Context) *parkedCallResult {
+func (h *hold) call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan) *parkedCallResult {
 	if h.object == nil {
 		result := newParkedCallResult()
 		result.settle(nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Message: "hold released"}, nil))
 		return result
 	}
-	return h.object.call(method, args, ctx, h.from, h.contract().version)
+	return h.object.call(method, args, ctx, parent, h.from, h.contract().version)
 }
 
 // method is the method at index of the bound variant and whether its result carries byte segments (its schema has a
@@ -599,6 +604,7 @@ func (h *hold) drop() {
 	h.state = holdState{kind: holdReleased}
 	if h.counted {
 		host.count("references", -1)
+		host.metrics.UpDownCounter("chord.holds.active").Add(-1, nil)
 	}
 	h.counted = false
 }

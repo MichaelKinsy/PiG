@@ -338,8 +338,7 @@ func TestAPagesPluginStylesheetsReportAStylesheetThatFailsApplyTheNewCodeAndLoad
 	s.hold("@test~e.", holding{kind: "fail"})
 	edit(t, app, "e", partPlugin("part-e", "v2", ".e { color: rgb(2, 2, 2); }"))
 	s.browser.Wait(`document.getElementById("part-e").textContent === "v2"`)
-	var failed [][]string
-	evaluateJSON(t, s.browser, `globalThis.errors.filter((error) => error.kind === "stylesheet_failed").map(({ plugin, reason }) => [plugin, reason])`, &failed)
+	failed := browserStringTable(t, s.browser, `globalThis.errors.filter((error) => error.kind === "stylesheet_failed").map(({ plugin, reason }) => [plugin, reason])`)
 	if !reflect.DeepEqual(failed, [][]string{{"@test/e", "error"}}) {
 		t.Fatalf("stylesheet failures = %v", failed)
 	}
@@ -376,8 +375,7 @@ func TestAPagesPluginStylesheetsApplyAStylesheetThatLoadsAfterItsTenSecondsWitho
 	s.hold("@test~g.", holding{kind: "delay", delay: 12 * time.Second})
 	edit(t, app, "g", partPlugin("part-g", "v2", ".g { color: rgb(5, 5, 5); }"))
 	s.browser.Wait(`document.getElementById("part-g").textContent === "v2"`, 30*time.Second)
-	var reasons []string
-	evaluateJSON(t, s.browser, `globalThis.errors.filter((error) => error.kind === "stylesheet_failed").map(({ reason }) => reason)`, &reasons)
+	reasons := browserStrings(t, s.browser, `globalThis.errors.filter((error) => error.kind === "stylesheet_failed").map(({ reason }) => reason)`)
 	if !reflect.DeepEqual(reasons, []string{"timeout"}) {
 		t.Fatalf("stylesheet failures = %q, want [timeout]", reasons)
 	}
@@ -457,15 +455,5 @@ func TestAPagesPluginStylesheetsShowUIAnObjectContributesUnstyledWhileThatObject
 	frames := s.framesUntil("v2 rgb(4, 5, 6)")
 	if !contains(frames, "v1 rgb(0, 0, 0)") {
 		t.Fatalf("frames = %q, want one with the old part unstyled (the known limitation)", distinct(frames))
-	}
-}
-
-// evaluateJSON is expression's value in the page, decoded into out.
-func evaluateJSON(t testing.TB, b *browsertest.Browser, expression string, out any) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	if err := b.Evaluate(ctx, expression, out); err != nil {
-		t.Fatal(err)
 	}
 }

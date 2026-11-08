@@ -257,6 +257,7 @@ func txObject(t *testing.T, label string, options objectOptions, meter *nexttest
 	}
 	if meter != nil {
 		o.batch = state.NewBatch(report, meter.Telemetry.Metrics())
+		o.telemetry = meter.Telemetry
 	} else {
 		o.batch = state.NewBatch(report, nil)
 	}

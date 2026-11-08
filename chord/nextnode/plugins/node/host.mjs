@@ -53,6 +53,8 @@ const [chordNext, { ipcLink }, { createPluginRuntime, PluginError }, { mapStack 
 		pi("data/internal.ts"),
 	]);
 const { createHost, isChordError } = chordNext;
+// host.ts's `Destination` (resolve.mjs): already loaded by the import of the host above.
+const { setParentServes, forgetParentServes } = await import("./destination.mjs");
 
 const KIND_LINK = 0;
 const KIND_CONTROL = 1;
@@ -201,8 +203,10 @@ async function load(request, context) {
 	const modules = { "@earendil-works/chord": chordNext };
 	for (const [specifier, file] of Object.entries(request.modules)) modules[specifier] = await import(pathToFileURL(file).href);
 	for (const pkg of request.goPackages) modules[pkg.specifier] = await importGoPackage(pkg);
-	// principalKey and revokedBy are synchronous in the host: they call the Go side on a connection of their own.
+	// principalKey, revokedBy and parentServes are synchronous in the host: they call the Go side on a connection of their own.
 	if (request.syncToken !== undefined) await callbacks.startSync(process.argv[2], request.syncToken);
+	// The remote types the Go host serves go over the link to it (destination.mjs).
+	setParentServes(request.parentServes === true ? (name) => callbacks.callSync("parentServes", name) : undefined);
 	const telemetry = request.telemetry === undefined ? undefined : createTelemetry({ emit: (event) => port.control({ event: "telemetry", ...event }), ...request.telemetry });
 	// The proxies of the Go host's own facets import it (bridge.mjs).
 	modules[GO_PACKAGE] = bridge.hostPackage;
@@ -218,6 +222,7 @@ async function load(request, context) {
 		...(request.heartbeat === undefined ? {} : { heartbeat: request.heartbeat }),
 		...(request.closeTimeout === undefined ? {} : { closeTimeout: request.closeTimeout }),
 		...(request.readyTimeout === undefined ? {} : { readyTimeout: request.readyTimeout }),
+		...(request.reloadDrainTimeout === undefined ? {} : { reloadDrainTimeout: request.reloadDrainTimeout }),
 		...(request.compression === true ? { compression: nodeCompression } : {}),
 		...(telemetry === undefined ? {} : { telemetry }),
 		...(request.principalKey === true
@@ -275,6 +280,7 @@ function hostError(error) {
 async function reload(request, context) {
 	if (hosted === undefined) throw new Error("reload: no host is loaded");
 	hosted.scripts = request.scripts;
+	forgetParentServes();
 	const report = await hosted.runtime.reload(hosted.host, request.scripts, context);
 	return {
 		plugins: report.plugins,

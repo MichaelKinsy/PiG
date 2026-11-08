@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 )
 
 // Ports packages/chord/src/next/jobs/records.ts
@@ -554,11 +555,8 @@ func (records *jobRecords) stage(tx *documents.Transaction, args any, ctx contex
 		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Reason: data.ReasonBusy, Message: message}, nil)
 	}
 	persisted := records.persisted != nil
-	var trace map[string]string
-	if persisted {
-		span := chordctx.Telemetry(ctx)
-		trace = span.Propagation().Inject(span)
-	}
+	// Its starter's carrier: its later phases are children of it (a persisted run stores it, for a later process).
+	trace := chordtelemetry.CarrierOf(chordctx.Telemetry(ctx))
 	phase := phaseRunning
 	if persisted {
 		phase = phasePending
@@ -1020,6 +1018,7 @@ func (records *jobRecords) restored(loaded loadedRecord, ctx context.Context) (r
 	id, record := loaded.id, loaded.record
 	definition := records.definition
 	run := newJobRun(records.loop, id, record.Version, record.Fingerprint, record.Key, record.Args, record.Phase, record.Trace)
+	run.traceOrder = record.TraceOrder
 	run.restarts = record.Restarts
 	run.finishFailures = record.FinishFailures
 	run.abortMarked = record.Abort

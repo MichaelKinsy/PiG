@@ -1,0 +1,9 @@
+// The tasks' contract.
+import { arr, hostKind, int, method, remote, str } from "@test/app/v1";
+const Project = hostKind("project", { id: str() });
+export const Tasks = remote("reload.tasks", {
+	version: 1,
+	params: { id: str() },
+	hostAddress: ({ id }) => Project({ id }),
+	variants: { main: { state: { entries: arr(str()), running: int() }, methods: { start: method(str(), str()) } } },
+});
