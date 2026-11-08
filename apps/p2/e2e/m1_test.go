@@ -311,7 +311,8 @@ func TestM1WorkingChat(t *testing.T) {
 			if err != nil {
 				t.Fatalf("reload %d: %v", round, err)
 			}
-			if !slices.Contains(result.Server.Plugins.Changed, "chat") || len(result.Server.Failed) != 0 {
+			// chat is a worker-only plugin: the server host has nothing of it to renew.
+			if len(result.Server.Plugins.Changed) != 0 || len(result.Server.Failed) != 0 {
 				t.Fatalf("reload %d: the server's report = %+v", round, result.Server)
 			}
 			if len(result.Workers) != 1 || result.Workers[0].Kind != plugins.RolloutReported || !slices.Contains(result.Workers[0].Report.Plugins.Changed, "chat") || len(result.Workers[0].Report.Failed) != 0 {
