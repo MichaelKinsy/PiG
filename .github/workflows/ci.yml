@@ -609,6 +609,14 @@ jobs:
           set -euo pipefail
           node --version
           automation/ci/with-isolated-pig-home.sh make ci-node-runtime
+      - name: Test the terminal surface on current Node (its sandbox needs 26.5.1 or later)
+        if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
+        env:
+          CI: '1'
+        run: |
+          set -euo pipefail
+          node --version
+          automation/ci/with-isolated-pig-home.sh make ci-chord-tui
   node-loader:
     name: Node loader / ${{ matrix.os }}
     needs: [changes, preflight]
