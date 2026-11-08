@@ -134,7 +134,12 @@ func serveModelConfig(_ *delta.JsonObject, self host.Self) (contracts.Implementa
 	state := p2runtime.FollowNative(self,
 		func(changed func()) func() { return resourcesNative(opened).Subscribe(changed) },
 		func() (delta.JsonValue, error) {
-			state, err := StateOf(resourcesNative(opened), fake)
+			// A change published as the object closes finds the native closed: an error, not a panic (the source fails).
+			value, err := opened.Value()
+			if err != nil {
+				return nil, err
+			}
+			state, err := StateOf(value.(*Resources), fake)
 			if err != nil {
 				return nil, err
 			}

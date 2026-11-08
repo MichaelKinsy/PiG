@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -44,6 +46,9 @@ type HostOptions struct {
 	PrincipalKey *data.PrincipalKeyFunction
 	// Telemetry is the telemetry adapter; none is the no-op one.
 	Telemetry telemetry.TelemetryContext
+	// PrincipalAttributes are the span attributes recorded for a principal: synchronous and cheap; caching, if any, is
+	// the hook's own. Without it a span records `chord.principal`, the principal's key. The same function on every host.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// OnError is everything that fails in the background; every app handles it.
 	OnError func(err HostError)
 	// CloseTimeout is how long a native's close, and an ending object's running calls, are waited for; 30 s by default.
@@ -162,6 +167,9 @@ type CommittedReload struct {
 
 // Host is a host.
 type Host interface {
+	// Incarnation is this run of the host, sent in every handshake (R20): a link's peer sees it as its calls'
+	// `ctx.Incarnation()` (Pi's `readonly incarnation`).
+	Incarnation() string
 	// Load runs every facet's setup and publishes what they declared in one batch (the types and registries served, the
 	// registries composed once, the contributions); requests that waited for the publication are placed after that batch.
 	// Then activates every served type with empty params and returns when each has had its first outcome (the start
@@ -210,6 +218,19 @@ type Host interface {
 	// ctx is the parent of the route's work, aborted for it when this host closes. It returns the RouteHandle: the app's
 	// controls of the route's addresses.
 	Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error)
+	// Delegate is the route of this host's own address kind (kind must be it; called before `Load`, once): the remote types
+	// placed on this host that it does not serve itself go over it, as a route's holds do (Authorize admits them, Resolve makes
+	// the link, which is re-resolved once after a drop; a rejected Resolve fails its holders `failed { waiting }`), so the host
+	// serves the union of its own types and those the delegate serves, as one host. What this host serves stays here: the
+	// decision is taken at placement by the published table, not by an object's liveness, so a restarting or parked type never
+	// moves to the delegate. A hold the delegate's own link asks for and no host serves is not sent back to it
+	// (`unavailable`, not served here). pig divergence (D605): Pi's server runs its plugins in its own host; the Go kit's plugins
+	// run in a Node subprocess behind this host.
+	Delegate(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error)
+	// Serves is whether this host serves a type under name (its published table, by which Delegate decides: a restarting or
+	// parked type is still served). The delegate's host asks it to hand this host the types placed on its own address that
+	// it does not serve itself (D605: the delegation goes both ways, as Pi's one host serves the union).
+	Serves(name string) bool
 	// Revoke revokes revocation (§4, R10, R11), synchronously: every remote object whose principal it revokes (`RevokedBy`)
 	// ends at once, whatever references remain (holders get `forbidden`, running calls are aborted, an activation is
 	// abandoned); every child link whose principal it revokes closes (never the parent, never this host's own principal);
@@ -227,6 +248,8 @@ type Host interface {
 	// the host's publication, then while it has no value (`unavailable/undeclared` without a provider, a first `compose`
 	// that failed, a version not served here: `contract_mismatch`) until its `ReadyTimeout`, then returns the last error.
 	Registry(ctx context.Context, r registries.Registry[any, any], options GetOptions) (*registries.RegistryValueSource, error)
+	// Address is this host's address (Pi's `host.address`); nil for a client.
+	Address() *contracts.Address
 	// Root runs fn with a call context for code outside objects (a Durable tool, a CLI): the host's principal (or
 	// options.Principal), this host's incarnation, ctx's telemetry and signal, `ctx.Get`. When fn settles or ctx aborts, the
 	// context is sealed: its signal aborted, `ctx.Get` refused `released`, every reference it took released; an abort returns
@@ -363,6 +386,16 @@ type chordHost struct {
 	backoff      *backoff
 	address      *contracts.Address
 	principal    data.Principal
+	// telemetry is the telemetry adapter (root spans start on it, carriers from links are extracted with it), spanHost
+	// the `chord.host` attribute of this host's spans, principalHook the options' PrincipalAttributes.
+	telemetry telemetry.TelemetryContext
+	// metrics are Chord's instruments on the adapter's metrics: the host's own counts (links, holds, calls, commits).
+	metrics  *chordtelemetry.Instruments
+	spanHost string
+	// counting is the telemetry of this host's work under a context without a span (counted); nil without an adapter that
+	// records.
+	counting      telemetry.TelemetrySpan
+	principalHook func(principal data.Principal) telemetry.SpanAttributes
 	// incarnation is this run of the host, sent in every handshake (R20).
 	incarnation string
 	compression link.Compression
@@ -393,6 +426,8 @@ type chordHost struct {
 	endings map[string]*keyedPromise[struct{}]
 	// unbound are the requests that cannot bind yet, by name: before the publication all of them, then those left unbound.
 	unbound *unboundIndex
+	// clock reports the requests waiting unbound after the publication (in the index, and registry readers) after 5 s.
+	clock *unboundClock
 	// publication is closed at the host's first publication (`load`'s batch), or its close.
 	publication   chan struct{}
 	publishedOnce bool
@@ -425,37 +460,52 @@ type chordHost struct {
 var _ Host = (*chordHost)(nil)
 
 func createHost(options HostOptions) (*chordHost, error) {
+	var adapter telemetry.TelemetryContext = telemetry.NoopTelemetryContext
+	// A nil pointer in the interface (an unset adapter field) is none.
+	if value := reflect.ValueOf(options.Telemetry); options.Telemetry != nil && (value.Kind() != reflect.Pointer || !value.IsNil()) {
+		adapter = options.Telemetry
+	}
 	events := options.loop
 	if events == nil {
 		events = NewLoop()
 	}
 	h := &chordHost{
-		events:       events,
-		scheduler:    chord.NewDeliveryScheduler(),
-		address:      options.Address,
-		principal:    options.Principal,
-		principalKey: options.PrincipalKey,
-		onError:      options.OnError,
-		incarnation:  uuidv7(),
-		compression:  options.Compression,
-		refs:         map[string]*references{},
-		types:        newNamedMap[*served](),
-		plugins:      newNamedMap[*loadedPlugin](),
-		objects:      map[string]*chordObject{},
-		endings:      map[string]*keyedPromise[struct{}]{},
-		unbound:      newUnboundIndex(),
-		publication:  make(chan struct{}),
-		relays:       &relayMap{},
-		routes:       map[string]*route{},
-		registries:   map[string]*registries.RegistryRecord{},
-		nextOrigin:   1,
+		events:        events,
+		scheduler:     chord.NewDeliveryScheduler(),
+		address:       options.Address,
+		principal:     options.Principal,
+		principalKey:  options.PrincipalKey,
+		telemetry:     adapter,
+		spanHost:      chordtelemetry.HostAttribute(options.Address),
+		principalHook: options.PrincipalAttributes,
+		onError:       options.OnError,
+		incarnation:   uuidv7(),
+		compression:   options.Compression,
+		refs:          map[string]*references{},
+		types:         newNamedMap[*served](),
+		plugins:       newNamedMap[*loadedPlugin](),
+		objects:       map[string]*chordObject{},
+		endings:       map[string]*keyedPromise[struct{}]{},
+		publication:   make(chan struct{}),
+		relays:        &relayMap{},
+		routes:        map[string]*route{},
+		registries:    map[string]*registries.RegistryRecord{},
+		nextOrigin:    1,
 	}
 	var metrics telemetry.TelemetryMetrics
 	if options.Telemetry != nil {
 		metrics = options.Telemetry.Metrics()
 	}
+	h.clock = newUnboundClock(events, func(long unboundLong) {
+		h.report(HostError{Kind: ErrUnboundLong, WaitingFor: long.waitingFor, Error: long.err, Since: long.since})
+	})
+	h.unbound = newUnboundIndex(h.clock)
 	h.batch = state.NewBatch(func(err state.BatchError) { h.report(BatchHostError(err)) }, metrics).
-		UseScheduler(h.scheduler).UseMicrotasks(events.Queue).UseSection(events.Run)
+		UseScheduler(h.scheduler).UseMicrotasks(events.Queue).UseSection(events.Run, onLoopOf(events))
+	h.metrics = chordtelemetry.Metrics(metrics)
+	if !chordtelemetry.Untraced(adapter) && metrics != nil {
+		h.counting = chordtelemetry.CountingOnly(metrics)
+	}
 	h.activity = newActivity(events, h.batch)
 	h.backoff = newBackoff(events, h.due)
 	// `revokedBy` is called with this host's principals only, the ones its links stamp.
@@ -470,7 +520,7 @@ func createHost(options HostOptions) (*chordHost, error) {
 	h.routing, h.routingCancel = chordctx.WithCancel(chordctx.Background())
 	h.parent = newPath(func(pathEvent) {})
 	h.unplaced = newPath(func(pathEvent) {})
-	h.destination = newDestination(h.address, h.routes, h.parent)
+	h.destination = newDestination(h.address, h.routes, h.parent, func(name string) bool { return h.served(name) != nil })
 	h.roots = newRootScopes(h)
 	if options.Store != nil {
 		// Chord's own: `openStore` made it.
@@ -494,10 +544,13 @@ func durationOr(value *time.Duration, fallback time.Duration) time.Duration {
 	return *value
 }
 
-// onLoop reports whether the caller is running a section of the host's loop (false for a loop that cannot tell).
-func (h *chordHost) onLoop() bool {
-	loop, ok := h.events.(interface{ onLoop() bool })
-	return ok && loop.onLoop()
+// onLoopOf is how loop tells whether the caller runs one of its sections: nil for a loop that cannot tell (a test's
+// virtual-time loop).
+func onLoopOf(loop sectionLoop) func() bool {
+	if inside, ok := loop.(interface{ onLoop() bool }); ok {
+		return inside.onLoop
+	}
+	return nil
 }
 
 // loop is the host's event loop.
@@ -513,13 +566,26 @@ func (h *chordHost) enter(work func()) {
 	})
 }
 
-// Incarnation is this run of the host (R20).
+// Incarnation implements Host.
 func (h *chordHost) Incarnation() string { return h.incarnation }
 
 // Load implements Host.
-func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (LoadReport, error) {
+func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (_ LoadReport, loadErr error) {
 	var failure error
 	var report LoadReport
+	// Its `chord.load` span under the caller's, when something records: the setups, the publication and the start barrier.
+	var span *chordtelemetry.OpenSpan
+	defer func() {
+		if span == nil {
+			return
+		}
+		if loadErr != nil {
+			chordtelemetry.Ended(span.Span(), "load_failed", loadErr, ctx)
+		} else {
+			span.Span().SetAttributes(telemetry.SpanAttributes{telemetry.Attr("failed", float64(len(report.Failed)))})
+		}
+		span.End()
+	}()
 	var outcomes []*keyedPromise[struct{}]
 	h.enter(func() {
 		if failure = h.batch.AssertOutside("load"); failure != nil {
@@ -532,7 +598,17 @@ func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (LoadReport, e
 			failure = errors.New("load runs once per host")
 			return
 		}
+		if failure = checkPluginNames(facets); failure != nil {
+			return
+		}
 		h.state = hostLoading
+		if parent := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(parent) {
+			span = chordtelemetry.NewOpenSpan(parent, "chord.load", telemetry.SpanAttributes{
+				telemetry.Attr("chord.host", h.spanHost),
+				telemetry.Attr("plugins", float64(len(facets))),
+			})
+			ctx = chordctx.WithTelemetry(ctx, span.Span())
+		}
 		table := emptyStaged()
 		loaded := newNamedMap[Facet]()
 		// A name given twice is refused the second time whether or not the first staged.
@@ -572,6 +648,7 @@ func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (LoadReport, e
 		// After the batch: what waited for the publication is placed (the gate lasted only for the setups).
 		h.published_ = true
 		h.publish()
+		h.reportUndeclared()
 		h.unbound.wakeAll()
 		for _, name := range h.types.keys() {
 			entry, _ := h.types.get(name)
@@ -709,6 +786,17 @@ func (h *chordHost) Connect(l link.Link, options LinkOptions, ctx context.Contex
 
 // Route implements Host.
 func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error) {
+	return h.addRoute("route", kind, options, ctx, false)
+}
+
+// Delegate implements Host.
+func (h *chordHost) Delegate(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error) {
+	return h.addRoute("delegate", kind, options, ctx, true)
+}
+
+// addRoute is Route and Delegate: a delegate is the route of the host's own address kind, which its destination consults for the
+// types the host does not serve.
+func (h *chordHost) addRoute(what string, kind *contracts.HostKind, options RouteOptions, ctx context.Context, delegate bool) (RouteHandle, error) {
 	var err error
 	var handle RouteHandle
 	h.enter(func() {
@@ -716,11 +804,15 @@ func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx co
 			return
 		}
 		if h.state != hostNew {
-			err = errors.New("route: routes are declared before load")
+			err = fmt.Errorf("%s: routes are declared before load", what)
+			return
+		}
+		if delegate && (h.address == nil || h.address.Kind != kind.Kind) {
+			err = fmt.Errorf("delegate: %s is not this host's address kind", kind.Kind)
 			return
 		}
 		if _, ok := h.routes[kind.Kind]; ok {
-			err = fmt.Errorf("route: %s is routed already", kind.Kind)
+			err = fmt.Errorf("%s: %s is routed already", what, kind.Kind)
 			return
 		}
 		// The parent of the route's work: its `resolve`s and the holds and calls on its links, aborted when it closes
@@ -734,6 +826,9 @@ func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx co
 		}
 		h.routes[kind.Kind] = made
 		h.routeKinds = append(h.routeKinds, kind.Kind)
+		if delegate {
+			h.destination.delegating = true
+		}
 		handle = RouteHandle{
 			Retry: func(address contracts.Address) bool {
 				started := false
@@ -749,6 +844,7 @@ func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx co
 // Revoke implements Host.
 func (h *chordHost) Revoke(revocation delta.JsonValue, ctx context.Context) error {
 	var failure error
+	count := 0
 	h.enter(func() {
 		key := data.CanonicalJson(revocation, ctx)
 		revoked := func(principal data.Principal) bool {
@@ -768,6 +864,7 @@ func (h *chordHost) Revoke(revocation delta.JsonValue, ctx context.Context) erro
 		for _, object := range h.objectList() {
 			if object.principal != nil && revoked(object.principal) {
 				object.end(revokedError(object.label()))
+				count++
 			}
 		}
 		// Requests not bound (waiting for the publication or a provider, refused, waiting for their link) end too: nothing
@@ -798,9 +895,18 @@ func (h *chordHost) Revoke(revocation delta.JsonValue, ctx context.Context) erro
 		for _, each := range slices.Clone(h.links) {
 			if each.role == linkRoleChild && revoked(each.principal) {
 				each.close()
+				count++
 			}
 		}
 	})
+	// Recorded after the work: a revocation is synchronous, its span only says what it ended.
+	if failure == nil {
+		if parent := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(parent) {
+			revoke := chordtelemetry.NewOpenSpan(parent, "chord.revoke", telemetry.SpanAttributes{telemetry.Attr("chord.host", h.spanHost)})
+			revoke.Span().SetAttributes(telemetry.SpanAttributes{telemetry.Attr("count", float64(count))})
+			revoke.End()
+		}
+	}
 	return failure
 }
 
@@ -831,6 +937,9 @@ func (h *chordHost) References(typ *contracts.Contract) state.SourceHandle {
 	return found
 }
 
+// Address implements Host.
+func (h *chordHost) Address() *contracts.Address { return h.address }
+
 // Registry implements Host.
 func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any], options GetOptions) (*registries.RegistryValueSource, error) {
 	var (
@@ -846,6 +955,9 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 			return
 		}
 		if err = h.assertOpen(); err != nil {
+			return
+		}
+		if err = h.assertLoadCalled("registry " + r.Name); err != nil {
 			return
 		}
 		expired, expire := chordctx.WithCancel(chordctx.Background())
@@ -924,7 +1036,40 @@ func (h *chordHost) Root(fn func(ctx Ctx) (any, error), ctx context.Context, opt
 		principal = h.principal
 	}
 	// The scope's ctx acts as principal.
-	return h.roots.run(fn, principal, ctx)
+	trace := options.Trace
+	if trace == nil || chordtelemetry.Untraced(h.telemetry) {
+		return h.roots.run(fn, principal, h.counted(ctx))
+	}
+	// In a new root span of this host's adapter: a trace of its own.
+	attributes := make(telemetry.SpanAttributes, 0, len(trace.Attributes)+1)
+	attributes = append(attributes, telemetry.Attr("chord.host", h.spanHost))
+	attributes = append(attributes, trace.Attributes...)
+	var result any
+	err = h.telemetry.StartSpan(telemetry.SpanOptions{Name: trace.Name, Attributes: attributes}, func(span telemetry.TelemetrySpan) error {
+		value, runErr := h.roots.run(fn, principal, chordctx.WithTelemetry(ctx, span))
+		if runErr != nil {
+			chordtelemetry.Ended(span, "trace_failed", runErr, ctx)
+		}
+		result = value
+		return runErr
+	})
+	return result, err
+}
+
+// counted is ctx for work this host does under it (a link's, a root scope's): one without a span carries this host's
+// adapter's metrics (CountingOnly), so the cost counters of that work reach the adapter (review L6).
+func (h *chordHost) counted(ctx context.Context) context.Context {
+	if h.counting == nil || chordctx.Telemetry(ctx) != telemetry.TelemetrySpan(telemetry.NoopTelemetryContext) {
+		return ctx
+	}
+	return chordctx.WithTelemetry(ctx, h.counting)
+}
+
+// Serves implements Host.
+func (h *chordHost) Serves(name string) bool {
+	served := false
+	h.enter(func() { served = h.served(name) != nil })
+	return served
 }
 
 // UnservedNames are the names requests here wait for unbound that no plugin here serves (types and registries:
@@ -986,7 +1131,7 @@ func (h *chordHost) UndeclaredRegistries() []UndeclaredRegistry {
 func (h *chordHost) registryRecord(name string) *registries.RegistryRecord {
 	record := h.registries[name]
 	if record == nil {
-		record = registries.NewRegistryRecord(name, h.batch, func(err registries.RegistryError) { h.report(RegistryHostError(err)) })
+		record = registries.NewRegistryRecord(name, h.batch, func(err registries.RegistryError) { h.report(RegistryHostError(err)) }, h.clock)
 		h.registries[name] = record
 		h.registryOrder = append(h.registryOrder, name)
 	}
@@ -1010,6 +1155,15 @@ func (h *chordHost) Close(_ context.Context) error {
 	return closing.err
 }
 
+// reportUndeclared is, at each publication (`load`'s, a reload's commit), after its batch: every registry with
+// contributions and no provider here is reported `registry_undeclared`, naming its contributors; again only once they
+// change.
+func (h *chordHost) reportUndeclared() {
+	for _, name := range h.registryOrder {
+		h.registries[name].ReportUndeclared()
+	}
+}
+
 // published is whether the host published its setups (`load`'s batch): until then requests made here and holds arriving
 // wait in the unbound index, placed by the publication.
 func (h *chordHost) published() bool { return h.published_ }
@@ -1024,8 +1178,11 @@ func (h *chordHost) publish() {
 	close(h.publication)
 }
 
-// index: request cannot bind yet: indexed under name (the type or registry it waits for) until woken or ended.
-func (h *chordHost) index(name string, request unboundRequest) { h.unbound.add(name, request) }
+// index: request cannot bind yet: indexed under name (the type or registry it waits for) until woken or ended, waiting for
+// the publication (no cause) or for a provider that fits (cause).
+func (h *chordHost) index(name string, request unboundRequest, cause *data.FailureCause) {
+	h.unbound.add(name, request, cause)
+}
 
 // unindex: request left the unbound index's wait for name (it ended, or a retry checks it again).
 func (h *chordHost) unindex(name string, request unboundRequest) { h.unbound.delete(name, request) }
@@ -1149,7 +1306,7 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 		return nil, err
 	}
 	if placed.kind == placedPath {
-		remote := newRemoteObject(h, typ, params, placed.address, from, placed.path, b.dependent())
+		remote := newRemoteObject(h, typ, params, placed.address, from, placed.path, b.dependent(), chordctx.Telemetry(ctx))
 		placed.path.attach(remote)
 		b.bind(remote)
 		return remote, nil
@@ -1184,6 +1341,10 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 	// Checked above: served here at the caller's version.
 	object := h.objectFor(entry, params, from.principal, ctx, noChain, b.dependent())
 	b.bind(object)
+	// A getter waiting for a shared activation links to it (decision "Shared work").
+	if activation := object.activationSpan(); activation != nil && !chordtelemetry.Untraced(chordctx.Telemetry(ctx)) {
+		chordctx.Telemetry(ctx).AddLink(telemetry.SpanLink{Context: activation})
+	}
 	return object, nil
 }
 
@@ -1217,7 +1378,12 @@ func (h *chordHost) serving(request holdRequest, params any, principal data.Prin
 	if misplaced != nil {
 		return Serving{Kind: ServingWaiting, Cause: data.FailureCause{Kind: data.FailureWaiting, Error: misplaced}}, nil
 	}
-	object := h.objectFor(entry, checked, principal, ctx, chain, nil)
+	// The hold's carrier with this host's adapter: the first trigger of an object it creates.
+	created := ctx
+	if trigger := chordtelemetry.ParentOf(request.Trace, h.telemetry); !chordtelemetry.Untraced(trigger) {
+		created = chordctx.WithTelemetry(ctx, chordtelemetry.AsSpan(trigger))
+	}
+	object := h.objectFor(entry, checked, principal, created, chain, nil)
 	if activation := object.activationId(); activation != "" && slices.Contains(chain, activation) {
 		return Serving{}, h.cycle(chain, activation, []string{object.label()})
 	}
@@ -1367,6 +1533,9 @@ func (h *chordHost) holdBinding(typ *contracts.Contract, params any, from caller
 	if err := h.assertOpen(); err != nil {
 		return nil, err
 	}
+	if err := h.assertLoadCalled(typ.Name); err != nil {
+		return nil, err
+	}
 	checked, err := checkParams(typ, params, ctx)
 	if err != nil {
 		return nil, err
@@ -1430,7 +1599,7 @@ func sameHostAddress(a, b contracts.HostAddress) bool {
 // waitUnbound leaves b unbound in the index under name: cause (`waiting`), or none before the publication.
 func (h *chordHost) waitUnbound(b *binding, name string, cause *data.FailureCause, place func()) {
 	b.wait(cause, place, func() { h.unbound.delete(name, b) })
-	h.unbound.add(name, b)
+	h.unbound.add(name, b, cause)
 }
 
 // newBindingFor is a new reference's binding made by from; its parked calls wait its `readyTimeout`.
@@ -1440,6 +1609,18 @@ func (h *chordHost) newBindingFor(typ *contracts.Contract, dependent *chordObjec
 
 // own is this host as the maker of its own references: its principal and incarnation.
 func (h *chordHost) own() caller { return caller{principal: h.principal, incarnation: h.incarnation} }
+
+// principalAttributes are the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
+// `chord.principal`, its principal key; none without a principal.
+func (h *chordHost) principalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes {
+	if principal == nil {
+		return nil
+	}
+	if h.principalHook != nil {
+		return h.principalHook(principal)
+	}
+	return telemetry.SpanAttributes{telemetry.Attr("chord.principal", chordtelemetry.Capped(data.PrincipalKey(principal, ctx, h.principalKey)))}
+}
 
 // isOwn is whether principal is this host's own (by principal key): revocation never touches it.
 func (h *chordHost) isOwn(principal data.Principal, ctx context.Context) bool {
@@ -1457,7 +1638,7 @@ func (h *chordHost) linkOf(l link.Link, role linkRole, options LinkOptions, ctx 
 		codec = link.BinaryCodec
 	}
 	limits := link.LinkLimits(options.Trusted, options.Limits)
-	made := newHostLink(h, l, hostLinkOptions{role: role, principal: options.Principal, trusted: options.Trusted, codec: codec, limits: limits}, chordctx.WithoutAbortSignal(ctx))
+	made := newHostLink(h, l, hostLinkOptions{role: role, principal: options.Principal, trusted: options.Trusted, codec: codec, limits: limits}, h.counted(chordctx.WithoutAbortSignal(ctx)))
 	if !made.open() {
 		return made
 	}
@@ -1481,7 +1662,7 @@ func (h *chordHost) startTicking() {
 			return
 		}
 		now := h.events.Now()
-		// Pi keeps the fraction of the pause (performance.now()); the host clock is whole milliseconds.
+		// Pi's pause is `Date.now()` time (host.ts:1611); the host clock is whole milliseconds.
 		// A tick a whole interval late is time this process did not run (a sleeping laptop, a blocked event loop).
 		late := float64(now-last) - float64(interval)/float64(time.Millisecond)
 		var paused int64
@@ -1626,6 +1807,7 @@ func (h *chordHost) runClose() *closePromise {
 	// At the fence too: requests still waiting for a publication or a provider end as the others did, and gets waiting for
 	// a publication that will not come fail now, not after the slow closes below (fix round 1).
 	h.unbound.close(closed)
+	h.clock.Close()
 	h.publish()
 	h.backoff.clear()
 	// Every object is sealed before any teardown releases a reference, so none ends in the background.
@@ -1708,6 +1890,20 @@ func (h *chordHost) assertOpen() error {
 		return h.closedError()
 	}
 	return nil
+}
+
+// assertLoadCalled: a request of this host's own (`get`, `hold`, `registry`, a root's `ctx.get`) for name before its first
+// `load` would wait for a publication nobody started: it fails `not_ready` at once (decision "Mistakes that wait are
+// reported at once" (a)). Holds arriving on its links before `load` still wait for the publication (a worker connects
+// first, W6).
+func (h *chordHost) assertLoadCalled(name string) error {
+	if h.state != hostNew {
+		return nil
+	}
+	return data.NewChordError(data.ChordErrorInit{
+		Code:    data.CodeNotReady,
+		Message: name + ": the host has not loaded; call host.load first (a host with nothing to load calls load([]))",
+	}, nil)
 }
 
 func (h *chordHost) closedError() *data.ChordError {
@@ -1862,7 +2058,7 @@ func reloadAborted() *data.ChordError {
 }
 
 // Reload implements Host: one reload, after the previous one: staging, the commit, the fates, the report.
-func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options ReloadOptions) (ReloadReport, error) {
+func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options ReloadOptions) (_ ReloadReport, reloadErr error) {
 	var failure error
 	var previous, mine *keyedPromise[struct{}]
 	h.enter(func() {
@@ -1875,6 +2071,9 @@ func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options Relo
 		}
 		if h.state != hostLoaded {
 			failure = errors.New("reload runs after load")
+			return
+		}
+		if failure = checkPluginNames(facets); failure != nil {
 			return
 		}
 		previous = h.reloading
@@ -1892,6 +2091,39 @@ func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options Relo
 	}
 	var plan *reloadPlan
 	var started []startedFate
+	// Its `chord.reload` span under the caller's, after the previous reload, when something records: each object's fate an
+	// event of it.
+	var span *chordtelemetry.OpenSpan
+	var reported *ReloadReport
+	defer func() {
+		if span == nil {
+			return
+		}
+		if reloadErr != nil {
+			chordtelemetry.Ended(span.Span(), "reload_failed", reloadErr, ctx)
+		} else if reported != nil {
+			for _, object := range reported.Objects {
+				span.Span().AddEvent("chord.reload.fate", telemetry.SpanAttributes{
+					telemetry.Attr("object", chordtelemetry.Capped(object.Object)), telemetry.Attr("fate", string(object.Kind)),
+				})
+			}
+			span.Span().SetAttributes(telemetry.SpanAttributes{
+				telemetry.Attr("added", float64(len(reported.Plugins.Added))),
+				telemetry.Attr("changed", float64(len(reported.Plugins.Changed))),
+				telemetry.Attr("removed", float64(len(reported.Plugins.Removed))),
+				telemetry.Attr("failed", float64(len(reported.Failed))),
+				telemetry.Attr("fates", float64(len(reported.Objects))),
+			})
+		}
+		span.End()
+	}()
+	if parent := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(parent) {
+		span = chordtelemetry.NewOpenSpan(parent, "chord.reload", telemetry.SpanAttributes{
+			telemetry.Attr("chord.host", h.spanHost),
+			telemetry.Attr("plugins", float64(len(facets))),
+		})
+		ctx = chordctx.WithTelemetry(ctx, span.Span())
+	}
 	h.enter(func() {
 		if failure = h.assertOpen(); failure != nil {
 			return
@@ -1920,7 +2152,9 @@ func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options Relo
 	if err != nil {
 		return ReloadReport{}, err
 	}
-	return ReloadReport{Plugins: plugins, Failed: plan.failed, Objects: objects}, nil
+	report := ReloadReport{Plugins: plugins, Failed: plan.failed, Objects: objects}
+	reported = &report
+	return report, nil
 }
 
 // stageReload is staging (slice 7b §2), synchronous (no request or arriving hold meets it half done), per plugin (decision
@@ -2090,8 +2324,9 @@ func (h *chordHost) unboundRequest(table *staged, request request, failed *named
 		if entry != nil && !failed.has(provider) {
 			return ""
 		}
-		// A remote type the object reaches on another host: placed by the rollout's rules, not this host's.
-		if !h.placedHere(contract, request.params) {
+		// A remote type the object reaches on another host, or the delegate's (what the staged table does not serve): placed by the
+		// rollout's rules, not this host's.
+		if !h.placedHere(table, contract, request.params) {
 			return ""
 		}
 		if entry != nil && h.wouldBind(entry, contract, request.params) {
@@ -2140,10 +2375,10 @@ func (h *chordHost) wouldBind(entry *served, typ *contracts.Contract, params *de
 	return err == nil && cause == nil
 }
 
-// placedHere reports whether a request for typ with params goes here; a `hostAddress` that fails: not here (it fails at
-// bind).
-func (h *chordHost) placedHere(typ *contracts.Contract, params *delta.JsonObject) bool {
-	here, err := h.destination.placedHere(typ, params)
+// placedHere reports whether a request for typ with params goes here, by what table serves (the delegate takes what it does not); a
+// `hostAddress` that fails: not here (it fails at bind).
+func (h *chordHost) placedHere(table *staged, typ *contracts.Contract, params *delta.JsonObject) bool {
+	here, err := h.destination.placedHere(typ, params, table.types.has)
 	return err == nil && here
 }
 
@@ -2184,6 +2419,7 @@ func (h *chordHost) commit(plan *reloadPlan, ctx context.Context) ([]startedFate
 	}, ctx); err != nil {
 		return nil, err
 	}
+	h.reportUndeclared()
 	for name := range h.refs {
 		if !table.types.has(name) {
 			delete(h.refs, name)

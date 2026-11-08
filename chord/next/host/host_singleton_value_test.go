@@ -70,3 +70,50 @@ func TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges(t *testing
 		t.Fatalf("items = %d, want 300", len(items))
 	}
 }
+
+// singletonForBench is a live singleton handle of a served object, and the host to enter its sections.
+func singletonForBench(b *testing.B) (*documents.Singleton, Host) {
+	b.Helper()
+	var mu sync.Mutex
+	var list *documents.Singleton
+	host, _ := loaded(b, func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			mu.Lock()
+			list = self.State(attemptListDoc).(*documents.Singleton)
+			mu.Unlock()
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
+				Methods: map[string]contracts.MethodFunction{"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }},
+			}}, nil
+		}, ServeOptions{})
+	}, loadedOptions{})
+	page := mustGet(b, host, attemptPage, jsonObject("id", 1.0))
+	b.Cleanup(page.Release)
+	mu.Lock()
+	defer mu.Unlock()
+	return list, host
+}
+
+// BenchmarkSingletonValueOffLoop is a read from a job's goroutine: one section of the host's loop.
+func BenchmarkSingletonValueOffLoop(b *testing.B) {
+	handle, _ := singletonForBench(b)
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := handle.Value(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkSingletonValueInSection is a read from inside a section (a handler, a watch listener): inline.
+func BenchmarkSingletonValueInSection(b *testing.B) {
+	handle, host := singletonForBench(b)
+	b.ReportAllocs()
+	host.(*chordHost).enter(func() {
+		for b.Loop() {
+			if _, err := handle.Value(); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}

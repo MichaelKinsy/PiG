@@ -21,7 +21,7 @@ import (
 // builds it against the app's API modules, loaded beside a stub serving what it uses; the registries it contributes to that
 // nobody serves collected; the contracts it waits for unserved listed; a principal for the host and for a root scope.
 //
-// Adapted to the process boundary (docs/plan/chord-plugins-node-evaluator.md, D502 to D509): the plugin's host is the Node
+// Adapted to the process boundary (docs/plan/chord-plugins-node-evaluator.md, D502, D503): the plugin's host is the Node
 // subprocess, so `t.host.get` is NodeHost.Get on TestedPlugin.Host, the stub is a Go facet bridged to it (TestStub), the app's
 // API modules are files (a module re-exporting Pi's own Chord, as Pi's test spreads `chord`), a registry is named by its name,
 // and `root`'s closure is RootPrincipal (what that test's closure returns).

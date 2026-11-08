@@ -39,7 +39,7 @@ func (kit *engineKit) commit(writes ...StagedWrite) ([]int64, error) {
 	var created []int64
 	fence := CommitFence{
 		Admit: func() bool { return true },
-		Adopt: func(_ int64, ids []int64) error { created = ids; return nil },
+		Adopt: func(_ int64, ids []int64, _ int) error { created = ids; return nil },
 	}
 	_, err := kit.store.Commit(writes, fence, background)
 	return created, err
