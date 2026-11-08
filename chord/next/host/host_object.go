@@ -342,6 +342,8 @@ func (d *objectDocuments) TransactionCancelled(cause error) {
 
 // Telemetry is the host's telemetry adapter.
 func (d *objectDocuments) Telemetry() telemetry.TelemetryContext { return d.object.host.telemetry }
+
+// Metrics are the host's instruments, made once.
 func (d *objectDocuments) Metrics() *chordtelemetry.Instruments { return d.object.host.metrics }
 
 // Store is the host's store and the object's owner name in it, when the host has one.
