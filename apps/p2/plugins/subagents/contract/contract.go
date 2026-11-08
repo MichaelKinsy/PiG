@@ -76,3 +76,51 @@ func RemoteEnvironments(session *delta.JsonObject, children []any) []string {
 	}
 	return environments
 }
+
+// Subagents are the session's children, as workers report them and readers see them (server).
+var Subagents = func() *contracts.Contract {
+	contract, err := contracts.Remote("p2.subagents", contracts.RemoteDeclaration{
+		// 2: a child's own location instead of its own cwd.
+		Version:     2,
+		Params:      contracts.Params{},
+		HostAddress: p2runtime.ServerHost,
+		Variants: []contracts.VariantEntry{
+			contracts.Var("reader", contracts.VariantDeclaration{
+				State: []contracts.Property{p2runtime.StateProp("children", ChildrenSchema)},
+			}),
+			contracts.Var("reporter", contracts.VariantDeclaration{
+				Methods: []contracts.MethodEntry{
+					contracts.Meth("report", contracts.NewMethod(c(schema.Obj(schema.Properties{schema.Prop("children", schema.Arr(ChildSchema))})))),
+				},
+			}),
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	return contract
+}()
+
+// SubagentControl changes a session's subagents from the browser (worker): the owner and read/write guests. `archive`
+// archives a subagent (stopping its work first) or restores it; one-shot agents are read-only: they belong to the script
+// waiting for their answer.
+var SubagentControl = func() *contracts.Contract {
+	contract, err := contracts.Remote("p2.subagent-control", contracts.RemoteDeclaration{
+		Version:     1,
+		Params:      contracts.Params{contracts.Prop("session", contracts.Str())},
+		HostAddress: p2runtime.SessionHost,
+		Variants: []contracts.VariantEntry{
+			contracts.Var("participant", contracts.VariantDeclaration{
+				Methods: []contracts.MethodEntry{
+					contracts.Meth("archive", contracts.NewMethod(c(schema.Obj(schema.Properties{
+						schema.Prop("conversation", schema.Num()), schema.Prop("archived", schema.Bool()),
+					})))),
+				},
+			}),
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	return contract
+}()

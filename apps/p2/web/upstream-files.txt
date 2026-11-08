@@ -40,3 +40,17 @@ plugins/sharing/web.tsx
 plugins/projects/contract.ts
 plugins/workspace/contract.ts
 plugins/workspace/protocol.ts
+plugins/envs/web.tsx
+plugins/envs/contract.web.tsx
+plugins/envs/EnvsPanel.tsx
+plugins/envs/DirectoryPicker.tsx
+plugins/envs/SecretsSection.tsx
+plugins/envs/style.css
+plugins/envs/secret-presets.ts
+plugins/ports/contract.ts
+plugins/ports/protocol.ts
+plugins/ports/web.tsx
+plugins/ports/PortsPanel.tsx
+plugins/ports/activity.tsx
+plugins/ports/activity.css
+plugins/locations/contract.ts
