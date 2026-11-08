@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
@@ -52,8 +51,9 @@ func answer(text string) durable.EntryDraft {
 type fixture struct {
 	opened  harness.Harness
 	reports *reports
-	tree    *host.Reference
+	tree    treeCalls
 	test    *p2test.TestHost
+	worker  host.Host
 }
 
 // newFixture: conversation 1 holds "first" (entry 1), "first answer" (2), "second" (3), "second answer" (4).
@@ -75,10 +75,8 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	f := &fixture{opened: opened, reports: &reports{}}
-	address := p2runtime.SessionKind.Address(delta.JsonObjectOf("id", "s1"))
+	// The Sessions the worker reports to is the server's: a worker host linked to a server host that stubs it.
 	f.test = p2test.NewTestHost(t, p2test.TestHostOptions{
-		Address: &address, Worker: true,
-		Facets: []host.Facet{p2test.WorkerFacet(p2test.HarnessParts(opened), &p2runtime.WorkerParts{Liveness: p2runtime.NewLiveness()}, nil), tree.Worker},
 		Stubs: []p2test.Stub{{Contract: sessionscontract.Sessions, Factory: func(*delta.JsonObject, p2runtime.Principal, p2test.StubSelf) p2test.StubMembers {
 			return p2test.StubMembers{Variant: "worker", State: map[string]any{"session": nil}, Methods: map[string]p2test.StubMethod{
 				"treeSelf": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
@@ -88,29 +86,27 @@ func newFixture(t *testing.T) *fixture {
 			}}
 		}}},
 	})
-	client := f.test.Client(p2runtime.OwnerPrincipal{Access: p2runtime.AccessLocal})
-	hold, err := client.Hold(p2test.Background, contract.SessionTree, delta.JsonObjectOf("session", "s1"), host.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	waiting := make(chan error, 1)
-	go func() { waiting <- p2runtime.WhenLive(p2test.Background, hold) }()
-	select {
-	case err := <-waiting:
-		if err != nil {
-			t.Fatal(err)
-		}
-	case <-time.After(30 * time.Second):
-		state := hold.State().Value()
-		t.Fatalf("the tree never went live: %+v cause %+v; host errors: %+v", state.Kind, state.Cause, f.test.Errors())
-	}
-	if variant, _, err := hold.Variant(); err != nil || variant != "owner" {
-		t.Fatalf("variant %q: %v", variant, err)
-	}
-	ref := hold
-	t.Cleanup(ref.Release)
-	f.tree = ref
+	f.worker = f.test.WorkerHost("s1", 1, p2test.WorkerFacet(p2test.HarnessParts(opened), &p2runtime.WorkerParts{Liveness: p2runtime.NewLiveness()}, nil), tree.Worker)
+	f.tree = treeCalls{f.worker}
 	return f
+}
+
+// treeCalls are the owner's calls of `SessionTree`, each in a root of the worker host acting as the owner.
+type treeCalls struct{ worker host.Host }
+
+func (c treeCalls) Call(method string, args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+	result, err := c.worker.Root(func(root host.Ctx) (any, error) {
+		ref, err := root.Get(contract.SessionTree, delta.JsonObjectOf("session", "s1"), host.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return ref.Call(method, args, root)
+	}, ctx, host.RootOptions{Principal: p2runtime.ToChord(p2runtime.OwnerPrincipal{Access: p2runtime.AccessLocal})})
+	if err != nil {
+		return nil, err
+	}
+	value, _ := result.(delta.JsonValue)
+	return value, nil
 }
 
 func (f *fixture) call(t *testing.T, method string, args delta.JsonValue) *delta.JsonObject {
@@ -248,7 +244,7 @@ func TestRenamesBranchesAndResetsTheRootToTheSessionTitle(t *testing.T) {
 func TestEarlierBranchesAreReadOnly(t *testing.T) {
 	f := newFixture(t)
 	f.call(t, "navigate", delta.JsonObjectOf("entry", float64(2)))
-	source, err := f.test.Host.Registry(p2test.Background, p2runtime.ReadOnlyConversations.Registry, host.GetOptions{})
+	source, err := f.worker.Registry(p2test.Background, p2runtime.ReadOnlyConversations.Registry, host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +259,7 @@ func TestEarlierBranchesAreReadOnly(t *testing.T) {
 	}, 0, "the tree's read-only check"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.test.Root(func(ctx host.Ctx) (any, error) {
+	if _, err := f.worker.Root(func(ctx host.Ctx) (any, error) {
 		for conversation, want := range map[int]bool{1: true, 2: false, 99: false} {
 			reason, err := check(ctx, conversation)
 			if err != nil {
@@ -274,7 +270,7 @@ func TestEarlierBranchesAreReadOnly(t *testing.T) {
 			}
 		}
 		return nil, nil
-	}); err != nil {
+	}, p2test.Background, host.RootOptions{}); err != nil {
 		t.Fatal(err)
 	}
 }
