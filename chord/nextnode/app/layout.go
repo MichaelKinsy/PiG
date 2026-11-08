@@ -25,12 +25,16 @@ import (
 
 // AppLayout is the paths of a data directory.
 type AppLayout struct {
-	DataDir      string
-	Server       string
-	ServerStore  string
-	Workers      string
-	Plugins      string
-	Logs         string
+	DataDir     string
+	Server      string
+	ServerStore string
+	Workers     string
+	Plugins     string
+	Logs        string
+	// Cache is what only saves time: `WorkerBases` is each worker kind's base copy, in `<kind>/` (WorkersOptions.BaseDir), made again at
+	// every start. Pi's `cache/node` (Node's compile cache for the workers) has no Go form.
+	Cache        string
+	WorkerBases  string
 	OwnerToken   string
 	CookieSecret string
 }
@@ -85,10 +89,12 @@ func CreateLayout(dataDir string) (AppLayout, error) {
 		Workers:      filepath.Join(dataDir, "workers"),
 		Plugins:      filepath.Join(dataDir, "plugins"),
 		Logs:         filepath.Join(dataDir, "logs"),
+		Cache:        filepath.Join(dataDir, "cache"),
+		WorkerBases:  filepath.Join(dataDir, "cache", "workers"),
 		OwnerToken:   filepath.Join(dataDir, "owner-token"),
 		CookieSecret: filepath.Join(dataDir, "server", "cookie-secret"),
 	}
-	for _, dir := range []string{layout.Server, layout.Workers, layout.Plugins, layout.Logs} {
+	for _, dir := range []string{layout.Server, layout.Workers, layout.Plugins, layout.Logs, layout.Cache, layout.WorkerBases} {
 		if err := PrivateDirectory(dir); err != nil {
 			return AppLayout{}, err
 		}

@@ -117,6 +117,8 @@ type usedFiles struct {
 type pluginWatcher struct {
 	state.Source
 	options watcherOptions
+	// closeFS closes the fsnotify watcher that close lets go of (a test holds it back to see that close does not wait for it).
+	closeFS func(*fsnotify.Watcher)
 	roots   []string
 	// baseDirs are the base directories (watched as trees): a source file new in one marks `base`.
 	baseDirs []string
@@ -176,6 +178,7 @@ var _ state.SourceImpl = (*pluginWatcher)(nil)
 func newPluginWatcher(options watcherOptions, batch *state.Batch) *pluginWatcher {
 	w := &pluginWatcher{
 		options:     options,
+		closeFS:     func(watcher *fsnotify.Watcher) { _ = watcher.Close() },
 		trees:       map[string]struct{}{},
 		watched:     map[string]struct{}{},
 		recorded:    map[string]struct{}{},
@@ -382,14 +385,18 @@ func (w *pluginWatcher) mark(path string) {
 	w.marksChanged()
 }
 
-// close stops watching. It does not wait for the goroutine that reads the events (join does).
+// close stops watching. It does not wait for the goroutine that reads the events or for the watcher's close (join does).
 func (w *pluginWatcher) close() {
 	w.closed = true
 	if w.fs != nil {
 		watcher := w.fs
 		w.fs = nil
-		// It ends the goroutine reading its events; nothing it sends is waited for.
-		_ = watcher.Close()
+		// Closing it ends the goroutine reading its events; nothing it sends is waited for. It runs on a goroutine of its own, which
+		// join waits for: kqueue's close removes the watch of each entry it holds one by one, which takes long on a large directory,
+		// and close runs in a section of the host, which holds the host's lock.
+		closing := w.closeFS
+		//portlint:allow golifetime join waits for it with the goroutine that reads the events
+		w.running.Go(func() { closing(watcher) })
 	}
 	clear(w.watched)
 	clear(w.baseWatched)
@@ -527,6 +534,12 @@ func (w *pluginWatcher) readEvents(watcher *fsnotify.Watcher) {
 			if !ok {
 				return
 			}
+			if errors.Is(err, fs.ErrPermission) || errors.Is(err, fs.ErrNotExist) {
+				// kqueue puts a watch on each entry that appears in a watched directory, and one it cannot (a protected entry
+				// the system makes in a directory above, one gone already) is only that entry unwatched: the watches of the
+				// others stand, as when a watch is put on a directory that does not exist or cannot be read.
+				continue
+			}
 			w.Batch().Section(func() {
 				if w.fs == watcher {
 					w.failed(err)
@@ -659,6 +672,23 @@ type comparison struct {
 	// again is set when it was asked for once more since it was queued: it is read once more after the read under way, as
 	// upstream's reads of one path run in order, each one's result applied.
 	again bool
+	// waiting are the latches the read under way settles, and next the ones the read after it (again) settles: each request's
+	// promise settles with its own read (upstream's `#compare` returns the read's).
+	waiting, next []*latch
+}
+
+// latch is the first comparisons of a record still to end: done closes when the last does.
+type latch struct {
+	remaining int
+	done      chan struct{}
+}
+
+// release is one comparison ended. It runs in a section.
+func (l *latch) release() {
+	l.remaining--
+	if l.remaining == 0 {
+		close(l.done) //portlint:allow doubleclose the latch counts down to zero once: remaining reaches 0 on exactly one release, in a section
+	}
 }
 
 // recordOwn records the server's own base code (files and the source files of directories), after their watches: the bytes
@@ -692,8 +722,13 @@ func (w *pluginWatcher) recordOwn(base []string) {
 
 // recordBase adds the record of a running base artifact (a base bundle's inputs): `base` is set while one of its files differs
 // from it. Each file's directory is watched alone (not its tree), then every file is compared once (an edit since the build
-// has no later event); files under ignored directories are skipped.
-func (w *pluginWatcher) recordBase(inputs BaseInputs) {
+// has no later event); files under ignored directories are skipped. The channel it returns closes once those first comparisons
+// ended: `base` then knows the record. A record arriving after the close (a scan that ended late) watches nothing (Pi 284e63d9
+// watcher.ts `recordBase`).
+func (w *pluginWatcher) recordBase(inputs BaseInputs) <-chan struct{} {
+	if w.closed {
+		return closedChannel()
+	}
 	record := make(BaseInputs, len(inputs))
 	for file, hash := range inputs {
 		path := realPaths([]string{file})[0]
@@ -705,10 +740,22 @@ func (w *pluginWatcher) recordBase(inputs BaseInputs) {
 		w.locate(filepath.Dir(path))
 	}
 	w.records = append(w.records, record)
+	compared := &latch{remaining: len(record), done: make(chan struct{})}
+	if len(record) == 0 {
+		close(compared.done) //portlint:allow doubleclose a latch made in this call, closed here only when it has nothing to wait for (no release follows)
+	}
 	for path := range record {
 		w.recorded[path] = struct{}{}
-		w.compare(path)
+		w.compare(path, compared)
 	}
+	return compared.done
+}
+
+// closedChannel is a channel already closed.
+func closedChannel() <-chan struct{} {
+	done := make(chan struct{})
+	close(done)
+	return done
 }
 
 // hasIgnoredPart reports whether path lies under a directory never watched (`node_modules`, `.git`).
@@ -780,18 +827,25 @@ func (w *pluginWatcher) compareAt(path string) {
 		}
 	}
 	for file := range paths {
-		w.compare(file)
+		w.compare(file, nil)
 	}
 }
 
 // compare compares the base file at path once the comparison under way of it is done: the reads of one path run in order,
-// and the latest decides.
-func (w *pluginWatcher) compare(path string) {
+// and the latest decides. A latch given settles with the read this request gets.
+func (w *pluginWatcher) compare(path string, wait *latch) {
 	if running, ok := w.comparing[path]; ok {
 		running.again = true
+		if wait != nil {
+			running.next = append(running.next, wait)
+		}
 		return
 	}
-	w.comparing[path] = &comparison{}
+	started := &comparison{}
+	if wait != nil {
+		started.waiting = []*latch{wait}
+	}
+	w.comparing[path] = started
 	w.queue = append(w.queue, path)
 	if w.comparers < maxComparers {
 		w.comparers++
@@ -821,8 +875,13 @@ func (w *pluginWatcher) compareQueued() {
 		hash, ok := hashFile(path)
 		w.Batch().Section(func() {
 			w.applyComparison(path, hash, ok)
+			for _, each := range current.waiting {
+				each.release()
+			}
+			current.waiting = nil
 			if current.again {
 				current.again = false
+				current.waiting, current.next = current.next, nil
 				return
 			}
 			delete(w.comparing, path)
@@ -934,9 +993,10 @@ func (w *pluginWatcher) baseEvent(path string, op fsnotify.Op) {
 	w.keepWatches(path)
 }
 
-// keepWatches puts back the base watches at and under path that the watcher no longer holds, for the directory there is the one
-// they watched, moved away and back: libuv's watch follows it (inotify) or its path (FSEvents), and some of fsnotify's end with
-// the move (kqueue removes the watch of a directory that is renamed). Nothing is compared: as Pi, it renewed nothing.
+// keepWatches puts back the watches at and under path that the watcher no longer holds, those alone and those of a base
+// directory's tree, for the directory there is the one they watched, moved away and back: libuv's watch follows it (inotify) or
+// its path (FSEvents), and some of fsnotify's end with the move (kqueue removes the watch of a directory that is renamed).
+// Nothing is compared: as Pi, it renewed nothing.
 func (w *pluginWatcher) keepWatches(path string) {
 	if w.fs == nil {
 		return
@@ -951,6 +1011,18 @@ func (w *pluginWatcher) keepWatches(path string) {
 	for _, dir := range lost {
 		delete(w.baseWatched, dir)
 		w.watchAlone(dir)
+	}
+	var lostTree []string
+	for dir := range w.watched {
+		if (dir == path || under(path, dir)) && !slices.Contains(held, dir) {
+			lostTree = append(lostTree, dir)
+		}
+	}
+	for _, dir := range lostTree {
+		delete(w.watched, dir)
+	}
+	for _, dir := range lostTree {
+		w.watchDirs(dir)
 	}
 }
 

@@ -587,7 +587,7 @@ func tableOwner() *testOwner {
 	return &testOwner{scope: new(struct{}), queries: store.NewLiveQueries()}
 }
 func openFence() store.CommitFence {
-	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 }
 
 // rejection is the error err is, as ChordError JSON when it is one; the test fails when err is nil.
@@ -722,6 +722,13 @@ func (queue *heldQueue) drain() {
 		queue.mu.Unlock()
 		job()
 	}
+}
+
+// pending is the number of jobs posted and not run yet.
+func (queue *heldQueue) pending() int {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	return len(queue.jobs)
 }
 
 // hold stops the queue before its next job.
@@ -1008,6 +1015,8 @@ type rawLinkedOptions struct {
 	// Trusted is `trusted: true` on the link: its calls' old-work mark is honoured.
 	Trusted bool
 	Loop    sectionLoop
+	// Telemetry is the server's adapter (Pi's `{ telemetry }`); nil has none.
+	Telemetry telemetry.TelemetryContext
 }
 
 // rawLinkedHost is what `rawLinked` returns: Pi's `{ server, peer, errors }`.
@@ -1027,6 +1036,7 @@ func rawLinked(t testing.TB, setup func(host FacetHost) error, options rawLinked
 		ReadyTimeout: options.ReadyTimeout,
 		Compression:  options.Compression,
 		OnError:      errs.push,
+		Telemetry:    options.Telemetry,
 		loop:         options.Loop,
 	})
 	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
@@ -1297,7 +1307,7 @@ type rawProviderHost struct {
 func rawProvider(t testing.TB, options rawLinkedOptions) *rawProviderHost {
 	t.Helper()
 	errs := &hostErrors{}
-	client := newHost(t, HostOptions{ReadyTimeout: options.ReadyTimeout, Compression: options.Compression, OnError: errs.push, loop: options.Loop})
+	client := newHost(t, HostOptions{ReadyTimeout: options.ReadyTimeout, Compression: options.Compression, OnError: errs.push, Telemetry: options.Telemetry, loop: options.Loop})
 	mustLoad(t)(client.Load(nil, background))
 	return &rawProviderHost{Client: client, Peer: rawParent(t, client, options.Limits), Errors: errs}
 }
@@ -1480,6 +1490,9 @@ type relayedOptions struct {
 	TabCodec, RouteCodec link.Codec
 	Server               func(host FacetHost) error
 	Worker               func(host FacetHost) error
+	// RoutePair makes each route link (the server's end first); nil is link.MemoryLinkPair. A test that holds its
+	// queue takes Pi's microtask order by hand: what the hosts post waits until it releases (see heldQueue).
+	RoutePair func() (*link.MemoryLink, *link.MemoryLink)
 	// Resolve wraps the default one (`worker()` makes the worker).
 	Resolve func(address contracts.Address, worker func() resolved, ctx context.Context) (resolved, error)
 	Context context.Context
@@ -1492,6 +1505,8 @@ type relayedOptions struct {
 	Limits link.PartLimits
 	// Loop drives all three kinds of host (Pi's fake timers); nil is the real loop.
 	Loop sectionLoop
+	// Telemetry is the telemetry adapter of each host: tab, server, workers.
+	Telemetry struct{ Tab, Server, Worker telemetry.TelemetryContext }
 }
 
 // relay builds Pi's `relayed(options)`: three hosts, a tab connected to a server, and a server routing `Session` to an
@@ -1514,6 +1529,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 		RevokedBy:   serverRevoked,
 		Compression: options.ServerCompression,
 		OnError:     result.Errors.Server.push,
+		Telemetry:   options.Telemetry.Server,
 		loop:        options.Loop,
 	})
 	result.Server = server
@@ -1525,7 +1541,11 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 		result.mu.Lock()
 		result.resolves = append(result.resolves, address.Key)
 		result.mu.Unlock()
-		a, b := link.MemoryLinkPair()
+		makePair := options.RoutePair
+		if makePair == nil {
+			makePair = link.MemoryLinkPair
+		}
+		a, b := makePair()
 		session, _ := address.Params.Value("id").(string)
 		principal := workerPrincipal(session)
 		host := newHost(t, HostOptions{
@@ -1534,6 +1554,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			RevokedBy:   options.RevokedBy,
 			Compression: options.WorkerCompression,
 			OnError:     result.Errors.Worker.push,
+			Telemetry:   options.Telemetry.Worker,
 			loop:        options.Loop,
 		})
 		must(t, host.Connect(b, LinkOptions{Principal: serverPrincipal(), Trusted: options.Trusted, Codec: codec}, ctx))
@@ -1596,7 +1617,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 		}
 		return nil
 	})}}, ctx))
-	tab := newHost(t, HostOptions{Compression: options.TabCompression, OnError: result.Errors.Tab.push, loop: options.Loop})
+	tab := newHost(t, HostOptions{Compression: options.TabCompression, Telemetry: options.Telemetry.Tab, OnError: result.Errors.Tab.push, loop: options.Loop})
 	mustLoad(t)(tab.Load(nil, ctx))
 	a, b := link.MemoryLinkPair()
 	// A worker may be resolving already (a host object of the server started it during its load): its resolve appends to
@@ -1694,7 +1715,7 @@ func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, _ con
 }
 
 // incarnationOf is a host's incarnation, which its handshakes send.
-func incarnationOf(host Host) string { return host.(*chordHost).incarnation }
+func incarnationOf(host Host) string { return host.Incarnation() }
 
 // countingCompression is Pi's `countInflated()`: a compression whose Inflate output bytes are counted. Go forced
 // difference: Pi stubs the global `DecompressionStream` that a host without compression uses for async inflates; Go's

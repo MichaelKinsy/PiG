@@ -20,7 +20,7 @@ var _ telemetry.TelemetryStore = (*SqliteTelemetryStore)(nil)
 // never migrates it, never creates it), while recorders of other processes write it or after. It fails for a file that
 // holds no store or a store of another version (a recorder, CreateSqliteTelemetry, migrates an older one).
 func OpenTelemetryStore(path string) (*SqliteTelemetryStore, error) {
-	db, err := sqlitenode.OpenNodeSqliteDatabase(path, sqlitenode.NodeSqliteDatabaseOptions{ReadOnly: true})
+	db, err := sqlitenode.OpenNodeSqliteDatabase(path, sqlitenode.NodeSqliteDatabaseOptions{Mode: sqlitenode.ReadOnly})
 	if err != nil {
 		return nil, err
 	}

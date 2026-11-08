@@ -64,7 +64,9 @@ func TestExample64OldWork(t *testing.T) {
 		cutAt := time.Now()
 		owReload(t, host, shape, queue)
 		wantChordError(t, stuck.rejected(t), data.CodeReleased, "", "")
-		if took := time.Since(cutAt); took < drain || took > 3*time.Second {
+		// The drain's due time is the loop's clock (whole milliseconds, as Pi's Date.now) plus the bound, taken after cutAt: the
+		// cut may come up to a millisecond before cutAt + drain.
+		if took := time.Since(cutAt); took < drain-time.Millisecond || took > 3*time.Second {
 			t.Fatalf("the call was cut after %v, want about %v", took, drain)
 		}
 		if got, err := provider.Call("x", nil, background); err != nil || got != "v2 x" {
