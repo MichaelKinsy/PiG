@@ -84,7 +84,7 @@ func guardPoints(points []ResumePoint, code string, g guardSet) []ResumePoint {
 				}
 			}
 		}
-		valid[i] = !(g&guardParens != 0 && depth != 0) && !(g&guardAngle != 0 && angleBad)
+		valid[i] = (g&guardParens == 0 || depth == 0) && (g&guardAngle == 0 || !angleBad)
 	}
 	if g&guardTrivia != 0 {
 		budget := guardTriviaBudget
