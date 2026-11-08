@@ -547,17 +547,17 @@ func (w *SessionWorkers) whileRunning(ctx context.Context, session string, timeo
 		}
 		return err
 	case err := <-exited:
+		// The step is not waited for (Pi races it): one blocked on a route to the worker that exited resolves only when the
+		// restart this very relocation makes begins, so waiting for it would wait for itself. Its context is cancelled; its
+		// result lands in the buffered channel.
+		cancel()
 		if err != nil {
 			// The wait itself ended (the timeout, or ctx).
-			cancel()
-			stepErr := <-result
-			if errors.Is(stepErr, context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded) {
+			if errors.Is(err, context.DeadlineExceeded) {
 				return fmt.Errorf("Moving the worker took longer than %s", timeout)
 			}
-			return stepErr
+			return err
 		}
-		cancel()
-		<-result
 		return errors.New("The worker exited")
 	}
 }
