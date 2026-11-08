@@ -114222,63 +114222,18 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:close",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:390ce9a16559f22ff3624a68f5096f1f31e9f637e726d9c0c42528aac152a2c1",
-      "rationale": "Derived by the interface gap detector: WebSocketLike::property:close is Go chord/next/link/websocket.go#WebSocketLike.Close (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/next/link/websocket.go#WebSocketLike.Close"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/link/websocket.go#webSocketLink.Close"
-      ],
-      "evidence": [
-        "reach:chord/next/link/websocket.go#webSocketLink.Close"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:390ce9a16559f22ff3624a68f5096f1f31e9f637e726d9c0c42528aac152a2c1"
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:close::call:0",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: WebSocketLike::property:close::call:0 is Go chord/next/link/websocket.go#WebSocketLike.Close (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/next/link/websocket.go#WebSocketLike.Close"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/link/websocket.go#webSocketLink.Close"
-      ],
-      "evidence": [
-        "reach:chord/next/link/websocket.go#webSocketLink.Close"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92"
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:readyState",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:63e2d6224ae33c95dad22c0be553b090f7da9e7b897ee1af4e97c7da428fe034",
-      "rationale": "Derived by the interface gap detector: WebSocketLike::property:readyState is Go chord/next/link/websocket.go#WebSocketLike.ReadyState (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/next/link/websocket.go#WebSocketLike.ReadyState"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/link/websocket.go#WebSocketLink"
-      ],
-      "evidence": [
-        "reach:chord/next/link/websocket.go#WebSocketLink"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:63e2d6224ae33c95dad22c0be553b090f7da9e7b897ee1af4e97c7da428fe034"
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:removeEventListener",
@@ -114309,43 +114264,13 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:send",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:ffc9eb6ccd6912e3e718d4276f4b30a9a118cbeefb6b7cf30193ed3ead84759d",
-      "rationale": "Derived by the interface gap detector: WebSocketLike::property:send is Go chord/next/link/websocket.go#WebSocketLike.Send (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/next/link/websocket.go#WebSocketLike.Send"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/link/websocket.go#webSocketLink.Send"
-      ],
-      "evidence": [
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointCutsOffAClientThatStoppedReadingPast4MiBUnsentBeyondTheFrameBeingSent"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:ffc9eb6ccd6912e3e718d4276f4b30a9a118cbeefb6b7cf30193ed3ead84759d"
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:send::call:0",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:3532bc262b6d7094b069cb3d5fcc1c669bb96c212e967c205e7813d67fedf735",
-      "rationale": "Derived by the interface gap detector: WebSocketLike::property:send::call:0 is Go chord/next/link/websocket.go#WebSocketLike.Send (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/next/link/websocket.go#WebSocketLike.Send"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/link/websocket.go#webSocketLink.Send"
-      ],
-      "evidence": [
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointCutsOffAClientThatStoppedReadingPast4MiBUnsentBeyondTheFrameBeingSent"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:3532bc262b6d7094b069cb3d5fcc1c669bb96c212e967c205e7813d67fedf735"
     },
     {
       "id": "pkg:chord/.#webSocketLink",
