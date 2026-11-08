@@ -192,8 +192,8 @@ func TestPlugin(dir string, options TestPluginOptions, ctx context.Context) (*Te
 	if nodeHost != nil {
 		t.Host = nodeHost
 	}
-	if err == nil {
-		err = setupFailed(report.Failed)
+	if err == nil && len(report.Failed) > 0 {
+		err = t.Host.loadFailed(report.Failed, ctx)
 	}
 	if err == nil {
 		_, err = t.Host.collect(ctx)
@@ -239,6 +239,32 @@ func setupFailed(failed []host.PluginFailure) error {
 		messages[i] = failure.Error.Error()
 	}
 	return &testSetupError{message: "testPlugin: setup failed: " + strings.Join(messages, "; "), cause: failed[0].Error}
+}
+
+// loadFailed is the error of the plugin's own load having failed plugins: a plugin that never reached the host failed in its
+// evaluation, and its error is returned as it is, as testing.ts's `evaluateFacet` throws it before the host exists; the others
+// are setups that threw (setupFailed).
+func (h *NodeHost) loadFailed(failed []host.PluginFailure, ctx context.Context) error {
+	call, err := h.send("testOffered", &offeredRequest{})
+	if err != nil {
+		return err
+	}
+	reply, err := h.await(call, ctx)
+	if err != nil {
+		return err
+	}
+	var answer struct {
+		Names []string `json:"names"`
+	}
+	if err := json.Unmarshal(reply.Result, &answer); err != nil {
+		return err
+	}
+	for _, failure := range failed {
+		if !slices.Contains(answer.Names, failure.Plugin) {
+			return failure.Error
+		}
+	}
+	return setupFailed(failed)
 }
 
 // testSetupError is a failed setup: the plugins' messages, and the first one's error as its cause (testing.ts's `cause`).
@@ -343,6 +369,7 @@ type (
 		Name string `json:"name"`
 	}
 	unservedRequest struct{ envelope }
+	offeredRequest  struct{ envelope }
 	rootRequest     struct {
 		envelope
 		Principal data.Principal `json:"principal,omitempty"`

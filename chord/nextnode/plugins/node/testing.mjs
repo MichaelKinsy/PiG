@@ -7,6 +7,8 @@
 //                     collecting facet, until no new one appears. Answers the names collected.
 //   testContributions the table of one collected registry as data (a closure in a contribution does not cross).
 //   testUnserved      the names requests wait for unbound that nobody serves (`unservedNames`).
+//   testOffered       the names the runtime offered the host's load: a plugin that failed and is not among them failed before
+//                     the host, in its build or its evaluation (testing.ts's `evaluateFacet` throws those as they are).
 //   testRoot          `host.root` run as the host's principal or `principal`, answering the principal its context has.
 import { encodeValue } from "./wire.mjs";
 
@@ -104,11 +106,15 @@ export function testOperations({ hosted, chord }) {
 		return { names: loaded("testUnserved").host.unservedNames() };
 	}
 
+	async function testOffered() {
+		return { names: [...loaded("testOffered").offered] };
+	}
+
 	async function testRoot(request, context) {
 		const options = request.principal === undefined ? undefined : { principal: request.principal };
 		const principal = await loaded("testRoot").host.root(async (ctx) => ctx.principal, context, options);
 		return principal === undefined ? {} : { principal };
 	}
 
-	return { testCollect, testContributions, testUnserved, testRoot };
+	return { testCollect, testContributions, testUnserved, testOffered, testRoot };
 }
