@@ -45,7 +45,7 @@ D174: GOMAXPROCS capped at 2 unless the environment sets it; session loaders run
 D175: F1b print/json GC target: print and json runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again once a collection finds more than 64 MiB live (additive runtime policy); f1b-print-gc; assigned by tern lead 2026-10-13.
 D176: a running bash block keeps only the output window it shows (additive, interactive mode); tui-bash-tail-050 (lw TO-T2); assigned by the tui squad lead 2026-10-13, landed in int-050 9f7aa5ef76 (D177 went to the durable parallel-start order).
 D177: the calls of a parallel durable tool round start in unspecified order (harness-tools.test.ts:263); durable-ordering; owner approved option b 2026-10-13; number assigned by DurableLead 2026-10-13 (D176 was taken by the tui squad).
-D178: facet modules load in an isolated Node child, not in the host process (chord loader.ts nodeLoader); durable-c1; owner approved C1(b) 2026-10-13T19:44Z; number assigned by the tern lead 2026-10-14.
+D178: retired (Chord v1's facet loader, chord/host with its nodeLoader, was deleted with the v1 package; Pi's pin has no nodeLoader); durable-c1; number assigned by the tern lead 2026-10-14.
 D179: reserved, retired before release (the Windows host manager is ported; durable-c2); number assigned by the tern lead 2026-10-14.
 D180: a provider transport failure records its Go cause as a provider_transport_failure diagnostic (additive, #87); owner, 2026-10-14 (in session): option A, non-invasive.
 Next free ID: D119.
