@@ -7,6 +7,7 @@ package powershell
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -23,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/durable"
+	durableenv "github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/tools"
 	"github.com/MichaelKinsy/PiG/env"
@@ -49,9 +51,9 @@ func enables(state *harness.AgentState, name string) bool {
 	return !slices.Contains(state.Tools.Remove, name)
 }
 
-// offersPowerShell is whether the conversation is offered PowerShell now: enabled, and loaded for the model (it is
+// OffersPowerShell is whether the conversation is offered PowerShell now: enabled, and loaded for the model (it is
 // deferred).
-func offersPowerShell(state *harness.AgentState) bool {
+func OffersPowerShell(state *harness.AgentState) bool {
 	if !enables(state, contract.ToolName) {
 		return false
 	}
@@ -63,6 +65,38 @@ func offersPowerShell(state *harness.AgentState) bool {
 	}
 	return slices.Contains(state.ModelTools.Add, contract.ToolName)
 }
+
+// SystemReporter is an environment that reports the system its machine runs ("linux", "macos", "windows", ...) itself: Pi
+// reads `connection.info()` off whatever environment it gets (a structural type, `SystemInfo`), so an environment that has a
+// connection of its own to a machine says what that machine is. The p2 environments are asked through their connections
+// (systemOf); an environment of another kind (an in-process one, a test's) implements this.
+type SystemReporter interface {
+	SystemInfo(ctx context.Context) (system string, err error)
+}
+
+// systemOf is the system of the machine executionEnv works on, through its connection; errNoConnection when it has none.
+func systemOf(ctx context.Context, executionEnv durableenv.ExecutionEnv) (string, error) {
+	var connection *env.Connection
+	switch typed := executionEnv.(type) {
+	case SystemReporter:
+		return typed.SystemInfo(ctx)
+	case *env.LocalExecutionEnv:
+		connection = typed.Connection()
+	case *env.RemoteExecutionEnv:
+		connection = typed.Connection
+	}
+	if connection == nil {
+		return "", errNoConnection
+	}
+	info, err := connection.Info(ctx)
+	if err != nil {
+		return "", err
+	}
+	return info.OS, nil
+}
+
+// errNoConnection: the environment has no connection to ask (Pi: `connection` undefined, the system unknown).
+var errNoConnection = errors.New("the environment has no connection")
 
 func listOf(names []string) []any {
 	list := make([]any, len(names))
@@ -190,21 +224,11 @@ func servePowerShell(_ *delta.JsonObject, self host.Self) (contracts.Implementat
 		if err != nil {
 			return false, false
 		}
-		var connection *env.Connection
-		switch typed := executionEnv.(type) {
-		case *env.LocalExecutionEnv:
-			connection = typed.Connection()
-		case *env.RemoteExecutionEnv:
-			connection = typed.Connection
-		}
-		if connection == nil {
-			return false, false
-		}
-		info, err := connection.Info(ctx)
+		system, err := systemOf(ctx, executionEnv)
 		if err != nil {
 			return false, false
 		}
-		windows = info.OS == "windows"
+		windows = system == "windows"
 		systemsMu.Lock()
 		systems[*location.Env] = windows
 		systemsMu.Unlock()
@@ -247,14 +271,14 @@ func servePowerShell(_ *delta.JsonObject, self host.Self) (contracts.Implementat
 			}
 			windows, known := isWindows(ctx, location)
 			// Unknown keeps what it has: an unreachable machine does not take PowerShell away.
-			on := offersPowerShell(state)
+			on := OffersPowerShell(state)
 			if known {
 				on = windows && enables(state, "bash")
 			} else {
 				unknown = true
 			}
 			offered.Set(fmt.Sprint(int64(id)), on)
-			if on != offersPowerShell(state) {
+			if on != OffersPowerShell(state) {
 				changes = append(changes, change{id, on})
 			}
 		}
