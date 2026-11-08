@@ -5,6 +5,7 @@ package browsertest
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
 	"github.com/gorilla/websocket"
 )
 
@@ -188,7 +190,7 @@ func Start(t testing.TB) *Browser {
 			break
 		}
 	}
-	socket, _, err := websocket.DefaultDialer.DialContext(ctx, target.WebSocketDebuggerURL, nil) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
+	socket, _, err := webSocketDialer.DialContext(ctx, target.WebSocketDebuggerURL, nil) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -499,3 +501,6 @@ func (b *Browser) Emulate(feature, value string) {
 		b.t.Fatal(err)
 	}
 }
+
+// webSocketDialer is gorilla/websocket's DefaultDialer with the TLS peer's chain checked like every other (pig additive (D191)).
+var webSocketDialer = websocket.Dialer{Proxy: http.ProxyFromEnvironment, HandshakeTimeout: 45 * time.Second, TLSClientConfig: tlsdistrust.Harden(&tls.Config{MinVersion: tls.VersionTLS12})}

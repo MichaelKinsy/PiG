@@ -42,6 +42,13 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{".github/workflows/ci.yml", "12.2.1", "source of truth for npm: the NPM_VERSION env; make compliance checks every copy against it"},
 	{".github/workflows/ci.yml", "1.97.1", "source of truth for Rust: the RUST_VERSION env; make compliance checks every copy against it"},
 
+	// Versions that are not copies of a pin.
+	{".github/workflows/bolt-bench.yml", "1.0.0", "the PiG release whose published Pi-Bolt result directory (2026-10-23-pig-1.0.0) the harness commands are copied from"},
+	{".github/workflows/bolt-bench.yml", "1.1.4", "default of the bolt_tag input: the released Pi-Bolt this workflow compares against, not a pin of this tree"},
+	{".github/workflows/bolt-bench.yml", "0.7.0", "default of the pig_tag input: the released PiG this workflow compares against, not a pin of this tree"},
+	{".github/workflows/ci.yml", "26.5.1", "the oldest Node whose sandbox the terminal surface tests need; a requirement of that test, not a Node pin"},
+	{"automation/make/ci.mk", "26.5.1", "the oldest Node whose sandbox the terminal surface tests need; a requirement of that test, not a Node pin"},
+
 	// Checked copies. make compliance compares each with its source and fails on drift.
 	{"automation/images/ci-go/Dockerfile", "1.27.3", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},
 	{"automation/images/ci-go/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
