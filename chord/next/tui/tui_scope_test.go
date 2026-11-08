@@ -367,7 +367,7 @@ func TestScopePageStateCallsChangedOnEachOpenScopeFollowingTheKeyAndNeverAfterDi
 func TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChangedUntilDispose(t *testing.T) {
 	h := newHost(t)
 	count := func(suffix string) surfaces.MessageFunc {
-		return func(_ *surfaces.Language, args ...any) (string, error) { return fmtN(args[0], suffix), nil }
+		return func(_ *surfaces.Language, args ...any) (string, error) { return fmtN(args[0], suffix) }
 	}
 	notes, err := surfaces.DefineMessages("notes",
 		surfaces.LocaleCatalog{Locale: "en", Catalog: surfaces.Catalog{"title": "Notes", "count": count("notes")}},
@@ -399,6 +399,7 @@ func TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChange
 	}
 }
 
-func fmtN(n any, suffix string) string {
-	return surfaces.FormatNumber(nil, n.(float64), nil) + " " + suffix
+func fmtN(n any, suffix string) (string, error) {
+	formatted, err := surfaces.FormatNumber(nil, n.(float64), nil)
+	return formatted + " " + suffix, err
 }
