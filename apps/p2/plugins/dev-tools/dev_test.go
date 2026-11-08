@@ -3,7 +3,6 @@ package devtools
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
