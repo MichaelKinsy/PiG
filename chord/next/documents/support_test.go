@@ -219,6 +219,7 @@ func (o *object) Label() string            { return o.label }
 func (o *object) Batch() *state.Batch      { return o.batch }
 func (o *object) Context() context.Context { return o.ctx }
 func (o *object) Do(work func())           { o.loop.do(work) }
+func (o *object) InSection() bool          { return o.loop.holder.Load() == goroutineID() }
 func (o *object) Now() int64               { return o.clock.Now() }
 func (o *object) AfterFunc(d time.Duration, job func()) func() {
 	return o.clock.AfterFunc(d, func() { job() })

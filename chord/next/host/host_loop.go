@@ -57,6 +57,9 @@ var _ eventLoop = (*Loop)(nil)
 // onLoop reports whether the caller is running a section of the loop.
 func (l *Loop) onLoop() bool { return l.owner.Load() == goroutineid.Current() }
 
+// InSection reports whether the caller is running a section of the loop: what a component's batch gives UseSection.
+func (l *Loop) InSection() bool { return l.onLoop() }
+
 // Run runs work as one synchronous section: inline when the caller is already on the loop (nested synchronous calls
 // nest, as in Pi), otherwise once the loop is free. The microtasks queued meanwhile run before an outermost Run returns.
 func (l *Loop) Run(work func()) {

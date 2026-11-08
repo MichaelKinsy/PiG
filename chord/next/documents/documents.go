@@ -38,6 +38,9 @@ type DocumentsOwner interface {
 	// Do runs work as one section of the host's serialization: it does not block, and is inline when the caller is in
 	// a section already.
 	Do(work func())
+	// InSection reports whether the caller runs in a section of the host's serialization already: a read there takes no
+	// section (no closure to make).
+	InSection() bool
 	Clock
 }
 
@@ -126,6 +129,9 @@ func (d *Documents) Own() *SealToken { return d.own }
 
 // Do runs work as one section of the host's serialization.
 func (d *Documents) Do(work func()) { d.owner.Do(work) }
+
+// InSection reports whether the caller runs in a section of the owner's serialization already.
+func (d *Documents) InSection() bool { return d.owner.InSection() }
 
 // Declare is a handle to definition's slot for an attempt sealed by token, whose `at(key)` pins declarer takes: the slot
 // made by the first declaration of its name, checked against the values for later ones (SlotDefinition.Check). The

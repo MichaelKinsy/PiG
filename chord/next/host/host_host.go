@@ -465,7 +465,7 @@ func createHost(options HostOptions) (*chordHost, error) {
 	})
 	h.unbound = newUnboundIndex(h.clock)
 	h.batch = state.NewBatch(func(err state.BatchError) { h.report(BatchHostError(err)) }, metrics).
-		UseScheduler(h.scheduler).UseMicrotasks(events.Queue).UseSection(events.Run)
+		UseScheduler(h.scheduler).UseMicrotasks(events.Queue).UseSection(events.Run, onLoopOf(events))
 	h.activity = newActivity(events, h.batch)
 	h.backoff = newBackoff(events, h.due)
 	// `revokedBy` is called with this host's principals only, the ones its links stamp.
@@ -502,6 +502,15 @@ func durationOr(value *time.Duration, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return *value
+}
+
+// onLoopOf is how loop tells whether the caller runs one of its sections: nil for a loop that cannot tell (a test's
+// virtual-time loop).
+func onLoopOf(loop sectionLoop) func() bool {
+	if inside, ok := loop.(interface{ onLoop() bool }); ok {
+		return inside.onLoop
+	}
+	return nil
 }
 
 // loop is the host's event loop.
