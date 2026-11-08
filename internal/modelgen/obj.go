@@ -343,7 +343,7 @@ func ParseJSON(data []byte) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := decoder.ReadToken(); err != io.EOF {
+	if _, err := decoder.ReadToken(); !errors.Is(err, io.EOF) {
 		return nil, errors.New("unexpected data after JSON value")
 	}
 	return value, nil

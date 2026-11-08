@@ -21,5 +21,5 @@ func FuzzOrderedRowUnmarshalJSONMatchesV1(f *testing.F) {
 }
 
 func BenchmarkOrderedRowUnmarshalJSON(b *testing.B) {
-	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { var r orderedRow; r.UnmarshalJSONV1(d) }, func(d []byte) { var r orderedRow; r.UnmarshalJSON(d) })
+	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { var r orderedRow; _ = r.UnmarshalJSONV1(d) }, func(d []byte) { var r orderedRow; _ = r.UnmarshalJSON(d) })
 }

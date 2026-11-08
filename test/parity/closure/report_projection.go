@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -669,7 +670,7 @@ func decodeJSONObject(value []byte) ([]jsonReportField, error) {
 	if end.Kind() != '}' {
 		return nil, fmt.Errorf("object is not closed")
 	}
-	if _, err := decoder.ReadValue(); err != io.EOF {
+	if _, err := decoder.ReadValue(); !errors.Is(err, io.EOF) {
 		if err == nil {
 			return nil, fmt.Errorf("trailing JSON")
 		}

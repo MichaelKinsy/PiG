@@ -23,5 +23,5 @@ func FuzzObjectMatchesV1(f *testing.F) {
 }
 
 func BenchmarkObject(b *testing.B) {
-	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { objectV1(d) }, func(d []byte) { object(d) })
+	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { _, _ = objectV1(d) }, func(d []byte) { _, _ = object(d) })
 }

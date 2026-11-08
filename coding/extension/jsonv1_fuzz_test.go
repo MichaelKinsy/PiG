@@ -15,8 +15,7 @@ func FuzzDecodeProviderHeaderEntriesMatchesV1(f *testing.F) {
 			t.Skip("the reader returns once it has the headers, or the end of the keys, and never checked the closing token; the caller has parsed the JSON")
 		}
 		var out any
-		var rangeErr *json.UnmarshalTypeError
-		if errors.As(json.Unmarshal(data, &out), &rangeErr) {
+		if _, ok := errors.AsType[*json.UnmarshalTypeError](json.Unmarshal(data, &out)); ok {
 			t.Skip("JSON.parse gives Infinity for a top-level number outside float64 range, a non-object, so the reader returns no entries as Pi does; encoding/json v1 Token rejected it, which is not the behaviour to match")
 		}
 		got, gotErr := decodeProviderHeaderEntries(data)
@@ -33,8 +32,7 @@ func FuzzRejectDuplicateLoginJSONFieldsMatchesV1(f *testing.F) {
 	f.Add([]byte(`{"brand":["x"],"brand":["y"]}`))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var out any
-		var rangeErr *json.UnmarshalTypeError
-		if errors.As(json.Unmarshal(data, &out), &rangeErr) {
+		if _, ok := errors.AsType[*json.UnmarshalTypeError](json.Unmarshal(data, &out)); ok {
 			t.Skip("encoding/json v1 Token rejected a number outside float64 range here; the typed decode that follows rejects it still")
 		}
 		gotErr := rejectDuplicateLoginJSONFields(data)
@@ -44,10 +42,10 @@ func FuzzRejectDuplicateLoginJSONFieldsMatchesV1(f *testing.F) {
 }
 
 func BenchmarkProviderHeaders(b *testing.B) {
-	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { decodeProviderHeaderEntriesV1(d) }, func(d []byte) { decodeProviderHeaderEntries(d) })
+	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { _, _ = decodeProviderHeaderEntriesV1(d) }, func(d []byte) { _, _ = decodeProviderHeaderEntries(d) })
 }
 
 func BenchmarkRejectDuplicateLoginJSONFields(b *testing.B) {
 	jsonseed.Bench(b, []byte(`{"brand":["ab","cd"],"hero":["ef"],"mascot":["gh"],"palette":{"a":"#111111","b":"#222222"},"tagline":"x","description":"y","name":"n"}`),
-		func(d []byte) { rejectDuplicateLoginJSONFieldsV1(d) }, func(d []byte) { rejectDuplicateLoginJSONFields(d) })
+		func(d []byte) { _ = rejectDuplicateLoginJSONFieldsV1(d) }, func(d []byte) { _ = rejectDuplicateLoginJSONFields(d) })
 }

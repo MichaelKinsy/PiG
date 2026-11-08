@@ -19,5 +19,5 @@ func FuzzUnmarshalJSONMatchesV1(f *testing.F) {
 }
 
 func BenchmarkUnmarshalJSON(b *testing.B) {
-	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { var o Object; o.UnmarshalJSONV1(d) }, func(d []byte) { var o Object; o.UnmarshalJSON(d) })
+	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { var o Object; _ = o.UnmarshalJSONV1(d) }, func(d []byte) { var o Object; _ = o.UnmarshalJSON(d) })
 }

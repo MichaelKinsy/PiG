@@ -49,7 +49,7 @@ func orderedJSONObject(data []byte) ([]orderedJSONEntry, error) {
 	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err
 	}
-	if _, err := decoder.ReadToken(); err != io.EOF {
+	if _, err := decoder.ReadToken(); !errors.Is(err, io.EOF) {
 		return nil, errors.New("trailing data after JSON object")
 	}
 	return entries, nil
