@@ -19,7 +19,11 @@ func TestModelSelectorUpdateModels(t *testing.T) {
 		{name: "empty", want: ""},
 		{name: "arrival", next: mkItems("radius/new"), want: "radius/new"},
 		{name: "removed last clamps", old: mkItems("p/a", "p/b", "p/c"), next: mkItems("p/a", "p/b"), down: 2, want: "p/b"},
-		{name: "current reanchors", old: mkItems("p/a", "p/b"), next: mkItems("p/b", "p/a"), current: "p/a", down: 1, want: "p/a"},
+		{name: "current reanchors when nothing was browsed", old: mkItems("p/a", "p/b"), next: mkItems("p/b", "p/a"), current: "p/a", want: "p/a"},
+		// model-selector.test.ts "when the catalog refresh lands" (#9109, Pi df0d88aac).
+		{name: "keeps the selection on the browsed model", old: mkItems("p/alpha-1", "p/alpha-2", "p/alpha-3", "p/beta-1"), next: mkItems("p/alpha-1", "p/alpha-2", "p/alpha-3", "p/beta-1"), current: "p/alpha-1", down: 2, want: "p/alpha-3"},
+		{name: "follows the selected model when new rows shift its position", old: mkItems("p/alpha-1", "p/alpha-2", "p/alpha-3", "p/beta-1"), next: mkItems("p/added-model", "p/alpha-1", "p/alpha-2", "p/alpha-3", "p/beta-1"), current: "p/alpha-1", down: 1, want: "p/alpha-2"},
+		{name: "falls back to the current model when the selected model disappears", old: mkItems("p/alpha-1", "p/alpha-2", "p/alpha-3", "p/beta-1"), next: mkItems("p/alpha-1", "p/alpha-3", "p/beta-1"), current: "p/alpha-1", down: 1, want: "p/alpha-1"},
 		{name: "query retained", old: mkItems("p/a"), next: mkItems("p/a", "p/new"), query: "new", want: "p/new"},
 		{name: "scoped order retained", scoped: mkItems("p/b", "p/a"), next: mkItems("p/a", "p/b", "p/c"), want: "p/b"},
 		{name: "unavailable scoped retained", scoped: mkItems("p/gone"), next: mkItems("p/new"), want: "p/gone"},
@@ -40,6 +44,19 @@ func TestModelSelectorUpdateModels(t *testing.T) {
 				t.Errorf("selected %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// model-selector.test.ts "keeps the selection while a search query is active" (#9109).
+func TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive(t *testing.T) {
+	items := mkItems("p/alpha-1", "p/alpha-2", "p/alpha-3", "p/beta-1")
+	selector := NewStaticModelSelectorComponent("Select model", nil, items, "p/alpha-1")
+	selector.SetFilter("alpha")
+	selector.HandleInput("\x1b[B")
+	selector.UpdateModels(items)
+	selector.HandleInput("\r")
+	if got := selector.SelectedFQ(); got != "p/alpha-2" {
+		t.Fatalf("selected %q, want the browsed p/alpha-2", got)
 	}
 }
 

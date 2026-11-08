@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -45,6 +46,11 @@ for (const [specifier, url] of shims) {
   });
 }
 
+// Ports packages/coding-agent/src/utils/paths.ts: canonicalizePath.
+function canonicalizePath(path) {
+  try { return realpathSync(path); } catch { return path; }
+}
+
 /** Imports an extension's entry the way Pi does and returns its default export. */
 export async function importExtension(entry) {
   // A host that compiled this extension in serves its factory, keyed by the entry path the host passes.
@@ -56,5 +62,6 @@ export async function importExtension(entry) {
     virtualModules,
     tryNative: false,
   });
-  return jiti.import(entry, { default: true });
+  // Pi e6865ec7e: an entry reached through a symlink, such as a pnpm store link, is imported by its real path, so its declared dependencies resolve from the store.
+  return jiti.import(canonicalizePath(entry), { default: true });
 }
