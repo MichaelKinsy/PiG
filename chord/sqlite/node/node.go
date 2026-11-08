@@ -123,7 +123,7 @@ func (database *DatabaseSync) Prepare(sqlText string) (*StatementSync, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &StatementSync{database: database, sqlText: sqlText, statement: statement}, nil
+	return &StatementSync{database: database, sqlText: sqlText, statement: statement, tracksSmallIntegers: readsRows(sqlText)}, nil
 }
 
 // Close closes the connection; later operations fail.
@@ -150,8 +150,9 @@ func (database *DatabaseSync) Close() error {
 // A StatementSync is used by one goroutine at a time: its executor runs every operation through the database's serial
 // queue (or an active transaction handle), and the statement cache lock covers only the lookup. statementMask,
 // statementUsed and variants take no lock of their own. A parameter at index 31 or later is not tracked (the 0/1
-// patterns are at most 31 bits), so a statement that flips such a parameter across 0/1 is planned again as before;
-// the variants are closed with the statement when the cache evicts it or the database closes.
+// patterns are at most 31 bits), so a statement that flips such a parameter across 0/1 is planned again as before. Only
+// SELECT and WITH statements are tracked, with at most maxStatementVariants extra copies; the copies are closed with the
+// statement when the cache evicts it or the database closes.
 type StatementSync struct {
 	database  *DatabaseSync
 	sqlText   string
@@ -160,6 +161,25 @@ type StatementSync struct {
 	statementMask uint32
 	statementUsed bool
 	variants      map[uint32]*sql.Stmt
+	// tracksSmallIntegers is set for a statement that reads (SELECT or WITH), the kind the copies were
+	// measured on; an INSERT of integer columns would only pay for them.
+	tracksSmallIntegers bool
+}
+
+// maxStatementVariants bounds the extra compiled copies of one statement; past it the statement runs as before.
+const maxStatementVariants = 4
+
+// readsRows reports whether sqlText starts with SELECT or WITH, after white space.
+func readsRows(sqlText string) bool {
+	text := strings.TrimLeft(sqlText, " \t\r\n")
+	for _, keyword := range []string{"SELECT", "WITH"} {
+		if len(text) > len(keyword) && strings.EqualFold(text[:len(keyword)], keyword) {
+			if next := text[len(keyword)]; next == ' ' || next == '\t' || next == '\r' || next == '\n' || next == '(' {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // smallIntegerMask has bit i set when params[i] (i < 31) is a bool or an integer equal to 0 or 1.
@@ -190,6 +210,9 @@ func (statement *StatementSync) open(params []any) (*sql.Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !statement.tracksSmallIntegers {
+		return statement.statement, nil
+	}
 	mask := smallIntegerMask(params)
 	if !statement.statementUsed {
 		statement.statementMask, statement.statementUsed = mask, true
@@ -199,6 +222,9 @@ func (statement *StatementSync) open(params []any) (*sql.Stmt, error) {
 	}
 	if variant := statement.variants[mask]; variant != nil {
 		return variant, nil
+	}
+	if len(statement.variants) >= maxStatementVariants {
+		return statement.statement, nil
 	}
 	variant, err := conn.PrepareContext(context.Background(), statement.sqlText) //portlint:allow ctxbackground the same synchronous prepare as DatabaseSync.Prepare: node:sqlite takes no signal
 	if err != nil {

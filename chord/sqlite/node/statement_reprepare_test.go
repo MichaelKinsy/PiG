@@ -76,3 +76,59 @@ func TestStatementAlwaysRunWithSmallIntegersKeepsOneCompiledCopy(t *testing.T) {
 		t.Fatalf("a statement always run with 0/1 parameters compiled %d extra copies", variants)
 	}
 }
+
+func TestStatementCopiesAreCappedAndRowsStayRight(t *testing.T) {
+	raw, err := NewDatabaseSync(":memory:", DatabaseSyncOptions{})
+	mustDo(t, err)
+	t.Cleanup(func() { mustDo(t, raw.Close()) })
+	statement, err := raw.Prepare("SELECT ? + ? * 2 + ? * 4 + ? * 8 + ? * 16 + ? * 32 + ? * 64 + ? * 128 AS n")
+	mustDo(t, err)
+	for round := range 3 {
+		for pattern := range 256 {
+			params := make([]any, 8)
+			want := int64(0)
+			for bit := range 8 {
+				value := int64(pattern >> bit & 1)
+				if value == 1 && round == 1 {
+					value = 5 // the same positions with a non-0/1 value
+				}
+				params[bit] = value
+				want += value << bit
+			}
+			row, err := statement.Get(params...)
+			mustDo(t, err)
+			if row["n"] != want {
+				t.Fatalf("pattern %08b round %d = %v, want %d", pattern, round, row["n"], want)
+			}
+		}
+	}
+	if copies := len(statement.variants); copies > maxStatementVariants {
+		t.Fatalf("a statement run with every 0/1 pattern keeps %d extra copies, want at most %d", copies, maxStatementVariants)
+	}
+}
+
+func TestInsertKeepsNoExtraCopies(t *testing.T) {
+	raw, err := NewDatabaseSync(":memory:", DatabaseSyncOptions{})
+	mustDo(t, err)
+	t.Cleanup(func() { mustDo(t, raw.Close()) })
+	mustDo(t, raw.Exec("CREATE TABLE t (a INTEGER, b INTEGER, c INTEGER)"))
+	statement, err := raw.Prepare("INSERT INTO t (a, b, c) VALUES (?, ?, ?)")
+	mustDo(t, err)
+	for pattern := range 27 {
+		mustDo(t, statement.Run(int64(pattern%3), int64(pattern/3%3), int64(pattern/9)))
+	}
+	if copies := len(statement.variants); copies != 0 {
+		t.Fatalf("an INSERT keeps %d extra copies, want none", copies)
+	}
+}
+
+func TestReadsRows(t *testing.T) {
+	for sqlText, want := range map[string]bool{
+		"SELECT 1": true, "  select 1": true, "\nWith x AS (SELECT 1) SELECT * FROM x": true, "SELECT(1)": true,
+		"INSERT INTO t VALUES (1)": false, "UPDATE t SET a = 1": false, "SELECTED": false, "": false, "WITHOUT": false,
+	} {
+		if got := readsRows(sqlText); got != want {
+			t.Errorf("readsRows(%q) = %v, want %v", sqlText, got, want)
+		}
+	}
+}
