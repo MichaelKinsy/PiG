@@ -71,6 +71,8 @@ Every active divergence must have:
 
 - D217: Pi bug fixes after the pin that next carried (Pi e7a0df27..e3da248e). Retired by pin 2c8d1feb, which is at or after every carried Pi commit (`86dc686c` through `e3da248e`); its fixes are Pi behavior, and the markers, oracle hooks and allowances are gone.
 
+- D241: Ctrl+V also pastes on Windows and WSL. Retired by the pin `1.5.0+c23b9ec1`, which contains Pi 37b38e9f6 (keep ctrl+v as a paste key on Windows and WSL, #11780): the Windows and WSL default of `app.clipboard.pasteImage` is `alt+v` and `ctrl+v` in the pinned Pi, so the call-site marker and the oracle allowances are gone. `TestKeybindingDefinitionsApplyPlatformDefaults` and `TestAppKeybindingDefinitionsMatchUpstreamInventory` hold the default.
+
 - D242: Reload is rejected while the session is running or compacting. Retired by the upstream pin: Pi main c3b938e3e (`packages/coding-agent/src/core/agent-session.ts` `reload`, #9222) rejects it the same way, with the same messages. `TestSessionReloadRejectedWhileRunningOrCompacting` and `TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive` cover it, and the scenario `reload-rejected-while-running-reaches-the-caller-unchanged` keeps the message identical in every SDK. The ID remains reserved.
 
 - D247: Quit settles the interrupted run before session_shutdown and disposal. Retired by the upstream pin: Pi main 7a53c310a (`agent-session-runtime.ts` `dispose`, #9126) awaits `session.abort()` before it emits `session_shutdown`. `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` ports Pi's regression test. The ID remains reserved.
@@ -3150,28 +3152,6 @@ Call-site markers: `internal/modelgen/family_anthropic.go` (`temperatureUnsuppor
 Evidence: `TestAnthropicTemperatureCompatibility/omits_zero_for_Claude_Sonnet_5` (red on 989927eff4: `temperature = 0, want omitted`), `TestApplyClaudeFamilyRules/sonnet_5_drops_the_temperature` (red: got `{"forceAdaptiveThinking":true}`), `TestCatalogGenerationMatchesPi` (golden regenerated with Pi's generator with 4b9777737 applied).
 
 Parity allowance: the generated catalog and `cmd/gen-models/testdata/catalog-generation/golden.sha256` follow Pi main for these records. `TestGeneratedCatalogsMatchPublishedPackage`, `TestCatalogModelJSONMatchesPiForEveryBuiltinModel` and `TestBuiltinCatalogsMatchPinnedProviderDataModules` accept exactly the seven records above with compat.supportsTemperature false added and nothing else (`d240SonnetFiveRecords`; the JSON test adds the member after forceAdaptiveThinking so the bytes are compared in Pi's member order). `TestModelObjectsMatchPisModelObjects` (`coding/extension`) accepts the same seven records with the same member added after forceAdaptiveThinking: the extension-visible model object follows the host catalog, as Pi main's does. `TestCodegenByteIdentical` needs no allowance: it regenerates through the same generator and reproduces the committed bytes.
-
-## D241 Ctrl+V also pastes on Windows and WSL
-
-What: PiG ports Pi main 37b38e9f6 (`fix(coding-agent): keep ctrl+v as a paste key on Windows and WSL`, #11780, fixing #11765), which is not in Pi 1.5.0. The Windows and WSL default of `app.clipboard.pasteImage` is `alt+v` and `ctrl+v` (Pi 1.5.0: `alt+v` only). Other platforms keep `ctrl+v`. The keybindings documentation lists both keys.
-
-Why: Most Windows terminals handle Ctrl+V themselves and send a bracketed paste, but some pass Ctrl+V to the program as the raw `0x16` key. With only `alt+v` bound, nothing happened and no message was shown. In a terminal that handles Ctrl+V itself the program never receives the key, so the extra binding changes nothing there.
-
-Pi bug: 1.5.0 binds no key to `ctrl+v` on Windows and WSL (#11765).
-
-Scope: the Windows and WSL column of `app.clipboard.pasteImage` (`internal/codingagent/keybindings.go`) and its two keybindings tables.
-
-Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL M11).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains 37b38e9f6. Then the call-site markers and this record go.
-
-Call-site markers: `internal/codingagent/keybindings.go` (`appKeybindingRows`), `internal/codingagent/keybindings_inventory_test.go` (the expected Windows keys).
-
-Evidence: `TestKeybindingDefinitionsApplyPlatformDefaults` (red on 989927eff4: `linuxWsl app.clipboard.pasteImage defaults = [alt+v], want [alt+v ctrl+v]`, same for win32; it ports Pi's WSL test and the updated defaults assertion over every platform column), `TestPlatformDivergentControlKeys`.
-
-Parity allowance: `TestAppKeybindingDefinitionsMatchUpstreamInventory` expects the extra `ctrl+v` on the Windows and WSL columns. `TestAppKeybindingsManagerMatchesPi` compares the host platform; on Windows and WSL hosts it pairs each probe that does not bind the action with one that binds `alt+v` and `ctrl+v`, and reads only that action's matches and keys from the pair (Pi bound that way behaves as Pi's later default does); every other action and the conflicts compare unchanged. The other Pi oracle tests of `internal/codingagent` that read this default or send Ctrl+V get the same allowance, and the Windows native job runs them: `TestDelegatedEditorHooksMatchPi` and `TestCustomEditorMatchesPi` send the probes that carry Ctrl+V to Pi with those two keys bound (`d241PiProbes`), and `TestKeybindingsFileLoadingMatchesPi`, `TestRandomKeybindingsFilesMatchPi` and `TestUserKeybindingsMatchPi` replace Pi's default keys for this action, and nothing else, with `alt+v` and `ctrl+v` (`d241PasteKeys`). `d241PasteKeys` first requires Pi's default to be `alt+v` alone, so a pinned Pi that adopts the change fails the test and the allowance goes with D241. Each was red on a Linux host with `WSL_DISTRO_NAME` set, which Pig treats as a Windows host, and is green with the allowance.
 
 ## D243 A bash or PowerShell timeout after the shell already exited reports the shell's exit code
 
