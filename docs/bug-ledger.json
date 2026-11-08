@@ -25833,6 +25833,29 @@
       "tests": []
     },
     {
+      "id": "BF-7fc9ec3",
+      "title": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command…",
+      "symptom": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames.",
+      "rootCause": "The writer buffered up to 1 MiB of frames and flushed only when the queue ran empty, so a reply queued behind a full buffer; Pi flushes after every frame (output.rs, frame.rs write_frame). The inherited stdin and stdout were also blocking descriptors: a goroutine reading or writing one held its scheduler slot until sysmon took it back, up to 10 ms, so a request that arrived with every slot held waited that long before a worker ran it, and 1.4 to 2 MB of command output flowed past the reply meanwhile (macOS CI, 64 KiB pipes: 2,162,688 bytes against the 1,600,000 bound). Serve now moves pipes and sockets it is given onto a poller duplicate and restores the mode on return.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames. The writer now flushes after every frame as Pi's does instead of holding up to 1 MiB, and the daemon waits on its inherited stdin and stdout through the runtime poller, so a request that arrives while the runtime is busy with the output no longer waits up to 10 ms for a worker.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7fc9ec3654",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "env/daemon/pollable_unix_test.go::TestPollableLeavesOtherFilesAlone",
+        "env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller"
+      ]
+    },
+    {
       "id": "BF-7fe6a16",
       "title": "Fix the compile errors of the merge: maps import, unused mcp import, UseSection inSection argument, Rust…",
       "symptom": "Fix the compile errors of the merge: maps import, unused mcp import, UseSection inSection argument, Rust markdown transformer cell",
@@ -48650,6 +48673,31 @@
         "internal/codingagent/external_editor_test.go::TestEditorHelperProcess",
         "internal/codingagent/external_editor_test.go::TestExternalEditorUpstream",
         "internal/codingagent/wsl_test.go::TestIsWSL"
+      ]
+    },
+    {
+      "id": "BF-e77c2e2",
+      "title": "The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or…",
+      "symptom": "The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or by its silence limit: it moves them into the runtime poller while it runs, which sets O_NONBLOCK on the open file descriptions a parent shell or a wrapper also holds, and only the normal return gave the mode back.",
+      "rootCause": "The poller duplicate of stdin and stdout shares the open file description with the original descriptors and every other holder (a parent shell, a wrapper, a stderr redirected into stdout), so Serve made them non-blocking for all of them. The deferred restore did not run on the os.Exit of the SIGTERM and silence exits; both now restore first. The restore closes the duplicate before it flips the mode, through the original descriptor, so a reader parked in the duplicate never sees the change. A thread-panic message to a stderr that shares a full stdout pipe answered EAGAIN and was lost; it now waits for room as Pi's eprintln does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or by its silence limit: it moves them into the runtime poller while it runs, which sets O_NONBLOCK on the open file descriptions a parent shell or a wrapper also holds, and only the normal return gave the mode back. Every exit does now, and a thread-panic message written to a stderr that shares a full stdout pipe waits for room instead of being lost.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e77c2e2da5",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller",
+        "env/daemon/pollable_unix_test.go::TestWriteStderrWaitsOnAFullPipe",
+        "env/daemon_stdio_mode_test.go::TestDaemonGivesBackBlockingStdioOnEveryExit",
+        "env/main_test.go::TestMain"
       ]
     },
     {
