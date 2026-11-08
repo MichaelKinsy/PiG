@@ -28,6 +28,9 @@
     {
       "path": "packages/agent/test/agent.test.ts",
       "disposition": "ported",
+      "protects": "Nothing the Agent does: the one change that has no Go form is how the cases build their scripted stream (createAssistantMessageEventStream instead of a local EventStream subclass).",
+      "pigTest": "The Go cases build their stream with the scriptedProvider helper, whose streams are ai.AssistantMessageEventStream already; every Agent assertion of the file runs on it.",
+      "whyNot": "The upstream change swaps one test-side stream constructor for another. No assertion about Agent behaviour changed, so there is no property left to test in a PiG-shaped test.",
       "upstreamTestHash": "sha256:562579b6adbe4440a9ec77c061570fa0ab0be5bc243ad2c414c8b2909a5defd7",
       "evidence": [
         "agent/agent_upstream_test.go",
@@ -636,6 +639,9 @@
     {
       "path": "packages/ai/test/faux-provider.test.ts",
       "disposition": "ported",
+      "protects": "Nothing the faux provider does: the Type import move in the 1.5.0 diff is a TypeScript module-import change in the test file.",
+      "pigTest": "None needed: every assertion of the file, including the cached-token cases changed in 1.5.0, has a Go assertion.",
+      "whyNot": "An import statement moved between modules has no behaviour. The Go test file has no equivalent line and nothing observable changed.",
       "upstreamTestHash": "sha256:1b38e24d86d4f25fa0e43ab821be2254daa3125682f024bb23822537ef984975",
       "evidence": [
         "ai/faux_provider_upstream_test.go",
@@ -1004,6 +1010,9 @@
     {
       "path": "packages/ai/test/model-catalog-types.test.ts",
       "disposition": "ported",
+      "protects": "The generated catalog's types: XAI literal field values, Copilot Grok and GPT routing, and Sol/Luna metadata have the literal types Pi's catalog declares.",
+      "pigTest": "The three case behaviors are ported as assertions of the generated field values (the catalog entries and their metadata).",
+      "whyNot": "Go has no string literal types, so an expectTypeOf assertion about a literal type has no type to check. What the type carries, the value, is asserted, so no case is omitted. A compile-fail check of the generated struct would restate the struct declaration.",
       "upstreamTestHash": "sha256:c47f1953bc68f6af093ead5618100f2cb6e20feda121f891c3fbfd3c303ecdb5",
       "evidence": [
         "ai/catalog_options_upstream_test.go#TestModelCatalogTypes"
@@ -1044,6 +1053,9 @@
     {
       "path": "packages/ai/test/models-entry.test.ts",
       "disposition": "ported",
+      "protects": "The lightweight models entry (src/models.ts and the @earendil-works/pi-ai/models subpath) runs a faux completion without loading TypeBox, the model catalogs or the provider SDKs: importing it must stay cheap.",
+      "pigTest": "The Go test ports the script's assertions (createModels lists nothing, a faux completion returns OK). Two PiG-shaped forms of the import guard were considered: a go list -deps test that forbids heavy packages under ai.CreateModels, and Pi's own spawned script run over the vendored pi-ai ./models entry in the Node host.",
+      "whyNot": "A go list -deps test would fail on purpose-built code: the ai package links every provider, so the forbidden set is always present, and Go has no lazy import to keep out. Pi's script over the vendored dist would test Pi's npm package graph, which PiG vendors byte for byte (vendor-manifest.json hashes) and does not author. The property belongs to Pi's packaging, and PiG has no packaging of its own to constrain.",
       "upstreamTestHash": "sha256:1b2e9830d59db8cc95d4a6cb93529502b23e848007351917153b36b0090551e2",
       "evidence": [
         "ai/models_entry_upstream_test.go#TestLightweightModelsEntryUpstream"
@@ -1529,6 +1541,9 @@
     {
       "path": "packages/ai/test/provider-error-body-passthrough.test.ts",
       "disposition": "ported",
+      "protects": "A non-2xx response from the image provider surfaces the response body's reason to the caller, never an opaque message.",
+      "pigTest": "TestGenerateImagesOpenRouter_SurfacesErrorBodyReason (ai/openrouter_images_error_body_test.go) runs the single case on the production OpenRouter image provider and asserts that the response body's reason reaches the error.",
+      "whyNot": "The upstream defect is the openai JavaScript SDK's APIError dropping the body. PiG reads resp.Body itself on every provider path, so that mechanism does not exist in PiG; the behaviour it broke is the one the Go test pins.",
       "upstreamTestHash": "sha256:5e7a73aab3d88709b728ddd338b909f3f4ca306d26d9ec8ac8d2db28521ec137",
       "evidence": [
         "ai/openrouter_images_error_body_test.go#provider-error-body-passthrough.test.ts"
@@ -1668,27 +1683,35 @@
     {
       "path": "packages/ai/test/streaming-json.test.ts",
       "disposition": "ported",
+      "protects": "A ToolCallArgumentsStream that read many pieces is released with its snapshots once the caller drops it, so a long tool call does not pin its history.",
+      "pigTest": "TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt (ai/streaming_json_parser_cost_test.go) keeps a weak.Pointer to the stream after 100 appends and waits for the collector to clear it.",
+      "whyNot": "Upstream also holds a WeakRef to each of the 100 snapshots. A snapshot is a Go map, which has no weak pointer, and it is reachable only through the stream, so the collection of the stream is the property Go can test.",
       "upstreamTestHash": "sha256:e302b103cd0f32ffcee872b5be5e54208ed7550c2b79ce91e01149a31ebc2542",
       "evidence": [
         "ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi",
         "ai/streaming_json_parser_cost_test.go#TestStreamingJSONParserReadsDeepNestingWithoutRecursionAndInLinearTime",
         "ai/streaming_json_parser_cost_test.go#TestStreamingJSONParserReadsOneHugePieceInLinearTime",
         "ai/streaming_json_parser_cost_test.go#TestStreamingJSONParserKeepsVeryLargeOpenArraysLinearByLettingThePreviewLag",
-        "ai/streaming_tool_arguments_norace_test.go#TestStreamingToolArgumentsAllocateLinearlyInTheArgumentText"
+        "ai/streaming_tool_arguments_norace_test.go#TestStreamingToolArgumentsAllocateLinearlyInTheArgumentText",
+        "ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ],
-      "rationale": "Ported as a differential test against Pi's parser instead of case by case: TestStreamingJSONParserMatchesPi feeds the Go parser and the pinned streaming-json.ts the same documents (Pi's partial-json and fix-json vectors, every JSONTestSuite document, random documents with and without whitespace, raw control characters, invalid escapes, split escapes and surrogates, __proto__ and duplicate keys, deep and wide containers, malformed text) at piece sizes 1, 2, 3, 7, 29 and whole, and compares the changes and the snapshot after every piece, so Pi's hand-written string, malformed-text and change cases are all inputs of the comparison. The cost cases (deep nesting of 200,000 levels without recursion, one huge piece, a very large open array whose preview lags) are Go tests; the heap-collection case of ToolCallArgumentsStream has no Go form."
+      "rationale": "Ported as a differential test against Pi's parser instead of case by case: TestStreamingJSONParserMatchesPi feeds the Go parser and the pinned streaming-json.ts the same documents (Pi's partial-json and fix-json vectors, every JSONTestSuite document, random documents with and without whitespace, raw control characters, invalid escapes, split escapes and surrogates, __proto__ and duplicate keys, deep and wide containers, malformed text) at piece sizes 1, 2, 3, 7, 29 and whole, and compares the changes and the snapshot after every piece, so Pi's hand-written string, malformed-text and change cases are all inputs of the comparison. The cost cases (deep nesting of 200,000 levels without recursion, one huge piece, a very large open array whose preview lags) are Go tests; the heap-collection case of ToolCallArgumentsStream is TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt, over weak.Pointer to the stream."
     },
     {
       "path": "packages/ai/test/streaming-tool-arguments.test.ts",
       "disposition": "ported",
+      "protects": "Once the caller drops a streamed tool call, the event stream, its partial messages and the argument snapshots are released.",
+      "pigTest": "TestStreamingToolArgumentsReleaseTheStreamAndItsPartialMessagesOnceTheCallerDropsThem runs every provider path of the table, keeps a weak.Pointer to the stream and to each partial message the events carried, and waits for the collector to clear all of them.",
+      "whyNot": "Upstream also holds a WeakRef to each call.arguments snapshot. A snapshot is a Go map, which has no weak pointer, and it is reachable only through its partial message, so the partials being collected releases it.",
       "upstreamTestHash": "sha256:0194c1bf8607ff796be18e03612a57a20f15b6da1e8b9870f7c03918b754d418",
       "evidence": [
         "ai/streaming_tool_arguments_upstream_test.go#TestStreamingToolArgumentsShowGrowingPartialsKeepStreamStateOffEveryPartialAndFinishWithTheExactArguments",
         "ai/streaming_tool_arguments_upstream_test.go#TestStreamingToolArgumentsLeaveNoStreamStateOnTheErrorMessageOfAStreamCutOffMidCall",
         "ai/streaming_tool_arguments_norace_test.go#TestStreamingToolArgumentsAllocateLinearlyInTheArgumentText",
-        "ai/streaming_tool_arguments_upstream_test.go#TestFauxToolCallStreamsGrowingPartialArguments"
+        "ai/streaming_tool_arguments_upstream_test.go#TestFauxToolCallStreamsGrowingPartialArguments",
+        "ai/streaming_tool_arguments_upstream_test.go#TestStreamingToolArgumentsReleaseTheStreamAndItsPartialMessagesOnceTheCallerDropsThem"
       ],
-      "rationale": "Every provider path of the upstream table (anthropic-messages, openai-completions, openai-responses, mistral-conversations, pi-messages, faux) runs the growing-partials, no-stream-state and exact-final-arguments case and the linear-allocation case (a 25 KB and a 250 KB call), and the Anthropic cut-off stream leaves no stream state on its error message. The release case (WeakRef collection of the stream and its partials) has no Go form: Go values are collected when unreferenced and the tests assert the partial blocks carry no state."
+      "rationale": "Every provider path of the upstream table (anthropic-messages, openai-completions, openai-responses, mistral-conversations, pi-messages, faux) runs the growing-partials, no-stream-state and exact-final-arguments case and the linear-allocation case (a 25 KB and a 250 KB call), and the Anthropic cut-off stream leaves no stream state on its error message. The release case (WeakRef collection of the stream and its partials) is TestStreamingToolArgumentsReleaseTheStreamAndItsPartialMessagesOnceTheCallerDropsThem over weak.Pointer on every provider path; the tests also assert the partial blocks carry no state."
     },
     {
       "path": "packages/ai/test/supports-xhigh.test.ts",
@@ -1718,6 +1741,9 @@
     {
       "path": "packages/ai/test/telemetry.test.ts",
       "disposition": "ported",
+      "protects": "Three upstream details: one source iterator serves the lazy stream observer; a tool-call arguments getter that throws does not break the telemetry count; and a span keeps a bounded error message that does not hold the provider's whole message alive.",
+      "pigTest": "The bounded-message case is ported as TestAITelemetryKeepsABoundedErrorMessageThatDoesNotHoldTheProvidersWholeMessageAliveUpstream: a 4 MB error message, runtime.MemStats after the call, growth under 2 MB. It failed on the old code, because a Go substring shares its parent's bytes just as a V8 slice does, and ai/telemetry.go now clones the cut. For the other two, the interleaved-tool-delta case runs with a ToolCall without arguments, and the lazy observer cases run over a source that ends on a terminal event and a result-only source.",
+      "whyNot": "The one-source-iterator assertion has no Go form: the source is one FIFO stream, so a second iterator cannot be taken. A Go struct field cannot throw when read, so the throwing-getter case has no input to give; a ToolCall without arguments stands in for it.",
       "upstreamTestHash": "sha256:6631a2c246e40e0599ad6d79f8fd38635f6fbc53edcdcc021b0162b4b7e23238",
       "evidence": [
         "ai/telemetry_upstream_test.go#TestAITelemetryObservesWithoutChangingDeliveredEventsOrResultsUpstream",
@@ -1733,9 +1759,10 @@
         "ai/telemetry_upstream_test.go#TestLazyStreamObservationOrdersEventResolvedResultUpstream",
         "ai/telemetry_upstream_test.go#TestLazyStreamObservationReportsTerminalResultOnceUpstream",
         "ai/telemetry_upstream_test.go#TestLazyStreamObservationReportsSetupFailureOnceUpstream",
-        "ai/telemetry_instruments_test.go#"
+        "ai/telemetry_instruments_test.go#",
+        "ai/telemetry_upstream_test.go#TestAITelemetryKeepsABoundedErrorMessageThatDoesNotHoldTheProvidersWholeMessageAliveUpstream"
       ],
-      "rationale": "All 14 case sites ported with Pi's inputs and attribute order (spans, events and metric attributes are compared in Pi's key order, not as sets): the ten AI telemetry cases (the each-cases run as subtests over stream, streamSimple and streamDeferred, over error and aborted, over missing and present poll messages, and over final and non-final polls) and the four lazyStream observation cases. Go mapping: the two lazyStream cases about an iterable without a result method become a source that ends on a terminal event and a result-only source, and the 'one source iterator' assertion has no Go form because the source is one FIFO stream, so it is omitted; the throwing-arguments getter has no Go form, so the interleaved-tool-delta case uses a ToolCall without arguments; the non-scalar native reasoning case passes GoogleThinking with Thinking empty. The span callback of Pi's `void start(...)` runs on a goroutine owned by Models.operations, so the tests close the Models to drain it. Red-green: dropping the observer from Models.Stream fails the first case, and dropping onEvent from the forwarding push fails the ordering case. Pi f715a15c1 adds one case, 'keeps a bounded error message that does not hold the provider's whole message alive', which measures V8 heap use after a span keeps a 500-character cut of a 4 MB message; the cut text is the one the existing error-status case asserts and Go has no slice view to retain, so the case has no Go form."
+      "rationale": "All 14 case sites ported with Pi's inputs and attribute order (spans, events and metric attributes are compared in Pi's key order, not as sets): the ten AI telemetry cases (the each-cases run as subtests over stream, streamSimple and streamDeferred, over error and aborted, over missing and present poll messages, and over final and non-final polls) and the four lazyStream observation cases. Go mapping: the two lazyStream cases about an iterable without a result method become a source that ends on a terminal event and a result-only source, and the 'one source iterator' assertion has no Go form because the source is one FIFO stream, so it is omitted; the throwing-arguments getter has no Go form, so the interleaved-tool-delta case uses a ToolCall without arguments; the non-scalar native reasoning case passes GoogleThinking with Thinking empty. The span callback of Pi's `void start(...)` runs on a goroutine owned by Models.operations, so the tests close the Models to drain it. Red-green: dropping the observer from Models.Stream fails the first case, and dropping onEvent from the forwarding push fails the ordering case. Pi f715a15c1 adds one case, 'keeps a bounded error message that does not hold the provider's whole message alive', which measures V8 heap use after a span keeps a 500-character cut of a 4 MB message; the cut text is the one the existing error-status case asserts and a Go substring does share its parent's bytes, so the case is ported as TestAITelemetryKeepsABoundedErrorMessageThatDoesNotHoldTheProvidersWholeMessageAliveUpstream (runtime.MemStats growth under 2 MB) and ai/telemetry.go clones the 500-character cut, which it did not before."
     },
     {
       "path": "packages/ai/test/text.test.ts",
@@ -1862,6 +1889,9 @@
     {
       "path": "packages/ai/test/validation.test.ts",
       "disposition": "ported",
+      "protects": "validateToolArguments still validates when the Function constructor is unavailable (a typebox/compile validator generates code and must fall back where code generation is blocked).",
+      "pigTest": "The Go validator cases run through the same tool-argument validation: the plain-JSON coercion table, the failing table, error lists and the returned copy.",
+      "whyNot": "PiG's validator is a tree interpreter and generates no code, so there is no mode in which code generation is unavailable and nothing to fall back from. A test that disables a facility Go does not use would pass without testing anything.",
       "upstreamTestHash": "sha256:9b358cdd5390c16cca0299532ee66df592b49badc3a77edf5e2c2bd260af98c2",
       "evidence": [
         "ai/validate_upstream_test.go#TestValidateToolArgumentsWithoutFunctionConstructor",
@@ -3845,9 +3875,9 @@
     {
       "path": "packages/codemode/test/sandbox.test.ts",
       "disposition": "ported",
-      "protects": "The worker host accepts a worker path, reports a missing worker file as a sandbox error, and ignores Node --watch notifications.",
-      "pigTest": "PiG's analogue of the worker file is SandboxOptions.Wasm, a function that supplies the QuickJS module. Go tests with a failing Wasm supplier (inline_test.go:127) and a bad module (custom_module_engine_test.go:46) exist. A worker-backend test that a failing Wasm supplier gives a sandbox error was considered.",
-      "whyNot": "FLIP the first two cases to planned: add the worker-backend test with Wasm returning an error and a custom Wasm supplier (owner proposal: a codemode lane). The --watch case has no Go form: no Node process, no watch notification, so it stays designed out.",
+      "protects": "The worker host loads the worker it is given (a path string works) and reports a missing worker file as a sandbox error with kind 'sandbox'; it ignores the dependency notifications Node --watch posts on the worker channel.",
+      "pigTest": "The first two cases are ported against PiG's analogue of the worker file, SandboxOptions.Wasm, the supplier of the QuickJS module that the worker backend (codemode.NewSandbox) runs: TestWorkerHostAcceptsAModuleFromAFilePath reads the module from a file path and returns 1, and TestWorkerHostReportsAMissingModuleFileAsASandboxError names a file that does not exist and expects a sandbox error. The failing-module case was already TestReportsAFailingWasmModuleAsASandboxError. For the --watch case a PiG test was considered over the vendored Pi TypeScript: it would run Pi's host.ts, not PiG's sandbox.",
+      "whyNot": "Only 'ignores Node --watch notifications from the worker' (#10725) stays designed out: the Go VM runs on a goroutine and reaches the host through the prelude's bridge function, so no Node --watch message can arrive and nothing in PiG's code could filter one. No PiG-shaped test of it is possible; Pi's own filter is tested by Pi's file.",
       "upstreamTestHash": "sha256:f9252a9b5851d6187ce3bdbefe89f83fff5c5395b197c378640936fd94a9da63",
       "evidence": [
         "codemode/sandbox_test.go#TestEmbeddedSourcesMatchTheirRecordedHashes",
@@ -3860,12 +3890,12 @@
         "codemode/sandbox_test.go#TestRejectsInvalidAndReservedGlobalNames",
         "codemode/sandbox_test.go#TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError",
         "codemode/sandbox_test.go#TestReportsAFailingWasmModuleAsASandboxError",
-        "codemode/bridge_test.go#TestReportsABrokenBridgeAsASandboxError"
+        "codemode/bridge_test.go#TestReportsABrokenBridgeAsASandboxError",
+        "codemode/sandbox_test.go#TestWorkerHostAcceptsAModuleFromAFilePath",
+        "codemode/sandbox_test.go#TestWorkerHostReportsAMissingModuleFileAsASandboxError"
       ],
-      "rationale": "53 inventory cases: 1 'embedded sources', 47 '%s backend' behavior cases and 5 'worker host' cases (the broken-bridge it.each counts once, 7 rows). 50 are ported and 3 are designed out. 'embedded sources › parse as JavaScript' is TestEmbeddedSourcesMatchTheirRecordedHashes: every execution runs the prelude, and the test pins assets/prelude.js, whose recorded upstream base hash (57c8dc8c…, codemode/assets/PROVENANCE.md) equals the hash of PRELUDE_SOURCE in the v1.2.0 tree. The 47 behavior cases are one Go test each in codemode/sandbox_test.go with Pi's scripts and expectations, run on the worker backend (codemode.NewSandbox) as top-level tests and on the inline (NewInlineSandbox) and remote (NewRemoteSandbox through a JSON-cloning Remote with ServeOptions.MaxInterruptBudget) backends through the behaviorTests table in TestSandboxBehaviorOnTheInlineBackend and TestSandboxBehaviorOnTheRemoteBackend, as 1.2.0's describe.each(BACKENDS) does. 1.0.4 to 1.1.0 adds `console: true` to console output items; TestCollectsTextImageAndConsoleOutputInOrder asserts it on the first and the last item. 1.1.0 to 1.2.0 moves the behavior cases into describe.each, so 'reserves the store and load names' and the globals cases build through newSandbox on every backend (Go: openSandbox); renames the image() errors from MCP blocks to image blocks, asserted with Pi's strings in TestRejectsInvalidTextAndImageArguments; and moves the worker-only cases into a 'worker host' describe. Of those, 'reports a failing wasm module as a sandbox error' is TestReportsAFailingWasmModuleAsASandboxError (with TestCorruptWasmModuleIsASandboxError), and 'reports a broken bridge as a sandbox error: %j' is TestReportsABrokenBridgeAsASandboxError in codemode/bridge_test.go, which sends all 7 of Pi's payloads (and 8 more) through a replacement prelude because there is no worker channel. Designed out: 'accepts a worker path string' and 'reports a missing worker file as a sandbox error' (owner-approved 2026-10-01, see the policy row: the Go engine runs QuickJS on wazero in process and has no worker file); 'ignores Node --watch notifications from the worker' (#10725), new in 1.2.0, tests host.ts's filter for the `watch:require`/`watch:import` messages Node 24/26 --watch posts on a worker_threads channel. The Go VM runs on a goroutine and reaches the host only through the prelude's bridge function, so no such message can arrive (runtime mechanic; the reviewed v1.2.0 upstream-sync row for packages/codemode/src/runtime/host.ts designs out the filter on the same ground). Input deviation: TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError opens its sandbox with the default 300 s timeout where Pi's createSandbox() uses 10 s. The asserted result (RangeError 'script output exceeded' within the output bounds) is the same; with 10 s the remote backend under -race on a loaded host passes the deadline first (measured 16.8 s).",
+      "rationale": "53 inventory cases: 1 'embedded sources', 47 '%s backend' behavior cases and 5 'worker host' cases (the broken-bridge it.each counts once, 7 rows). 52 are ported and 1 is designed out. 'embedded sources › parse as JavaScript' is TestEmbeddedSourcesMatchTheirRecordedHashes: every execution runs the prelude, and the test pins assets/prelude.js, whose recorded upstream base hash (57c8dc8c…, codemode/assets/PROVENANCE.md) equals the hash of PRELUDE_SOURCE in the v1.2.0 tree. The 47 behavior cases are one Go test each in codemode/sandbox_test.go with Pi's scripts and expectations, run on the worker backend (codemode.NewSandbox) as top-level tests and on the inline (NewInlineSandbox) and remote (NewRemoteSandbox through a JSON-cloning Remote with ServeOptions.MaxInterruptBudget) backends through the behaviorTests table in TestSandboxBehaviorOnTheInlineBackend and TestSandboxBehaviorOnTheRemoteBackend, as 1.2.0's describe.each(BACKENDS) does. 1.0.4 to 1.1.0 adds `console: true` to console output items; TestCollectsTextImageAndConsoleOutputInOrder asserts it on the first and the last item. 1.1.0 to 1.2.0 moves the behavior cases into describe.each, so 'reserves the store and load names' and the globals cases build through newSandbox on every backend (Go: openSandbox); renames the image() errors from MCP blocks to image blocks, asserted with Pi's strings in TestRejectsInvalidTextAndImageArguments; and moves the worker-only cases into a 'worker host' describe. Of those, 'reports a failing wasm module as a sandbox error' is TestReportsAFailingWasmModuleAsASandboxError (with TestCorruptWasmModuleIsASandboxError), and 'reports a broken bridge as a sandbox error: %j' is TestReportsABrokenBridgeAsASandboxError in codemode/bridge_test.go, which sends all 7 of Pi's payloads (and 8 more) through a replacement prelude because there is no worker channel. 'accepts a worker path string' and 'reports a missing worker file as a sandbox error' are ported against SandboxOptions.Wasm, the PiG analogue of the worker file (TestWorkerHostAcceptsAModuleFromAFilePath and TestWorkerHostReportsAMissingModuleFileAsASandboxError; the owner's 2026-10-01 design-out of both is superseded by the AGENTS.md rule that tests what a case protects in PiG's own way). Designed out: 'ignores Node --watch notifications from the worker' (#10725), new in 1.2.0, tests host.ts's filter for the `watch:require`/`watch:import` messages Node 24/26 --watch posts on a worker_threads channel. The Go VM runs on a goroutine and reaches the host only through the prelude's bridge function, so no such message can arrive (runtime mechanic; the reviewed v1.2.0 upstream-sync row for packages/codemode/src/runtime/host.ts designs out the filter on the same ground). Input deviation: TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError opens its sandbox with the default 300 s timeout where Pi's createSandbox() uses 10 s. The asserted result (RangeError 'script output exceeded' within the output bounds) is the same; with 10 s the remote backend under -race on a loaded host passes the deadline first (measured 16.8 s).",
       "designedOutCases": [
-        "worker host › accepts a worker path string",
-        "worker host › reports a missing worker file as a sandbox error",
         "worker host › ignores Node --watch notifications from the worker"
       ]
     },
@@ -3908,6 +3938,9 @@
     {
       "path": "packages/coding-agent/test/agent-session-branching.test.ts",
       "disposition": "ported",
+      "protects": "After a session replacement (/new, /fork, /clone, /resume), a ctx or pi captured by an extension before the replacement throws Pi's stale-context message on reuse.",
+      "pigTest": "TestPrintModeReplacedSessionHostCallsFailWithThePiStaleMessage and TestReplacedSession2860AcrossSDKs run the replacement through the real modes and SDKs and assert the stale message for every host call. A test that pins what a captured Go, Rust or Python ctx still reads from its own SDK state was considered.",
+      "whyNot": "D30 Part 1 keeps SDK-local getters (Cwd, Mode, HasUI, Model, theme, GetBranch, GetEntries) answering with the outgoing Session's values instead of failing. A test that pins that behaviour would lock a divergence the record says to remove, and a test that asserts Pi's behaviour fails until the SDKs apply the invalidate notification. The Node SDK, which runs Pi's own runner, passes Pi's case.",
       "upstreamTestHash": "sha256:ef1ef21bbebdd5381badb81eefd3a331c66bd640404c8d3ad90c7745c18a7671",
       "evidence": [
         "coding/session_runtime_branching_upstream_test.go#TestRuntimeOriginalBranching",
@@ -4776,6 +4809,9 @@
     {
       "path": "packages/coding-agent/test/first-time-setup-fork.test.ts",
       "disposition": "ported",
+      "protects": "A forked distribution is not blocked by the official first-time setup: shouldRunFirstTimeSetup is false for a fork (Pi's case returns false).",
+      "pigTest": "TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup (coding/cli/first_time_fork_upstream_test.go) asserts PiG's own gate through the compiled CLI: an interactive start without settings.json shows PiG's setup, which Pi's fork never does.",
+      "whyNot": "Pi's case expects no setup for a fork; PiG's own setup (D88) shows for PiG's default agent directory, so the upstream expectation cannot hold for PiG. The CLI test asserts the PiG outcome.",
       "upstreamTestHash": "sha256:38ae7d0f1aeb002ddbe6d0f9f0820b4b09b7d25d0656bde664c88d36694eabfa",
       "evidence": [
         "coding/cli/first_time_fork_upstream_test.go#TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup"
@@ -5580,12 +5616,14 @@
     },
     {
       "path": "packages/coding-agent/test/references.test.ts",
-      "disposition": "designed-out",
-      "protects": "The reference doc docs/models-configuration.md matches what the models.json schemas render.",
-      "pigTest": "A Go test in internal/pigdocs that checks that PiG's own models.md and config.md name every property of the vendored models.schema.json and settings schema (the schemas are byte-identical to Pi's).",
-      "whyNot": "FLIP to planned. It is possible, because PiG ships hand-written schema docs in internal/pigdocs/content and nothing checks them against the schemas. Owner proposal: a docs lane. No longer designed out.",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:e9a25e5e160394561ca1893b5080d447424909678f503a3043bcf99c3dd43bdb",
-      "rationale": "New in Pi 8efd314f: checks that docs/models-configuration.md matches what scripts/generate-references.ts renders from the models.json schemas. PiG has no generated reference doc; the schemas themselves are byte-identical to Pi's (schemas/models.schema.json), which the configschema tests and make generate-schemas keep."
+      "rationale": "The one case, 'generated reference pages > matches the committed pages' (Pi 8efd314f, regression for #10790): the rendered pages are exactly docs/models-configuration.md, and the committed page equals what generate-references.ts renders from the models.json schemas. Go form: configschema.RenderReferences ports generate-references.ts over the Go schema trees; TestReferencesRenderTheModelsConfigurationPageOnly checks the page set, TestModelsConfigurationReferenceMatchesTheCommittedPage compares the committed docs/site/docs/models-configuration.md (written by make generate-schemas) with the rendering, and TestModelsConfigurationReferenceMatchesThePinnedPiPage compares the rendering with the page the pinned Pi commits (everything but the generated comment, which names each project's generator). Earlier designed out ('PiG has no generated reference doc'); the intention check found a PiG-shaped test, and the page now ships.",
+      "evidence": [
+        "internal/codingagent/configschema/references_test.go#TestModelsConfigurationReferenceMatchesTheCommittedPage",
+        "internal/codingagent/configschema/references_test.go#TestModelsConfigurationReferenceMatchesThePinnedPiPage",
+        "internal/codingagent/configschema/references_test.go#TestReferencesRenderTheModelsConfigurationPageOnly"
+      ]
     },
     {
       "path": "packages/coding-agent/test/remote-catalog-provider.test.ts",
@@ -6054,6 +6092,9 @@
     {
       "path": "packages/coding-agent/test/session-share.test.ts",
       "disposition": "ported",
+      "protects": "The sessionShareDestination setting picks the share target: 'gist' forces a GitHub gist without checking Radius authentication, and a forced 'radius' with no Radius authentication reports it missing (the two cases Pi cea25743 adds).",
+      "pigTest": "TestShareHandlerUploadsToPiGForEveryShareDestination (internal/codingagent/session_share_destination_test.go) runs the share handler once per sessionShareDestination value (auto, gist, radius) and asserts that each one runs one PiG upload and reports the PiG share URL with no Radius error; TestSettingsSelectorOmitsShareDestination covers the /settings item Pi cea25743 adds.",
+      "whyNot": "PiG has neither target (D64): /share uploads to the PiG gateway only, with no gh login and no Radius credential. Pi's two cases assert a gist request and a Radius authentication error, and PiG can produce neither, so the same inputs cannot give the same outputs. The PiG test locks the property that remains: every setting value shares through PiG.",
       "upstreamTestHash": "sha256:71aa984f4acc13334627ee14c9cdec957d68e2a3af0d4d83224a10337c0e443c",
       "evidence": [
         "internal/codingagent/session_share_test.go",
@@ -6384,6 +6425,9 @@
     {
       "path": "packages/coding-agent/test/suite/agent-session-tool-result-images.test.ts",
       "disposition": "ported",
+      "protects": "A tool-result image is normalized with the images.autoResize setting and the active model's resize options: the two inputs of normalizeToolResultImages.",
+      "pigTest": "TestSessionToolResultImagesUseSettingsAndModelProfile runs a Session tool through the real normalization and observes the same two inputs (the images.autoResize setting gates the profile's MaxWidth resize); mutation-checked in both directions.",
+      "whyNot": "Upstream replaces normalizeToolResultImages with a module mock and checks its arguments. Go has no module mock, so the property is checked on the real normalization's observable result instead of the call arguments.",
       "upstreamTestHash": "sha256:106f068005ed81834bbc63d0b60cbbfb3be22831344d57d5b9f09554a0836bd2",
       "evidence": [
         "coding/session_images_test.go#TestSessionToolResultImagesUseSettingsAndModelProfile",
@@ -6522,6 +6566,9 @@
     {
       "path": "packages/coding-agent/test/suite/regressions/2860-replaced-session-context.test.ts",
       "disposition": "ported",
+      "protects": "A replaced Session's captured ctx and pi throw Pi's stale message, the replacement context's withSession sees the replacement Session, and reads answer for the replacement.",
+      "pigTest": "TestReplacedSession2860AcrossSDKs and the Go 2860 tests (coding/session_replaced_2860_upstream_test.go) run the case over every SDK and the runtime factory; the compiling mutations fail them.",
+      "whyNot": "D30 Part 1 and Part 2: SDK-local getters of a captured Go, Rust or Python ctx still answer for the outgoing Session, and a bare coding.Session replaced in place does not invalidate its runner. Pinning either would lock a divergence; asserting Pi's result fails until D30 is removed. See D30 for the exact boundary.",
       "upstreamTestHash": "sha256:7c5bd69d6bb018d7d8c064d78554e437fb42fe3fd81465a5867a9c6345ff6d97",
       "evidence": [
         "coding/session_replaced_2860_upstream_test.go",
@@ -7053,6 +7100,9 @@
     {
       "path": "packages/coding-agent/test/suite/regressions/7731-tui-method-wrapping.test.ts",
       "disposition": "ported",
+      "protects": "A method value captured before a renderer replacement still reaches the current renderer, and calling a method captured before a replacement does not recurse through a Proxy set trap (cases :17 and :6).",
+      "pigTest": "TestTUIMethodWrappingUpstream asserts call-time renderer resolution for InteractiveMode and TUIUIContext (:17): a method value captured before a replacement reaches, and after it routes to, the current renderer. The :6 subtest runs the same call and passes.",
+      "whyNot": "Case :6 guards a JavaScript Proxy hazard: reassigning a method through the set trap recurses. Go method sets are static and no Go value is wrapped in a Proxy, so no input can reach the hazard and the :6 subtest is true by construction. A test that cannot fail does not protect; it is kept only so the case has a named Go result.",
       "upstreamTestHash": "sha256:1dfe1390fa3f920b02b3e7bf985282b1874dc034d455a08fb5d09dc86ec3b818",
       "evidence": [
         "internal/codingagent/tui_reference_upstream_test.go#TestTUIMethodWrappingUpstream"
@@ -8762,6 +8812,9 @@
     {
       "path": "packages/evals/test/harness.test.ts",
       "disposition": "ported",
+      "protects": "Nothing the file tests: the docker harness, the agent Session runner and the cli are production files of Pi's evals package with no case in this file.",
+      "pigTest": "TestHarnessUpstream ports all 13 cases; TestCreatePiDocumentationEvalHarnessInSandbox covers the container admission path and its identity errors.",
+      "whyNot": "No upstream case is omitted. PiG runs eval files with its own Go host (internal/evals), so Pi's cli.ts and docker.ts (stubgen:omit in internal/evals/plan.go) have no counterpart; they are not tested by this file either.",
       "upstreamTestHash": "sha256:4fe189beb13f735c832ad48921d3b28538a26d74af689f3099fc89dc2c926cf9",
       "evidence": [
         "internal/evals/harness_upstream_test.go#TestHarnessUpstream"
@@ -8771,6 +8824,9 @@
     {
       "path": "packages/evals/test/plan.test.ts",
       "disposition": "ported",
+      "protects": "createTaskPlan rejects a repetition count that is not a positive integer (Pi checks Number.isSafeInteger and below 1).",
+      "pigTest": "TestPlanUpstream runs the same rejection cases over internal/evals/plan.go: zero is rejected with the 'positive integer' message.",
+      "whyNot": "runsPerVariant is a Go int, so a fractional or unsafe count cannot be passed. The case upstream tests is zero, which is ported; no upstream case uses a fractional value.",
       "upstreamTestHash": "sha256:ceeae4e17200f20d9082e006ed05660b07e2acd6f669224328dba77e3632437c",
       "evidence": [
         "internal/evals/plan_upstream_test.go#TestPlanUpstream"
@@ -9193,17 +9249,23 @@
     {
       "path": "packages/telemetry/test/metrics.test.ts",
       "disposition": "ported",
+      "protects": "Metric names, attributes and values are typed by the schema: counter names restricted to counters, unknown names, required and exact attributes, closed-set values, duplicate names and high-cardinality attributes (the expectTypeOf and @ts-expect-error assertions); and the shared no-op instruments are frozen.",
+      "pigTest": "The frozen-instrument case runs in its own subtest and, through reflect, asserts the Go form of Object.isFrozen: every no-op instrument is a struct with no fields, so a caller has no state to change. TestInMemoryMetricsMatchPiOnRandomPrograms compares the Go recorder with Pi's memory.ts. A compile-fail test of the schema typing with go/types was considered.",
+      "whyNot": "The typing assertions check TypeScript inference; Go's schema is runtime data (TelemetrySchemaDefinition maps) and upstream performs no runtime validation, so there is neither a Go type property nor a runtime error to assert. A go/types compile-fail test needs a type-level property to pin and metric names are strings in Go; the shared compile-fail harness is the owner question in the RESUME.",
       "upstreamTestHash": "sha256:aaca86bc027c3f7250cefd316db899d11e7ed8a91af785062311e836866c52a7",
       "evidence": [
         "telemetry/metrics_upstream_test.go#TestMetricsUpstream",
         "telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
         "telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms"
       ],
-      "rationale": "All 4 cases, one Go subtest each in TestMetricsUpstream with Pi's names and the same inputs and expected measurements. Pi d9025a5f removes the invalid-metric-input case and keeps its exemplar-for-a-no-op-context check as part of 'shares frozen no-op instruments'; Go keeps the exemplar check as its own subtest. Designed out: expectTypeOf/@ts-expect-error assertions (TypeScript inference) and Object.isFrozen on the shared no-op instruments (the Go no-op instruments are stateless values). TestInMemoryMetricsMatchPiOnRandomPrograms additionally compares the Go recorder with Pi's memory.ts over random programs."
+      "rationale": "All 4 cases, one Go subtest each in TestMetricsUpstream with Pi's names and the same inputs and expected measurements. Pi d9025a5f removes the invalid-metric-input case and keeps its exemplar-for-a-no-op-context check as part of 'shares frozen no-op instruments'; Go keeps the exemplar check as its own subtest. Designed out: expectTypeOf/@ts-expect-error assertions (TypeScript inference) ; Object.isFrozen on the shared no-op instruments is asserted in its Go form (struct types with no fields) in the same subtest. TestInMemoryMetricsMatchPiOnRandomPrograms additionally compares the Go recorder with Pi's memory.ts over random programs."
     },
     {
       "path": "packages/telemetry/test/propagation.test.ts",
       "disposition": "ported",
+      "protects": "Extract falls back to new traces for a carrier whose values are not strings (upstream tests six carriers, three of them with non-string values).",
+      "pigTest": "TestPropagationUpstream runs the fallback check with the carriers Go can express: one key removed per carrier, three fallback traces where upstream expects six; TestInMemoryCarriersInteroperateWithPi runs Pi's InMemory carriers against the Go adapter and back.",
+      "whyNot": "A Go carrier is a map[string]string, so a non-string value cannot be constructed: the compiler rejects it, and the runtime case upstream guards (a TypeScript caller passing a number) cannot occur.",
       "upstreamTestHash": "sha256:11e2238c7242d8b25fad8bff1ce4d9e02c98dedd4812f202752ae00f110050e2",
       "evidence": [
         "telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -9226,11 +9288,14 @@
     {
       "path": "packages/telemetry/test/telemetry.test.ts",
       "disposition": "ported",
+      "protects": "Span and event attributes, closed value sets, narrowed span names and duplicate span names are typed by the schema (the expectTypeOf and @ts-expect-error assertions), and the shared no-op span is frozen.",
+      "pigTest": "The no-op span case now also asserts the Go form of Object.isFrozen (the span is a struct with no fields) and that the span and the no-op context share the no-op metrics and propagation. Schema data is TelemetrySchemaDefinition and its JSON is pinned exactly.",
+      "whyNot": "The typing assertions check TypeScript inference over a schema literal. Go's schema is runtime data and upstream performs no runtime validation, so there is no Go type property to compile-fail and no runtime error to assert. The shared compile-fail harness is the owner question in the RESUME.",
       "upstreamTestHash": "sha256:e1f30df4b84859fb1b5ef1ec78040c78c749f0d9bdcc5b3523c8430d43512648",
       "evidence": [
         "telemetry/telemetry_upstream_test.go#TestTelemetryUpstream"
       ],
-      "rationale": "All 5 cases. Pi 2ec55d80 adds 'ignores typed recording payloads' and d9025a5f removes the unreadable-schema assertion; the Go test follows both. Designed out: the expectTypeOf and @ts-expect-error assertions, which check TypeScript inference of exact attributes, closed value sets, narrowed span names and duplicate span names (upstream performs no runtime schema validation, so Go has no runtime form), and Object.isFrozen (the Go noop span is a stateless value). Go mapping: schema data is TelemetrySchemaDefinition and its JSON is pinned exactly; DefineTelemetrySchema is pointer identity (toBe); CreateTypedSpanStarter takes variadic schemas it never reads; a typed or noop starter returns the callback's error by identity, and a panic propagates with the same value."
+      "rationale": "All 5 cases. Pi 2ec55d80 adds 'ignores typed recording payloads' and d9025a5f removes the unreadable-schema assertion; the Go test follows both. Designed out: the expectTypeOf and @ts-expect-error assertions, which check TypeScript inference of exact attributes, closed value sets, narrowed span names and duplicate span names (upstream performs no runtime schema validation, so Go has no runtime form), ; Object.isFrozen is asserted in its Go form (a struct with no fields) in the no-op span subtest. Go mapping: schema data is TelemetrySchemaDefinition and its JSON is pinned exactly; DefineTelemetrySchema is pointer identity (toBe); CreateTypedSpanStarter takes variadic schemas it never reads; a typed or noop starter returns the callback's error by identity, and a panic propagates with the same value."
     },
     {
       "path": "packages/tui/test/autocomplete-skill-slash.test.ts",
@@ -9330,6 +9395,9 @@
     {
       "path": "packages/tui/test/exit-restore.test.ts",
       "disposition": "ported",
+      "protects": "A TUI that exits without stop() restores the terminal modes once, and a normal stop() does not restore twice.",
+      "pigTest": "TestTerminalRestoreOnProcessExit, TestTerminalRestoreOnProcessExitDoesNotRepeatAfterStop and TestTerminalRestoreOnReturnAndOnPanicUnwinding assert the same sequences once each, and TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal proves every os.Exit path reachable while the TUI runs restores.",
+      "whyNot": "Node's process 'exit' event is the hook Pi's fixture relies on; Go has no exit hook, so the test enumerates the exit paths instead. A fixture process on a pty would test the same calls through a hook Go lacks.",
       "upstreamTestHash": "sha256:7d48fe738854f16479d463ef6a0d17683ceeaf3e8fe5e5eaf4c2a4b3a41959d4",
       "evidence": [
         "tui/terminal_exit_restore_test.go#TestTerminalRestoreOnProcessExit",
@@ -9467,6 +9535,9 @@
     {
       "path": "packages/tui/test/native-clipboard-linux.test.ts",
       "disposition": "ported",
+      "protects": "The N-API worker and module lifecycle of the native Linux clipboard (worker threads, addon nodelete and unload) and its C allocation counters.",
+      "pigTest": "TestUpstreamClipboardPrivateWorker and TestClipboardWorkerReleasesPrivateResults assert the equivalent contracts (one private operation retained after a timed-out waiter, late results discarded, no retained buffers) with synctest, weak references and allocation profiles; TestNativeX11ReaderFixture keeps the ticker responsiveness and no-leaked-child checks.",
+      "whyNot": "N-API addons, worker threads and C allocation counters are Node and C mechanisms PiG's pure-Go X11 backend does not have; the contracts they protect are tested in Go form, and the sixteen X11 behaviour cases run on a real Xvfb display.",
       "upstreamTestHash": "sha256:22b36f35cd4427ebeecaa5edebcfe920a9800ccb8b48a9c822db5f85c8f373f8",
       "evidence": [
         "internal/nativeplatform/clipboard_worker_linux_test.go#TestUpstreamX11IncrementalMetadata",

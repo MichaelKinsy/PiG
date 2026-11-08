@@ -247,6 +247,12 @@ Call site:
 
 Parity allowance: no paired scenario drives either part. Part 1 needs an extension that uses a captured `ctx` after a replacement, which no parity fixture does; Part 2 is a library path no Stock PiG mode reaches. The Stock modes are covered by the paired session-replacement scenarios and the tests named above.
 
+Protects: Pi's `agent-session-branching.test.ts` and `2860-replaced-session-context.test.ts` check that a `ctx` or `pi` captured before a session replacement throws Pi's stale-context message on reuse.
+
+PiG-shaped test considered: `TestPrintModeReplacedSessionHostCallsFailWithThePiStaleMessage` and `TestReplacedSession2860AcrossSDKs` run the replacement through the real modes and SDKs and assert the stale message for every host call. A test that pins what a captured Go, Rust or Python `ctx` still reads from its SDK-local state was considered.
+
+Why not: Pinning the SDK-local getters (Part 1) or the in-place replacement (Part 2) would lock the divergence this record says to remove, and a test that asserts Pi's result fails until the removal condition holds. The Node SDK runs Pi's own runner and passes Pi's cases.
+
 Remove when: the Go, Rust and Python SDKs apply the invalidate notification and every SDK-local ctx and pi member fails with Pi's stale message after it (Part 1), and the in-place `Session` replacement methods and the default `Session.ExtensionCommandActions` replacement actions are deleted or routed through `Runtime`, so no caller can replace a Session without invalidating its runner (Part 2).
 
 SCRUTINIZED:approved
@@ -888,6 +894,12 @@ Call sites:
 
 Locked by: `internal/codingagent` `TestShareSessionUploadsJSONLWithPrivacyNotice`, `TestShareSessionKeepsConcurrentExportsIsolated`, `TestUploadShareArtifactHonorsCancellationAndCanonicalOrigin`, `TestShareLoaderEscapeCancelsUpload`, `TestSharePrivacyNoticeRemainsVisibleAfterResult`, `TestShareGatewayURLDefaultAndOverride`, `TestShareBuiltinDescribesUnlistedExpiry`, `TestShareHandlerUploadsToPiGForEveryShareDestination`, and `TestSettingsSelectorOmitsShareDestination`; `cmd/pig` `TestHelpOmitsUnusedShareViewerURL`; the private-platform patch's `worker/test/share.test.ts` covers route shape, R2 limits, expiry, escaping, and hashed rate limiting. `TestReportInstallTelemetry_SendsOnlyVersionToConfiguredEndpoint`, `TestReportInstallTelemetry_DefaultURLIsPiInGoDevNotPiDev`, `TestReportInstallTelemetry_SettingDisabledSkipsRequest`, `TestReportInstallTelemetry_EnvOverrideDisablesEvenWhenSettingIsOn`, `TestReportInstallTelemetry_PIOfflineSkipsEvenWhenTelemetryIsOn`, `TestReportInstallTelemetry_NeverContactsPiDotDev`, `TestRecordChangelogVersionAndMaybeReportInstall_FreshInstallPingsAndRecordsNoBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_UpdateWithNewEntriesPingsAndShowsBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_SameVersionNeverPings`, and `TestRecordChangelogVersionAndMaybeReportInstall_VersionBumpWithNoNewEntriesNeverPings` lock the install-telemetry ping.
 
+Protects: the upstream session-share cases of Pi cea25743 ('forces gist sharing without checking Radius authentication' and 'reports missing Radius authentication when Radius is forced') check that the sessionShareDestination setting picks the share target.
+
+PiG-shaped test considered: `TestShareHandlerUploadsToPiGForEveryShareDestination` runs the share handler for auto, gist and radius and asserts that each runs one PiG upload with no Radius error; `TestSettingsSelectorOmitsShareDestination` covers the /settings item.
+
+Why not: Pi's cases assert a GitHub gist request and a Radius authentication error. PiG has neither target, so the same inputs cannot give the same outputs; the PiG-shaped tests lock that every setting value shares through PiG.
+
 Remove when: never, unless PiG's owner selects another PiG-operated host, or returns `/share` to Pi's Radius/GitHub flow (update this entry and every call-site marker then).
 
 SCRUTINIZED:approved
@@ -1289,6 +1301,12 @@ Call-site markers: `coding/cli/main.go` (gate observation), `coding/cli/extensio
 Evidence: `TestShouldRunFirstTimeSetupGate` (interactive with and without `settings.json`, print, piped stdin, JSON, RPC), `TestFirstTimeSetupOriginalCasesAsFork` and `TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup` (Pi's original gate inputs against PiG's real CLI), `TestFirstTimeSetupEscSkipsOnInteractiveStart` and `TestFirstTimeSetupSavesThemeSpriteAndAnalytics` (real CLI in a PTY), `TestFirstTimeSetupSpriteStepListsExtensionSpritesAndSubmits`, `TestFirstTimeSetupKeepsTheHighlightedSpriteThroughAnalyticsAndSubmit`, `TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI`, `TestShowFirstTimeSetupSkipSavesNothing`, `TestFirstTimeSetupHintUsesLowercaseKeyText`, `TestSpriteCreate`, `TestSpritePickerCreateYourOwnShowsTheHint`, `TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite`, `TestFirstTimeSetupThemePreviewAndEscSkip` and `TestFirstTimeSetupLogoIsThePigHeadAndPreviewsTheSprite`. Pi's analytics cases in `first-time-setup.test.ts` stay ported unchanged (`TestAnalyticsSettings`).
 
 Parity allowance: Pi never shows the dialog for a fork, and parity fixtures carry `settings.json`, so no paired scenario compares it.
+
+Protects: Pi's `first-time-setup-fork.test.ts` case checks that a forked distribution is not blocked by the official first-time setup (`shouldRunFirstTimeSetup` returns false).
+
+PiG-shaped test considered: `TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup` starts the compiled CLI interactively without `settings.json` and asserts that PiG's setup shows; `TestShouldRunFirstTimeSetupGate` and `TestFirstTimeSetupOriginalCasesAsFork` run the four upstream inputs with PiG's identity.
+
+Why not: Pi's case expects no setup for a fork, and PiG's own setup shows for PiG's default agent directory, so the upstream expectation cannot hold for PiG. The PiG-shaped tests assert PiG's outcome.
 
 Remove when: never; the first-run setup is PiG's.
 
