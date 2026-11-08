@@ -110,7 +110,7 @@ func runStdioChunks(stream []byte, sizes func() int, maxBytes int) stdioOutcome 
 		out.messages = append(out.messages, m.Method+"|"+string(m.Params))
 	}
 	out.errors = recorded.errors
-	out.remainder = string(transport.stdoutRemainder)
+	out.remainder = string(transport.lineReader().splitter.pending())
 	return out
 }
 

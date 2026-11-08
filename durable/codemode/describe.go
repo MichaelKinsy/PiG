@@ -77,7 +77,7 @@ func sampleOf(tool *durable.ToolRegistration) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return cm.RenderToolSample(declaration, cm.ToolRenderOptions{})
+	return cm.RenderToolSample(declaration, cm.ToolRenderOptions{}), nil
 }
 
 // namespaceOf is the namespace of a tool: the one with the longest prefix its name starts with.
