@@ -795,9 +795,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/link/channel.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/channel_test.go", "test:chord/next/host/host_channel_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/link/errors.ts"
@@ -837,9 +837,9 @@ rationale = "Moved from packages/chord/src/next/link/link.ts by the root move (P
 [[files]]
 path = "packages/chord/src/link/message.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go", "test:chord/next/link/message_trace_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/link/part.ts"
@@ -2685,9 +2685,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/registries/registry.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_registry_providers_test.go", "test:chord/next/registries/registry_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/registries/value.ts"
@@ -2797,9 +2797,9 @@ rationale = "Pi deletes the v1 chord layer (src/schema.ts is the pre-next root f
 [[files]]
 path = "packages/chord/src/sqlite/node.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/sqlite/node/sqlite_driver_test.go", "test:chord/sqlite/node/database_contract_test.go", "test:chord/sqlite/node/transaction_outcome_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/state.ts"
@@ -2979,9 +2979,9 @@ rationale = "Moved from packages/chord/src/next/store/jsonl.ts by the root move 
 [[files]]
 path = "packages/chord/src/store/live-query.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_live_query_test.go", "test:chord/next/store/live_query_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/store/outbox.ts"
@@ -3364,9 +3364,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/tui/frames.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_frames_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/tui/index.ts"
@@ -3385,9 +3385,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/tui/scope.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/tui/tui_scope_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/tui/terminal.ts"
