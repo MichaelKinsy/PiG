@@ -520,3 +520,11 @@ plugins/coding-tools/cards.ts
 plugins/coding-tools/tui.ts
 plugins/powershell/tui.ts
 plugins/subagents/tui.ts
+||||||| merged common ancestors
+plugins/envs/web.tsx
+plugins/envs/contract.web.tsx
+plugins/envs/EnvsPanel.tsx
+plugins/envs/DirectoryPicker.tsx
+plugins/envs/SecretsSection.tsx
+plugins/envs/style.css
+plugins/envs/secret-presets.ts
