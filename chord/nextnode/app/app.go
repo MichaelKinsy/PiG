@@ -48,6 +48,8 @@ import (
 // Not ported yet (pending, no divergence): `plugins.install` (Pi's `installPlugin`: T9, the plugins component has none, so App.Plugins
 // has no Install); the `principalAttributes` hook (T6 host spans: the Go host has none).
 
+// pig divergence (D606): the reload suite (reload_*_test.go) drives a Go tab host on the links endpoint where Pi's drives a Chromium page.
+
 // Server is the server's host kind: the kit's server host is Server().
 var Server = mustHostKind("server")
 
