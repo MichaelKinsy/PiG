@@ -138,7 +138,7 @@ const pigLogo = (() => {
 	const rects = inner.match(/<rect [^>]*\/>/g).map((rect) => `\t\t\t${rect}`).join("\n");
 	return `import { useSyncExternalStore } from "react";
 
-// The mark is the PiG pig. With a sprite hook on the server (pig additive (D482): PiG Standard's \`/sprite\`) the page carries the chosen
+// The mark is the PiG pig. With a sprite hook on the server (PiG Standard's \`/sprite\`) the page carries the chosen
 // sprite's info as JSON (data-brand-sprite: key, name; "" for none) and streams changes; the mark and the favicon then draw
 // that sprite's SVGs. Without the hook the attribute is absent and nothing below runs: the mark is
 // the brand's pig.

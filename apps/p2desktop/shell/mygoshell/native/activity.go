@@ -10,7 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// pig additive (D481): a turn's activity row, as the web's: the check, the words ("Thought · 1 step", "Read 3 files · 4 steps"),
+// a turn's activity row, as the web's: the check, the words ("Thought · 1 step", "Read 3 files · 4 steps"),
 // the time it took and a chevron; the row opens to the turn's thinking and calls.
 
 // activityItems are the chat's items for the transcript, kept while the transcript (a new slice at every rebuild) and its
