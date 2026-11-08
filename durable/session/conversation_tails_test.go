@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
@@ -147,4 +148,36 @@ func TestConversationTailsReadErrorsAreReturnedAndNothingIsKept(t *testing.T) {
 	if _, err := tails.Marker(1, nil, tailNever[session.HeadMarker]); !errors.Is(err, errTailRead) {
 		t.Fatalf("err = %v", err)
 	}
+}
+
+// pi: it("freezes the markers it keeps"), written on the same inputs: entry(2, 1, 1) applied to fresh tails. Pi asserts
+// Object.isFrozen on the written record; Go has no freeze, so the test holds what the freeze protects: nothing a caller
+// does to the record it wrote, or to a marker it was given, changes the marker the tails keep.
+func TestConversationTailsFreezesTheMarkersItKeeps(t *testing.T) {
+	tails := session.NewConversationTails()
+	write := tailEntry(2, 1, 1).(durable.EntryWrite)
+	write.Value.Model = []ai.Message{ai.UserMessage{Content: ai.UserText("kept"), Timestamp: 1}}
+	tails.Apply([]durable.StorageWrite{write})
+
+	// The caller changes the record it wrote, through the pointer and slice it still holds.
+	*write.Value.Head = 99
+	write.Value.Model[0] = ai.UserMessage{Content: ai.UserText("changed"), Timestamp: 2}
+	write.Value.Kind = "changed"
+
+	want := func(marker *session.HeadMarker, err error) {
+		t.Helper()
+		if err != nil || marker == nil || marker.Id != 2 || marker.Kind != "note" || marker.Head == nil || *marker.Head != 1 ||
+			len(marker.Model) != 1 || marker.Model[0] != (ai.UserMessage{Content: ai.UserText("kept"), Timestamp: 1}) {
+			t.Fatalf("kept marker = %+v, %v; want the record as written", marker, err)
+		}
+	}
+	first, err := tails.Marker(1, nil, tailNever[session.HeadMarker])
+	want(first, err)
+
+	// The caller changes the marker it was given.
+	*first.Head = 77
+	first.Model[0] = ai.UserMessage{Content: ai.UserText("changed"), Timestamp: 2}
+	first.Kind = "changed"
+	second, err := tails.Marker(1, nil, tailNever[session.HeadMarker])
+	want(second, err)
 }
