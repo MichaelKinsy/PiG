@@ -1447,7 +1447,7 @@ func (m *Markdown) renderInlineTokensSequential(tokens []markedToken, style inli
 			out.WriteString(style.applyText(segment))
 		}
 	}
-	// pig divergence (D265): after a skipped HTML comment the next text may lose its leading blanks, as in Pi main 54280c4ff.
+	// after a skipped HTML comment the next text may lose its leading blanks, as in Pi main 54280c4ff.
 	dropLeadingSpace := false
 	for i, token := range tokens {
 		token = dropsLeadingSpace(token, dropLeadingSpace)

@@ -8447,18 +8447,30 @@
     },
     {
       "path": "packages/env/test/differential.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c5d282bb754e972276056b492cc8b9da7a278fa6f9e0c89b08099071205a52f6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c5d282bb754e972276056b492cc8b9da7a278fa6f9e0c89b08099071205a52f6",
+      "evidence": [
+        "env/differential_test.go#TestRemoteExecutionEnvAgainstNodeExecutionEnv"
+      ],
+      "rationale": "All 4 upstream cases are ported; each Go case cites its upstream line. Pi 14ff455a splits the bash case so each writes one pipe, and asserts a bash case returns a result; env/differential_test.go now runs Pi's two cases and the same result check. Pi main moves the Context type import (type-only change)."
     },
     {
       "path": "packages/env/test/process.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f07cb629df7676da6a7822e29f47a651fbe12d59681d46e730315b263daf8253"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f07cb629df7676da6a7822e29f47a651fbe12d59681d46e730315b263daf8253",
+      "evidence": [
+        "env/process_test.go"
+      ],
+      "rationale": "Ported with Pi 9c9ce8547 and 032656b6c: every case runs against both daemons (Pi's and PiG's) as env/process_test.go; the Windows-only skips follow Pi."
     },
     {
       "path": "packages/env/test/remote-abort.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f36b11a942c859d032ee7fb65b1bb1943025a1087b3227bc189d37cbb7c9ccf7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f36b11a942c859d032ee7fb65b1bb1943025a1087b3227bc189d37cbb7c9ccf7",
+      "evidence": [
+        "env/remote_abort_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in env/remote_abort_test.go; the two daemons of Pi's test are this test binary in the modes TestMain gives it."
     },
     {
       "path": "packages/env/test/remote.test.ts",
@@ -8645,18 +8657,63 @@
     },
     {
       "path": "packages/schema/test/builders.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e5a3274c35c460d0e640d8fa24219788937375246744e97cfd87d245f2e9dae2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e5a3274c35c460d0e640d8fa24219788937375246744e97cfd87d245f2e9dae2",
+      "evidence": [
+        "schema/builders_upstream_test.go",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainRecursiveBuildsASchemaThatChecksEveryLevel",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainRecursiveSchemasNestWithDistinctIDs"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files; 1 type-level cases are designed out. Pi main af79b0c3d adds 4 cases: the two recursive() cases run as TestPiMainRecursive*; the bigint() and unsafe() cases are type-level or need a bigint value, which Go does not have (designed out).",
+      "designedOutCases": [
+        "builders › carry the static type of valid values",
+        "builders › build a bigint with bounds, typed bigint",
+        "builders › type a schema as given with unsafe"
+      ]
     },
     {
       "path": "packages/schema/test/coerce-typebox.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3bdde8189ec5cf05e5bc8376d1def0d8bdfdaf6025098b4141d8bb5ed1220e85"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3bdde8189ec5cf05e5bc8376d1def0d8bdfdaf6025098b4141d8bb5ed1220e85",
+      "evidence": [
+        "schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream"
+      ],
+      "rationale": "TestCoerceTypeBoxUpstream runs 186 of the 221 upstream sites from schema/testdata/coerce-typebox.json (regenerated at v1.5.0 with gen-coerce-typebox.mjs against TypeBox 1.3.27: byte-identical, 221 ids and names in file order equal): every Convert expectation by deep equality (+0/-0 and NaN as vitest) and every Check result. 17 are Pi's own it.skip (not run upstream). 18 have no Go form: their schema, input or expectation holds `undefined` (8) or a bigint (10), which no Go JSON value can be (tool arguments reach the coercer only through JSON: ai/validate.go decodes with chordjson into nil, bool, float64, string, []any or *Object); all 18 are designed out under the owner's 2026-11-03 JS-only values and mechanics category and listed in designedOutCases, the 7 whose id two upstream sites share by `id@line`. Pi main af79b0c3d runs the bigint cases Pi had skipped (Array 10 and LiteralBigInt 1-7, twice); they need a bigint value, which Go does not have, so the Go table keeps them as designed out.",
+      "designedOutCases": [
+        "Value.Convert.Any › Should Convert 2",
+        "Value.Convert.Array › Should Convert 9",
+        "Value.Convert.Null › Should Convert 10",
+        "Value.Convert.Null › Should Convert 11",
+        "Value.Convert.Null › Should Convert 17",
+        "Value.Convert.Number › Should Convert 19",
+        "Value.Convert.Object › Should Convert 7",
+        "Value.Convert.String › Should Convert 5",
+        "Value.Convert.String › Should Convert 8",
+        "Value.Convert.String › Should Convert 14",
+        "Value.Convert.Unknown › Should Convert 2",
+        "Value.Convert.Boolean › Should Convert 20@336",
+        "Value.Convert.Boolean › Should Convert 17@389",
+        "Value.Convert.Boolean › Should Convert 18@394",
+        "Value.Convert.Boolean › Should Convert 19@399",
+        "Value.Convert.Boolean › Should Convert 23@419",
+        "Value.Convert.Number › Should Convert 10@925",
+        "Value.Convert.Number › Should Convert 11@930"
+      ]
     },
     {
       "path": "packages/schema/test/coerce.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:13794a83a21c67b24c5647232b1d850be4b49c15acfb3efc303d1678634f8092"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:13794a83a21c67b24c5647232b1d850be4b49c15acfb3efc303d1678634f8092",
+      "evidence": [
+        "schema/coerce_upstream_test.go#TestCoerceUpstream",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainValidateChecksWithoutCoercing",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef"
+      ],
+      "rationale": "All 44 upstream sites run in TestCoerceUpstream with the same schemas, inputs and expected results (the anyOf/oneOf loop runs both keywords); TypeBox Type.Record and Type.Cyclic schemas use the JSON TypeBox 1.3.27 emits (re-verified by running them). Go forms: expectTypeOf assertions inside 'adds coerce and parse only with coerce: true' and 'returns the coerced value when it is valid' are compile-time and not run (the method-set check replaces the first); 'works on frozen schemas' checks the schema is unchanged; 'still coerces when the Function constructor is unavailable' keeps the coercion assertion because nothing here generates code. Pi main adds validate (TestPiMainValidateChecksWithoutCoercing) and the relative-$ref $dynamicRef case (TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef); the two bigint and undefined conversion cases need values Go does not have (designed out).",
+      "designedOutCases": [
+        "bigint and undefined, as TypeBox's Value.Convert › converts to a bigint like TypeBox's TryBigInt",
+        "bigint and undefined, as TypeBox's Value.Convert › converts to undefined like TypeBox's TryUndefined"
+      ]
     },
     {
       "path": "packages/schema/test/conformance.test.ts",
@@ -8669,8 +8726,12 @@
     },
     {
       "path": "packages/schema/test/equal.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:591a1a7a347f537bcf9fb5fedae96455eacd85eb20bda0a415ff4de5353768f3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:591a1a7a347f537bcf9fb5fedae96455eacd85eb20bda0a415ff4de5353768f3",
+      "evidence": [
+        "schema/pi_main_follow_upstream_test.go#TestPiMainEqual"
+      ],
+      "rationale": "The one case runs with 8 of its 10 pairs; the two pairs that hold undefined ([null, undefined] and [{a: undefined}, {}]) need a value Go does not have (designed out)."
     },
     {
       "path": "packages/schema/test/shared.test.ts",
@@ -8683,13 +8744,41 @@
     },
     {
       "path": "packages/schema/test/typebox-static.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6211182603cc9b548785be37bb399c8bb071ce9480fe38a84a7936eb8b60c377"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:6211182603cc9b548785be37bb399c8bb071ce9480fe38a84a7936eb8b60c377",
+      "evidence": [
+        "schema/coerce_upstream_test.go#TestCoerceUpstream"
+      ],
+      "rationale": "Owner class approval of 2026-10-29 (TypeScript type-level checks, verified for this row): all 5 cases are TypeScript compile-time assertions (expectTypeOf on Static<> of TypeBox schemas, 'passes when this file type-checks'); Go has no type-level programming and schema/README.md records that Static has no Go form. The one runtime call (compile(...,{coerce:true}).parse({n:'1'}) at line 67) is guarded by if(result.ok) around a type assertion only and is covered by the coercion cases of coerce.test.ts. Pi main adds Enum, Tuple, BigInt and Undefined static-type cases: type-level only, designed out like the rest."
     },
     {
       "path": "packages/schema/test/validator.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:92509c88db8868df0dc81d53e8b8ecf5b479f6f962452c274446ed26d67cc601"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:92509c88db8868df0dc81d53e8b8ecf5b479f6f962452c274446ed26d67cc601",
+      "evidence": [
+        "schema/validator_upstream_test.go#TestErrors",
+        "schema/validator_upstream_test.go#TestValues",
+        "schema/validator_upstream_test.go#TestOptions",
+        "schema/validator_upstream_test.go#TestSchemas",
+        "schema/validator_additions_upstream_test.go#TestUnresolvedReferences",
+        "schema/validator_additions_upstream_test.go#TestStringLengths",
+        "schema/validator_additions_upstream_test.go#TestErrorMessages",
+        "schema/validator_additions_upstream_test.go#TestExtraFormats",
+        "schema/coerce_upstream_test.go#TestCoerceUnresolvedReferences",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainRelativeRootIDAppliedOnce",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainRelativeRootIDWithUnevaluatedKeywords",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainExplainsNestedResourcesWithARelativeID",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainLeafChecksAgreeWithTheStandaloneCheck",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainClosedObjectFindsPropertiesInAnyOrder",
+        "schema/pi_main_follow_upstream_test.go#TestPiMainRejectsNaNAndInfinityAsANumber"
+      ],
+      "rationale": "Per-case audit of all 30 upstream cases: 29 run with the same inputs and expected results (TypeBox Type.Object/Type.Ref cases run on the JSON those builders emit; Uint8Array as []byte; the deep-frozen case runs its no-mutation half, Go has no Object.freeze; 'leave values at their place uncoerced' is TestCoerceUnresolvedReferences). 1 case, 'values › treats a property set to undefined as absent', is designed out under the owner's 2026-11-03 JS-only values and mechanics category (Go has no undefined: a nil value is JSON null, not an absent member). Go-only extras: Go map key order, Go number kinds, Go map schema, two concurrency cases. The ported tests pass under -race. Pi main adds the relative-$id cases, the leaf-check agreement cases and the NaN case (TestPiMain* in schema/pi_main_follow_upstream_test.go); the three TypeBox JavaScript type cases (BigInt, Undefined, a required property set to undefined) need bigint or undefined values, which Go does not have (designed out).",
+      "designedOutCases": [
+        "values › treats a property set to undefined as absent",
+        "TypeBox's JavaScript types › check Type.BigInt with its bounds, as TypeBox does",
+        "TypeBox's JavaScript types › check Type.Undefined: only undefined, and a required property with it must be present",
+        "TypeBox's JavaScript types › check a required property set to undefined by its schema, as TypeBox does"
+      ]
     },
     {
       "path": "packages/telemetry/test/conformance.test.ts",
@@ -8933,8 +9022,40 @@
     },
     {
       "path": "packages/tui/test/markdown.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bc0326a53fa4d8b4c60a7880825ddbfc29fcd4707b80a9f30638838f5f82cbcc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bc0326a53fa4d8b4c60a7880825ddbfc29fcd4707b80a9f30638838f5f82cbcc",
+      "evidence": [
+        "tui/markdown_upstream_test.go#TestUpstreamMarkdown",
+        "tui/markdown_cjk_url_test.go#TestMarkdownBareURLCJKPunctuation",
+        "tui/markdown_test.go#TestMarkdownTableSimple",
+        "tui/w3_sessions_test.go#TestMarkdownRuleWidthCap",
+        "internal/codingagent/w3_pi_test.go#TestW3SessionPiComparison",
+        "tui/markdown_codeblock_wrap_test.go#TestCodeBlockKeepsEveryCharacterAtNarrowWidth",
+        "tui/markdown_row_invariant_test.go#TestRealMarkdownNeverEmitsAnOverWideRow",
+        "tui/markdown_width_test.go#TestMarkdownRender_NeverExceedsWidth",
+        "tui/markdown_latex_test.go#TestMarkdownLatexMatchesUpstream",
+        "tui/markdown_upstream_fixture_test.go",
+        "tui/markdown_port_regressions_test.go",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisPiCases",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisMatchesPi",
+        "tui/markdown_cjk_test.go#TestMarkedCJKClassMatchesPinnedPackage",
+        "tui/markdown_marked_test.go#TestMarkedRightDelimiterScanMatchesRegexps",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTables",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi",
+        "tui/markdown_latex_table_test.go#TestMarkdownContainsTableStart",
+        "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
+        "tui/markdown_wrap_boundary_test.go#TestMarkdownStyledWordsAtTheWrapBoundaryPiCase",
+        "tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
+        "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
+        "tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments"
+      ],
+      "rationale": "101 of 102 upstream cases are ported: the 98 cases of the earlier pin keep their evidence and three of the four Pi 0f21a331 'Block reuse' cases run as TestUpstreamMarkdownBlockReuse subtests with the same inputs and expectations. The designed-out case ('holds rendered blocks weakly, so a full garbage collection releases them') checks a JavaScript WeakRef: Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and FinishStreaming, Invalidate and a theme or grammar change release it (subtest 'releases the reused highlighting when streaming finishes'). SCRUTINIZED:approved by the owner (2026-11-01): reviewed, no lifetime bug: the memo is replaced every render and released by FinishStreaming, Invalidate and a theme or grammar change; TestMarkdownReusedHighlightingEqualsAFreshRender and the 'releases the reused highlighting when streaming finishes' subtest pin it. Pi main 54280c4ff adds the HTML comment cases (TestUpstreamMarkdownHTMLComments).",
+      "designedOutCases": [
+        "Markdown component › Block reuse › holds rendered blocks weakly, so a full garbage collection releases them"
+      ]
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",
@@ -9107,8 +9228,12 @@
     },
     {
       "path": "packages/tui/test/tab-width.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:92e28ec8d82413f289f317de3440b9049eed7d87a7a0442969cd4374727982ce"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:92e28ec8d82413f289f317de3440b9049eed7d87a7a0442969cd4374727982ce",
+      "evidence": [
+        "tui/render_regressions_upstream_test.go#TestUpstreamTabWidth"
+      ],
+      "rationale": "All four upstream cases retain their exact strings, slices, control sequences and terminal geometry. The production TUI case asserts every terminal cell in the 16x3 viewport and the absence of literal output tabs. A compiling mutation retaining visible tabs fails both output normalization and the physical-row regression. Pi main 25490ea49 adds two slice cases, run as TestUpstreamTabWidth subtests."
     },
     {
       "path": "packages/tui/test/terminal-colors.test.ts",
@@ -9124,8 +9249,26 @@
     },
     {
       "path": "packages/tui/test/terminal-image.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f8c6686431d6e116a8e9f4e37602f5850faad44b193f5135b0e27ebedd975fa3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f8c6686431d6e116a8e9f4e37602f5850faad44b193f5135b0e27ebedd975fa3",
+      "evidence": [
+        "tui/terminal_image_test.go#TestIsImageLine",
+        "tui/terminal_image_test.go#TestDetectCapabilities",
+        "tui/terminal_image_test.go#TestImageFallbackAndHyperlink",
+        "coding/extension/host/subprocess/runtime_node_tui_upstream_test.go#TestNodeVendoredTuiUpstreamTests",
+        "tui/terminal_image_detection_upstream_test.go#TestUpstreamTerminalImageDetection",
+        "tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageCapabilities",
+        "tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding",
+        "tui/terminal_image_upstream_test.go#TestUpstreamImageFallback",
+        "tui/terminal_image_upstream_test.go#TestUpstreamImageHyperlink",
+        "tui/terminal_image_sizing_upstream_test.go#TestUpstreamTerminalImageDetectsTruecolorFromDirectColorTerm",
+        "tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing",
+        "tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
+        "tui/terminal_image_upstream_test.go#enables hyperlinks and Kitty images for Herdr",
+        "tui/terminal_image_upstream_test.go#lets PI_HYPERLINKS=0 disable Rex hyperlinks",
+        "tui/terminal_image_orca_test.go#TestDetectCapabilitiesOrca"
+      ],
+      "rationale": "All 82 cases are ported; the two Orca cases of Pi f09d01b8 (disabled without a signal, Kitty with ORCA_IMAGE_PROTOCOL) are TestDetectCapabilitiesOrca. Pi main 2af8a42f5 adds the Alacritty cases (TestUpstreamTerminalImageCapabilities)."
     },
     {
       "path": "packages/tui/test/terminal.test.ts",
@@ -9172,8 +9315,29 @@
     },
     {
       "path": "packages/tui/test/tui-alt-screen.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:29a0fb604345b56b133a5c0c50be9ee7e03d06ec3c98c2ce3d77bbd9162ffb1f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:29a0fb604345b56b133a5c0c50be9ee7e03d06ec3c98c2ce3d77bbd9162ffb1f",
+      "evidence": [
+        "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
+        "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses",
+        "tui/tui_alt_screen_test.go",
+        "tui/tui_alt_screen_v087_test.go",
+        "tui/mouse_test.go",
+        "tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
+        "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenModifiedNavigationReachesFocusedComponent",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenKeyboardNavigationHasFourRowsOfPageOverlap",
+        "tui/tui_alt_screen_test.go#TestAltScreenKeyboardPageAndEdgeScroll",
+        "tui/fake_cursor_test.go#TestAltScreenKeepsTheSelectionHighlightAfterAFakeCursorCell",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenScrollsOnWheelAFocusedOverlayDoesNotHandle",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenFocusedOverlayOwnsViewportKeys",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenDoubleClickJoinsSlashAndHyphenSegments",
+        "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText",
+        "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageInAPaddedColoredBoxWhoseFirstLineIsAboveTheViewport",
+        "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret",
+        "tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDrawsKittyImagesAfterClearingTheRowsTheyCover"
+      ],
+      "rationale": "Pi 3bae8527 'defers viewport keys to a focused list' and 'gives viewport keys back when autocomplete closes'. Pi main 25490ea49 and 4622edb79 change or add three cases (tui/tui_alt_screen_kitty_order_test.go)."
     },
     {
       "path": "packages/tui/test/tui-cell-size-input.test.ts",
@@ -9195,8 +9359,23 @@
     },
     {
       "path": "packages/tui/test/tui-render.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:825786e386f64e2623de1006dc8cee1f78c8b8298d68e5adc8332e846f8175be"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:825786e386f64e2623de1006dc8cee1f78c8b8298d68e5adc8332e846f8175be",
+      "evidence": [
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIOSC133Markers",
+        "tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIRenderDiagnostics",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIBoundedRender",
+        "tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIResize",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIContentShrinkage",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIDifferentialRendering",
+        "tui/fake_cursor_test.go#TestMainScreenDrawsTheFocusedFakeCursorAndOmitsItWhenTheHardwareCursorIsShown",
+        "tui/fake_cursor_test.go#TestMainScreenKeepsTheFakeCursorOfAnUnfocusedInput",
+        "tui/fake_cursor_test.go#TestMainScreenOmitsAFocusedFakeCursorWhoseEndMarkerTruncationDropped",
+        "tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
+      ],
+      "rationale": "Pi 19ce8059 'does not write OSC 133 prompt markers to the terminal'. Pi main 25490ea49 adds two cursor-marker cases, run as TestUpstreamTUIBoundedRender subtests."
     },
     {
       "path": "packages/tui/test/tui-shrink.test.ts",

@@ -49,7 +49,7 @@ func mcpLastLine(t *testing.T, result agent.ToolResultMessage) string {
 
 func TestAgentSessionMCPExposesCodemodeOnlyMCPToolsThroughCodemodeAndHidesThemFromTheModel(t *testing.T) {
 	h := setupMCP(t, extension.McpExposureCodemode, nil, mcpSessionOptions{})
-	searchName := mcpext.CreateMcpToolName("docs", "search", nil)
+	searchName := mcp.CreateMcpToolName("docs", "search", nil)
 	// MCP tools resolve to their CallToolResult, errors included.
 	h.respond(mcpCodemode(`
 							const [a, b] = await Promise.allSettled([
@@ -110,7 +110,7 @@ func TestAgentSessionMCPExposesCodemodeOnlyMCPToolsThroughCodemodeAndHidesThemFr
 
 func TestAgentSessionMCPKeepsCodemodeOnlyMCPToolsCallableAcrossTreeNavigation(t *testing.T) {
 	h := setupMCP(t, extension.McpExposureCodemode, nil, mcpSessionOptions{})
-	searchName := mcpext.CreateMcpToolName("docs", "search", nil)
+	searchName := mcp.CreateMcpToolName("docs", "search", nil)
 	h.respond(boundaryReply("one", ai.StopReasonStop, 0), boundaryReply("two", ai.StopReasonStop, 0))
 	h.prompt(t, "first")
 	h.prompt(t, "second")
@@ -162,7 +162,7 @@ func TestAgentSessionMCPRoutesToolsWhoseNamesDifferOnlyInDashAndUnderscore(t *te
 
 func TestAgentSessionMCPRejectsDirectModelCallsToCodemodeOnlyMCPTools(t *testing.T) {
 	h := setupMCP(t, extension.McpExposureCodemode, nil, mcpSessionOptions{})
-	h.respond(mcpToolCalls(mcpToolCall{mcpext.CreateMcpToolName("docs", "search", nil), ai.JsonObject{"query": "x"}}), mcpDone())
+	h.respond(mcpToolCalls(mcpToolCall{mcp.CreateMcpToolName("docs", "search", nil), ai.JsonObject{"query": "x"}}), mcpDone())
 
 	h.prompt(t, "go")
 
@@ -740,7 +740,7 @@ func TestAgentSessionMCPFindsToolsFromScriptsWithSearchToolsAndDescribeTool(t *t
 func TestAgentSessionMCPActivatesToolSearchForDeferredMCPToolsAndKeepsLoadedToolsDeclaredOnTheBranch(t *testing.T) {
 	// No built-in tools are active; the MCP extension activates tool_search, not codemode.
 	h := setupMCP(t, extension.McpExposureDeferred, nil, mcpSessionOptions{})
-	searchName := mcpext.CreateMcpToolName("docs", "search", nil)
+	searchName := mcp.CreateMcpToolName("docs", "search", nil)
 	h.respond(
 		mcpToolCalls(mcpToolCall{"tool_search", ai.JsonObject{"query": "search the docs", "limit": float64(1)}}),
 		mcpToolCalls(mcpToolCall{searchName, ai.JsonObject{"query": "loaded"}}),

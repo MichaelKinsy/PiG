@@ -7,8 +7,8 @@ import (
 )
 
 // Requests Pi sends through the global fetch (the OAuth flow's discovery and token calls included) use Node's fetch semantics when no client is given.
-func TestOrDefaultFetchIsNodeFetch(t *testing.T) {
-	if _, ok := orDefaultFetch(nil).(*ai.NodeFetch); !ok {
-		t.Fatalf("orDefaultFetch(nil) is %T, want *ai.NodeFetch", orDefaultFetch(nil))
+func TestNodeFetchIsNodeFetch(t *testing.T) {
+	if _, ok := nodeFetch().(*ai.NodeFetch); !ok {
+		t.Fatalf("nodeFetch() is %T, want *ai.NodeFetch", nodeFetch())
 	}
 }
