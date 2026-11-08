@@ -123,8 +123,10 @@ type Transaction struct {
 	// writes are the store writes, in staging order, and the store they commit to; made by the first (the flag that
 	// sends the commit through the store's step, W12).
 	writes *txWrites
-	// tables are the tables written, each with its writes and overlay.
-	tables map[*store.TableHandle]*store.TableChanges
+	// tables are the tables written, each with its writes and overlay; tableList is the same tables in the order they were
+	// first written (Pi's Map order).
+	tables    map[*store.TableHandle]*store.TableChanges
+	tableList []*store.TableHandle
 	// pending counts the `tx.*` reads underway: a callback settling with one is refused (rule 3).
 	pending int
 	// persistence is when its commit reaches the store (a run state's deferred change, D8).
@@ -494,6 +496,11 @@ func (tx *Transaction) prepareCommit() ([]*adoption, error) {
 	if tx.pending > 0 {
 		return nil, fmt.Errorf("%s: the callback settled before its pending tx operations", tx.documents.Label())
 	}
+	if tx.tables != nil {
+		if err := tx.refreshQueries(); err != nil {
+			return nil, err
+		}
+	}
 	tx.state = txCommitting
 	if err := tx.ctx.Err(); err != nil {
 		return nil, context.Cause(tx.ctx)
@@ -717,6 +724,19 @@ func (tx *Transaction) cutError() error {
 	}, nil)
 }
 
+// refreshQueries stages the re-run of the live queries over the tables this transaction wrote (decision "Live queries over
+// an object's own tables"): read in the commit step after every table write staged so far (the callback's), published in
+// the commit's batch. None when no written table has a live query.
+func (tx *Transaction) refreshQueries() error {
+	refresh := store.RefreshOf(tx.tableList, tx.ctx)
+	if refresh == nil {
+		return nil
+	}
+	tx.writes.staged = append(tx.writes.staged, refresh.Write)
+	_, err := tx.Stage(refresh, func() Staged { return refresh })
+	return err
+}
+
 // handle is the handle behind table, one of this object's tables (another object's is refused).
 func (tx *Transaction) handle(table *store.TableHandle) (*store.TableHandle, error) {
 	if err := tx.assertOpen(); err != nil {
@@ -748,6 +768,7 @@ func (tx *Transaction) changes(table *store.TableHandle) (*store.TableChanges, e
 		}
 		changes = store.NewTableChanges(handle, &tx.writes.staged)
 		tx.tables[handle] = changes
+		tx.tableList = append(tx.tableList, handle)
 	}
 	return changes, nil
 }

@@ -58,6 +58,12 @@ func PrincipalKey(principal Principal, ctx context.Context, customKey *Principal
 	return key
 }
 
+// SamePrincipal is whether principal is other: the same default key (canonical JSON), each computed once per principal
+// object; no principal (nil, upstream's `undefined`) is none (Pi main de229e073).
+func SamePrincipal(principal, other Principal, ctx context.Context) bool {
+	return principal != nil && PrincipalKey(principal, ctx, nil) == PrincipalKey(other, ctx, nil)
+}
+
 // defaultKeys is the cache of default keys, by principal.
 var defaultKeys principalKeys
 
