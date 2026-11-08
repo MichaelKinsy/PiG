@@ -697,9 +697,10 @@ func TestCapsRefuseAPutAndAReadOfMoreThan4MiB(t *testing.T) {
 
 func TestSummaryCountsASpacesFilesVersionsAndBytesAndKeepsItsNewestVersions(t *testing.T) {
 	f := filesOf(t)
-	a1 := f.put("docs/a.txt", "1")
-	a2 := f.put("docs/a.txt", "22")
-	b := f.put("b.txt", "333")
+	// Each write names its time (see the newest-20 test): Pi's puts differ in the millisecond, Go's may not, and equal times order by id.
+	a1 := f.put("docs/a.txt", "1", "created", float64(1_000))
+	a2 := f.put("docs/a.txt", "22", "created", float64(2_000))
+	b := f.put("b.txt", "333", "created", float64(3_000))
 	want := `{"files":2,"versions":3,"bytes":6,"newest":[` + jsonOf(t, b) + `,` + jsonOf(t, a2) + `,` + jsonOf(t, a1) + `]}`
 	if got := jsonOf(t, f.summary("shared")); got != want {
 		t.Fatalf("summary = %s, want %s", got, want)
@@ -724,8 +725,10 @@ func TestSummaryCountsASpacesFilesVersionsAndBytesAndKeepsItsNewestVersions(t *t
 
 func TestSummaryKeepsTheNewest20AndStaysAcrossARestart(t *testing.T) {
 	first := filesOf(t)
+	// Pi's puts are slow enough to differ in the millisecond their `created` has; a Go put is not, and equal times order by the random
+	// id: each write names its time (an import's `created`), a millisecond apart.
 	for index := range 25 {
-		first.put(fmt.Sprintf("f%d", index), "x")
+		first.put(fmt.Sprintf("f%d", index), "x", "created", float64(1_700_000_000_000+index))
 	}
 	summary := jsonOf(t, first.summary("shared"))
 	newest := first.summary("shared").Value("newest").([]any)

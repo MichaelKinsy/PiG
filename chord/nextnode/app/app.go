@@ -34,12 +34,14 @@ import (
 // (the start-data object, sessions, the owner link, pairing, files), and gives the app the controls it needs: the owner link,
 // `ApplyChanges`, export and import per address.
 //
-// Forced Go differences (D460, D461, D462). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
+// Forced Go differences (D460, D461, D462, D603). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
 // facets are Go core facets on the server's Go host, the server's plugins' host is the NodeHost the server host accepts the link of,
 // and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460). `Files` and
 // `FilesFolder` are not bridged: `Files` has a keyed member (`summary`) and the bridge refuses keyed members, so a TS plugin cannot
 // get a host's files; Go code gets them directly (D461). The server's host and the plugins' NodeHost are two hosts with a store each
-// (D462). `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
+// (D462). The server's own code is not scanned at start (Pi compares the static import graph of its start script): a Go server is one
+// executable with no import graph, `AppOptions.Base` lists what marks `base` and there is no `server_scan` report (D603).
+// `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
 // worker kinds.
 //
 // Not ported yet (pending, no divergence): the web and terminal surfaces (`web`, `tui`: T11, nextnode/surfaces and nextnode/tui; until
