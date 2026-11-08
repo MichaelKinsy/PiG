@@ -23,7 +23,7 @@ const (
 	// requestSpliceCacheBytes bounds the bytes the cache retains: each entry's source string and its encoding.
 	// pig additive (D112): see requestSpliceMinBytes.
 	requestSpliceCacheBytes = 64 << 20
-	// requestSpliceMaxCopies bounds the equal copies of one string whose address an entry remembers beyond its source. A conversation that reads one file again and again holds one equal copy per read; each is found by identity, so a request that sends them all hashes and compares none. A copy past the bound is found by content, as before.
+	// requestSpliceMaxCopies bounds the equal copies of one string whose address an entry remembers beyond its source. A conversation that reads one file again and again holds one equal copy per read; each is found by identity, so a request that sends them all hashes and compares none. Past the bound the oldest copies are forgotten, so a request that carries more equal copies than the bound finds them by content.
 	// pig additive (D112): see requestSpliceMinBytes.
 	requestSpliceMaxCopies = 256
 	// requestSpliceKeepRequests is how many request builds an entry outlives unused. A build re-sends the conversation, so an entry the last
@@ -297,7 +297,7 @@ func (b *requestBody) prepare(request *http.Request) {
 		return
 	}
 	request.ContentLength = int64(b.size)
-	request.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(b.reader()), nil }
+	request.GetBody = func() (io.ReadCloser, error) { return &requestBodyReader{segments: b.segments}, nil }
 }
 
 // requestBodyReader reads a requestBody. WriteTo lets io.Copy hand each segment to the connection without an intermediate copy.
@@ -306,6 +306,9 @@ type requestBodyReader struct {
 	index    int
 	offset   int
 }
+
+// Close does nothing. It makes the reader an io.ReadCloser, so http.NewRequest uses it as the body and the transport hands it to idleTimeoutConn.ReadFrom unwrapped.
+func (r *requestBodyReader) Close() error { return nil }
 
 func (r *requestBodyReader) Read(p []byte) (int, error) {
 	n := 0
