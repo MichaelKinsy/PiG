@@ -1,40 +1,58 @@
 package jsonwire
 
+import "bytes"
+
 // HasLoneSurrogateEscape reports whether the JSON text holds a lone UTF-16 surrogate in either form a string of the text can keep it in, which the
 // sdk decoder keeps as the surrogate unit and encoding/json/v2 replaces with U+FFFD, where JSON.parse keeps the unit:
 //   - a \uD800-\uDFFF escape that is not half of a well-formed pair;
 //   - the three-byte form of a surrogate, ED A0..BF xx, which is not UTF-8.
 //
-// The scan reads each backslash with the byte after it, so the second byte of an escaped backslash starts nothing. It may report true for text that
+// A backslash is read with the byte after it, so the second byte of an escaped backslash starts nothing. It may report true for text that
 // has none (the bytes ED A0..BF outside a string, or inside a name or a raw message), never false for text that has one, so a caller that must keep
 // the unit sends such text to the sdk decoder and everything else to v2.
 func HasLoneSurrogateEscape(data []byte) bool {
-	for i := 0; i+1 < len(data); i++ {
-		switch data[i] {
-		case 0xED:
-			if data[i+1] >= 0xA0 && data[i+1] <= 0xBF {
-				return true
-			}
-		case '\\':
-			if data[i+1] != 'u' {
-				i++ // a two-character escape, an escaped backslash among them: the byte after it starts nothing
-				continue
-			}
-			rest := data[i+2:]
-			switch surrogateKind(rest) {
-			case lowSurrogate:
-				return true
-			case highSurrogate:
-				if len(rest) < 10 || rest[4] != '\\' || rest[5] != 'u' || surrogateKind(rest[6:]) != lowSurrogate {
-					return true
-				}
-				i += 11 // both escapes of the pair
-				continue
-			}
-			i += 5 // the escape
+	return hasSurrogateBytes(data) || hasLoneSurrogateEscape(data)
+}
+
+// hasSurrogateBytes reports whether data holds ED A0..BF, the first two bytes of a surrogate's three-byte form.
+func hasSurrogateBytes(data []byte) bool {
+	for {
+		i := bytes.IndexByte(data, 0xED)
+		if i < 0 || i+1 >= len(data) {
+			return false
 		}
+		if data[i+1] >= 0xA0 && data[i+1] <= 0xBF {
+			return true
+		}
+		data = data[i+1:]
 	}
-	return false
+}
+
+// hasLoneSurrogateEscape reports whether data holds a \uD800-\uDFFF escape that is not half of a pair. A backslash starts a two-character escape,
+// which an escaped backslash is one of, or a \u escape of six bytes.
+func hasLoneSurrogateEscape(data []byte) bool {
+	for {
+		i := bytes.IndexByte(data, '\\')
+		if i < 0 || i+1 >= len(data) {
+			return false
+		}
+		if data[i+1] != 'u' {
+			data = data[i+2:]
+			continue
+		}
+		rest := data[i+2:]
+		switch surrogateKind(rest) {
+		case lowSurrogate:
+			return true
+		case highSurrogate:
+			if len(rest) < 10 || rest[4] != '\\' || rest[5] != 'u' || surrogateKind(rest[6:]) != lowSurrogate {
+				return true
+			}
+			data = rest[10:] // both escapes of the pair
+			continue
+		}
+		data = rest[min(4, len(rest)):] // the escape
+	}
 }
 
 const (
