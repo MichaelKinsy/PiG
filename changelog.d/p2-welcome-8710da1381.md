@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- The desktop app's composer row shows Pi's skeleton block while the context window is unknown, "Choose model" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs. <!-- fix: p2-welcome -->
+- The desktop app's composer row shows Pi's skeleton block while the context window is unknown, "Choose model" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs. <!-- fix: 8710da1381a81ac1b6f61426cdadfcc329cee3bc -->

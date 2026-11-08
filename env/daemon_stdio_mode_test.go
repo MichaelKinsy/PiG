@@ -120,8 +120,7 @@ func TestDaemonGivesBackBlockingStdioOnEveryExit(t *testing.T) {
 			select {
 			case err := <-done:
 				code := 0
-				var exit *exec.ExitError
-				if errors.As(err, &exit) {
+				if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 					code = exit.ExitCode()
 				} else if err != nil {
 					t.Fatal(err)

@@ -15,13 +15,11 @@ func TestRequestRenderFromAComponentGoroutineWhileTheOwnerStopsTheTUI(t *testing
 		ui.Add(NewText("x"))
 		ui.Start()
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 200 {
 				ui.RequestRender()
 			}
-		}()
+		})
 		ui.StopWithOptions(StopOptions{})
 		wg.Wait()
 	}

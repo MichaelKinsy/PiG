@@ -4,5 +4,5 @@
 
 ### Fixed
 
-- A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs. <!-- fix: p2-locations -->
-- A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes. <!-- fix: p2-locations -->
+- A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs. <!-- fix: 43d563908d69dd92e09b74397210b8d2468e10fa -->
+- A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes. <!-- fix: 43d563908d69dd92e09b74397210b8d2468e10fa -->
