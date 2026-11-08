@@ -55,6 +55,8 @@ type StubMembers struct {
 	Variant string
 	State   map[string]any
 	Methods map[string]StubMethod
+	// Err refuses the object (a plugin's `throw forbidden(...)`): the host fails or ends the reference with it; the other fields are unused.
+	Err error
 }
 
 // Stub is a contract plus its members, or a factory of them (a dependency a facet under test needs).
@@ -67,6 +69,9 @@ type Stub struct {
 
 func (stub Stub) implementation(params *delta.JsonObject, principal p2runtime.Principal, self host.Self) (contracts.Implementation, error) {
 	members := stub.Factory(params, principal, StubSelf{self})
+	if members.Err != nil {
+		return contracts.Implementation{}, members.Err
+	}
 	implementation := contracts.Implementation{Variant: members.Variant}
 	implementation.Members.State = map[string]chord.Watchable[delta.JsonValue]{}
 	for name, value := range members.State {
