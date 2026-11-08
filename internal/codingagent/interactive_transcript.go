@@ -201,6 +201,7 @@ func (m *InteractiveMode) addUserMessageToChat(msg agent.AgentMessage, text stri
 		Name:    parsed.Name,
 		Content: parsed.Content,
 	}, m.markdownThemeWithSettings(), m.outputPad)
+	comp.SetMarkdownTransform(m.surfaceMarkdownTransform(extension.MarkdownMessageCustom, meta))
 	if m.toolsExpanded {
 		comp.SetExpanded(true)
 	}
@@ -463,11 +464,11 @@ func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEnt
 			// upstream case "compactionSummary" (interactive-mode.ts:3915-3924): a message carries no usage, so no cost notice follows.
 			summary, _ := msg.Custom["summary"].(string)
 			tokensBefore, _ := msg.Custom["tokensBefore"].(float64)
-			m.addCompactionSummary(summary, int(tokensBefore), nil)
+			m.addCompactionSummary(summary, int(tokensBefore), nil, messageMeta{})
 		case msg.Role() == agent.RoleBranchSummary:
 			// upstream case "branchSummary" (interactive-mode.ts:3926-3935).
 			summary, _ := msg.Custom["summary"].(string)
-			m.addBranchSummary(summary, nil)
+			m.addBranchSummary(summary, nil, messageMeta{})
 		case msg.ToolResult != nil:
 			r := msg.ToolResult
 			call, pending := pendingCalls[r.ToolCallID]
@@ -505,12 +506,12 @@ func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEnt
 		case "compaction":
 			var ce CompactionEntry
 			if err := json.Unmarshal(pe.entry.Raw(), &ce); err == nil {
-				m.addCompactionSummary(ce.Summary, ce.TokensBefore, ce.Usage)
+				m.addCompactionSummary(ce.Summary, ce.TokensBefore, ce.Usage, entryMeta(ce.SessionEntryBase))
 			}
 		case "branch_summary":
 			var be BranchSummaryEntry
 			if err := json.Unmarshal(pe.entry.Raw(), &be); err == nil && be.Summary != "" {
-				m.addBranchSummary(be.Summary, be.Usage)
+				m.addBranchSummary(be.Summary, be.Usage, entryMeta(be.SessionEntryBase))
 			}
 		case "custom_message":
 			var cm CustomMessageEntry
@@ -583,6 +584,7 @@ func (m *InteractiveMode) appendCustomMessage(message CustomMessageEntry) {
 		}
 	}
 	component := tui.NewCustomMessageComponent(&tui.CustomMessage{CustomType: message.CustomType, Content: message.Content}, renderer, m.markdownThemeWithSettings(), m.outputPad)
+	component.SetMarkdownTransform(m.surfaceMarkdownTransform(extension.MarkdownMessageCustom, entryMeta(message.SessionEntryBase)))
 	component.SetExpanded(m.toolsExpanded)
 	m.customMessageOrder = append(m.customMessageOrder, component)
 	m.chatContainer.Add(component)
@@ -609,8 +611,9 @@ func customMessageEntryOf(custom map[string]any) (entry CustomMessageEntry, disp
 
 // addBranchSummary draws a branch summary as upstream addMessageToChat case "branchSummary" (interactive-mode.ts:3926-3935)
 // does: a spacer, then the component at the current expansion. A branch_summary entry's usage adds its cost notice.
-func (m *InteractiveMode) addBranchSummary(summary string, usage *ai.Usage) {
+func (m *InteractiveMode) addBranchSummary(summary string, usage *ai.Usage, meta messageMeta) {
 	component := tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: summary}, m.markdownThemeWithSettings(), m.outputPad)
+	component.SetMarkdownTransform(m.surfaceMarkdownTransform(extension.MarkdownMessageSummary, meta))
 	component.SetExpanded(m.toolsExpanded)
 	m.branchSummaryOrder = append(m.branchSummaryOrder, component)
 	m.chatContainer.Add(tui.NewSpacer(1))

@@ -316,9 +316,10 @@ type API interface {
 	// upstream: types.ts registerToolRenderer
 	RegisterToolRenderer(resolver ToolRendererResolver)
 
-	// RegisterMarkdownTransformer registers a display-only Markdown transform.
-	// upstream: types.ts:1287
-	RegisterMarkdownTransformer(transformer MarkdownTransformer)
+	// RegisterMarkdownTransformer registers a display-only Markdown transform. By default it runs on user, assistant and thinking
+	// Markdown; options.MessageTypes selects the surfaces instead (Pi eebd5d90).
+	// upstream: types.ts registerMarkdownTransformer
+	RegisterMarkdownTransformer(transformer MarkdownTransformer, options ...MarkdownTransformerOptions)
 
 	// OwnThinkingRuns declares, or withdraws, that this extension owns the thinking runs of assistant messages: a run that is
 	// hidden or draws no rows then leaves no spacing around it. It may be called while loading and at any later time; the last

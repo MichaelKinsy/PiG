@@ -76,3 +76,35 @@ func BenchmarkRunnerMarkdownTransformerCollection(b *testing.B) {
 		})
 	}
 }
+
+// Pi eebd5d90 extensions-runner.test.ts "runs Markdown transformers only on their message types": getMarkdownTransformers wraps each transformer so Markdown of
+// a surface its registration does not list passes through unchanged; a registration without a list runs on the transcript types.
+func TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes(t *testing.T) {
+	appendTo := func(suffix string) extension.MarkdownTransformer {
+		return func(markdown string, _ extension.MarkdownTransformContext) string { return markdown + suffix }
+	}
+	runner := inproc.NewRunner([]extension.Extension{
+		{Path: "markdown-default.ts", MarkdownTransformer: appendTo(" default")},
+		{Path: "markdown-opt-in.ts", MarkdownTransformer: appendTo(" opt-in"), MarkdownMessageTypes: []extension.MarkdownMessageType{extension.MarkdownMessageAssistant, extension.MarkdownMessageChangelog}},
+		{Path: "markdown-none.ts", MarkdownTransformer: appendTo(" none"), MarkdownMessageTypes: []extension.MarkdownMessageType{}},
+	}, t.TempDir())
+	apply := func(messageType extension.MarkdownMessageType) string {
+		got := "text"
+		for _, transformer := range runner.GetMarkdownTransformers() {
+			got = transformer(got, extension.MarkdownTransformContext{MessageType: messageType, AvailableWidth: 80})
+		}
+		return got
+	}
+	for messageType, want := range map[extension.MarkdownMessageType]string{
+		extension.MarkdownMessageUser:              "text default",
+		extension.MarkdownMessageAssistantThinking: "text default",
+		extension.MarkdownMessageAssistant:         "text default opt-in",
+		extension.MarkdownMessageChangelog:         "text opt-in",
+		extension.MarkdownMessageCustom:            "text",
+		extension.MarkdownMessageSummary:           "text",
+	} {
+		if got := apply(messageType); got != want {
+			t.Errorf("%s: %q, want %q", messageType, got, want)
+		}
+	}
+}

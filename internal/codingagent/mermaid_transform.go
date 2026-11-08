@@ -84,7 +84,8 @@ func createMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme) e
 	return func(markdown string, context extension.MarkdownTransformContext) string {
 		mode := getMode()
 		if mode == "off" ||
-			context.MessageType == extension.MarkdownMessageAssistantThinking ||
+			// pig divergence (D313): Pi eebd5d90 renders diagrams in user and assistant text and in model-written summaries, not in thinking, custom messages or changelogs.
+			(context.MessageType != extension.MarkdownMessageUser && context.MessageType != extension.MarkdownMessageAssistant && context.MessageType != extension.MarkdownMessageSummary) ||
 			(context.IsStreaming && mode != "streaming") {
 			return markdown
 		}
