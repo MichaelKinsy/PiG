@@ -94,21 +94,26 @@ func reloadDuringATurn(t *testing.T) {
 		}
 		var envelope struct {
 			Message struct {
-				Role    string `json:"role"`
-				IsError bool   `json:"isError"`
-				Content []struct {
-					Text string `json:"text"`
-				} `json:"content"`
+				Role    string          `json:"role"`
+				IsError bool            `json:"isError"`
+				Content json.RawMessage `json:"content"`
 			} `json:"message"`
 		}
 		if err := json.Unmarshal(entry.Raw(), &envelope); err != nil {
 			t.Fatal(err)
 		}
-		if envelope.Message.Role == "toolResult" {
-			isError = envelope.Message.IsError
-			for _, block := range envelope.Message.Content {
-				persisted = append(persisted, block.Text)
-			}
+		if envelope.Message.Role != "toolResult" {
+			continue
+		}
+		isError = envelope.Message.IsError
+		var blocks []struct {
+			Text string `json:"text"`
+		}
+		if err := json.Unmarshal(envelope.Message.Content, &blocks); err != nil {
+			t.Fatal(err)
+		}
+		for _, block := range blocks {
+			persisted = append(persisted, block.Text)
 		}
 	}
 	if !slices.Equal(persisted, []string{"tool succeeded"}) || isError {
