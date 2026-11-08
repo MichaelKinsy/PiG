@@ -96,10 +96,7 @@ func start(t *testing.T) *setup {
 		Resources: p2runtime.ServerResourceOptions{CreateModels: fixtureModels(pasted, &mu)},
 	})
 	// A remote owner: the server offers the manual code paste (no reachable localhost callback).
-	client := server.As(p2runtime.OwnerPrincipal{Access: "relay"})
-	if report, err := client.Load([]host.HostFacet{{Name: "tui-core", Facet: p2tui.CoreFacet}, {Name: "tui-login", Facet: logintui.Facet}}, p2test.Background); err != nil || len(report.Failed) > 0 {
-		t.Fatalf("load: %v %v", err, report.Failed)
-	}
+	client := server.AsWith(p2runtime.OwnerPrincipal{Access: "relay"}, host.HostFacet{Name: "tui-core", Facet: p2tui.CoreFacet}, host.HostFacet{Name: "tui-login", Facet: logintui.Facet})
 	f := tuitest.OnHost(t, client, runtime.RoleOwner, 100, 30, false)
 	grants := &[][2]any{}
 	var grantsMu sync.Mutex
