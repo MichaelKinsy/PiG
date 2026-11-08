@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // pi: packages/chord/src/next/remote/provider.ts
@@ -217,12 +218,18 @@ type notesServerRaw struct {
 
 func notesServer(t testing.TB, child data.Principal, parent ...bool) *notesServerRaw {
 	t.Helper()
+	return notesServerOf(t, rawLinkedOptions{Child: child, Parent: len(parent) > 0 && parent[0]})
+}
+
+// notesServerOf is notesServer over options.
+func notesServerOf(t testing.TB, options rawLinkedOptions) *notesServerRaw {
+	t.Helper()
 	var probe *notesProbe
 	linkedHost := rawLinked(t, func(host FacetHost) error {
 		var err error
 		probe, err = serveNotes(host, nil)
 		return err
-	}, rawLinkedOptions{Child: child, Parent: len(parent) > 0 && parent[0]})
+	}, options)
 	return &notesServerRaw{rawLinkedHost: linkedHost, Probe: probe}
 }
 
@@ -1615,6 +1622,122 @@ func TestProviderOldWorkFromAnotherHost(t *testing.T) {
 	t.Run("runs an unmarked call from a trusted link as new work", func(t *testing.T) {
 		if code, early := pingDuringDrain(t, false, true); code != 2 || early {
 			t.Fatalf("answered by %v (before the drain: %v), want 2, false", code, early)
+		}
+	})
+}
+
+// --- telemetry at the provider (slice 9) --------------------------------------------------------------------------------
+
+// tracedNotes is `traced()`: a server recording on a fresh adapter and a raw peer holding session S1's notes.
+func tracedNotes(t *testing.T) (*telemetry.InMemoryTelemetryContext, *notesServerRaw) {
+	t.Helper()
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	s := notesServerOf(t, rawLinkedOptions{Telemetry: recorder})
+	provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
+	s.Peer.Next("bound")
+	return recorder, s
+}
+
+// Ports provider.test.ts "telemetry at the provider (slice 9) › runs a call's method under its carrier, extracted with the
+// host's adapter; an absent or unknown one is a root".
+func TestProviderTelemetryRunsACallsMethodUnderItsCarrierExtractedWithTheHostsAdapterAnAbsentOrUnknownOneIsARoot(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		recorder, s := tracedNotes(t)
+		var carrier telemetry.TelemetryCarrier
+		must(t, recorder.StartSpan(telemetry.SpanOptions{Name: "caller"}, func(span telemetry.TelemetrySpan) error {
+			carrier = recorder.Inject(span)
+			return nil
+		}))
+		add := editorWire(t).Methods["add"]
+		send := func(id int, text string, trace map[string]string) {
+			s.Peer.Send(&link.CallMessage{Call: id, Hold: 0, Method: add, Args: mustJSONPart(t, jsonObject("text", text)), Trace: trace})
+			s.Peer.Next("result")
+		}
+		send(0, "a", carrier)
+		provCall(t, s.Peer, 1, 0, add, jsonObject("text", "b"))
+		s.Peer.Next("result")
+		send(2, "c", map[string]string{"x": "y"})
+		caller := spanWhere(t, recorder, "caller", nil)
+		var methods []telemetry.RecordedTelemetrySpan
+		for _, span := range spansNamed(recorder, "chord.method") {
+			if typ, _ := span.Attributes.Get("type"); typ == "app.notes" {
+				methods = append(methods, span)
+			}
+		}
+		if len(methods) != 3 || !childOf(methods[0], caller) || methods[1].ParentID != nil || methods[2].ParentID != nil {
+			t.Fatalf("chord.method spans = %v, want [child of caller, root, root]", methods)
+		}
+		spanAttributesAre(t, methods[0], telemetry.SpanAttributes{
+			telemetry.Attr("chord.host", "server"), telemetry.Attr("type", "app.notes"), telemetry.Attr("member", "add"),
+			telemetry.Attr("object", "app.notes(S1)"), telemetry.Attr("principal.kind", "owner"),
+			telemetry.Attr("chord.principal", `{"kind":"owner"}`), telemetry.Attr("outcome", "ok"),
+		})
+	})
+}
+
+// Ports "counts holds placed here up and down, its own state messages, and the bytes of its link".
+func TestProviderTelemetryCountsHoldsPlacedHereUpAndDownItsOwnStateMessagesAndTheBytesOfItsLink(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		recorder, s := tracedNotes(t)
+		addNote(t, s.Server, "S1", "a")
+		s.Peer.Next("state")
+		s.Peer.Send(&link.ReleaseMessage{Hold: 0})
+		settle(s.Peer)
+		sums := map[string]float64{}
+		var active []float64
+		directions := map[any]bool{}
+		for _, measurement := range recorder.GetMetrics() {
+			sums[measurement.Name] += measurement.Value
+			switch measurement.Name {
+			case "chord.holds.active":
+				active = append(active, measurement.Value)
+			case "chord.link.bytes":
+				direction, _ := measurement.Attributes.Get("direction")
+				directions[direction] = true
+			}
+		}
+		if sums["chord.holds.active"] != 0 || !slices.Equal(active, []float64{1, -1}) {
+			t.Errorf("chord.holds.active = %v (sum %v), want [1 -1]", active, sums["chord.holds.active"])
+		}
+		if sums["chord.link.state_messages"] != 1 || sums["chord.links.open"] != 1 {
+			t.Errorf("state_messages %v, links.open %v, want 1 and 1", sums["chord.link.state_messages"], sums["chord.links.open"])
+		}
+		if len(directions) != 2 || !directions["sent"] || !directions["received"] {
+			t.Errorf("chord.link.bytes directions = %v, want sent and received", directions)
+		}
+	})
+}
+
+// Ports "records how long state waited for a slot of the window".
+func TestProviderTelemetryRecordsHowLongStateWaitedForASlotOfTheWindow(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		recorder := telemetry.NewInMemoryTelemetryContext()
+		s := notesServerOf(t, rawLinkedOptions{Telemetry: recorder})
+		a, b := link.MemoryLinkPair()
+		must(t, s.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+		slow := newRawPeer(t, b, rawPeerOptions{NoAck: true})
+		provHold(t, slow, 0, specOf(Notes), jsonObject("session", "S1"))
+		slow.Next("bound")
+		addNote(t, s.Server, "S1", "a")
+		slow.Next("state")
+		waits := func() int {
+			count := 0
+			for _, measurement := range recorder.GetMetrics() {
+				if measurement.Name == "chord.backpressure.wait" {
+					count++
+				}
+			}
+			return count
+		}
+		// The window (two messages) is full: the next change waits for an ack.
+		addNote(t, s.Server, "S1", "b")
+		if got := waits(); got != 0 {
+			t.Fatalf("backpressure waits = %d before the ack, want 0", got)
+		}
+		slow.Ack(link.Optional[int]{})
+		slow.Next("state")
+		if got := waits(); got != 1 {
+			t.Fatalf("backpressure waits = %d after the ack, want 1", got)
 		}
 	})
 }
