@@ -160,6 +160,18 @@ func (s *pendingSearch) requireSelected(want string) {
 	}
 }
 
+// requireListed polls until the model's row is listed, which is when the results of a finished search have landed (Pi's `await finishSearch`).
+func (s *pendingSearch) requireListed(id string) {
+	s.t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for !strings.Contains(widthx.StripAnsi(strings.Join(s.view.Render(120), "\n")), id) {
+		if time.Now().After(deadline) {
+			s.t.Fatalf("%q was never listed", id)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands(t *testing.T) {
 	s := openSearch(t)
 	first := []string{"qwen/a-GGUF", "qwen/b-GGUF", "qwen/c-GGUF"}
@@ -172,6 +184,7 @@ func TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands(t *
 	s.requireSelected("qwen/c-GGUF")
 
 	s.finishSearch("qwe", models(append([]string{"qwen/new-GGUF"}, first...)...))
+	s.requireListed("qwen/new-GGUF")
 
 	s.requireSelected("qwen/c-GGUF")
 	s.press(searchEnter)
