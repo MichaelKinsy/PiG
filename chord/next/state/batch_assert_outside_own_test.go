@@ -18,7 +18,7 @@ func TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop(t *
 		loop.Lock()
 		defer loop.Unlock()
 		work()
-	})
+	}, nil)
 	inside, release, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	go func() {
 		defer close(done)

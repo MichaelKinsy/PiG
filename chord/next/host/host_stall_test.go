@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // stallAfter is how long a section of these tests waits for its handler before the report: no test of the package has a
@@ -20,10 +21,11 @@ const stallAfter = 2 * time.Second
 // TestMain makes the misuse of the handler contract visible in every test of the package: a method handler that blocks on a
 // raw channel or a lock before its first host call holds the section that admitted its call (host_ctx.go, "handler
 // authoring"), which Pi's `await` never does, and the default build says nothing about it. Here the report fails the test
-// binary with the stacks of every goroutine.
+// binary with the stacks of every goroutine. It also fails the run when a test leaks a goroutine (one blocked forever on a
+// primitive no live goroutine can reach: a span nobody ended).
 func TestMain(m *testing.M) {
 	parking.Watch(stallAfter, failOnStall)
-	os.Exit(m.Run())
+	os.Exit(testenv.RunWithoutGoroutineLeaks(m, func() { close(hungClose) }))
 }
 
 // failOnStall is the reporter of the package's tests: the report is the panic, so the binary ends with the text and stacks.

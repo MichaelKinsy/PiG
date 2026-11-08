@@ -4,6 +4,7 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"os"
 	"path/filepath"
@@ -14,6 +15,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -109,7 +112,7 @@ func watcherOver(t *testing.T, roots []string, base string) *watcherFixture {
 		root = roots[0]
 	}
 	f := &watcherFixture{t: t, root: root, base: base, loop: host.NewLoop(), scheduler: chord.NewDeliveryScheduler()}
-	batch := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(f.scheduler).UseMicrotasks(f.loop.Queue).UseSection(f.loop.Run)
+	batch := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(f.scheduler).UseMicrotasks(f.loop.Queue).UseSection(f.loop.Run, f.loop.InSection)
 	f.watcher = newPluginWatcher(watcherOptions{
 		Roots: roots, Base: []string{base}, Kinds: kinds,
 		Failed: func(err error) {
@@ -527,4 +530,61 @@ func TestTheWatcherAfterCloseOnlyAPluginLinkedFromOutsideGetsItsWatchAgain(t *te
 	})
 	writeFiles(t, dir, map[string]string{"own.ts": "export {};"})
 	eventually(t, 5*time.Second, `dirty ["@test/linked"]`, func() bool { return reflect.DeepEqual(f.marks().Dirty, list("@test/linked")) })
+}
+
+// Not a port: closing the fsnotify watcher is slow where it removes a watch per entry (kqueue, on a large directory), and a
+// failure to watch ends the watching in a section of the host, which holds the host's lock. The close of the watcher must run
+// outside the section: here it is held back, and the host stays free (its sections run, the failure is reported) until it
+// is let go; join waits for it.
+func TestTheWatcherClosesTheSystemWatcherOutsideTheHostsLockAndJoinWaitsForIt(t *testing.T) {
+	base := realOf(t, tempRoot(t))
+	f := watcherOver(t, nil, base)
+	closing, release, closed := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	f.watcher.closeFS = func(watcher *fsnotify.Watcher) {
+		close(closing)
+		<-release
+		_ = watcher.Close()
+		close(closed)
+	}
+	// Once the test ends the fixture's cleanup joins: the hook must have been let go by then.
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}()
+	free := make(chan struct{})
+	go func() {
+		f.run(func() { f.watcher.failed(errors.New("a watch failed")) })
+		f.run(func() {}) // a later section of the host: it enters while the watcher is still closing
+		close(free)
+	}()
+	select {
+	case <-free:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the host's lock was held while the system watcher closed")
+	}
+	select {
+	case <-closing:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the system watcher was not closed")
+	}
+	if len(f.failed()) != 1 {
+		t.Fatalf("failures = %v, want the one watch failure reported", f.failed())
+	}
+	joined := make(chan struct{})
+	go func() { f.watcher.join(); close(joined) }()
+	select {
+	case <-joined:
+		t.Fatal("join returned before the system watcher was closed")
+	case <-time.After(200 * time.Millisecond):
+	}
+	close(release)
+	select {
+	case <-joined:
+	case <-time.After(10 * time.Second):
+		t.Fatal("join did not return after the system watcher was closed")
+	}
+	<-closed
 }

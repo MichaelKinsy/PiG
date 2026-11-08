@@ -231842,6 +231842,17 @@
       "shapeHash": "sha256:c1f5e62c046a3890a218805dbb9817e75c76785483920a44b0b85f6622169fab"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#LengthBytes",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring",
+      "name": "LengthBytes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(text []byte) int"
+      },
+      "shapeHash": "sha256:45d9fae2fe01d91b81afd653d27815ad8847f41f72b13475fe476f1f063831ba"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#LowerContains",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring",
       "name": "LowerContains",

@@ -56,6 +56,8 @@ type abortContext struct {
 	parent context.Context
 	// signal is the other source of a WithAbortSignal context; nil otherwise.
 	signal context.Context
+	// detached is set on a WithoutAbortSignal context, whose embedded context is stdlib's WithoutCancel.
+	detached bool
 	// order is the place of this context's own cancel in the order of aborts (see AbortOrder); 0 until it was cancelled.
 	order atomic.Uint64
 }
@@ -96,6 +98,17 @@ func AbortOrder(ctx context.Context) uint64 {
 }
 
 func (c *abortContext) String() string { return fmt.Sprint(c.parent) + ".WithValue(chord.abortSignal)" }
+
+// Value is the embedded context's, except that a key of this package (a Token) a WithoutAbortSignal context looks up in its
+// parent directly: stdlib's WithoutCancel context is a value type whose Value method boxes its receiver again on every
+// call, an allocation per lookup (the telemetry parent of a ctx is one) that reaches it, and it keeps nothing under a key of
+// this package that the parent does not.
+func (c *abortContext) Value(key any) any {
+	if _, ok := key.(Token); ok && c.detached {
+		return c.parent.Value(key)
+	}
+	return c.Context.Value(key)
+}
 
 // Key is the typed identity of one value carried by a context. Two keys never collide, even with equal descriptions or types.
 type Key[T any] struct{ token *keyToken }
@@ -169,7 +182,7 @@ func (c *signalContext) String() string {
 
 // WithoutAbortSignal derives a context that keeps every value but ignores caller cancellation. It is for mandatory cleanup only.
 func WithoutAbortSignal(parent context.Context) context.Context {
-	return &abortContext{Context: context.WithoutCancel(parent), parent: parent}
+	return &abortContext{Context: context.WithoutCancel(parent), parent: parent, detached: true}
 }
 
 // WithCancel derives an independently cancellable child. cancel records cause, and a nil cause records context.Canceled.

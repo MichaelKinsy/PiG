@@ -329,10 +329,12 @@ func TestTheHeartbeat(t *testing.T) {
 			}
 			setup.peer.send(&link.PongMessage{})
 			transported(setup.ends, setup.peerEnd)
-			setup.channel.Tick(40_000, 0, 15_000, 30_000)
+			// Both answered: the channel's ping is armed again, so another 15 s of silence pings once more and the link lives.
+			setup.clock.set(32_000)
+			setup.channel.Tick(32_000, 0, 15_000, 30_000)
 			transported(setup.ends, setup.peerEnd)
-			if setup.peer.isClosed() {
-				t.Fatal("closed although both pings were answered")
+			if kinds := setup.peer.kinds(); !slices.Equal(kinds, []string{"hello", "ping", "pong", "ping"}) || setup.peer.isClosed() {
+				t.Fatalf("kinds = %v, closed = %v", kinds, setup.peer.isClosed())
 			}
 		})
 	})
