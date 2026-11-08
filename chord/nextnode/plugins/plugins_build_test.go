@@ -1018,3 +1018,55 @@ func TestEsbuildBuildAllowsHostPackagesOnlyRefusingOtherFilesPackagesAndBuiltins
 		`bad.server.ts:3:22: "node:path": `+hint,
 	)
 }
+
+// Intention of workers/base.test.ts "the snapshot › bundles the entry and its imports once: an edit after the build runs
+// nowhere; inputs name both files" (D600 made the worker's base a copy of its executable; the plugin scripts a worker runs are
+// what BuildFacet bundles): a script is the facet's file and what it imports at the time of the build, so an edit afterwards
+// changes neither the script nor its digest, and the inputs name the facet's file and the file it imports.
+func TestEsbuildBuildBundlesAFacetAndItsImportsOnceAnEditAfterTheBuildChangesNothingInputsNameBothFiles(t *testing.T) {
+	root := tempRoot(t)
+	dir := writePlugin(t, root, "snap", "@test/snap", map[string]string{
+		"worker.ts": "import { label } from \"./label.ts\";\nexport default { setup: () => label };",
+		"label.ts":  `export const label = "before";`,
+	}, nil)
+	_, plugin := esbuildDiscovered(t, "@test/snap", root)
+	built := esbuildScript(t, esbuildBuild(t, plugin, "worker", esbuildNode))
+	if !strings.Contains(built.Source, `"before"`) {
+		t.Fatalf("the import is not bundled: %s", built.Source)
+	}
+	var inputs []string
+	for _, input := range built.Inputs {
+		inputs = append(inputs, input.File)
+	}
+	slices.Sort(inputs)
+	if want := []string{filepath.Join(realOf(t, dir), "label.ts"), filepath.Join(realOf(t, dir), "worker.ts")}; !reflect.DeepEqual(inputs, want) {
+		t.Fatalf("inputs = %q, want %q", inputs, want)
+	}
+	writeFiles(t, dir, map[string]string{"label.ts": `export const label = "after";`})
+	if strings.Contains(built.Source, `"after"`) || !strings.Contains(built.Source, `"before"`) {
+		t.Fatal("the built script changed with an edit after the build")
+	}
+	again := esbuildScript(t, esbuildBuild(t, plugin, "worker", esbuildNode))
+	if again.Digest == built.Digest || !strings.Contains(again.Source, `"after"`) {
+		t.Fatalf("a build after the edit has digest %s (was %s) and its source lacks the edit", again.Digest, built.Digest)
+	}
+}
+
+// Intention of base.test.ts "runs every imported module, as Node does: sideEffects: false drops no side-effect import": a
+// plugin's `import "pkg"` is there for what the module does when it loads, so a package that declares itself free of side
+// effects in its package.json must not make the bundle drop the import.
+func TestEsbuildBuildKeepsASideEffectImportOfAPackageThatDeclaresSideEffectsFalse(t *testing.T) {
+	root := tempRoot(t)
+	dir := writePlugin(t, root, "effects", "@test/effects", map[string]string{
+		"worker.ts": "import \"effect-dep\";\nexport default { setup: () => 1 };",
+	}, map[string]any{"dependencies": map[string]any{"effect-dep": "1.0.0"}})
+	writeFiles(t, filepath.Join(dir, "node_modules", "effect-dep"), map[string]string{
+		"package.json": `{"name":"effect-dep","version":"1.0.0","main":"index.js","sideEffects":false}`,
+		"index.js":     `globalThis.__effect_dep_ran = "effect-ran";`,
+	})
+	_, plugin := esbuildDiscovered(t, "@test/effects", root)
+	built := esbuildScript(t, esbuildBuild(t, plugin, "worker", esbuildNode))
+	if !strings.Contains(built.Source, "effect-ran") {
+		t.Fatalf("the side-effect import was dropped: %s", built.Source)
+	}
+}

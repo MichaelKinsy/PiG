@@ -2482,7 +2482,7 @@
       "upstreamTestHash": "sha256:80138fbe8d042d39d7aec298c286f32a580e97d98bd7524e50e35e003f13b0d1",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. The whole file is designed out in the mapping (see its rationale and the owner question in TERN-CLAUDE-CHANNEL.md): it needs no Go test."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. The whole file is designed out in the mapping (see its rationale and the owner question in TERN-CLAUDE-CHANNEL.md): it needs no Go test. Owner hold (2026-11-08): the mapping row is pending, not designed out (D604 not approved). Intention: the book and the example cannot drift (quoted blocks match the example's files, the files are what run, the shown output is what they print); to port as a PiG tutorial with the same three checks."
     },
     {
       "path": "packages/chord/test/host/activity.test.ts",
@@ -3264,14 +3264,14 @@
       "upstreamTestHash": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. The whole file is designed out in the mapping (see its rationale and the owner question in TERN-CLAUDE-CHANNEL.md): it needs no Go test."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): the file is partial in the mapping, not designed out; its rationale holds the intention checks and what is still to port."
     },
     {
       "path": "packages/chord/test/node/workers/child.test.ts",
       "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. The whole file is designed out in the mapping (see its rationale and the owner question in TERN-CLAUDE-CHANNEL.md): it needs no Go test."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): the file is partial in the mapping, not designed out; its rationale holds the intention checks and what is still to port."
     },
     {
       "path": "packages/chord/test/node/workers/control.test.ts",

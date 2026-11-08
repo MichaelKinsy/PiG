@@ -2047,15 +2047,13 @@
     },
     {
       "path": "packages/chord/test/contracts/snapshot.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:a708093d51b16658f44fe0993b4d3d83b65857b3d87ca348d817da8d00cc3e38",
       "evidence": [
-        "chord/next/contracts/snapshot_test.go"
+        "chord/next/contracts/snapshot_test.go",
+        "chord/nextnode/plugins/plugins_vendored_pi_test.go"
       ],
-      "rationale": "14 of 15 upstream cases run in snapshot_test.go. The one left, \"vocabulary › refuses symbol keys, accessors and cycles, naming the path\", has two of its four assertions ported (cycles, naming the path: 'refuses cycles, naming the path'; an unsupported type, naming the path: the vocabulary table) and two with no Go form: a Symbol-keyed property and a getter on a schema object. A Go schema is JSON data (an ordered *delta.JsonObject, a map[string]any or a Schema value): it has neither. Owner question 2026-11-08 (TERN-CLAUDE-CHANNEL, ChordDelta): designed out, or accepted as the JS-only half of a case whose Go half runs.",
-      "missingCases": [
-        "vocabulary › refuses symbol keys, accessors and cycles, naming the path"
-      ]
+      "rationale": "14 of 15 upstream cases run in snapshot_test.go. The fifteenth, \"vocabulary › refuses symbol keys, accessors and cycles, naming the path\", runs in two halves. Intention check: a schema a plugin declares in JavaScript is read once into a plain copy, and what cannot be copied (a Symbol key, a getter, a cycle, a non-vocabulary type) is refused naming where it sits. Go's schema is JSON data, so its half is the cycles and unsupported-type assertions (snapshot_test.go); the Symbol-key and accessor assertions are about a TypeScript plugin's schema objects, which the Node host reads through the vendored snapshot.ts (node/pi, verbatim from Pi), so Pi's case runs there as TestNodeHostSnapshotSchemaRefusesSymbolKeysAccessorsAndCyclesNamingThePath, over the extracted tree the subprocess runs. Not designed out."
     },
     {
       "path": "packages/chord/test/data/args.test.ts",
@@ -2385,10 +2383,8 @@
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/tutorial.test.ts",
-      "disposition": "designed-out",
-      "upstreamTestHash": "sha256:80138fbe8d042d39d7aec298c286f32a580e97d98bd7524e50e35e003f13b0d1",
-      "evidence": [],
-      "rationale": "Designed out by D604 (draft, owner sign-off pending; rows/chord-t11.md): Pi's tutorial is a TypeScript program on Pi's TS app kit (main.ts calls the TS startServer, worker.ts is a Node entry) plus a book whose blocks the test quotes, so the Go kit has no TS server to run it under."
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:80138fbe8d042d39d7aec298c286f32a580e97d98bd7524e50e35e003f13b0d1"
     },
     {
       "path": "packages/chord/test/host/activity.test.ts",
@@ -2836,7 +2832,7 @@
         "chord/nextnode/app/app_workers_test.go",
         "chord/nextnode/app/app_export_test.go"
       ],
-      "rationale": "22 of 23 upstream cases run in the evidence files; \"base code › compares the server's own code from its entry, the start script and what it imports, with no `base` given\" is app_executable_test.go:TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCleared (D603: the Go server's own code is its executable) and \"... starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared\" is TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared (the scan is the read of the executable). The one left, \"... starts with an entry whose inactive optional import is missing: the import is left out, the rest compared\", needs an import graph with optional imports; a Go executable has none. D603 as narrowed to this case: owner question 2026-11-08 (TERN-CLAUDE-CHANNEL, ChordDelta).",
+      "rationale": "22 of 23 upstream cases run in the evidence files; \"base code › compares the server's own code from its entry, the start script and what it imports, with no `base` given\" is app_executable_test.go:TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCleared (D603: the Go server's own code is its executable) and \"... starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared\" is TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared (the scan is the read of the executable). The one left, \"... starts with an entry whose inactive optional import is missing: the import is left out, the rest compared\", needs an import graph with optional imports; a Go executable has none. D603 as narrowed to this case: owner question 2026-11-08 (TERN-CLAUDE-CHANNEL, ChordDelta). Intention check (2026-11-08): the left case guards that the scan of the server's own code never fails for an import that is inactive; no PiG path compares an import graph of the server (the Go server's code is its executable, compared whole by TestAppComparesTheServersOwnCodeFromItsExecutable...), and the plugins' watcher compares the files a build read (BuildInput), not a scanned graph, so there is no optional import to leave out. D603 is kept for that reason alone.",
       "missingCases": [
         "base code › starts with an entry whose inactive optional import is missing: the import is left out, the rest compared"
       ]
@@ -3423,17 +3419,33 @@
     },
     {
       "path": "packages/chord/test/node/workers/base.test.ts",
-      "disposition": "designed-out",
+      "disposition": "partial",
       "upstreamTestHash": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b",
-      "evidence": [],
-      "rationale": "Designed out by D600 (draft, owner sign-off pending; rows/chord-reload-workers.md): a Go worker is the program's own executable, so there is no esbuild worker base to test."
+      "evidence": [
+        "chord/nextnode/plugins/plugins_build_test.go",
+        "chord/nextnode/workers/workers_workers_test.go"
+      ],
+      "rationale": "Owner hold (2026-11-08): D600 is not approved as a design-out of this file. Intention checks, case by case. PORTED in PiG form: \"bundles the entry and its imports once\" (an edit after the build runs nowhere; the inputs name both files) is TestEsbuildBuildBundlesAFacetAndItsImportsOnceAnEditAfterTheBuildChangesNothingInputsNameBothFiles on BuildFacet; \"runs every imported module, as Node does\" is TestEsbuildBuildKeepsASideEffectImportOfAPackageThatDeclaresSideEffectsFalse; \"a broken entry rejects with esbuild's failure\" is TestEsbuildBuildReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow; \"keeps installed packages and builtins external by their files\" is TestEsbuildBuildInlinesADependencyKeepsExternalPackagesAndNodeBuiltinsExternalOnNode; \"the bundle's file\" (private directory, written again when a cleaner removed it) is the worker base's snapshot file of workers_workers_test.go (D600: a private copy of the entry executable). NOT YET PORTED, each with its intention still to port in a PiG form: dynamic split (a lazily imported module loads only when imported, from the snapshot: a plugin's computed import runs through require against the build, to test on the Node host), the child's --conditions (resolution under the conditions the plugin runs with), module locations (import.meta and __dirname name their source file: BuildFacet refuses them today, to decide whether a PiG plugin needs the same), stack traces mapped to source (a plugin error names the plugin's file and line: test through the Node host's source map), and nodeBaseInputs' best-effort static graph (what the watcher compares).",
+      "missingCases": [
+        "the snapshot › splits at a dynamic import: the module and the package it imports load only when imported, from the snapshot",
+        "what stays external › resolves with the child's --conditions (both spellings)",
+        "module locations and stack traces › import.meta and __dirname name each source file, a local __dirname stays the module's own",
+        "module locations and stack traces › maps stack traces to the source files and lines with --enable-source-maps, in the entry and in a chunk",
+        "a Node entry's inputs (nodeBaseInputs) › records the entry and what it imports with the given conditions, installed packages left out, nothing written",
+        "a Node entry's inputs (nodeBaseInputs) › scans the static graph best effort: an import that does not resolve is left out; no tsconfig paths, as Node"
+      ]
     },
     {
       "path": "packages/chord/test/node/workers/child.test.ts",
-      "disposition": "designed-out",
+      "disposition": "partial",
       "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41",
-      "evidence": [],
-      "rationale": "Designed out by D600 (draft, owner sign-off pending; rows/chord-reload-workers.md): a Go worker is the program's own executable, so there is no esbuild worker base to test."
+      "evidence": [
+        "chord/nextnode/workers/workers_main_test.go"
+      ],
+      "rationale": "Owner hold (2026-11-08): D600 is not approved as a design-out of this file. Intention of \"the child entry's imports › loads no esbuild\": a forked worker does not pay for the server's build tool. PiG form: a deps test that the worker's package links no esbuild. Measured on the host (go list -deps ./chord/nextnode/workers): 26 esbuild packages, because chord/nextnode/workers imports chord/nextnode/plugins, which holds BuildFacet, the base inputs and the CSS module build beside the runtime a worker needs. The intention therefore does NOT hold in PiG, and the test would fail: the open work is to split the build (plugins_build.go, plugins_baseinputs.go, plugins_cssmodules.go and the watcher that calls BuildFacet) from the worker-side plugin runtime, then assert the deps. Not designed out; not ported.",
+      "missingCases": [
+        "the child entry's imports › loads no esbuild: a worker importing workerMain and processLock never imports it"
+      ]
     },
     {
       "path": "packages/chord/test/node/workers/control.test.ts",
@@ -4077,16 +4089,15 @@
     },
     {
       "path": "packages/chord/test/surfaces/language.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:30d6d83b3c2fef27e9512e79ebad8edfff7d23067426cde4917bd4da581c915c",
       "evidence": [
         "chord/next/surfaces/surfaces_active_language_test.go",
-        "chord/next/surfaces/surfaces_language_test.go"
+        "chord/next/surfaces/surfaces_language_test.go",
+        "chord/next/surfaces/surfaces_messages_test.go",
+        "chord/nextnode/plugins/plugins_vendored_pi_test.go"
       ],
-      "rationale": "4 of 5 upstream cases run in the evidence files. The one left, \"the render scope › is current only while a render runs, and a nested render restores the outer\", tests Pi's implicit render scope (inLanguage/currentLanguage: module state set during a render and restored after a nested one). Go has no goroutine-local state; a message function receives its language as its first parameter (D450, chord/next/surfaces/doc.go), so there is no scope to enter, leave or restore. Owner question 2026-11-08 (TERN-CLAUDE-CHANNEL, ChordDelta).",
-      "missingCases": [
-        "the render scope › is current only while a render runs, and a nested render restores the outer"
-      ]
+      "rationale": "All 5 upstream cases run. 4 run in surfaces_active_language_test.go and surfaces_language_test.go. The fifth, \"the render scope › is current only while a render runs, and a nested render restores the outer\", runs in two halves. Intention check: a render in one language that renders another in a second one leaves the first in its own, whether the nested render returns or throws, and nothing outlives them. A TypeScript plugin's render uses Pi's module-wide scope through the vendored language.ts (node/pi, verbatim), so Pi's case runs there as TestNodeHostRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter. In Go the scope is the explicit lang argument (D450, surfaces/doc.go), so the same guard is TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNestedOneFailsOrPanics: the nested renders (returning, returning an error, panicking) never change what the outer message function's own lang formats."
     },
     {
       "path": "packages/chord/test/surfaces/locale-choice.test.ts",
