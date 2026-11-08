@@ -32,6 +32,12 @@ func DateNow() float64 {
 	return float64(time.Now().UnixMilli())
 }
 
+// DateTime is DateNow as a time.
+func DateTime() time.Time {
+	//portlint:allow numbers DateNow is whole milliseconds well inside int64 (Date.now(); a mock sets finite values)
+	return time.UnixMilli(int64(DateNow()))
+}
+
 // PerformanceNow is performance.now(): fractional milliseconds on a monotonic clock since process start.
 func PerformanceNow() float64 {
 	mu.RLock()

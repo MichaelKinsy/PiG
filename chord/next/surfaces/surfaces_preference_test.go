@@ -59,10 +59,10 @@ func serverAndClients(t testing.TB, path string, facet host.Facet, name string, 
 	}
 	return clients, server, func() {
 		for _, client := range clients {
-			client.Close(bg)
+			closed(t, client.Close(bg))
 		}
-		server.Close(bg)
-		opened.Close(bg)
+		closed(t, server.Close(bg))
+		closed(t, opened.Close(bg))
 	}
 }
 

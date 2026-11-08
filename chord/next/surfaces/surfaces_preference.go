@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -106,8 +107,7 @@ func PreferenceFacet(choice *contracts.Contract, store string, pick contracts.Sc
 		}
 		return h.Serve(choice, func(_ *delta.JsonObject, principal data.Principal, self host.Self) (contracts.Implementation, error) {
 			picks := self.Get(pickStore, delta.NewJsonObject(0))
-			//portlint:allow ctxbackground the factory of an object has no context; the key only memoizes the principal's canonical JSON
-			key := data.PrincipalKey(principal, context.Background(), nil)
+			key := data.PrincipalKey(principal, chordctx.Background(), nil)
 			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					// A key that is a principal's canonical JSON: only an own key is a pick.

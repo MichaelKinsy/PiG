@@ -347,7 +347,7 @@ func rollingCookie(secret string, authenticate func(token string, ctx context.Co
 	}
 }
 
-var bearerPattern = regexp.MustCompile(`(?i)^Bearer\s+(\S+)$`)
+var bearerPattern = regexp.MustCompile(`^[Bb][Ee][Aa][Rr][Ee][Rr]\s+(\S+)$`)
 
 // bearerToken is the token of an `Authorization: Bearer <token>` header.
 func bearerToken(request chordhttp.HttpRequest) (string, bool) {

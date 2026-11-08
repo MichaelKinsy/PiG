@@ -67,7 +67,6 @@ func Untraced(parent pitelemetry.TelemetryContext) bool {
 type OpenSpan struct {
 	span  pitelemetry.TelemetrySpan
 	done  chan struct{}
-	once  sync.Once
 	ended bool
 	mu    sync.Mutex
 }

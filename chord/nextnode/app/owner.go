@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"strings"
 	"sync"
@@ -12,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/jsclock"
 )
 
@@ -125,7 +125,7 @@ func issueSession(ctx context.Context, principal data.Principal, label string, k
 // FragmentPage is a sign-in page for a link with a token in its fragment (the owner link, an invite): its script (the response's
 // nonce) posts the token to path, then opens the app.
 func FragmentPage(path, nonce string) string {
-	quoted, _ := json.Marshal(path)
+	quoted, _ := chordjson.Marshal(path)
 	return strings.Join([]string{
 		"<!doctype html><title>Sign in</title><p id=status>Signing in…</p>",
 		`<script nonce="` + nonce + `">`,

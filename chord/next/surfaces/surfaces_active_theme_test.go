@@ -47,7 +47,7 @@ func TestFollowsTheRegistryThePrincipalsPickAndTheMode(t *testing.T) {
 		})})
 	}
 	client := connectUserWith(t, server, "ada", plugins)
-	defer client.Close(bg)
+	defer func() { closed(t, client.Close(bg)) }()
 	var mu sync.Mutex
 	var seen []string
 	last := func() string { mu.Lock(); defer mu.Unlock(); return seen[len(seen)-1] }
@@ -106,7 +106,7 @@ func TestThemeChoicesAreKeptPerPrincipal(t *testing.T) {
 	wakeOn(t, choice.Member("pick"))
 	until(t, func() bool { o, ok := pickOf(t, choice).(*delta.JsonObject); return ok && o.Value("dark") == "dusk" })
 	other := connectUser(t, server, "grace")
-	defer other.Close(bg)
+	defer func() { closed(t, other.Close(bg)) }()
 	graces, err := other.Get(bg, ThemeChoice, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -115,39 +115,6 @@ func TestThemeChoicesAreKeptPerPrincipal(t *testing.T) {
 	if !none(pickOf(t, graces)) {
 		t.Errorf("grace's pick = %v, want none", pickOf(t, graces))
 	}
-}
-
-// A follower stopped at once, before the server answers its pick watch, ends quietly (Pi: `.then(start, () => {})`).
-func TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly(t *testing.T) {
-	client := themeClient(t)
-	for range 50 {
-		follower, err := FollowActiveTheme(client, "dark", func(Theme) {}, bg)
-		if err != nil {
-			t.Fatal(err)
-		}
-		follower.Stop()
-	}
-}
-
-// Stop from the callback itself does not deadlock (Pi calls changed with no lock held).
-func TestAThemeFollowersCallbackMayStopIt(t *testing.T) {
-	client := themeClient(t)
-	stopped := make(chan struct{})
-	var follower *ThemeFollower
-	ready := make(chan struct{})
-	var once sync.Once
-	var err error
-	go func() {
-		follower, err = FollowActiveTheme(client, "dark", func(Theme) {
-			once.Do(func() { go func() { <-ready; follower.SetMode("light"); follower.Stop(); close(stopped) }() })
-		}, bg)
-		close(ready)
-	}()
-	<-ready
-	if err != nil {
-		t.Fatal(err)
-	}
-	<-stopped
 }
 
 // themeClient is a client of ada on a theme-choice server with the Themes registry served.

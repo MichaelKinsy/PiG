@@ -5,6 +5,7 @@ package telemetrysqlite
 // read-only store.
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -216,7 +217,7 @@ func TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesT
 	check(t, store.Close())
 	after, err := os.ReadFile(file)
 	check(t, err)
-	if string(before) != string(after) {
+	if !bytes.Equal(before, after) {
 		t.Fatal("the read-only store wrote the file")
 	}
 	if _, err := store.FindTraces(telemetry.TraceQuery{}); err == nil {

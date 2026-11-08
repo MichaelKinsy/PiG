@@ -51,7 +51,7 @@ var (
 )
 
 func attributes(entries ...any) map[string]attribute {
-	result := make(map[string]attribute, len(entries)/2)
+	result := make(map[string]attribute, len(entries))
 	for i := 0; i < len(entries); i += 2 {
 		result[entries[i].(string)] = entries[i+1].(attribute)
 	}
@@ -59,7 +59,7 @@ func attributes(entries ...any) map[string]attribute {
 }
 
 func endAttributes(entries ...any) map[string]pitelemetry.TelemetryAttributeDefinition {
-	result := make(map[string]pitelemetry.TelemetryAttributeDefinition, len(entries)/2)
+	result := make(map[string]pitelemetry.TelemetryAttributeDefinition, len(entries))
 	for i := 0; i < len(entries); i += 2 {
 		result[entries[i].(string)] = entries[i+1].(pitelemetry.TelemetryAttributeDefinition)
 	}

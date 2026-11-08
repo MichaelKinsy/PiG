@@ -67,19 +67,20 @@ func assertTelemetryStore(db chordsqlite.SqliteDatabase) error {
 	if err != nil {
 		return err
 	}
-	version := 0
+	// Pi compares the stored number: no integer conversion.
+	version := float64(0)
 	if row != nil {
 		number, err := rowNumber(row, "version")
 		if err != nil {
 			return err
 		}
-		version = int(number)
+		version = number
 	}
-	if version > expected {
-		return fmt.Errorf("telemetry store version %d is newer than this reader's %d", version, expected)
+	if version > float64(expected) {
+		return fmt.Errorf("telemetry store version %v is newer than this reader's %d", version, expected)
 	}
-	if version < expected {
-		return fmt.Errorf("telemetry store version %d, not %d: a recorder (CreateSqliteTelemetry) migrates it", version, expected)
+	if version < float64(expected) {
+		return fmt.Errorf("telemetry store version %v, not %d: a recorder (CreateSqliteTelemetry) migrates it", version, expected)
 	}
 	return nil
 }
