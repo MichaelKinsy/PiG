@@ -4,7 +4,7 @@ real walk, and its agreement with TypeBox's, is ``go test ./test/extension-confo
 import pytest
 
 import pig_sdk
-from pig_sdk import host_helpers
+from pig_sdk import host_helpers, type_engine
 
 
 class Transport:
@@ -201,12 +201,15 @@ def test_a_failing_cancel_does_not_hide_the_callbacks_failure(monkeypatch):
         return call(0, False, "x")
 
     monkeypatch.setattr(host_helpers, "_helper_call", transport)
+    diagnostics = []
+    monkeypatch.setattr(type_engine, "diagnose", diagnostics.append)
 
     with pytest.raises(RuntimeError) as failure:
         pig_sdk.Value.check(refined, "x")
 
     assert failure.value is boom
     assert calls == ["Value.Check", "Value.Cancel"]
+    assert len(diagnostics) == 1 and "Value.Cancel failed" in diagnostics[0] and "OSError: connection closed" in diagnostics[0] and diagnostics[0].endswith("\n")
 
 
 def test_an_error_reply_fails_the_call_without_a_cancel(monkeypatch):
