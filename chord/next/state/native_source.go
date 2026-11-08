@@ -190,12 +190,18 @@ type FollowedSource[T any] struct {
 	shown    shown[T]
 	// listed is set while listed for a frame in the current batch.
 	listed bool
+	// ended is set by End under mu: a follower registering after it (a watch opened on another goroutine as the source ends) would never be ended, so it ends
+	// at once instead.
+	ended bool
 }
 
 // Init makes the source of batch, with impl its embedder; batch nil makes it ended.
 func (f *FollowedSource[T]) Init(batch *Batch, impl FollowedHooks[T]) {
 	f.NativeSource.Init(batch, impl)
 	f.impl = impl
+	f.mu.Lock()
+	f.ended = batch == nil
+	f.mu.Unlock()
 }
 
 // Watched reports whether a watch or an observer follows it.
@@ -245,6 +251,11 @@ func (f *FollowedSource[T]) OpenWatch(ctx context.Context) (*chord.NativeWatch[T
 		watch.On(scheduler)
 	}
 	f.mu.Lock()
+	if f.ended {
+		f.mu.Unlock()
+		watch.EndWith(chord.WatchEnd{Kind: chord.WatchEnded})
+		return watch, nil
+	}
 	f.watches = append(f.watches, watch)
 	f.mu.Unlock()
 	if ctx.Done() != nil {
@@ -281,6 +292,11 @@ func (f *FollowedSource[T]) Observe(observer NativeObserver[T], ctx context.Cont
 	f.follow(start.Kind, start.Value)
 	entry := &observerEntry[T]{observer: observer}
 	f.mu.Lock()
+	if f.ended {
+		f.mu.Unlock()
+		observer.End(chord.WatchEnd{Kind: chord.WatchEnded})
+		return NativeObservation[T]{Value: value, Detach: func() {}}, nil
+	}
 	f.observers = append(f.observers, entry)
 	f.mu.Unlock()
 	if ctx.Done() != nil {
@@ -311,6 +327,9 @@ func (f *FollowedSource[T]) Subscribe(observer NativeObserver[T]) {
 	f.followOrNone()
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.ended {
+		return
+	}
 	for _, entry := range f.observers {
 		if entry.observer == observer {
 			entry.cleanup = nil
@@ -410,6 +429,7 @@ func (f *FollowedSource[T]) Unfollowed() {}
 func (f *FollowedSource[T]) End() {
 	f.NativeSource.End()
 	f.mu.Lock()
+	f.ended = true
 	f.hasShown, f.shown = false, shown[T]{}
 	watches := f.watches
 	observers := f.observers
