@@ -32,7 +32,7 @@ func TestContextOverflowMatrixUpstream(t *testing.T) {
 		{"mistral", "devstral-medium-latest", "mistral", `too large for model with \d+ maximum context length`}, {"minimax", "MiniMax-M2.7", "minimax", ""},
 		{"xiaomi", "mimo-v2.6-pro", "length", ""}, {"xiaomi-token-plan-cn", "mimo-v2.6-pro", "length", ""},
 		{"xiaomi-token-plan-ams", "mimo-v2.6-pro", "length", ""}, {"xiaomi-token-plan-sgp", "mimo-v2.6-pro", "length", ""},
-		{"qwen-token-plan", "qwen3.7-max", "qwen", "input length"}, {"qwen-token-plan-individual", "qwen3.8-max", "qwen", "input length"},
+		{"qwen-token-plan", "qwen3.7-max", "qwen", "input length"}, {"qwen-token-plan-individual", "qwen3.8-max", "qwen", "input length"}, {"qwen-token-plan-individual-cn", "qwen3.8-max", "qwen", "input length"},
 		{"qwen-token-plan-cn", "qwen3.7-max", "qwen", "input length"}, {"kimi-coding", "kimi-for-coding", "kimi", ""},
 		{"vercel-ai-gateway", "google/gemini-2.5-flash", "generic", ""}, {"openrouter", "anthropic/claude-sonnet-4.5", "completions", `maximum context length is \d+ tokens`},
 		{"openrouter", "deepseek/deepseek-v3.2", "completions", `maximum context length is \d+ tokens`}, {"openrouter", "mistralai/mistral-large", "completions", `maximum context length is \d+ tokens`},

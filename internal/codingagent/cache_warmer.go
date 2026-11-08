@@ -562,6 +562,8 @@ func (w *CacheWarmer) sendRefresh(run *cacheWarmingRun, extensionOverride bool) 
 	}()
 	options := run.Options
 	options.MaxTokens = 1
+	// The warm request repeats the last request; it must not replace the conversation's continuation state (cache-warmer.ts:336).
+	options.DisableContinuation = true
 	stream, err := w.stream(ai.WithProviderMaxRetries(run.ctx, 0), run.Model, run.Context, options)
 	if err != nil {
 		return true
@@ -743,14 +745,13 @@ func FormatCacheWarmingStatus(status CacheWarmingStatus, now int64) string {
 	return formatCacheWarmingDecisionTime(status.NextWarmAt, now) + " (" + details + ")"
 }
 
-// FormatCacheWarmingUsage is the one-line transcript text for persisted
-// cache-warming usage.
-func FormatCacheWarmingUsage(entry UsageEntry) string {
-	note := ""
-	if entry.Note != "" {
-		note = " (" + entry.Note + ")"
+// FormatCacheWarmingUsage is the one-line transcript text for the total cost
+// of one or more consecutive cache warms.
+func FormatCacheWarmingUsage(totalCost float64, note string) string {
+	if note != "" {
+		note = " (" + note + ")"
 	}
-	cost := jsstring.ToFixed(entry.Usage.Cost.Total, 6)
+	cost := jsstring.ToFixed(totalCost, 6)
 	// Keep at least three decimals and drop trailing zeros after them.
 	if dot := strings.IndexByte(cost, '.'); dot >= 0 && len(cost) > dot+4 {
 		cost = cost[:dot+4] + strings.TrimRight(cost[dot+4:], "0")

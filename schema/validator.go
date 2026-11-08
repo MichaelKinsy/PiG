@@ -69,6 +69,22 @@ func (v *Validator) Errors(value any) ([]ValidationError, error) {
 	return v.explain(value)
 }
 
+// Validate is Check and Errors in one result, without coercion: value itself when it is valid, else its errors (Pi's `validate`, Pi main af79b0c3d). It is not TypeBox's `Value.Parse`, which also clones, fills defaults, converts and strips undeclared properties before it checks. Use CoercingValidator.Parse for conversion.
+func (v *Validator) Validate(value any) (ParseResult, error) {
+	valid, err := v.Check(value)
+	if err != nil {
+		return ParseResult{}, err
+	}
+	if valid {
+		return ParseResult{OK: true, Value: value}, nil
+	}
+	errs, err := v.explain(value)
+	if err != nil {
+		return ParseResult{}, err
+	}
+	return ParseResult{Errors: errs}, nil
+}
+
 // explain is the errors of a value that failed its check.
 func (v *Validator) explain(value any) ([]ValidationError, error) {
 	v.explainerOnce.Do(func() {
@@ -115,18 +131,7 @@ func (v *CoercingValidator) Parse(value any) (ParseResult, error) {
 	if err != nil {
 		return ParseResult{}, err
 	}
-	valid, err := v.Check(coerced)
-	if err != nil {
-		return ParseResult{}, err
-	}
-	if valid {
-		return ParseResult{OK: true, Value: coerced}, nil
-	}
-	errs, err := v.explain(coerced)
-	if err != nil {
-		return ParseResult{}, err
-	}
-	return ParseResult{Errors: errs}, nil
+	return v.Validate(coerced)
 }
 
 func (v *CoercingValidator) coercerOf() (*coercer, error) {

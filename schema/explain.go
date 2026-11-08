@@ -486,7 +486,8 @@ func (e *explainer) declaredKeys(s any, b string, v jsonObject) int {
 	node := s
 	if o, ok := isSchemaObject(s); ok {
 		if ref, ok := o.stringMember("$ref"); ok {
-			node = e.c.r.resolve(ref, b).node
+			// the branch's own base, as its `$id` sets it (Pi main 2bd2c2d0a).
+			node = e.c.r.resolve(ref, e.c.r.baseFor(o, b)).node
 		}
 	}
 	o, ok := isSchemaObject(node)
@@ -513,7 +514,8 @@ func (e *explainer) tagOf(branches []any, b string) (string, []any, bool) {
 		resolvedBranches[i] = s
 		if o, ok := isSchemaObject(s); ok {
 			if ref, ok := o.stringMember("$ref"); ok {
-				resolvedBranches[i] = e.c.r.resolve(ref, b).node
+				// the branch's own base, as its `$id` sets it (Pi main 2bd2c2d0a).
+				resolvedBranches[i] = e.c.r.resolve(ref, e.c.r.baseFor(o, b)).node
 			}
 		}
 	}
@@ -556,7 +558,8 @@ func (e *explainer) walkUnevaluated(node jsonObject, b string, v any, path strin
 	if !ok {
 		rest = &Object{}
 		for _, k := range node.keys() {
-			if k != "unevaluatedProperties" && k != "unevaluatedItems" {
+			// b already applies the node's `$id`; the copy must not apply it again (Pi main 2bd2c2d0a).
+			if k != "unevaluatedProperties" && k != "unevaluatedItems" && k != "$id" {
 				rest.Set(k, node.value(k))
 			}
 		}
@@ -607,6 +610,10 @@ func typeName(v any) string {
 		if isInteger(n) {
 			return "integer"
 		}
+		// NaN and Infinity are named as String(v) names them (Pi main 55a5c6914).
+		if !isFinite(n) {
+			return jsnumberName(n)
+		}
 		return "number"
 	}
 	switch v.(type) {
@@ -623,4 +630,15 @@ func typeName(v any) string {
 		return "object"
 	}
 	return "undefined"
+}
+
+// jsnumberName is String(n) for a NaN or an infinity.
+func jsnumberName(n float64) string {
+	switch {
+	case math.IsNaN(n):
+		return "NaN"
+	case n > 0:
+		return "Infinity"
+	}
+	return "-Infinity"
 }

@@ -84,8 +84,9 @@ func checkSshArgumentCases(t *testing.T, call func(target SshTarget, strict bool
 			continue
 		}
 		checked++
-		if err != nil || !slices.Equal(got, c.Args) {
-			t.Errorf("target %+v strict %v: %q, %v\nPi gives %q", c.Target, c.StrictHostKeys, got, err, c.Args)
+		want := c.Args
+		if err != nil || !slices.Equal(got, want) {
+			t.Errorf("target %+v strict %v: %q, %v\nPi gives %q", c.Target, c.StrictHostKeys, got, err, want)
 		}
 	}
 	if checked < 10 || refused < 15 || fractional != 2 {
