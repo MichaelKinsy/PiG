@@ -75,6 +75,7 @@ func openDurable(parts func() (*p2runtime.HarnessParts, error)) (harness.Harness
 // covers a worker that stopped between a change and its push. Nothing else changes `p2.main`.
 func serveBranches(self host.StoreSelf) error {
 	parts := p2runtime.HarnessOf(self)
+	sessions := self.Get(sessionscontract.Sessions, delta.NewJsonObject(0))
 	p2runtime.ContributeKeyed(self, p2runtime.ReadOnlyConversations, p2runtime.Entry("tree", p2runtime.ReadOnlyCheck(
 		func(ctx host.Ctx, conversation int) (string, error) {
 			opened, err := openDurable(parts)
@@ -101,7 +102,7 @@ func serveBranches(self host.StoreSelf) error {
 			if err := fillLabels(ctx, opened); err != nil {
 				return err
 			}
-			return reportTree(ctx, self, opened)
+			return reportTree(ctx, sessions, opened)
 		})
 	})
 	return nil
@@ -113,6 +114,7 @@ func serveTree(params *delta.JsonObject, principal data.Principal, self host.Sel
 		return contracts.Implementation{}, p2runtime.Forbidden("the tree is the owner's")
 	}
 	parts, worker := p2runtime.HarnessOf(self), p2runtime.WorkerOf(self)
+	sessions := self.Get(sessionscontract.Sessions, delta.NewJsonObject(0))
 	// run is a call of the owner: refused while the session moves, which waits for running calls (`Liveness.Call`). It
 	// waits for the Durable session, which the caller's section must not hold.
 	run := func(ctx context.Context, fn func(opened harness.Harness) (delta.JsonValue, error)) (delta.JsonValue, error) {
@@ -143,7 +145,7 @@ func serveTree(params *delta.JsonObject, principal data.Principal, self host.Sel
 				if err != nil {
 					return nil, err
 				}
-				return switched, reportTree(ctx, self, opened)
+				return switched, reportTree(ctx, sessions, opened)
 			})
 		},
 		"select": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -152,7 +154,7 @@ func serveTree(params *delta.JsonObject, principal data.Principal, self host.Sel
 				if err := selectBranch(ctx, opened, durable.ConversationId(conversation)); err != nil {
 					return nil, err
 				}
-				return nil, reportTree(ctx, self, opened)
+				return nil, reportTree(ctx, sessions, opened)
 			})
 		},
 		"rename": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
@@ -163,7 +165,7 @@ func serveTree(params *delta.JsonObject, principal data.Principal, self host.Sel
 				if err := rename(ctx, opened, int(conversation), label); err != nil {
 					return nil, err
 				}
-				return nil, reportTree(ctx, self, opened)
+				return nil, reportTree(ctx, sessions, opened)
 			})
 		},
 	}}}, nil
@@ -171,7 +173,7 @@ func serveTree(params *delta.JsonObject, principal data.Principal, self host.Sel
 
 // reportTree tells the catalog the current main conversation and the branches, newest first (it ignores an unchanged
 // report).
-func reportTree(ctx context.Context, self host.Self, opened harness.Harness) error {
+func reportTree(ctx context.Context, sessions *host.Reference, opened harness.Harness) error {
 	state, err := durable.Snapshot(ctx, opened, p2runtime.MainDoc)
 	if err != nil {
 		return err
@@ -184,7 +186,6 @@ func reportTree(ctx context.Context, self host.Self, opened harness.Harness) err
 	for i, branch := range branches {
 		newestFirst[len(branches)-1-i] = branchValue(branch)
 	}
-	sessions := self.Get(sessionscontract.Sessions, delta.NewJsonObject(0))
 	_, err = sessions.Call("treeSelf", delta.JsonObjectOf("main", float64(main), "branches", newestFirst), p2runtime.CtxOf(ctx))
 	return err
 }
