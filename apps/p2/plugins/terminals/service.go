@@ -20,7 +20,7 @@ import (
 
 // TerminalPingInterval is how often a viewer's socket gets `{"type":"ping"}`. An idle terminal sends nothing, so without it
 // a dead connection looks open to the viewer and idle-timeouts on the way may close it. Not part of protocol.go: that
-// file is hashed into the terminal host's version (here the executable carries it), and the host never sees viewer pings.
+// file is hashed into the terminal host's version (version.go), and the host never sees viewer pings.
 const TerminalPingInterval = 15 * time.Second
 
 // ViewSocket is a viewer's WebSocket as a TerminalView uses it (the `ws` WebSocket's surface).

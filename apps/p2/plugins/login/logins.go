@@ -447,21 +447,16 @@ func (l *Logins) Answer(owner, attemptID, promptID, value string) error {
 	return nil
 }
 
-// Cancel cancels the login; its state shows "cancelled" when the call returns (or what it reached first). A call of the
-// host runs on its loop, which the login's goroutine needs to publish its end, so Cancel shows the end itself and never
-// waits for the goroutine.
+// Cancel cancels the login and waits for its end, as Pi's cancel aborts the attempt and awaits it: its state shows
+// "cancelled" (or what it reached first) when the call returns. The host call suspends its section (server.go), so the
+// login's goroutine can publish its end on the loop.
 func (l *Logins) Cancel(owner, attemptID string) error {
 	a, err := l.owned(owner, attemptID)
 	if err != nil {
 		return err
 	}
 	a.cancel()
-	l.mu.Lock()
-	committed := a.committed
-	l.mu.Unlock()
-	if !committed {
-		l.finish(a, "cancelled", "Login cancelled.")
-	}
+	<-a.done
 	return nil
 }
 
