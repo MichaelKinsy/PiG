@@ -150,6 +150,7 @@ func TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands(t *
 	first := []string{"qwen/a-GGUF", "qwen/b-GGUF", "qwen/c-GGUF"}
 	s.typeText("qw")
 	s.finishSearch("qw", models(first...))
+	s.requireSelected("qwen/a-GGUF")
 	s.typeText("e")
 	s.press(searchDown)
 	s.press(searchDown)
