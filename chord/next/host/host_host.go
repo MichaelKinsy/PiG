@@ -50,6 +50,9 @@ type HostOptions struct {
 	CloseTimeout *time.Duration
 	// ReadyTimeout is how long an activation attempt, and a `get`, may take until the object is live; 60 s by default.
 	ReadyTimeout *time.Duration
+	// ReloadDrainTimeout is how long a reload's restart keeps its old attempt open for old work (its calls, routed calls, its
+	// successor's requests becoming ready): at most CloseTimeout, 5 s by default. Work still running then is cut (`released`).
+	ReloadDrainTimeout *time.Duration
 	// Heartbeat is the heartbeat of every link.
 	Heartbeat *HeartbeatOptions
 	// RevokedBy is what revokes a principal (§4): `host.Revoke(r)` ends the objects and closes the child links of every
@@ -121,13 +124,11 @@ type PluginChanges struct {
 type ReloadedObjectKind string
 
 const (
-	// ReloadSwapped: pure, swapped in place.
-	ReloadSwapped ReloadedObjectKind = "swapped"
-	// ReloadRestarted: natives, drained, closed with reason `reload`, activated again.
+	// ReloadRestarted: its old attempt drained, sealed and closed with reason `reload`, a new attempt on the new code.
 	ReloadRestarted ReloadedObjectKind = "restarted"
 	// ReloadEnded: its type is gone.
 	ReloadEnded ReloadedObjectKind = "ended"
-	// ReloadParked: its new code waits for a dependency (Cause).
+	// ReloadParked: its new code waits for a failed dependency (Cause).
 	ReloadParked ReloadedObjectKind = "parked"
 	// ReloadRetried: it was failed, parked or activating: a new attempt runs on the new code.
 	ReloadRetried ReloadedObjectKind = "retried"
@@ -266,8 +267,10 @@ var noChain []string
 const (
 	defaultCloseTimeout = 30 * time.Second
 	defaultReadyTimeout = 60 * time.Second
-	defaultPing         = 15 * time.Second
-	defaultHeartbeat    = 30 * time.Second
+	// defaultReloadDrainTimeout is the reload drain bound unless ReloadDrainTimeout says otherwise (at most CloseTimeout).
+	defaultReloadDrainTimeout = 5 * time.Second
+	defaultPing               = 15 * time.Second
+	defaultHeartbeat          = 30 * time.Second
 )
 
 // hostState is where a host stands.
@@ -284,6 +287,8 @@ const (
 type hostTimeouts struct {
 	close time.Duration
 	ready time.Duration
+	// reload is the reload drain bound: at most close.
+	reload time.Duration
 }
 
 // closePromise is the one closing, which every `Close` waits for: settled once.
@@ -352,9 +357,13 @@ type chordHost struct {
 	events    sectionLoop
 	scheduler *chord.DeliveryScheduler
 	timeouts  hostTimeouts
-	backoff   *backoff
-	address   *contracts.Address
-	principal data.Principal
+	// oldWork is its old work during reloads (whether a context runs under it): see host_old_work.go.
+	oldWork oldWork
+	// reloadCycles are the waits of old work on objects that are not live, cut at once when they cycle through their own drain.
+	reloadCycles reloadCycles
+	backoff      *backoff
+	address      *contracts.Address
+	principal    data.Principal
 	// incarnation is this run of the host, sent in every handshake (R20).
 	incarnation string
 	compression link.Compression
@@ -452,7 +461,8 @@ func createHost(options HostOptions) (*chordHost, error) {
 	h.backoff = newBackoff(events, h.due)
 	// `revokedBy` is called with this host's principals only, the ones its links stamp.
 	h.revocationKeys = newRevocationKeys(options.RevokedBy.erased())
-	h.timeouts = hostTimeouts{close: durationOr(options.CloseTimeout, defaultCloseTimeout), ready: durationOr(options.ReadyTimeout, defaultReadyTimeout)}
+	closeTimeout := durationOr(options.CloseTimeout, defaultCloseTimeout)
+	h.timeouts = hostTimeouts{close: closeTimeout, ready: durationOr(options.ReadyTimeout, defaultReadyTimeout), reload: min(closeTimeout, durationOr(options.ReloadDrainTimeout, defaultReloadDrainTimeout))}
 	h.heartbeat.ping, h.heartbeat.close = defaultPing, defaultHeartbeat
 	if options.Heartbeat != nil {
 		h.heartbeat.ping = durationOr(options.Heartbeat.Ping, defaultPing)
@@ -806,7 +816,9 @@ func (h *chordHost) References(typ *contracts.Contract) state.SourceHandle {
 				continue
 			}
 			for _, holder := range object.holders() {
-				found.record(object, holder)
+				if holder.listed() {
+					found.record(object, holder)
+				}
 			}
 		}
 		h.refs[typ.Name] = found
@@ -1049,7 +1061,11 @@ func (h *chordHost) acquire(typ *contracts.Contract, params any, from caller, ct
 			}
 			expire(notLive(held.label(), timeout))
 		})
+		// Old work's getter whose target's activation waits on that work's own drain fails at once (rule 6).
 		live = held.live(waiting.context)
+		if goal, ok := held.target().(*chordObject); ok {
+			live = h.waitAsOldWork(live, goal, typ, ctx)
+		}
 	})
 	if err != nil {
 		return nil, err
@@ -1068,11 +1084,28 @@ func (h *chordHost) acquire(typ *contracts.Contract, params any, from caller, ct
 	return held, nil
 }
 
+// waitAsOldWork is waiting (a getter's or a gate's wait on target, for contract's version) as ctx makes it: as old work it is
+// cut at once with `unavailable/reload_cycle` when it cycles through that work's own drain (`reloadCycles`); otherwise as it
+// is. In a section.
+func (h *chordHost) waitAsOldWork(waiting *keyedPromise[struct{}], goal *chordObject, contract *contracts.Contract, ctx context.Context) *keyedPromise[struct{}] {
+	if !h.oldWork.of(ctx) {
+		return waiting
+	}
+	chain := chainAttempts(ctx)
+	if len(chain) == 0 {
+		return waiting
+	}
+	return h.reloadCycles.wait(h.loop(), waiting, goal, contract, chain)
+}
+
 // count adds delta to the keep-alive count of kind (`host.activity`), where the work happens.
 func (h *chordHost) count(kind activityKind, delta int) { h.activity.count(kind, delta) }
 
 // referenced: holder references object: listed in its type's presence, if someone asked for it.
 func (h *chordHost) referenced(object *chordObject, holder holder, ctx context.Context) {
+	if !holder.listed() {
+		return
+	}
 	if refs := h.refs[object.served.contract.Name]; refs != nil {
 		refs.add(object, holder, ctx)
 	}
@@ -1089,7 +1122,7 @@ func (h *chordHost) unreferenced(object *chordObject, holders []holder, ctx cont
 
 // report reports a background failure to `onError`; a failing `onError` has nowhere left to report to.
 func (h *chordHost) report(err HostError) {
-	defer func() { _ = recover() }() // upstream: packages/chord/src/next/host/host.ts:ChordHost.report (a throwing onError is swallowed)
+	defer func() { _ = recover() }() // upstream: packages/chord/src/host/host.ts:ChordHost.report (a throwing onError is swallowed)
 	h.onError(err)
 }
 
@@ -1128,6 +1161,16 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 		}
 	}
 	if unbound != nil {
+		// Old work never waits for a code update (rule 2): a version the new code dropped binds the object while its open old
+		// attempt still serves it, and fails at once otherwise.
+		if unbound.Error.Code == data.CodeContractMismatch && h.oldWork.of(ctx) {
+			object := h.objects[h.identityOf(entry, params, from.principal, ctx)]
+			if object == nil || !object.oldServes(typ.Version, typ.Fingerprint) {
+				return nil, unbound.Error
+			}
+			b.bind(object)
+			return object, nil
+		}
 		h.waitUnbound(b, typ.Name, unbound, func() { h.placeBinding(b, typ, params, ctx) })
 		return nil, nil
 	}
@@ -1436,10 +1479,12 @@ func (h *chordHost) startTicking() {
 			return
 		}
 		now := h.events.Now()
+		// Pi keeps the fraction of the pause (performance.now()); the host clock is whole milliseconds.
 		// A tick a whole interval late is time this process did not run (a sleeping laptop, a blocked event loop).
 		late := float64(now-last) - float64(interval)/float64(time.Millisecond)
 		var paused int64
 		if late >= float64(interval)/float64(time.Millisecond) {
+			//portlint:allow numbers late is the difference of two finite millisecond counters, so the conversion is of a finite number; truncation to whole milliseconds is the host clock's resolution
 			paused = int64(late)
 		}
 		last = now
@@ -1487,18 +1532,21 @@ func (h *chordHost) stopTicking() {
 	h.ticking = nil
 }
 
+// identityOf is the in-process identity of the object of entry for params and, for a remote type, principal.
+func (h *chordHost) identityOf(entry *served, params checkedParams, principal data.Principal, ctx context.Context) string {
+	if entry.contract.Kind == contracts.KindLocal {
+		return data.IdentityKey(entry.contract, params.key)
+	}
+	// A host serving remote types has a principal, which its references act as unless a link stamped its own.
+	return data.IdentityKey(entry.contract, params.key, data.PrincipalKey(principal, ctx, h.principalKey))
+}
+
 // objectFor is the object for params (checked by L1) and, for a remote type, principal (its key is part of the identity),
 // created if there is none; its first attempt starts at once, or when its identity's backoff window ends. A new one keeps
 // the activation chain it is created for (Q5): chain (a hold's), or that of dependent's activation when an activation
 // declared it, so its own holds over links carry that chain on.
 func (h *chordHost) objectFor(entry *served, params checkedParams, principal data.Principal, ctx context.Context, chain []string, dependent *chordObject) *chordObject {
-	var identity string
-	if entry.contract.Kind == contracts.KindLocal {
-		identity = data.IdentityKey(entry.contract, params.key)
-	} else {
-		// A host serving remote types has a principal, which its references act as unless a link stamped its own.
-		identity = data.IdentityKey(entry.contract, params.key, data.PrincipalKey(principal, ctx, h.principalKey))
-	}
+	identity := h.identityOf(entry, params, principal, ctx)
 	object := h.objects[identity]
 	if object == nil {
 		// Shared by every getter: one getter's cancellation does not cancel it.
@@ -1783,24 +1831,28 @@ type stagingPass struct {
 	failed   *namedMap[error]
 }
 
-// plannedFate is an affected object's fate, as staging decided it: end (its type is gone), or kind.
+// plannedFate is an affected object's fate, as staging decided it: end (its type is gone), or kind, with its new factory's
+// requests as staging recorded them.
 type plannedFate struct {
-	end    bool
-	kind   reloadFate
-	object *chordObject
-	served *served
+	end      bool
+	kind     reloadFate
+	object   *chordObject
+	served   *served
+	requests []request
 }
 
-// startedFate is a fate started by a reload's commit, for its report: a swap's or retry's new attempt is checked first
-// (checked; nil for an ended or restarted object).
+// startedFate is a fate started by a reload's commit, for its report: a retry's new attempt is checked first, a restart
+// reports what its readiness found (checked: why the new attempt waits, nil when it does not; nil for an ended object).
 type startedFate struct {
 	object  string
 	kind    ReloadedObjectKind
 	checked *keyedPromise[*data.FailureCause]
+	// check makes checked once every fate of the reload started.
+	check func() *keyedPromise[*data.FailureCause]
 }
 
 // reloaded is what a started fate of a reload kind reports.
-var reloadedKinds = map[reloadFate]ReloadedObjectKind{reloadSwap: ReloadSwapped, reloadRestart: ReloadRestarted, reloadRetry: ReloadRetried}
+var reloadedKinds = map[reloadFate]ReloadedObjectKind{reloadRestart: ReloadRestarted, reloadRetry: ReloadRetried}
 
 // reloadAborted is the `aborted` error of a reload whose context aborted before its commit: nothing changed.
 func reloadAborted() *data.ChordError {
@@ -1978,7 +2030,7 @@ func (h *chordHost) stagePass(given *namedMap[Facet], failed *namedMap[error], c
 			continue
 		}
 		recorded = append(recorded, recordedFactory{plugin: entry.plugin, recorded: declared})
-		fates = append(fates, plannedFate{kind: object.reloadFate(declared), object: object, served: entry})
+		fates = append(fates, plannedFate{kind: object.reloadFate(), object: object, served: entry, requests: declared.requests})
 	}
 	if failing.len() > 0 {
 		return stagingPass{failed: failing}
@@ -2160,12 +2212,9 @@ func (h *chordHost) commit(plan *reloadPlan, ctx context.Context) ([]startedFate
 	return started, nil
 }
 
-// startFates starts fates (in the order of the host's objects: providers before their dependents, `wentLive`) and returns them
-// in that order, for the report. The removals first, then the others dependents first (decision "Swaps: dependents first"): a
-// dependent's new attempt binds its provider while that is still live, so it does not park on the provider's own swap or
-// restart, and reads the old instance until the new one is live. A removed provider is gone before, so a dependent whose new
-// code still needs it parks (decision 4). A provider takes its new served type with its own fate: a dependent of a version
-// only that serves waits unbound until then (`ChordObject.hold`), then binds the swapping provider and parks.
+// startFates starts fates and returns them in their order, for the report: the removals first (a dependent whose new code
+// still needs a removed provider then parks, decision 4), then the restarts and retries; then the restarts' readiness and
+// successors, once every object has its new served type (their requests bind against the new code).
 func (h *chordHost) startFates(fates []plannedFate) []startedFate {
 	started := make([]startedFate, len(fates))
 	for index, fate := range fates {
@@ -2173,16 +2222,27 @@ func (h *chordHost) startFates(fates []plannedFate) []startedFate {
 			started[index] = h.startFate(fate)
 		}
 	}
-	for index := len(fates) - 1; index >= 0; index-- {
-		if !fates[index].end {
-			started[index] = h.startFate(fates[index])
+	for index, fate := range fates {
+		if !fate.end {
+			started[index] = h.startFate(fate)
+		}
+	}
+	for _, fate := range fates {
+		if !fate.end && fate.kind == reloadRestart {
+			fate.object.startSuccessor()
+		}
+	}
+	// The report's waits, made now that every readiness started.
+	for index := range started {
+		if started[index].check != nil {
+			started[index].checked = started[index].check()
 		}
 	}
 	return started
 }
 
-// startFate starts one object's fate after the commit (slice 7b §4): a removed type's object ends, its holders waiting
-// `not_served`; any other swaps, restarts or retries on its new served type.
+// startFate starts one object's fate after the commit: a removed type's object ends, its holders waiting `not_served`; any
+// other restarts or retries on its new served type.
 func (h *chordHost) startFate(fate plannedFate) startedFate {
 	object := fate.object
 	if fate.end {
@@ -2191,16 +2251,23 @@ func (h *chordHost) startFate(fate plannedFate) startedFate {
 		object.remove(data.FailureCause{Kind: data.FailureWaiting, Error: err})
 		return startedFate{object: label, kind: ReloadEnded}
 	}
-	started := object.reload(fate.served, fate.kind)
-	kind := reloadedKinds[fate.kind]
-	if fate.kind == reloadRestart {
-		return startedFate{object: object.label(), kind: kind}
+	next := object.reload(fate.served, fate.kind, fate.requests)
+	// Why a restarted or retried object's new attempt waits, for the report: what a restart's readiness found, at once (its new
+	// attempt's own check follows the old attempt's end), also for a retry of an attempt that still waits for an open old
+	// attempt; otherwise its new attempt's first dependency check.
+	checked := func() *keyedPromise[*data.FailureCause] {
+		if fate.kind == reloadRestart || object.openOldAttempt() != nil {
+			now := newKeyedPromise[*data.FailureCause](h.loop())
+			now.resolve(object.readinessCause())
+			return now
+		}
+		return next.checked()
 	}
-	return startedFate{object: object.label(), kind: kind, checked: started.checked()}
+	return startedFate{object: object.label(), kind: reloadedKinds[fate.kind], check: checked}
 }
 
-// reloadReport is the report, once every swap and retry had its first dependency check (a parked one reports why);
-// restarts are reported at once (their check follows the drain). ctx's abort ends only this wait (`aborted`, its details
+// reloadReport is the report, once every retry had its first dependency check (a parked one reports why); a restart reports
+// at once what its readiness found (its successor's own check follows the old attempt's end). ctx's abort ends only this wait (`aborted`, its details
 // naming what the commit applied: `committed`).
 func (h *chordHost) reloadReport(started []startedFate, committed CommittedReload, ctx context.Context) ([]ReloadedObject, error) {
 	// `awaitWithContext(Promise.all(checks), context)`: an abort that came first ends the wait.
