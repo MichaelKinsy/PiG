@@ -363,14 +363,18 @@ plugins/discord/package.json
 plugins/discord/style.css
 plugins/discord/web.tsx
 plugins/drafts/package.json
-plugins/envs/DirectoryPicker.tsx
-plugins/envs/EnvsPanel.tsx
-plugins/envs/SecretsSection.tsx
+||||||| merged common ancestors
+plugins/envs/web.tsx
 plugins/envs/contract.web.tsx
+plugins/envs/EnvsPanel.tsx
+plugins/projects/contract.ts
+plugins/workspace/contract.ts
+plugins/workspace/protocol.ts
+plugins/envs/DirectoryPicker.tsx
+plugins/envs/SecretsSection.tsx
 plugins/envs/package.json
 plugins/envs/secret-presets.ts
 plugins/envs/style.css
-plugins/envs/web.tsx
 plugins/files/package.json
 plugins/history/activity.css
 plugins/history/activity.tsx
@@ -439,7 +443,6 @@ plugins/voice/web.tsx
 plugins/web-shell/package.json
 plugins/web-shell/web.tsx
 plugins/workspace/Workspace.tsx
-plugins/workspace/contract.ts
 plugins/workspace/file.tsx
 plugins/workspace/fuzzy.ts
 plugins/workspace/package.json
@@ -520,4 +523,5 @@ plugins/coding-tools/cards.ts
 plugins/coding-tools/tui.ts
 plugins/powershell/tui.ts
 plugins/subagents/tui.ts
-||||||| merged common ancestors
+plugins/ports/protocol.ts
+plugins/locations/contract.ts
