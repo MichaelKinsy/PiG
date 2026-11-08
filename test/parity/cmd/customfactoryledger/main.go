@@ -27,6 +27,7 @@ const runtimeReachableFocusable = "pkg:tui/.#Focusable"
 
 var reviewedAmbiguousTypes = map[string]string{
 	"KeybindingsManager": "pkg:coding-agent/.#KeybindingsManager",
+	"Theme":              "pkg:coding-agent/.#Theme",
 	"ThinkingLevel":      "pkg:ai/.#ThinkingLevel",
 	"TuiMode":            "pkg:tui/.#TuiMode",
 }

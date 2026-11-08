@@ -22,7 +22,7 @@ var qwenTextModels = []string{
 }
 
 var qwenIndividualTextModels = []string{
-	"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2",
+	"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2", "glm-5.3",
 	"qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max",
 }
 
@@ -34,7 +34,7 @@ var qwenThinkingModels = []string{
 	"qwen3.8-flash", "qwen3.8-max",
 }
 
-var qwenTokenPlanProviders = []string{"qwen-token-plan", "qwen-token-plan-cn", "qwen-token-plan-individual"}
+var qwenTokenPlanProviders = []string{"qwen-token-plan", "qwen-token-plan-cn", "qwen-token-plan-individual", "qwen-token-plan-individual-cn"}
 
 type qwenModelCase struct{ provider, modelID string }
 
@@ -55,7 +55,7 @@ func qwenThinkingCases() []qwenModelCase {
 func qwenReasoningEffortCases() []qwenModelCase {
 	return append(
 		qwenCases(qwenTokenPlanProviders[:2], []string{"deepseek-v4-flash", "deepseek-v4-pro", "glm-5", "glm-5.1", "glm-5.2"}),
-		qwenCases(qwenTokenPlanProviders[2:], []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2"})...,
+		qwenCases(qwenTokenPlanProviders[2:], []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2", "glm-5.3"})...,
 	)
 }
 
@@ -123,6 +123,20 @@ func TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels(t *testing.T)
 	})
 }
 
+func TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels(t *testing.T) {
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:146 (3e4f8726)
+	t.Run("exposes exactly the documented Individual text models on the China endpoint", func(t *testing.T) {
+		got := generatedModelIDs("qwen-token-plan-individual-cn")
+		slices.Sort(got)
+		want := slices.Clone(qwenIndividualTextModels)
+		slices.Sort(want)
+		if !slices.Equal(got, want) {
+			t.Fatalf("qwen-token-plan-individual-cn models = %v, want %v", got, want)
+		}
+	})
+	// The China-endpoint environment-variable case is TestEnvAPIKeysQwenIndividualCnUsesChinaTokenPlanVariable in auth_env_keys_test.go.
+}
+
 func TestQwenTokenPlanExposesTextModelsAndOmitsImageModels(t *testing.T) {
 	for _, provider := range qwenTokenPlanProviders[:2] {
 		// upstream: packages/ai/test/qwen-token-plan-models.test.ts:136
@@ -179,11 +193,25 @@ func TestQwenTokenPlanExposesReasoningEffortLevels(t *testing.T) {
 	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:184
 	for _, test := range qwenReasoningEffortCases() {
 		t.Run("exposes Qwen reasoning_effort levels for "+test.provider+"/"+test.modelID, func(t *testing.T) {
+			low := (*string)(nil)
+			if test.modelID == "glm-5.3" {
+				low = ptrString("low")
+			}
 			assertThinkingLevelPresence(t, mustGeneratedModel(t, test.provider, test.modelID), map[ModelThinkingLevel]*string{
-				ThinkingMinimal: nil, ThinkingLow: nil, ThinkingMedium: nil, ThinkingHigh: ptrString("high"), ThinkingXHigh: nil, ThinkingMax: ptrString("max"),
+				ThinkingMinimal: nil, ThinkingLow: low, ThinkingMedium: nil, ThinkingHigh: ptrString("high"), ThinkingXHigh: nil, ThinkingMax: ptrString("max"),
 			})
 		})
 	}
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:203 (d53980fe)
+	t.Run("exposes glm-5.3 reasoning_effort levels for qwen-token-plan-individual", func(t *testing.T) {
+		model := mustGeneratedModel(t, "qwen-token-plan-individual", "glm-5.3")
+		if model.BaseURL != "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1" {
+			t.Errorf("baseUrl = %q", model.BaseURL)
+		}
+		assertThinkingLevelPresence(t, model, map[ModelThinkingLevel]*string{
+			ThinkingMinimal: nil, ThinkingLow: ptrString("low"), ThinkingMedium: nil, ThinkingHigh: ptrString("high"), ThinkingXHigh: nil, ThinkingMax: ptrString("max"),
+		})
+	})
 	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:202
 	for _, test := range qwen38Cases() {
 		t.Run("exposes qwen3.8 reasoning_effort levels for "+test.provider+"/"+test.modelID, func(t *testing.T) {

@@ -247,7 +247,7 @@ func TestOpenAICompletionsToolChoiceCatalogUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1245
 	t.Run("stores Qwen Token Plan reasoning replay compat in built-in metadata", func(t *testing.T) {
-		for _, p := range []string{"qwen-token-plan", "qwen-token-plan-cn", "qwen-token-plan-individual"} {
+		for _, p := range []string{"qwen-token-plan", "qwen-token-plan-cn", "qwen-token-plan-individual", "qwen-token-plan-individual-cn"} {
 			c := toolChoiceModel(t, p, "qwen3.7-max", false).ProviderMeta.Compat
 			if c == nil || c.ThinkingFormat != "qwen" || c.RequiresReasoningContentOnAssistantMessages != nil || c.SupportsDeveloperRole == nil || *c.SupportsDeveloperRole || c.SupportsStore == nil || *c.SupportsStore {
 				t.Fatalf("%s compat=%#v", p, c)

@@ -152,6 +152,9 @@ func unicodeUpstreamCases() []unicodeUpstreamCase {
 		{"should handle real-world LinkedIn comment data with emoji", "qwen-token-plan-individual", "qwen3.8-max", 1, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:742
 		{"should handle unpaired high surrogate (0xD83D) in tool results", "qwen-token-plan-individual", "qwen3.8-max", 2, false, ""},
+		{"should handle emoji in tool results", "qwen-token-plan-individual-cn", "qwen3.8-max", 0, false, ""},
+		{"should handle real-world LinkedIn comment data with emoji", "qwen-token-plan-individual-cn", "qwen3.8-max", 1, false, ""},
+		{"should handle unpaired high surrogate (0xD83D) in tool results", "qwen-token-plan-individual-cn", "qwen3.8-max", 2, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:750
 		{"should handle emoji in tool results", "qwen-token-plan-cn", "qwen3.7-max", 0, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/unicode-surrogate.test.ts:754
