@@ -19,24 +19,6 @@ snippet = "go func() {"
 
 [[hit]]
 check = "asyncorder"
-file = "coding/cli/rpc_mode_runtime.go"
-func = "rpcHost.bind"
-snippet = "go func() {"
-
-[[hit]]
-check = "asyncorder"
-file = "coding/session.go"
-func = "NewSession"
-snippet = "go sess.forwardAgentEvents()"
-
-[[hit]]
-check = "asyncorder"
-file = "internal/codingagent/model_tasks.go"
-func = "ModelRegistry.CloseModelTasks"
-snippet = "go models.Close()"
-
-[[hit]]
-check = "asyncorder"
 file = "mcp/client.go"
 func = "Client.startRequest"
 snippet = "go func() {"
@@ -1046,7 +1028,7 @@ snippet = "ChatTemplateArgs            map[string]any `json:\"chatTemplateArgs,o
 check = "emptydrop"
 file = "ai/openai.go"
 func = "(decl)"
-snippet = "AllowedFallbackModels          []AnthropicAllowedFallbackModel `json:\"allowedFallbackModels,omitempty\"`"
+snippet = "AllowedFallbackModels  []AnthropicAllowedFallbackModel `json:\"allowedFallbackModels,omitempty\"`"
 
 [[hit]]
 check = "emptydrop"
@@ -2989,7 +2971,7 @@ snippet = "data, err := json.Marshal(object)"
 
 [[hit]]
 check = "mapkeyorder"
-file = "internal/codingagent/interactive_radius_mcp.go"
+file = "internal/codingagent/radius_mcp.go"
 func = "radiusMcpServerConfig"
 snippet = "auth, err := json.Marshal(map[string]string{\"provider\": providerID})"
 

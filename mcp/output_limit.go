@@ -85,9 +85,8 @@ func truncateMiddle(text string, maxBytes int) (middleTruncation, bool) {
 	for headEnd > 0 && !isBoundary(headEnd) {
 		headEnd--
 	}
-	//portlint:allow numbers Math.floor(maxBytes / 2) of a non-negative byte count (output-limit.ts truncateMiddle)
 	//portlint:allow utf16units upstream walks the Buffer UTF-8 bytes (output-limit.ts truncateMiddle)
-	tailStart := len(text) - (maxBytes - maxBytes/2)
+	tailStart := len(text) - (maxBytes - maxBytes/2) //portlint:allow numbers Math.floor(maxBytes / 2) of a non-negative byte count (output-limit.ts truncateMiddle)
 	//portlint:allow utf16units upstream walks the Buffer UTF-8 bytes (output-limit.ts truncateMiddle)
 	for tailStart < len(text) && !isBoundary(tailStart) {
 		tailStart++
