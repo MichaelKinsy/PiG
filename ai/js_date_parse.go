@@ -471,8 +471,26 @@ func DateParse(s string) float64 { return DateParseIn(s, time.Local) }
 
 // DateParseIn is DateParse with the zone V8 applies to a string that names none: the zone of a caller that does not use the process's local one.
 func DateParseIn(s string, local *time.Location) float64 {
+	// An ASCII string of the length of a timestamp converts into a buffer on the stack: its code units are its bytes.
+	var buf [dateParseStackUnits]uint16
+	if len(s) <= len(buf) {
+		ascii := true
+		for i := 0; i < len(s); i++ {
+			if s[i] >= 0x80 {
+				ascii = false
+				break
+			}
+			buf[i] = uint16(s[i])
+		}
+		if ascii {
+			return jsDateParseUnits(buf[:len(s)], local)
+		}
+	}
 	return jsDateParseUnits(jsstring.ToUTF16(s), local)
 }
+
+// dateParseStackUnits is the longest ASCII string DateParseIn converts without allocating.
+const dateParseStackUnits = 48
 
 // DateParseHeader is Date.parse of an HTTP header value, which Node holds as a ByteString: each byte is one code unit.
 func DateParseHeader(s string) float64 { return jsDateParse(s) }
