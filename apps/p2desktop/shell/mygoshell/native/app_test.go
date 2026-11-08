@@ -13,6 +13,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"
@@ -132,4 +133,19 @@ func TestChatRoundTrip(t *testing.T) {
 	if chat, ok := app.chat.Transcript(); !ok || len(chat.Items) < 2 {
 		t.Fatalf("the transcript holds %d items, want the message and the answer", len(chat.Items))
 	}
+}
+
+// TestProvidersSheetFromTheEmptyState: without a credential the empty state offers "Sign in to a provider", which opens the
+// providers sheet (the server's p2.provider-login).
+func TestProvidersSheetFromTheEmptyState(t *testing.T) {
+	_, tt := startApp(t)
+	until(t, tt, "the empty state", func() bool { return tt.HasText("What should PiG do?") && tt.HasText("Sign in to a provider") })
+	if err := tt.Click("Sign in to a provider"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the sheet", func() bool { return tt.HasText("Providers") && tt.HasText("Search providers") || tt.HasText("Done") })
+	if err := tt.Click("Done"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the sheet closed", func() bool { return !tt.HasText("Done") })
 }

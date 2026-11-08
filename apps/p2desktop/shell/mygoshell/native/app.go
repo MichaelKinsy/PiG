@@ -48,16 +48,21 @@ type App struct {
 	renaming string
 	// pickSprite is the sprite picker's dialog; modeChoice the theme toggle (system, light, dark); collapsed the sidebar.
 	pickSprite bool
-	modeChoice string
-	collapsed  bool
-	showDrawer bool
-	stopSprite func()
-	draft      string
-	creating   bool
-	newCwd     string
-	newTitle   string
-	shownErr   string
-	announced  bool
+	// The providers sheet: shown, its search, the answer being typed, and the screen's references.
+	pickProvider  bool
+	providerQuery string
+	loginAnswer   string
+	providers     *screens.Providers
+	modeChoice    string
+	collapsed     bool
+	showDrawer    bool
+	stopSprite    func()
+	draft         string
+	creating      bool
+	newCwd        string
+	newTitle      string
+	shownErr      string
+	announced     bool
 
 	// The chat screen: the open conversation and its scope, its list, the prompt's text, thinking blocks opened, the markdown
 	// options, and the first message of a session started from the empty state (sent once its chat opens).
@@ -122,10 +127,12 @@ func (a *App) Start(h *surfacehost.Host) error {
 		scope.Dispose()
 		return err
 	}
+	// The sign-in belongs to servers that ship the login plugin; without it the sheet and the empty state's button stay away.
+	providers, _ := screens.OpenProviders(h, scope)
 	ctx, cancel := context.WithCancel(h.Context())
 	sprite.Watch(ctx, time.Second, a.Invalidate)
 	a.mu.Lock()
-	a.host, a.scope, a.sessions, a.stopSprite = h, scope, sessions, cancel
+	a.host, a.scope, a.sessions, a.stopSprite, a.providers = h, scope, sessions, cancel, providers
 	a.mu.Unlock()
 	a.Invalidate()
 	return nil
@@ -134,7 +141,7 @@ func (a *App) Start(h *surfacehost.Host) error {
 func (a *App) stop() {
 	a.mu.Lock()
 	scope, stopSprite, chatScope := a.scope, a.stopSprite, a.chatScope
-	a.scope, a.sessions, a.host, a.stopSprite = nil, nil, nil, nil
+	a.scope, a.sessions, a.host, a.stopSprite, a.providers = nil, nil, nil, nil, nil
 	a.chat, a.chatScope = nil, nil
 	a.mu.Unlock()
 	if stopSprite != nil {
@@ -237,6 +244,7 @@ func (a *App) Build(c *ui.Context) {
 		})
 	})
 	a.spritePicker(c)
+	a.providersSheet(c)
 	if err := sessions.LastError(); err != nil {
 		c.Toast(err.Error())
 		sessions.ClearError()

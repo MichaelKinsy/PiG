@@ -104,6 +104,12 @@ func (a *App) hero(c *ui.Context, sessions *screens.Sessions, v sprite.Variant, 
 			a.startNew(sessions)
 		}
 	}
+	// The web's "Sign in to a provider": with no stored credential the sessions have no model to work with.
+	if a.providers != nil && a.providers.NoCredentials() {
+		if ui.Button(c, "Sign in to a provider").Clicked() {
+			a.pickProvider = true
+		}
+	}
 }
 
 // sessionMenu is the top bar's "…": the session's actions, one menu in place of a row of buttons.
