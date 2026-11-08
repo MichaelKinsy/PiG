@@ -5,6 +5,7 @@ package delta
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -107,5 +108,36 @@ func BenchmarkAppendOpRetention(b *testing.B) {
 			}
 			b.ReportMetric(float64(retained), "retained-B")
 		})
+	}
+}
+
+// upstream: delta-op-text-retention.test.ts "a replica that applies a long stream of appends retains the text once, not once per commit".
+func TestReplicaOfAppendsRetainsTheTextOnce(t *testing.T) {
+	const commits = 300
+	base := strings.Repeat("x", 100_000)
+	before := heapAfterGC()
+	tracker := Track(JsonObjectOf("text", base))
+	var replica JsonValue = JsonObjectOf("text", base)
+	for index := range commits {
+		change := tracker.BeginChange()
+		state := change.State()
+		_ = state.Set("text", state.Get("text").(string)+fmt.Sprintf("line %d of a long streamed text\n", index))
+		prepared, err := change.Prepare()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tracker.Adopt(prepared); err != nil {
+			t.Fatal(err)
+		}
+		if replica, err = ApplyImmutable(replica, prepared.Ops()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	retained := int64(heapAfterGC()) - int64(before)
+	if retained > 2_000_000 {
+		t.Fatalf("the replica and tracker retain %d bytes, want one copy of the text each (< 2 MB)", retained)
+	}
+	if got, want := replica.(*JsonObject).Value("text"), tracker.Value().Value("text"); got != want {
+		t.Fatal("replica text differs from the tracker's")
 	}
 }

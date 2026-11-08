@@ -920,6 +920,22 @@ func TestTheLedgerWaitsForAPendingMergeToBeCommitted(t *testing.T) {
 	}
 }
 
+// A shallow clone shows its oldest commit as a root that adds every file, so a small fix reads as a squash; the tool says the clone is shallow instead.
+func TestTheLedgerRefusesAShallowClone(t *testing.T) {
+	r := newFixture(t)
+	r.write("a.go", "package x\n")
+	r.commit("Add a", "a.go")
+	r.write("b.go", "package x\n")
+	r.commit("Add b", "b.go")
+	dst := filepath.Join(t.TempDir(), "shallow")
+	r.run("clone", "-q", "--depth=1", "file://"+r.root, dst)
+	for _, check := range []bool{false, true} {
+		if err := run(dst, "0.4.1", check, false); err == nil || !strings.Contains(err.Error(), "shallow clone") {
+			t.Fatalf("check=%v on a shallow clone: err = %v", check, err)
+		}
+	}
+}
+
 // A fix committed on the first-parent line and followed directly by a merge keeps its fix commit: the merge's first parent is the fix itself, so the merge did not bring it in.
 func TestAFixFollowedByAMergeKeepsItsCommit(t *testing.T) {
 	r := newFixture(t)
