@@ -70,9 +70,61 @@ func TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep(t *testing.T)
 		"control byte":   `{"jsonrpc":"2.0","id":1,"result":{"x":"` + "\x01" + `","y":` + deep + `}}`,
 		"unclosed":       `{"jsonrpc":"2.0","id":1,"result":{"x":` + deep[:len(deep)-1],
 		"bad literal":    `{"jsonrpc":"2.0","id":1,"result":{"x":` + deep + `,"y":nul}}`,
+		// The flaws below sit inside the part nested more than 32 levels down, where the fallback checks the text itself.
+		"control byte in the deep part":   `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat(`{"a":`, deepLevels) + `"` + "\x01" + `"` + strings.Repeat("}", deepLevels) + `}}`,
+		"mismatched closer":               `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat("[", deepLevels) + `}` + strings.Repeat("]", deepLevels-1) + `}}`,
+		"trailing comma in the deep part": `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat(`{"a":`, deepLevels) + `[1,]` + strings.Repeat("}", deepLevels) + `}}`,
+		"bad escape in the deep part":     `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat(`[`, deepLevels) + `"\x"` + strings.Repeat("]", deepLevels) + `}}`,
+		"bad number in the deep part":     `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat(`[`, deepLevels) + `01` + strings.Repeat("]", deepLevels) + `}}`,
+		"missing colon in the deep part":  `{"jsonrpc":"2.0","id":1,"result":{"x":` + strings.Repeat(`[`, deepLevels) + `{"a"1}` + strings.Repeat("]", deepLevels) + `}}`,
 	} {
 		if _, err := parseWireMessage([]byte(line)); err == nil {
-			t.Errorf("%s: accepted", name)
+			t.Errorf("%s: accepted by parseWireMessage", name)
+		}
+		// ParseJSONRPCMessage alone, without the syntax check parseWireMessage runs first: the fallback must reject the text itself.
+		if _, err := ParseJSONRPCMessage([]byte(line)); err == nil {
+			t.Errorf("%s: accepted by ParseJSONRPCMessage", name)
 		}
 	}
+}
+
+// Differential: wherever encoding/json decodes the text, unmarshalJSON gives the same members; where it does not, unmarshalJSON accepts only text
+// that is JSON once the depth is ignored, and keeps every member as the original bytes.
+func FuzzUnmarshalJSONMatchesEncodingJSON(f *testing.F) {
+	for _, s := range []string{`{"a":1}`, `{"a":[1,{"b":"c"}],"d":null}`, `[1,2,]`, `{"a":"\u0000pigdeep0"}`, `{"\u0000pigdeep0":0}`, strings.Repeat(`[`, 40) + strings.Repeat(`]`, 40), `{"a":` + strings.Repeat(`{"b":`, 40) + `1` + strings.Repeat(`}`, 40) + `}`, `{"a":1e400}`, "{\"a\":\"\xff\"}", `{"a":1} x`, ` {"a" : [ ] } `, "{\"a\":\"\x01\"}", `{"a":[}`} {
+		f.Add([]byte(s), uint8(0))
+		f.Add([]byte(s), uint8(3))
+	}
+	f.Fuzz(func(t *testing.T, data []byte, wrap uint8) {
+		// wrap%4 == 3 nests the text 10010 levels deep inside a member, past encoding/json's limit.
+		if wrap%4 == 3 {
+			data = []byte(`{"w":` + strings.Repeat(`[`, 10010) + string(data) + strings.Repeat(`]`, 10010) + `}`)
+		}
+		var got, want map[string]json.RawMessage
+		gotErr := unmarshalJSON(data, &got)
+		wantErr := json.Unmarshal(data, &want)
+		if wantErr == nil {
+			if gotErr != nil || len(got) != len(want) {
+				t.Fatalf("%q: unmarshalJSON %v / %d members, encoding/json ok / %d", data, gotErr, len(got), len(want))
+			}
+			for k, v := range want {
+				if !bytes.Equal(got[k], v) {
+					t.Fatalf("%q: member %q differs", data, k)
+				}
+			}
+			return
+		}
+		if gotErr == nil {
+			var shallow any
+			elided, spans, _, ok := elideDeep(data)
+			if !ok || len(spans) == 0 || json.Unmarshal(elided, &shallow) != nil {
+				t.Fatalf("%q: accepted, encoding/json error %v", data, wantErr)
+			}
+			for k, v := range got {
+				if !bytes.Contains(data, v) {
+					t.Fatalf("%q: member %q is not original text", data, k)
+				}
+			}
+		}
+	})
 }

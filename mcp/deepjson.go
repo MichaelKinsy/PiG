@@ -28,6 +28,14 @@ func unmarshalJSON(data []byte, v any) error {
 	if err == nil {
 		return nil
 	}
+	return unmarshalDeep(data, v, err)
+}
+
+// unmarshalDeep is the fallback of unmarshalJSON, kept out of line so that the success path is a wrapper small enough to inline: the decode runs no
+// frame deeper than a direct json.Unmarshal call, which a message-rate hot path feels in stack copying.
+//
+//go:noinline
+func unmarshalDeep(data []byte, v any, err error) error {
 	shallow, spans, key, ok := elideDeep(data)
 	if !ok || len(spans) == 0 {
 		return err
