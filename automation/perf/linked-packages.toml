@@ -82,7 +82,7 @@ allow = [
 	"github.com/dlclark/regexp2",
 	"github.com/dlclark/regexp2/syntax",
 	"github.com/gorilla/websocket",
-	# 42,646 B on linux_amd64 and windows_amd64: the entropy coder of the zstd package below, which is already listed. Pi zstd-compresses Codex SSE request bodies (openai-codex-responses.ts compressRequestBodyZstd, zlib.zstdCompressSync level 3), so ai/zstd_codex.go does the same.
+	# approved by owner Michael Kinsy on 2026-11-08 (Pi's changelog: "Added inherited zstd request-body compression for the OpenAI Codex Responses SSE transport"). 42,646 B on linux_amd64 and windows_amd64: the entropy coder of the zstd package below, which is already listed. Pi zstd-compresses Codex SSE request bodies (openai-codex-responses.ts compressRequestBodyZstd, zlib.zstdCompressSync level 3), so ai/zstd_codex.go does the same.
 	"github.com/klauspost/compress/huff0",
 	"github.com/klauspost/compress/zstd",
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1",
