@@ -911,6 +911,7 @@ func (c *Client) setup() error {
 	h, err := p2runtime.NewHost(host.HostOptions{OnError: func(failure host.HostError) {
 		// A server that speaks a newer link protocol was updated: this build is outdated. Pi loads the server's current bundle into a fresh worker; the
 		// facets are compiled into this executable, so the visitor is told to update it (D611).
+		println("DIAG", failure.Kind, fmt.Sprint(failure.Error))
 		if host.NewerPeerProtocol(failure) {
 			go c.fail(OutdatedBuildMessage)
 			return
