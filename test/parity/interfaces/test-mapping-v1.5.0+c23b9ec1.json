@@ -8855,7 +8855,6 @@
         "mcp/oauth/oauth_test.go#TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
         "mcp/oauth/oauth_test.go#TestMCPOAuthRejectsNonHTTPAuthorizationEndpointsWhichThePlatformURLHandlerWouldLaunch",
         "mcp/oauth/oauth_test.go#TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
-        "mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
         "mcp/oauth/behavior_test.go#TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds",
         "mcp/oauth/behavior_test.go#TestOAuthCallbackServerAnswersEachAuthorizationResponseLikeCallbackTS",
         "mcp/oauth/behavior_test.go#TestOAuthCallbackServerRenderedPagesAreHTMLAndNotCached",
