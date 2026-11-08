@@ -2661,7 +2661,7 @@ allocs = 108
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionClone"
-allocs = 36097
+allocs = 25710
 
 [[benchmark]]
 package = "./internal/codingagent"
