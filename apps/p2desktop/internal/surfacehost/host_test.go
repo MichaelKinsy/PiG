@@ -132,28 +132,27 @@ func waitFor(t *testing.T, what string, ok func() bool) {
 	}
 }
 
-// serveSet serves the desktop surface's scripts object over set.
-func serveSet(set surfaces.ScriptSet) host.HostFacet {
-	return host.HostFacet{Name: "p2desktop.surface", Facet: surfacehost.ScriptsFacet(func() surfaces.ScriptSet { return set })}
-}
-
 func TestOutdatedWhenTheServerPublishesAnotherBase(t *testing.T) {
 	plugins := []surfaces.RegisteredScript{themePlugin("a-theme", surfaces.Theme{ID: "x.light", Mode: "light", Colors: map[string]string{"bg": "#fafafa"}})}
-	set := surfacehost.SetOf(plugins)
-	set.Base = "another-base"
-	server := startServer(t, serveSet(set))
+	server := startServer(t, surfacehost.ServerFacet(plugins))
 	var outdated atomic.Bool
 	h, err := surfacehost.Open(surfacehost.Options{Server: server.Host, Plugins: plugins, Outdated: func() { outdated.Store(true) }})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer h.Close()
+	waitFor(t, "connected", func() bool { return h.Connection() == surfaces.Connected })
+	set := surfacehost.SetOf(plugins)
+	set.Base = "another-base"
+	if err := surfacehost.Publish(server.Host, set); err != nil {
+		t.Fatal(err)
+	}
 	waitFor(t, "the outdated callback", outdated.Load)
 }
 
 func TestSetOfThisBuildChangesNothingAndAnUnknownScriptIsReportedAndRetried(t *testing.T) {
 	plugins := []surfaces.RegisteredScript{themePlugin("a-theme", surfaces.Theme{ID: "x.light", Mode: "light", Colors: map[string]string{"bg": "#fafafa"}})}
-	server := startServer(t, serveSet(surfacehost.SetOf(plugins)))
+	server := startServer(t, surfacehost.ServerFacet(plugins))
 	var mu sync.Mutex
 	var errs []error
 	var outdated atomic.Bool
