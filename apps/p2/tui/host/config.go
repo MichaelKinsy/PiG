@@ -62,11 +62,11 @@ type Admission struct {
 }
 
 var (
-	sessionID    = lazyregexp.New(`^[\w-]{1,128}$`)
-	guestCookie  = lazyregexp.New(`^p2_guest_\d+=`)
-	hashToken    = lazyregexp.New(`^#[a-f0-9]{64}$`)
-	joinPath     = lazyregexp.New(`^/join/([\w-]{43})$`)
-	serverID     = lazyregexp.New(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	sessionID   = lazyregexp.New(`^[\w-]{1,128}$`)
+	guestCookie = lazyregexp.New(`^p2_guest_\d+=`)
+	hashToken   = lazyregexp.New(`^#[a-f0-9]{64}$`)
+	joinPath    = lazyregexp.New(`^/join/([\w-]{43})$`)
+	serverID    = lazyregexp.New(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 )
 
 // validCookie is `^[\x21-\x7e]{1,4096}$`.

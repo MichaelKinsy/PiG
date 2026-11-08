@@ -91,7 +91,7 @@ type Client struct {
 	host      host.Host
 	tui       *pitui.TuiAltScreen
 	rt        *tuiruntime.TuiRuntime
-	scope     *chordtui.TuiScope
+	// access and grantRead are the owner loop's: set and read there only (syncAccess).
 	access    *host.Reference
 	grantRead func() (delta.JsonValue, bool)
 	root      context.Context
@@ -128,6 +128,7 @@ type Client struct {
 	progressing      bool
 	closing          sync.Once
 	stopPoll         chan struct{}
+	scope            *chordtui.TuiScope // the access scope: set once in setup, disposed by Close
 
 	// reported is what report last sent (owner loop only).
 	reportedTarget  string
@@ -297,6 +298,12 @@ func (c *Client) Connected() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.connected
+}
+
+func (c *Client) activeScope() *chordtui.TuiScope {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.scope
 }
 
 // Snapshot is the runtime's UI state, as a reload carries it.
@@ -835,6 +842,15 @@ func (c *Client) setup() error {
 	}
 	c.tui = pitui.NewTuiAltScreen(c.term, nil, "", pitui.TuiAltScreenOptions{
 		Mouse: &mouse, WheelScrollLines: pitui.WheelScrollLines{Auto: true}, CopySelection: copyOnSelectRequest,
+		// pi-tui focuses the clicked component (an editor click answers `focus: true`); the runtime is the layout's focus owner (commands first, then the
+		// active screen), so a focused editor would bypass Escape, Ctrl+C, Ctrl+D, Ctrl+T and every other command, and keep getting keys after the screen
+		// changed. Clicks that pi-tui maps to an overlay keep that overlay (Pi's RuntimeAltScreen.resolveMouseFocusTarget). Runs on the owner loop.
+		ResolveMouseFocusTarget: func(component, resolved pitui.Component) pitui.Component {
+			if resolved == component && c.rt != nil {
+				return c.rt
+			}
+			return resolved
+		},
 	})
 	c.tui.SetOwnerDispatcher(func(ctx context.Context, fn func()) error {
 		select {
@@ -912,11 +928,20 @@ func (c *Client) setup() error {
 		c.term.SetTitle("π p2 · " + c.options.URL.Host)
 	})
 	c.postCapabilities()
-	c.scope = chordtui.NewTuiScope(c.root, h, func() { c.Post(c.syncAccess) })
-	if access, err := c.scope.Hold(p2runtime.Access, delta.NewJsonObject(0)); err == nil {
-		c.access = access
-	} else {
+	scope := chordtui.NewTuiScope(c.root, h, func() { c.Post(c.syncAccess) })
+	c.mu.Lock()
+	c.scope = scope
+	c.mu.Unlock()
+	access, err := scope.Hold(p2runtime.Access, delta.NewJsonObject(0))
+	if err != nil {
 		loadErr = err
+	} else {
+		// `access` and `grantRead` are the owner loop's (syncAccess runs there): the loop takes the reference, then follows it once, so an answer that arrived
+		// before this point (and was skipped as unbound) is not lost.
+		c.Do(func() {
+			c.access = access
+			c.syncAccess()
+		})
 	}
 	c.connect(0)
 	return loadErr
@@ -947,7 +972,7 @@ func (c *Client) syncAccess() {
 		return
 	}
 	if c.grantRead == nil {
-		c.grantRead = chordtui.WatchMember(c.scope, member)
+		c.grantRead = chordtui.WatchMember(c.activeScope(), member)
 	}
 	value, ok := c.grantRead()
 	if !ok {
@@ -1212,8 +1237,8 @@ func (c *Client) Close() {
 		}
 		c.ui.Cancel()
 		c.grants.CancelAll()
-		if c.scope != nil {
-			c.scope.Dispose()
+		if scope := c.activeScope(); scope != nil {
+			scope.Dispose()
 		}
 		if c.tui != nil {
 			c.Do(func() {
