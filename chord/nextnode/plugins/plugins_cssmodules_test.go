@@ -3,8 +3,12 @@ package plugins
 // pi: packages/chord/src/node/plugins/css-modules.ts
 
 import (
+	"context"
+	"os/exec"
 	"regexp"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -127,5 +131,50 @@ func TestEsbuildBuildReadsACSSModuleAsUTF8LikeTextDecoderInvalidBytesAreU_FFFDBe
 	}
 	if strings.Contains(built.CSS.Text, `\fffdb`) {
 		t.Errorf("css = %q: the escape of U+FFFD runs into the `b` after it", built.CSS.Text)
+	}
+}
+
+// A facet build that has a CSS module starts one Node subprocess for the mappings, started with NodeOptions.Command, and ends it
+// with the build: no process is left, and a build with no CSS module starts none.
+func TestEsbuildBuildEndsTheNodeSubprocessThatReadsCSSModuleMappings(t *testing.T) {
+	var mu sync.Mutex
+	var started []*exec.Cmd
+	options := esbuildBrowser
+	options.Node.Command = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, name, args...)
+		mu.Lock()
+		started = append(started, cmd)
+		mu.Unlock()
+		return cmd
+	}
+	evaluators := func() (count int) {
+		mu.Lock()
+		defer mu.Unlock()
+		for _, cmd := range started {
+			if slices.Contains(cmd.Args, "-e") {
+				count++
+			}
+			if cmd.ProcessState == nil {
+				t.Errorf("%v is still running after the build", cmd.Args[1:])
+			}
+		}
+		return count
+	}
+	root := tempRoot(t)
+	writePlugin(t, root, "plain", "@test/plain", map[string]string{"web.ts": "export default { setup: () => 1 };"}, nil)
+	writePlugin(t, root, "web", "@test/web", map[string]string{
+		"web.ts":       "import a from \"./a.module.css\";\nimport b from \"./b.module.css\";\nexport default { setup: () => [a, b] };",
+		"a.module.css": ".x{color:red}",
+		"b.module.css": ".y{color:blue}",
+	}, nil)
+	_, plain := esbuildDiscovered(t, "@test/plain", root)
+	esbuildScript(t, esbuildBuild(t, plain, "web", options))
+	if got := evaluators(); got != 0 {
+		t.Fatalf("%d evaluator processes for a build with no CSS module", got)
+	}
+	_, plugin := esbuildDiscovered(t, "@test/web", root)
+	esbuildScript(t, esbuildBuild(t, plugin, "web", options))
+	if got := evaluators(); got != 1 {
+		t.Fatalf("%d evaluator processes for a build with two CSS modules, want 1", got)
 	}
 }
