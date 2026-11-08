@@ -233,11 +233,10 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 		t.Fatal("the internal access does not know the cookie")
 	}
 	outstanding := mint(t, devices)
+	// Pi: a reload of unchanged code is a no-op, the facet and its open owner access stay.
 	if _, err := fixture.Server.Reload([]string{"devices"}, p2test.Background); err != nil {
 		t.Fatal(err)
 	}
-	// The replacing facet's object goes live asynchronously: a call through the held reference answers once it does.
-	mint(t, devices)
 	if got := claim(tokenBody(outstanding)).Status; got != 200 {
 		t.Fatalf("compatible reloads retain invitations and the owner key: %d", got)
 	}

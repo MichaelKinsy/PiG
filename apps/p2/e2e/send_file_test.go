@@ -27,7 +27,8 @@ import (
 
 func TestSendFileFakeProvider(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{})
+	var rebuilds p2test.Rebuilds
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{BuildRevision: rebuilds.Revision})
 	owner := fixture.Browser()
 	sessions, err := p2test.HoldIn(owner, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
 	if err != nil {
@@ -79,6 +80,7 @@ func TestSendFileFakeProvider(t *testing.T) {
 		if err := os.Remove(path); err != nil {
 			t.Fatal(err)
 		}
+		rebuilds.Rebuild("send-file")
 		if _, err := fixture.Server.Reload([]string{"send-file"}, context.Background()); err != nil {
 			t.Fatal(err)
 		}

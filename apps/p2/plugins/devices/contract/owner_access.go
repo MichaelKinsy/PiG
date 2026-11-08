@@ -404,6 +404,3 @@ func (a *OwnerAccess) Close() {
 	a.invites = nil
 	a.mu.Unlock()
 }
-
-// Directory is where the access keeps its key and revocations.
-func (a *OwnerAccess) Directory() string { return a.directory }
