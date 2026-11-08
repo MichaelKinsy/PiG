@@ -219,7 +219,9 @@ func TestBranchFromAMessage(t *testing.T) {
 	if err := tt.Click("Send"); err != nil {
 		t.Fatal(err)
 	}
-	until(t, tt, "the answer", func() bool { return tt.HasText("Echo: first words") && !tt.HasText("Stop") && !tt.HasText("Working…") })
+	until(t, tt, "the answer", func() bool {
+		return tt.HasText("Echo: first words") && !tt.HasText("Stop") && !tt.HasText("Working…")
+	})
 	if err := tt.Click("Branch from here"); err != nil {
 		t.Fatal(err)
 	}
