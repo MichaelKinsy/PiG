@@ -594,9 +594,40 @@ func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 		if err != nil {
 			return err
 		}
-		return setField(state, "compaction", changeSet, stored)
+		return setField(state, "compaction", changeSet, compactionJSON(stored))
 	}
 	return setField(state, "compaction", compaction.state, nil)
+}
+
+// compactionJSON is settings as the plain JSON object pi.agent stores: its set fields in the order enabled, reserveTokens,
+// keepRecentTokens, backgroundTokens, then modelOverrides.
+func compactionJSON(settings durable.CompactionSettings) *delta.JsonObject {
+	object := policyJSON(settings.Enabled, settings.ReserveTokens, settings.KeepRecentTokens, settings.BackgroundTokens)
+	if settings.ModelOverrides != nil {
+		overrides := delta.NewJsonObject(len(settings.ModelOverrides))
+		for _, key := range slices.Sorted(maps.Keys(settings.ModelOverrides)) {
+			override := settings.ModelOverrides[key]
+			overrides.Set(key, policyJSON(override.Enabled, override.ReserveTokens, override.KeepRecentTokens, override.BackgroundTokens))
+		}
+		object.Set("modelOverrides", overrides)
+	}
+	return object
+}
+
+func policyJSON(enabled *bool, reserve, keep, background *int) *delta.JsonObject {
+	object := delta.NewJsonObject(5)
+	if enabled != nil {
+		object.Set("enabled", *enabled)
+	}
+	for _, field := range []struct {
+		name  string
+		value *int
+	}{{"reserveTokens", reserve}, {"keepRecentTokens", keep}, {"backgroundTokens", background}} {
+		if field.value != nil {
+			object.Set(field.name, float64(*field.value))
+		}
+	}
+	return object
 }
 
 // compactionSettings is agent.ts compactionSettings: a stored copy of a conversation's compaction settings; it fails for a token
