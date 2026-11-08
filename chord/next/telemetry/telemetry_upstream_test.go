@@ -178,3 +178,17 @@ func TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop(t *testing.T) {
 		t.Fatalf("recorded = %+v", recorded)
 	}
 }
+
+// A call that records nothing allocates nothing for its metrics: the no-op instruments of a host without an adapter are the
+// adapter's shared no-op ones, not the schema's metadata made afresh on every use (go: a host counts its calls in flight on
+// every call).
+func TestMetricsOfNoAdapterAllocateNothingPerUse(t *testing.T) {
+	metrics := chordtelemetry.Metrics(nil)
+	if allocated := testing.AllocsPerRun(100, func() {
+		metrics.UpDownCounter("chord.calls.in_flight").Add(1, nil)
+		metrics.Counter("chord.link.encodes").Add(1, nil)
+		metrics.Histogram("chord.commit.duration").Record(1, nil, nil)
+	}); allocated != 0 {
+		t.Fatalf("a use of no-op instruments allocates %v, want 0", allocated)
+	}
+}

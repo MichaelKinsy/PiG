@@ -57,8 +57,8 @@ pkg:chord/.#Ctx::property:get::call:0	chord	undecidable	chord/next/host/host_ctx
 pkg:chord/.#Ctx::property:telemetry	chord	member-missing	chord/next/host/host_ctx.go#Ctx
 pkg:chord/.#Ctx::property:toString	chord	member-missing	chord/next/host/host_ctx.go#Ctx
 pkg:chord/.#Ctx::property:toString::call:0	chord	member-missing	chord/next/host/host_ctx.go#Ctx
-pkg:chord/.#Ctx::property:trace	chord	member-missing	chord/next/host/host_ctx.go#Ctx
-pkg:chord/.#Ctx::property:trace::call:0	chord	member-missing	chord/next/host/host_ctx.go#Ctx
+pkg:chord/.#Ctx::property:trace	chord	not-exercised	chord/next/host/host_ctx.go#Ctx.Trace
+pkg:chord/.#Ctx::property:trace::call:0	chord	not-exercised	chord/next/host/host_ctx.go#Ctx.Trace
 pkg:chord/.#Ctx::property:value	chord	child-gap	../../../usr/local/go/src/context/context.go#Context.Value
 pkg:chord/.#Ctx::property:value::call:0	chord	undecidable	../../../usr/local/go/src/context/context.go#Context.Value
 pkg:chord/.#DataKeys	chord	no-go-symbol	
@@ -98,7 +98,6 @@ pkg:chord/.#Host::property:revoke	chord	not-exercised	chord/next/host/host_host.
 pkg:chord/.#Host::property:revoke::call:0	chord	not-exercised	chord/next/host/host_host.go#Host.Revoke
 pkg:chord/.#HostError	chord	type-mismatch	chord/next/host/host_error.go#HostError
 pkg:chord/.#HostKind::call:0	chord	child-gap	chord/next/contracts/host_kind.go#HostKind
-pkg:chord/.#HostOptions	chord	type-mismatch	chord/next/host/host_host.go#HostOptions
 pkg:chord/.#Implementation	chord	undecidable	chord/next/contracts/contract.go#Implementation
 pkg:chord/.#IntegerSchema	chord	no-go-symbol	
 pkg:chord/.#IntegerSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
@@ -198,14 +197,12 @@ pkg:chord/.#Reference	chord	type-mismatch	chord/next/host/host_reference.go#Refe
 pkg:chord/.#RegisteredScript	chord	no-go-symbol	
 pkg:chord/.#Registry	chord	type-mismatch	chord/next/registries/registry.go#Registry
 pkg:chord/.#RegistryAccepts	chord	undecidable	chord/next/registries/registry.go#RegistryAccepts
-pkg:chord/.#RootOptions	chord	type-mismatch	chord/next/host/host_root.go#RootOptions
 pkg:chord/.#RouteHandle	chord	type-mismatch	chord/next/host/host_route.go#RouteHandle
 pkg:chord/.#RoutineDeclarations	chord	child-gap	chord/next/host/host_routines.go#RoutineDeclarations
 pkg:chord/.#RoutineDeclarations::property:on	chord	child-gap	chord/next/host/host_routines.go#RoutineDeclarations.On
 pkg:chord/.#RoutineDeclarations::property:on::call:0	chord	undecidable	chord/next/host/host_routines.go#RoutineDeclarations.On
 pkg:chord/.#RoutineDeclarations::property:on::call:1	chord	signature-mismatch	chord/next/host/host_routines.go#RoutineDeclarations.On
 pkg:chord/.#Run	chord	child-gap	chord/next/host/jobs_run.go#Run
-pkg:chord/.#Run::property:id	chord	not-exercised	chord/next/documents/job.go#Run.ID
 pkg:chord/.#Run::property:outcome	chord	not-exercised	chord/next/documents/job.go#Run.Outcome
 pkg:chord/.#Run::property:outcome::call:0	chord	not-exercised	chord/next/documents/job.go#Run.Outcome
 pkg:chord/.#RunState	chord	child-gap	chord/next/host/jobs_job.go#RunState
