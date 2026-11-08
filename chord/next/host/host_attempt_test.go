@@ -1626,3 +1626,42 @@ func TestActivationSpansRecordHowAParkedAttemptEndedInAShortSpanLinkedToTheParke
 	}
 	closeHosts(t, host)
 }
+
+// pageActivationSpan is the activation span of the live attempt of app.page(1) (nil when it has none) and whether the object
+// was found.
+func pageActivationSpan(host Host) (span telemetry.TelemetrySpan, found bool) {
+	host.(*chordHost).enter(func() {
+		for _, object := range host.(*chordHost).objectList() {
+			if object.label() == "app.page(1)" {
+				found = true
+				span = object.phase.attempt.activationSpan()
+			}
+		}
+	})
+	return span, found
+}
+
+// attempt.test.ts › activation spans (slice 9) › starts nothing without an adapter that records. A host recording to an
+// adapter is the control: the same read finds the span there.
+func TestActivationSpansStartNothingWithoutAnAdapterThatRecords(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	for _, options := range []loadedOptions{{}, {Telemetry: recorder}} {
+		host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return servePage(h, nil) }, options)
+		page := mustGet(t, host, hostPage, jsonObject("id", 1.0))
+		if got, err := page.Member("id").Value(); err != nil || got != 1.0 {
+			t.Fatalf("id = %v, %v, want 1", got, err)
+		}
+		span, found := pageActivationSpan(host)
+		if !found {
+			t.Fatal("no object of app.page(1)")
+		}
+		if recording := options.Telemetry != nil; (span != nil) != recording {
+			t.Errorf("activation span = %v with recording %v, want a span exactly when it records", span, recording)
+		}
+		page.Release()
+		closeHosts(t, host)
+	}
+	if got := len(spansNamed(recorder, "chord.activate")); got == 0 {
+		t.Errorf("the recording host started no chord.activate span")
+	}
+}

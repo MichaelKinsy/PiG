@@ -157,6 +157,20 @@ func TestHostRootRunsItsScopeInANewRootSpanOfItsAdapterWithItsHostAndAttributesA
 	}
 }
 
+// root.test.ts › host.root's trace › starts nothing without an adapter that records: the scope's ctx keeps its caller's
+// telemetry.
+func TestHostRootStartsNothingWithoutAnAdapterThatRecords(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	mustLoad(t)(host.Load(nil, background))
+	same, err := host.Root(func(ctx Ctx) (any, error) {
+		return chordctx.Telemetry(ctx) == chordctx.Telemetry(background), nil
+	}, background, RootOptions{Trace: &RootTrace{Name: "x"}})
+	must(t, err)
+	if same != true {
+		t.Errorf("the root's ctx telemetry differs from its caller's, want the same")
+	}
+}
+
 // --- ctx.trace ------------------------------------------------------------------------------------------------------------------
 
 var tracedType = mustContract(declareLocal("app.traced", contracts.LocalDeclaration{
