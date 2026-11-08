@@ -12,7 +12,7 @@ import (
 // else the nearest of 256; a theme's `tui` overrides first). A plugin asks for a role (`theme.Fg("accent", "Notes")`),
 // never writes raw colours; a new theme applies at the next redraw.
 type TerminalTheme struct {
-	depth string
+	depth surfaces.ColorDepth
 
 	mu        sync.Mutex
 	theme     surfaces.Theme
@@ -20,7 +20,7 @@ type TerminalTheme struct {
 }
 
 // NewTerminalTheme is the lookup of theme for a terminal of depth ("truecolor" or "256").
-func NewTerminalTheme(theme surfaces.Theme, depth string) *TerminalTheme {
+func NewTerminalTheme(theme surfaces.Theme, depth surfaces.ColorDepth) *TerminalTheme {
 	return &TerminalTheme{theme: theme, depth: depth}
 }
 
