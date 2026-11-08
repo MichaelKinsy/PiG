@@ -121,6 +121,37 @@ func TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedN
 	}
 }
 
+// Intention of workers/base.test.ts "what stays external › resolves with the child's --conditions (both spellings)" (D600: a Go
+// worker has no esbuild base; the bundles a PiG server builds from Node code are the surfaces' bases, whose conditions are
+// the server process's, read by ProcessConditions): a package's `exports` resolve with the process's `--conditions`, in each
+// spelling Node takes (`--conditions=x`, `--conditions x`, `-C x`, `-C=x`, and the same in NODE_OPTIONS), to its source, and
+// with none to its default.
+func TestConditionsResolvePackageExportsWithEachSpellingOfTheFlagTheDefaultWithNone(t *testing.T) {
+	dir := project(t, chordish(), "chordish")
+	entry := filepath.Join(dir, "main.ts")
+	built := func(execArgv []string, nodeOptions string) string {
+		t.Helper()
+		bundle, err := BuildBase(entry, PlatformSandbox, "/p/", ProcessConditions(execArgv, nodeOptions))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return scriptOf(bundle)
+	}
+	if script := built([]string{"--no-warnings"}, ""); !strings.Contains(script, `"dist"`) || strings.Contains(script, `"source"`) {
+		t.Fatalf("with no condition the bundle is not the default's: %s", script)
+	}
+	for _, spelling := range [][]string{{"--conditions=source"}, {"--conditions", "source"}, {"-C", "source"}, {"-C=source"}} {
+		for name, bundle := range map[string]string{
+			"execArgv":     built(spelling, ""),
+			"NODE_OPTIONS": built(nil, strings.Join(spelling, " ")),
+		} {
+			if !strings.Contains(bundle, `"source"`) || strings.Contains(bundle, `"dist"`) {
+				t.Errorf("%s %q: the bundle is not the source's: %s", name, spelling, bundle)
+			}
+		}
+	}
+}
+
 func TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions(t *testing.T) {
 	dir := project(t, map[string]string{
 		"workspace/dual/package.json":    `{"name":"dual","exports":{".":{"module":"./esm.js","default":"./cjs.js"}}}`,
