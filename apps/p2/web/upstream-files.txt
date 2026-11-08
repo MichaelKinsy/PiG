@@ -43,3 +43,10 @@ plugins/artifacts/store.ts
 plugins/artifacts/tool.ts
 plugins/send-file/tool.ts
 plugins/send-file/worker.ts
+plugins/envs/web.tsx
+plugins/envs/contract.web.tsx
+plugins/envs/EnvsPanel.tsx
+plugins/envs/DirectoryPicker.tsx
+plugins/envs/SecretsSection.tsx
+plugins/envs/style.css
+plugins/envs/secret-presets.ts
