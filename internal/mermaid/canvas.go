@@ -171,7 +171,8 @@ func (c *canvas) finalizeMask() {
 		if c.mask[i] == 0 {
 			continue
 		}
-		if c.ch[i] == " " {
+		switch c.ch[i] {
+		case " ":
 			ch := maskChar(int(c.mask[i]))
 			switch c.style[i] {
 			case styDot:
@@ -180,7 +181,7 @@ func (c *canvas) finalizeMask() {
 				ch = thickChar(ch)
 			}
 			c.ch[i] = ch
-		} else if c.ch[i] == "═" || c.ch[i] == "║" {
+		case "═", "║":
 			c.ch[i] = doubleTee(c.ch[i], int(c.mask[i]))
 		}
 	}

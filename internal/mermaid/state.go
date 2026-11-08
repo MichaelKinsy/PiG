@@ -45,8 +45,7 @@ type stateScope struct {
 	region *int
 }
 
-func intPtr(n int) *int { return &n }
-
+//go:fix inline
 func parseState(src string) *graph {
 	statements := statementsOf(src)
 	kind := headerKind(statements)
@@ -70,7 +69,7 @@ func parseState(src string) *graph {
 		}
 		var parent *int
 		if g.curGroup != nil {
-			parent = intPtr(*g.curGroup)
+			parent = new(*g.curGroup)
 		}
 		g.groups = append(g.groups, group{id: id, label: label, parent: parent})
 		return len(g.groups) - 1
@@ -81,9 +80,9 @@ func parseState(src string) *graph {
 		}
 		top := stack[len(stack)-1]
 		if top.region != nil {
-			return intPtr(*top.region)
+			return new(*top.region)
 		}
-		return intPtr(top.base)
+		return new(top.base)
 	}
 
 	for _, st := range statements[1:] {
@@ -127,7 +126,7 @@ func parseState(src string) *graph {
 				}
 				if gi := newGroup(id, label); gi >= 0 {
 					stack = append(stack, stateScope{base: gi})
-					g.curGroup = intPtr(gi)
+					g.curGroup = new(gi)
 				}
 			}
 		case first == "}":
@@ -144,23 +143,23 @@ func parseState(src string) *graph {
 					if r1 := newGroup("region "+itoa(len(g.groups)), ""); r1 >= 0 {
 						for i, ng := range g.nodeGroup {
 							if ng != nil && *ng == top.base {
-								g.nodeGroup[i] = intPtr(r1)
+								g.nodeGroup[i] = new(r1)
 							}
 						}
 						for i := range g.groups {
 							if p := g.groups[i].parent; i != r1 && p != nil && *p == top.base {
-								g.groups[i].parent = intPtr(r1)
+								g.groups[i].parent = new(r1)
 							}
 						}
 					}
 				}
-				g.curGroup = intPtr(top.base)
+				g.curGroup = new(top.base)
 				if next := newGroup("region "+itoa(len(g.groups)), ""); next >= 0 {
-					top.region = intPtr(next)
-					g.curGroup = intPtr(next)
+					top.region = new(next)
+					g.curGroup = new(next)
 				} else {
 					top.region = nil
-					g.curGroup = intPtr(top.base)
+					g.curGroup = new(top.base)
 				}
 			}
 		case first == "classdef":
@@ -262,12 +261,12 @@ func parseStateDecl(rest string, g *graph) bool {
 	sh := shapeRound
 	token := rest
 	stereotyped := false
-	if pos := strings.Index(rest, "<<"); pos != -1 {
-		stereo := trimJS(strings.TrimSuffix(rest[pos+2:], ">>"))
+	if before, after, ok0 := strings.Cut(rest, "<<"); ok0 {
+		stereo := trimJS(strings.TrimSuffix(after, ">>"))
 		if stereo == "choice" {
 			sh = shapeDiamond
 		}
-		token = trimJS(rest[:pos])
+		token = trimJS(before)
 		stereotyped = true
 	}
 	id, classes := takeTags(token)

@@ -220,7 +220,7 @@ func takeTags(token string) (id string, classes []string) {
 
 func splitCommaList(s string) []string {
 	var out []string
-	for _, t := range strings.Split(s, ",") {
+	for t := range strings.SplitSeq(s, ",") {
 		if t = trimJS(t); t != "" {
 			out = append(out, t)
 		}

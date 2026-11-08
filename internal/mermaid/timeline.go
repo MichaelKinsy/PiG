@@ -5,6 +5,7 @@
 package mermaid
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -159,12 +160,7 @@ func parseTimeline(src string) (title *string, rows []timelineRow, warnings []st
 }
 
 func hasEmpty(parts []string) bool {
-	for _, p := range parts {
-		if p == "" {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(parts, "")
 }
 
 func timelineClean(s string) string {
