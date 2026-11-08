@@ -114,7 +114,7 @@ func TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect(t *testing.T) {
 	l.terminal.SendInput("\x1b[13;3u")
 	l.waitScreen(10*time.Second, "Follow-up: queued text")
 	l.terminal.SendInput("\x1b[1;3A")
-	poll(t, func() bool { return strings.Contains(l.draft(), "queued text") })
+	l.until(10*time.Second, "Alt+Up restoring the queued text", func() bool { return strings.Contains(l.draft(), "queued text") })
 	l.terminal.SendInput(keyEsc)
 	l.until(10*time.Second, "Esc clearing the working indicator (draft "+l.draft()+")", func() bool { return !contains(l.terminal.screen(), "Working...") })
 	port := fixture.Server.Port
