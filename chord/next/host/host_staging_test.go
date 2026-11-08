@@ -221,7 +221,7 @@ func TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure(t *testin
 	}
 	scopeEventually(t, "the new attempt serves", func() bool { return memberOf(t, ref, "label") == "v2" })
 	if runs.Load() != 3 {
-		t.Fatalf("the factory ran %d times, want 3 (the first attempt, staging, the swapped attempt)", runs.Load())
+		t.Fatalf("the factory ran %d times, want 3 (the first attempt, staging, the restart's new attempt)", runs.Load())
 	}
 }
 
@@ -597,7 +597,7 @@ func TestStagingPerPluginWithoutAFailingPluginARequestThatDoesNotBindIsAnOrdinar
 	}
 	if len(report.Objects) != 2 || report.Objects[0] != (ReloadedObject{Object: "app.notes", Kind: ReloadRestarted}) ||
 		report.Objects[1].Object != "app.view" || report.Objects[1].Kind != ReloadParked {
-		t.Fatalf("objects = %+v, want notes swapped and view parked", report.Objects)
+		t.Fatalf("objects = %+v, want notes restarted and view parked", report.Objects)
 	}
 	turn(host)
 	if state := refStateOf(shown); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {

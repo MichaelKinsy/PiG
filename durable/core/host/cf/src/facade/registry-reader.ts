@@ -3,7 +3,7 @@
 // `subscribe` observes its compositions, its listener called synchronously inside the Chord batch that composed. `context` is the
 // observation's: aborting it detaches every listener.
 import type { Context } from "@earendil-works/chord/context"
-import type { RegistryValue } from "@earendil-works/chord/next"
+import type { RegistryValue } from "@earendil-works/chord"
 import type { RegistryReader, RegistrySnapshot, ToolRegistration } from "@earendil-works/pi-durable"
 
 export function registryReader<Tool extends ToolRegistration = ToolRegistration>(value: RegistryValue<RegistrySnapshot<Tool>>, context: Context): RegistryReader<Tool> {

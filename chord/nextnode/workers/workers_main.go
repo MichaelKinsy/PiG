@@ -60,7 +60,7 @@ type WorkerStart struct {
 type WorkerLoad struct {
 	Kind string
 	// Core is the app's own facets that are JavaScript: modules whose default export is the facet, loaded into the NodeHost
-	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord/next`).
+	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord`).
 	Core []plugins.CoreFacet
 	// GoCore are the app's own facets that are Go: they load on the worker's Go host, and the local types the NodeHost's
 	// facets use are named by Bridged.
@@ -74,6 +74,11 @@ type WorkerLoad struct {
 	// the NodeHost (the server, whose holds it relays).
 	Principal data.Principal
 	Peer      data.Principal
+	// Store is the NodeHost's store (RuntimeLoad.Store): the worker's own file, where the plugins' persisted documents and tables live;
+	// CloseTimeout and ReadyTimeout are the NodeHost's (RuntimeLoad's). Nil: none, the host's defaults.
+	Store        *plugins.StoreOptions
+	CloseTimeout *time.Duration
+	ReadyTimeout *time.Duration
 }
 
 // BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
@@ -372,8 +377,13 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 	node, report, err := p.runtime.Load(plugins.RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
+		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout,
 	}, ctx)
 	if err != nil {
+		// A *plugins.PluginError comes with the loaded host (Pi's `host` is the caller's to stop): the worker ends instead.
+		if node != nil {
+			_ = node.Close(context.WithoutCancel(ctx))
+		}
 		return host.LoadReport{}, err
 	}
 	nodeLink.Store(node)

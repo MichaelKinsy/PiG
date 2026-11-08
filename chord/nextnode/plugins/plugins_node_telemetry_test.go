@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +67,18 @@ func cbRecorded(recorder *telemetry.InMemoryTelemetryContext) map[string]telemet
 	return spans
 }
 
+// pluginSpans are the spans the plugin made (named `plugin.*`): the recorder also holds the `chord.*` spans of Pi's host that
+// runs in the same process (Pi's telemetry, slice 9), which are not what these cases read.
+func pluginSpans(recorder *telemetry.InMemoryTelemetryContext) []telemetry.RecordedTelemetrySpan {
+	var spans []telemetry.RecordedTelemetrySpan
+	for _, span := range recorder.GetSpans() {
+		if strings.HasPrefix(span.Name, "plugin.") {
+			spans = append(spans, span)
+		}
+	}
+	return spans
+}
+
 // cbWithTelemetry starts the probe plugin with ops on a Node host whose adapter is a new recorder.
 func cbWithTelemetry(t *testing.T) (*NodeHost, *probe, *telemetry.InMemoryTelemetryContext) {
 	t.Helper()
@@ -79,7 +92,7 @@ func cbWithTelemetry(t *testing.T) (*NodeHost, *probe, *telemetry.InMemoryTeleme
 func TestTelemetryASpansOfAPluginAreRecordedInTheAppsAdapter(t *testing.T) {
 	node, p, recorder := cbWithTelemetry(t)
 	carrier, _ := p.must("work", nil).(map[string]any)
-	spans := recorder.GetSpans()
+	spans := pluginSpans(recorder)
 	var names []string
 	for _, span := range spans {
 		names = append(names, span.Name)
@@ -97,8 +110,18 @@ func TestTelemetryASpansOfAPluginAreRecordedInTheAppsAdapter(t *testing.T) {
 	if want := []telemetry.RecordedTelemetryEvent{{Name: "step", Attributes: telemetry.SpanAttributes{telemetry.Attr("k", "v")}}}; !reflect.DeepEqual(work.Events, want) {
 		t.Fatalf("work events = %#v, want %#v", work.Events, want)
 	}
-	if work.ParentID != nil || work.ParentContext != nil {
-		t.Fatalf("work has a parent: %v %v", work.ParentID, work.ParentContext)
+	// The call reaches the plugin through Pi's host, whose `chord.*` span of the call (slice 9) is the parent of the span the
+	// plugin starts in it: the plugin's own span has no other parent.
+	if work.ParentID != nil {
+		var parent string
+		for _, each := range recorder.GetSpans() {
+			if each.ID == *work.ParentID {
+				parent = each.Name
+			}
+		}
+		if !strings.HasPrefix(parent, "chord.") {
+			t.Fatalf("work has the parent %q (%v %v), want a chord.* span of the host's call or none", parent, work.ParentID, work.ParentContext)
+		}
 	}
 	// Children: by the span's own startSpan (local parent) and by the extracted carrier (the same span).
 	for _, each := range []telemetry.RecordedTelemetrySpan{child, continued} {
@@ -141,7 +164,7 @@ func TestTelemetryAThrowingSpanHasPisErrorStatus(t *testing.T) {
 	_, p, recorder := cbWithTelemetry(t)
 	p.must("fails", nil)
 	var got []telemetry.SpanStatus
-	for _, span := range recorder.GetSpans() {
+	for _, span := range pluginSpans(recorder) {
 		got = append(got, span.Status)
 	}
 	want := []telemetry.SpanStatus{
@@ -219,14 +242,14 @@ func TestTelemetryASpanOpenWhenTheProcessEndsEndsWithAnErrorStatus(t *testing.T)
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	node, p := cbStart(t, `open: async (_a, ctx) => ctx.telemetry.startSpan({ name: "plugin.open" }, () => new Promise(() => {})),`, func(load *RuntimeLoad) { load.Telemetry = recorder })
 	go func() { _, _ = p.call("open", nil) }()
-	eventually(t, 15*time.Second, "the open span to start", func() bool { return len(recorder.GetSpans()) == 1 })
+	eventually(t, 15*time.Second, "the open span to start", func() bool { return len(pluginSpans(recorder)) == 1 })
 	node.kill()
 	<-node.Exited()
 	eventually(t, 15*time.Second, "the open span to end", func() bool {
-		spans := recorder.GetSpans()
+		spans := pluginSpans(recorder)
 		return len(spans) == 1 && spans[0].Settled
 	})
-	if status := recorder.GetSpans()[0].Status; status.Status != telemetry.SpanStatusCodeError {
+	if status := pluginSpans(recorder)[0].Status; status.Status != telemetry.SpanStatusCodeError {
 		t.Fatalf("status = %+v, want an error", status)
 	}
 }
