@@ -1,0 +1,3 @@
+### Added
+
+- Chord: `chord/sync`, session sync over a store's outbox (Pi main `e5f3b4150`, experimental): `UploadSession` uploads the commits after the last sequence a copy shares with a remote into a slot the remote creates once, `PullSession` pulls a copy forward through `ApplyBatch` (or restores it from an archive into an empty backend), `FoldSession` folds history into snapshots, `FlushScheduler` decides when to upload, and `FileSystemSyncRemote` and `FileSyncStateStore` keep both in a directory. Bodies are gzip-compressed JSON lines read as streams, so a batch, a snapshot and a store are never held whole; a batch body line is bounded at 32 MiB (D432). <!-- feat: e5f3b4150 -->
