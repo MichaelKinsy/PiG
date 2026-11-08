@@ -398,6 +398,8 @@ type chordHost struct {
 	endings map[string]*keyedPromise[struct{}]
 	// unbound are the requests that cannot bind yet, by name: before the publication all of them, then those left unbound.
 	unbound *unboundIndex
+	// clock reports the requests waiting unbound after the publication (in the index, and registry readers) after 5 s.
+	clock *unboundClock
 	// publication is closed at the host's first publication (`load`'s batch), or its close.
 	publication   chan struct{}
 	publishedOnce bool
@@ -448,7 +450,6 @@ func createHost(options HostOptions) (*chordHost, error) {
 		plugins:      newNamedMap[*loadedPlugin](),
 		objects:      map[string]*chordObject{},
 		endings:      map[string]*keyedPromise[struct{}]{},
-		unbound:      newUnboundIndex(),
 		publication:  make(chan struct{}),
 		relays:       &relayMap{},
 		routes:       map[string]*route{},
@@ -459,6 +460,10 @@ func createHost(options HostOptions) (*chordHost, error) {
 	if options.Telemetry != nil {
 		metrics = options.Telemetry.Metrics()
 	}
+	h.clock = newUnboundClock(events, func(long unboundLong) {
+		h.report(HostError{Kind: ErrUnboundLong, WaitingFor: long.waitingFor, Error: long.err, Since: long.since})
+	})
+	h.unbound = newUnboundIndex(h.clock)
 	h.batch = state.NewBatch(func(err state.BatchError) { h.report(BatchHostError(err)) }, metrics).
 		UseScheduler(h.scheduler).UseMicrotasks(events.Queue).UseSection(events.Run)
 	h.activity = newActivity(events, h.batch)
@@ -531,6 +536,9 @@ func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (LoadReport, e
 			failure = errors.New("load runs once per host")
 			return
 		}
+		if failure = checkPluginNames(facets); failure != nil {
+			return
+		}
 		h.state = hostLoading
 		table := emptyStaged()
 		loaded := newNamedMap[Facet]()
@@ -571,6 +579,7 @@ func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (LoadReport, e
 		// After the batch: what waited for the publication is placed (the gate lasted only for the setups).
 		h.published_ = true
 		h.publish()
+		h.reportUndeclared()
 		h.unbound.wakeAll()
 		for _, name := range h.types.keys() {
 			entry, _ := h.types.get(name)
@@ -850,6 +859,9 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 		if err = h.assertOpen(); err != nil {
 			return
 		}
+		if err = h.assertLoadCalled("registry " + r.Name); err != nil {
+			return
+		}
 		expired, expire := chordctx.WithCancel(chordctx.Background())
 		waiting = withLinkedAbortSignal(expired, ctx)
 		timer = h.events.AfterFunc(timeout, func() {
@@ -988,7 +1000,7 @@ func (h *chordHost) UndeclaredRegistries() []UndeclaredRegistry {
 func (h *chordHost) registryRecord(name string) *registries.RegistryRecord {
 	record := h.registries[name]
 	if record == nil {
-		record = registries.NewRegistryRecord(name, h.batch, func(err registries.RegistryError) { h.report(RegistryHostError(err)) })
+		record = registries.NewRegistryRecord(name, h.batch, func(err registries.RegistryError) { h.report(RegistryHostError(err)) }, h.clock)
 		h.registries[name] = record
 		h.registryOrder = append(h.registryOrder, name)
 	}
@@ -1012,6 +1024,15 @@ func (h *chordHost) Close(_ context.Context) error {
 	return closing.err
 }
 
+// reportUndeclared is, at each publication (`load`'s, a reload's commit), after its batch: every registry with
+// contributions and no provider here is reported `registry_undeclared`, naming its contributors; again only once they
+// change.
+func (h *chordHost) reportUndeclared() {
+	for _, name := range h.registryOrder {
+		h.registries[name].ReportUndeclared()
+	}
+}
+
 // published is whether the host published its setups (`load`'s batch): until then requests made here and holds arriving
 // wait in the unbound index, placed by the publication.
 func (h *chordHost) published() bool { return h.published_ }
@@ -1026,8 +1047,11 @@ func (h *chordHost) publish() {
 	close(h.publication)
 }
 
-// index: request cannot bind yet: indexed under name (the type or registry it waits for) until woken or ended.
-func (h *chordHost) index(name string, request unboundRequest) { h.unbound.add(name, request) }
+// index: request cannot bind yet: indexed under name (the type or registry it waits for) until woken or ended, waiting for
+// the publication (no cause) or for a provider that fits (cause).
+func (h *chordHost) index(name string, request unboundRequest, cause *data.FailureCause) {
+	h.unbound.add(name, request, cause)
+}
 
 // unindex: request left the unbound index's wait for name (it ended, or a retry checks it again).
 func (h *chordHost) unindex(name string, request unboundRequest) { h.unbound.delete(name, request) }
@@ -1369,6 +1393,9 @@ func (h *chordHost) holdBinding(typ *contracts.Contract, params any, from caller
 	if err := h.assertOpen(); err != nil {
 		return nil, err
 	}
+	if err := h.assertLoadCalled(typ.Name); err != nil {
+		return nil, err
+	}
 	checked, err := checkParams(typ, params, ctx)
 	if err != nil {
 		return nil, err
@@ -1432,7 +1459,7 @@ func sameHostAddress(a, b contracts.HostAddress) bool {
 // waitUnbound leaves b unbound in the index under name: cause (`waiting`), or none before the publication.
 func (h *chordHost) waitUnbound(b *binding, name string, cause *data.FailureCause, place func()) {
 	b.wait(cause, place, func() { h.unbound.delete(name, b) })
-	h.unbound.add(name, b)
+	h.unbound.add(name, b, cause)
 }
 
 // newBindingFor is a new reference's binding made by from; its parked calls wait its `readyTimeout`.
@@ -1628,6 +1655,7 @@ func (h *chordHost) runClose() *closePromise {
 	// At the fence too: requests still waiting for a publication or a provider end as the others did, and gets waiting for
 	// a publication that will not come fail now, not after the slow closes below (fix round 1).
 	h.unbound.close(closed)
+	h.clock.Close()
 	h.publish()
 	h.backoff.clear()
 	// Every object is sealed before any teardown releases a reference, so none ends in the background.
@@ -1710,6 +1738,20 @@ func (h *chordHost) assertOpen() error {
 		return h.closedError()
 	}
 	return nil
+}
+
+// assertLoadCalled: a request of this host's own (`get`, `hold`, `registry`, a root's `ctx.get`) for name before its first
+// `load` would wait for a publication nobody started: it fails `not_ready` at once (decision "Mistakes that wait are
+// reported at once" (a)). Holds arriving on its links before `load` still wait for the publication (a worker connects
+// first, W6).
+func (h *chordHost) assertLoadCalled(name string) error {
+	if h.state != hostNew {
+		return nil
+	}
+	return data.NewChordError(data.ChordErrorInit{
+		Code:    data.CodeNotReady,
+		Message: name + ": the host has not loaded; call host.load first (a host with nothing to load calls load([]))",
+	}, nil)
 }
 
 func (h *chordHost) closedError() *data.ChordError {
@@ -1877,6 +1919,9 @@ func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options Relo
 		}
 		if h.state != hostLoaded {
 			failure = errors.New("reload runs after load")
+			return
+		}
+		if failure = checkPluginNames(facets); failure != nil {
 			return
 		}
 		previous = h.reloading
@@ -2186,6 +2231,7 @@ func (h *chordHost) commit(plan *reloadPlan, ctx context.Context) ([]startedFate
 	}, ctx); err != nil {
 		return nil, err
 	}
+	h.reportUndeclared()
 	for name := range h.refs {
 		if !table.types.has(name) {
 			delete(h.refs, name)

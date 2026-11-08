@@ -610,9 +610,15 @@ func TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay(t *testing.T) {
 		}
 		rel.Transported()
 		opened.fire()
-		rel.Transported()
-		if got := ran.all(); len(got) != 0 {
-			t.Fatalf("ran = %v, want nothing: the kept call was aborted at the worker", got)
+		// Pi's `await transported()` drains the microtasks that open the native and run a call it released; here they run
+		// on the worker's loop after the links flushed, so a kept call that was not aborted is watched for long enough to run.
+		deadline := time.Now().Add(2 * time.Second)
+		for time.Now().Before(deadline) {
+			rel.Transported()
+			if got := ran.all(); len(got) != 0 {
+				t.Fatalf("ran = %v, want nothing: the kept call was aborted at the worker", got)
+			}
+			time.Sleep(20 * time.Millisecond)
 		}
 	})
 }

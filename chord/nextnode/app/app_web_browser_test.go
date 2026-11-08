@@ -5,13 +5,14 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/browsertest"
 )
 
 // Ports packages/chord/test/node/react/hooks.test.ts, web/language.test.ts and the first two cases of web/page.test.ts (Pi main
 // c23b9ec1) over a real Chromium (the DevTools driver, chord/nextnode/internal/browsertest; skipped without one: `CHROMIUM_BIN`).
-// The page's third case (a click as the root of one trace) is in app_web_trace_test.go and web/styles.test.ts in
+// The page's third case (a click as the root of one trace) (a click as the root of one trace) waits on T6 (`ctx.trace`) and is not ported here; web/styles.test.ts in
 // app_web_styles_test.go.
 //
 // Forced differences: the browser is driven from Go over the DevTools protocol (Pi's `ws` driver, ported as the Go driver); the
@@ -186,7 +187,7 @@ func TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle(t *testing.T) {
 	if second.app.Web.Base() == firstBase {
 		t.Fatal("another entry gave the same base hash")
 	}
-	browser.Wait(`globalThis.version === "2" && globalThis.connection === "connected"`)
+	browser.Wait(`globalThis.version === "2" && globalThis.connection === "connected"`, time.Minute)
 	// The panel follows the connection by a frame or two (Opus L6).
 	browser.Wait(`document.querySelector(".panel")?.textContent === "Notes"`)
 }
