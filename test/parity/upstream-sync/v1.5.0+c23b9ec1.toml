@@ -2345,7 +2345,7 @@ path = "packages/chord/src/node/http/node.ts"
 change = "added"
 disposition = "pending"
 evidence = ["test:chord/nextnode/http/node_test.go"]
-rationale = "Pending a port (no lane has these cases; owner ChordT11) (not a 0.8.0 release deferral; the row becomes ported when it does): the twin test file test/node/http/node.test.ts is partial in test-mapping; its 2 missing case(s): \"targets › refuses a Host with userinfo (403) and a method a Web Request cannot carry (501)\" (needs porting: no Go test on any lane); \"Web requests › makes a Web Request only when something reads the headers or the body (here: no authenticator does)\" (needs porting: no Go test on any lane). Otherwise the module is ported; evidence is the Go twin."
+rationale = "Pending a port (no lane has these cases; owner ChordT11) (not a 0.8.0 release deferral; the row becomes ported when it does): the twin test file test/node/http/node.test.ts is partial in test-mapping; its 1 missing case: \"Web requests › makes a Web Request only when something reads the headers or the body (here: no authenticator does)\" (needs porting: no Go test on any lane). Otherwise the module is ported; evidence is the Go twin."
 
 [[files]]
 path = "packages/chord/src/node/http/request.ts"
