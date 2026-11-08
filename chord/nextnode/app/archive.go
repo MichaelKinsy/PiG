@@ -33,6 +33,8 @@ const (
 	ArchiveFormat = 1
 	// archiveStore is the store file of a host directory.
 	archiveStore = "store.sqlite"
+	// kitStore is the kit's own store file of a host directory.
+	kitStore = "kit.sqlite"
 	// importChunk is how much of a store archive is read at a time.
 	importChunk = 64 * 1024
 )
@@ -74,14 +76,36 @@ func PackData(ctx context.Context, dir string, manifest ArchiveManifest, path st
 	if err != nil {
 		return errors.Join(err, database.Close())
 	}
-	packed := PackStore(ctx, opened, filepath.Join(dir, "files"), manifest, path)
-	return errors.Join(packed, opened.Close(ctx))
+	kit, kitClose, err := openKitStore(ctx, dir)
+	if err != nil {
+		return errors.Join(err, opened.Close(ctx))
+	}
+	packed := PackStore(ctx, opened, kit, filepath.Join(dir, "files"), manifest, path)
+	return errors.Join(packed, kitClose(), opened.Close(ctx))
 }
 
-// PackStore packs the open store and the files directory files into the archive at path (mode 0600, staged beside it and renamed):
+// openKitStore opens the kit's own store of a host directory (kit.sqlite, the Go kit's Files tables and documents; see StartWorker) when
+// it has one: nil and a no-op close otherwise.
+func openKitStore(ctx context.Context, dir string) (store.Store, func() error, error) {
+	path := filepath.Join(dir, kitStore)
+	if !archiveExists(path) {
+		return nil, func() error { return nil }, nil
+	}
+	database, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
+	opened, err := store.OpenStore(store.SqliteBackend(database), ctx, store.StoreOptions{})
+	if err != nil {
+		return nil, nil, errors.Join(err, database.Close())
+	}
+	return opened, func() error { return opened.Close(ctx) }, nil
+}
+
+// PackStore packs the open store, the kit's store beside it (nil: none) and the files directory files into the archive at path (mode 0600, staged beside it and renamed):
 // manifest, the store's export (one consistent point, written while the host runs on) and the finished files (uploads under way
 // left out).
-func PackStore(ctx context.Context, opened store.Store, files string, manifest ArchiveManifest, path string) (err error) {
+func PackStore(ctx context.Context, opened, kit store.Store, files string, manifest ArchiveManifest, path string) (err error) {
 	staging, err := os.MkdirTemp(filepath.Dir(path), ".chord-export-")
 	if err != nil {
 		return err
@@ -94,6 +118,17 @@ func PackStore(ctx context.Context, opened store.Store, files string, manifest A
 	info, err := os.Stat(exported)
 	if err != nil {
 		return err
+	}
+	var kitExported string
+	var kitInfo os.FileInfo
+	if kit != nil {
+		kitExported = filepath.Join(staging, "kit.archive")
+		if err := writeStoreArchive(ctx, kit, kitExported); err != nil {
+			return err
+		}
+		if kitInfo, err = os.Stat(kitExported); err != nil {
+			return err
+		}
 	}
 	text := manifest.text()
 	written := filepath.Join(staging, "archive.tar")
@@ -114,6 +149,17 @@ func PackStore(ctx context.Context, opened store.Store, files string, manifest A
 		defer func() { _ = stored.Close() }()
 		if !yield(TarEntry{Path: "store.archive", Size: info.Size(), Data: stored}) {
 			return
+		}
+		if kit != nil {
+			kitStored, err := os.Open(kitExported)
+			if err != nil {
+				walked = err
+				return
+			}
+			defer func() { _ = kitStored.Close() }()
+			if !yield(TarEntry{Path: "kit.archive", Size: kitInfo.Size(), Data: kitStored}) {
+				return
+			}
 		}
 		walked = packedFiles(files, yield)
 	}
@@ -257,6 +303,17 @@ func UnpackData(ctx context.Context, archive, dir string, accept func(ArchiveMan
 	if err != nil {
 		return err
 	}
+	if kitArchive := filepath.Join(staging, "kit.archive"); archiveExists(kitArchive) {
+		if err := PrivateStore(filepath.Join(staging, kitStore)); err != nil {
+			return err
+		}
+		if err := importStoreArchive(ctx, kitArchive, filepath.Join(staging, kitStore)); err != nil {
+			return err
+		}
+		if err := os.Remove(kitArchive); err != nil {
+			return err
+		}
+	}
 	if err := PrivateStore(filepath.Join(staging, archiveStore)); err != nil {
 		return err
 	}
@@ -307,7 +364,7 @@ func (f *fileBytes) Next(ctx context.Context) ([]byte, bool, error) {
 func (f *fileBytes) Close() error { return f.file.Close() }
 
 // unpackEntries writes the entries of archive into staging: the manifest first (checked by accept before any data is written),
-// then `store.archive` and `files/…`, within limits (counted from the headers, before an entry is written). It returns the path of
+// then `store.archive`, `kit.archive` (optional) and `files/…`, within limits (counted from the headers, before an entry is written). It returns the path of
 // the staged `store.archive`.
 func unpackEntries(ctx context.Context, archive, staging string, accept func(ArchiveManifest) error, limits ImportLimits) (string, error) {
 	maxBytes, maxEntries := limits.Bytes, limits.Entries
@@ -361,6 +418,8 @@ func unpackEntries(ctx context.Context, archive, staging string, accept func(Arc
 		case entry.Path == "store.archive":
 			storeArchive = filepath.Join(staging, "store.archive")
 			return writeStaged(storeArchive, entry.Data)
+		case entry.Path == "kit.archive":
+			return writeStaged(filepath.Join(staging, "kit.archive"), entry.Data)
 		case strings.HasPrefix(entry.Path, "files/"):
 			// ReadTar refused absolute paths and `..`: files/<path> stays inside the staging directory.
 			target := filepath.Join(staging, filepath.FromSlash(entry.Path))
