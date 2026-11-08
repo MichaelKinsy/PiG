@@ -1,0 +1,3 @@
+### Fixed
+
+- Ending an RPC session while a response is running (stdin closes, an extension calls `ctx.shutdown()`, or pig gets SIGTERM or SIGHUP) now settles that run before the `session_shutdown` handlers run, as Pi does. The aborted tool call's result and the aborted assistant message are saved to the session file, extensions receive the run's remaining `turn_end`, `agent_end` and `agent_settled` events first, and a `session_shutdown` handler that throws no longer leaves the tool call unanswered. A run that waits on a dialog the client can no longer answer ends the process without `session_shutdown`, as Pi's does when its event loop drains. <!-- fix: d06e6cfbc9 -->
