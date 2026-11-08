@@ -37,3 +37,13 @@ plugins/logs/contract.ts
 plugins/logs/web.tsx
 plugins/logs/style.css
 plugins/sharing/web.tsx
+plugins/terminals/contract.ts
+plugins/terminals/web.tsx
+plugins/terminals/Terminal.tsx
+plugins/terminals/activity.tsx
+plugins/terminals/terminal-clipboard.css
+plugins/terminals/terminal-input.ts
+plugins/terminals/ghostty.ts
+plugins/terminals/protocol.ts
+plugins/terminals/wasm.d.ts
+plugins/terminals/vendor/ghostty/ghostty-vt.wasm

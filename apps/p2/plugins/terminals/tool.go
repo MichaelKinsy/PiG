@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
@@ -129,12 +129,12 @@ type result struct {
 }
 
 type windowResult struct {
-	window     int
-	name       string
-	title      string
-	location   string
-	opener     string
-	result     result
+	window   int
+	name     string
+	title    string
+	location string
+	opener   string
+	result   result
 }
 
 func (r result) json() *chordjson.Object {
@@ -203,16 +203,27 @@ func toolFailure(text string) durable.ToolExecutionResult {
 	return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}, IsError: &failed}
 }
 
-func mapOf(value any) map[string]any {
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		panic(err)
-	}
-	var out map[string]any
-	if err := json.Unmarshal(encoded, &out); err != nil {
-		panic(err)
+// mapOf is a schema as the plain map a tool registration carries.
+func mapOf(value *chordjson.Object) map[string]any {
+	out := make(map[string]any, value.Len())
+	for key, member := range value.All() {
+		out[key] = plain(member)
 	}
 	return out
+}
+
+func plain(value any) any {
+	switch typed := value.(type) {
+	case *chordjson.Object:
+		return mapOf(typed)
+	case []any:
+		out := make([]any, len(typed))
+		for index, each := range typed {
+			out[index] = plain(each)
+		}
+		return out
+	}
+	return value
 }
 
 // terminalToolSchema is the tool as the model sees it.
@@ -641,4 +652,3 @@ func status(outcome result) string {
 	}
 	return "exited with code " + strconv.Itoa(*outcome.exitCode)
 }
-

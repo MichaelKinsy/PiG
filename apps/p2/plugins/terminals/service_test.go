@@ -2,6 +2,7 @@ package terminals
 
 import (
 	"context"
+	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	"net"
 	"os"
 	"reflect"
@@ -20,6 +21,7 @@ func fakeTerminal(id, sessionID string) TerminalInfo {
 }
 
 func TestClosingASessionStartsNoHostAndClosesAnOutdatedHostsTerminalsAsThePanelDoes(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	directory := t.TempDir()
 	service := NewTerminalService(directory)
 	defer service.Close()
@@ -42,6 +44,7 @@ func TestClosingASessionStartsNoHostAndClosesAnOutdatedHostsTerminalsAsThePanelD
 		t.Fatal(err)
 	}
 	_ = os.Remove(address)
+	//portlint:allow unixsocketpath the address is HostAddress's: an abstract socket on Linux, a short hashed name elsewhere
 	listener, err := net.Listen("unix", address)
 	if err != nil {
 		t.Fatal(err)
@@ -148,8 +151,8 @@ func (s *pingSocket) SendText(text string) {
 	s.sent = append(s.sent, text)
 	s.mu.Unlock()
 }
-func (s *pingSocket) SendBinary([]byte)  {}
-func (s *pingSocket) Terminate()         {}
+func (s *pingSocket) SendBinary([]byte) {}
+func (s *pingSocket) Terminate()        {}
 func (s *pingSocket) Close(int, string) {}
 func (s *pingSocket) texts() []string {
 	s.mu.Lock()

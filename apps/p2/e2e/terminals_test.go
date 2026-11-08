@@ -219,6 +219,7 @@ func TestTerminalByteChannelsNeedAnOwnerAndALiveOneUseChord2Grant(t *testing.T) 
 }
 
 func TestTerminalsSurviveCompatibleReloadAndServerRestartControlsStaySessionScoped(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	p2test.UseTerminalDaemon(t)
 	root := t.TempDir()
 	dataDir := root + "/data"
@@ -302,7 +303,10 @@ func TestTerminalsSurviveCompatibleReloadAndServerRestartControlsStaySessionScop
 		}
 	}
 	id := opened.Terminal.ID
-	pollUntil(t, func() bool { text := bytes.text(); return strings.HasSuffix(text, "$ ") || strings.HasSuffix(text, "# ") })
+	pollUntil(t, func() bool {
+		text := bytes.text()
+		return strings.HasSuffix(text, "$ ") || strings.HasSuffix(text, "# ")
+	})
 	_ = bytes.conn.WriteMessage(websocket.BinaryMessage, []byte("printf 'before-%s\\n' re''start\n"))
 	pollUntil(t, func() bool { return strings.Contains(bytes.text(), "before-restart") })
 	otherView := hold(client, other)
@@ -327,14 +331,16 @@ func TestTerminalsSurviveCompatibleReloadAndServerRestartControlsStaySessionScop
 	call(view, "attach", delta.JsonObjectOf("terminalId", id))
 	pollUntil(t, func() bool { return strings.Contains(bytes.text(), "before-restart") })
 	_ = bytes.conn.WriteMessage(websocket.BinaryMessage, []byte("stty size; echo after-re''start\n"))
-	pollUntil(t, func() bool { text := bytes.text(); return strings.Contains(text, "12 70") && strings.Contains(text, "after-restart") })
+	pollUntil(t, func() bool {
+		text := bytes.text()
+		return strings.Contains(text, "12 70") && strings.Contains(text, "after-restart")
+	})
 	call(view, "close", delta.JsonObjectOf("force", true))
 	pollUntil(t, func() bool {
 		_, ok := bytes.find(func(event terminals.TerminalEvent) bool { return event.Type == terminals.EventClosed })
 		return ok
 	})
 }
-
 
 func randomView() string {
 	var bytes [16]byte

@@ -177,4 +177,3 @@ var WorkerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) 
 		return nil
 	})
 })
-

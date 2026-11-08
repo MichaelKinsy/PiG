@@ -56,6 +56,7 @@ func resultText(result *delta.JsonObject) string {
 }
 
 func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	p2test.UseTerminalDaemon(t)
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"share.test"}})
 	t.Cleanup(func() { shutdownTerminalHost(t, fixture.DataDir) })

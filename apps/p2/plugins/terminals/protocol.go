@@ -133,7 +133,9 @@ type HostCall struct {
 }
 
 // HasKey is whether the call changes something (`"key" in request`): open, send and close.
-func (call HostCall) HasKey() bool { return call.Op == OpOpen || call.Op == OpSend || call.Op == OpClose }
+func (call HostCall) HasKey() bool {
+	return call.Op == OpOpen || call.Op == OpSend || call.Op == OpClose
+}
 
 // TerminalRead is what a read returns.
 type TerminalRead struct {

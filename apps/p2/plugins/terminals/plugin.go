@@ -37,6 +37,7 @@ func runHostProcess(directory string) (code int) {
 			code = 1
 		}
 	}()
+	//portlint:allow ctxbackground the host is a program of its own: nothing above it cancels it
 	if err := RunHost(context.Background(), directory); err != nil {
 		published.Fatal(err, nil)
 		return 1
