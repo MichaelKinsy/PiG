@@ -4,6 +4,7 @@ coding-tools
 envs
 login
 logs
+mcp
 send-file
 sessions
 sharing
