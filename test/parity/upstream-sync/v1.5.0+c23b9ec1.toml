@@ -515,9 +515,9 @@ rationale = "Moved from packages/chord/src/next/host/destination.ts by the root 
 [[files]]
 path = "packages/chord/src/host/facet.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_facet_test.go", "test:chord/next/host/host_spans_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/host/follow.ts"
@@ -620,9 +620,9 @@ rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case 
 [[files]]
 path = "packages/chord/src/host/reference.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/host/reload-cycle.ts"
@@ -655,9 +655,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/host/route.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_route_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/host/routines.ts"
@@ -683,16 +683,16 @@ rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case 
 [[files]]
 path = "packages/chord/src/host/unbound-clock.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_unbound_clock_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/host/unbound.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_unbound_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/host/uuid.ts"
@@ -732,9 +732,9 @@ rationale = "Moved from packages/chord/src/next/jobs/internal.ts by the root mov
 [[files]]
 path = "packages/chord/src/jobs/job.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_job_runs_test.go", "test:chord/next/host/jobs_job_test.go", "test:chord/next/host/jobs_job_end_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/jobs/persisted.ts"
@@ -2762,9 +2762,9 @@ rationale = "Moved from packages/chord/src/next/remote/path.ts by the root move 
 [[files]]
 path = "packages/chord/src/remote/provider.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/remote/relay.ts"
@@ -2776,9 +2776,9 @@ rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case 
 [[files]]
 path = "packages/chord/src/remote/remote-object.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_remote_object_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/remote/replica.ts"
