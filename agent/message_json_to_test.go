@@ -38,12 +38,14 @@ func marshalJSONToMessages() map[string]AgentMessage {
 	zeroCall := ai.ToolCall{ID: "call-z", Name: "read", Arguments: ai.JsonObject{"neg": negZero, "nested": []any{negZero, map[string]any{"z": negZero}}}}
 	zeroAssistant := assistant("inv \xff <b> \xc0\xaf", zeroCall)
 	zeroAssistant.Usage = &ai.Usage{Input: 1, TotalTokens: 1, Cost: ai.UsageCost{Input: negZero, Output: -0.5, Total: negZero}}
+	zeroAssistant.ErrorMessage = "bad \xff"
 	return map[string]AgentMessage{
 		// Negative zero and invalid UTF-8 are written as JSON.stringify writes them: 0, and the replacement character itself.
 		"assistant negative zero and invalid UTF-8": {Assistant: zeroAssistant},
 		"user invalid UTF-8":                        {User: &UserMessage{Role: RoleUser, Content: ai.UserText("bad \xff byte"), Timestamp: 6}},
 		"user escape before fffd":                   {User: &UserMessage{Role: RoleUser, Content: ai.UserText("say \"fffd\"\nFFFD \\fffd"), Timestamp: 8}},
 		"tool result negative zero":                 {ToolResult: &ToolResultMessage{Role: RoleToolResult, ToolCallID: "c\xff", ToolName: "read", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "x\xfe"}}, Details: map[string]any{"z": negZero, "s": "\xff"}, Timestamp: 7}},
+		"tool result underflow":                     {ToolResult: &ToolResultMessage{Role: RoleToolResult, ToolCallID: "c", ToolName: "read", Details: json.RawMessage(`{"x":-1e-400}`), Timestamp: 9}},
 		"custom negative zero":                      {Custom: map[string]any{"role": "custom", "customType": "x", "content": "\xff", "timestamp": negZero}},
 		"assistant":                                 {Assistant: assistant("considering <b>&amp; é \u2029", call)},
 		"assistant lone":                            {Assistant: assistant(lone, call)},
@@ -129,7 +131,7 @@ func TestMarshalJSONToOfAssistantAndToolResult(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if string(got) != string(want) {
+		if !bytes.Equal(got, want) {
 			t.Fatalf("%s\n got: %s\nwant: %s", name, got, want)
 		}
 	}
