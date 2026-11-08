@@ -89,10 +89,12 @@ type Logins struct {
 	mu        sync.Mutex
 	listeners map[int]func()
 	nextID    int
-	// publish serializes the publications of the state: a listener reads the state and gives it to the host (which takes the host's
-	// loop), and two of them in flight could apply in the other order, the older read last. It is held across the read and the
-	// apply, so every caller of changed must be off the host's loop (the methods give it up first: chordctx.Suspend), or it
-	// would wait for the loop while a publication in flight holds this.
+	// publish makes a change of the state and its publication one step: every change is made, and told to the listeners (which
+	// read the state and give it to the host, taking the host's loop), while it is held. So the publications go out in the
+	// order of the changes (the older read never lands after a newer one), and a caller that finds a change made by another
+	// (a login already finished) returns only after that change was published. Callers are off the host's loop (the methods
+	// give it up first: chordctx.Suspend), or one would wait for the loop while a publication in flight holds this.
+	// Order of locks: publish, then mu.
 	publish sync.Mutex
 	active  *attempt
 	current loginsState
@@ -126,9 +128,22 @@ func (l *Logins) Subscribe(listener func()) func() {
 	return func() { l.mu.Lock(); delete(l.listeners, id); l.mu.Unlock() }
 }
 
-func (l *Logins) changed() {
+// apply makes a change of the state, under mu, and tells the listeners before it returns when change reports that it
+// changed something; it reports that. A change is never made, or seen as made, while another's publication is in flight.
+func (l *Logins) apply(change func() bool) bool {
 	l.publish.Lock()
 	defer l.publish.Unlock()
+	l.mu.Lock()
+	changed := change()
+	l.mu.Unlock()
+	if changed {
+		l.notify()
+	}
+	return changed
+}
+
+// notify tells the listeners of the state's change; the caller holds publish.
+func (l *Logins) notify() {
 	l.mu.Lock()
 	listeners := make([]func(), 0, len(l.listeners))
 	for _, listener := range l.listeners {
@@ -152,6 +167,8 @@ func (l *Logins) Start(resources modelscontract.Resources, owner, providerID str
 	if l.lifetime.Err() != nil {
 		return "", errors.New("Server is shutting down")
 	}
+	l.publish.Lock()
+	defer l.publish.Unlock()
 	l.mu.Lock()
 	if running := l.active; running != nil {
 		l.mu.Unlock()
@@ -178,7 +195,7 @@ func (l *Logins) Start(resources modelscontract.Resources, owner, providerID str
 	l.active = a
 	l.current = loginsState{owner: owner, login: &loginState{attemptID: a.id, providerID: providerID, authType: authType, status: "working", notices: []any{}}}
 	l.mu.Unlock()
-	l.changed()
+	l.notify()
 	go l.run(ctx, a, resources, authType)
 	return a.id, nil
 }
@@ -202,12 +219,12 @@ func jsonOf(value any) (*delta.JsonObject, error) {
 
 // update applies mutate to the current login if it is a's, then tells the listeners.
 func (l *Logins) update(a *attempt, mutate func(*loginState)) {
-	l.mu.Lock()
-	if l.current.login != nil && l.current.login.attemptID == a.id {
-		mutate(l.current.login)
-	}
-	l.mu.Unlock()
-	l.changed()
+	l.apply(func() bool {
+		if l.current.login != nil && l.current.login.attemptID == a.id {
+			mutate(l.current.login)
+		}
+		return true
+	})
 }
 
 func (l *Logins) notice(a *attempt, event ai.AuthEvent) {
@@ -250,17 +267,14 @@ func (l *Logins) prompt(ctx context.Context, a *attempt, input ai.AuthPrompt) (s
 	// close withdraws the question: at once when answered (the answer follows its state: the answered prompt is closed when
 	// the call resolves), or when the flow is aborted.
 	closePrompt := func() {
-		l.mu.Lock()
-		_, open := a.prompts[id]
-		delete(a.prompts, id)
-		l.mu.Unlock()
-		if open {
-			l.update(a, func(s *loginState) {
-				if s.prompt != nil && s.prompt.Value("id") == id {
-					s.prompt = nil
-				}
-			})
-		}
+		l.apply(func() bool {
+			_, open := a.prompts[id]
+			delete(a.prompts, id)
+			if open && l.current.login != nil && l.current.login.attemptID == a.id && l.current.login.prompt != nil && l.current.login.prompt.Value("id") == id {
+				l.current.login.prompt = nil
+			}
+			return open
+		})
 	}
 	pending := &pendingPrompt{kind: input.Type(), resolve: func(value string) {
 		closePrompt()
@@ -274,10 +288,14 @@ func (l *Logins) prompt(ctx context.Context, a *attempt, input ai.AuthPrompt) (s
 			pending.options = append(pending.options, option.ID)
 		}
 	}
-	l.mu.Lock()
-	a.prompts[id] = pending
-	l.mu.Unlock()
-	l.update(a, func(s *loginState) { s.prompt = object })
+	// A finished login shows no prompt: one registered after its end is withdrawn by the flow's own abort.
+	l.apply(func() bool {
+		a.prompts[id] = pending
+		if !a.finished && l.current.login != nil && l.current.login.attemptID == a.id {
+			l.current.login.prompt = object
+		}
+		return true
+	})
 	select {
 	case value := <-answers:
 		return value, nil
@@ -316,21 +334,19 @@ func (l *Logins) deviceID() (string, error) {
 
 // finish shows the end of a's login unless it is shown already; it reports whether it did.
 func (l *Logins) finish(a *attempt, status, message string) bool {
-	l.mu.Lock()
-	if a.finished {
-		l.mu.Unlock()
-		return false
-	}
-	a.finished = true
-	if l.current.login != nil && l.current.login.attemptID == a.id {
-		l.current.login.status, l.current.login.prompt = status, nil
-		if message != "" {
-			l.current.login.message = message
+	return l.apply(func() bool {
+		if a.finished {
+			return false
 		}
-	}
-	l.mu.Unlock()
-	l.changed()
-	return true
+		a.finished = true
+		if l.current.login != nil && l.current.login.attemptID == a.id {
+			l.current.login.status, l.current.login.prompt = status, nil
+			if message != "" {
+				l.current.login.message = message
+			}
+		}
+		return true
+	})
 }
 
 func (l *Logins) run(parent context.Context, a *attempt, resources modelscontract.Resources, authType ai.AuthType) {
@@ -451,15 +467,14 @@ func (l *Logins) Cancel(owner, attemptID string) error {
 
 // Dismiss clears owner's finished login attemptID from the state.
 func (l *Logins) Dismiss(owner, attemptID string) {
-	l.mu.Lock()
-	login := l.current.login
-	if l.current.owner != owner || login == nil || login.attemptID != attemptID || login.status == "working" {
-		l.mu.Unlock()
-		return
-	}
-	l.current.login = nil
-	l.mu.Unlock()
-	l.changed()
+	l.apply(func() bool {
+		login := l.current.login
+		if l.current.owner != owner || login == nil || login.attemptID != attemptID || login.status == "working" {
+			return false
+		}
+		l.current.login = nil
+		return true
+	})
 }
 
 // Disconnect ends owner's unfinished login, nobody else's: its owner left (closed the sheet everywhere, or disconnected).
