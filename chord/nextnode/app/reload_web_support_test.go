@@ -144,7 +144,21 @@ type reloadTab struct {
 // startReloadTab starts a Chromium for the test.
 func startReloadTab(t testing.TB) *reloadTab {
 	t.Helper()
-	return &reloadTab{t: t, browser: browsertest.Start(t)}
+	r := &reloadTab{t: t, browser: browsertest.Start(t)}
+	// A failed test says what the page showed.
+	t.Cleanup(func() {
+		if !t.Failed() {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		var shown string
+		if err := r.browser.Evaluate(ctx, `JSON.stringify({ connection: globalThis.page?.connection, errors: globalThis.page?.errors, loads: globalThis.page?.loads, views: document.getElementById("views")?.innerText, states: globalThis.reload?.states })`, &shown); err != nil {
+			shown = err.Error()
+		}
+		t.Logf("the page at the end: %s", shown)
+	})
+	return r
 }
 
 // evalAs is expression's value in the page, as a T.
