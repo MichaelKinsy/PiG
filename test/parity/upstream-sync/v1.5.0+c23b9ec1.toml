@@ -3497,30 +3497,30 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/cli/auth-command.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_command_oracle_test.go#TestAuthCommandMatchesPi"]
+rationale = "coding/cli/auth_command.go: the auth command's help, arguments and errors match Pi's (oracle)."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-login.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_login_test.go#TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive", "test:coding/cli/auth_login_test.go#TestAuthLoginReportsCancellation"]
+rationale = "coding/cli/auth_login.go: a login that fails with the message \"Login cancelled\" or whose signal aborted reports \"Login cancelled.\" (auth-login.ts:78), including the ai providers' own errors."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-logout.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_logout_test.go#TestAuthLogoutRemovesAStoredAccountLogin", "test:coding/cli/auth_logout_test.go#TestAuthLogoutReportsCommittedCredentialRemovalSeparatelyFromAFailedLogout"]
+rationale = "coding/cli/auth_logout.go ports auth-logout.ts."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-terminal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/auth_terminal_test.go#TestAuthTerminalCancelsTheLoginWhenStdinClosesBeforeAnAnswer", "test:coding/cli/auth_terminal_test.go#TestAuthTerminalPromptCancellationDoesNotCancelTheWholeLogin"]
+rationale = "coding/cli/auth_terminal.go ports auth-terminal.ts (secret prompt in raw mode, cancellation by context)."
 
 [[files]]
 path = "packages/coding-agent/src/cli/config-selector.ts"
@@ -3609,9 +3609,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/mcp-servers.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/mcp_servers_test.go#TestMcpServerRegistryKeepsOwnershipOrderAndCopies", "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi"]
+rationale = "coding/extension/mcp_servers.go ports mcp-servers.ts; validation lives in internal/mcpshared (Pi 76c040a2a)."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-resolver.ts"
@@ -3658,9 +3658,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/radius-mcp.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/radius_login_mcp_offer_upstream_test.go#TestRadiusMcpServerConfig", "test:internal/codingagent/radius_login_mcp_offer_upstream_test.go#TestRadiusLoginOffersTheRadiusMCPServerUpstream"]
+rationale = "internal/codingagent/radius_mcp.go ports radius-mcp.ts; the namespace check uses internal/mcpshared."
 
 [[files]]
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
@@ -3749,16 +3749,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands"]
+rationale = "internal/codingagent/llama/ui.go: a Hugging Face search keeps the row the user browsed to (Pi df0d88aac)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/cli.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/cli_oracle_test.go#TestMcpCommandMatchesPi"]
+rationale = "coding/mcpext ports the mcp command; the oracle compares it with Pi's."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/config.ts"
@@ -3805,9 +3805,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/extensions/tool-search/tool.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/toolsearch/tool_test.go#TestToolSearchAcceptsALimitBeyondTheIntRange", "test:coding/extension/builtin/toolsearch/tool_test.go#TestToolSearchRejectsAnEmptyQueryAndANonPositiveOrFractionalLimit"]
+rationale = "coding/extension/builtin/toolsearch ports tool.ts, schema refs through internal/schemaref (Pi 6d3e342b2)."
 
 [[files]]
 path = "packages/coding-agent/src/index.ts"
@@ -3819,9 +3819,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/main.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/main_test.go#TestVersionFlagsPrintPisVersionWhileVersionCommandNamesBoth"]
+rationale = "coding/cli/main.go ports main.ts at c23b9ec1."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts"
@@ -3896,9 +3896,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/live_message_meta_test.go#TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity", "test:internal/codingagent/live_message_meta_test.go#TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity", "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity", "test:internal/codingagent/markdown_surface_async_test.go#TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop"]
+rationale = "internal/codingagent ports the interactive-mode.ts changes of c23b9ec1: Markdown transformer surfaces with messageMeta only from restored entries (renderSessionEntries), live custom messages and boundary summaries without it."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
@@ -3945,9 +3945,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/utils/terminal-question.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/terminalquestion/terminalquestion_test.go#TestCtrlCFailsTheQuestionAndReportsAnInterrupt", "test:internal/terminalquestion/terminalquestion_test.go#TestCallerCancellationDoesNotReportAnInterruptAndKeepsTheLaterAnswer"]
+rationale = "internal/terminalquestion ports terminal-question.ts."
 
 [[files]]
 path = "packages/coding-agent/src/utils/web-url.ts"
