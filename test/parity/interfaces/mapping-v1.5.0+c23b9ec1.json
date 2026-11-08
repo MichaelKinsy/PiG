@@ -112478,8 +112478,8 @@
       ],
       "evidence": [
         "test:chord/next/documents/definition_test.go#TestDefineStateTakesARestrictedNameOnly",
-        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric",
-        "test:chord/next/documents/documents_telemetry_test.go#TestTransactionsTheirContextsEndCancelledAreReportedForACallersCancellationWhileTheChangeWaitsOnTheLine"
+        "test:chord/next/documents/documents_cost_test.go#TestTransactionsTheirContextsEndCancelledCostNothingOnTheCommittedPathNoCheckOfTheContextBeyondTheCommitsOwn",
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric"
       ]
     },
     {
@@ -120651,8 +120651,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_baseinputs_test.go#TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem",
-        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkFindsAnEditMadeBetweenABaseBuildAndItsWatchWithNoLaterEvent",
-        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkFollowsAnAncestorOfARecordedFileMovedAwayAndItsSubtreeMadeAgainEditRevert"
+        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestARecordedBaseAfterTheCloseWatchesNothing",
+        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkFindsAnEditMadeBetweenABaseBuildAndItsWatchWithNoLaterEvent"
       ]
     },
     {
