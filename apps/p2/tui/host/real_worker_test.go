@@ -32,9 +32,13 @@ const (
 var realPlugins = []string{"chat", "chat-mode", "conversations", "drafts", "envs", "files", "models", "sessions", "sharing", "status", "subagents"}
 
 // startReal is a launcher with the real surfaces on a real server that has one session (Pi's `startFixture` + `sessions.create`).
-func startReal(t *testing.T, options launcherOptions) *launcher {
+func startReal(t *testing.T, options launcherOptions, server ...func(*hosts.ServerOptions)) *launcher {
 	t.Helper()
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: realPlugins})
+	serverOptions := hosts.ServerOptions{Plugins: realPlugins}
+	for _, adjust := range server {
+		adjust(&serverOptions)
+	}
+	fixture := p2test.StartFixture(t, serverOptions)
 	sessions, err := p2test.HoldIn(fixture.Browser(), sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
 	if err != nil {
 		t.Fatal(err)
