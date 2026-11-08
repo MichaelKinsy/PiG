@@ -175,6 +175,7 @@ type TestHost struct {
 	Host   host.Host
 	t      testing.TB
 	opts   TestHostOptions
+	base   host.Facet
 	mu     sync.Mutex
 	errors []host.HostError
 	// clients are closed with the host.
@@ -250,6 +251,7 @@ func NewTestHost(t testing.TB, options TestHostOptions) *TestHost {
 		}
 		return nil
 	})
+	testHost.base = base
 	if options.BeforeLoad != nil {
 		options.BeforeLoad(created)
 	}
@@ -326,6 +328,9 @@ func (h *TestHost) Reload(base host.Facet, facets []host.Facet) error {
 	}
 	return err
 }
+
+// ReloadFacets reloads the host with facets in place of the loaded ones, under the base and stubs NewTestHost made.
+func (h *TestHost) ReloadFacets(facets ...host.Facet) error { return h.Reload(h.base, facets) }
 
 // WorkerHost is the worker of session, a host of its own at the session's address with a link to this server host, which
 // stamps it the worker's principal (as a real worker's link is): the registries of a worker and the given facets are loaded
