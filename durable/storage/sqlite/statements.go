@@ -12,6 +12,7 @@ package sqlite
 import (
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -96,31 +97,58 @@ func runForEach(executor SqliteExecutor, sql string, values []cell) error {
 // maxParameters: Durable Objects bind at most 100 parameters per statement.
 const maxParameters = 100
 
-// insertStatement is the SQL of one table's inserts: the same texts on every call, so built once per schema.
+// maxShapes is how many statement sizes fit maxParameters: 1, 2, 4 ... rows of at least two cells, up to 32 rows.
+const maxShapes = 6
+
+// insertStatement is the SQL of one table's inserts: the same texts on every call, each built when first needed.
 type insertStatement struct {
-	// texts[shape] inserts 1<<shape rows, bound column by column: INSERT INTO t (columns) VALUES (?, ...), ... conflict.
-	texts []string
-	width int
+	// head is INSERT INTO t (columns) VALUES, row one row of placeholders, conflict an upsert's clause.
+	head, row, conflict string
+	width               int
+	// shapes is how many sizes fit maxParameters; texts[shape] inserts 1<<shape rows, or is nil until built.
+	shapes int
+	texts  [maxShapes]atomic.Pointer[string]
 }
 
-// newInsertStatement builds the inserts of table's columns, then conflict (an upsert's clause).
-func newInsertStatement(table string, columns []string, conflict string) insertStatement {
+// newInsertStatement describes the inserts of table's columns, then conflict (an upsert's clause).
+func newInsertStatement(table string, columns []string, conflict string) *insertStatement {
 	width := len(columns)
-	placeholders := make([]string, width)
-	for index := range placeholders {
-		placeholders[index] = "?"
+	if width < 2 {
+		panic("durable sqlite: an insert has at least two columns")
 	}
-	row := "(" + strings.Join(placeholders, ", ") + ")"
-	head := "INSERT INTO " + table + " (" + strings.Join(columns, ", ") + ") VALUES "
-	var texts []string
+	row := "(?" + strings.Repeat(", ?", width-1) + ")"
+	statement := &insertStatement{
+		head:     "INSERT INTO " + table + " (" + strings.Join(columns, ", ") + ") VALUES ",
+		row:      row,
+		conflict: conflict,
+		width:    width,
+	}
 	for rows := 1; rows*width <= maxParameters; rows *= 2 {
-		values := make([]string, rows)
-		for index := range values {
-			values[index] = row
-		}
-		texts = append(texts, head+strings.Join(values, ", ")+" "+conflict)
+		statement.shapes++
 	}
-	return insertStatement{texts: texts, width: width}
+	return statement
+}
+
+// text is the SQL that inserts 1<<shape rows.
+func (statement *insertStatement) text(shape int) string {
+	if cached := statement.texts[shape].Load(); cached != nil {
+		return *cached
+	}
+	rows := 1 << shape
+	var text strings.Builder
+	text.Grow(len(statement.head) + rows*(len(statement.row)+2) + len(statement.conflict) + 1)
+	text.WriteString(statement.head)
+	for index := range rows {
+		if index > 0 {
+			text.WriteString(", ")
+		}
+		text.WriteString(statement.row)
+	}
+	text.WriteByte(' ')
+	text.WriteString(statement.conflict)
+	built := text.String()
+	statement.texts[shape].Store(&built)
+	return built
 }
 
 // insertRows inserts rows (one cell per column, in order) with statement, bound column by column in statements of 1, 2,
@@ -141,14 +169,14 @@ func insertRows(executor SqliteExecutor, statement *insertStatement, rows [][]ce
 		}
 	}
 	// shape only shrinks: lowered before a chunk to fit the rows left, it is also what the loop then steps over.
-	shape := len(statement.texts) - 1
+	shape := statement.shapes - 1
 	for start := 0; start < len(rows); {
 		for 1<<shape > len(rows)-start {
 			shape--
 		}
 		end := start + 1<<shape
 		// The chunk's capacity ends with it: a caller keeping its parameters cannot see the next chunk's through append.
-		if err := executor.Run(statement.texts[shape], params[start*width:end*width:end*width]...); err != nil {
+		if err := executor.Run(statement.text(shape), params[start*width:end*width:end*width]...); err != nil {
 			return err
 		}
 		start = end

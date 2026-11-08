@@ -54,7 +54,7 @@ func insertRowsOfPi(executor SqliteExecutor, insertText, table string, columns [
 		}
 	}
 	statement := newInsertStatement(table, columns, conflict)
-	return insertRows(executor, &statement, large)
+	return insertRows(executor, statement, large)
 }
 
 // insertRowsOfJSON inserts every row through the JSON array, whatever its size.
@@ -317,7 +317,7 @@ func TestValuesInsertsStoreTheRowsOfPiJsonEachInserts(t *testing.T) {
 			insertText := jsonInsertText(spec.table, spec.columns, spec.conflict)
 			random := rand.New(rand.NewPCG(uint64(index)+1, 0x5eed))
 			var sequence int64
-			for batch := range 80 {
+			for batch := range 150 {
 				size := random.IntN(24)
 				switch random.IntN(20) {
 				case 0:
@@ -343,7 +343,7 @@ func TestValuesInsertsStoreTheRowsOfPiJsonEachInserts(t *testing.T) {
 					seen := map[cell]bool{}
 					rows = slices.DeleteFunc(rows, func(row []cell) bool { duplicate := seen[row[0]]; seen[row[0]] = true; return duplicate })
 				}
-				gotErr := inTransaction(values, func(executor SqliteExecutor) error { return insertRows(executor, &statement, rows) })
+				gotErr := inTransaction(values, func(executor SqliteExecutor) error { return insertRows(executor, statement, rows) })
 				wantErr := inTransaction(reference, func(executor SqliteExecutor) error {
 					return insertRowsOfPi(executor, insertText, spec.table, spec.columns, spec.conflict, rows)
 				})
@@ -360,7 +360,7 @@ func TestValuesInsertsStoreTheRowsOfPiJsonEachInserts(t *testing.T) {
 						t.Fatalf("batch %d: VALUES error %v, the JSON array's %v", batch, gotErr, wantErr)
 					}
 				} else if gotErr == nil {
-					_ = inTransaction(forced, func(executor SqliteExecutor) error { return insertRows(executor, &statement, rows) })
+					_ = inTransaction(forced, func(executor SqliteExecutor) error { return insertRows(executor, statement, rows) })
 				}
 				if got, want := dump(t, values, spec), dump(t, forced, spec); !slices.Equal(got, want) {
 					t.Fatalf("batch %d (%d rows): the stored rows differ from the JSON array's: %s", batch, size, firstDifference(got, want))
@@ -379,7 +379,7 @@ func TestCommitStatementsInsertTheColumnsOfTheDifferentialSpecs(t *testing.T) {
 	statements := newCommitStatements(schema.Tables)
 	for _, committed := range []struct {
 		spec      tableSpec
-		statement insertStatement
+		statement *insertStatement
 	}{
 		{tableSpecs[0], statements.recordIds}, {tableSpecs[1], statements.conversations}, {tableSpecs[2], statements.entries},
 		{tableSpecs[3], statements.tasks}, {tableSpecs[4], statements.submissions}, {tableSpecs[5], statements.documents}, {tableSpecs[6], statements.revisions},
@@ -389,8 +389,10 @@ func TestCommitStatementsInsertTheColumnsOfTheDifferentialSpecs(t *testing.T) {
 			"submissions": schema.Tables.Submissions, "documents": schema.Tables.Documents, "document_revisions": schema.Tables.DocumentRevisions,
 		}[committed.spec.table]
 		want := newInsertStatement(table, committed.spec.columns, committed.spec.conflict)
-		if !slices.Equal(committed.statement.texts, want.texts) {
-			t.Errorf("%s: the commit path's insert differs from the spec's:\n%q\n%q", committed.spec.table, committed.statement.texts, want.texts)
+		for shape := range want.shapes {
+			if got, want := committed.statement.text(shape), want.text(shape); got != want {
+				t.Errorf("%s: the commit path's insert of %d rows differs from the spec's:\n%q\n%q", committed.spec.table, 1<<shape, got, want)
+			}
 		}
 	}
 }
