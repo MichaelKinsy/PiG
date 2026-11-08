@@ -426,7 +426,7 @@ func tableIn(t testing.TB, store *ChordStore, definition *TableDefinition, owner
 		handleOwner = owner[0]
 	}
 	table := "app.store:" + definition.Name
-	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 	err := PrepareTables([]DeclaredTable{{Definition: definition, Table: table}}, store, fence, "app.store", background)
 	if err != nil {
 		t.Fatalf("PrepareTables: %v", err)
