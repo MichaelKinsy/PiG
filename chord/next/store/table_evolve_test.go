@@ -175,10 +175,10 @@ func TestEvolveChecks(t *testing.T) {
 			return evolveErr(EditsV1, func(e *TableEditor) TableTailEditor { return e.Drop("id") })
 		}, `"id" is a key column`},
 		{"rename after a drop", func() error {
-			return evolveErr(EditsV1, func(e *TableEditor) TableTailEditor { return e.Drop("at").Rename("file", "path") })
+			return evolveErr(EditsV1, func(e *TableEditor) TableTailEditor { return e.Drop("at").(*TableEditor).Rename("file", "path") })
 		}, "rename comes before the data step"},
 		{"a second data step", func() error {
-			return evolveErr(EditsV1, func(e *TableEditor) TableTailEditor { return e.Rows(noPatch).Rows(noPatch) })
+			return evolveErr(EditsV1, func(e *TableEditor) TableTailEditor { return e.Rows(noPatch).(*TableEditor).Rows(noPatch) })
 		}, "rows comes before the data step"},
 		{"an existing index", func() error {
 			return evolveErr(EditsV1, func(e *TableEditor) TableTailEditor { return e.Index("by_file", []string{"at"}) })

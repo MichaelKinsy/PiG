@@ -205,7 +205,7 @@ func TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure(t *testin
 		_ = keyedHandle.Retire(background, "a")
 		_, _ = table.Get(background, "a")
 		_, _ = table.Count(background, store.NewQuery(items))
-		_ = table.AssertVersion()
+		_ = table.(*store.TableHandle).AssertVersion()
 	}
 	host := newHost(t, HostOptions{Store: chordStore, OnError: noopOnError})
 	defer closeHosts(t, host)
