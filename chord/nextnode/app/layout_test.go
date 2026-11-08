@@ -47,7 +47,9 @@ func TestTheDataDirectoryMakesTheLayoutsDirectoriesTheDataDirectoryWithMode0700(
 	if got := []string{layout.ServerStore, layout.OwnerToken, layout.CookieSecret}; strings.Join(got, "|") != strings.Join(want, "|") {
 		t.Fatalf("paths = %v, want %v", got, want)
 	}
-	home, _ := os.UserHomeDir()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	if got := DefaultDataDir("acme"); got != filepath.Join(home, ".acme") {
 		t.Fatalf("DefaultDataDir = %q", got)
 	}
