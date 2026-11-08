@@ -126,4 +126,3 @@ func PreferenceFacet(choice *contracts.Contract, store string, pick contracts.Sc
 		}, host.ServeOptions{})
 	}), nil
 }
-
