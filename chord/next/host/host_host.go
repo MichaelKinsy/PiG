@@ -225,6 +225,8 @@ type Host interface {
 	// the host's publication, then while it has no value (`unavailable/undeclared` without a provider, a first `compose`
 	// that failed, a version not served here: `contract_mismatch`) until its `ReadyTimeout`, then returns the last error.
 	Registry(ctx context.Context, r registries.Registry[any, any], options GetOptions) (*registries.RegistryValueSource, error)
+	// Address is this host's address (Pi's `host.address`); nil for a client.
+	Address() *contracts.Address
 	// Root runs fn with a call context for code outside objects (a Durable tool, a CLI): the host's principal (or
 	// options.Principal), this host's incarnation, ctx's telemetry and signal, `ctx.Get`. When fn settles or ctx aborts, the
 	// context is sealed: its signal aborted, `ctx.Get` refused `released`, every reference it took released; an abort returns
@@ -811,6 +813,9 @@ func (h *chordHost) References(typ *contracts.Contract) state.SourceHandle {
 	})
 	return found
 }
+
+// Address implements Host.
+func (h *chordHost) Address() *contracts.Address { return h.address }
 
 // Registry implements Host.
 func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any], options GetOptions) (*registries.RegistryValueSource, error) {
