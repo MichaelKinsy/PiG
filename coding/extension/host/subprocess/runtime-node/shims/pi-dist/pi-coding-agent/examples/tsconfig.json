@@ -16,13 +16,13 @@
 			"@earendil-works/chord/delta": [
 				"../../../packages/chord/src/delta/index.ts"
 			],
-			"@earendil-works/chord/next": [
+			"@earendil-works/chord": [
 				"../../../packages/chord/src/next/index.ts"
 			],
-			"@earendil-works/chord/next/plugins": [
+			"@earendil-works/chord/plugins": [
 				"../../../packages/chord/src/next-node/plugins/index.ts"
 			],
-			"@earendil-works/chord/next/plugins/runtime": [
+			"@earendil-works/chord/plugins/runtime": [
 				"../../../packages/chord/src/next-node/plugins/runtime.ts"
 			],
 			"@test/contracts/*": [
@@ -43,10 +43,10 @@
 			"@example/shared/*": [
 				"../../../packages/chord/test/next/examples/38-watch-and-rollout/plugins/contracts/*.ts"
 			],
-			"@earendil-works/chord/next/http": [
+			"@earendil-works/chord/http": [
 				"../../../packages/chord/src/next-node/http/index.ts"
 			],
-			"@earendil-works/chord/next/workers": [
+			"@earendil-works/chord/workers": [
 				"../../../packages/chord/src/next-node/workers/index.ts"
 			],
 			"@earendil-works/chord/node": [

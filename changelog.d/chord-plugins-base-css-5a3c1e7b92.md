@@ -1,0 +1,3 @@
+### Added
+
+- Go API `chord/nextnode/plugins` (Pi `c23b9ec1`): `*.module.css` files of a browser build are scoped to their plugin and file (`ScopeCSSModule`; classes `chord_<hash>_<file>_<class>`, `composes` and `@import` kept, `url()` of any stylesheet an asset), and the base marks: `Plugins.WatchBase(BaseInputs)` with `Recorder` (the hash of each file as a base build read it) sets `base` exactly while a recorded file differs, is gone, or a source file is new in a base directory (the server's own code is hashed at start). Starting the watcher over a base directory now reads each of its source files once (about 20 µs a file).
