@@ -321,18 +321,21 @@ func exported(t testing.TB, store Store, ctx context.Context) []ArchivePart {
 type testOwner struct {
 	failures []*data.ChordError
 	scope    *struct{}
+	queries  *LiveQueries
 }
 
 func (owner *testOwner) Label() string { return "app.store" }
 
 func (owner *testOwner) Scope() any { return owner.scope }
 
+func (owner *testOwner) Queries() *LiveQueries { return owner.queries }
+
 func (owner *testOwner) AssertLive() error { return nil }
 
 func (owner *testOwner) Fail(err *data.ChordError) { owner.failures = append(owner.failures, err) }
 
 // tableOwner is a fresh owner for table handles; its failures are the ones its handles reported.
-func tableOwner() *testOwner { return &testOwner{scope: new(struct{})} }
+func tableOwner() *testOwner { return &testOwner{scope: new(struct{}), queries: NewLiveQueries()} }
 
 // tableIn creates definition (and its indexes) in store as `app.store:<name>` and returns a handle to it; owner is
 // the handle's owner (a fresh one by default).

@@ -37,6 +37,8 @@ type HttpRequest interface {
 	Provenance() Provenance
 	// Nonce is the server's script nonce: a page's inline scripts carry it (`<script nonce="…">`), the CSP allows them.
 	Nonce() string
+	// RemoteAddress is the peer address of the connection the request arrived on; empty when it is unknown (Pi's `undefined`).
+	RemoteAddress() string
 	// JSON is the body as JSON, at most limit bytes (1 MiB by default): *HttpFailure 400 when malformed, 413 when larger.
 	JSON(limit ...int) (any, error)
 	// Body is the body's chunks, at most limit bytes (1 MiB by default): *HttpFailure 413 past it, 400 when cut short.
@@ -68,6 +70,8 @@ type webRequest struct {
 	provenance Provenance
 	nonce      string
 	incoming   Incoming
+	// remoteAddress is the connection's peer address; empty when the listener does not know it.
+	remoteAddress string
 	// search is the query string (without `?`), parsed when first read.
 	search string
 	query  *URLSearchParams
@@ -78,12 +82,12 @@ type webRequest struct {
 
 var _ HttpRequest = (*webRequest)(nil)
 
-func newWebRequest(incoming Incoming, admitted *Admitted, nonce string) *webRequest {
+func newWebRequest(incoming Incoming, admitted *Admitted, nonce string, remoteAddress string) *webRequest {
 	// The URL is parsed and serialized already (dot segments resolved, `\` as `/`): only split it here.
 	path, search := splitURL(incoming.URL())
 	return &webRequest{
 		method: incoming.Method(), path: path, search: search, origin: admitted.Origin,
-		provenance: admitted.Provenance, nonce: nonce, incoming: incoming, params: map[string]string{},
+		provenance: admitted.Provenance, nonce: nonce, incoming: incoming, params: map[string]string{}, remoteAddress: remoteAddress,
 	}
 }
 
@@ -93,6 +97,7 @@ func (r *webRequest) Params() map[string]string { return r.params }
 func (r *webRequest) Origin() string            { return r.origin }
 func (r *webRequest) Provenance() Provenance    { return r.provenance }
 func (r *webRequest) Nonce() string             { return r.nonce }
+func (r *webRequest) RemoteAddress() string     { return r.remoteAddress }
 
 func (r *webRequest) Headers() nethttp.Header { return requestHeaders(r.incoming.Request()) }
 

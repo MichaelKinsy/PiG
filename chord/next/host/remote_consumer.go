@@ -367,7 +367,8 @@ func (c *consumerSide) failed(message *link.FailedMessage) error {
 }
 
 // loading: the hold's object, or its relay's upstream, starts over; its calls still waiting for a slot reject
-// `unavailable` (they may name a method of the old variant).
+// `unavailable` (they may name a method of the old variant); its calls in flight wait for their reply (a provider's `loading`
+// keeps them; a relay's upstream drop answered them before).
 func (c *consumerSide) loading(hold int) {
 	holder, found := c.entries.get(hold)
 	if !found {
