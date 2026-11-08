@@ -72,6 +72,7 @@ func lockAddress(name string) (lockLocation, error) {
 	return platformLockLocation(key)
 }
 
+// pig divergence (D390): Pi 7aed50ae8, not in Pi 1.5.0; on Linux the lock is an abstract socket with no file to go stale.
 // clearStaleLockAt is ClearStaleLock at location: a socket file nobody accepts on is removed.
 func clearStaleLockAt(location lockLocation, ctx context.Context) (bool, error) {
 	if ctx.Err() != nil {
