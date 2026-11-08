@@ -2621,7 +2621,7 @@ allocs = 78
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRemoteCustomFocusLifecycle/1000"
-allocs = 79
+allocs = 74
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2666,7 +2666,7 @@ allocs = 25710
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionOpen"
-allocs = 60408
+allocs = 35469
 
 [[benchmark]]
 package = "./internal/codingagent"
