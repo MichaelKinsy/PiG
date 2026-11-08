@@ -531,7 +531,7 @@ function classify(messages: any[]) {
   }
   // Mermaid rendering parity: return a multi-line ```mermaid block so the
   // assistant markdown pipeline runs the Mermaid transformer (mermaid.ts +
-  // grok-mermaid render). The rendered box-drawing diagram is theme-independent
+  // lovely-mermaid render). The rendered box-drawing diagram is theme-independent
   // after ANSI normalization, so pig and pi must produce the same plain art.
   if (lastText.includes("show mermaid flowchart")) {
     return { kind: "text", text: "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```" };

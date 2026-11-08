@@ -6,7 +6,7 @@ package mermaid
 
 import "strings"
 
-// Grid canvas, ported from grok-mermaid canvas.ts. Edges accumulate as direction
+// Grid canvas, ported from lovely-mermaid canvas.ts. Edges accumulate as direction
 // bits (resolved to box-drawing glyphs by finalizeMask) so crossings and
 // junctions resolve correctly whatever order they are drawn in.
 
@@ -32,23 +32,27 @@ const (
 type canvas struct {
 	w, h     int
 	ch       []string
-	cls      []Cls
+	role     []Role
+	tag      []string // space-joined author classes per cell, "" for none; see Span.Classes; nil until a cell is stamped
+	href     []string // link target per cell, "" for none; see Span.Href; nil until a cell is stamped
 	mask     []byte
 	style    []byte
 	occupied []byte
 	curStyle byte
+	curTag   string // author classes stamped on cells painted while set, like curStyle
+	curHref  string // link target stamped on cells painted while set, like curTag
 }
 
 func newCanvas(w, h int) *canvas {
 	n := w * h
 	ch := make([]string, n)
-	cls := make([]Cls, n)
+	role := make([]Role, n)
 	for i := range ch {
 		ch[i] = " "
-		cls[i] = ClsNone
+		role[i] = RoleNone
 	}
 	return &canvas{
-		w: w, h: h, ch: ch, cls: cls,
+		w: w, h: h, ch: ch, role: role,
 		mask: make([]byte, n), style: make([]byte, n), occupied: make([]byte, n),
 		curStyle: stySolid,
 	}
@@ -56,18 +60,64 @@ func newCanvas(w, h int) *canvas {
 
 func (c *canvas) idx(x, y int) int { return y*c.w + x }
 
-func (c *canvas) set(x, y int, ch string, cls Cls) {
+// tagAt and hrefAt read the per-cell author classes and link target. Most
+// diagrams carry neither, so the slices stay nil until a cell is stamped.
+func (c *canvas) tagAt(i int) string {
+	if c.tag == nil {
+		return ""
+	}
+	return c.tag[i]
+}
+
+func (c *canvas) hrefAt(i int) string {
+	if c.href == nil {
+		return ""
+	}
+	return c.href[i]
+}
+
+func (c *canvas) setTagAt(i int, v string) {
+	if c.tag == nil {
+		c.tag = make([]string, len(c.ch))
+	}
+	c.tag[i] = v
+}
+
+func (c *canvas) setHrefAt(i int, v string) {
+	if c.href == nil {
+		c.href = make([]string, len(c.ch))
+	}
+	c.href[i] = v
+}
+
+// stamp applies the current author classes and link target to cell i.
+func (c *canvas) stamp(i int) {
+	if c.curTag != "" {
+		c.setTagAt(i, c.curTag)
+	}
+	if c.curHref != "" {
+		c.setHrefAt(i, c.curHref)
+	}
+}
+
+func (c *canvas) set(x, y int, ch string, role Role) {
 	if x >= c.w || y >= c.h {
 		return
 	}
 	i := c.idx(x, y)
+	// A literal tab measures one cell here but jumps to the terminal's tab stop
+	// there, desyncing every column after it. Same width, safe glyph.
+	if ch == "\t" {
+		ch = " "
+	}
 	c.ch[i] = ch
-	c.cls[i] = cls
+	c.role[i] = role
+	c.stamp(i)
 }
 
 // addBits accumulates direction bits on a free cell. border cells are never
 // reclassified, so a connector meeting a box keeps the box's styling.
-func (c *canvas) addBits(x, y, bits int, cls Cls) {
+func (c *canvas) addBits(x, y, bits int, role Role) {
 	if x >= c.w || y >= c.h {
 		return
 	}
@@ -77,9 +127,10 @@ func (c *canvas) addBits(x, y, bits int, cls Cls) {
 	}
 	c.mask[i] |= byte(bits)
 	c.style[i] |= c.curStyle
-	if c.cls[i] != ClsBorder {
-		c.cls[i] = cls
+	if c.role[i] != RoleBorder {
+		c.role[i] = role
 	}
+	c.stamp(i)
 }
 
 // blit stamps a finished sub-canvas (a subgraph frame's contents) at an offset.
@@ -93,7 +144,13 @@ func (c *canvas) blit(sub *canvas, ox, oy int) {
 			si := sub.idx(sx, sy)
 			di := c.idx(x, y)
 			c.ch[di] = sub.ch[si]
-			c.cls[di] = sub.cls[si]
+			c.role[di] = sub.role[si]
+			if sub.tag != nil || c.tag != nil {
+				c.setTagAt(di, sub.tagAt(si))
+			}
+			if sub.href != nil || c.href != nil {
+				c.setHrefAt(di, sub.hrefAt(si))
+			}
 			c.style[di] = sub.style[si]
 			c.occupied[di] = 1
 		}
@@ -108,8 +165,8 @@ func (c *canvas) junction(x, y, bits int) {
 	}
 	i := c.idx(x, y)
 	c.mask[i] |= byte(bits)
-	if c.cls[i] != ClsBorder {
-		c.cls[i] = ClsEdge
+	if c.role[i] != RoleBorder {
+		c.role[i] = RoleEdge
 	}
 }
 
@@ -123,7 +180,7 @@ func (c *canvas) segV(x, y0, y1 int) {
 		if y < b {
 			bits |= bitD
 		}
-		c.addBits(x, y, bits, ClsEdge)
+		c.addBits(x, y, bits, RoleEdge)
 	}
 }
 
@@ -137,14 +194,18 @@ func (c *canvas) segH(y, x0, x1 int) {
 		if x < b {
 			bits |= bitR
 		}
-		c.addBits(x, y, bits, ClsEdge)
+		c.addBits(x, y, bits, RoleEdge)
 	}
 }
 
 // finalizeMask resolves accumulated direction bits into glyphs, honouring style.
 func (c *canvas) finalizeMask() {
 	for i := range c.ch {
-		if c.mask[i] != 0 && c.ch[i] == " " {
+		if c.mask[i] == 0 {
+			continue
+		}
+		switch c.ch[i] {
+		case " ":
 			ch := maskChar(int(c.mask[i]))
 			switch c.style[i] {
 			case styDot:
@@ -153,6 +214,8 @@ func (c *canvas) finalizeMask() {
 				ch = thickChar(ch)
 			}
 			c.ch[i] = ch
+		case "═", "║":
+			c.ch[i] = doubleTee(c.ch[i], int(c.mask[i]))
 		}
 	}
 }
@@ -164,11 +227,19 @@ func (c *canvas) flipVertical() {
 		for x := 0; x < c.w; x++ {
 			i, j := c.idx(x, y), c.idx(x, y2)
 			c.ch[i], c.ch[j] = c.ch[j], c.ch[i]
-			c.cls[i], c.cls[j] = c.cls[j], c.cls[i]
+			c.role[i], c.role[j] = c.role[j], c.role[i]
+			if c.tag != nil {
+				c.tag[i], c.tag[j] = c.tag[j], c.tag[i]
+			}
+			if c.href != nil {
+				c.href[i], c.href[j] = c.href[j], c.href[i]
+			}
 		}
 	}
 	for i := range c.ch {
-		c.ch[i] = flipGlyphV(c.ch[i])
+		if !textRole(c.role[i]) {
+			c.ch[i] = flipGlyphV(c.ch[i])
+		}
 	}
 }
 
@@ -180,19 +251,27 @@ func (c *canvas) flipHorizontal() {
 			x2 := c.w - 1 - x
 			i, j := c.idx(x, y), c.idx(x2, y)
 			c.ch[i], c.ch[j] = c.ch[j], c.ch[i]
-			c.cls[i], c.cls[j] = c.cls[j], c.cls[i]
+			c.role[i], c.role[j] = c.role[j], c.role[i]
+			if c.tag != nil {
+				c.tag[i], c.tag[j] = c.tag[j], c.tag[i]
+			}
+			if c.href != nil {
+				c.href[i], c.href[j] = c.href[j], c.href[i]
+			}
 		}
 	}
 	for i := range c.ch {
-		c.ch[i] = flipGlyphH(c.ch[i])
+		if !textRole(c.role[i]) {
+			c.ch[i] = flipGlyphH(c.ch[i])
+		}
 	}
 	for y := 0; y < c.h; y++ {
 		x := 0
 		for x < c.w {
-			cls := c.cls[c.idx(x, y)]
-			if cls == ClsText || cls == ClsEdgeLabel {
+			role := c.role[c.idx(x, y)]
+			if role == RoleText || role == RoleEdgeLabel {
 				start := c.idx(x, y)
-				for x < c.w && c.cls[c.idx(x, y)] == cls {
+				for x < c.w && c.role[c.idx(x, y)] == role {
 					x++
 				}
 				reverseSlice(c.ch, start, c.idx(x, y))
@@ -203,7 +282,7 @@ func (c *canvas) flipHorizontal() {
 	}
 }
 
-// toLines groups each row into runs of one class, dropping wide-glyph
+// toLines groups each row into runs of one role and tag, dropping wide-glyph
 // continuations, and trims leading/trailing blank rows.
 func (c *canvas) toLines() (plain []string, styled [][]Span, width int) {
 	for y := 0; y < c.h; y++ {
@@ -217,28 +296,61 @@ func (c *canvas) toLines() (plain []string, styled [][]Span, width int) {
 		if last > width {
 			width = last
 		}
+		// Size the row's spans and bytes first, so neither grows by doubling.
+		runs, size := 0, 0
+		cr, ct, chf := RoleNone, "", ""
+		for x := 0; x < last; x++ {
+			i := c.idx(x, y)
+			if c.ch[i] == cont {
+				continue
+			}
+			role, tag, href := c.role[i], c.tagAt(i), c.hrefAt(i)
+			if size == 0 || role != cr || tag != ct || href != chf {
+				runs++
+			}
+			cr, ct, chf = role, tag, href
+			size += len(c.ch[i])
+		}
 		var spans []Span
+		if runs > 0 {
+			spans = make([]Span, 0, runs)
+		}
+		push := func(text string, role Role, tag, href string) {
+			if text == "" {
+				return
+			}
+			span := Span{Text: text, Role: role}
+			if tag != "" {
+				span.Classes = strings.Split(tag, " ")
+			}
+			if href != "" {
+				h := href
+				span.Href = &h
+			}
+			spans = append(spans, span)
+		}
 		var plainRow strings.Builder
-		run := ""
-		runCls := ClsNone
+		plainRow.Grow(size)
+		// A run is a slice of the row built so far: Builder.String shares the
+		// buffer and appends never touch written bytes, so no run is copied.
+		runStart := 0
+		runRole := RoleNone
+		runTag, runHref := "", ""
 		for x := 0; x < last; x++ {
 			i := c.idx(x, y)
 			ch := c.ch[i]
 			if ch == cont {
 				continue
 			}
-			cls := c.cls[i]
-			plainRow.WriteString(ch)
-			if cls != runCls && run != "" {
-				spans = append(spans, Span{Text: run, Cls: runCls})
-				run = ""
+			role, tag, href := c.role[i], c.tagAt(i), c.hrefAt(i)
+			if (role != runRole || tag != runTag || href != runHref) && plainRow.Len() > runStart {
+				push(plainRow.String()[runStart:], runRole, runTag, runHref)
+				runStart = plainRow.Len()
 			}
-			runCls = cls
-			run += ch
+			runRole, runTag, runHref = role, tag, href
+			plainRow.WriteString(ch)
 		}
-		if run != "" {
-			spans = append(spans, Span{Text: run, Cls: runCls})
-		}
+		push(plainRow.String()[runStart:], runRole, runTag, runHref)
 		styled = append(styled, spans)
 		// Only trailing ASCII spaces; a trailing NBSP that styled keeps must stay.
 		plain = append(plain, strings.TrimRight(plainRow.String(), " "))
@@ -262,15 +374,15 @@ func reverseSlice(arr []string, start, end int) {
 
 // drawText paints text at x,y, one grapheme cluster per cell. A wide cluster
 // claims a second cell marked cont.
-func drawText(c *canvas, text string, x, y int, cls Cls) {
+func drawText(c *canvas, text string, x, y int, role Role) {
 	cur := x
 	for _, mc := range measured(text) {
 		if mc.width == 0 {
 			continue
 		}
-		c.set(cur, y, mc.cluster, cls)
+		c.set(cur, y, mc.cluster, role)
 		for k := 1; k < mc.width; k++ {
-			c.set(cur+k, y, cont, cls)
+			c.set(cur+k, y, cont, role)
 		}
 		cur += mc.width
 	}
@@ -278,7 +390,7 @@ func drawText(c *canvas, text string, x, y int, cls Cls) {
 
 // drawTextOverEdges paints text at x,y, clearing any edge bits underneath first
 // (sequence messages, dividers, compartment rows that must win over a line).
-func drawTextOverEdges(c *canvas, text string, x, y int, cls Cls) {
+func drawTextOverEdges(c *canvas, text string, x, y int, role Role) {
 	cur := x
 	for _, mc := range measured(text) {
 		if mc.width == 0 {
@@ -292,10 +404,35 @@ func drawTextOverEdges(c *canvas, text string, x, y int, cls Cls) {
 			if k == 0 {
 				ch = mc.cluster
 			}
-			c.set(cur+k, y, ch, cls)
+			c.set(cur+k, y, ch, role)
 		}
 		cur += mc.width
 	}
+}
+
+// doubleTee is an edge teeing into a double-line border: the mixed single/double
+// glyphs.
+func doubleTee(c string, mask int) string {
+	if c == "═" {
+		switch {
+		case mask&bitU != 0 && mask&bitD != 0:
+			return "╪"
+		case mask&bitD != 0:
+			return "╤"
+		case mask&bitU != 0:
+			return "╧"
+		}
+	} else {
+		switch {
+		case mask&bitL != 0 && mask&bitR != 0:
+			return "╫"
+		case mask&bitR != 0:
+			return "╟"
+		case mask&bitL != 0:
+			return "╢"
+		}
+	}
+	return c
 }
 
 func maskChar(mask int) string {
@@ -338,12 +475,14 @@ var flipVGlyph = map[string]string{
 	"┌": "└", "└": "┌", "┐": "┘", "┘": "┐", "┏": "┗", "┗": "┏", "┓": "┛", "┛": "┓",
 	"╭": "╰", "╰": "╭", "╮": "╯", "╯": "╮", "┬": "┴", "┴": "┬", "┳": "┻", "┻": "┳",
 	"▼": "▲", "▲": "▼", "▽": "△", "△": "▽",
+	"╔": "╚", "╚": "╔", "╗": "╝", "╝": "╗", "╤": "╧", "╧": "╤",
 }
 
 var flipHGlyph = map[string]string{
 	"┌": "┐", "┐": "┌", "└": "┘", "┘": "└", "┏": "┓", "┓": "┏", "┗": "┛", "┛": "┗",
 	"╭": "╮", "╮": "╭", "╰": "╯", "╯": "╰", "├": "┤", "┤": "├", "┣": "┫", "┫": "┣",
 	"▶": "◄", "◄": "▶", "▷": "◁", "◁": "▷",
+	"╔": "╗", "╗": "╔", "╚": "╝", "╝": "╚", "╟": "╢", "╢": "╟",
 }
 
 func mapGlyph(m map[string]string, c string) string {
@@ -357,3 +496,7 @@ func dottedChar(c string) string { return mapGlyph(dottedGlyph, c) }
 func thickChar(c string) string  { return mapGlyph(thickGlyph, c) }
 func flipGlyphV(c string) string { return mapGlyph(flipVGlyph, c) }
 func flipGlyphH(c string) string { return mapGlyph(flipHGlyph, c) }
+
+// textRole marks user-authored cells: flips reorder them but must not remap
+// their glyphs.
+func textRole(r Role) bool { return r == RoleText || r == RoleEdgeLabel || r == RoleTitle }

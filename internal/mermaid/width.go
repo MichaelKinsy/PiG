@@ -6,7 +6,7 @@ package mermaid
 
 import "github.com/MichaelKinsy/PiG/tui/widthx"
 
-// Display width, measured in grapheme clusters, ported from grok-mermaid
+// Display width, measured in grapheme clusters, ported from lovely-mermaid
 // width.ts. A cluster is the unit of both measuring and painting, so a box is
 // sized for exactly what gets drawn. Clustering comes from widthx.FirstGrapheme (UAX #29
 // as Intl.Segmenter implements it); per-code-point widths come from widthRuns
@@ -60,7 +60,7 @@ func clusterWidth(cluster string) int {
 }
 
 // stringWidth returns the display columns of a string, summed over grapheme
-// clusters (Intl.Segmenter graphemes, grok's width table).
+// clusters (Intl.Segmenter graphemes, the unicode-width table).
 func stringWidth(s string) int {
 	w := 0
 	for rest := s; rest != ""; {

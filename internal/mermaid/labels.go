@@ -10,7 +10,7 @@ import (
 	"unicode"
 )
 
-// Label and source-text handling, ported from grok-mermaid labels.ts.
+// Label and source-text handling, ported from lovely-mermaid labels.ts.
 
 const (
 	wrapWidth = 24 // node labels wrap to at most this many columns per line
@@ -388,4 +388,23 @@ func fitLabel(label string, inner int) string {
 		used += mc.width
 	}
 	return out.String() + "…"
+}
+
+// displayGenerics shows Mermaid's `List~T~` generics as `List<T>`.
+func displayGenerics(s string) string {
+	var out strings.Builder
+	open := false
+	for _, c := range s {
+		if c == '~' {
+			if open {
+				out.WriteByte('>')
+			} else {
+				out.WriteByte('<')
+			}
+			open = !open
+		} else {
+			out.WriteRune(c)
+		}
+	}
+	return out.String()
 }

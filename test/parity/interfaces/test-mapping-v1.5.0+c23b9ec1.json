@@ -5289,8 +5289,17 @@
     },
     {
       "path": "packages/coding-agent/test/mermaid.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:36dcc1152091718b2e9b854de32e15bdc2b2e39e5e9293885caa69a731c28ae1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:36dcc1152091718b2e9b854de32e15bdc2b2e39e5e9293885caa69a731c28ae1",
+      "evidence": [
+        "internal/codingagent/mermaid_integration_test.go#TestMermaidBlockWiring",
+        "internal/codingagent/mermaid_transform_test.go#TestMermaidTransformMatchesUpstream",
+        "internal/codingagent/mermaid_transform_test.go#TestMermaidThemedTransformMatchesUpstream",
+        "internal/codingagent/mermaid_render_cache_test.go",
+        "internal/codingagent/mermaid_upstream_test.go#TestMermaidRenderingUpstream",
+        "internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidUnsupportedAndOversizedRemainSource"
+      ],
+      "rationale": "All 11 upstream cases are ported as same-named subtests of TestMermaidRenderingUpstream with the upstream inputs and expected results: Unicode replacement, raw source for unsupported (gantt) and oversized diagrams, the lovely-mermaid pie diagram, theme span mapping through getFgAnsi, classDef styles over the theme, hyperlinks only on node text and only with terminal support, incomplete streaming blocks, class assignments, code-block fallback with the first warning, the (+N more) summary, and mode, thinking and non-transcript-surface gating (Pi eebd5d90c, #11756: the last case, \"respects rendering modes and skips thinking blocks and non-transcript surfaces\", keeps its 4 added expectations: user and summary render, custom and changelog stay raw; the transformer renders only on user, assistant and summary messages, gated on MarkdownMessageType, through extension.MarkdownMessageUser/Assistant/Summary and the messageTypes surfaces from the coding-a port). The Go theme is concrete, so the span-mapping case asserts the theme's own SGR parameters. The transformer and scope goldens are regenerated from Pi's mermaid.ts at aceb1bd1."
     },
     {
       "path": "packages/coding-agent/test/model-catalog-protocol.test.ts",
