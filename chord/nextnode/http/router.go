@@ -231,7 +231,7 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 	sockets := newNode[socketEntry]()
 	var entries []*routeEntry
 	router := &Router{
-		routes: routes, sockets: sockets, 
+		routes: routes, sockets: sockets,
 		SocketHandlers: map[*HttpSocket]struct{}{}, order: compositions.Add(1),
 	}
 	for _, each := range table {

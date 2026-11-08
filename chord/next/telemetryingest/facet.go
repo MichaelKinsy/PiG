@@ -23,7 +23,9 @@ import (
 
 // IngestTarget is where ingested batches go: the server's store (`SqliteTelemetry`), which queues them; Ingest returns
 // how many spans it queued.
-type IngestTarget interface{ Ingest(batch TelemetryBatch) int }
+type IngestTarget interface {
+	Ingest(batch TelemetryBatch) int
+}
 
 // IngestOptions is what the ingest facet takes.
 type IngestOptions struct {
