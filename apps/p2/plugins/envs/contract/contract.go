@@ -121,6 +121,8 @@ type EnvManager interface {
 	// WorkingDirectory is cwd as it resolves on environment env (`~` expanded), checked to be a directory; with
 	// create the directory is made first.
 	WorkingDirectory(ctx context.Context, env, cwd string, create bool) (string, error)
+	// ListDirectory is the folders of path (absolute or `~`-relative) on environment env, as the directory picker lists them.
+	ListDirectory(ctx context.Context, env, path string) (p2runtime.DirectoryListing, error)
 	// Connection is a pi-env connection to environment name configured as config (a sandbox: through its host), with
 	// p2's keys and known hosts. It starts at its first request; the caller closes it.
 	Connection(name string, config *chordjson.Object) *env.Connection
