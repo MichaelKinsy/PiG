@@ -72,9 +72,15 @@ func TokenOf(ctx context.Context, credentials TerminalCredentials, base *url.URL
 	return "", fmt.Errorf("terminal: no such credentials %q", credentials.Kind)
 }
 
+// serverURL is path on the server base: an absolute path replaces the base's own, as Pi's `new URL(path, url)` does (a base URL's
+// path prefix is not kept).
+func serverURL(base *url.URL, path string) *url.URL {
+	return base.ResolveReference(&url.URL{Path: path})
+}
+
 // pair pairs this device: a code shown, the approval polled for, the token returned (and saved when asked).
 func pair(ctx context.Context, credentials TerminalCredentials, base *url.URL, say func(string), client *http.Client) (string, error) {
-	asked, err := post(ctx, client, base.JoinPath("/_chord/pair"), map[string]any{"label": credentials.Label})
+	asked, err := post(ctx, client, serverURL(base, "/_chord/pair"), map[string]any{"label": credentials.Label})
 	if err != nil {
 		return "", err
 	}
@@ -94,7 +100,7 @@ func pair(ctx context.Context, credentials TerminalCredentials, base *url.URL, s
 	if !plainCode.MatchString(code) || !pollOK {
 		return "", errors.New("terminal: the server's pairing answer is malformed")
 	}
-	say(fmt.Sprintf("Pairing code %s: approve it at %s (signed in as the owner).", code, base.JoinPath("/_chord/pair/"+code)))
+	say(fmt.Sprintf("Pairing code %s: approve it at %s (signed in as the owner).", code, serverURL(base, "/_chord/pair/"+code)))
 	wait := time.NewTimer(pollInterval)
 	defer wait.Stop()
 	for {
@@ -104,7 +110,7 @@ func pair(ctx context.Context, credentials TerminalCredentials, base *url.URL, s
 		case <-ctx.Done():
 			return "", context.Cause(ctx)
 		}
-		polled, err := post(ctx, client, base.JoinPath("/_chord/pair/poll"), map[string]any{"poll": poll})
+		polled, err := post(ctx, client, serverURL(base, "/_chord/pair/poll"), map[string]any{"poll": poll})
 		if err != nil {
 			return "", err
 		}
