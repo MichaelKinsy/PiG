@@ -117,6 +117,8 @@ type usedFiles struct {
 type pluginWatcher struct {
 	state.Source
 	options watcherOptions
+	// closeFS closes the fsnotify watcher that close lets go of (a test holds it back to see that close does not wait for it).
+	closeFS func(*fsnotify.Watcher)
 	roots   []string
 	// baseDirs are the base directories (watched as trees): a source file new in one marks `base`.
 	baseDirs []string
@@ -176,6 +178,7 @@ var _ state.SourceImpl = (*pluginWatcher)(nil)
 func newPluginWatcher(options watcherOptions, batch *state.Batch) *pluginWatcher {
 	w := &pluginWatcher{
 		options:     options,
+		closeFS:     func(watcher *fsnotify.Watcher) { _ = watcher.Close() },
 		trees:       map[string]struct{}{},
 		watched:     map[string]struct{}{},
 		recorded:    map[string]struct{}{},
@@ -382,14 +385,18 @@ func (w *pluginWatcher) mark(path string) {
 	w.marksChanged()
 }
 
-// close stops watching. It does not wait for the goroutine that reads the events (join does).
+// close stops watching. It does not wait for the goroutine that reads the events or for the watcher's close (join does).
 func (w *pluginWatcher) close() {
 	w.closed = true
 	if w.fs != nil {
 		watcher := w.fs
 		w.fs = nil
-		// It ends the goroutine reading its events; nothing it sends is waited for.
-		_ = watcher.Close()
+		// Closing it ends the goroutine reading its events; nothing it sends is waited for. It runs on a goroutine of its own, which
+		// join waits for: kqueue's close removes the watch of each entry it holds one by one, which takes long on a large directory,
+		// and close runs in a section of the host, which holds the host's lock.
+		closing := w.closeFS
+		//portlint:allow golifetime join waits for it with the goroutine that reads the events
+		w.running.Go(func() { closing(watcher) })
 	}
 	clear(w.watched)
 	clear(w.baseWatched)

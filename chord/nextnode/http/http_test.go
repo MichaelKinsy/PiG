@@ -143,13 +143,13 @@ func httpExpectCollected(t *testing.T, refs []weak.Pointer[byte]) {
 
 func TestStartupFetchAnswers503BeforeLoadAtOnceThenServesTheRegistriesAreResolvedOnce(t *testing.T) {
 	server := serving(t, []plugin{{"@app/who", httpWhoami}}, servedOptions{noLoad: true})
-	// Pi's vitest default timeout is 5 s: the answer is at once (the host's Registry fails `not_ready`), not at its ready timeout.
+	// At once: the answer is not waited for (bounded well under the host's old 5 s wait).
 	started := time.Now()
 	if got := httpStatus(server, "/whoami"); got != 503 {
-		t.Fatalf("status before load = %d, want 503", got)
+		t.Fatalf("status = %d, want 503", got)
 	}
-	if took := time.Since(started); took > 5*time.Second {
-		t.Fatalf("503 after %v, want at once", took)
+	if elapsed := time.Since(started); elapsed > 5*time.Second {
+		t.Fatalf("the 503 took %v, want at once", elapsed)
 	}
 	server.load()
 	if got := fetchText(t, httpFetch(server, "/whoami")); got != "null" { //nolint:bodyclose // fetchText closes the body

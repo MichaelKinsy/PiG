@@ -108,15 +108,13 @@ const (
 	maxRequests = 8
 	// interrupt is Ctrl-C: during a prompt it ends the client, so a sandbox asking again and again can always be left (Opus E11);
 	// and three within a second always end it, whatever the sandbox does with them (Opus R2).
-	interrupt          = '\x03'
-	interruptsToEnd    = 3
-	interruptWindow    = time.Second
-	maxSocketsPayload  = 100 * 1024 * 1024
-	defaultColumns     = 80
-	defaultRows        = 24
-	eventQueue         = 256
-	socketOpen         = 1
-	socketClosedStatus = 2
+	interrupt         = '\x03'
+	interruptsToEnd   = 3
+	interruptWindow   = time.Second
+	maxSocketsPayload = 100 * 1024 * 1024
+	defaultColumns    = 80
+	defaultRows       = 24
+	eventQueue        = 256
 )
 
 // StartTerminal starts a terminal client; it fails when it cannot sign in or download, or Node is too old for the sandbox. Cancelling
@@ -569,7 +567,7 @@ func (l *Launcher) openSocket(id int) {
 		l.sandbox.Post(LauncherMessage{Kind: "socket_closed", Socket: id})
 		return
 	}
-	target := *l.base.JoinPath("/chord")
+	target := *serverURL(l.base, "/chord")
 	if target.Scheme == "https" {
 		target.Scheme = "wss"
 	} else {
@@ -651,6 +649,7 @@ func (s *linkSocket) close() {
 	if s.conn != nil {
 		_ = s.conn.Close()
 	}
+	//portlint:allow doubleclose the closed flag guards it, and only the loop closes a socket
 	close(s.out)
 }
 
@@ -871,7 +870,7 @@ func (l *Launcher) restart() {
 
 // get is the text at path on the server, signed in; at most 8 MiB, read no further.
 func (l *Launcher) get(ctx context.Context, path string) (string, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, l.base.JoinPath(path).String(), nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, serverURL(l.base, path).String(), nil)
 	if err != nil {
 		return "", err
 	}

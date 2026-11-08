@@ -2,6 +2,27 @@
   "since": "0.4.1",
   "entries": [
     {
+      "id": "BF-003af7c",
+      "title": "fix(chord/nextnode/tui): the sandbox's end reaches the loop through one method the test shares (a mutant…",
+      "symptom": "fix(chord/nextnode/tui): the sandbox's end reaches the loop through one method the test shares (a mutant without the goroutine now fails); the SIGUSR1 notes say what Go does with the signal",
+      "rootCause": "Go takes no action on SIGUSR1, so ignoring it is not observable: the ported SIGUSR1 leg shows the client survives it, and the launcher still ignores it as Pi's does.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "003af7c031",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop"
+      ]
+    },
+    {
       "id": "BF-003f6f0",
       "title": "Ctrl+U, Ctrl+K and the word-delete keys leave an open autocomplete list open, as Pi's editor does",
       "symptom": "Ctrl+U, Ctrl+K and the word-delete keys leave an open autocomplete list open, as Pi's editor does.",
@@ -2601,6 +2622,25 @@
       ]
     },
     {
+      "id": "BF-12f281b",
+      "title": "fix(chord/next/registries): drop the second NewestContribution, which the merge of fix/chord-host-tests…",
+      "symptom": "fix(chord/next/registries): drop the second NewestContribution, which the merge of fix/chord-host-tests duplicated",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "12f281b0f1",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-1356aae",
       "title": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…",
       "symptom": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture modules to the root SDK version",
@@ -4470,6 +4510,28 @@
       ],
       "tests": [
         "ai/google_uncataloged_model_test.go::TestGoogleUncatalogedModelHasTheProvidersAPIForReplay"
+      ]
+    },
+    {
+      "id": "BF-206b3d4",
+      "title": "fix(chord/nextnode): lint findings of the T11 files (gosec G204 and bodyclose annotated with their reasons…",
+      "symptom": "fix(chord/nextnode): lint findings of the T11 files (gosec G204 and bodyclose annotated with their reasons, QF1001/QF1008, the locale regexp hoisted), the terminal frame and bundle limits count UTF-16 units as Pi's length does",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "206b3d4e04",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/tui/tui_filter_test.go::FuzzFilterOutput",
+        "chord/nextnode/tui/tui_pipe_test.go::FuzzFrameReader"
       ]
     },
     {
@@ -8798,6 +8860,25 @@
       ]
     },
     {
+      "id": "BF-3902803",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "390280385f",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-390964d",
       "title": "A program that embeds the alternate-screen renderer without a `CopySelection` function no longer copies a…",
       "symptom": "A program that embeds the alternate-screen renderer without a `CopySelection` function no longer copies a selection holding a lone UTF-16 surrogate as invalid UTF-8 through its OSC 52 fallback.",
@@ -10035,6 +10116,25 @@
       ]
     },
     {
+      "id": "BF-4125218",
+      "title": "fix(chord/next/host): one UndeclaredRegistries, not two: the host's merge of fix/chord-host-tests kept the…",
+      "symptom": "fix(chord/next/host): one UndeclaredRegistries, not two: the host's merge of fix/chord-host-tests kept the exported one (follow/chord's, used by TestPlugin) and its test; the unexported copy and its duplicate test go",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4125218594",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-4163646",
       "title": "`AuthStorage` file semantics: new live-Pi oracle `TestAuthStorageFileMatchesPi`…",
       "symptom": "`AuthStorage` file semantics: new live-Pi oracle `TestAuthStorageFileMatchesPi` (`ai/auth_storage_file_oracle_test.go`; 600 auth.json files x 1-5 operations over read, list, modify and delete: absent, empty, corrupt, byte-order-marked and non-object files, `$VAR`/`${VAR}`/`!command`/credential-env key resolution, OAuth and unknown types, integer-index provider order).",
@@ -10882,6 +10982,28 @@
       "tests": []
     },
     {
+      "id": "BF-4579493",
+      "title": "The terminal's frame and bundle limits count bytes, as Pi's `Buffer.byteLength` checks do, again",
+      "symptom": "The terminal's frame and bundle limits count bytes, as Pi's `Buffer.byteLength` checks do, again.",
+      "rootCause": "Pi rejects a frame when output.length \u003e MAX_FRAME or Buffer.byteLength(output) \u003e MAX_FRAME, and a bundle by bytes; bytes are never fewer than UTF-16 units. Reverts the UTF-16 count and its test, which asserted the opposite of Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The terminal's frame and bundle limits count bytes, as Pi's `Buffer.byteLength` checks do, again.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "45794934c0",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/tui/tui_filter_test.go::TestTheFrameLimitCountsBytesAndUnitsAsPisFilterDoes"
+      ]
+    },
+    {
       "id": "BF-4599fab",
       "title": "fix(ai): an iteration's shared cancellation does not compare contexts",
       "symptom": "fix(ai): an iteration's shared cancellation does not compare contexts",
@@ -11077,6 +11199,25 @@
         "coding/extension/host/subprocess/host_builtin_tool_test.go::TestBuiltinToolDefinitionsHaveNoEmptyPromptGuidelines",
         "coding/extension/host/subprocess/host_builtin_tool_test.go::TestBuiltinToolOptionsKeepAnEmptyOperationsList"
       ]
+    },
+    {
+      "id": "BF-464b14e",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "464b14e4ff",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-46abed3",
@@ -11867,6 +12008,80 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-4a33ec6",
+      "title": "The Chord app kit gives its plugins component the web surface's assets path (`/_chord/web/assets/`), as Pi's…",
+      "symptom": "The Chord app kit gives its plugins component the web surface's assets path (`/_chord/web/assets/`), as Pi's app does: a web plugin's `import icon from \"./icon.svg?url\"` evaluated to a root-relative file name that no route served, and now to the URL the surface serves it at.",
+      "rootCause": "Ports test/node/surfaces/web.test.ts (6), react/hooks.test.ts, web/language.test.ts and the first two cases of web/page.test.ts over a Go DevTools driver (chord/nextnode/internal/browsertest); React 19.3.0 vendored with the client tree. The app gives its plugins component the web assets' public path (Pi's app.ts). The launcher holds the sandbox's frames from the moment a confirming request arrives (not once its goroutine runs) and sets its resize and signal restores on its loop.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Chord app kit gives its plugins component the web surface's assets path (`/_chord/web/assets/`), as Pi's app does: a web plugin's `import icon from \"./icon.svg?url\"` evaluated to a root-relative file name that no route served, and now to the URL the surface serves it at.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4a33ec6bf7",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_surfaces_test.go::TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
+        "chord/nextnode/app/app_surfaces_test.go::TestAppFailsToStartWhenASurfacesBaseBundleDoesNotBuildWithEverythingClosed",
+        "chord/nextnode/app/app_surfaces_test.go::TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
+        "chord/nextnode/app/app_surfaces_test.go::TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOtherCodeAnother",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceServesEachWebFacetAsAScriptThatRegistersItselfAndTheSetAsOneCombinedFileNoEval",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFilesForever",
+        "chord/nextnode/app/app_web_browser_test.go::TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme",
+        "chord/nextnode/app/app_web_browser_test.go::TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle",
+        "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount",
+        "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh",
+        "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs",
+        "chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick"
+      ]
+    },
+    {
+      "id": "BF-4a33ec6-2",
+      "title": "The Chord terminal launcher holds the sandbox's frames from the moment a request that asks the user arrives…",
+      "symptom": "The Chord terminal launcher holds the sandbox's frames from the moment a request that asks the user arrives, not once the goroutine answering it runs: a frame the sandbox wrote right after its request could be drawn over the launcher's prompt.",
+      "rootCause": "Ports test/node/surfaces/web.test.ts (6), react/hooks.test.ts, web/language.test.ts and the first two cases of web/page.test.ts over a Go DevTools driver (chord/nextnode/internal/browsertest); React 19.3.0 vendored with the client tree. The app gives its plugins component the web assets' public path (Pi's app.ts). The launcher holds the sandbox's frames from the moment a confirming request arrives (not once its goroutine runs) and sets its resize and signal restores on its loop.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Chord terminal launcher holds the sandbox's frames from the moment a request that asks the user arrives, not once the goroutine answering it runs: a frame the sandbox wrote right after its request could be drawn over the launcher's prompt. A second prompt request while one is open is refused at once (`terminal: a prompt is open`), and the launcher sets its resize and signal restores on its loop, where a finishing launcher reads them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4a33ec6bf7",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_surfaces_test.go::TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
+        "chord/nextnode/app/app_surfaces_test.go::TestAppFailsToStartWhenASurfacesBaseBundleDoesNotBuildWithEverythingClosed",
+        "chord/nextnode/app/app_surfaces_test.go::TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
+        "chord/nextnode/app/app_surfaces_test.go::TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOtherCodeAnother",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceServesEachWebFacetAsAScriptThatRegistersItselfAndTheSetAsOneCombinedFileNoEval",
+        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFilesForever",
+        "chord/nextnode/app/app_web_browser_test.go::TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme",
+        "chord/nextnode/app/app_web_browser_test.go::TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle",
+        "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount",
+        "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh",
+        "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs",
+        "chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick"
+      ]
     },
     {
       "id": "BF-4a70ed5",
@@ -21262,6 +21477,25 @@
       ]
     },
     {
+      "id": "BF-6e4cea8",
+      "title": "fix(chord/next/host): one UndeclaredRegistries, not two: the host's merge of fix/chord-host-tests kept the…",
+      "symptom": "fix(chord/next/host): one UndeclaredRegistries, not two: the host's merge of fix/chord-host-tests kept the exported one (follow/chord's, used by TestPlugin) and its test; the unexported copy and its duplicate test go",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6e4cea8606",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-6e6304d",
       "title": "fix(chord/tui): the reader's swallowed redraw panic cites Pi's TuiScope.watch try/catch",
       "symptom": "fix(chord/tui): the reader's swallowed redraw panic cites Pi's TuiScope.watch try/catch",
@@ -21543,6 +21777,27 @@
         "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry",
         "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsTheSameOne",
         "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName"
+      ]
+    },
+    {
+      "id": "BF-7008884",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "- frames.test.ts harness decodes stdin as UTF-8 (a chunk ending inside a character was mangled) - the launcher resolves server paths as Pi's new URL(path, url) does (a base URL's path prefix is dropped) - the React stores harness asserts three passing cases; the reload test waits a minute, as Pi's - the vendor script pins react, react-dom and scheduler by Pi's package-lock versions and integrity - make ci-chord-web runs the Chromium tests in the CI job that runs ci-chord-tui; CHORD_REQUIRE_CHROMIUM fails rather than skips",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "700888437c",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_web_browser_test.go::TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle"
       ]
     },
     {
@@ -30588,6 +30843,25 @@
       ]
     },
     {
+      "id": "BF-9ca3b94",
+      "title": "fix(chord/nextnode/browsertest): Close of a browser whose Start failed before its connection kills Chromium…",
+      "symptom": "fix(chord/nextnode/browsertest): Close of a browser whose Start failed before its connection kills Chromium instead of panicking",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9ca3b9445d",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9d02a48",
       "title": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where…",
       "symptom": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where it ignores `const`; literal data such as `default` and `examples` is left as written.",
@@ -30627,6 +30901,27 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-9d25f73",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "- frames.test.ts harness decodes stdin as UTF-8 (a chunk ending inside a character was mangled) - the launcher resolves server paths as Pi's new URL(path, url) does (a base URL's path prefix is dropped) - the React stores harness asserts three passing cases; the reload test waits a minute, as Pi's - the vendor script pins react, react-dom and scheduler by Pi's package-lock versions and integrity - make ci-chord-web runs the Chromium tests in the CI job that runs ci-chord-tui; CHORD_REQUIRE_CHROMIUM fails rather than skips",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9d25f73808",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_web_browser_test.go::TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle"
+      ]
     },
     {
       "id": "BF-9d4fe9c",
@@ -34276,6 +34571,28 @@
         "durable/harness/harness_idle_scopes_test.go::TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns",
         "durable/harness/harness_tasks_test.go::TestPublicationAtAdoption",
         "durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks"
+      ]
+    },
+    {
+      "id": "BF-ad88391",
+      "title": "The watcher of the plugins component closes the system watcher outside the host's lock, so a failure to watch…",
+      "symptom": "The watcher of the plugins component closes the system watcher outside the host's lock, so a failure to watch no longer holds the host while the system (kqueue: one watch per entry) is slow to close; `Plugins.Close` still waits for it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The watcher of the plugins component closes the system watcher outside the host's lock, so a failure to watch no longer holds the host while the system (kqueue: one watch per entry) is slow to close; `Plugins.Close` still waits for it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ad883911f0",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_watcher_test.go::TestTheWatcherClosesTheSystemWatcherOutsideTheHostsLockAndJoinWaitsForIt"
       ]
     },
     {
@@ -39925,6 +40242,25 @@
       ]
     },
     {
+      "id": "BF-d134159",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d134159107",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-d1785c8",
       "title": "Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of…",
       "symptom": "Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of saying \"Only one model in scope\", and cycling from outside the scope selects the first scoped model forward and the last backward instead of skipping the first (Pi #11806, D258).",
@@ -41628,6 +41964,58 @@
         "ai/oauth_credential_members_test.go::TestOAuthBuildersWriteCredentialMembersInPiOrder",
         "ai/system_one_shared_test.go::TestSystemOneSharedFailureMessages",
         "internal/codingagent/migrations_tree_oracle_test.go::TestRunMigrationsTreeMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-d8c6784",
+      "title": "The Chord terminal launcher no longer ends when the sandbox closes a link socket while it is still connecting…",
+      "symptom": "The Chord terminal launcher no longer ends when the sandbox closes a link socket while it is still connecting and then sends on it (`send on closed channel`): every state change and close of a link socket runs on the launcher's loop, a dial that finishes after the close is closed at once, and a send on a socket that is not open is dropped, as in Pi.",
+      "rootCause": "A socket closed while its dial was under way was marked open by the dial finishing, and the next send panicked on the closed channel (the loop has no recover). The dial now posts its connection to the loop, which closes it when the socket was closed meanwhile; only the loop closes out and the connection, and each dial has its own cancel. The sandbox's end callback posts from its own goroutine (a post the loop makes may end the sandbox while the queue is full), and SetRaw(true) moves into start's synchronized block, after the finished check.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Chord terminal launcher no longer ends when the sandbox closes a link socket while it is still connecting and then sends on it (`send on closed channel`): every state change and close of a link socket runs on the launcher's loop, a dial that finishes after the close is closed at once, and a send on a socket that is not open is dropped, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d8c67842e9",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestALinkSocketClosedAfterItsDialFinishedButBeforeTheLoopTookItIsClosedAndNeverOpened",
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestALinkSocketClosedDuringItsDialStaysClosedAndASendOnItIsDropped",
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestALinkSocketTheServerDropsIsEndedOnTheLoopAndASendOnItIsDropped",
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop",
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts"
+      ]
+    },
+    {
+      "id": "BF-d8c6784-2",
+      "title": "A terminal client whose sandbox stops reading its input and floods messages can be stopped again (Ctrl-C…",
+      "symptom": "A terminal client whose sandbox stops reading its input and floods messages can be stopped again (Ctrl-C, `Stop`): the sandbox's end no longer waits on the launcher's full event queue from the loop itself.",
+      "rootCause": "A socket closed while its dial was under way was marked open by the dial finishing, and the next send panicked on the closed channel (the loop has no recover). The dial now posts its connection to the loop, which closes it when the socket was closed meanwhile; only the loop closes out and the connection, and each dial has its own cancel. The sandbox's end callback posts from its own goroutine (a post the loop makes may end the sandbox while the queue is full), and SetRaw(true) moves into start's synchronized block, after the finished check.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal client whose sandbox stops reading its input and floods messages can be stopped again (Ctrl-C, `Stop`): the sandbox's end no longer waits on the launcher's full event queue from the loop itself. The terminal is no longer left in raw mode when the sandbox ends while the launcher is starting.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d8c67842e9",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestALinkSocketClosedAfterItsDialFinishedButBeforeTheLoopTookItIsClosedAndNeverOpened",
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestALinkSocketClosedDuringItsDialStaysClosedAndASendOnItIsDropped",
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestALinkSocketTheServerDropsIsEndedOnTheLoopAndASendOnItIsDropped",
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop",
+        "chord/nextnode/tui/tui_launcher_hazards_test.go::TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts"
       ]
     },
     {
@@ -46311,6 +46699,25 @@
       "tests": []
     },
     {
+      "id": "BF-ea9fc8b",
+      "title": "fix(chord/nextnode): no context.Background in the browser driver and the terminal launcher (the test's and…",
+      "symptom": "fix(chord/nextnode): no context.Background in the browser driver and the terminal launcher (the test's and the caller's context)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ea9fc8ba79",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-eaa4ed7",
       "title": "F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and…",
       "symptom": "F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and `CSI 1;\u003cmod\u003e P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5, so shortcuts bound to `f1` or `ctrl+f5` fire and `parseKey` names them.",
@@ -47073,6 +47480,25 @@
         "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventQueueUpdateRefreshesThePendingMessages",
         "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventThinkingLevelChangedRefreshesTheEditorAndFooter"
       ]
+    },
+    {
+      "id": "BF-ed4642a",
+      "title": "fix(chord/next/registries): drop the second NewestContribution, which the merge of fix/chord-host-tests…",
+      "symptom": "fix(chord/next/registries): drop the second NewestContribution, which the merge of fix/chord-host-tests duplicated",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ed4642a727",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-ed9548a",

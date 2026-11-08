@@ -3,6 +3,7 @@ package surfaces
 import (
 	"context"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 )
@@ -17,9 +18,13 @@ func TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchabl
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	output, err := exec.CommandContext(ctx, node, "--conditions=source", "--no-warnings", "--import", "./testdata/strip-register.mjs", "--test", "testdata/react_stores.test.mjs").CombinedOutput()
+	output, err := exec.CommandContext(ctx, node, "--conditions=source", "--no-warnings", "--import", "./testdata/strip-register.mjs", "--test", "--test-reporter=spec", "testdata/react_stores.test.mjs").CombinedOutput()
 	t.Logf("%s", output)
 	if err != nil {
 		t.Fatal(err)
+	}
+	// A harness that ran no test also exits 0: Pi's file has three cases.
+	if !strings.Contains(string(output), "ℹ pass 3") || !strings.Contains(string(output), "ℹ fail 0") {
+		t.Fatalf("node:test did not report 3 passing cases and none failing")
 	}
 }
