@@ -87,6 +87,7 @@ type Connection struct{ loop *loop }
 
 // KeepConnected keeps a client connected until Stop.
 func KeepConnected(options LoopOptions) *Connection {
+	//portlint:allow ctxbackground Pi's `keepConnected(options)` takes no signal: the loop's lifetime is its `stop()`, which cancels this context
 	ctx, cancel := context.WithCancel(context.Background())
 	l := &loop{options: options, env: options.Environment, ctx: ctx, cancel: cancel}
 	l.box.run(func() {
@@ -121,7 +122,8 @@ type attemptEvents struct {
 func (e attemptEvents) Opened() {
 	e.loop.box.run(func() {
 		l := e.loop
-		if l.current != e.at {
+		// A stale open: the loop stopped (its link's close is queued behind this open) or the attempt ended.
+		if l.stopped || l.current != e.at {
 			return
 		}
 		e.at.opened = true

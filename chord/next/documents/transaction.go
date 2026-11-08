@@ -132,6 +132,10 @@ type Transaction struct {
 	// persistence is when its commit reaches the store (a run state's deferred change, D8).
 	persistence CommitPersistence
 	state       txState
+	// adoptions are what its commit adopts (set at its preparation, counted when Committed asks); rows the table rows its
+	// commit's step changed.
+	adoptions []*adoption
+	rows      int64
 	// queued rejects the commit while it waits in the store's queue (cut): its caller is told at once (rule 3).
 	queued chan error
 }
@@ -477,7 +481,9 @@ func (tx *Transaction) Commit() error {
 		return err
 	}
 	var writes *txWrites
-	tx.documents.Do(func() { writes = tx.writes })
+	tx.documents.Do(func() {
+		writes = tx.writes
+	})
 	if writes == nil {
 		tx.documents.Do(func() {
 			if err = tx.adopt(adoptions); err == nil {
@@ -541,6 +547,7 @@ func (tx *Transaction) prepareCommit() ([]*adoption, error) {
 		}
 		adoptions = append(adoptions, &adoption{entry: e, prepared: prepared, retires: retires, stored: stored})
 	}
+	tx.adoptions = adoptions
 	return adoptions, nil
 }
 
@@ -560,9 +567,12 @@ func (tx *Transaction) step(chordStore *store.ChordStore, staged []store.StagedW
 			})
 			return admitted
 		},
-		Adopt: func(int64, []int64) error {
+		Adopt: func(_ int64, _ []int64, rows int) error {
 			var err error
-			tx.documents.Do(func() { err = tx.adopt(adoptions) })
+			tx.documents.Do(func() {
+				tx.rows = int64(rows)
+				err = tx.adopt(adoptions)
+			})
 			return err
 		},
 	}
@@ -634,6 +644,20 @@ func (tx *Transaction) adopt(adoptions []*adoption) error {
 		}
 		return nil
 	}, tx.ctx)
+}
+
+// Committed is what its commit adopted: its documents, their ops, its store writes and the table rows they changed (all 0
+// before it committed). A section.
+func (tx *Transaction) Committed() (documents, ops, writes, rows int64) {
+	for _, a := range tx.adoptions {
+		if a.prepared != nil {
+			ops += int64(len(a.prepared.Ops()))
+		}
+	}
+	if tx.writes != nil {
+		writes = int64(len(tx.writes.staged))
+	}
+	return int64(len(tx.adoptions)), ops, writes, tx.rows
 }
 
 // Discard aborts every draft and prepared change. A section.

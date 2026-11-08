@@ -30,7 +30,8 @@ const portsOrigin = "https://0123456789abcdef0123456789abcdef.rdtun.com"
 
 func TestPortsToolDefaultsPrivateListsPublicEndpointsFencesGuestsAndClosesOnArchive(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"share.test"}})
+	var rebuilds p2test.Rebuilds
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"share.test"}, BuildRevision: rebuilds.Revision})
 	owner := fixture.Browser()
 	must := func(err error) {
 		t.Helper()
@@ -174,6 +175,7 @@ func TestPortsToolDefaultsPrivateListsPublicEndpointsFencesGuestsAndClosesOnArch
 	}
 	call(`{"action":"open","port":5174}`, chat)
 	beforeReload := current()
+	rebuilds.Rebuild("ports")
 	_, err = fixture.Server.Reload([]string{"ports"}, p2test.Background)
 	must(err)
 	if err := p2test.Poll(func() (bool, error) { return current() != beforeReload, nil }, 5*time.Second, "the reloaded store"); err != nil {

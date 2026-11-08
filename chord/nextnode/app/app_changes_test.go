@@ -2,8 +2,12 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -16,11 +20,11 @@ import (
 )
 
 // Ports the "applies changes", "applying changes one after another" and "base code" tests of
-// packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1). Not ported: the three base-code tests that scan the server's own start
-// script (`runStart`): the Go server is this process's binary, its `Base` files are listed by the app (nothing is scanned, so there is
-// no `server_scan` report); the worker kind's built-from files (a worker's entry is an executable, not a script built by the plugins
-// component); the serialization test's `component.build`/`component.rollout` hooks (a Go Plugins has no replaceable methods: the
-// order is observed through the end state instead). The "installs" test waits for `installPlugin` in the Go plugins component (T9).
+// packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1). The base-code tests that start a server with no `base` given are in
+// app_executable_test.go; the one with a lazy optional import has no Go form (D603: an executable has no import graph). The worker
+// kind's built-from file is its entry executable (D600). The
+// serialization test holds the first build through App's `build` and `rollout` fields, where Pi replaces the component's methods.
+// The "installs" test is ported below.
 
 // untilMarks returns once the plugins' marks satisfy ok; the state's watch wakes it (no polling).
 func untilMarks(t testing.TB, app *App, what string, ok func(plugins.PluginsState) bool) {
@@ -122,34 +126,85 @@ func TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed(t *testin
 		t.Fatal(err)
 	}
 	defer served.Release()
+	build, rollout := s.app.build, s.app.rollout
+	var mu sync.Mutex
+	var events []string
+	builds := func() int {
+		n := 0
+		for _, event := range events {
+			if strings.HasPrefix(event, "build") {
+				n++
+			}
+		}
+		return n
+	}
+	built, second, gate := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	// The first build read its files, then waits: unserialized, the second would build and roll out meanwhile.
+	s.app.build = func(names []string, ctx context.Context) (*plugins.Built, error) {
+		mu.Lock()
+		n := builds() + 1
+		events = append(events, fmt.Sprintf("build %d", n))
+		mu.Unlock()
+		result, err := build(names, ctx)
+		switch n {
+		case 1:
+			close(built)
+			<-gate
+		case 2:
+			close(second)
+		}
+		return result, err
+	}
+	s.app.rollout = func(steps []plugins.RolloutStep, result *plugins.Built, ctx context.Context) (plugins.RolloutResult, error) {
+		mu.Lock()
+		events = append(events, "rollout")
+		mu.Unlock()
+		return rollout(steps, result, ctx)
+	}
 	editEcho(t, s.root, "v2")
 	untilMarks(t, s.app, "the first edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
-	var wg sync.WaitGroup
-	errs := make([]error, 2)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		_, errs[0] = s.app.ApplyChanges(background)
-	}()
+	errs := make(chan error, 2)
+	apply := func() {
+		go func() {
+			_, err := s.app.ApplyChanges(background)
+			errs <- err
+		}()
+	}
+	apply()
+	<-built
+	// Pi waits for the plugins' marks to change after this edit; here the marks do not (they hold `echo` dirty from the first edit
+	// already) and build 2 reads the files when it runs, after the first rollout, so the edit is in it whenever the watcher sees it.
 	editEcho(t, s.root, "v3")
-	_, errs[1] = s.app.ApplyChanges(background)
-	wg.Wait()
-	for i, err := range errs {
-		if err != nil {
-			t.Fatalf("ApplyChanges #%d: %v", i+1, err)
+	apply()
+	// The second waits for the first to roll out: it does not build meanwhile (Pi waits 100 ms for it to show).
+	select {
+	case <-second:
+		t.Fatal("a later applyChanges built while the earlier one had not rolled out")
+	case <-time.After(100 * time.Millisecond):
+	}
+	mu.Lock()
+	before := slices.Clone(events)
+	mu.Unlock()
+	if want := []string{"build 1"}; !slices.Equal(before, want) {
+		t.Fatalf("events = %v, want %v", before, want)
+	}
+	close(gate)
+	for range 2 {
+		if err := <-errs; err != nil {
+			t.Fatalf("ApplyChanges: %v", err)
 		}
 	}
-	// A third call builds whatever the second edit left dirty if it landed after the second build began.
-	if len(s.app.Plugins.Marks().Dirty) != 0 {
-		if _, err := s.app.ApplyChanges(background); err != nil {
-			t.Fatal(err)
-		}
+	mu.Lock()
+	after := slices.Clone(events)
+	mu.Unlock()
+	if want := []string{"build 1", "rollout", "build 2", "rollout"}; !slices.Equal(after, want) {
+		t.Fatalf("events = %v, want %v", after, want)
 	}
 	untilText(t, served, "v3")
 }
 
 // `Base` names files and directories whose change marks `base` (the app's own code changed: restart), not a rewrite with the
-// same bytes (Pi's app.test.ts; its cases for a worker kind's base files wait for the worker base, T11).
+// same bytes (Pi's app.test.ts; its case for a worker kind's base file is below).
 func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 	for _, name := range []string{"api/v1.ts", "start.ts"} {
 		t.Run(name, func(t *testing.T) {
@@ -190,4 +245,117 @@ func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 			untilMarks(t, s.app, "base", func(m plugins.PluginsState) bool { return m.Base })
 		})
 	}
+}
+
+// Pi's `marks base for ... a file a worker kind's base was built from, not for a rewrite with the same bytes`: a worker kind's base is
+// its entry executable's copy (D600), recorded with its bytes; the rewrite marks nothing, an edit marks `base`, and the app's
+// `BaseWatched` settles once the records' first comparisons ended.
+func TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes(t *testing.T) {
+	// A small program: this test starts no worker, and a rewrite of a large file is read half written by the watcher on a slow disk.
+	original, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes := []byte("#!/bin/sh\nexit 0\n")
+	entry := filepath.Join(t.TempDir(), "worker"+filepath.Ext(original))
+	if err := os.WriteFile(entry, bytes, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, func(o *AppOptions) {
+		worker := testWorker(t, project, "")
+		worker.Entry = entry
+		o.Workers = []AppWorkerKind{worker}
+	})
+	<-s.app.BaseWatched()
+	if s.app.Plugins.Marks().Base {
+		t.Fatal("base is marked at start")
+	}
+	if got := s.errors.kinds(); len(got) != 0 {
+		t.Fatalf("reported %v", got)
+	}
+	// The barrier is a plugin edit: the watcher handles events in order, so once it shows the plugin dirty it has seen the rewrite.
+	if err := replaceFile(entry, bytes); err != nil {
+		t.Fatal(err)
+	}
+	editEcho(t, s.root, "barrier")
+	untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
+	if s.app.Plugins.Marks().Base {
+		t.Fatal("base is marked by a rewrite with the same bytes")
+	}
+	if err := replaceFile(entry, append(append([]byte(nil), bytes...), '\n')); err != nil {
+		t.Fatal(err)
+	}
+	untilMarks(t, s.app, "base", func(m plugins.PluginsState) bool { return m.Base })
+}
+
+// replaceFile makes path hold data in one step (a file written beside it, renamed over it): a watcher never reads it half written.
+func replaceFile(path string, data []byte) error {
+	next := path + ".next"
+	if err := os.WriteFile(next, data, 0o755); err != nil {
+		return err
+	}
+	return os.Rename(next, path)
+}
+
+// gitRepository makes a local bare repository `<name>.git` of files, tagged tag, and returns its `file://` URL (no network).
+func gitRepository(t *testing.T, name string, files map[string]string, tag string) string {
+	t.Helper()
+	git := func(cwd string, args ...string) {
+		t.Helper()
+		command := exec.Command("git", append([]string{"-c", "user.email=test@example.com", "-c", "user.name=test"}, args...)...)
+		command.Dir = cwd
+		if out, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	work := t.TempDir()
+	git(work, "init", "--quiet")
+	for file, text := range files {
+		if err := os.WriteFile(filepath.Join(work, file), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git(work, "add", "--all")
+	git(work, "commit", "--quiet", "--message", tag)
+	git(work, "tag", tag)
+	bare := filepath.Join(t.TempDir(), name+".git")
+	git(work, "clone", "--quiet", "--bare", work, bare)
+	return "file://" + bare
+}
+
+func TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt(t *testing.T) {
+	tools := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tools, "npm.mjs"), []byte("process.exit(0);"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	url := gitRepository(t, "echo", map[string]string{"package.json": `{"name":"@bob/echo"}`, "server.ts": echoServer}, "v1")
+	s := startTestApp(t, nil, func(o *AppOptions) {
+		o.Install = plugins.InstallOptions{NpmCommand: []string{node, filepath.Join(tools, "npm.mjs")}}
+	})
+	if s.app.Plugins.Marks().Set {
+		t.Fatal("the set mark is set before the install")
+	}
+	names, err := s.app.InstallPlugin(plugins.PluginSource{Git: url, Ref: "v1"}, background)
+	if err != nil || !reflect.DeepEqual(names, []string{"@bob/echo"}) {
+		t.Fatalf("InstallPlugin = %v, %v", names, err)
+	}
+	if got := dirEntries(t, filepath.Join(s.dataDir, "plugins")); !reflect.DeepEqual(got, []string{"echo"}) {
+		t.Fatalf("the user's root = %v, want [echo]", got)
+	}
+	if !s.app.Plugins.Marks().Set {
+		t.Fatal("the set mark is not set after the install")
+	}
+	if _, err := s.app.ApplyChanges(background); err != nil {
+		t.Fatal(err)
+	}
+	served, err := s.app.Node.Get(background, echo, delta.NewJsonObject(0), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer served.Release()
+	untilText(t, served, "echo")
 }
