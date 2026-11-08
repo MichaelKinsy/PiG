@@ -106,7 +106,7 @@ func archiveStore(t *testing.T, outbox ...bool) *ChordStore {
 	var ids []int64
 	created := CommitFence{
 		Admit: func() bool { return true },
-		Adopt: func(_ int64, created []int64) error {
+		Adopt: func(_ int64, created []int64, _ int) error {
 			ids = created
 			return nil
 		},

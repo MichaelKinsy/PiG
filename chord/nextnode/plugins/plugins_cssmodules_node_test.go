@@ -174,7 +174,8 @@ func TestMappingEvaluatorReportsAModuleThatDoesNotEvaluateAndGoesOn(t *testing.T
 // evaluation, with a ctx that lives, starts another.
 func TestMappingEvaluatorEndsAnEvaluationWithItsContextAndGoesOnWithTheNext(t *testing.T) {
 	cause := errors.New("the build was cancelled")
-	evaluator := newMappingEvaluator(NodeOptions{})
+	minute := time.Minute
+	evaluator := newMappingEvaluator(NodeOptions{ReadyTimeout: &minute})
 	defer evaluator.close()
 	if _, err := evaluator.evaluate(context.Background(), `module.exports = { default: {} };`); err != nil {
 		t.Fatal(err)
@@ -184,11 +185,15 @@ func TestMappingEvaluatorEndsAnEvaluationWithItsContextAndGoesOnWithTheNext(t *t
 	if _, err := evaluator.evaluate(ended, `module.exports = { default: {} };`); !errors.Is(err, cause) {
 		t.Fatalf("err = %v, want the cause of the context", err)
 	}
-	// Cancelled while the module runs.
+	// Cancelled while the module runs: the cancellation ends it, not the (here distant) timeout.
 	running, stop := context.WithCancelCause(context.Background())
 	time.AfterFunc(200*time.Millisecond, func() { stop(cause) })
+	began := time.Now()
 	if _, err := evaluator.evaluate(running, `while (true) {}`); !errors.Is(err, cause) {
 		t.Fatalf("err = %v, want the cause of the context", err)
+	}
+	if took := time.Since(began); took > 10*time.Second {
+		t.Fatalf("the cancellation took %s to end the evaluation: only the timeout did", took)
 	}
 	if got, err := evaluator.evaluate(context.Background(), `module.exports = { default: { a: "b" } };`); err != nil || got != `{"a":"b"}` {
 		t.Fatalf("got %q, %v after the process was ended", got, err)
@@ -249,5 +254,37 @@ func TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne(t *testing.
 	evaluator.killThrough = nil
 	if got, err := evaluator.evaluate(context.Background(), `module.exports = { default: { c: "d" } };`); err != nil || got != `{"c":"d"}` {
 		t.Fatalf("got %q, %v: the late kill of the evaluation before landed on this one", got, err)
+	}
+}
+
+// A build that waits for the evaluator while another build's module runs sees its own cancellation at once, as Pi's does:
+// it does not wait for that module to end.
+func TestMappingEvaluatorACancelledBuildDoesNotWaitForTheEvaluationInFlight(t *testing.T) {
+	minute := time.Minute
+	evaluator := newMappingEvaluator(NodeOptions{ReadyTimeout: &minute})
+	defer evaluator.close()
+	holding, release := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = evaluator.evaluate(holding, `while (true) {}`)
+	}()
+	defer func() { release(); <-done }()
+	time.Sleep(300 * time.Millisecond) // the module is running
+	cause := errors.New("the waiting build was cancelled")
+	waiting, stop := context.WithCancelCause(context.Background())
+	time.AfterFunc(100*time.Millisecond, func() { stop(cause) })
+	answered := make(chan error, 1)
+	go func() {
+		_, err := evaluator.evaluate(waiting, `module.exports = { default: {} };`)
+		answered <- err
+	}()
+	select {
+	case err := <-answered:
+		if !errors.Is(err, cause) {
+			t.Fatalf("err = %v, want the cause of the waiting build's context", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("a build whose context ended kept waiting for the evaluator's lock")
 	}
 }

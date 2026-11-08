@@ -24,6 +24,8 @@ import (
 // goroutine of their own: a body holds no more than one chunk of lines and the compressor's window. A chunk is valid until
 // the next call of Next.
 //
+// Upload chunks fill by bytes (chunkBytes of encoded lines, compressed per chunk), not by line count.
+//
 // Sizes (a chunk of lines, a line's Bytes) count UTF-16 units, as Pi's `.length` does.
 
 // SyncBody is a body on the remote: its bytes in chunks, read once.
@@ -63,7 +65,8 @@ var stringLimit = MaxStringLength
 
 // RangeError is what Pi's runtime throws when a string it builds passes MaxStringLength: `RangeError: Invalid string length`.
 // Pi's `lines()` raises it out of `rest += decode(chunk)` for a line that long, and its encoder out of `pending += line`; a
-// line this port writes is bounded the same, so every line an upload writes pulls back.
+// line this port writes is bounded the same: as in Pi, a line an upload wrote pulls back, except that this decoder counts
+// a chunk's lines in `rest` at once, so a line written within one chunk of the limit may still fail to pull back.
 type RangeError struct{}
 
 func (*RangeError) Error() string { return "Invalid string length" }
@@ -108,7 +111,10 @@ type batchLines struct {
 	// units is the buffer's unfinished text in UTF-16 units, up to whole characters (Pi's `rest.length` before a chunk).
 	units int
 	// held is the bytes of the buffer past `consumed` that units counts; the rest is a character still arriving.
-	held     int
+	held int
+	// searched is the bytes of the buffer past `consumed` already searched for a newline (none found): only what a chunk
+	// added is scanned, so a line of n chunks costs n scans of one chunk, not n scans of the whole line.
+	searched int
 	number   int
 	previous int64
 	started  bool
@@ -117,12 +123,15 @@ type batchLines struct {
 
 func (lines *batchLines) Next(ctx context.Context) (BatchLine, bool, error) {
 	for !lines.finished {
-		if end := bytes.IndexByte(lines.buffer[lines.consumed:], '\n'); end >= 0 {
+		if end := bytes.IndexByte(lines.buffer[lines.consumed+lines.searched:], '\n'); end >= 0 {
+			end += lines.searched
 			text := lines.buffer[lines.consumed : lines.consumed+end]
 			lines.consumed += end + 1
+			lines.searched = 0
 			lines.number++
 			return lines.emit(text)
 		}
+		lines.searched = len(lines.buffer) - lines.consumed
 		// Keep the unfinished line, and take the next chunk.
 		if lines.consumed > 0 {
 			lines.buffer = lines.buffer[:copy(lines.buffer, lines.buffer[lines.consumed:])]

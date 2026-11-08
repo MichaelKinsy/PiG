@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/test/next/host/routines.test.ts: routines (§14), `on` (the first call with the current value,
@@ -162,6 +163,8 @@ type routinesEnv struct {
 	ref     *Reference
 	act     taskCount
 	started atomic.Int64
+	// telemetry is the host's adapter when a test records (Pi's `{ telemetry }` option).
+	telemetry *telemetry.InMemoryTelemetryContext
 }
 
 func newRoutinesEnv(t *testing.T) *routinesEnv {
@@ -192,7 +195,7 @@ func (e *routinesEnv) store(closeTimeout *time.Duration, declare func(doc *singl
 			declare(doc, self)
 			return e.implementation(self, doc), nil
 		}, ServeOptions{})
-	}, loadedOptions{Loop: e.loop, CloseTimeout: closeTimeout})
+	}, loadedOptions{Loop: e.loop, CloseTimeout: closeTimeout, Telemetry: e.telemetry})
 	e.ref = mustGet(e.t, e.host, routinesStore, jsonObject())
 }
 
@@ -205,7 +208,7 @@ func (e *routinesEnv) item(closeTimeout *time.Duration, declare func(doc *single
 			declare(doc, self)
 			return e.implementation(self, doc), nil
 		}, ServeOptions{})
-	}, loadedOptions{Loop: e.loop, CloseTimeout: closeTimeout})
+	}, loadedOptions{Loop: e.loop, CloseTimeout: closeTimeout, Telemetry: e.telemetry})
 	e.ref = mustGet(e.t, e.host, routinesItem, jsonObject("id", 1.0))
 }
 
@@ -1999,4 +2002,110 @@ func TestOnFollowsRefStateAReferenceOverALinkGoingLoadingAndLiveAgain(t *testing
 		}
 		closeHosts(t, client, server)
 	})
+}
+
+// --- routine spans (slice 9) --------------------------------------------------------------------------------------------
+
+// TestRoutineSpansTraceEachRoutineCallAsARootItsCommitsEventsOfItAThrowRoutineFailed runs `it("traces each routine call as a
+// root, its commits events of it, a throw `routine_failed`")` of packages/chord/test/next/host/routines.test.ts.
+func TestRoutineSpansTraceEachRoutineCallAsARootItsCommitsEventsOfItAThrowRoutineFailed(t *testing.T) {
+	e := newRoutinesEnv(t)
+	e.telemetry = telemetry.NewInMemoryTelemetryContext()
+	var seen []float64
+	var mu sync.Mutex
+	e.store(nil, func(doc *singletonDoc, self Self) {
+		self.On(doc.s, func(call chord.WatchCall[delta.JsonValue], _ Ctx) *Handled {
+			n, _ := call.Value.(*delta.JsonObject).Value("n").(float64)
+			mu.Lock()
+			seen = append(seen, n)
+			mu.Unlock()
+			if n == 1 {
+				return Threw(errors.New("odd"))
+			}
+			return nil
+		})
+		self.OnLive(func(ctx Ctx) *Handled {
+			if err := bumpDoc(doc, ctx); err != nil {
+				return Threw(err)
+			}
+			return nil
+		})
+	})
+	e.quiet()
+	mu.Lock()
+	if !slices.Contains(seen, 1) {
+		t.Fatalf("seen = %v, want 1 among them", seen)
+	}
+	mu.Unlock()
+	routines := spansNamed(e.telemetry, "chord.routine")
+	live := spanWhere(t, e.telemetry, "chord.routine", map[string]any{"routine": "onLive"})
+	if live.ParentID != nil {
+		t.Errorf("the onLive call's parent = %v, want a root", *live.ParentID)
+	}
+	spanAttributesAre(t, live, telemetry.SpanAttributes{
+		telemetry.Attr("chord.host", "client"), telemetry.Attr("type", "app.store"), telemetry.Attr("object", "app.store"),
+		telemetry.Attr("routine", "onLive"), telemetry.Attr("position", float64(1)), telemetry.Attr("outcome", "ok"),
+	})
+	if len(live.Events) != 1 || live.Events[0].Name != "chord.commit" {
+		t.Errorf("onLive events = %v, want [chord.commit]", live.Events)
+	}
+	var ons []telemetry.RecordedTelemetrySpan
+	for _, span := range routines {
+		if got, _ := span.Attributes.Get("routine"); got == "on" {
+			ons = append(ons, span)
+		}
+	}
+	var failed *telemetry.RecordedTelemetrySpan
+	for index := range ons {
+		if ons[index].Status.Status == telemetry.SpanStatusCodeError {
+			failed = &ons[index]
+			break
+		}
+	}
+	if failed == nil {
+		t.Fatalf("no on call ended in error among %d", len(ons))
+	}
+	if outcome, _ := failed.Attributes.Get("outcome"); outcome != "error" {
+		t.Errorf("failed call outcome = %v, want error", outcome)
+	}
+	if failed.Status.Error == nil || failed.Status.Error.Name != "routine_failed" || failed.Status.Error.Message != "odd" {
+		t.Errorf("failed call status = %+v, want routine_failed: odd", failed.Status.Error)
+	}
+	// Its backoff (review L7), and the commit that changed its source: the `onLive` call's.
+	if len(failed.Events) != 1 || failed.Events[0].Name != "chord.retry" {
+		t.Fatalf("failed call events = %v, want one chord.retry", failed.Events)
+	}
+	if backoff, _ := failed.Events[0].Attributes.Get("backoff"); backoff != float64(1000) {
+		t.Errorf("backoff = %v, want 1000", backoff)
+	}
+	if !linksTo(*failed, live) {
+		t.Errorf("failed call links %v, want the onLive call", linksOf(*failed))
+	}
+	// The first call (the current value) has no trigger.
+	if links := linksOf(ons[0]); len(links) != 0 {
+		t.Errorf("first call links = %v, want none", links)
+	}
+	e.close()
+}
+
+// TestRoutineSpansLinkACallToTheMethodSpanWhoseCommitChangedItsSource runs `it("links a call to the method span whose commit
+// changed its source (review L7)")`.
+func TestRoutineSpansLinkACallToTheMethodSpanWhoseCommitChangedItsSource(t *testing.T) {
+	e := newRoutinesEnv(t)
+	e.telemetry = telemetry.NewInMemoryTelemetryContext()
+	e.store(nil, func(doc *singletonDoc, self Self) {
+		self.On(doc.s, func(chord.WatchCall[delta.JsonValue], Ctx) *Handled { return nil })
+	})
+	e.quiet()
+	tracedUnder(t, e.telemetry, "request", func(ctx context.Context) {
+		_, err := e.ref.Call("bump", nil, ctx)
+		must(t, err)
+	})
+	e.quiet()
+	bumped := spanWhere(t, e.telemetry, "chord.method", map[string]any{"member": "bump"})
+	calls := spansNamed(e.telemetry, "chord.routine")
+	if len(calls) != 2 || len(linksOf(calls[0])) != 0 || !linksTo(calls[1], bumped) {
+		t.Fatalf("routine calls' links = %v, want [[] [bump's span]]", calls)
+	}
+	e.close()
 }
