@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -71,17 +70,7 @@ func TestLocationToolsMainAgentsListAndMoveSubagentsArePlacedAndMoveOnlyWithTheT
 		t.Helper()
 		before := len(everyResult(f.until(target.Member("view"), func(v delta.JsonValue) bool { return v != nil }), tool))
 		serial++
-		// A move's fence (ErrRelocating) lifts when the worker's relocation returns, which is after the commit the views show:
-		// admitted again within a short time, as Pi's relocate.test.ts waits for it (Pi's one loop lifts it before a
-		// client can observe the commit).
-		send := delta.JsonObjectOf("text", message, "requestId", "locations-"+strconv.Itoa(serial))
-		if err := p2test.Poll(func() (bool, error) {
-			_, err := target.Call("send", send, p2test.Background)
-			if err != nil && strings.Contains(err.Error(), p2runtime.ErrRelocating.Error()) {
-				return false, nil
-			}
-			return err == nil, err
-		}, 10*time.Second, "the session to admit a message after its move"); err != nil {
+		if _, err := target.Call("send", delta.JsonObjectOf("text", message, "requestId", "locations-"+strconv.Itoa(serial)), p2test.Background); err != nil {
 			t.Fatal(err)
 		}
 		view := f.until(target.Member("view"), func(v delta.JsonValue) bool { return len(everyResult(v, tool)) > before && idle(v) }, 30*time.Second)
