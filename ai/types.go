@@ -653,6 +653,20 @@ const (
 	SessionAffinityOpenRouter SessionAffinityFormat = "openrouter"
 )
 
+// PromptCacheKeyMode controls the prompt_cache_key request field on OpenAI-compatible APIs (types.ts PromptCacheKeyMode).
+// Empty string means "auto".
+type PromptCacheKeyMode string
+
+const (
+	// PromptCacheKeyAuto keeps each API's default: Completions sends the key to api.openai.com or with long cache retention
+	// when the provider supports it; Responses sends it whenever caching is active.
+	PromptCacheKeyAuto PromptCacheKeyMode = "auto"
+	// PromptCacheKeyEnabled sends the key whenever caching is active, for compatible proxies.
+	PromptCacheKeyEnabled PromptCacheKeyMode = "enabled"
+	// PromptCacheKeyDisabled never sends the key.
+	PromptCacheKeyDisabled PromptCacheKeyMode = "disabled"
+)
+
 // ThinkingLevel is the reasoning effort a request can ask for (types.ts ThinkingLevel). It has no "off": an omitted level means no reasoning request.
 type ThinkingLevel string
 
@@ -887,6 +901,8 @@ type StreamOptions struct {
 	CacheRetention CacheRetention
 	// SessionID is passed to the provider for prompt caching (OpenAI prompt_cache_key). When non-empty and the provider supports it, repeated calls with the same session ID can reuse cached prompt processing. Mirrors upstream openai-completions.ts:449.
 	SessionID string
+	// DisableContinuation keeps the request from using or recording server-side continuation state, such as Anthropic message threads. Set it for replays such as cache warming, which must not replace the state of the real conversation. Providers that keep no continuation state ignore it.
+	DisableContinuation bool
 	// ToolChoice selects provider-neutral automatic/no-tool behavior (a ToolChoice or its string) or a
 	// provider-specific choice object. Anthropic and Bedrock also accept "any" and
 	// {"type":"tool","name":...}.

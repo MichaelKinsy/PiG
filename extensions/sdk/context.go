@@ -98,7 +98,7 @@ type RemoteOverlayOptions struct {
 	// position and size. Nil leaves them to the host's defaults.
 	OverlayOptions *OverlayOptions `json:"overlayOptions,omitempty"`
 	// Blocked is upstream ui.custom()'s blocked option: while an inline component (Overlay false) is visible, the terminal's program
-	// status reports pi as blocked on it. An overlay ignores it.
+	// status reports pi as blocked on it. An overlay reports it until it ends, also while hidden with SetHidden.
 	Blocked *RemoteOverlayBlocked `json:"blocked,omitempty"`
 	// OnHandle is upstream ui.custom()'s onHandle: it receives the mounted overlay's [OverlayHandle] (Overlay must be true). It stays in
 	// this process.

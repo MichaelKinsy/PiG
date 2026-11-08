@@ -47,7 +47,7 @@ func TestOAuthProviderListMatchesUpstreamAccountProviderNames(t *testing.T) {
 			t.Errorf("%s picker name = %q, want the catalog provider name %q", id, got.Name, want)
 		}
 	}
-	for id, want := range map[string]string{"openai": "OpenAI", "openai-codex": "OpenAI Codex (legacy)", "meta": "Meta"} {
+	for id, want := range map[string]string{"openai": "OpenAI", "openai-codex": "OpenAI Codex", "meta": "Meta"} {
 		if got, ok := findOAuthProvider(providers, id); !ok || got.Name != want {
 			t.Errorf("%s picker entry = %+v (found %v), want name %q", id, got, ok, want)
 		}

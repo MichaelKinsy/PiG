@@ -6,7 +6,7 @@ JSON Schema builders and validation without code generation, a Go port of Pi's `
 - Builders return plain JSON Schema objects.
 - Errors are JSON Pointer paths. A missing or unknown field is reported at the field. The errors, their order and their messages equal Pi's (`TestErrorsMatchPi`).
 - A schema is read, never modified.
-- `Check` is the fast path: a boolean, no allocation for a schema without `pattern` or `format`. `Errors` explains a failure and returns nothing for a valid value. It is built on the first failure and kept.
+- `Check` is the fast path: a boolean, no allocation for a schema without `pattern` or `format`. `Errors` explains a failure and returns nothing for a valid value. It is built on the first failure and kept. `Validate` combines the two without changing the value: `ParseResult{OK: true, Value: value}` or `ParseResult{Errors: ...}`; every validator has it, with or without coercion.
 - Format checks are an optional import (`schema/formats`; every format 2020-12 defines, plus `url` and `json-pointer-uri-fragment`, which TypeBox and ajv-formats also check); without them `format` is an annotation, as 2020-12 specifies.
 - `CompileCoercing` adds `Coerce` and `Parse` for loosely typed input such as a model's tool call arguments: the results equal Pi's (`TestCoerceMatchesPi`, Pi's `coerce.test.ts` and TypeBox `Value.Convert` cases), copy-on-write, and no allocation for a value that needs no change.
 
@@ -38,11 +38,11 @@ JSON data is `nil`, `bool`, `float64` (every Go numeric kind reads as a number),
 
 `*Object` keeps JavaScript's property order, so builders and `Errors` order fields as Pi does. A Go map has no order; its keys are read in own-key order (array-index keys ascending, then the rest ascending).
 
-Strings are UTF-8; a lone UTF-16 surrogate is held as WTF-8, as `internal/jsstring` holds it, and counts as one code point, matches `.` in a pattern and is escaped as `\\uD800` in messages, as in JavaScript. A Go value has no `undefined`: an absent member is absent.
+Strings are UTF-8; a lone UTF-16 surrogate is held as WTF-8, as `internal/jsstring` holds it, and counts as one code point, matches `.` in a pattern and is escaped as `\\uD800` in messages, as in JavaScript. A Go value has no `undefined`: an absent member is absent (so Pi's required-property-set-to-`undefined` rule has no Go case). A `number` is finite: `NaN` and the infinities, which only a value built in code can be, are not numbers, with or without bounds, and an explanation names them `NaN`, `Infinity` or `-Infinity`.
 
 ### Builders
 
-`Str`, `Num`, `Int`, `Bool`, `Nul`, `Unknown`, `Lit`, `OneOf`, `Obj` (with `Prop`, `Opt`, `Open`), `Arr`, `Tuple`, `Map`, `Union`, `Nullable` and `Bytes` return the same JSON Schema as Pi's builders, member order included. Options are applied in call order, as the members of the options object Pi's builders spread are, so `Str(Description("d"), MinLength(1))` and `Str(MinLength(1), Description("d"))` write their members in that order. Each builder takes the options that fit its type, and a misplaced option does not compile (`Str(MinItems(1))`, `Num(Open())`):
+`Str`, `Num`, `Int`, `Bool`, `Nul`, `Unknown`, `Lit`, `OneOf`, `Obj` (with `Prop`, `Opt`, `Open`), `Arr`, `Tuple`, `Map`, `Union`, `Nullable`, `Bytes` and `Recursive` return the same JSON Schema as Pi's builders, member order included. Options are applied in call order, as the members of the options object Pi's builders spread are, so `Str(Description("d"), MinLength(1))` and `Str(MinLength(1), Description("d"))` write their members in that order. Each builder takes the options that fit its type, and a misplaced option does not compile (`Str(MinItems(1))`, `Num(Open())`):
 
 | option | builders |
 |---|---|
@@ -55,7 +55,9 @@ Strings are UTF-8; a lone UTF-16 surrogate is held as WTF-8, as `internal/jsstri
 
 A `Default` is an annotation; validation never inserts it. `Obj` takes its properties as a `Properties` slice in declaration order; its `properties` and `required` follow JavaScript's own-key order (array-index names first), as Pi's `obj()` reads `Object.entries`.
 
-The static types of Pi's builders (`Static<S>`) are TypeScript compile-time types and have no Go form.
+`Recursive(id, func(self Schema) Schema)` builds a schema that contains itself (a tree): `self` is `{"$ref": id}`, the result is the built schema with `$id` set to `id`, which must be unique among the recursive schemas within one schema. `Equal(a, b)` is JSON equality as `const`, `enum` and `uniqueItems` compare.
+
+The static types of Pi's builders (`Static<S>`), `unsafe<T>()` (it only types a schema) and the TypeBox `Enum`, `Tuple`, `BigInt` and `Undefined` static types are TypeScript compile-time types and have no Go form. `bigint()` and the `bigint` and `undefined` types need JavaScript values Go does not have; a schema `{"type":"bigint"}` compiles and matches no Go value.
 
 ### Coercion
 
