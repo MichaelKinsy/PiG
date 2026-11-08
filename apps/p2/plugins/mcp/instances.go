@@ -476,9 +476,9 @@ func (c *connection) begin() *connState {
 		return nil
 	}
 	c.state = opening
-	previous := c.failure
+	c.status = "starting"
 	c.mu.Unlock()
-	c.show("starting", previous)
+	c.changed()
 	return opening
 }
 
@@ -553,8 +553,10 @@ func (c *connection) initialize(ctx context.Context, opening *connState, opened 
 	}
 	c.state = &connState{kind: stateConnected, client: client, since: time.Now(), cancel: state.cancel}
 	c.tools = toolsOf(tools)
+	// The status changes with the state, in one step: a restart between them would be shown over.
+	c.status, c.failure = "connected", nil
 	c.mu.Unlock()
-	c.show("connected", nil)
+	c.changed()
 }
 
 // failed: a connect failed: wait for a sign-in (an OAuth server without usable tokens), stay failed (a daemon too old), or try
@@ -564,16 +566,18 @@ func (c *connection) failed(err error, transport pimcp.Transport) {
 	if c.needsSignIn(err) {
 		c.mu.Lock()
 		c.state = &connState{kind: stateIdle}
+		c.status, c.failure = "sign-in", signInNeeded
 		c.mu.Unlock()
-		c.show("sign-in", signInNeeded)
+		c.changed()
 		return
 	}
 	var tooOld *DaemonTooOldError
 	if errors.As(err, &tooOld) {
 		c.mu.Lock()
 		c.state = &connState{kind: stateIdle}
+		c.status, c.failure = "failed", &failure{message: tooOld.Error()}
 		c.mu.Unlock()
-		c.show("failed", &failure{message: tooOld.Error()})
+		c.changed()
 		return
 	}
 	c.show("failed", failureOf(err, transport))
