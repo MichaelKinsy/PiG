@@ -4009,27 +4009,3 @@ Call-site markers: `chord/next/store/live_query.go`, `chord/next/host/host_attem
 Evidence: `TestLiveQuery*` (`chord/next/host/host_live_query_test.go`), `TestQueryRefreshAdoptsItsLastApplicationsRunsOnly...` (`chord/next/store/live_query_test.go`).
 
 Parity allowance: Go limits are int64: Pi's fractional and absent limits cannot be written.
-
-## D432 Sync decodes no log line longer than 32 MiB
-
-What: `chord/sync` bounds one line of a batch body when it is decoded: `MaxLineBytes` (32 MiB). A body with a longer line fails with a `LogFormatError` ("Log line N is longer than ...") before the line is held. Pi's `decodeBatchLines` holds a line up to what its runtime's string can hold, so it fails too, but far later (below).
-
-Why: the sync client's contract is bounded memory (an upload ends a batch at 8 MiB, a pull applies about 4 MiB at a time), and a remote's body is untrusted input: without a bound a single line grows the buffer until the body ends. A line this long cannot come from `EncodeLogLine` of a store that fits its documents in memory; the largest commit Pi writes is a batch of its own (8 MiB), so the bound is four times that.
-
-Pi's own limit (measured 2026-11-08, Node v24.19.0, Pi's `lines()` from `packages/chord/src/sync/batch.ts` at c23b9ec1 copied verbatim and fed one 64 KiB chunk at a time): a 100 MiB line decodes (peak RSS 559 MiB; Bun 1.3.11, 1173 MiB); a 600 MiB line throws `RangeError: Invalid string length` out of the `rest += decode(chunk)` (V8's `MAX_STRING_LENGTH` is 536870888 characters), after the process grew to 3.6 GiB RSS. The failure is a `RangeError` where this port returns a `LogFormatError`, and it starts about 16 times later, so the bound is not the same failure: lines between 32 MiB and about 512 MiB decode in Pi and are refused here.
-
-Pi bug: a body line has no bound but the string limit of the runtime; a remote's body can make a sync hold about 0.5 GiB for one line before it fails with a bare `RangeError`.
-
-Scope: `chord/sync` (`batch.go`: `batchLines.Next`, `emit`).
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
-
-SCRUTINIZED:approved
-
-Remove when: Pi bounds a log line or the owner prefers the unbounded form.
-
-Call-site markers: `chord/sync/batch.go`.
-
-Evidence: `TestBatchBodies` "refuse a line past the bound a body holds" (`chord/sync/lines_test.go`).
-
-Parity allowance: none.
