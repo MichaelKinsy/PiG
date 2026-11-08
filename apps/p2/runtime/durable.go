@@ -42,7 +42,7 @@ type P2Tool struct {
 }
 
 // P2Extension is a Durable extension whose tools declare their requirements: Extension holds everything but the tools
-// (its own Tools are left out), Tools are the extension's tools.
+// (its own Tools are ignored: the registry replaces them with Tools, guarded), Tools are the extension's tools.
 type P2Extension struct {
 	Extension *durable.Extension
 	Tools     []P2Tool

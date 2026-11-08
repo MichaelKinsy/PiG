@@ -34,6 +34,8 @@ type SectionOwner interface {
 	WritableOwner
 	// Do runs work as one section of the owner's loop.
 	Do(work func())
+	// OnLoop reports whether the caller is running a section of the owner's loop already: Set then needs no new one.
+	OnLoop() bool
 }
 
 // WritableSource is a writable: its value, set by its owner's code, delivered through the host's batch. It is a Writable;
@@ -45,14 +47,15 @@ type WritableSource[T any] struct {
 	owner WritableOwner
 	ended error
 	// do is the owner's loop, fixed at construction (nil: the owner has none, and the caller is in a section).
-	do func(work func())
+	do     func(work func())
+	onLoop func() bool
 }
 
 // NewWritableSource returns a writable holding initial, owned by owner, on batch.
 func NewWritableSource[T any](initial T, owner WritableOwner, batch *Batch) *WritableSource[T] {
 	w := &WritableSource[T]{value: initial, owner: owner}
 	if sections, ok := owner.(SectionOwner); ok {
-		w.do = sections.Do
+		w.do, w.onLoop = sections.Do, sections.OnLoop
 	}
 	w.Init(batch, w)
 	return w
@@ -63,12 +66,17 @@ func (w *WritableSource[T]) Value() T { return w.value }
 
 // Set sets the value, as Writable.Set says. After the attempt ended it returns the error the attempt ended with, also for
 // the value it has.
-func (w *WritableSource[T]) Set(value T) (err error) {
-	if w.do != nil {
-		w.do(func() { err = w.set(value) })
-		return err
+func (w *WritableSource[T]) Set(value T) error {
+	if w.do != nil && !w.onLoop() {
+		return w.setInSection(value)
 	}
 	return w.set(value)
+}
+
+// setInSection enters a section of the owner's loop for the Set (apart from Set, so the closure is made only here).
+func (w *WritableSource[T]) setInSection(value T) (err error) {
+	w.do(func() { err = w.set(value) })
+	return err
 }
 
 func (w *WritableSource[T]) set(value T) error {
