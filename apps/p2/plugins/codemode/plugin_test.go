@@ -32,24 +32,16 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 	extension := func() *p2runtime.P2Extension {
 		value, err := registryCurrent(fixture.Host, p2runtime.Extensions.Registry)
 		if err != nil {
-			t.Logf("registry: %v", err)
+			t.Logf("table: %v", err)
 			return nil
 		}
-		table, ok := value.(*p2runtime.KeyedTable[*p2runtime.P2Extension])
-		if !ok {
-			return nil
-		}
-		found, _ := table.Get("codemode")
+		found, _ = table.Get("codemode")
 		return found
 	}
 	switchIs := func(want bool) func() (bool, error) {
 		return func() (bool, error) {
 			value, err := registryCurrent(fixture.Host, p2runtime.ExtensionSwitches.Registry)
 			if err != nil {
-				return false, nil
-			}
-			table, ok := value.(*p2runtime.KeyedTable[*bool])
-			if !ok {
 				return false, nil
 			}
 			on, _ := table.Get("codemode")
