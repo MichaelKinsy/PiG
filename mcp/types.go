@@ -124,12 +124,12 @@ type ToolAnnotations struct {
 // UnmarshalJSON reads the annotations and drops hints that are not booleans.
 func (a *ToolAnnotations) UnmarshalJSON(data []byte) error {
 	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
+	if err := unmarshalJSON(data, &fields); err != nil {
 		return err
 	}
 	*a = ToolAnnotations{}
 	var title string
-	if json.Unmarshal(fields["title"], &title) == nil {
+	if unmarshalJSON(fields["title"], &title) == nil {
 		a.Title = title
 	}
 	hint := func(name string) *bool {
@@ -193,7 +193,7 @@ func (t *Tool) UnmarshalJSON(data []byte) error {
 		plain
 		Title *string `json:"title"`
 	}
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if err := unmarshalJSON(data, &wire); err != nil {
 		return err
 	}
 	*t = Tool(wire.plain)

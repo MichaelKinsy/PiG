@@ -69,13 +69,13 @@ func (id *JSONRPCID) UnmarshalJSON(data []byte) error {
 	switch data[0] {
 	case '"':
 		var s string
-		if err := json.Unmarshal(data, &s); err != nil {
+		if err := unmarshalJSON(data, &s); err != nil {
 			return err
 		}
 		*id = StringID(s)
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		var n float64
-		if err := json.Unmarshal(data, &n); err != nil {
+		if err := unmarshalJSON(data, &n); err != nil {
 			return err
 		}
 		*id = NumberID(n)
@@ -247,13 +247,13 @@ func (m JSONRPCMessage) MarshalJSON() ([]byte, error) {
 func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 	invalid := func() error { return NewMcpError(JSONRPCInvalidRequest, "Invalid JSON-RPC message", nil) }
 	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil || fields == nil {
+	if err := unmarshalJSON(data, &fields); err != nil || fields == nil {
 		return JSONRPCMessage{}, invalid()
 	}
 	var m JSONRPCMessage
 	if raw, ok := fields["jsonrpc"]; ok {
 		var v string
-		if json.Unmarshal(raw, &v) == nil {
+		if unmarshalJSON(raw, &v) == nil {
 			m.JSONRPC = v
 		}
 	}
@@ -268,7 +268,7 @@ func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 	}
 	if raw, ok := fields["method"]; ok {
 		var v string
-		if len(raw) > 0 && raw[0] == '"' && json.Unmarshal(raw, &v) == nil {
+		if len(raw) > 0 && raw[0] == '"' && unmarshalJSON(raw, &v) == nil {
 			m.Method, m.hasMethod = v, true
 		}
 	}
@@ -280,10 +280,10 @@ func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 		m.hasError = true
 		var e JSONRPCErrorObject
 		var obj map[string]json.RawMessage
-		if json.Unmarshal(raw, &obj) == nil && obj != nil {
+		if unmarshalJSON(raw, &obj) == nil && obj != nil {
 			var message string
 			code, isNumber := jsonNumber(obj["code"])
-			if isNumber && isJSONString(obj["message"]) && json.Unmarshal(obj["message"], &message) == nil {
+			if isNumber && isJSONString(obj["message"]) && unmarshalJSON(obj["message"], &message) == nil {
 				e = JSONRPCErrorObject{Code: errorCode(code), Message: message, Data: obj["data"]}
 				m.Error = &e
 			}
