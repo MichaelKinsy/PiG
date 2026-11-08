@@ -83,7 +83,7 @@ var echoSocket = &HttpSocket{Handle: func(socket *WebSocketHandle, request HttpR
 
 // echo is the plugin contributing echoSocket under `/echo/:room`, frames of at most 64 bytes.
 func echo() plugin {
-	return plugin{"@app/echo", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo/:room", Handler: echoSocket}}, MaxPayload: 64})}
+	return plugin{"@app/echo", contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/echo/:room", echoSocket)}, MaxPayload: 64})}
 }
 
 var owner = map[string]string{"x-principal": "owner"}
@@ -262,7 +262,7 @@ func TestPluginSocketsAnOversizedFrameClosesOnlyThatSocket1009NeverTheServer(t *
 
 func TestPluginSocketsAThrowingHandlerIsReportedSocketFailedAndClosesItsSocket1011(t *testing.T) {
 	server := serving(t, []plugin{{"@app/bad", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
-		Pattern: "/bad", Handler: &HttpSocket{Handle: func(*WebSocketHandle, HttpRequest, host.Ctx) error { return errors.New("handler") }},
+		Pattern: "/bad", Socket: HttpSocketOptions{Handler: &HttpSocket{Handle: func(*WebSocketHandle, HttpRequest, host.Ctx) error { return errors.New("handler") }}},
 	}}})}}, servedOptions{})
 	socket := mustSocketTo(t, server.port, "/bad", owner)
 	if event := receive(t, socket.closed, "the close"); event.Code != 1011 {
@@ -331,7 +331,7 @@ func hostsTunnel(name string, sockets []HttpSocketEntry) tunnel {
 // Q6.
 func TestRevocationKeepsAWritableContributionsOwnSocketsWhenOnlyItsHostsChange(t *testing.T) {
 	handler := noopSocket()
-	tn := hostsTunnel("app.tunnel", []HttpSocketEntry{{Pattern: "/own", Handler: handler}})
+	tn := hostsTunnel("app.tunnel", []HttpSocketEntry{SocketFunc("/own", handler)})
 	server := serving(t, []plugin{{"@app/tunnel", tn.facet}}, servedOptions{})
 	socket := mustSocketTo(t, server.port, "/own", owner)
 	tn.name(t, server, "t.example.com")
@@ -344,11 +344,11 @@ func TestRevocationKeepsAWritableContributionsOwnSocketsWhenOnlyItsHostsChange(t
 
 func TestRevocationTerminatesAPluginsSocketsAtOnceWhenAReloadRemovesItsContributionSealingTheirScopesOthersStayQ6(t *testing.T) {
 	scope := make(chan host.Ctx, 1)
-	removed := contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/removed", Handler: &HttpSocket{Handle: func(_ *WebSocketHandle, _ HttpRequest, ctx host.Ctx) error {
+	removed := contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/removed", Socket: HttpSocketOptions{Handler: &HttpSocket{Handle: func(_ *WebSocketHandle, _ HttpRequest, ctx host.Ctx) error {
 		scope <- ctx
 		return nil
-	}}}}})
-	other := contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/other", Handler: noopSocket()}}})
+	}}}}}})
+	other := contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/other", noopSocket())}})
 	server := serving(t, []plugin{{"@app/removed", removed}, {"@app/other", other}}, servedOptions{})
 	doomed := mustSocketTo(t, server.port, "/removed", owner)
 	kept := mustSocketTo(t, server.port, "/other", owner)
@@ -437,10 +437,10 @@ func frame(text string) []byte {
 func TestRevocationARawPeerWhoseHostOrContributionLeftCanSendNothingMoreToTheHandler(t *testing.T) {
 	var calls collector[string]
 	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
-		Pattern: "/echo", Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
+		Pattern: "/echo", Socket: HttpSocketOptions{Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
 			socket.OnMessage(func(message Message) { calls.add(message.Text()) })
 			return nil
-		}},
+		}}},
 	}}})}
 	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
 	server := serving(t, []plugin{sockets, tunnel}, servedOptions{})
@@ -467,9 +467,9 @@ func TestRevocationARawPeerWhoseHostOrContributionLeftCanSendNothingMoreToTheHan
 func TestRevocationChecksAnUpgradeAgainAfterAuthenticatingOneWhoseHostLeftMeanwhileIsRefused(t *testing.T) {
 	gate := newGate()
 	started := newGate()
-	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/echo", noopSocket())}})}
 	server := serving(t, []plugin{sockets, {"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}}, servedOptions{
-		authenticate: func(_ HttpRequest, ctx context.Context) (data.Principal, error) {
+		authenticate: func(ctx context.Context, _ HttpRequest) (data.Principal, error) {
 			started.resolve()
 			if err := gate.wait(ctx); err != nil {
 				return nil, err
@@ -496,8 +496,8 @@ func TestCancellationAbortsAnUpgradesAuthenticationWhenItsClient(t *testing.T) {
 	for _, how := range []string{"ends its connection", "resets its connection"} {
 		t.Run(how, func(t *testing.T) {
 			entered := make(chan context.Context, 1)
-			server := serving(t, []plugin{{"@app/s", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/s", Handler: noopSocket()}}})}}, servedOptions{
-				authenticate: func(_ HttpRequest, ctx context.Context) (data.Principal, error) {
+			server := serving(t, []plugin{{"@app/s", contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/s", noopSocket())}})}}, servedOptions{
+				authenticate: func(ctx context.Context, _ HttpRequest) (data.Principal, error) {
 					entered <- ctx
 					<-ctx.Done()
 					return nil, nil
@@ -527,10 +527,10 @@ func TestCancellationAbortsAnUpgradesAuthenticationWhenItsClient(t *testing.T) {
 func TestHeartbeatPingsAPluginSocketAfter15sOfSilenceAndTerminatesIt15sLaterWithoutAnAnswer(t *testing.T) {
 	clock := newFakeClock()
 	server := serving(t, []plugin{{"@app/quiet", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
-		Pattern: "/quiet", Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
+		Pattern: "/quiet", Socket: HttpSocketOptions{Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
 			socket.OnMessage(func(message Message) { socket.Send(message.Data, false, nil) })
 			return nil
-		}},
+		}}},
 	}}})}}, servedOptions{after: clock.afterFunc})
 	// The silent client never answers a ping (`autoPong: false`).
 	silent, err := dialSocket(server.port, "/quiet", owner, 0)
@@ -577,7 +577,7 @@ func TestHeartbeatPingsAPluginSocketAfter15sOfSilenceAndTerminatesIt15sLaterWith
 
 // Sol's build review: close waited on a peer that never acknowledged its close frame.
 func TestCloseTerminatesASocketThatNeverAcknowledgesItsCloseAtCloseTimeout(t *testing.T) {
-	server := serving(t, []plugin{{"@app/s", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/s", Handler: noopSocket()}}})}}, servedOptions{closeTimeout: 20 * time.Millisecond})
+	server := serving(t, []plugin{{"@app/s", contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/s", noopSocket())}})}}, servedOptions{closeTimeout: 20 * time.Millisecond})
 	raw := rawSocket(t, server.port, "127.0.0.1:"+strconv.Itoa(server.port), "/s")
 	defer func() { _ = raw.Close() }()
 	started := time.Now()
@@ -650,12 +650,12 @@ func TestGCKeepsNothingOfAClosedPluginSocket(t *testing.T) {
 	var mu sync.Mutex
 	var refs []weak.Pointer[byte]
 	server := serving(t, []plugin{{"@app/kept", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
-		Pattern: "/kept", Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, request HttpRequest, ctx host.Ctx) error {
+		Pattern: "/kept", Socket: HttpSocketOptions{Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, request HttpRequest, ctx host.Ctx) error {
 			mu.Lock()
 			refs = append(refs, weakOf(socket), weakOf(request), weakOf(ctx))
 			mu.Unlock()
 			return nil
-		}},
+		}}},
 	}}})}}, servedOptions{})
 	func() {
 		socket := mustSocketTo(t, server.port, "/kept", owner)
@@ -691,8 +691,8 @@ func TestAPublicSocketIsAcceptedWithoutAPrincipalAndRunsAnonymousAnotherIsRefuse
 		return nil
 	}}
 	server := serving(t, []plugin{{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{
-		{Pattern: "/open", Handler: handler, Public: true},
-		{Pattern: "/closed", Handler: noopSocket()},
+		{Pattern: "/open", Socket: HttpSocketOptions{Handler: handler, Public: true}},
+		SocketFunc("/closed", noopSocket()),
 	}})}}, servedOptions{})
 	mustRefused(t, server.port, "/closed", nil, 401)
 	socket := mustSocketTo(t, server.port, "/open", nil)

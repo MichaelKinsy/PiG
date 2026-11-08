@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -429,7 +430,12 @@ func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
 }
 
 // State is per address key its WorkerState; no entry when stopped or never started. A JSON watchable.
-func (c *Workers) State() state.SourceHandle { return c.state }
+func (c *Workers) State() chord.Watchable[delta.JsonValue] { return host.Expose(c.state) }
+
+// Inputs are the files its worker base was built from, with their bytes' hashes: the app's base code for its workers (Pi's
+// `inputs`, `base.inputs` of the base `createWorkers` built before it returned). Go builds the base lazily (Build): it is built
+// here when nothing did, and none when the build failed (Pi's `createWorkers` rejects then).
+func (c *Workers) Inputs() plugins.BaseInputs { return c.Build().Inputs }
 
 // isClosing reports whether `Close` was called.
 func (c *Workers) isClosing() bool { return c.closingCtx.Err() != nil }

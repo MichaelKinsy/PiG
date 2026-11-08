@@ -796,7 +796,9 @@ func forkedFrom(f *fleet) string {
 }
 
 // TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith runs `it("a worker started after an
-// edit of the entry's imported source runs the code the base was built with")`.
+// edit of the entry's imported source runs the code the base was built with")`. `inputs` (packages/chord/src/node/workers/workers.ts:256,
+// workers.test.ts:75) lists the files the base was built from, so that an edit of any of them is detected: here, with a Go worker's base
+// being one copy of its executable (D600), the entry with its bytes' hash.
 func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith(t *testing.T) {
 	entry := copiedEntry(t)
 	f := newFleet(t, fleetOptions{entry: entry, env: map[string]string{fixtureReportExecutable: "1"}})
@@ -810,6 +812,9 @@ func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeT
 	}
 	if want, ok := built.Inputs[resolved]; built.Err != nil || !ok || len(built.Inputs) != 1 || want != plugins.ContentHash(mustRead(t, entry)) {
 		t.Fatalf("build = %+v, want the entry with its bytes' hash", built)
+	}
+	if inputs := f.workers.Inputs(); len(inputs) != 1 || inputs[resolved] != built.Inputs[resolved] {
+		t.Fatalf("Inputs() = %v, want the files the base was built from: %v", inputs, built.Inputs)
 	}
 	// Half way through an edit: the program on disk is no longer one that runs.
 	if err := os.Remove(entry); err != nil {

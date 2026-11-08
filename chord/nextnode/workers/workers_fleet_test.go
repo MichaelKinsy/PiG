@@ -229,11 +229,7 @@ func session(id string) contracts.Address {
 
 // stateOf is the state entry of id: nil when none.
 func (f *fleet) stateOf(id string) *WorkerState {
-	value, err := f.workers.State().Value()
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	object, _ := value.(*delta.JsonObject)
+	object, _ := f.workers.State().Value().(*delta.JsonObject)
 	entry, ok := object.Value("session|" + id).(*delta.JsonObject)
 	if !ok {
 		return nil
@@ -251,8 +247,7 @@ func (f *fleet) stateOf(id string) *WorkerState {
 
 // stateText is JSON.stringify(workers.state.value).
 func (f *fleet) stateText() string {
-	value, _ := f.workers.State().Value()
-	text, _ := delta.JsonObjectOf("v", value).MarshalJSON()
+	text, _ := delta.JsonObjectOf("v", f.workers.State().Value()).MarshalJSON()
 	return string(text)
 }
 

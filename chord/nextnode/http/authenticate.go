@@ -12,11 +12,12 @@ import (
 // order (plugin name: an order with no meaning, so an app needing precedence between credentials contributes one
 // authenticator that decides); the first principal returned wins, a throwing one is reported and skipped.
 //
-// Forced Go differences. An authenticator is blocking (Pi's `Principal | undefined | Promise<...>`); it returns a nil
-// principal for Pi's `undefined` and an error for a throw (a panic is recovered as one).
+// Forced Go differences. The context is the first parameter (Go's convention; Pi takes it last). An authenticator is blocking
+// (Pi's `Principal | undefined | Promise<...>`); it returns a nil principal for Pi's `undefined` and an error for a throw (a
+// panic is recovered as one).
 
 // Authenticator is who request is, or nil (anonymous here, maybe another authenticator knows).
-type Authenticator func(request HttpRequest, ctx context.Context) (data.Principal, error)
+type Authenticator func(ctx context.Context, request HttpRequest) (data.Principal, error)
 
 // AuthenticatorEntry is an authenticator with its plugin, as the component asks it.
 type AuthenticatorEntry struct {
@@ -58,5 +59,5 @@ func authenticate(authenticators []AuthenticatorEntry, request HttpRequest, fail
 
 func tryAuthenticate(authenticator Authenticator, request HttpRequest, ctx context.Context) (principal data.Principal, err error) {
 	defer recoverAs(&err)
-	return authenticator(request, ctx)
+	return authenticator(ctx, request)
 }

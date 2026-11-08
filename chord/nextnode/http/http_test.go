@@ -259,7 +259,7 @@ func TestHostAndPrincipalsAdmitsHostsAWritableContributionAddsAndRemovesAtRuntim
 func TestHostAndPrincipalsRunsARequestWithoutAPrincipalAnonymousAsksTheAuthenticatorsInOrderSkippingAThrowingOne(t *testing.T) {
 	server := serving(t, []plugin{
 		{"@app/who", httpWhoami},
-		{"@app/a-broken", authenticating(func(HttpRequest, context.Context) (data.Principal, error) {
+		{"@app/a-broken", authenticating(func(context.Context, HttpRequest) (data.Principal, error) {
 			return nil, errors.New("broken")
 		})},
 	}, servedOptions{})
@@ -635,7 +635,7 @@ func TestReloadsAndCloseNeverRunsARouteForARequestStillAuthenticatingWhenCloseSe
 		}),
 	}})}}, servedOptions{
 		closeTimeout: 20 * time.Millisecond,
-		authenticate: func(HttpRequest, context.Context) (data.Principal, error) {
+		authenticate: func(context.Context, HttpRequest) (data.Principal, error) {
 			entered.resolve()
 			<-release.done()
 			return principalOwner(), nil
@@ -672,14 +672,14 @@ func TestCancellationStartsNoFurtherAuthenticatorOnceCloseSealedTheRequest(t *te
 		{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
 			publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("ok"), nil }),
 		}})},
-		{"@app/z-later", authenticating(func(HttpRequest, context.Context) (data.Principal, error) {
+		{"@app/z-later", authenticating(func(context.Context, HttpRequest) (data.Principal, error) {
 			later.Add(1)
 			return principalOwner(), nil
 		})},
 	}, servedOptions{
 		noListen:     true,
 		closeTimeout: 10 * time.Millisecond,
-		authenticate: func(HttpRequest, context.Context) (data.Principal, error) {
+		authenticate: func(context.Context, HttpRequest) (data.Principal, error) {
 			entered.resolve()
 			<-release.done()
 			return nil, nil
@@ -707,7 +707,7 @@ func TestCancellationAsksNoAuthenticatorForARequestAbortedBeforeItArrived(t *tes
 		publicRoute("GET /", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("ok"), nil }),
 	}})}}, servedOptions{
 		noListen: true,
-		authenticate: func(HttpRequest, context.Context) (data.Principal, error) {
+		authenticate: func(context.Context, HttpRequest) (data.Principal, error) {
 			calls.Add(1)
 			return nil, nil
 		},
@@ -845,7 +845,7 @@ func TestCancellationCloseSettlesARequestWhoseAuthenticatorIgnoresItsSignal503(t
 	}})}}, servedOptions{
 		noListen:     true,
 		closeTimeout: 10 * time.Millisecond,
-		authenticate: func(HttpRequest, context.Context) (data.Principal, error) {
+		authenticate: func(context.Context, HttpRequest) (data.Principal, error) {
 			entered.resolve()
 			<-release.done()
 			return principalOwner(), nil

@@ -395,7 +395,7 @@ func (a *App) report(kind AppErrorKind, err any) {
 	}
 }
 
-// serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`):
+// serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`, workers.NodeBaseInputs):
 // not one under the Go build cache (the analog of an entry under `node_modules`: a test runner, `go run`), and one that cannot be
 // read is reported as `server_scan` and left out.
 func (a *App) serverExecutable() (string, bool) {
@@ -408,17 +408,8 @@ func (a *App) serverExecutable() (string, bool) {
 		exe, err = filepath.Abs(exe)
 	}
 	if err == nil {
-		var info os.FileInfo
-		if info, err = os.Stat(exe); err == nil && !info.Mode().IsRegular() {
-			err = fmt.Errorf("%s is not a regular file", exe)
-		}
-	}
-	if err == nil {
 		// Readable now: the watcher hashes it, and its failure would come as a plugins error instead.
-		var file *os.File
-		if file, err = os.Open(exe); err == nil {
-			err = file.Close()
-		}
+		_, err = workers.NodeBaseInputs(exe, nil)
 	}
 	if err != nil {
 		a.reportLate(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err), "")
@@ -871,18 +862,14 @@ func (a *App) manifest(address contracts.Address) ArchiveManifest {
 }
 
 // running is whether the worker at address runs.
-func running(found *workers.Workers, address contracts.Address) (bool, error) {
-	value, err := found.State().Value()
-	if err != nil {
-		return false, err
-	}
-	object, _ := value.(*delta.JsonObject)
+func running(found *workers.Workers, address contracts.Address) bool {
+	object, _ := found.State().Value().(*delta.JsonObject)
 	entry, _ := object.Value(address.Key).(*delta.JsonObject)
 	if entry == nil {
-		return false, nil
+		return false
 	}
 	status, _ := entry.Value("status").(string)
-	return status == string(workers.WorkerRunning), nil
+	return status == string(workers.WorkerRunning)
 }
 
 // ExportData writes the data the worker at address created (its store and finished files) as an archive at path, stopping nothing: a
@@ -900,11 +887,7 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 	}
 	// Running: the worker packs its own store. Else the lock, unless a worker starts first: then ask it.
 	for attempt := 1; ; attempt++ {
-		isRunning, err := running(found, address)
-		if err != nil {
-			return err
-		}
-		if isRunning {
+		if running(found, address) {
 			return a.exportRunning(address, manifest, target, ctx)
 		}
 		lock, err := a.workerLock(address, ctx)

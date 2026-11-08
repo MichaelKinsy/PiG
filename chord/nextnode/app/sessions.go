@@ -204,7 +204,7 @@ func sessionsFacet(cookieSecret string, ephemeral *EphemeralSessions) host.Facet
 			}
 			store := self.(host.StoreSelf)
 			store.Contribute(registries.Registry[any, any](chordhttp.Authenticators), chordhttp.Authenticator(
-				func(request chordhttp.HttpRequest, ctx context.Context) (data.Principal, error) {
+				func(ctx context.Context, request chordhttp.HttpRequest) (data.Principal, error) {
 					token, ok := bearerToken(request)
 					if !ok {
 						token, ok = chordhttp.ReadCookie(request, SessionCookie, cookieSecret)
