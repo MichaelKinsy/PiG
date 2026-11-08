@@ -32,7 +32,7 @@ func TestHeadJoinEqualsTruncateHeadOfTheJoinedText(t *testing.T) {
 			if join.full() && !strings.Contains(line, "\n") && random.IntN(2) == 0 {
 				join.AddLength(len(line))
 			} else {
-				join.Add(line)
+				join.Add([]byte(line))
 			}
 			lines = append(lines, line)
 		}
@@ -48,7 +48,7 @@ func TestTruncatedLineBytesEqualsTruncateLine(t *testing.T) {
 	for iteration := range 20000 {
 		line := randomGrepLine(random) + randomGrepLine(random)
 		maxChars := random.IntN(12)
-		n, truncated := truncatedLineBytes(line, maxChars)
+		n, truncated := truncatedLineBytes([]byte(line), maxChars)
 		want := TruncateLine(line, maxChars)
 		if n != len(want.Text) || truncated != want.WasTruncated {
 			t.Fatalf("iteration %d: truncatedLineBytes(%q, %d) = %d, %v; TruncateLine = %q (%d), %v", iteration, line, maxChars, n, truncated, want.Text, len(want.Text), want.WasTruncated)
