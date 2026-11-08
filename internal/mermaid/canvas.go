@@ -33,8 +33,8 @@ type canvas struct {
 	w, h     int
 	ch       []string
 	role     []Role
-	tag      []string // space-joined author classes per cell, "" for none; see Span.Classes
-	href     []string // link target per cell, "" for none; see Span.Href
+	tag      []string // space-joined author classes per cell, "" for none; see Span.Classes; nil until a cell is stamped
+	href     []string // link target per cell, "" for none; see Span.Href; nil until a cell is stamped
 	mask     []byte
 	style    []byte
 	occupied []byte
@@ -53,13 +53,52 @@ func newCanvas(w, h int) *canvas {
 	}
 	return &canvas{
 		w: w, h: h, ch: ch, role: role,
-		tag: make([]string, n), href: make([]string, n),
 		mask: make([]byte, n), style: make([]byte, n), occupied: make([]byte, n),
 		curStyle: stySolid,
 	}
 }
 
 func (c *canvas) idx(x, y int) int { return y*c.w + x }
+
+// tagAt and hrefAt read the per-cell author classes and link target. Most
+// diagrams carry neither, so the slices stay nil until a cell is stamped.
+func (c *canvas) tagAt(i int) string {
+	if c.tag == nil {
+		return ""
+	}
+	return c.tag[i]
+}
+
+func (c *canvas) hrefAt(i int) string {
+	if c.href == nil {
+		return ""
+	}
+	return c.href[i]
+}
+
+func (c *canvas) setTagAt(i int, v string) {
+	if c.tag == nil {
+		c.tag = make([]string, len(c.ch))
+	}
+	c.tag[i] = v
+}
+
+func (c *canvas) setHrefAt(i int, v string) {
+	if c.href == nil {
+		c.href = make([]string, len(c.ch))
+	}
+	c.href[i] = v
+}
+
+// stamp applies the current author classes and link target to cell i.
+func (c *canvas) stamp(i int) {
+	if c.curTag != "" {
+		c.setTagAt(i, c.curTag)
+	}
+	if c.curHref != "" {
+		c.setHrefAt(i, c.curHref)
+	}
+}
 
 func (c *canvas) set(x, y int, ch string, role Role) {
 	if x >= c.w || y >= c.h {
@@ -73,12 +112,7 @@ func (c *canvas) set(x, y int, ch string, role Role) {
 	}
 	c.ch[i] = ch
 	c.role[i] = role
-	if c.curTag != "" {
-		c.tag[i] = c.curTag
-	}
-	if c.curHref != "" {
-		c.href[i] = c.curHref
-	}
+	c.stamp(i)
 }
 
 // addBits accumulates direction bits on a free cell. border cells are never
@@ -96,12 +130,7 @@ func (c *canvas) addBits(x, y, bits int, role Role) {
 	if c.role[i] != RoleBorder {
 		c.role[i] = role
 	}
-	if c.curTag != "" {
-		c.tag[i] = c.curTag
-	}
-	if c.curHref != "" {
-		c.href[i] = c.curHref
-	}
+	c.stamp(i)
 }
 
 // blit stamps a finished sub-canvas (a subgraph frame's contents) at an offset.
@@ -116,8 +145,12 @@ func (c *canvas) blit(sub *canvas, ox, oy int) {
 			di := c.idx(x, y)
 			c.ch[di] = sub.ch[si]
 			c.role[di] = sub.role[si]
-			c.tag[di] = sub.tag[si]
-			c.href[di] = sub.href[si]
+			if sub.tag != nil || c.tag != nil {
+				c.setTagAt(di, sub.tagAt(si))
+			}
+			if sub.href != nil || c.href != nil {
+				c.setHrefAt(di, sub.hrefAt(si))
+			}
 			c.style[di] = sub.style[si]
 			c.occupied[di] = 1
 		}
@@ -195,8 +228,12 @@ func (c *canvas) flipVertical() {
 			i, j := c.idx(x, y), c.idx(x, y2)
 			c.ch[i], c.ch[j] = c.ch[j], c.ch[i]
 			c.role[i], c.role[j] = c.role[j], c.role[i]
-			c.tag[i], c.tag[j] = c.tag[j], c.tag[i]
-			c.href[i], c.href[j] = c.href[j], c.href[i]
+			if c.tag != nil {
+				c.tag[i], c.tag[j] = c.tag[j], c.tag[i]
+			}
+			if c.href != nil {
+				c.href[i], c.href[j] = c.href[j], c.href[i]
+			}
 		}
 	}
 	for i := range c.ch {
@@ -215,8 +252,12 @@ func (c *canvas) flipHorizontal() {
 			i, j := c.idx(x, y), c.idx(x2, y)
 			c.ch[i], c.ch[j] = c.ch[j], c.ch[i]
 			c.role[i], c.role[j] = c.role[j], c.role[i]
-			c.tag[i], c.tag[j] = c.tag[j], c.tag[i]
-			c.href[i], c.href[j] = c.href[j], c.href[i]
+			if c.tag != nil {
+				c.tag[i], c.tag[j] = c.tag[j], c.tag[i]
+			}
+			if c.href != nil {
+				c.href[i], c.href[j] = c.href[j], c.href[i]
+			}
 		}
 	}
 	for i := range c.ch {
@@ -271,7 +312,10 @@ func (c *canvas) toLines() (plain []string, styled [][]Span, width int) {
 			spans = append(spans, span)
 		}
 		var plainRow strings.Builder
-		run := ""
+		plainRow.Grow(last)
+		// A run is a slice of the row built so far: Builder.String shares the
+		// buffer and appends never touch written bytes, so no run is copied.
+		runStart := 0
 		runRole := RoleNone
 		runTag, runHref := "", ""
 		for x := 0; x < last; x++ {
@@ -280,15 +324,15 @@ func (c *canvas) toLines() (plain []string, styled [][]Span, width int) {
 			if ch == cont {
 				continue
 			}
-			plainRow.WriteString(ch)
-			if (c.role[i] != runRole || c.tag[i] != runTag || c.href[i] != runHref) && run != "" {
-				push(run, runRole, runTag, runHref)
-				run = ""
+			role, tag, href := c.role[i], c.tagAt(i), c.hrefAt(i)
+			if (role != runRole || tag != runTag || href != runHref) && plainRow.Len() > runStart {
+				push(plainRow.String()[runStart:], runRole, runTag, runHref)
+				runStart = plainRow.Len()
 			}
-			runRole, runTag, runHref = c.role[i], c.tag[i], c.href[i]
-			run += ch
+			runRole, runTag, runHref = role, tag, href
+			plainRow.WriteString(ch)
 		}
-		push(run, runRole, runTag, runHref)
+		push(plainRow.String()[runStart:], runRole, runTag, runHref)
 		styled = append(styled, spans)
 		// Only trailing ASCII spaces; a trailing NBSP that styled keeps must stay.
 		plain = append(plain, strings.TrimRight(plainRow.String(), " "))
