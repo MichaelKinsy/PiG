@@ -22,12 +22,39 @@ export function normalizeProviderError(error) {
     const status = extractStatus(sdkError);
     const body = extractBody(sdkError);
     const messageCarriesBody = body === undefined || error.message.includes(body);
+    const message = status === undefined && body === undefined ? withCauseDetail(error) : error.message;
     return {
         status,
         body,
-        message: error.message,
+        message,
         messageCarriesBody,
     };
+}
+const MAX_CAUSE_DEPTH = 5;
+/**
+ * Connection-level failures carry no status or body, and SDKs replace the
+ * reason with a generic message (`openai`: `"Connection error."`). The real
+ * reason sits in the `cause` chain, often two levels deep (undici's
+ * `"fetch failed"` wraps `connect ECONNREFUSED ...`). Append the deepest
+ * cause so callers that surface only the message keep the reason.
+ */
+export function withCauseDetail(error) {
+    let deepest;
+    let current = error.cause;
+    for (let depth = 0; depth < MAX_CAUSE_DEPTH && current instanceof Error; depth++) {
+        deepest = current;
+        current = current.cause;
+    }
+    if (!deepest)
+        return error.message;
+    let detail = (deepest.message || deepest.name).trim();
+    const code = deepest.code;
+    if ((typeof code === "string" || typeof code === "number") && !detail.includes(String(code))) {
+        detail = detail ? `${detail} (${code})` : String(code);
+    }
+    if (!detail || error.message.includes(detail))
+        return error.message;
+    return error.message ? `${error.message}: ${detail}` : detail;
 }
 /**
  * Probe the HTTP status, first numeric hit wins, in SDK-field order:

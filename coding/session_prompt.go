@@ -196,6 +196,10 @@ func (s *Session) preparePromptInvocation(ctx context.Context, text string, opti
 	if s.isManualCompacting() {
 		return nil, errPromptDuringCompaction
 	}
+	// Reserve the context through the async input hooks and auth checks so tree navigation cannot start meanwhile (#9154). The run
+	// is marked active before this returns, so there is no gap.
+	s.runState.promptPreflight.Add(1)
+	defer s.runState.promptPreflight.Add(-1)
 	source := options.Source
 	if source == "" {
 		source = extension.InputSourceUser
