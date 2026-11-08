@@ -9198,10 +9198,7 @@
         "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
         "tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments"
       ],
-      "rationale": "101 of 102 upstream cases are ported: the 98 cases of the earlier pin keep their evidence and three of the four Pi 0f21a331 'Block reuse' cases run as TestUpstreamMarkdownBlockReuse subtests with the same inputs and expectations. The designed-out case ('holds rendered blocks weakly, so a full garbage collection releases them') checks a JavaScript WeakRef: Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and FinishStreaming, Invalidate and a theme or grammar change release it (subtest 'releases the reused highlighting when streaming finishes'). SCRUTINIZED:approved by the owner (2026-11-01): reviewed, no lifetime bug: the memo is replaced every render and released by FinishStreaming, Invalidate and a theme or grammar change; TestMarkdownReusedHighlightingEqualsAFreshRender and the 'releases the reused highlighting when streaming finishes' subtest pin it. Pi main 54280c4ff adds the HTML comment cases (TestUpstreamMarkdownHTMLComments).",
-      "designedOutCases": [
-        "Markdown component › Block reuse › holds rendered blocks weakly, so a full garbage collection releases them"
-      ]
+      "rationale": "All 102 upstream cases are ported: the 98 cases of the earlier pin keep their evidence and the four Pi 0f21a331 'Block reuse' cases run as TestUpstreamMarkdownBlockReuse subtests with the same inputs and expectations. The 'holds rendered blocks weakly, so a full garbage collection releases them' case holds the memos of a render in a weak.Pointer, as markdown.ts holds its rendered blocks in a WeakRef, and runs runtime.GC between the two renders. The other reuse cases run with the collector paused, as a WeakRef's target lives until its JavaScript job ends. TestMarkdownReusedHighlightingEqualsAFreshRender and the 'releases the reused highlighting when streaming finishes' subtest pin that reuse changes no output and that FinishStreaming releases the memos at once. Pi main 54280c4ff adds the HTML comment cases (TestUpstreamMarkdownHTMLComments)."
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",
