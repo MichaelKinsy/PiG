@@ -1,6 +1,7 @@
 package schema_test
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
@@ -32,18 +33,19 @@ func TestBuilderOptionsWriteMembersInCallOrder(t *testing.T) {
 
 // A misplaced option does not compile, which is the Go counterpart of the per-builder option types of Pi's builders.ts: MinItems is an option of Arr, Open of Obj, Pattern of Str. The compiler enforces the parameter types; this test pins which builders each option fits, so a widened option shows up as a failure here.
 func TestBuilderOptionsFitOnlyTheirBuilders(t *testing.T) {
-	type fits struct{ str, number, array, bytes, object, annotation bool }
+	type fits struct{ str, number, bigInt, array, bytes, object, annotation bool }
 	of := func(option any) fits {
 		var f fits
 		_, f.str = option.(schema.StrOption)
 		_, f.number = option.(schema.NumberOption)
+		_, f.bigInt = option.(schema.BigIntOption)
 		_, f.array = option.(schema.ArrayOption)
 		_, f.bytes = option.(schema.BytesOption)
 		_, f.object = option.(schema.ObjectOption)
 		_, f.annotation = option.(schema.AnnotationOption)
 		return f
 	}
-	every := fits{true, true, true, true, true, true}
+	every := fits{true, true, true, true, true, true, true}
 	for name, c := range map[string]struct {
 		option any
 		want   fits
@@ -62,6 +64,11 @@ func TestBuilderOptionsFitOnlyTheirBuilders(t *testing.T) {
 		"ExclusiveMinimum": {schema.ExclusiveMinimum(0), fits{number: true}},
 		"ExclusiveMaximum": {schema.ExclusiveMaximum(0), fits{number: true}},
 		"MultipleOf":       {schema.MultipleOf(1), fits{number: true}},
+		"BigMinimum":          {schema.BigMinimum(big.NewInt(0)), fits{bigInt: true}},
+		"BigMaximum":          {schema.BigMaximum(big.NewInt(0)), fits{bigInt: true}},
+		"BigExclusiveMinimum": {schema.BigExclusiveMinimum(big.NewInt(0)), fits{bigInt: true}},
+		"BigExclusiveMaximum": {schema.BigExclusiveMaximum(big.NewInt(0)), fits{bigInt: true}},
+		"BigMultipleOf":       {schema.BigMultipleOf(big.NewInt(1)), fits{bigInt: true}},
 		"MinItems":         {schema.MinItems(1), fits{array: true}},
 		"MaxItems":         {schema.MaxItems(1), fits{array: true}},
 		"UniqueItems":      {schema.UniqueItems(true), fits{array: true}},
