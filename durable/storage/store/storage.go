@@ -247,17 +247,27 @@ func (storage *StoreStorage) Commit(ctx context.Context, batches [][]durable.Sto
 // Publishing runs a commit's publication in the attached host's batch (`batch.Within`: it joins a running batch,
 // opens one, or runs next while one sends): Chord sources over Durable's views are marked in one batch per commit.
 // Plainly without a host.
+//
+// The publication is a section of the host's loop (`batch.Section`): the commit's writer calls from a goroutine of its own,
+// and the batch has no locks (the host serializes every call to it), so the writer waits for its turn on the loop. A caller
+// that blocks on a durable commit from inside a host section therefore deadlocks: the commit's publication waits for the
+// section the caller holds. Commit off the loop (a goroutine of its own, or after the section ends).
 func (storage *StoreStorage) Publishing(ctx context.Context, publish func()) {
 	batch := storage.store.Batch()
 	if batch == nil {
 		publish()
 		return
 	}
-	// publish never fails: the batch's own failure is the host's (it tells its onError).
-	_ = batch.Within(func() error {
-		publish()
-		return nil
-	}, ctx)
+	// The batch has no locks: the host serializes every call to it. A commit's writer calls from a goroutine of its own, so
+	// the publication is a section of the host's loop (inline when the caller is in one), as Pi's continuation after the
+	// commit's `await` is on its one event loop.
+	batch.Section(func() {
+		// publish never fails: the batch's own failure is the host's (it tells its onError).
+		_ = batch.Within(func() error {
+			publish()
+			return nil
+		}, ctx)
+	})
 }
 
 // MintId takes a fresh id from the store's one allocator.
