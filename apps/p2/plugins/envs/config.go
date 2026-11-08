@@ -196,3 +196,76 @@ func LoadEnvs(_ context.Context, directory string) (EnvsConfig, error) {
 	}
 	return ParseEnvs(*content)
 }
+
+// IsSandbox is whether name is a sandbox, decided by its configuration's type (never its name).
+func IsSandbox(envs EnvsConfig, name string) bool {
+	config, ok := envs.Value(name).(*chordjson.Object)
+	return ok && config.Value("type") == "gondolin"
+}
+
+// SandboxOn is a sandbox running on an SSH environment.
+type SandboxOn struct {
+	Name   string
+	Config *chordjson.Object
+}
+
+// SandboxesOn are the sandboxes running on SSH environment host, in the file's order.
+func SandboxesOn(envs EnvsConfig, host string) []SandboxOn {
+	var on []SandboxOn
+	for name, each := range envs.All() {
+		config := each.(*chordjson.Object)
+		if config.Value("type") == "gondolin" && config.Value("host") == host {
+			on = append(on, SandboxOn{Name: name, Config: config})
+		}
+	}
+	return on
+}
+
+// SaveEnv adds, replaces (config) or removes (nil) one environment, under the file's lock.
+func SaveEnv(ctx context.Context, directory, name string, config any) error {
+	if !envName.MatchString(name) {
+		return errors.New("Names use lowercase letters, digits, - and _ (at most 32)")
+	}
+	var validated *chordjson.Object
+	if config != nil {
+		var err error
+		if validated, err = ValidateEnv(config); err != nil {
+			return err
+		}
+	}
+	file := p2runtime.NewLockedFile(EnvsPath(directory))
+	defer file.Close()
+	_, err := p2runtime.WithLock(ctx, file, func(current *string) (p2runtime.LockResult[struct{}], error) {
+		var envs EnvsConfig
+		if current == nil {
+			envs = chordjson.NewObject(0)
+		} else {
+			var err error
+			if envs, err = ParseEnvs(*current); err != nil {
+				return p2runtime.LockResult[struct{}]{}, err
+			}
+		}
+		if validated == nil {
+			if on := SandboxesOn(envs, name); len(on) > 0 {
+				names := make([]string, len(on))
+				for at, sandbox := range on {
+					names[at] = sandbox.Name
+				}
+				return p2runtime.LockResult[struct{}]{}, fmt.Errorf(`Sandboxes run on "%s": %s`, name, strings.Join(names, ", "))
+			}
+			envs.Delete(name)
+		} else {
+			envs.Set(name, validated)
+		}
+		if err := checkHosts(envs); err != nil {
+			return p2runtime.LockResult[struct{}]{}, err
+		}
+		text, err := p2runtime.StringifyIndented(envs)
+		if err != nil {
+			return p2runtime.LockResult[struct{}]{}, err
+		}
+		text += "\n"
+		return p2runtime.LockResult[struct{}]{Next: &text}, nil
+	})
+	return err
+}

@@ -3,8 +3,6 @@ package sdk
 import (
 	"fmt"
 	"maps"
-	"slices"
-	"sync"
 )
 
 // footerSnapshot is the host's footer data as the last state update reported it.
@@ -12,13 +10,6 @@ type footerSnapshot struct {
 	gitBranch string
 	statuses  map[string]string
 	providers int
-}
-
-// footerSubscribers holds the onBranchChange callbacks of an extension.
-type footerSubscribers struct {
-	mu        sync.Mutex
-	next      int
-	callbacks map[int]func()
 }
 
 // FooterData is Pi's ReadonlyFooterDataProvider (footer-data-provider.ts:103-163,387): the footer data Pi hands to a ui.setFooter factory as its third argument. A Go footer renderer reads it from the context it was installed with; [Context.SetFooterRenderer] renders again when the host's footer data changes. The values replicate the host's, so reads never call the host.
@@ -48,25 +39,12 @@ func (f FooterData) AvailableProviderCount() int {
 	return f.ext.footer.providers
 }
 
-// OnBranchChange registers callback to run when the Git branch changes and returns the function that unsubscribes it. A nil callback registers nothing. A panic in a callback is reported to the user, as the Node runtime reports a failing subscriber, and does not stop the others.
+// OnBranchChange registers callback to run when the Git branch changes and returns the function that unsubscribes it. A nil callback registers nothing. Callbacks run on a worker of their own, one change at a time in the order the changes arrived and the callbacks subscribed, never on the message loop, so a callback can make a blocking host call, as Pi's can. A panic in a callback is reported to the user, as the Node runtime reports a failing subscriber, and does not stop the others. An unsubscribe changes only later changes: one already queued still reaches the callbacks subscribed when the branch changed.
 func (f FooterData) OnBranchChange(callback func()) (unsubscribe func()) {
 	if callback == nil {
 		return func() {}
 	}
-	subs := &f.ext.footerSubs
-	subs.mu.Lock()
-	defer subs.mu.Unlock()
-	if subs.callbacks == nil {
-		subs.callbacks = map[int]func(){}
-	}
-	id := subs.next
-	subs.next++
-	subs.callbacks[id] = callback
-	return func() {
-		subs.mu.Lock()
-		delete(subs.callbacks, id)
-		subs.mu.Unlock()
-	}
+	return f.ext.branchFeed.subscribe(func(ctx Context, _ struct{}) { runBranchSubscriber(ctx, callback) })
 }
 
 // applyFooterData installs the footer data of a state update and reports whether it changed and whether the branch did. A state without footer data keeps the last one. The caller holds e.mu.
@@ -91,33 +69,18 @@ type footerDataWire struct {
 	AvailableProviderCount int               `json:"availableProviderCount"`
 }
 
-// notifyFooterData tells the footer renderers and, when the branch changed, the branch subscribers about a change of footer data. It runs without e.mu held.
+// notifyFooterData tells the footer renderers and, when the branch changed, the branch subscribers about a change of footer data. It runs without e.mu held on the message loop, so it only queues: the renderers draw and the subscribers run off the loop.
 func (e *Extension) notifyFooterData(branchChanged bool) {
 	e.refreshFooter()
-	if !branchChanged {
-		return
-	}
-	e.footerSubs.mu.Lock()
-	ids := make([]int, 0, len(e.footerSubs.callbacks))
-	for id := range e.footerSubs.callbacks {
-		ids = append(ids, id)
-	}
-	e.footerSubs.mu.Unlock()
-	slices.Sort(ids)
-	for _, id := range ids {
-		e.footerSubs.mu.Lock()
-		callback := e.footerSubs.callbacks[id]
-		e.footerSubs.mu.Unlock()
-		if callback != nil {
-			e.runBranchSubscriber(callback)
-		}
+	if branchChanged {
+		e.branchFeed.publish(e, struct{}{})
 	}
 }
 
-func (e *Extension) runBranchSubscriber(callback func()) {
+func runBranchSubscriber(ctx Context, callback func()) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			Context{ext: e}.Notify(fmt.Sprintf("footer branch subscriber failed: %v", recovered), "error")
+			ctx.Notify(fmt.Sprintf("footer branch subscriber failed: %v", recovered), "error")
 		}
 	}()
 	callback()

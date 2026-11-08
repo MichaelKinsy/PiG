@@ -3630,16 +3630,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"]
+rationale = "Pi 342514bdf (#11707): a Git update reports the commit it moved from and to as a result event, and an npm update reports the version change. Ported in internal/packagemanager/package_update_operations.go; the test drives a Git update and checks the event."
 
 [[files]]
 path = "packages/coding-agent/src/core/prompt-templates.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/prompt_templates_quotes_test.go#TestParsePromptArgsQuoting", "test:internal/codingagent/upstream_prompt_templates_test.go#TestUpstreamPromptTemplatesArguments"]
+rationale = "Pi 96667f342 (#11873) keeps an apostrophe inside a word in prompt template arguments and treats an unclosed quote as literal text. Ported in prompt_templates.go; the quoting table covers both and the upstream argument cases still pass."
 
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
@@ -3679,16 +3679,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit-diff.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/edit_window_test.go#TestGenerateEditDiffMatchesTheWholeFileDiffAndPatchWhenLinesAreDistinct", "test:internal/codingagent/tools/edit_window_test.go#TestGenerateEditDiffProducesAPatchThatAppliesWhenLinesRepeat", "test:internal/codingagent/tools/edit_window_test.go#TestGenerateEditDiffOfASmallChangeInA20MBFileAllocatesLittle"]
+rationale = "Pi d448c51e2 (#11751) computes the diff and the patch in windows around the replacements. Ported as edit_diff_window.go; the cases compare the windowed diff and patch with the whole-file ones for distinct and repeated lines and bound the allocations of a small change in a 20 MB file."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/edit_window_test.go#TestEditToolComputesTheDiffBeforeWritingSoADiffFailureLeavesTheFileUnchanged", "test:internal/codingagent/tools/edit_window_test.go#TestEditToolWritesTheLineEndingOfTheLineAnEditStartsIn"]
+rationale = "Pi d448c51e2 (#11751): the edit tool computes its diff before writing, so a diff failure leaves the file unchanged, and writes the replacements into the original text so the lines an edit does not touch keep their line endings. Ported in edit.go and edit_diff.go (applyReplacementsToOriginal); the tests drive the tool with a failing diff and with mixed CRLF, LF and lone CR files."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
@@ -3700,9 +3700,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/grep_ripgrep_context_test.go#TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext", "test:internal/codingagent/tools/grep_ripgrep_context_test.go#TestGrepKeepsCountingMatchesPastTheByteCap", "test:internal/codingagent/tools/grep_ripgrep_context_test.go#TestGrepReadsEventLinesLongerThanTheReadBuffer", "test:internal/codingagent/tools/grep_event_test.go#TestGrepEventParserMatchesEncodingJSON", "test:internal/codingagent/tools/grep_event_test.go#FuzzGrepEventParserMatchesEncodingJSON"]
+rationale = "Pi 8da141c2a (#11705, #9276, #11423) takes the context lines from ripgrep's own context events, reports the match limit only on proof of one more match and keeps a lone CR in a line; 6bf2ab9bb (#11895, #11807) runs a directory search inside the search path so a glob is rooted there. Ported in grep.go; GrepOperations.ReadFile is gone, as Pi's. The event loop allocates nothing per event: grep_event.go scans rg's JSON lines in place (checked against encoding/json and fuzzed), rows are built in a reused buffer and rows past the 50KB cap are only measured, so TestScalingTools holds grep's allocations constant as the context grows."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/ls.ts"
@@ -3714,16 +3714,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/tools/read.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingGivesTheSameOutputAsTheWholeFileAlgorithm", "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingKeepsMemoryBoundedForA200MBLine", "test:internal/codingagent/tools/read_streaming_fuzz_test.go#FuzzReadStreamingMatchesTheWholeFileAlgorithm"]
+rationale = "Pi 3a7bb6f48 (#11750) reads a text file through ops.createReadStream and keeps only the lines head truncation can show. Ported as ReadOperations.CreateReadStream, readLocalFile (one open file: the access check, the image sniff and the stream) and readStreamedTextResult/selectLinesFromStream (read_stream.go), which count every line, store the lines that can show and measure the rest. The ported read-streaming cases run against the whole-file algorithm for chunk sizes 1 and 4096, a 200 MB line stays under a 64 MB heap, and a fuzz target compares arbitrary bytes, chunk sizes, offsets and limits with the whole-file reference. The selector decodes a chunk's selected lines in one pass, stores whole lines in one write and counts the lines past the caps without a pass per line, so a 140 KB read costs 24 allocations (BenchmarkReadToolExecute), as it did before the stream."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/truncate.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/jsstring/slice_pair_test.go#TestSliceHeadAndTailNeverSplitAPair", "test:internal/codingagent/tools/grep_test.go#TestTruncateLine"]
+rationale = "Pi 9e870f6f0 keeps a surrogate pair whole when truncateLine, sliceHead and sliceTail cut: ported in jsstring.SliceHead/SliceTail and TruncateLine (grep's measured rows follow the same cut, D252). truncateMiddle moved to the mcp package in the leap; FollowMcp owns its oracle."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/execute.ts"
@@ -3847,9 +3847,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/diff_render_test.go#TestRenderDiffPreservesIndentation", "test:tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion"]
+rationale = "Pi dca1f5552 (#9274) separates the whitespace both changed lines start with before the word diff, so indentation is kept and shared indentation is not highlighted as an insertion. Ported in tui/diff_render.go."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/extension-selector.ts"
@@ -3924,9 +3924,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/package_progress_warning_test.go#TestUpdateSummaryPrint", "test:internal/packagemanager/package_update_result_test.go#TestUpdatedPackageMessage"]
+rationale = "Pi 342514bdf (#11707) and 806cdd68e (#11711): pig update lists the packages it updated with their version changes. Ported in coding/cli/package_commands.go and package_progress.go."
 
 [[files]]
 path = "packages/coding-agent/src/utils/changelog.ts"
@@ -3938,9 +3938,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "designed-out"
+evidence = ["test:internal/imageprocessing/resize_worker_teardown_test.go#TestSerialResizesLeaveNoWorkerRunning"]
+rationale = "Pi 1f7c685b (#10695) resolves a resize only after its worker thread has finished terminating. Go resizes in the calling goroutine and starts no worker, so there is nothing to terminate; the test runs serial resizes and checks that the goroutine count is the same after each."
 
 [[files]]
 path = "packages/coding-agent/src/utils/terminal-question.ts"

@@ -173,6 +173,44 @@
     (check-equal 3 (tokens "{\"role\":\"bashExecution\",\"command\":\"ls\",\"output\":\"abcdefghij\"}"))
     (check-equal 0 (tokens "{\"role\":\"nobody\",\"content\":\"abcd\"}"))))
 
+(deftest ctx-file-mutation-queue-names-its-tool-call
+  ;; The Context form sends its request id in the enter only for a tool call, so the host orders the turn by the call's batch place (D187).
+  (let ((calls '()))
+    (sb-int:encapsulate 'pig::host-call 'ct-stub
+                        (lambda (f ext method &optional args parent (request-id ""))
+                          (declare (ignore f ext parent request-id))
+                          (push (cons method args) calls)
+                          (if (string= method "fileMutation.enter") (pig:obj "ticket" "t1") (pig:obj))))
+    (sb-int:encapsulate 'pig::helper-call 'ct-stub
+                        (lambda (f method &optional args)
+                          (declare (ignore f))
+                          (push (cons method args) calls)
+                          (pig:obj)))
+    (sb-int:encapsulate 'pig::send-request-state 'ct-stub (lambda (&rest args) (declare (ignore args)) nil))
+    (unwind-protect
+         (let ((tool-ctx (pig::%make-ctx nil nil "call-1" "r7" t nil nil))
+               (command-ctx (pig::%make-ctx nil nil nil "r8" nil nil nil)))
+           (check-equal :ran (pig:ctx-with-file-mutation-queue tool-ctx "/a/b/../c.txt" (lambda () :ran)))
+           (let ((enter (cdr (find "fileMutation.enter" calls :key #'car :test #'string=))))
+             (check-equal "/a/c.txt" (pig:jget enter "path"))
+             (check-equal "r7" (pig:jget enter "request")))
+           (check-equal "t1" (pig:jget (cdr (find "fileMutation.exit" calls :key #'car :test #'string=)) "ticket"))
+           (setf calls '())
+           (pig:ctx-with-file-mutation-queue command-ctx "/a/c.txt" (lambda () nil))
+           (check (null (pig:jget (cdr (find "fileMutation.enter" calls :key #'car :test #'string=)) "request"))))
+      (sb-int:unencapsulate 'pig::host-call 'ct-stub)
+      (sb-int:unencapsulate 'pig::helper-call 'ct-stub)
+      (sb-int:unencapsulate 'pig::send-request-state 'ct-stub))))
+
+(deftest estimate-tokens-counts-unpaired-surrogates-as-pi-does
+  ;; Pi 1.5.0's estimateTokens, run by node: eight unpaired surrogates are 8 units (2 tokens), and in a tool call's arguments each is the six characters of its escape.
+  (flet ((tokens (text) (pig:estimate-tokens (json-of text))))
+    (check-equal 2 (tokens "{\"role\":\"user\",\"content\":\"\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\"}"))
+    (check-equal 1 (tokens "{\"role\":\"user\",\"content\":\"\\ud800\"}"))
+    (check-equal 1 (tokens "{\"role\":\"user\",\"content\":\"a\\ud83db\"}"))
+    (check-equal 14 (tokens "{\"role\":\"assistant\",\"content\":[{\"type\":\"toolCall\",\"id\":\"c\",\"name\":\"\",\"arguments\":{\"k\":\"\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\"}}]}"))
+    (check-equal 4 (tokens "{\"role\":\"assistant\",\"content\":[{\"type\":\"toolCall\",\"id\":\"c\",\"name\":\"\",\"arguments\":{\"k\":\"\\ud800\"}}]}"))))
+
 (deftest find-cut-point-and-turn-start
   (let* ((entries (json-of "[{\"type\":\"message\",\"message\":{\"role\":\"user\",\"content\":\"aaaaaaaa\"}},
                              {\"type\":\"message\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"bbbbbbbb\"}]}},

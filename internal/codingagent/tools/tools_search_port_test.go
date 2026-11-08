@@ -34,7 +34,7 @@ func TestToolsGrepPort(t *testing.T) {
 		if err := os.WriteFile(path, []byte("before\rprogress\nneedle\nafter"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		requireTextParts(t, runGrep(t, dir, map[string]any{"pattern": "needle", "path": path, "context": 1}), []string{"lone-cr.txt-1- beforeprogress", "lone-cr.txt:2: needle", "lone-cr.txt-3- after"}, nil)
+		requireTextParts(t, runGrep(t, dir, map[string]any{"pattern": "needle", "path": path, "context": 1}), []string{"lone-cr.txt-1- before\rprogress", "lone-cr.txt:2: needle", "lone-cr.txt-3- after"}, nil)
 	})
 	// .upstream/current/packages/coding-agent/test/tools.test.ts:928 (earendil-works/pi#11203)
 	t.Run("should ignore RIPGREP_CONFIG_PATH", func(t *testing.T) {
