@@ -5,6 +5,7 @@ package extension
 import (
 	"encoding/json"
 	"github.com/MichaelKinsy/PiG/mcp"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -243,4 +244,17 @@ func isLoopbackRedirectURI(uri string) bool {
 	quoted, _ := json.Marshal(uri)
 	result := mcp.ValidateMcpServerConfig("s", json.RawMessage(`{"url":"https://x.example","oauth":{"callbackUrl":`+string(quoted)+`}}`), mcp.McpServerConfigOptions{})
 	return !strings.Contains(result.Error, "oauth.callbackUrl must be an http URI")
+}
+
+// Pi's `headers` and `env` are objects whose keys keep their insertion order (packages/mcp/src/config.ts McpHttpServerConfig.headers,
+// McpStdioServerConfig.env); McpServerConfig keeps the order through validation, and `type` is the entry's own.
+func TestValidateMcpServerConfigKeepsTheOrderOfHeadersAndEnvAndTheType(t *testing.T) {
+	http, message := ValidateMcpServerConfig("h", json.RawMessage(`{"type":"streamable-http","url":"https://a.example/","headers":{"b":"1","a":"2","c":"3"}}`))
+	if message != "" || http.Type != "streamable-http" || !slices.Equal(http.Headers.Keys(), []string{"b", "a", "c"}) {
+		t.Fatalf("http = %+v, %q", http, message)
+	}
+	stdio, message := ValidateMcpServerConfig("s", json.RawMessage(`{"type":"stdio","command":"x","env":{"Z":"1","A":"2"}}`))
+	if message != "" || stdio.Type != "stdio" || !slices.Equal(stdio.Env.Keys(), []string{"Z", "A"}) {
+		t.Fatalf("stdio = %+v, %q", stdio, message)
+	}
 }
