@@ -29,8 +29,10 @@ func reportPeakRSS(b *testing.B) {
 }
 
 // commonCorpus is the number of leading corpus.txt sources shared with the
-// grok-mermaid 0.2.2 port, so the same file measures both generations.
-const commonCorpus = 90
+// grok-mermaid 0.2.2 port (its corpus.txt has 87 sources, byte for byte the
+// first 87 here), so the same file measures both generations. Sources 88 on
+// are pie diagrams, which 0.2.2 renders as null.
+const commonCorpus = 87
 
 func benchSources(b *testing.B, n int) []string {
 	b.Helper()
