@@ -270,7 +270,9 @@ func (d *detector) propShapesDepth(pkg, layer, name string, depth int) []propSha
 			}
 		}
 	}
-	if first == nil {
+	if _, own := d.aliases[ifacePrefix+pkg][name]; first == nil || own {
+		// A name the row's own package declares as an object type alias (chord's Theme) is that declaration, not a same-named
+		// interface or class of another package.
 		return d.sourceProps(pkg, name, depth)
 	}
 	return first
