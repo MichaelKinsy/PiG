@@ -295,6 +295,10 @@
     "go": "chord/next/host/host_host.go#Host.Registry",
     "reason": "Pi chord/src/host/host.ts:361 registry(R, context, options?) resolves to RegistryValue\u003cV\u003e, the composed value as a watchable-bearing record. Go's Host.Registry returns *registries.RegistryValueSource, the source that carries that value (Value, Watch); the Promise is the blocking return. Locked by TestExample29Registries (chord/next/host/host_example_29_test.go)."
   },
+  "pkg:chord/.#HostKind::call:0": {
+    "go": "chord/next/contracts/host_kind.go#HostKind.Address",
+    "reason": "Pi chord/src/contracts/host-kind.ts:19 HostKind\u003cN, P\u003e is callable: its call takes the params as the rest tuple `[params?: Record\u003cnever, never\u003e]` when the kind has no params, else `[params: {[F in keyof P]: Static\u003cP[F]\u003e}]`, and returns Address\u003cHostKind\u003cN, P\u003e\u003e. Go has no callable struct, so the call is the method HostKind.Address(values *delta.JsonObject) Address (nil for a kind without params), which builds the kind, params and key (host_kind.go; the typed tuple is compile-time only; params are checked where the address is routed, as in Pi). Locked by TestHostKinds (chord/next/contracts/host_kind_test.go)."
+  },
   "pkg:chord/.#add::call:0": {
     "go": "chord/next/store/expression.go#Add",
     "reason": "Pi chord/src/store/expression.ts:163 add(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand\u003cT, K\u003e = Expression\u003cT, K\u003e | T). Go has no unions: store.Add(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
@@ -322,6 +326,10 @@
   "pkg:chord/.#findDocumentEntry::call:0": {
     "go": "chord/next/store/engine.go#FindDocumentEntry",
     "reason": "Pi chord/src/store/engine.ts:345 findDocumentEntry(executor: Pick\u003cSqliteExecutor, \"get\"\u003e, address, at) needs only the executor's `get`. Go's store.FindDocumentEntry takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore and the document engine tests (chord/next/store)."
+  },
+  "pkg:chord/.#forbidden::call:0": {
+    "go": "chord/next/data/errors.go#Forbidden",
+    "reason": "Pi chord/src/data/errors.ts:117 forbidden(message, details?) returns Extract\u003cChordError, {code: \"forbidden\"}\u003e, the ChordError narrowed to its forbidden member at compile time. Go's data.Forbidden(message, details...) returns *data.ChordError with Code CodeForbidden and no reason, the narrowing being the Code field. Locked by TestErrorHelpers (chord/next/data/errors_test.go)."
   },
   "pkg:chord/context#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",

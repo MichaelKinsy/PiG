@@ -290,7 +290,7 @@ func TestHostActivityCountsHoldsArrivingOverLinksAndServedHereNotItsOwnReference
 }
 
 // Mirrors "counts a hold placed here from its arrival, bound or not: a missing provider keeps the worker alive (M§10)".
-// Reads `host.references(Type)` as packages/chord/test/host/host.test.ts:1512 does (`const presence = host.references(Info)`).
+// Reads `host.activity` (packages/chord/src/host/host.ts:354) and `host.references(Type)` as packages/chord/test/host/host.test.ts:1512 does (`const presence = host.references(Info)`).
 func TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot(t *testing.T) {
 	l := linked(t, func(FacetHost) error { return nil }, linkedOptions{})
 	defer closeHosts(t, l.Client, l.Server)

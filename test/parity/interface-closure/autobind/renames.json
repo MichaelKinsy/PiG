@@ -445,6 +445,7 @@
  "pkg:chord/.#NativeWatch::property:end::call:0": "chord/watch_impl.go#watchLifecycle.EndWith",
  "pkg:chord/.#Watch::property:end": "chord/watch_impl.go#watchLifecycle.EndWith",
  "pkg:chord/.#Watch::property:end::call:0": "chord/watch_impl.go#watchLifecycle.EndWith",
+ "pkg:chord/.#constant": "chord/next/state/watchable.go#ConstantOf",
  "pkg:chord/.#constant::call:0": "chord/next/state/watchable.go#ConstantOf",
  "pkg:chord/.#hostKind": "chord/next/contracts/host_kind.go#NewHostKind",
  "pkg:chord/.#isJsonValue": "internal/chord/chordjson/chordjson.go#IsValue",
