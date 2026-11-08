@@ -2145,8 +2145,7 @@
         "chord/delta/append_text_test.go#TestAppendTextAppendsInsideABlockTheSameChangeInsertedOrReplaced",
         "chord/delta/append_text_test.go#TestAppendTextRejectsWhatACallerCanGetWrong",
         "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps",
-        "chord/delta/append_text_scaling_norace_test.go#TestScalingTrackerAppendTextStream",
-        "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps"
+        "chord/delta/append_text_scaling_norace_test.go#TestScalingTrackerAppendTextStream"
       ],
       "rationale": "Five of the eight cases are ported with the same documents and expected ops: the op and value, joined appends beside other changes, the fallback when the key is also assigned or deleted, blocks inserted or replaced in the same change, and the errors (a non-string, a missing key, an array index, a settled overlay); the op-text case checks the op owns its bytes. The StringKeys type case is a TypeScript type test (its runtime half, the refused keys, is in TestAppendTextRejectsWhatACallerCanGetWrong). The cost case (a 500 KB stream allocates linearly) is ported as TestScalingTrackerAppendTextStream, which compares allocation growth over a tenfold longer stream and against a control of commits that set a number; AppendText removes the comparison, not the copy. The heap-retention case (an op text cut from a larger string must not keep it alive) is ported in Go form as TestAppendTextOwnsTheTextItKeeps: a Go substring shares its parent's bytes, so the test cuts the appended text from a 1 MiB buffer, overwrites the buffer, and fails when the op did not copy its text (red with the copy removed). Pi's 50-commit heap measurement is not repeated: it passes with the copy removed, (measured in review of this row)."
     },
