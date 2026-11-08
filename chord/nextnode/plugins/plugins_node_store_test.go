@@ -13,7 +13,7 @@ import (
 // in one local type: a persisted singleton document, a persisted keyed document and a table, written in one `self.tx`.
 
 // storeNotebookPlugin is the plugin whose facet declares the documents and the table.
-const storeNotebookPlugin = `import { arr, defineFacet, defineState, defineTable, int, local, method, obj, query, str } from "@earendil-works/chord/next";
+const storeNotebookPlugin = `import { arr, defineFacet, defineState, defineTable, int, local, method, obj, query, str } from "@earendil-works/chord";
 const Tags = defineState("tags", { schema: obj({ tags: arr(str()) }), version: 1, initial: () => ({ tags: [] }), persist: true, checkpointWhen: () => false });
 const Notes = defineState("notes", { schema: obj({ body: str() }), version: 1, initial: () => ({ body: "" }), keyed: true, persist: true, checkpointWhen: () => false });
 const Edits = defineTable("edits", { version: 1, columns: { id: str(), at: int() }, key: ["id"] });

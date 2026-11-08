@@ -41,6 +41,10 @@ type fleetOptions struct {
 	onAuthorize func(address contracts.Address)
 	// env is added to the workers' environment.
 	env map[string]string
+	// entry is the workers' program: the fixture's by default.
+	entry string
+	// baseDir is the directory the worker base's copy is written into (WorkersOptions.BaseDir).
+	baseDir string
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -126,10 +130,15 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	if options.idleMs != 0 {
 		idle = options.idleMs
 	}
+	entry := options.entry
+	if entry == "" {
+		entry = fixtureEntry(t)
+	}
 	workers, err := CreateWorkers(server, fixtureSession, WorkersOptions{
-		Kind:  "worker",
-		Entry: fixtureEntry(t),
-		Env:   withEnv(fixtureEnvironment("worker"), options.env),
+		Kind:    "worker",
+		Entry:   entry,
+		BaseDir: options.baseDir,
+		Env:     withEnv(fixtureEnvironment("worker"), options.env),
 		Authorize: func(_ data.Principal, address contracts.Address) (bool, error) {
 			if options.onAuthorize != nil {
 				options.onAuthorize(address)
@@ -406,8 +415,8 @@ func newPlugins(t testing.TB, root string) *plugins.Plugins {
 		t.Fatal(err)
 	}
 	component := plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots:   []string{root},
-		Kinds:   []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord/next"}}},
+		Roots:   []plugins.PluginRoot{{Path: root}},
+		Kinds:   []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord"}}},
 		OnError: func(plugins.PluginsError) {},
 	}, background)
 	t.Cleanup(component.Close)

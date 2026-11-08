@@ -75,3 +75,30 @@ func TestWithAbortSignalOfAParentWithoutCancellationOfAnAbortedSignalIsAborted(t
 		t.Fatalf("derived: err %v, cause %v, want aborted with the signal's reason", derived.Err(), context.Cause(derived))
 	}
 }
+
+// A key of this package is looked up through a WithoutAbortSignal context in its parent, without the allocation stdlib's
+// WithoutCancel context makes on every Value call; the key is found, and any other key still goes through stdlib's.
+func TestWithoutAbortSignalLooksAKeyOfThisPackageUpInItsParentAndAllocatesNothing(t *testing.T) {
+	key := chordctx.NewKey[string]("test.key")
+	missing := chordctx.NewKey[string]("test.missing")
+	ctx := chordctx.WithoutAbortSignal(chordctx.WithValue(chordctx.Background(), key, "found"))
+	if got, ok := chordctx.Value(ctx, key); !ok || got != "found" {
+		t.Fatalf("value = %q, %v, want found", got, ok)
+	}
+	if _, ok := chordctx.Value(ctx, missing); ok {
+		t.Fatal("a key the parent does not carry was found")
+	}
+	if allocated := testing.AllocsPerRun(100, func() {
+		_, _ = chordctx.Value(ctx, key)
+		_, _ = chordctx.Value(ctx, missing)
+	}); allocated != 0 {
+		t.Fatalf("a lookup through WithoutAbortSignal allocates %v, want 0", allocated)
+	}
+	// Cancellation stays ignored and its cause stays none: the parent's cancelCtx is not reachable through it.
+	parent, cancel := context.WithCancelCause(chordctx.Background())
+	detached := chordctx.WithoutAbortSignal(parent)
+	cancel(errors.New("stop"))
+	if detached.Err() != nil || context.Cause(detached) != nil {
+		t.Fatalf("err = %v, cause = %v, want none", detached.Err(), context.Cause(detached))
+	}
+}

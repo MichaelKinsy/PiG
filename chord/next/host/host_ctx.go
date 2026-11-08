@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/host/ctx.ts. The `ctx` a method handler gets (§8): its call's context, who called, the
@@ -44,6 +45,11 @@ type Ctx interface {
 	// Get takes a reference as the caller (Principal) sees it, released when the handler settles; afterwards Get returns
 	// `released`. It blocks until the reference is acquired.
 	Get(Type *contracts.Contract, params any, options GetOptions) (*Reference, error)
+	// Trace runs fn in a span named name (the host's `chord.host` and attributes), a child of the handler's, with a child
+	// ctx: the same principal, signal and references, its telemetry the span. A failure of fn marks the span failed
+	// (`trace_failed`; a cancel keeps it ok) and is returned; with nothing recorded fn gets this ctx itself. A panic of fn
+	// is its error.
+	Trace(name string, attributes telemetry.SpanAttributes, fn func(ctx Ctx) (any, error)) (any, error)
 }
 
 // caller is who makes a call: the principal it acts as and its host's incarnation.
@@ -69,18 +75,50 @@ type callContext struct {
 	// signal is the "returned or parked" of the call this is the ctx of (nil for a scope that runs no handler). The ctx
 	// answers Value(parking.Key) with it.
 	signal *parking.Signal
+	// attempt is the attempt a method call runs on; nil for a root scope, a routine or a job run (no chain node).
+	attempt oldWorkSource
 }
 
-var _ Ctx = (*callContext)(nil)
+var (
+	_ Ctx      = (*callContext)(nil)
+	_ callNode = (*callContext)(nil)
+)
 
-func newCallContext(ctx context.Context, from caller, host *chordHost) *callContext {
-	return &callContext{Context: ctx, principal: from.principal, incarnation: from.incarnation, host: host}
+// newCallContext is the ctx of a handler run: a method call's is its own node of the call chain (on: the attempt it runs on,
+// as the chain's `CallNode`), so the chain costs no allocation; a root scope, a routine or a job run has none (on is nil).
+func newCallContext(ctx context.Context, from caller, host *chordHost, on oldWorkSource) *callContext {
+	return &callContext{Context: ctx, principal: from.principal, incarnation: from.incarnation, host: host, attempt: on}
 }
 
-// Value answers the call's parking signal under parking.Key and delegates every other key.
+// Value answers the call's parking signal under parking.Key, itself under the call chain's key when it is a method call's,
+// and delegates every other key.
 func (c *callContext) Value(key any) any {
 	if key == parking.Key && c.signal != nil {
 		return c.signal
+	}
+	if c.attempt != nil && key == callChainKey.Token() {
+		return callNode(c)
+	}
+	return c.Context.Value(key)
+}
+
+// on is the attempt its handler runs on (only read through the call chain, which a method call's ctx answers).
+func (c *callContext) on() oldWorkSource { return c.attempt }
+
+// up is the chain of the call that made this one.
+func (c *callContext) up() callNode { return chainOf(c.Context) }
+
+// chained is c's context with c's own call chain node: what a getter made through Get belongs to (old work during a
+// reload), without the call's other values (its parking signal).
+type chained struct {
+	context.Context
+	node *callContext
+}
+
+// Value answers the chain's key with the call's node; every other key is the call's context's.
+func (c chained) Value(key any) any {
+	if key == callChainKey.Token() && c.node.attempt != nil {
+		return callNode(c.node)
 	}
 	return c.Context.Value(key)
 }
@@ -115,7 +153,8 @@ func (c *callContext) Get(typ *contracts.Contract, params any, options GetOption
 		if c.settling == nil {
 			c.settling, c.settlingCancel = chordctx.WithCancel(chordctx.Background())
 		}
-		scoped = withLinkedAbortSignal(c.settling, c.Context)
+		// Under this ctx's call chain: the getter belongs to the call (old work during a reload).
+		scoped = withLinkedAbortSignal(c.settling, chained{Context: c.Context, node: c})
 	})
 	if err != nil {
 		return nil, err

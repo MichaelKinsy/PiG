@@ -22,7 +22,7 @@ import (
 // Ports packages/chord/test/node/app/app.test.ts "export and import per address" (Pi main c23b9ec1): a running worker packs its own
 // store without stopping, the worker's data object is the server's only, an export without a worker holds its lock (a hold arriving
 // meanwhile starts the worker after it), a failed address stays failed after an export, and the round trip with its refusals. The
-// file `attach`/`file` calls of Pi's round trip are not ported (see app_workers_test.go): the files of a directory are checked on disk.
+// round trip's file is put into the worker's directory and read from the copy's (a plugin cannot get a worker's `Files`, D461).
 
 // workerStatus is the status of the worker at key in the workers' state: "" when it has none.
 func workerStatus(t *testing.T, found *workers.Workers, key string) string {
@@ -271,6 +271,12 @@ func TestAppLeavesAFailedAddressFailedAfterAnExport(t *testing.T) {
 
 func TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, projectOptions(t))
+	// The worker's files (Pi's `attach` and `file`): a TS plugin cannot get a worker's `Files` (D461), so a file is put into the
+	// worker's directory, kit store and files, before its worker starts, and read from the copy's directory after the app closed.
+	projects := filepath.Join(s.dataDir, "workers", "project")
+	seed := filesOf(t, fixtureOptions{Dir: filepath.Join(projects, "project%7Cp1"), Store: kitStore})
+	file := str(seed.putIn("notes", "note.txt", "a file of p1"), "id")
+	seed.close()
 	p1 := holdNotes(t, s, "p1")
 	write(t, p1, "buy milk")
 	if got, err := p1.Call("visit", "/", background); err != nil || got != 1.0 {
@@ -310,6 +316,11 @@ func TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAn
 	if err := s.app.Close(background); err != nil {
 		t.Fatal(err)
 	}
+	copiedFiles := filesOf(t, fixtureOptions{Dir: filepath.Join(projects, "project%7Cp2"), Store: kitStore})
+	if got, err := copiedFiles.call("read", "id", file, "offset", float64(0), "length", float64(1024)); err != nil || string(got.([]byte)) != "a file of p1" {
+		t.Fatalf("the copy's file = %q, %v", got, err)
+	}
+	copiedFiles.close()
 	// Another app refuses the archive.
 	other := startTestApp(t, nil, func(o *AppOptions) { o.Name = "other-app"; projectOptions(t)(o) })
 	err := other.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p1")), background)

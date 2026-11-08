@@ -421,14 +421,29 @@ type NodeSqliteDatabase struct {
 	nodeSqliteExecutor
 	access *serialOperationQueue
 	closed bool
-	// readOnly is a connection opened with NodeSqliteDatabaseOptions.ReadOnly: its transactions are deferred (they read
+	// mode is how the connection opened its file: a ReadOnly one's transactions are deferred (they read
 	// one snapshot; it cannot take the write lock) and its close checkpoints nothing.
-	readOnly bool
+	mode NodeSqliteMode
 }
 
+// NodeSqliteMode is how a connection opens its file.
+type NodeSqliteMode string
+
+const (
+	// ReadWrite is the default mode.
+	ReadWrite NodeSqliteMode = "read-write"
+	// ReadOnly opens an existing file for reads (another process may write it): no directory is made, nothing is
+	// configured or checkpointed, and transactions are deferred (`BEGIN`), reading one snapshot.
+	ReadOnly NodeSqliteMode = "read-only"
+)
+
 // NewNodeSqliteDatabase adapts database; the adapter owns it from now on. It is Pi's `new NodeSqliteDatabase(database: DatabaseSync)`.
-func NewNodeSqliteDatabase(database *DatabaseSync) *NodeSqliteDatabase {
-	return newNodeSqliteDatabase(database)
+func NewNodeSqliteDatabase(database *DatabaseSync, mode ...NodeSqliteMode) *NodeSqliteDatabase {
+	adapter := newNodeSqliteDatabase(database)
+	if len(mode) > 0 {
+		adapter.mode = mode[0]
+	}
+	return adapter
 }
 
 // newNodeSqliteDatabase adapts any native connection, so a test can wrap one to observe or fail its calls.
@@ -456,7 +471,7 @@ func (adapter *NodeSqliteDatabase) Transaction(
 	release := adapter.access.acquire()
 	defer release()
 	begin := "BEGIN IMMEDIATE"
-	if adapter.readOnly {
+	if adapter.mode == ReadOnly {
 		begin = "BEGIN"
 	}
 	if err := adapter.database.Exec(begin); err != nil {
@@ -518,7 +533,7 @@ func (adapter *NodeSqliteDatabase) Close() error {
 	adapter.statements.order.Init()
 	adapter.statements.mu.Unlock()
 	var checkpointErr error
-	if !adapter.readOnly {
+	if adapter.mode != ReadOnly {
 		checkpointErr = adapter.database.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	}
 	// Pi closes in a finally block, so a close failure replaces the checkpoint failure.
@@ -539,9 +554,8 @@ type NodeSqliteDatabaseOptions struct {
 	// BusyTimeoutMs is how long SQLite waits for a competing file lock. SQLite defaults to 0; this adapter defaults to
 	// 5,000 ms.
 	BusyTimeoutMs *int
-	// ReadOnly opens an existing file for reads (another process may write it): no directory is made, nothing is
-	// configured or checkpointed, and transactions are deferred (`BEGIN`), reading one snapshot. Pi's `mode: "read-only"`.
-	ReadOnly bool
+	// Mode is how the file opens; ReadWrite (the zero value) by default. ReadOnly is Pi's `mode: "read-only"`.
+	Mode NodeSqliteMode
 }
 
 const (
@@ -559,13 +573,13 @@ func OpenNodeSqliteDatabase(path string, options NodeSqliteDatabaseOptions) (*No
 	if options.BusyTimeoutMs != nil {
 		timeout = *options.BusyTimeoutMs
 	}
-	if options.ReadOnly {
+	if options.Mode == ReadOnly {
 		database, err := NewDatabaseSync(path, DatabaseSyncOptions{TimeoutMs: timeout, ReadOnly: true})
 		if err != nil {
 			return nil, err
 		}
 		adapter := NewNodeSqliteDatabase(database)
-		adapter.readOnly = true
+		adapter.mode = ReadOnly
 		return adapter, nil
 	}
 	if path != ":memory:" {

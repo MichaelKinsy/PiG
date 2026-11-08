@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/admission.ts
+// pi: packages/chord/src/node/http/admission.ts
 
 import (
 	"errors"
