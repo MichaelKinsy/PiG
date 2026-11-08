@@ -179,7 +179,7 @@ func copyWorkerBase(path string) (dir, copied string, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 	dir, err = os.MkdirTemp("", "chord-workers-base-")
 	if err != nil {
 		return "", "", err
