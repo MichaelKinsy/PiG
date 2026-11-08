@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// grok-mermaid 0.2.3 src/parse.ts:278-289,472,576-593,660 discards style classes without swallowing the adjacent link or a member body.
+// lovely-mermaid 0.3.3 reads `:::name` tags without swallowing the adjacent link or a member body: the diagram draws as if untagged, and the names ride on the spans of the nodes' cells (Span.Classes).
 func TestStyleClassAssignments(t *testing.T) {
 	for _, tc := range []struct{ name, styled, plain string }{
 		{"shaped flowchart", "flowchart LR\nA[Foo]:::highlight --> B[Bar]", "flowchart LR\nA[Foo] --> B[Bar]"},
@@ -21,7 +21,7 @@ func TestStyleClassAssignments(t *testing.T) {
 				t.Fatal("plain fixture must render")
 			}
 			got, ok := Render(tc.styled)
-			if !ok || !reflect.DeepEqual(got, want) {
+			if !ok || !reflect.DeepEqual(got.Plain, want.Plain) || got.Width != want.Width || !reflect.DeepEqual(got.Warnings, want.Warnings) {
 				t.Fatalf("styled=%+v ok=%v; plain=%+v", got, ok, want)
 			}
 		})
