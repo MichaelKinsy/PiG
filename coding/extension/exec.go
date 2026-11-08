@@ -278,6 +278,10 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 	_ = cmd.Wait()
 	// A descendant that holds a pipe may still be running: where the child has no job, the pipes tell Wait.
 	pipes.Wait(func() bool { return childGroupMayHoldOutput(cmd.Process) })
+	// Pi runs an expired timer before the exit handler; after a stall the watcher may not have fired yet.
+	if deadline, ok := ctx.Deadline(); ctx.Err() != nil || ok && !time.Now().Before(deadline) {
+		killProcess()
+	}
 	close(stopWatch)
 	<-watchDone
 	killMu.Lock()
