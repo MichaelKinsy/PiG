@@ -150,6 +150,8 @@ type more struct {
 	failing int
 	manual  *timers
 	styles  ClientStyles
+	// onTimer is called with the pause of each timer the manual environment lists, before its After returns.
+	onTimer func(ms int64)
 }
 
 // setup is a server serving WebScripts with initial, and a client started against it with available to fetch; failing fetches
@@ -180,6 +182,9 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 				opt.manual.mu.Lock()
 				opt.manual.list = append(opt.manual.list, timer)
 				opt.manual.mu.Unlock()
+				if opt.onTimer != nil {
+					opt.onTimer(ms)
+				}
 				return func() {
 					opt.manual.mu.Lock()
 					defer opt.manual.mu.Unlock()
@@ -519,6 +524,44 @@ func TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne(t *testing.T)
 	s.publish(t, setOf("B1", a3))
 	until(t, func() bool { return valueOf(g) == "hello at last" })
 	// The retry was cancelled with the newer set: nothing is left to fire.
+	if n := len(manual.withMs(1000)); n != 0 {
+		t.Fatalf("%d retries left", n)
+	}
+	if f := s.fetchedNow(); !slices.Equal(f, []string{"/@test/a.d2.js", "/@test/a.d3.js"}) {
+		t.Fatalf("fetched = %v", f)
+	}
+	s.finish(t)
+}
+
+// A retry is scheduled in two steps, its timer and then its handle, so a newer set that lands between them has no handle to
+// cancel the retry with (Pi's single thread has no between: its `#retry = { cancel: after(…) }` is one step). The retry must
+// still go with the newer set: a newer one replaced it.
+func TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet(t *testing.T) {
+	a1, a2, a3 := script("@test/a", "d1", "hello"), script("@test/a", "d2", "hello again"), script("@test/a", "d3", "hello at last")
+	manual := &timers{}
+	setting, resume := make(chan struct{}, 1), make(chan struct{})
+	var once sync.Once
+	release := func() { once.Do(func() { close(resume) }) }
+	defer release()
+	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 1, manual: manual, onTimer: func(ms int64) {
+		if ms == 1000 {
+			setting <- struct{}{}
+			<-resume
+		}
+	}})
+	g := text(t, s.client.Host, greeting)
+	s.publish(t, setOf("B1", a2))
+	// The retry's timer is listed and its After has not returned: the client holds no handle for it yet.
+	select {
+	case <-setting:
+	case <-time.After(10 * time.Second):
+		t.Fatal("no retry timer in 10 s")
+	}
+	s.publish(t, setOf("B1", a3))
+	// The newer set has reached the client's watch while the retry's After has not returned.
+	until(t, func() bool { return s.client.NewestDigest("@test/a") == "d3" })
+	release()
+	until(t, func() bool { return valueOf(g) == "hello at last" })
 	if n := len(manual.withMs(1000)); n != 0 {
 		t.Fatalf("%d retries left", n)
 	}
