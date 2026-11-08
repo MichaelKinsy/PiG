@@ -62,7 +62,7 @@ function push(runtime, entries, pairs = [], session = "s") {
 
 %s
 `, runtimeURL, body)
-	if output, err := exec.Command(node, "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
+	if output, err := exec.Command(node, "--expose-gc", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
 		t.Fatalf("%s: %v\n%s", name, err, output)
 	}
 }
@@ -297,6 +297,130 @@ func TestNodeRuntimeEventMessageIdentityPaths(t *testing.T) {
   assert.notEqual(entries[0].message, seen[0], "m1 was evicted");
   assert.equal(entries[1].message, seen[19], "m20 is inside the bound");
   assert.equal(entries[2].message, seen[139], "m140 is the newest");
+}
+`)
+}
+
+// upstream: agent-session.ts _entryIdsByMessage is a WeakMap: the messages of a session that was switched away from are collectable.
+//
+// The table of message objects a process keeps (messageObjects) holds up to 128 of them strongly, so a session switch drops it (the numbers never repeat, so nothing a later session numbers can find an old object). The first runtime to see the new session id drops it and the others of the process do not: the first message after a switch is numbered by every extension of a cell in turn, and they still share its object.
+func TestNodeRuntimeReleasesTheMessagesOfAPreviousSession(t *testing.T) {
+	nodeIdentityScript(t, "node message objects follow the session", `
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+const collect = async () => { for (let i = 0; i < 4; i++) { await settle(); gc(); } };
+
+// (a) The object the process holds for a message of s1 is released by the switch to s2.
+{
+  hostLog = [];
+  const runtime = newRuntime();
+  let ref;
+  runtime.on("message_end", (event) => { ref = new WeakRef(event.message); });
+  push(runtime, [], [], "s1");
+  await messageEnd(runtime, user("x".repeat(1 << 20)), nextSeq());
+  assert.ok(ref.deref(), "the process holds the message of the current session");
+  await collect();
+  assert.ok(ref.deref(), "still held while the session is current");
+  hostLog = [];
+  push(runtime, [], [], "s2");
+  await collect();
+  assert.equal(ref.deref(), undefined, "the message of the replaced session was released");
+}
+
+// (b) Two runtimes of one process: the one that sees the new session second does not drop what the first one already numbered.
+{
+  hostLog = [];
+  const first = newRuntime(), second = newRuntime();
+  const seen = [];
+  first.on("message_start", (event) => { seen.push(event.message); });
+  second.on("message_start", (event) => { seen.push(event.message); });
+  push(first, [], [], "s1");
+  push(second, [], [], "s1");
+  hostLog = [];
+  push(first, [], [], "s2");
+  const seq = nextSeq();
+  await emit(first, "message_start", 1, { message: user() }, [seq]);
+  push(second, [], [], "s2");
+  await emit(second, "message_start", 1, { message: user() }, [seq]);
+  assert.equal(seen[0], seen[1], "both extensions of the cell hold one object for the first message after the switch");
+}
+`)
+}
+
+// upstream: runner.ts emitMessageEnd hands every handler one event.message, and agent-session.ts appendMessage stores that object: a handler that edits event.message in place (redaction extensions do) edits the message every later handler, turn_end, agent_end and the saved entry hold.
+//
+// The host cannot share the object, so the reply carries the message the handler left, when it differs from the one it received (as a tool_call reply carries the edited input), and the host writes it into the message. The test plays the host: a later payload carries the message the reply named.
+func TestNodeRuntimeMessageEndInPlaceEditReachesTheHost(t *testing.T) {
+	nodeIdentityScript(t, "node message_end in-place edit", `
+const edit = { type: "text", text: "(edited)" };
+const wire = (...blocks) => (message) => ({ ...message, content: [...message.content, ...blocks] });
+const withEdit = wire(edit);
+
+// What the host sends later: the message as the reply left it, or as the host had it when the reply named no edit.
+function hostValue(reply, message) {
+  return reply?.result?._pigMessageEndMessage ?? message;
+}
+
+{
+  hostLog = [];
+  const runtime = newRuntime();
+  const replies = [];
+  runtime.conn.respond = (id, result, error) => replies.push({ id, result, error });
+  const first = [], second = [], turns = [], agents = [];
+  runtime.on("message_end", (event) => { first.push(event.message); event.message.content.push({ ...edit }); });
+  runtime.on("message_end", (event) => { second.push(event.message); });
+  runtime.on("turn_end", (event) => { turns.push(event); });
+  runtime.on("agent_end", (event) => { agents.push(event); });
+  const userSeq = nextSeq(), assistantSeq = nextSeq();
+  const messages = [[user(), userSeq], [assistant(), assistantSeq]];
+  const stored = [];
+  for (const [i, [message, seq]] of messages.entries()) {
+    await messageEnd(runtime, message, seq, 1);
+    const reply = replies.pop();
+    assert.deepEqual(reply.result?._pigMessageEndMessage, withEdit(message), "the reply names the message the handler left");
+    const current = hostValue(reply, message);
+    await messageEnd(runtime, current, seq, 2);
+    assert.equal(second[i], first[i], "the next handler holds the first one's object");
+    assert.equal(second[i].content.length, 2, "and the edit is in it");
+    stored.push(current);
+    push(runtime, [entry("e" + i, i === 0 ? null : "e" + (i - 1), current)], [{ id: "e" + i, seq }]);
+    replies.length = 0;
+  }
+  await emit(runtime, "turn_end", 3, { turnIndex: 0, message: stored[1], toolResults: [] }, [assistantSeq]);
+  await emit(runtime, "agent_end", 4, { messages: stored }, [userSeq, assistantSeq]);
+  assert.equal(turns[0].message, first[1], "turn_end holds the message_end object");
+  assert.equal(turns[0].message.content.length, 2, "with the edit");
+  assert.deepEqual(agents[0].messages.map((message, i) => message === first[i]), [true, true], "agent_end holds the message_end objects");
+  assert.deepEqual(agents[0].messages.map((message) => message.content.length), [2, 2], "with the edit");
+  const entries = runtime.ctx.sessionManager.getEntries();
+  assert.deepEqual(entries.map((e, i) => e.message === first[i]), [true, true], "the entries hold the message_end objects");
+  assert.deepEqual(entries.map((e) => e.message.content.length), [2, 2], "with the edit");
+}
+
+// A handler that leaves the message as it was sends no edit, and one that throws after editing still does: Pi's object holds the edit whatever the handler does next.
+{
+  hostLog = [];
+  const runtime = newRuntime();
+  const replies = [];
+  runtime.conn.respond = (id, result, error) => replies.push({ id, result, error });
+  runtime.on("message_end", () => {});
+  runtime.on("message_end", (event) => { event.message.content.push({ ...edit }); throw new Error("after the edit"); });
+  await messageEnd(runtime, user(), nextSeq(), 1);
+  assert.equal(replies[0].result?._pigMessageEndMessage, undefined, "no edit, no message in the reply");
+  assert.equal(replies[0].error, null);
+  await messageEnd(runtime, user(), nextSeq(), 2);
+  assert.deepEqual(replies[1].result?._pigMessageEndMessage, withEdit(user()), "the edit reaches the host although the handler threw");
+  assert.ok(replies[1].error, "and so does the error");
+}
+
+// A handler that edits in place and returns a replacement sends both.
+{
+  const runtime = newRuntime();
+  const replies = [];
+  runtime.conn.respond = (id, result, error) => replies.push({ id, result, error });
+  runtime.on("message_end", (event) => { event.message.content.push({ ...edit }); return { message: { ...event.message, content: [{ type: "text", text: "replacement" }] } }; });
+  await messageEnd(runtime, user(), nextSeq());
+  assert.deepEqual(replies[0].result._pigMessageEndMessage, withEdit(user()));
+  assert.equal(replies[0].result._pigMessageEndResult.message.content[0].text, "replacement");
 }
 `)
 }

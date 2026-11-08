@@ -3,13 +3,16 @@ package coding
 import (
 	"context"
 	"reflect"
+	"runtime"
 	"slices"
 	"sync"
 	"testing"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
@@ -171,5 +174,86 @@ func TestMessageSequencesNumberMessagesByIdentity(t *testing.T) {
 	}
 	if got := sequences.Known(first); got != 0 {
 		t.Errorf("the oldest message is still numbered %d after the bound", got)
+	}
+}
+
+// upstream: agent-session.ts _entryIdsByMessage is a WeakMap, so the messages of a session that was replaced are collectable.
+//
+// A Session that numbers messages holds them strongly (the number is looked up by the message), so a session switch (/new, /resume, fork) must release them: the table is cleared when the inner session is replaced, and the counter goes on, so a number is never reused for another message.
+func TestReplaceInnerReleasesTheNumberedMessages(t *testing.T) {
+	var mu sync.Mutex
+	var user weak.Pointer[agent.UserMessage]
+	h := newRecoveryHarness(t, harnessOptions{extension: extension.Extension{Path: "/ext/release", Handlers: map[string][]extension.HandlerFn{
+		"message_end": {func(args ...any) (any, error) {
+			if message := args[0].(extension.MessageEndEvent).Message; message.User != nil {
+				mu.Lock()
+				user = weak.Make(message.User)
+				mu.Unlock()
+			}
+			return nil, nil
+		}},
+	}}}, fauxReply("hello", ai.StopReasonStop, 0))
+	if _, err := h.session.Send(context.Background(), "go"); err != nil {
+		t.Fatal(err)
+	}
+	// The harness keeps the events it saw: they are not what is under test.
+	h.mu.Lock()
+	h.events = nil
+	h.mu.Unlock()
+	mu.Lock()
+	if user.Value() == nil {
+		mu.Unlock()
+		t.Fatal("the extension saw no user message")
+	}
+	mu.Unlock()
+	h.session.messageSeqs.Sequence(agent.AgentMessage{ToolResult: &agent.ToolResultMessage{Role: "toolResult", ToolCallID: "call_1"}})
+	h.session.messageSeqs.mu.Lock()
+	before := h.session.messageSeqs.last
+	h.session.messageSeqs.mu.Unlock()
+	if before == 0 {
+		t.Fatal("the session numbered no message")
+	}
+
+	h.session.ReplaceInner(icodingagent.NewSession("replacement", h.session.CWD()))
+	for range 5 {
+		runtime.GC()
+	}
+	mu.Lock()
+	reachable := user.Value() != nil
+	mu.Unlock()
+	if reachable {
+		t.Error("the user message of the replaced session is still reachable: the Session's message numbering holds it")
+	}
+	if next := h.session.messageSeqs.Sequence(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserText("next")}}); next <= before {
+		t.Errorf("the first message after the replacement got %d, want a number above the %d numbered before: a number is never reused", next, before)
+	}
+	if got := h.session.messageSeqs.Known(agent.AgentMessage{ToolResult: &agent.ToolResultMessage{Role: "toolResult", ToolCallID: "call_1"}}); got != 0 {
+		t.Errorf("a tool call id of the replaced session still names message %d", got)
+	}
+}
+
+// A message is numbered for the Node runtime that receives it and for no one else: a Session whose handlers never ask for the numbers (no Node extension is loaded) numbers nothing, notes no entry and holds no message.
+func TestSessionNumbersNothingWhenNoExtensionAsksForNumbers(t *testing.T) {
+	silent := func(...any) (any, error) { return nil, nil }
+	for name, option := range map[string]harnessOptions{
+		"no extension":         {},
+		"handlers that ignore": {extension: extension.Extension{Path: "/ext/silent", Handlers: map[string][]extension.HandlerFn{"message_start": {silent}, "message_end": {silent}, "turn_end": {silent}, "agent_end": {silent}}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := newRecoveryHarness(t, option, fauxReply("hello", ai.StopReasonStop, 0))
+			if _, err := h.session.Send(context.Background(), "go"); err != nil {
+				t.Fatal(err)
+			}
+			sequences := &h.session.messageSeqs
+			sequences.mu.Lock()
+			last, held := sequences.last, len(sequences.byMessage)
+			sequences.mu.Unlock()
+			if last != 0 || held != 0 {
+				t.Errorf("the session numbered %d messages and holds %d, want none", last, held)
+			}
+			if pairs, next := h.session.Inner().MessageEntriesAfter(0); len(pairs) != 0 || next != 0 {
+				t.Errorf("message entries = %v (cursor %d), want none", pairs, next)
+			}
+		})
 	}
 }
