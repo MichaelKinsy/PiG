@@ -1,12 +1,12 @@
 package piglet
 
 import (
-	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
