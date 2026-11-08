@@ -774,6 +774,33 @@ func TestSqliteStorageBatches(t *testing.T) {
 		})
 	}
 
+	t.Run("stores pointer-form writes as it stores their value forms", func(t *testing.T) {
+		storage := openCommitStorage(t, openCommitDatabase(t))
+		createRoot(t, storage)
+		id := mint[durable.DocumentId](t, storage)
+		commit(t, storage, durable.DocumentCreateWrite{
+			Record: durable.DocumentCreate{Id: id, Kind: "pointer", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID}, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+			Content: base(chorddelta.JsonObjectOf("n", float64(1))),
+		})
+		duplicate := mint[durable.DocumentId](t, storage)
+		result, err := storage.Commit(testContext, [][]durable.StorageWrite{
+			{&durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("n", float64(2)))}},
+			{&durable.DocumentRetireWrite{Id: id}},
+			{&durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: duplicate, Kind: "pointer", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID}, History: durable.HistoryRewindable, Fork: durable.ForkAsOf}, Content: base(chorddelta.JsonObjectOf("n", float64(1)))}},
+			{&durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: duplicate, Kind: "pointer", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID}, History: durable.HistoryRewindable, Fork: durable.ForkAsOf}, Content: base(chorddelta.JsonObjectOf("n", float64(1)))}},
+		}, func(int, durable.Seq) {})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.Stored != 3 {
+			t.Fatalf("stored = %d, refused = %v, want 3 stored (change, retire, create) and the duplicate refused", result.Stored, result.Refused)
+		}
+		if result.Refused == nil {
+			t.Fatal("the duplicate create of a pointer-form write was not refused")
+		}
+	})
+
+
 	for _, failure := range readFailures {
 		t.Run("rejects a batch call whose check read fails in the database with "+failure.name+", and refuses only for its own checks", func(t *testing.T) {
 			storage, armed := openFaultyStorage(t, func(_, sqlText string) bool { return strings.Contains(sqlText, "record_type") }, failure.fail)
