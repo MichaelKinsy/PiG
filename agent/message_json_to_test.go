@@ -3,7 +3,11 @@ package agent
 import (
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
+	"math"
+	"regexp"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
@@ -29,15 +33,24 @@ func marshalJSONToMessages() map[string]AgentMessage {
 		}
 	}
 	call := ai.ToolCall{ID: "call-1", Name: "read", Arguments: ai.JsonObject{"path": "a<b>&c\u2028", "n": 1.5, "nested": []any{"x", nil, true}}}
+	negZero := math.Copysign(0, -1)
+	zeroCall := ai.ToolCall{ID: "call-0", Name: "read", Arguments: ai.JsonObject{"neg": negZero, "nested": []any{negZero, map[string]any{"z": negZero}}}}
+	zeroAssistant := assistant("inv \xff <b> \xc0\xaf", zeroCall)
+	zeroAssistant.Usage = &ai.Usage{Input: 1, TotalTokens: 1, Cost: ai.UsageCost{Input: negZero, Output: -0.5, Total: negZero}}
 	return map[string]AgentMessage{
-		"assistant":        {Assistant: assistant("considering <b>&amp; é \u2029", call)},
-		"assistant lone":   {Assistant: assistant(lone, call)},
-		"assistant empty":  {Assistant: &AssistantMessage{Role: RoleAssistant, StopReason: "stop"}},
-		"user text":        {User: &UserMessage{Role: RoleUser, Content: ai.UserText("hi <&>"), Timestamp: 1}},
-		"user blocks":      {User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: lone}, ai.ImageContent{Data: "QUJD", MimeType: "image/png"}}, Timestamp: 2}},
-		"tool result":      {ToolResult: &ToolResultMessage{Role: RoleToolResult, ToolCallID: "c", ToolName: "read", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "<done>"}}, Details: map[string]any{"lines": 3.0}, Timestamp: 3}},
-		"tool result null": {ToolResult: &ToolResultMessage{Role: RoleToolResult, ToolCallID: "c", ToolName: "read", DetailsNull: true, IsError: true, Timestamp: 4}},
-		"custom":           {Custom: map[string]any{"role": "custom", "customType": "x", "content": "<&>", "timestamp": 5.0}},
+		// Negative zero and invalid UTF-8 are written as JSON.stringify writes them: 0, and the replacement character itself.
+		"assistant negative zero and invalid UTF-8": {Assistant: zeroAssistant},
+		"user invalid UTF-8":                        {User: &UserMessage{Role: RoleUser, Content: ai.UserText("bad \xff byte"), Timestamp: 6}},
+		"tool result negative zero":                 {ToolResult: &ToolResultMessage{Role: RoleToolResult, ToolCallID: "c\xff", ToolName: "read", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "x\xfe"}}, Details: map[string]any{"z": negZero, "s": "\xff"}, Timestamp: 7}},
+		"custom negative zero":                      {Custom: map[string]any{"role": "custom", "customType": "x", "content": "\xff", "timestamp": negZero}},
+		"assistant":                                 {Assistant: assistant("considering <b>&amp; é \u2029", call)},
+		"assistant lone":                            {Assistant: assistant(lone, call)},
+		"assistant empty":                           {Assistant: &AssistantMessage{Role: RoleAssistant, StopReason: "stop"}},
+		"user text":                                 {User: &UserMessage{Role: RoleUser, Content: ai.UserText("hi <&>"), Timestamp: 1}},
+		"user blocks":                               {User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: lone}, ai.ImageContent{Data: "QUJD", MimeType: "image/png"}}, Timestamp: 2}},
+		"tool result":                               {ToolResult: &ToolResultMessage{Role: RoleToolResult, ToolCallID: "c", ToolName: "read", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "<done>"}}, Details: map[string]any{"lines": 3.0}, Timestamp: 3}},
+		"tool result null":                          {ToolResult: &ToolResultMessage{Role: RoleToolResult, ToolCallID: "c", ToolName: "read", DetailsNull: true, IsError: true, Timestamp: 4}},
+		"custom":                                    {Custom: map[string]any{"role": "custom", "customType": "x", "content": "<&>", "timestamp": 5.0}},
 	}
 }
 
@@ -119,3 +132,38 @@ func TestMarshalJSONToOfAssistantAndToolResult(t *testing.T) {
 		}
 	}
 }
+
+// The bytes are the ones Pi's JSON.stringify writes: negative zero is 0 and a byte that is not UTF-8 is the replacement character, raw, from
+// every encoder that reaches a message.
+func TestMessageMarshalJSONWritesWhatJSONStringifyWrites(t *testing.T) {
+	for name, message := range marshalJSONToMessages() {
+		if !strings.Contains(name, "negative zero") && !strings.Contains(name, "invalid UTF-8") {
+			continue
+		}
+		t.Run(name, func(t *testing.T) {
+			direct, err := message.MarshalJSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			viaJSON, err := json.Marshal(message)
+			if err != nil {
+				t.Fatal(err)
+			}
+			viaStringify, err := jsonv2.Marshal(message, jsonopts.Stringify)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for form, text := range map[string]string{"MarshalJSON": string(direct), "json.Marshal": string(viaJSON), "Stringify": string(viaStringify)} {
+				if negativeZero.MatchString(text) {
+					t.Errorf("%s writes a negative zero: %s", form, text)
+				}
+				if strings.Contains(text, `\ufffd`) || !utf8.ValidString(text) {
+					t.Errorf("%s writes the replacement character as an escape or keeps an ill-formed byte: %s", form, text)
+				}
+			}
+		})
+	}
+}
+
+// negativeZero matches a JSON number that is a negative zero without a fraction or an exponent.
+var negativeZero = regexp.MustCompile(`(^|[^0-9eE.])-0([^.0-9eE]|$)`)
