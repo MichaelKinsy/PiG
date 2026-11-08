@@ -5511,5 +5511,106 @@
    "old": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"match\")",
    "new": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"mutant\")"
   }
+ ],
+ "packages/schema/src/builders.ts": [
+  {
+   "file": "schema/builders.go",
+   "old": "chordjson.ObjectOf(\"type\", \"string\"), options)",
+   "new": "chordjson.ObjectOf(\"type\", \"number\"), options)"
+  },
+  {
+   "file": "schema/builders.go",
+   "old": "\tif len(schema) > 0 {\n\t\treturn schema[0]\n\t}\n\treturn &Object{}",
+   "new": "\treturn &Object{}"
+  },
+  {
+   "file": "schema/builders.go",
+   "old": "ObjectOf(\"anyOf\", schemaList(schemas))",
+   "new": "ObjectOf(\"oneOf\", schemaList(schemas))"
+  }
+ ],
+ "packages/schema/src/types.ts": [
+  {
+   "file": "schema/types.go",
+   "old": "Draft7 Draft = \"7\"",
+   "new": "Draft7 Draft = \"\""
+  }
+ ],
+ "packages/schema/src/validator.ts": [
+  {
+   "file": "schema/validator.go",
+   "old": "return ParseResult{OK: true, Value: value}, nil",
+   "new": "return ParseResult{OK: false, Value: value}, nil"
+  }
+ ],
+ "packages/mcp/src/config.ts": [
+  {
+   "file": "mcp/config.go",
+   "old": "mcpshared.ValidateMcpServerConfig(name, raw, options)",
+   "new": "mcpshared.ValidateMcpServerConfig(name+\"x\", raw, options)"
+  }
+ ],
+ "packages/mcp/src/input-schema.ts": [
+  {
+   "file": "mcp/input_schema.go",
+   "old": "!obj.Has(\"properties\")",
+   "new": "obj.Has(\"properties\")"
+  }
+ ],
+ "packages/mcp/src/naming.ts": [
+  {
+   "file": "mcp/naming.go",
+   "old": "return mcpshared.McpNamespace(server)",
+   "new": "return mcpshared.McpNamespace(server + \"_\")"
+  }
+ ],
+ "packages/mcp/src/oauth/client-settings.ts": [
+  {
+   "file": "mcp/oauth/client_settings.go",
+   "old": "settings.ClientID == \"\" && settings.ClientName == \"\" && documents != nil",
+   "new": "settings.ClientID == \"\" && settings.ClientName != \"\" && documents != nil"
+  }
+ ],
+ "packages/mcp/src/oauth/errors.ts": [
+  {
+   "file": "mcp/oauth/errors.go",
+   "old": "\treturn \"Another process is refreshing the MCP server's tokens\"",
+   "new": "\treturn \"Another process is refreshing the MCP server tokens\""
+  }
+ ],
+ "packages/mcp/src/oauth/sign-in.ts": [
+  {
+   "file": "mcp/oauth/sign_in.go",
+   "old": "return \"Sign-in cancelled\"",
+   "new": "return \"Sign-in canceled\""
+  }
+ ],
+ "packages/mcp/src/output-limit.ts": [
+  {
+   "file": "mcp/output_limit.go",
+   "old": "tokens := (truncation.totalBytes + 3) / 4",
+   "new": "tokens := (truncation.totalBytes + 2) / 4"
+  }
+ ],
+ "packages/mcp/src/transports/pipe.ts": [
+  {
+   "file": "mcp/pipe.go",
+   "old": "t.lines.readStdout(bytes)",
+   "new": "t.lines.readStdout(nil)"
+  }
+ ],
+ "packages/mcp/src/oauth/auth-provider.ts": [
+  {
+   "file": "mcp/oauth/auth_provider.go",
+   "old": "if state == nil || state.Tokens == nil || state.Tokens.RefreshToken == \"\" {",
+   "new": "if state == nil || state.Tokens == nil || state.Tokens.RefreshToken != \"\" {"
+  }
+ ],
+ "packages/mcp/src/oauth/loopback.ts": [
+  {
+   "file": "mcp/oauth/loopback.go",
+   "old": "if strings.TrimFunc(input, jsstring.IsSpace) == \"\" {",
+   "new": "if input == \"\" {"
+  }
  ]
 }
