@@ -143,6 +143,8 @@ func serveBranches(self host.StoreSelf) error {
 			if err != nil {
 				return "", err
 			}
+			// The check runs in its caller's section; the Durable reads need the loop.
+			chordctx.Suspend(ctx)
 			id := durable.ConversationId(conversation)
 			main, err := p2runtime.MainConversation(ctx, d)
 			if err != nil || id == main {

@@ -45,3 +45,11 @@ plugins/tree/contract.ts
 plugins/search/contract.ts
 plugins/conversations/contract.ts
 plugins/chat-mode/contract.ts
+plugins/conversations/web.tsx
+plugins/conversations/activity.tsx
+plugins/chat-mode/web.tsx
+plugins/chat-mode/style.css
+plugins/history/web.tsx
+plugins/history/activity.tsx
+plugins/history/activity.css
+plugins/chat/web.tsx
