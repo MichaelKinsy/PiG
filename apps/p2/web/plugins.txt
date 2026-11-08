@@ -3,8 +3,11 @@ chat
 envs
 login
 logs
+ports
+prompt
 send-file
 sessions
 sharing
 subagents
 web-shell
+workspace
