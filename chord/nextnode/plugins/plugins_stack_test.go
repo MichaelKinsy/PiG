@@ -68,7 +68,7 @@ func stackFailing(t *testing.T) PluginScript {
 		"worker.ts": "import { helper } from \"./helper.ts\";\nexport default { setup: () => {}, fail: () => helper() };",
 		"helper.ts": "// A helper.\nexport function helper(): never {\n\tthrow new Error(\"helper failed at \" + Date.now());\n}",
 	}, nil)
-	return evaluateBuilt(t, root, "@test/notes", "worker", []string{"@earendil-works/chord/next"})
+	return evaluateBuilt(t, root, "@test/notes", "worker", []string{"@earendil-works/chord"})
 }
 
 // stackSingle writes a plugin dir (name "@test/<dir>") whose worker.ts is text and builds it with no host packages.
