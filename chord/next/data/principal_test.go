@@ -133,3 +133,39 @@ func TestPrincipalKey(t *testing.T) {
 		runtime.KeepAlive(custom)
 	})
 }
+
+func TestSamePrincipal(t *testing.T) {
+	ada := delta.JsonObjectOf("kind", "user", "id", "u1")
+
+	t.Run("matches the same canonical JSON, whatever the property order; nothing else", func(t *testing.T) {
+		ctx := chordctx.Background()
+		if !data.SamePrincipal(delta.JsonObjectOf("id", "u1", "kind", "user"), ada, ctx) {
+			t.Error("the same principal in another order differs")
+		}
+		if data.SamePrincipal(delta.JsonObjectOf("kind", "user", "id", "u1", "name", "Ada"), ada, ctx) {
+			t.Error("a principal with a further field is the same")
+		}
+		if data.SamePrincipal(delta.JsonObjectOf("kind", "guest", "id", "u1"), ada, ctx) {
+			t.Error("another kind is the same")
+		}
+		if data.SamePrincipal(nil, ada, ctx) {
+			t.Error("no principal is some principal")
+		}
+	})
+
+	t.Run("computes each principal's key once (cost guard)", func(t *testing.T) {
+		owner := user("owner")
+		caller := user("owner")
+		got := nexttest.Counted(t, func(ctx context.Context) {
+			data.SamePrincipal(caller, owner, ctx)
+			data.SamePrincipal(caller, owner, ctx)
+		})
+		if got.Walks != 2 {
+			t.Fatalf("walks = %d, want 2", got.Walks)
+		}
+		got = nexttest.Counted(t, func(ctx context.Context) { data.SamePrincipal(user("owner"), owner, ctx) })
+		if got.Walks != 1 {
+			t.Fatalf("a new principal walks = %d, want 1 (the owner's key is cached)", got.Walks)
+		}
+	})
+}
