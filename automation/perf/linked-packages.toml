@@ -27,6 +27,8 @@ allow = [
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+	# 39,766 B on linux_amd64 and windows_amd64 (under 32 KiB on darwin_arm64): the digest cache, verified launch and platform report grew past the line. cli.runExtensionsRuntime calls tsruntime.Platform and the subprocess host launches the TS runtime through the package.
+	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
 	"github.com/MichaelKinsy/PiG/coding/extension/source",
 	"github.com/MichaelKinsy/PiG/coding/mcpext",
 	"github.com/MichaelKinsy/PiG/coding/packagecontent",
@@ -80,6 +82,8 @@ allow = [
 	"github.com/dlclark/regexp2",
 	"github.com/dlclark/regexp2/syntax",
 	"github.com/gorilla/websocket",
+	# 42,646 B on linux_amd64 and windows_amd64: the entropy coder of the zstd package below, which is already listed. Pi zstd-compresses Codex SSE request bodies (openai-codex-responses.ts compressRequestBodyZstd, zlib.zstdCompressSync level 3), so ai/zstd_codex.go does the same.
+	"github.com/klauspost/compress/huff0",
 	"github.com/klauspost/compress/zstd",
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1",
 	"github.com/tetratelabs/wazero/internal/engine/interpreter",
