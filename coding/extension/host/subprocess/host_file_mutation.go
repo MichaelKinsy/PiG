@@ -94,14 +94,26 @@ func (c *Conn) shareFileMutations(turns *fileMutationTurns) {
 
 // handleFileMutationEnter serves CallFileMutationEnter: it takes the path's next place in the host's queue before the call lane advances (extension.CallInitiated),
 // then waits for the earlier mutations to complete.
+//
+// pig divergence (D187): an enter that names the tool_call request it serves (FileMutationEnterArgs.Request, the form an SDK's Context sends) first waits for the
+// start windows of the extension tools before that request in its batch to close, as Pi's single thread runs their synchronous prefixes, which may take the
+// queue, before the request's own (agent-loop.ts:646-648). The call lane advances before it waits: a call of an earlier tool that closes its window may be behind
+// this one in the lane. The request's own window closes once the turn is registered, the prefix of a tool that takes the queue.
 func (h *Host) handleFileMutationEnter(ctx context.Context, conn *Conn, call *CallPayload) (*CallResultPayload, error) {
 	var args FileMutationEnterArgs
 	if err := json.Unmarshal(call.Args, &args); err != nil {
 		extension.CallInitiated(ctx)
 		return nil, fmt.Errorf("decode %s: %w", call.Method, err)
 	}
+	if args.Request != "" {
+		extension.CallInitiated(ctx)
+		conn.awaitEarlierWindows(args.Request)
+	}
 	ticket, err := tools.ReserveFileMutation(args.Path)
 	extension.CallInitiated(ctx)
+	if args.Request != "" {
+		conn.closeRequestWindow(args.Request)
+	}
 	if err != nil {
 		return nil, err
 	}
