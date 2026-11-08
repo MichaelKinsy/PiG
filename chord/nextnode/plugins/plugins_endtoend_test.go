@@ -80,9 +80,8 @@ func (f *pcFrames) count(t *testing.T, n int) {
 
 // plugins.test.ts › end to end: a server and a worker › loads plugin directories, rolls an edit out (server, then worker),
 // and keeps a broken edit old on both. Pi reads what the host's watchers saw after `transported()` and `delivered()`
-// (event-loop hops). Here Rollout waits itself (NodeHost's reload wait: the Go host's deliveries entered their listeners
-// when it returns), so the frame list, and what the broken edit did not change, are read right after Rollout, with no wait
-// and no call as a barrier.
+// (event-loop hops). Here the frames of the restarted objects are waited for (`pcFrames.count`), and what the broken edit did
+// not change is read right after Rollout.
 func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth(t *testing.T) {
 	root := tempRoot(t, "contracts", "notes")
 	c := pcNew(t, root)
@@ -179,6 +178,9 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rolled = %+v, want %+v", got, want)
 	}
+	// The restarted objects' new snapshots arrive once their new attempts are live: after the report, as Pi's own test reads
+	// them after `transported()` and `delivered()`.
+	frames.count(t, 1)
 	indexFrames.count(t, 1)
 	if values := frames.all(); !reflect.DeepEqual(values, []delta.JsonValue{"v2"}) {
 		t.Fatalf("frames = %v, want [v2]", values)
