@@ -63,23 +63,44 @@ func TestDecodeSizesResultExactlyAndLeavesNoGoroutines(t *testing.T) {
 	}
 }
 
-// pinnedCLI returns when the zstd command that writes the committed frames is on PATH. Without it the test is skipped on a developer's machine, where the generators say what to do (RequirePinnedCLI), and fails where CI sets the environment: a CI that has lost the pinned command would otherwise stop checking the frames.
+// pinnedCLI returns when the zstd command that writes the committed frames is found (PinnedCLI). Without it the test fails where PIG_REQUIRE_ZSTD=1 (the CI jobs that provision it with automation/ci/install-zstd.sh: a job that lost the command would otherwise stop checking the frames) and is skipped everywhere else, with the provisioner in the message.
 func pinnedCLI(t *testing.T) {
 	t.Helper()
-	err := RequirePinnedCLI()
+	_, err := PinnedCLI()
 	if err == nil {
 		return
 	}
-	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" {
+	if os.Getenv("PIG_REQUIRE_ZSTD") == "1" {
 		t.Fatal(err)
 	}
 	t.Skip(err)
 }
 
-func TestPinnedCLIVersionIsInstalledWhereCIRuns(t *testing.T) {
+func TestPinnedCLIIsTheProvisionedVersion(t *testing.T) {
 	pinnedCLI(t)
-	if version, err := CLIVersion(); err != nil || version != PinnedCLIVersion {
+	path, _ := PinnedCLI()
+	if version, err := versionOf(path); err != nil || version != PinnedCLIVersion {
 		t.Fatalf("zstd %q, %v; want %s", version, err, PinnedCLIVersion)
+	}
+}
+
+// The command on PATH is not consulted: a zstd of another version there neither satisfies PinnedCLI nor is used by Encode.
+func TestPinnedCLIIgnoresPATHAndNamesTheProvisioner(t *testing.T) {
+	dir := t.TempDir()
+	fake := filepath.Join(dir, "zstd")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\necho '*** Zstandard CLI (64-bit) v1.5.7, by Yann Collet ***'\n"), 0o755); err != nil {
+		t.Skip(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("PIG_ZSTD", fake)
+	_, err := PinnedCLI()
+	if err == nil || !strings.Contains(err.Error(), "1.5.7") || !strings.Contains(err.Error(), provisioner) {
+		t.Fatalf("PIG_ZSTD naming a zstd 1.5.7: %v", err)
+	}
+	t.Setenv("PIG_ZSTD", "")
+	t.Setenv("PIG_CACHE_HOME", t.TempDir())
+	if _, err := PinnedCLI(); err == nil || !strings.Contains(err.Error(), provisioner) {
+		t.Fatalf("an empty default prefix with a zstd 1.5.7 on PATH: %v", err)
 	}
 }
 
@@ -98,7 +119,7 @@ func TestCommittedFramesAreWhatEncodeWrites(t *testing.T) {
 				t.Fatal(err)
 			}
 			if again := Encode(raw); !bytes.Equal(again, frame) {
-				t.Fatalf("%s is %d bytes and Encode of its content is %d: regenerate it in the tern-ci image (zstd %s), e.g. go generate for the file's package", name, len(frame), len(again), PinnedCLIVersion)
+				t.Fatalf("%s is %d bytes and Encode of its content is %d: regenerate it with zstd %s (%s) through go generate for the file's package", name, len(frame), len(again), PinnedCLIVersion, provisioner)
 			}
 		})
 	}

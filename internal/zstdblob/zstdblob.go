@@ -2,20 +2,22 @@
 
 // Package zstdblob stores data that pig embeds as one zstd frame and expands it on first use. It suits large outputs (about a megabyte and up): the klauspost decoder is linked in every build except one that strips the Node runtime, the docs bundle, the changelog and every SDK (D92), a frame decodes about four times faster than the gzip stream it replaces, and the decode allocates an exactly sized result plus a fixed 125 to 200 KB of decoder buffers, where gzip's io.ReadAll doubles its buffer as it grows. For an embedded file of a few hundred KB the fixed buffers outweigh that gain, so such files stay gzip.
 //
-// Encode is for the generators (automation/gen/zstdfile and the bundle generators) and writes the frames with one encoder: the zstd command at PinnedCLIVersion, run as `zstd --ultra -22`. Its frames are 8 to 12 percent smaller than the library's best level makes, which is binary size (about 200 KB of the pig binary), and the committed frames are byte-for-byte what it writes, so a from-scratch regeneration changes nothing (TestCommittedFramesAreWhatEncodeWrites). A machine without that exact command cannot regenerate a frame: Encode panics and says how to get it (the tern-ci image carries it). EncodeLibrary is the library's encoder, for a test fixture that is never committed. The linker drops both from a binary that never calls them.
+// Encode is for the generators (automation/gen/zstdfile and the bundle generators) and writes the frames with one encoder: the zstd command at PinnedCLIVersion, run as `zstd --ultra -22`. Its frames are 8 to 12 percent smaller than the library's best level makes, which is binary size (about 200 KB of the pig binary), and the committed frames are byte-for-byte what it writes, so a from-scratch regeneration changes nothing (TestCommittedFramesAreWhatEncodeWrites). The command is the one automation/ci/install-zstd.sh builds from the pinned release source, found through PIG_ZSTD or the default prefix (PinnedCLI); the zstd on PATH is not trusted, since GitHub's runners, Homebrew and distributions each carry another version. A machine without it cannot regenerate a frame: Encode panics and names the provisioner. EncodeLibrary is the library's encoder, for a test fixture that is never committed. The linker drops both from a binary that never calls them.
 package zstdblob
 
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/klauspost/compress/zstd"
 )
 
-// PinnedCLIVersion is the version of the zstd command that writes every committed frame. tern-ci's image installs Ubuntu 24.04's zstd 1.5.5; a newer or older zstd compresses the same input to different bytes.
+// PinnedCLIVersion is the version of the zstd command that writes every committed frame: the zstd-source row of automation/dev/toolchains.lock, which install-zstd.sh builds. Another version compresses the same input to different bytes.
 const PinnedCLIVersion = "1.5.5"
 
 // Decode returns the bytes frame holds. It builds a decoder for the call and closes it, so no decoder buffers stay on the heap once the caller has its data.
@@ -49,12 +51,11 @@ func Reuse(existing, raw []byte) []byte {
 	return Encode(raw)
 }
 
-// CLIVersion is the version of the zstd command on PATH, "" with the error when there is none.
-func CLIVersion() (string, error) {
-	path, err := exec.LookPath("zstd")
-	if err != nil {
-		return "", err
-	}
+// provisioner is what an error tells a person to run.
+const provisioner = "automation/ci/install-zstd.sh"
+
+// versionOf is the version the zstd command at path reports.
+func versionOf(path string) (string, error) {
 	out, err := exec.Command(path, "--version").Output()
 	if err != nil {
 		return "", err
@@ -62,30 +63,60 @@ func CLIVersion() (string, error) {
 	// "*** Zstandard CLI (64-bit) v1.5.5, by Yann Collet ***"
 	_, after, ok := strings.Cut(string(out), " v")
 	if !ok {
-		return "", fmt.Errorf("zstd --version printed %q", out)
+		return "", fmt.Errorf("%s --version printed %q", path, out)
 	}
 	version, _, _ := strings.Cut(after, ",")
 	return strings.TrimSpace(version), nil
 }
 
-// RequirePinnedCLI returns nil when the zstd command on PATH is PinnedCLIVersion and an error that says how to get it otherwise.
-func RequirePinnedCLI() error {
-	version, err := CLIVersion()
-	switch {
-	case err != nil:
-		return fmt.Errorf("zstdblob: frames are written with the zstd command %s, and it cannot be run (%v): run the generator in the tern-ci image (automation/ci/build-ci-image.sh), which carries it", PinnedCLIVersion, err)
-	case version != PinnedCLIVersion:
-		return fmt.Errorf("zstdblob: frames are written with the zstd command %s, and PATH has %s: run the generator in the tern-ci image (automation/ci/build-ci-image.sh), which carries %[1]s", PinnedCLIVersion, version)
+// defaultPrefixBin is where install-zstd.sh puts the command without an argument: <cache>/pig-zstd/<version>/bin/zstd, <cache> being $PIG_CACHE_HOME, else $XDG_CACHE_HOME, else $HOME/.cache.
+func defaultPrefixBin() string {
+	cache := os.Getenv("PIG_CACHE_HOME")
+	if cache == "" {
+		cache = os.Getenv("XDG_CACHE_HOME")
 	}
-	return nil
+	if cache == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return ""
+		}
+		cache = filepath.Join(home, ".cache")
+	}
+	return filepath.Join(cache, "pig-zstd", PinnedCLIVersion, "bin", "zstd")
 }
 
-// Encode returns raw as one frame, with its content size recorded, as `zstd --ultra -22` at PinnedCLIVersion writes it. It panics when that command is missing or another version (RequirePinnedCLI), and when the frame does not decode to raw. The output depends on raw alone.
+// PinnedCLI returns the path of the zstd command at PinnedCLIVersion: $PIG_ZSTD when it is set, else the default prefix of install-zstd.sh. It does not look on PATH. The error names the provisioner.
+func PinnedCLI() (string, error) {
+	path, source := os.Getenv("PIG_ZSTD"), "PIG_ZSTD"
+	if path == "" {
+		path, source = defaultPrefixBin(), "the default prefix"
+	}
+	hint := fmt.Sprintf("frames are written with zstd %s, which %s builds from the pinned source (run it, then set PIG_ZSTD to the path it prints, or leave it for the default prefix)", PinnedCLIVersion, provisioner)
+	if path == "" {
+		return "", fmt.Errorf("zstdblob: no home directory for the default prefix: %s", hint)
+	}
+	version, err := versionOf(path)
+	switch {
+	case err != nil:
+		return "", fmt.Errorf("zstdblob: %s names %s, which cannot be run (%v): %s", source, path, err, hint)
+	case version != PinnedCLIVersion:
+		return "", fmt.Errorf("zstdblob: %s names %s, which is zstd %s: %s", source, path, version, hint)
+	}
+	return path, nil
+}
+
+// Encode returns raw as one frame, with its content size recorded, as `zstd --ultra -22` at PinnedCLIVersion writes it. It panics when PinnedCLI finds no such command, and when the frame does not decode to raw. The output depends on raw alone: the command runs without ZSTD_NBTHREADS, ZSTD_CLEVEL and the other ZSTD_ variables.
 func Encode(raw []byte) []byte {
-	if err := RequirePinnedCLI(); err != nil {
+	path, err := PinnedCLI()
+	if err != nil {
 		panic(err.Error())
 	}
-	cmd := exec.Command("zstd", "-q", "-c", "--ultra", "-22", "--stream-size="+strconv.Itoa(len(raw)))
+	cmd := exec.Command(path, "-q", "-c", "--ultra", "-22", "--stream-size="+strconv.Itoa(len(raw)))
+	for _, entry := range os.Environ() {
+		if !strings.HasPrefix(entry, "ZSTD_") {
+			cmd.Env = append(cmd.Env, entry)
+		}
+	}
 	cmd.Stdin = bytes.NewReader(raw)
 	frame, err := cmd.Output()
 	if err != nil {
