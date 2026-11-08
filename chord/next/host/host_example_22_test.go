@@ -23,7 +23,7 @@ func TestExample22Migrations(t *testing.T) {
 	})
 	must(t, err)
 	// Version 2: `file` becomes `path`, a `dir` column is added and filled from each row (the data step).
-	editsV2, err := store.EvolveTable(editsV1, func(e *store.TableEditor) *store.TableEditor {
+	editsV2, err := store.EvolveTable(editsV1, func(e *store.TableEditor) store.TableTailEditor {
 		return e.Rename("file", "path").Add("dir", store.Str(contracts.Default(""))).Rows(func(row store.Row) (any, error) {
 			path := row["path"].(string)
 			return store.Row{"dir": path[:strings.LastIndex(path, "/")]}, nil
@@ -31,7 +31,7 @@ func TestExample22Migrations(t *testing.T) {
 	})
 	must(t, err)
 	// Version 3: `dir` is dropped again, an index is added. Data functions stay as deployed; history only grows.
-	editsV3, err := store.EvolveTable(editsV2, func(e *store.TableEditor) *store.TableEditor {
+	editsV3, err := store.EvolveTable(editsV2, func(e *store.TableEditor) store.TableTailEditor {
 		return e.Drop("dir").Index("by_path", []string{"path", "at"})
 	})
 	must(t, err)

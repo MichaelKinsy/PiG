@@ -201,7 +201,7 @@ func TestTableHandle(t *testing.T) {
 			store := memoryStore(t)
 			definition := handleEdits(t)
 			old := tableIn(t, store, definition)
-			v2, err := EvolveTable(definition, func(e *TableEditor) *TableEditor { return e.Rename("note", "comment") })
+			v2, err := EvolveTable(definition, func(e *TableEditor) TableTailEditor { return e.Rename("note", "comment") })
 			noError(t, err)
 			tableIn(t, store, v2)
 			_, err = old.Get(background, Row{"id": "e0"})
@@ -218,7 +218,7 @@ func TestTableHandle(t *testing.T) {
 		t.Run("refuses an old handle's read made while the migration's commit runs, rather than issuing obsolete SQL", func(t *testing.T) {
 			v1, err := DefineTable("race", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("old", Str())}, Key: []string{"id"}})
 			noError(t, err)
-			v2, err := EvolveTable(v1, func(e *TableEditor) *TableEditor { return e.Rename("old", "new") })
+			v2, err := EvolveTable(v1, func(e *TableEditor) TableTailEditor { return e.Rename("old", "new") })
 			noError(t, err)
 			store, hold := gatedStore(t)
 			old := tableIn(t, store, v1)

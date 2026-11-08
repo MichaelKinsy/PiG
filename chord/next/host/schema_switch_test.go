@@ -163,13 +163,13 @@ func declareSchemaSwitch() *ssDeclarations {
 		Columns: []store.ColumnProp{store.Col("id", store.Str()), store.Col("file", store.Str()), store.Col("at", store.Int())},
 		Key:     []string{"id"},
 	}))
-	d.EditsV2 = ssMust(store.EvolveTable(d.EditsV1, func(e *store.TableEditor) *store.TableEditor {
+	d.EditsV2 = ssMust(store.EvolveTable(d.EditsV1, func(e *store.TableEditor) store.TableTailEditor {
 		return e.Rename("file", "path").Add("dir", store.Str(contracts.Default(""))).Rows(func(row store.Row) (any, error) {
 			path := row["path"].(string)
 			return store.Row{"dir": path[:strings.LastIndex(path, "/")]}, nil
 		})
 	}))
-	d.EditsV3 = ssMust(store.EvolveTable(d.EditsV2, func(e *store.TableEditor) *store.TableEditor {
+	d.EditsV3 = ssMust(store.EvolveTable(d.EditsV2, func(e *store.TableEditor) store.TableTailEditor {
 		return e.Drop("dir").Index("by_path", []string{"path", "at"})
 	}))
 	// A persisted job with a state document.

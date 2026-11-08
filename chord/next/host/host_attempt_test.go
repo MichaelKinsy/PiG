@@ -1163,7 +1163,7 @@ func leftPad(i int) string {
 // evolved is version 2 adding `note`, whose rows runs each per row first.
 func evolved(t testing.TB, each func(id string) error) *store.TableDefinition {
 	t.Helper()
-	definition, err := store.EvolveTable(editsV1(t), func(e *store.TableEditor) *store.TableEditor {
+	definition, err := store.EvolveTable(editsV1(t), func(e *store.TableEditor) store.TableTailEditor {
 		return e.Add("note", store.Opt(store.Str())).Rows(func(row store.Row) (any, error) {
 			if err := each(row["id"].(string)); err != nil {
 				return nil, err

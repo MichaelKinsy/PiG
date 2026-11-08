@@ -55,6 +55,21 @@ type TableOwner interface {
 // RowsPage is the rows `Rows` reads per page (rule 17).
 const RowsPage = 100
 
+// Table is a table of this object: reads of committed state, the context first (Go's form of Pi's context last). Writes
+// go through `self.tx`. Pi's type parameters (the columns and the key) are designed out: a row is a Row, a key any.
+type Table interface {
+	// Page is up to limit rows of q (after options.After), and the cursor of the next page when there is one.
+	Page(ctx context.Context, q *Query, limit int64, options PageOptions) (Page, error)
+	// Rows is every row of q, read a page of RowsPage at a time.
+	Rows(ctx context.Context, q *Query) *RowsIterator
+	// Get is the row with key, nil when absent.
+	Get(ctx context.Context, key any) (Row, error)
+	// Count is the number of rows of q.
+	Count(ctx context.Context, q *Query) (int64, error)
+}
+
+var _ Table = (*TableHandle)(nil)
+
 // TableHandle is a table handle: the definition the attempt declared, the table's SQL name and statements, the store.
 type TableHandle struct {
 	Definition *TableDefinition

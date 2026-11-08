@@ -231,7 +231,7 @@ func TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObje
 	chordStore := memoryStore(t)
 	v1, err := store.DefineTable("items", store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Str()), store.Col("name", store.Str())}, Key: []string{"id"}})
 	must(t, err)
-	v2, err := store.EvolveTable(v1, func(e *store.TableEditor) *store.TableEditor { return e.Rename("name", "title") })
+	v2, err := store.EvolveTable(v1, func(e *store.TableEditor) store.TableTailEditor { return e.Rename("name", "title") })
 	must(t, err)
 	host := newHost(t, HostOptions{Store: chordStore, OnError: noopOnError})
 	defer closeHosts(t, host)

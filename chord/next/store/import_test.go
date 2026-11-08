@@ -248,7 +248,7 @@ func TestImportJSONCellsHoldingNull(t *testing.T) {
 		if _, err := source.Commit(staged, openFence, ctx); err != nil {
 			t.Fatalf("commit: %v", err)
 		}
-		v2, err := EvolveTable(v1, func(t *TableEditor) *TableEditor {
+		v2, err := EvolveTable(v1, func(t *TableEditor) TableTailEditor {
 			return t.Json("data", Json(contracts.Obj(contracts.Prop("was", contracts.Nul())), JsonColumnOptions{
 				Version: 2,
 				Migrate: func(value delta.JsonValue, _ int) (any, error) {

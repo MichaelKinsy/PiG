@@ -30,7 +30,7 @@ import (
 // API forms used here (AttemptObject, Reference, Jobs: see host_next_support_test.go for the host's):
 //   - `Self` members: State(def) *StateHandle, KeyedState(def) *KeyedHandle, Derive(sources []any, compute), Get(Type,
 //     params) *Binding with Member(name), Open(open, close, options...) Native[any], On(source, handler), OnLive(handler),
-//     Job(def, impl) *JobHandle, Table(def) *store.TableHandle, Tx(fn, ctx), Writable(initial), Registry(token).
+//     Job(def, impl) *JobHandle, Table(def) store.Table, Tx(fn, ctx), Writable(initial), Registry(token).
 //   - `Reference` members: Call(method, args, ctx) (any, error), Member(name) chord.Watchable[delta.JsonValue],
 //     Variant() string, State() chord.NativeWatchable[*RefState], Retry(), Release().
 

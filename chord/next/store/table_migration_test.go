@@ -33,7 +33,7 @@ func migrationEdits(t *testing.T) migrationVersions {
 		Key:     []string{"id"},
 		Indexes: IndexRecords{{Name: "by_file", Columns: []string{"file"}}},
 	})
-	v2 := qEvolve(t, v1, func(e *TableEditor) *TableEditor {
+	v2 := qEvolve(t, v1, func(e *TableEditor) TableTailEditor {
 		return e.
 			Rename("file", "path").
 			Add("dir", Str(contracts.Default(""))).
@@ -42,7 +42,7 @@ func migrationEdits(t *testing.T) migrationVersions {
 				return Row{"dir": path[:strings.LastIndex(path, "/")]}, nil
 			})
 	})
-	v3 := qEvolve(t, v2, func(e *TableEditor) *TableEditor { return e.Drop("dir").Index("by_path", []string{"path", "at"}) })
+	v3 := qEvolve(t, v2, func(e *TableEditor) TableTailEditor { return e.Drop("dir").Index("by_path", []string{"path", "at"}) })
 	return migrationVersions{v1, v2, v3}
 }
 
@@ -205,7 +205,7 @@ func TestEagerMigrations(t *testing.T) {
 
 	t.Run("a dropped column's indexes are dropped first, in the same commit", func(t *testing.T) {
 		store := filledEdits(t, 2, versions.v1)
-		dropped := qEvolve(t, versions.v1, func(e *TableEditor) *TableEditor { return e.Drop("file") })
+		dropped := qEvolve(t, versions.v1, func(e *TableEditor) TableTailEditor { return e.Drop("file") })
 		seq := store.LastSeq()
 		edits := prepared(t, store, dropped)
 		commits, err := store.Outbox().Read(seq, 10, background)
@@ -226,7 +226,7 @@ func TestEagerMigrations(t *testing.T) {
 
 	t.Run("an update step is one updateWhere over the rows below its version, stamping it, with ready", func(t *testing.T) {
 		store := filledEdits(t, 5, versions.v1)
-		bumped := qEvolve(t, versions.v1, func(e *TableEditor) *TableEditor {
+		bumped := qEvolve(t, versions.v1, func(e *TableEditor) TableTailEditor {
 			return e.Update(UpdateStep{
 				Where: func(r ColumnRefs) Condition { return Lt(r["at"], 3) },
 				Set:   SetOf{Assign("file", "old")},
@@ -255,7 +255,7 @@ func TestEagerMigrations(t *testing.T) {
 			Columns: []ColumnProp{Col("id", Str()), Col("meta", Opt(Json(contracts.Obj(contracts.Prop("a", contracts.Int())), JsonColumnOptions{Version: 1})))},
 			Key:     []string{"id"},
 		})
-		notes2 := qEvolve(t, notes1, func(e *TableEditor) *TableEditor {
+		notes2 := qEvolve(t, notes1, func(e *TableEditor) TableTailEditor {
 			return e.Json("meta", Json(
 				contracts.Obj(contracts.Prop("a", contracts.Int()), contracts.Prop("b", contracts.Int())),
 				JsonColumnOptions{Version: 2, Migrate: func(old delta.JsonValue, from int) (any, error) {
@@ -298,7 +298,7 @@ func TestMigrationPatches(t *testing.T) {
 			Columns: []ColumnProp{Col("id", Str()), Col("data", Json(contracts.Nul(), JsonColumnOptions{Version: 1})), Col("note", Opt(Str()))},
 			Key:     []string{"id"},
 		})
-		cells2 := qEvolve(t, cells1, func(e *TableEditor) *TableEditor {
+		cells2 := qEvolve(t, cells1, func(e *TableEditor) TableTailEditor {
 			return e.
 				Add("more", Opt(Json(contracts.Nul(), JsonColumnOptions{Version: 1}))).
 				Rows(func(Row) (any, error) { return Row{"more": nil, "note": Undefined}, nil })
@@ -323,7 +323,7 @@ func TestMigrationResumption(t *testing.T) {
 	t.Run("a data step that throws leaves the table migrating with its committed chunks; the next run continues", func(t *testing.T) {
 		store := filledEdits(t, 250, versions.v1)
 		fail := true
-		failing := qEvolve(t, versions.v1, func(e *TableEditor) *TableEditor {
+		failing := qEvolve(t, versions.v1, func(e *TableEditor) TableTailEditor {
 			return e.Rows(func(row Row) (any, error) {
 				if fail && row["id"] == migrationID(150) {
 					return nil, errors.New("crash")
@@ -382,7 +382,7 @@ func TestMigrationRefusals(t *testing.T) {
 			return qDefine(t, "edits", TableOptions{Version: 7, Columns: []ColumnProp{Col("id", Str())}, Key: []string{"id"}})
 		}, "older than the history's base 7"},
 		{"a history edited in place", func() *TableDefinition {
-			return qEvolve(t, versions.v1, func(e *TableEditor) *TableEditor { return e.Rename("file", "name") })
+			return qEvolve(t, versions.v1, func(e *TableEditor) TableTailEditor { return e.Rename("file", "name") })
 		}, "recorded with another definition"},
 	} {
 		t.Run(c.name+" (the store at version 2) throws before anything is written", func(t *testing.T) {

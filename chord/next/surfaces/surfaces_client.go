@@ -73,7 +73,7 @@ type ClientStyles interface {
 // ClientOptions is what StartClient takes.
 type ClientOptions struct {
 	// Scripts is the kind's scripts object (WebScripts, TuiScripts).
-	Scripts *contracts.Contract
+	Scripts ScriptsContract
 	// Base is the hash of the base bundle this client runs.
 	Base string
 	// Initial are the plugin scripts it started with (the combined file's), in any order.
@@ -110,12 +110,11 @@ type Client struct {
 	updates *updates
 }
 
-// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. ctx is the
-// client's lifetime: it bounds the scripts object's hold and watch, the script fetches and the stylesheets' loads, so a ctx
-// cancelled while the client runs stops its plugin updates (the link stays up until Stop); Pi's client uses BACKGROUND_CONTEXT.
-// Pass a context that lives as long as the client.
-func StartClient(options ClientOptions, ctx context.Context) (*Client, error) {
-	ctx, cancel := context.WithCancel(ctx)
+// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. As in Pi
+// the client's lifetime is BACKGROUND_CONTEXT (context.Background): it bounds the scripts object's hold and watch, the
+// script fetches and the stylesheets' loads, and Stop ends it.
+func StartClient(options ClientOptions) (*Client, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	var made host.Host
 	var madeMu sync.Mutex
 	hostOptions := host.HostOptions{OnError: func(err host.HostError) { options.OnError(ClientError{Kind: ClientHostError, Host: err}) }}
