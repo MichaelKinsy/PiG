@@ -411,7 +411,7 @@ func checkExposures(fields map[string]json.RawMessage) string {
 			v := overrides[tool]
 			var s string
 			if !isString(v) || json.Unmarshal(v, &s) != nil || !isExposure(s) {
-				return fmt.Sprintf(`toolExposure "%s" must be one of %s`, tool, exposures)
+				return `toolExposure "` + tool + `" must be one of ` + exposures
 			}
 		}
 	}

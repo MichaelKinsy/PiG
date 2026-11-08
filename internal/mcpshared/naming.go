@@ -38,11 +38,14 @@ func sanitizeToolName(name string) string {
 // by a different MCP tool: sanitizing can map two tools to one name (`a-b` and `a_b`), which then get the hash suffix.
 func CreateMcpToolName(server, tool string, isTaken func(string) bool) string {
 	name := sanitizeToolName("mcp__" + server + "__" + tool)
+	//portlint:allow utf16units the name is ASCII after sanitizing, which turns every UTF-16 code unit outside [A-Za-z0-9_] into one underscore, so bytes and code units agree (naming.ts createMcpToolName)
 	if len(name) <= maxToolNameLength && (isTaken == nil || !isTaken(name)) {
 		return name
 	}
 	digest := sha256.Sum256([]byte(server + "\x00" + tool))
+	//portlint:allow utf16units hex digits are ASCII (naming.ts createMcpToolName)
 	hash := hex.EncodeToString(digest[:])[:8]
+	//portlint:allow utf16units the name is ASCII after sanitizing, which turns every UTF-16 code unit outside [A-Za-z0-9_] into one underscore, so bytes and code units agree (naming.ts createMcpToolName)
 	return name[:min(len(name), maxToolNameLength-len(hash)-1)] + "_" + hash
 }
 
