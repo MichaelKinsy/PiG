@@ -151,13 +151,15 @@ func (c *compiler) plain(node jsonObject, base string) Check {
 			numberMode = 1
 		case "integer":
 			numberMode = 2
+		case "bigint":
+			numberMode = 3
 		}
 		groups := []struct {
 			check  Check
 			strict bool
 		}{
 			{c.stringGroup(node, single == "string"), single == "string"},
-			{c.numberGroup(node, numberMode), single == "number" || single == "integer"},
+			{c.numberGroup(node, numberMode), single == "number" || single == "integer" || single == "bigint"},
 			{c.objectGroup(node, base, single == "object"), single == "object"},
 			{c.arrayGroup(node, base, single == "array"), single == "array"},
 		}
@@ -396,32 +398,30 @@ func (c *compiler) stringGroup(node jsonObject, strict bool) Check {
 }
 
 func (c *compiler) numberGroup(node jsonObject, mode int) Check {
-	min, hasMin := node.numberMember("minimum")
-	max, hasMax := node.numberMember("maximum")
-	xmin, hasXmin := node.numberMember("exclusiveMinimum")
-	xmax, hasXmax := node.numberMember("exclusiveMaximum")
-	multipleOf, hasMultiple := node.numberMember("multipleOf")
+	min, hasMin := node.boundMember("minimum")
+	max, hasMax := node.boundMember("maximum")
+	xmin, hasXmin := node.boundMember("exclusiveMinimum")
+	xmax, hasXmax := node.boundMember("exclusiveMaximum")
+	multipleOf, hasMultiple := node.boundMember("multipleOf")
 	if !hasMin && !hasMax && !hasXmin && !hasXmax && !hasMultiple {
 		return nil
 	}
-	inf := math.Inf(1)
 	if !hasMin {
-		min = -inf
+		min = math.Inf(-1)
 	}
 	if !hasMax {
-		max = inf
+		max = math.Inf(1)
 	}
 	if !hasXmin {
-		xmin = -inf
+		xmin = math.Inf(-1)
 	}
 	if !hasXmax {
-		xmax = inf
+		xmax = math.Inf(1)
 	}
-	var multiple *float64
-	if hasMultiple {
-		multiple = &multipleOf
+	if !hasMultiple {
+		multipleOf = nil
 	}
-	return numberCheck(mode, min, max, xmin, xmax, multiple)
+	return numberCheck(mode, newNumberBounds(min, max, xmin, xmax, multipleOf))
 }
 
 var objectExtras = []string{"propertyNames", "minProperties", "maxProperties", "dependentRequired", "dependentSchemas", "dependencies"}
