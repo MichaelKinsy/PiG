@@ -125,7 +125,7 @@ func FuzzReadSchemaObjectOrderMatchesV1(f *testing.F) {
 func BenchmarkOrderedObjectReaders(b *testing.B) {
 	doc := jsonseed.Typical()
 	b.Run("orderedJSONObject", func(b *testing.B) {
-		jsonseed.Bench(b, doc, func(d []byte) { orderedJSONObjectV1(d) }, func(d []byte) { orderedJSONObject(d) })
+		jsonseed.Bench(b, doc, func(d []byte) { _, _ = orderedJSONObjectV1(d) }, func(d []byte) { _, _ = orderedJSONObject(d) })
 	})
 	b.Run("readJSONObjectMembers", func(b *testing.B) {
 		jsonseed.Bench(b, doc, func(d []byte) { readJSONObjectMembersV1(d) }, func(d []byte) { readJSONObjectMembers(d) })
