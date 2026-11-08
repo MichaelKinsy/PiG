@@ -3,7 +3,10 @@
  *
  * The core only validates and stores registrations. The MCP extension (built in, or another
  * extension that handles `mcp_servers_change`) connects them next to the servers from `mcp.json`.
+ * The `mcpServers` shape itself (stdio and HTTP fields, `oauth`, `enabled`, `description`, `timeout`)
+ * is pi-mcp's; this file adds pi's fields to it.
  */
+import { validateMcpServerConfig as validateMcpServerFields, } from "../../pi-mcp/index.js";
 /**
  * Regular expression for a tool name pattern where `*` matches any characters, as `toolExposure`,
  * `--tools`, and `--exclude-tools` accept them.
@@ -37,14 +40,6 @@ export function isMcpToolName(name) {
 const MCP_EXPOSURES = ["codemode", "deferred", "direct", "hidden"];
 /** Older exposure names, accepted in configs and replaced by their current name when validated. */
 const MCP_EXPOSURE_ALIASES = { "codemode-deferred": "codemode" };
-const LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
-/** Whether a redirect URI can be served by pi's loopback callback server. */
-export function isLoopbackRedirectUri(value) {
-    if (!URL.canParse(value))
-        return false;
-    const url = new URL(value);
-    return url.protocol === "http:" && LOOPBACK_HOSTS.includes(url.hostname) && url.search === "" && url.hash === "";
-}
 /**
  * Whether pi's Client ID Metadata Documents list a redirect URI for the loopback `callbackUrl`: they list
  * `/callback` on localhost and 127.0.0.1, on any port. Without `callbackUrl`, pi uses such a URI.
@@ -55,64 +50,8 @@ export function isClientMetadataDocumentCallback(callbackUrl) {
     const url = new URL(callbackUrl);
     return url.hostname !== "[::1]" && url.pathname === "/callback";
 }
-const SERVER_NAME = /^[A-Za-z0-9_-]+$/;
-/** Namespace of a server's tools: `mcp__<server>` with `-` replaced by `_`, like the tool names. */
-export function mcpNamespace(server) {
-    return `mcp__${server.replace(/-/g, "_")}`;
-}
 function isRecord(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function isStringRecord(value) {
-    return isRecord(value) && Object.values(value).every((entry) => typeof entry === "string");
-}
-function validateOAuth(value) {
-    if (value === undefined)
-        return undefined;
-    if (!isRecord(value))
-        return "oauth must be an object";
-    if (value.clientId !== undefined && typeof value.clientId !== "string")
-        return "oauth.clientId must be a string";
-    if (value.clientSecret !== undefined && typeof value.clientSecret !== "string") {
-        return "oauth.clientSecret must be a string";
-    }
-    const port = value.callbackPort;
-    if (port !== undefined && (typeof port !== "number" || !Number.isInteger(port) || port < 1 || port > 65535)) {
-        return "oauth.callbackPort must be a port number";
-    }
-    if (value.callbackUrl !== undefined) {
-        if (typeof value.callbackUrl !== "string" || !isLoopbackRedirectUri(value.callbackUrl)) {
-            return "oauth.callbackUrl must be an http URI on localhost, 127.0.0.1, or [::1] without query or fragment";
-        }
-        const urlPort = new URL(value.callbackUrl).port;
-        if (urlPort && port !== undefined && Number(urlPort) !== port) {
-            return "oauth.callbackUrl and oauth.callbackPort name different ports";
-        }
-    }
-    if (value.scope !== undefined && typeof value.scope !== "string")
-        return "oauth.scope must be a string";
-    if (value.clientName !== undefined && (typeof value.clientName !== "string" || !value.clientName.trim())) {
-        return "oauth.clientName must be a non-empty string";
-    }
-    const registration = value.clientRegistration;
-    if (registration !== undefined && registration !== "auto" && registration !== "dcr") {
-        if (registration !== "cimd")
-            return 'oauth.clientRegistration must be "auto", "dcr", or "cimd"';
-        if (value.clientId !== undefined || value.clientName !== undefined) {
-            return 'oauth.clientRegistration "cimd" cannot be combined with oauth.clientId or oauth.clientName';
-        }
-        if (!isClientMetadataDocumentCallback(typeof value.callbackUrl === "string" ? value.callbackUrl : undefined)) {
-            return 'oauth.clientRegistration "cimd" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback';
-        }
-    }
-    const metadataUrl = value.authServerMetadataUrl;
-    if (metadataUrl !== undefined) {
-        const url = typeof metadataUrl === "string" && URL.canParse(metadataUrl) ? new URL(metadataUrl) : undefined;
-        if (!url || !(url.protocol === "https:" || (url.protocol === "http:" && LOOPBACK_HOSTS.includes(url.hostname)))) {
-            return "oauth.authServerMetadataUrl must be an https URL, or http on localhost, 127.0.0.1, or [::1]";
-        }
-    }
-    return undefined;
 }
 function isExposure(value) {
     return typeof value === "string" && MCP_EXPOSURES.includes(value);
@@ -144,72 +83,54 @@ export function getMcpToolExposure(config, toolName) {
     }
     return config.exposure ?? "codemode";
 }
-/**
- * Validate one server entry of the `mcpServers` shape. Returns a copy of the config with exposure
- * aliases resolved, or an error message.
- */
-export function validateMcpServerConfig(name, raw) {
-    if (!SERVER_NAME.test(name))
-        return `invalid server name "${name}" (use letters, digits, "_" and "-")`;
-    if (!isRecord(raw))
-        return `server "${name}" must be an object`;
-    const value = resolveExposureAliases(raw);
-    const { type, exposure, enabled, timeout, toolExposure, description } = value;
+/** Checks `exposure` and `toolExposure`, after aliases were resolved. Returns an error message. */
+function checkExposures(entry) {
+    const { exposure, toolExposure } = entry;
     const exposures = MCP_EXPOSURES.map((value) => `"${value}"`).join(", ");
-    if (exposure !== undefined && !isExposure(exposure)) {
-        return `server "${name}": exposure must be one of ${exposures}`;
-    }
+    if (exposure !== undefined && !isExposure(exposure))
+        return `exposure must be one of ${exposures}`;
     if (toolExposure !== undefined) {
         if (!isRecord(toolExposure))
-            return `server "${name}": toolExposure must map tool names to exposures`;
+            return "toolExposure must map tool names to exposures";
         for (const [tool, value] of Object.entries(toolExposure)) {
             if (!isExposure(value))
-                return `server "${name}": toolExposure "${tool}" must be one of ${exposures}`;
+                return `toolExposure "${tool}" must be one of ${exposures}`;
         }
     }
-    if (enabled !== undefined && typeof enabled !== "boolean")
-        return `server "${name}": enabled must be a boolean`;
-    if (description !== undefined && typeof description !== "string") {
-        return `server "${name}": description must be a string`;
+    return undefined;
+}
+const LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+/** Checks `auth` of an HTTP server, which sends a provider's credential to `url`. Returns an error message. */
+function checkAuth(auth, url) {
+    if (auth === undefined)
+        return undefined;
+    if (!isRecord(auth) || typeof auth.provider !== "string" || !auth.provider) {
+        return "auth.provider must be a provider name";
     }
-    if (timeout !== undefined && (typeof timeout !== "number" || !(timeout > 0))) {
-        return `server "${name}": timeout must be a positive number of seconds`;
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && !LOOPBACK_HOSTS.includes(parsed.hostname)) {
+        return "auth requires an https URL, or http on localhost, 127.0.0.1, or [::1]";
     }
-    if (type === "sse")
-        return `server "${name}": legacy SSE transport is not supported; use the streamable HTTP URL`;
-    if (typeof value.url === "string" && (type === undefined || type === "http" || type === "streamable-http")) {
-        if (!URL.canParse(value.url) || !/^https?:$/.test(new URL(value.url).protocol)) {
-            return `server "${name}": url must be an http or https URL`;
-        }
-        if (value.headers !== undefined && !isStringRecord(value.headers)) {
-            return `server "${name}": headers must map names to strings`;
-        }
-        const oauthError = validateOAuth(value.oauth);
-        if (oauthError)
-            return `server "${name}": ${oauthError}`;
-        if (value.auth !== undefined) {
-            if (!isRecord(value.auth) || typeof value.auth.provider !== "string" || !value.auth.provider) {
-                return `server "${name}": auth.provider must be a provider name`;
-            }
-            const url = new URL(value.url);
-            if (url.protocol !== "https:" && !LOOPBACK_HOSTS.includes(url.hostname)) {
-                return `server "${name}": auth requires an https URL, or http on localhost, 127.0.0.1, or [::1]`;
-            }
-        }
-        return value;
-    }
-    if (typeof value.command === "string" && (type === undefined || type === "stdio")) {
-        if (value.args !== undefined &&
-            !(Array.isArray(value.args) && value.args.every((arg) => typeof arg === "string"))) {
-            return `server "${name}": args must be an array of strings`;
-        }
-        if (value.env !== undefined && !isStringRecord(value.env))
-            return `server "${name}": env must map names to strings`;
-        if (value.cwd !== undefined && typeof value.cwd !== "string")
-            return `server "${name}": cwd must be a string`;
-        return value;
-    }
-    return `server "${name}" needs either "command" (stdio) or "url" (streamable HTTP)`;
+    return undefined;
+}
+/**
+ * Validate one server entry of the `mcpServers` shape: pi-mcp's shared fields and pi's own. Returns a
+ * copy of the config with exposure aliases resolved, or an error message.
+ */
+export function validateMcpServerConfig(name, raw) {
+    const result = validateMcpServerFields(name, isRecord(raw) ? resolveExposureAliases(raw) : raw, {
+        checkMetadataDocumentCallback: (callbackUrl) => isClientMetadataDocumentCallback(callbackUrl)
+            ? undefined
+            : 'oauth.clientRegistration "cimd" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback',
+    });
+    if (result.kind === "invalid")
+        return result.error;
+    const error = checkExposures(result.config) ??
+        (result.kind === "http" ? checkAuth(result.config.auth, result.config.url) : undefined);
+    if (error)
+        return `server "${name}": ${error}`;
+    // The cast holds because pi's fields were checked above, which the types cannot express.
+    return result.config;
 }
 /** Servers registered by the extensions of one runtime. */
 export class McpServerRegistry {

@@ -118,6 +118,28 @@
       ]
     },
     {
+      "id": "BF-00d9a1f",
+      "title": "fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an…",
+      "symptom": "fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an extension provider's setup failure under an aborted signal is aborted",
+      "rootCause": "- selectLinesFromStream takes its 64 KB chunk buffer from a sync.Pool, so a read of a small file no longer allocates 64 KB; BenchmarkReadToolExecuteSmallFile is the common case the 140 KB benchmark could not show. - TestGrepAllocationsDoNotGrowWithContext: grep at context 2 and 200 over one fixture must differ by at most 25 allocations (measured 142 and 148); it skips without ripgrep. - The read fuzz also compares the streamed read with the production whole-file path (readTextResult) and takes any int32 offset and limit with a fraction, so negative and fractional ranges and the edge of the streamed range are read too. - The abort test no longer sleeps. - provider_stream.go: the failure path…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "00d9a1f01b",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/grep_context_allocs_test.go::TestGrepAllocationsDoNotGrowWithContext",
+        "internal/codingagent/tools/read_streaming_fuzz_test.go::FuzzReadStreamingMatchesTheWholeFileAlgorithm"
+      ]
+    },
+    {
       "id": "BF-016a19a",
       "title": "A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the…",
       "symptom": "The derive's watchers used to receive the non-JSON frame without any report.",
@@ -3730,6 +3752,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-1aaf60f",
+      "title": "Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start…",
+      "symptom": "Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start of the line.",
+      "rootCause": "Port of Pi (#9274). The whitespace both lines start with is separated before the word diff.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start of the line.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1aaf60fd8e",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "tui/diff_render_test.go::TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion",
+        "tui/diff_render_test.go::TestRenderDiffPreservesIndentation"
+      ]
     },
     {
       "id": "BF-1b5540a",
@@ -8335,6 +8380,27 @@
       ]
     },
     {
+      "id": "BF-35b06f4",
+      "title": "fix(tools): the grep event scanner reads an escaped member name as the name it spells; the fuzz target skips…",
+      "symptom": "fix(tools): the grep event scanner reads an escaped member name as the name it spells; the fuzz target skips names that differ only by case",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "35b06f4155",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/grep_event_test.go::FuzzGrepEventParserMatchesEncodingJSON"
+      ]
+    },
+    {
       "id": "BF-35be5ca",
       "title": "A key bound to two editor actions now performs the action Pi performs",
       "symptom": "A key bound to two editor actions now performs the action Pi performs.",
@@ -8535,9 +8601,7 @@
         }
       ],
       "tests": [
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepContextDoesNotLoadTheMatchedFile",
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepContextOfUnreadableFile",
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepLineWindowMatchesTheWholeFileSplit"
+        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepContextDoesNotLoadTheMatchedFile"
       ]
     },
     {
@@ -9224,6 +9288,36 @@
         "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
         "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting",
         "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation"
+      ]
+    },
+    {
+      "id": "BF-3b9c7da",
+      "title": "The edit tool keeps the line endings of the lines it does not touch in files with mixed CRLF, LF or lone CR…",
+      "symptom": "The edit tool keeps the line endings of the lines it does not touch in files with mixed CRLF, LF or lone CR endings, and computes its diff and patch before writing, around the changes only, so a diff failure leaves the file unchanged.",
+      "rootCause": "Port of Pi (#11751). Replacements are spliced into the original text, the diff and patch are computed in windows around the replacements before the file is written. Ports edit-diff-window and edit-tool-diff-before-write tests and the line-ending cases of tools.test.ts.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The edit tool keeps the line endings of the lines it does not touch in files with mixed CRLF, LF or lone CR endings, and computes its diff and patch before writing, around the changes only, so a diff failure leaves the file unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b9c7daf85",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/edit_window_test.go::TestApplyReplacementsToOriginalDoesNotMergeAnInsertedCRWithAKeptLineFeed",
+        "internal/codingagent/tools/edit_window_test.go::TestApplyReplacementsToOriginalNormalizesToTheDiffedContentForRandomMixedLineEndings",
+        "internal/codingagent/tools/edit_window_test.go::TestEditToolComputesTheDiffBeforeWritingSoADiffFailureLeavesTheFileUnchanged",
+        "internal/codingagent/tools/edit_window_test.go::TestEditToolDoesNotMergeAKeptLoneCRWithALineFeedAfterIt",
+        "internal/codingagent/tools/edit_window_test.go::TestEditToolWritesTheLineEndingOfTheLineAnEditStartsIn",
+        "internal/codingagent/tools/edit_window_test.go::TestGenerateEditDiffHandlesAReplacementOfManyLines",
+        "internal/codingagent/tools/edit_window_test.go::TestGenerateEditDiffMatchesTheWholeFileDiffAndPatchWhenLinesAreDistinct",
+        "internal/codingagent/tools/edit_window_test.go::TestGenerateEditDiffOfASmallChangeInA20MBFileAllocatesLittle",
+        "internal/codingagent/tools/edit_window_test.go::TestGenerateEditDiffProducesAPatchThatAppliesWhenLinesRepeat"
       ]
     },
     {
@@ -10063,6 +10157,31 @@
       "commitsFrom": "release note",
       "tests": [
         "test/docs-drift/commands_test.go::TestDocumentedPigCommandsAreValid"
+      ]
+    },
+    {
+      "id": "BF-41226f3",
+      "title": "Prompt template arguments keep apostrophes inside words, treat a quote with no closing match as text, and…",
+      "symptom": "Prompt template arguments keep apostrophes inside words, treat a quote with no closing match as text, and accept a backslash-escaped quote inside a quoted argument.",
+      "rootCause": "Port of Pi (#11873).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Prompt template arguments keep apostrophes inside words, treat a quote with no closing match as text, and accept a backslash-escaped quote inside a quoted argument.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "41226f3eea",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/prompt_templates_oracle_test.go::TestPromptArgumentHandlingMatchesPi",
+        "internal/codingagent/prompt_templates_quotes_test.go::TestParsePromptArgsQuoting",
+        "internal/codingagent/prompt_templates_test.go::TestParsePromptArgs",
+        "internal/codingagent/upstream_prompt_templates_test.go::TestUpstreamPromptTemplatesArguments"
       ]
     },
     {
@@ -12330,6 +12449,27 @@
       ]
     },
     {
+      "id": "BF-4d357dd",
+      "title": "fix(coding): grep reports the match limit when the match past it falls in the trailing context",
+      "symptom": "fix(coding): grep reports the match limit when the match past it falls in the trailing context",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4d357dda4d",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/details_wire_test.go::TestBuiltinToolResultDetailsWire"
+      ]
+    },
+    {
       "id": "BF-4d731f2",
       "title": "Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is…",
       "symptom": "Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is not fd or ripgrep as one.",
@@ -13807,6 +13947,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-563f896",
+      "title": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool…",
+      "symptom": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool call, ends as aborted instead of as an error.",
+      "rootCause": "lazy.ts reports signal?.aborted ? \"aborted\" : \"error\". forwardLazySetup, the Models dispatch setup errors, ModelRuntime.start's prepare and auth-abort failures and failedStream now follow the request context instead of reporting error for a cancelled request.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool call, ends as aborted instead of as an error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "563f896e3f",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "ai/lazy_setup_error_order_test.go::TestModelsSetupErrorListsErrorMessageBeforeTimestamp",
+        "ai/provider_streams_test.go::TestLazyAPISetupOrderingCancellationAndLoadFailure",
+        "coding/model_runtime_setup_abort_upstream_test.go::TestRequestCancelledBeforeItsProviderStartsIsAnAbortedPiSetupError",
+        "coding/model_runtime_typed_review_test.go::TestModelRuntimeNonChatRejectionIsAbortedUnderCancellation"
+      ]
     },
     {
       "id": "BF-5654e71",
@@ -19939,6 +20104,37 @@
       ]
     },
     {
+      "id": "BF-68fd735",
+      "title": "grep takes its context lines from ripgrep instead of reading each matched file, reports the match limit only…",
+      "symptom": "grep takes its context lines from ripgrep instead of reading each matched file, reports the match limit only when another match exists, keeps a lone CR inside a line, and matches a glob relative to the searched directory.",
+      "rootCause": "Port of Pi (#11705) and (#11895). Context comes from rg --context events, a limit notice needs proof of one more match, a lone CR stays in a line, and a directory search runs inside the search path. GrepOperations.ReadFile is removed; the extension host ignores a readFile member as Pi does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "grep takes its context lines from ripgrep instead of reading each matched file, reports the match limit only when another match exists, keeps a lone CR inside a line, and matches a glob relative to the searched directory.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "68fd735480",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepAcceptsAHugeContextValue",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepDecodesUTF16FilesWithContext",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepDoesNotReportTheMatchLimitWhenExactlyLimitMatchesExist",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepKeepsALoneCRInsideALineAndStripsCRLFTerminators",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepKeepsCountingMatchesPastTheByteCap",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepReportsTruncationWhenStoredOutputEndsExactlyAtTheByteCap",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepResolvesFolderGlobsRelativeToPath",
+        "internal/codingagent/tools/read_grep_operations_test.go::TestGrepToolUsesTheConfiguredOperations",
+        "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
+      ]
+    },
+    {
       "id": "BF-69297a1",
       "title": "fix(chord/nextnode/http): a response is flushed before its request finishes",
       "symptom": "fix(chord/nextnode/http): a response is flushed before its request finishes",
@@ -25968,7 +26164,6 @@
         }
       ],
       "tests": [
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepLineWindowMatchesTheWholeFileSplit",
         "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
       ]
     },
@@ -30859,39 +31054,6 @@
       ]
     },
     {
-      "id": "BF-D151",
-      "title": "`grep` with context reads a window of each matched file (Pi #9276)",
-      "symptom": "memory use of a `grep` call follows the context size, not the file size. A custom `GrepOperations.ReadFile` still returns the whole text, but only the current file is kept. A custom `GrepOperations` without `ReadFile` streams the local file.",
-      "rootCause": "with `context: 2` over a directory of 100 MB logs, Pi holds each matched file several times over (read string, split array) and exhausts the heap (Pi #9276). Pi has no fix. The output is the same: the window splits lines as `getFileLines` does, keeps the first `GrepMaxLineLength + 1` code points of a line (the rest cannot reach the output), and still prints overlapping context blocks for nearby matches.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D151",
-      "piIssue": "https://github.com/earendil-works/pi/issues/9276",
-      "removeWhen": "Pi stops loading whole files for grep context.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "2a78d0efdf",
-          "date": "2026-10-09"
-        },
-        {
-          "hash": "644b3e0a2a",
-          "date": "2026-10-09"
-        },
-        {
-          "hash": "e98c8af606",
-          "date": "2026-10-09"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepContextDoesNotLoadTheMatchedFile",
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepLineWindowMatchesTheWholeFileSplit"
-      ]
-    },
-    {
       "id": "BF-D153",
       "title": "The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015)",
       "symptom": "PiG prints `line is 58.6KB`; Pi prints `line is 0B`. Output without a trailing newline is the same in both.",
@@ -31444,35 +31606,6 @@
         "internal/codingagent/keybindings_inventory_test.go::TestAppKeybindingDefinitionsMatchUpstreamInventory",
         "internal/codingagent/keybindings_platform_test.go::TestKeybindingDefinitionsApplyPlatformDefaults",
         "internal/codingagent/keybindings_platform_test.go::TestPlatformDivergentControlKeys"
-      ]
-    },
-    {
-      "id": "BF-D242",
-      "title": "Reload is rejected while the session is running or compacting",
-      "symptom": "1.5.0 has the TUI's entry checks only in the TUI, not in the core reload method (#9221).",
-      "rootCause": "An extension command (`ctx.reload()` in print or RPC mode) or an SDK caller could reload during a running extension tool. Reload invalidated the tool's runner, the tool's next `ctx` use threw a stale-context error, and the failed tool result entered session history.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D242",
-      "removeWhen": "the pinned Pi release contains c3b938e3e. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "0f8bc0f0de",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "bfe1b032a7",
-          "date": "2026-11-05"
-        }
-      ],
-      "tests": [
-        "coding/cli/headless_reload_test.go::TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive",
-        "coding/session_reload_busy_test.go::TestSessionReloadRejectedWhileRunningOrCompacting",
-        "test/extension-conformance/sdkscenario_test.go::TestSDKScenarios"
       ]
     },
     {
@@ -35960,6 +36093,34 @@
       ]
     },
     {
+      "id": "BF-b8a8fe5",
+      "title": "A prompt can no longer start while tree navigation or a branch summary is running, tree navigation is refused…",
+      "symptom": "A prompt can no longer start while tree navigation or a branch summary is running, tree navigation is refused while a prompt is in its input hooks, and the live thinking level is recorded on the branch before each prompt so a resume after /tree restores it.",
+      "rootCause": "Port of Pi (#9155) and (#11888). Ports regression suites 9154 and 11451.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A prompt can no longer start while tree navigation or a branch summary is running, tree navigation is refused while a prompt is in its input hooks, and the live thinking level is recorded on the branch before each prompt so a resume after /tree restores it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b8a8fe5551",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/session_tree_prompt_overlap_test.go::TestNavigationIsAllowedAfterAPromptIsHandledOrRejectedDuringPreflight",
+        "coding/session_tree_prompt_overlap_test.go::TestNavigationIsRejectedDuringAnAwaitedInputHook",
+        "coding/session_tree_prompt_overlap_test.go::TestNavigationStartedFromSessionTreeKeepsItsOwnState",
+        "coding/session_tree_prompt_overlap_test.go::TestNavigationStaysBlockedWhenAnotherPromptFinishesPreflightFirst",
+        "coding/session_tree_prompt_overlap_test.go::TestPromptIsRejectedWhileBranchSummarizationIsInProgress",
+        "coding/session_tree_prompt_overlap_test.go::TestThinkingLevelIsRecordedOnTheNewBranchBeforeTheNextPrompt",
+        "coding/session_tree_prompt_overlap_test.go::TestThinkingLevelThatOnlyDiffersFromTheBranchByClampingIsNotRecorded"
+      ]
+    },
+    {
       "id": "BF-b8b83db",
       "title": "fix(chord/nextnode/workers): the worker reads the host's activity through its watch, not off the host's loop",
       "symptom": "fix(chord/nextnode/workers): the worker reads the host's activity through its watch, not off the host's loop",
@@ -36660,20 +36821,14 @@
       "title": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run…",
       "symptom": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them.",
       "rootCause": "",
-      "rootCauseSource": "divergence record",
+      "rootCauseSource": "",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D247",
-      "removeWhen": "the pin reaches a Pi release containing 7a53c310a.",
+      "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.0's order (Pi #9124, D247).",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "00d787634a",
-          "date": "2026-11-05"
-        },
         {
           "hash": "694685ee71",
           "date": "2026-11-05"
@@ -36688,8 +36843,6 @@
         }
       ],
       "tests": [
-        "coding/cli/print_signal_exit_test.go::TestPrintModeJSONSignalStopsOutputAndPersistence",
-        "coding/cli/print_signal_exit_test.go::TestPrintModeSignalDisposalRunsLikePisEventLoop",
         "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
       ]
     },
@@ -38120,6 +38273,35 @@
       "tests": [
         "internal/codingagent/assistant_block_async_race_test.go::TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop",
         "tui/assistant_message_async_test.go::TestAssistantMessageAsyncCompletionMarksBlockDirty"
+      ]
+    },
+    {
+      "id": "BF-c5edfc4",
+      "title": "The read tool streams a text file instead of loading it whole: only the lines it can show stay in memory, so…",
+      "symptom": "The read tool streams a text file instead of loading it whole: only the lines it can show stay in memory, so a one-line read of a very large file no longer costs the file's size, and an abort stops the read.",
+      "rootCause": "Port of Pi (#11750). ReadOperations gains an optional CreateReadStream; the text path counts every line and keeps only the lines head truncation can show, so memory no longer follows the file size. Ports test/read-streaming.test.ts.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The read tool streams a text file instead of loading it whole: only the lines it can show stay in memory, so a one-line read of a very large file no longer costs the file's size, and an abort stops the read.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c5edfc4dbc",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingDecodesChunkSplitCharactersAndInvalidUTF8LikeBufferToString",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingGivesTheSameOutputAsTheWholeFileAlgorithm",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingKeepsDetailsKeyOrder",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingKeepsMemoryBoundedForA200MBLine",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingReadsALocalFileUpToItsSizeWhenOpened",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingReadsLocalFilesThroughTheDefaultStream",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingStopsConsumingTheStreamWhenAborted",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingUsesReadFileWithoutCreateReadStreamAndForFractionalOrNegativeRanges"
       ]
     },
     {
@@ -52061,11 +52243,6 @@
       "entry": "BF-D150"
     },
     {
-      "id": "D151",
-      "title": "`grep` with context reads a window of each matched file (Pi #9276)",
-      "entry": "BF-D151"
-    },
-    {
       "id": "D153",
       "title": "The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015)",
       "entry": "BF-D153"
@@ -52295,11 +52472,6 @@
       "entry": "BF-D241"
     },
     {
-      "id": "D242",
-      "title": "Reload is rejected while the session is running or compacting",
-      "entry": "BF-D242"
-    },
-    {
       "id": "D243",
       "title": "A bash or PowerShell timeout after the shell already exited reports the shell's exit code",
       "entry": "BF-3fe717a"
@@ -52318,11 +52490,6 @@
       "id": "D246",
       "title": "OpenAI Responses sends session-id, not session_id",
       "entry": "BF-D246"
-    },
-    {
-      "id": "D247",
-      "title": "Quit settles the interrupted run before session_shutdown and disposal",
-      "entry": "BF-bd8849d"
     },
     {
       "id": "D248",
