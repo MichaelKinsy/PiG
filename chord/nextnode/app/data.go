@@ -98,6 +98,8 @@ var HostDataExport = mustLocal("chord.app.data.export", contracts.LocalDeclarati
 
 // hostDataModuleText is the module of the worker's NodeHost serving HostData (hostDataModule's template).
 //
+// pig divergence (D460): HostData is a JavaScript core facet on the worker's NodeHost (which serves the worker's address) forwarding to a Go object.
+//
 //go:embed host_data.mjs
 var hostDataModuleText string
 

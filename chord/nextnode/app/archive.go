@@ -118,6 +118,7 @@ func PackStore(ctx context.Context, opened, kit store.Store, files string, manif
 // instant (`VACUUM INTO`, a read transaction that the NodeHost's writes do not disturb), and the copy is exported. The kit's writes
 // are held from before the snapshot until its archive is written, so the two archives are one point (D462: two stores, nothing commits
 // across them).
+// pig divergence (D462): a running worker's two stores are exported at one point by holding the kit's commit queue and snapshotting the plugins' file; Pi holds its one store's queue.
 func PackRunning(ctx context.Context, dir string, kit store.Store, manifest ArchiveManifest, path string) error {
 	return packStores(ctx, kit, func(ctx context.Context, staging string) (store.Store, func() error, error) {
 		snapshot := filepath.Join(staging, "snapshot.sqlite")

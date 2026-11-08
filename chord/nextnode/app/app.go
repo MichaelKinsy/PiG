@@ -512,12 +512,14 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if len(options.API.Versions) > 0 {
 		version = options.API.Versions[0]
 	}
+	// pig divergence (D460): the kit's facets are Go core facets on the server's Go host, beside the plugins' Node host; Pi loads them into the one host that loads the plugins.
 	core := []host.HostFacet{
 		{Name: "chord.http", Facet: a.HTTP.Facet()},
 		{Name: "chord.app.info", Facet: AppInfoFacet(AppInfoValues{DataDir: opened.layout.DataDir, Name: options.Name, Version: version, Owner: owner})},
 		{Name: "chord.app.sessions", Facet: sessions.Facet},
 		{Name: "chord.app.owner", Facet: OwnerFacet(link, owner)},
 		{Name: "chord.app.pairing", Facet: PairingFacet(NewPairings(PairingLimits{MaxPending: limits.PendingPairings, PerAddress: limits.PairingsPerAddress}), owner)},
+		// pig divergence (D461): Files is a Go facet the plugins' NodeHost cannot get (the bridge refuses its keyed member); Pi's plugins `self.get(Files, {})`.
 		{Name: "chord.app.files", Facet: FilesFacet(filepath.Join(opened.layout.Server, "files"), options.Files, limits.Uploads)},
 		{Name: "chord.themes", Facet: surfaces.ThemesFacet()},
 		{Name: "chord.themes.choice", Facet: themeChoice},
@@ -743,6 +745,7 @@ func openServer(path string, ctx context.Context) (opened openedServer, err erro
 	if err != nil {
 		return openedServer{}, err
 	}
+	// pig divergence (D462): the server's Go host has a store of its own (store.sqlite); the plugins' NodeHost has another (plugins.sqlite); Pi's one host has one.
 	chordStore, err := store.OpenStore(store.SqliteBackend(database), ctx, store.StoreOptions{})
 	if err != nil {
 		return openedServer{}, err
