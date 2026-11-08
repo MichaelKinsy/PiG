@@ -111,7 +111,7 @@ func TestExample33Reload(t *testing.T) {
 	swap, err := host.Reload([]HostFacet{{Name: "@example/notes", Facet: notesV2}, {Name: "@example/search", Facet: searchV1}, {Name: "@example/clock", Facet: clockPlugin}}, background, ReloadOptions{})
 	must(t, err)
 	wantReloadPlugins(t, swap, nil, []string{"@example/notes"}, nil)
-	if want := []ReloadedObject{{Object: "example.notes", Kind: ReloadSwapped}}; !reflect.DeepEqual(swap.Objects, want) {
+	if want := []ReloadedObject{{Object: "example.notes", Kind: ReloadRestarted}}; !reflect.DeepEqual(swap.Objects, want) {
 		t.Fatalf("2. objects = %+v, want %+v", swap.Objects, want)
 	}
 	close(open)

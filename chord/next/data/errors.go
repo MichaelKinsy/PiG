@@ -57,6 +57,7 @@ const (
 	ReasonBusy          ChordErrorReason = "busy"
 	ReasonStorageFailed ChordErrorReason = "storage_failed"
 	ReasonUndeclared    ChordErrorReason = "undeclared"
+	ReasonReloadCycle   ChordErrorReason = "reload_cycle"
 )
 
 // chordErrorCodes lists every code in the order of upstream's CHORD_ERROR_REASONS.
@@ -84,7 +85,9 @@ func ChordErrorReasons(code ChordErrorCode) ([]ChordErrorReason, bool) {
 	case CodeTooLarge:
 		return []ChordErrorReason{ReasonPart}, true
 	case CodeUnavailable:
-		return []ChordErrorReason{ReasonLocked, ReasonParkTimeout, ReasonBusy, ReasonStorageFailed, ReasonUndeclared}, true
+		// `undeclared`: a registry no plugin serves on this host; `version`: waiting for a dependency refused for its version
+		// (it heals with another host's reload); `reload_cycle`: old work waiting on its own drain during a reload.
+		return []ChordErrorReason{ReasonLocked, ReasonParkTimeout, ReasonBusy, ReasonStorageFailed, ReasonUndeclared, ReasonVersion, ReasonReloadCycle}, true
 	}
 	return nil, false
 }

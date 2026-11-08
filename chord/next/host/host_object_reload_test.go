@@ -23,9 +23,10 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
-// Ports the reload describes of packages/chord/test/next/host/object.test.ts: fates (slice 7b §4), the pure swap (§5), a stuck
-// routine call past the handover, GC, a parked attempt's handover, swaps one after another, a reference detaching from a
-// parked swap's old instance, and the two "final review" cases of a live failure and a native restart. Every case runs a real
+// Ports the reload describes of packages/chord/test/host/object.test.ts: fates (decision "Reload restarts every affected object"), a
+// restart's readiness and old attempt, a stuck routine call past the drain, old work finishing on old code, the reload drain
+// bound, GC, a parked attempt's handover, two reloads in a row, a reference detaching from a parked restart's old attempt, and
+// the two "final review" cases of a live failure and a native restart. Every case runs a real
 // host; the one Pi runs under `fakeTimers()` runs on the scopeLoop. What Pi awaits in a handler is a blocking Go function on
 // its task, gated by signals; a call a case starts and awaits later runs on a goroutine and reports on a channel.
 //
@@ -201,16 +202,17 @@ func reloadWantObjects(t testing.TB, report ReloadReport, want ...ReloadedObject
 
 // --- reload: fates (slice 7b §4) ------------------------------------------------------------------------------------------
 
-func TestReloadFatesSwapsAPureObjectInPlaceSameDocumentsAndInstanceIdNewCodeForNewCalls(t *testing.T) {
+func TestReloadFatesRestartsALiveObjectItsDocumentsKeptNewCodeForNewCalls(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, nil) }, loadedOptions{})
 	defer closeHosts(t, host)
 	pure := mustGet(t, host, reloadPure, jsonObject())
 	reloadBump(t, pure)
-	object := reloadObjectOf(pure)
 	var instance string
+	object := reloadObjectOf(pure)
 	host.(*chordHost).enter(func() { instance = object.instanceID })
 	report := reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 10, nil) }))
-	reloadWantObjects(t, report, ReloadedObject{Object: "app.pure", Kind: ReloadSwapped})
+	reloadWantObjects(t, report, ReloadedObject{Object: "app.pure", Kind: ReloadRestarted})
+	turn(host)
 	untilKind(t, pure, RefStateLive)
 	reloadUntilLabel(t, pure, "v2")
 	if bumped := reloadBump(t, pure); bumped != 11.0 {
@@ -218,12 +220,12 @@ func TestReloadFatesSwapsAPureObjectInPlaceSameDocumentsAndInstanceIdNewCodeForN
 	}
 	var after string
 	host.(*chordHost).enter(func() { after = object.instanceID })
-	if object != reloadObjectOf(pure) || after != instance {
-		t.Fatalf("the object or its instance id changed across the swap (%q -> %q)", instance, after)
+	if object != reloadObjectOf(pure) || after == instance {
+		t.Fatalf("the object changed, or its instance id did not (%q -> %q): a restart is a new instance on the same object", instance, after)
 	}
 }
 
-func TestReloadFatesRestartsAnObjectWithNativesTheDrainFirstItsNativesClosedWithReasonReloadANewInstance(t *testing.T) {
+func TestReloadFatesShowsTheOldAttemptLiveWhileItDrainsClosesItsNativesWithReasonReloadThenOpensTheNewOnes(t *testing.T) {
 	var mu sync.Mutex
 	var closes []string
 	push := func(text string) {
@@ -268,10 +270,11 @@ func TestReloadFatesRestartsAnObjectWithNativesTheDrainFirstItsNativesClosedWith
 	held.entered.wait(t)
 	report := reloadMust(t)(reloadApp(host, func(h FacetHost) error { return serve(h, "v2", nil) }))
 	reloadWantObjects(t, report, ReloadedObject{Object: "app.pure", Kind: ReloadRestarted})
-	if state := stateOfRef(pure); state.Kind != RefStateLoading {
-		t.Fatalf("state = %+v, want loading", state)
+	// The old attempt binds this reference's version: it sees it live while it drains (rule 5).
+	if state := stateOfRef(pure); state.Kind != RefStateLive {
+		t.Fatalf("state = %+v, want live", state)
 	}
-	// A new call parks until the new attempt is live.
+	// A new call waits at the gate until the new attempt is live.
 	parked := startReloadCall(pure, "bump", nil)
 	turn(host)
 	mu.Lock()
@@ -398,7 +401,7 @@ func TestReloadFatesRetriesAFailedObjectOnTheNewCode(t *testing.T) {
 	reloadUntilLabel(t, pure, "fixed")
 }
 
-func TestReloadFatesParksASwapWhoseNewFactoryNeedsAMissingDependencyItGoesLiveWhenTheDependencyIsServed(t *testing.T) {
+func TestReloadFatesReportsARestartParkedWhoseNewFactoryNeedsAMissingDependencyItGoesLiveOnceThatIsServed(t *testing.T) {
 	dep := mustContract(declareLocal("app.dep", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("name", contracts.Str())},
 	}))
@@ -445,9 +448,9 @@ func TestReloadFatesParksASwapWhoseNewFactoryNeedsAMissingDependencyItGoesLiveWh
 	reloadUntilLabel(t, pure, "with dep")
 }
 
-// --- reload: the pure swap (slice 7b §5) ----------------------------------------------------------------------------------
+// --- reload: a restart's old attempt (rules 1-4) ---------------------------------------------------------------------------
 
-func TestReloadThePureSwapLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallWaitsAtTheGateForTheNewCode(t *testing.T) {
+func TestReloadARestartLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallWaitsAtTheGateForTheNewCode(t *testing.T) {
 	held := newReloadGate()
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, reloadGates(held)) }, loadedOptions{})
 	defer closeHosts(t, host)
@@ -455,7 +458,7 @@ func TestReloadThePureSwapLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallW
 	old := startReloadCall(pure, "bump", nil)
 	held.entered.wait(t)
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 10, nil) }))
-	// The old call commits through its old handle after the swap.
+	// The old call commits through its old handle after the commit.
 	held.open.fire()
 	if got := old.wait(t); got != 1.0 {
 		t.Fatalf("old call = %v, want 1", got)
@@ -465,7 +468,7 @@ func TestReloadThePureSwapLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallW
 	}
 }
 
-func TestReloadThePureSwapAnOldCallTouchingADocumentWhoseVersionRoseThrowsOnceR15TheDocumentIsMigrated(t *testing.T) {
+func TestReloadARestartOldWorkWritesADocumentWhoseVersionTheReloadRaisesTheNewCodeMigratesWhatItWrote(t *testing.T) {
 	v2, err := documents.DefineState("doc", documents.StateOptions{
 		Schema:  contracts.Obj(contracts.Prop("n", contracts.Int()), contracts.Prop("unit", contracts.Str())),
 		Version: 2,
@@ -519,15 +522,22 @@ func TestReloadThePureSwapAnOldCallTouchingADocumentWhoseVersionRoseThrowsOnceR1
 	old := startReloadCall(pure, "bump", nil)
 	held.entered.wait(t)
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return serve(h, v2, nil) }))
-	reloadUntilLabel(t, pure, `{"n":1,"unit":"pcs"}`)
+	turn(host)
+	// The new factory has not run: the old attempt's documents are as the old code declared them.
+	if got := memberOf(t, pure, "label"); got != `{"n":1}` {
+		t.Fatalf("label = %v, want {\"n\":1}", got)
+	}
 	held.open.fire()
-	wantChordError(t, old.rejected(t), data.CodeReleased, data.ReasonVersion, "")
-	if got := reloadBump(t, pure); got != 2.0 {
-		t.Fatalf("new call = %v, want 2", got)
+	if got := old.wait(t); got != 2.0 {
+		t.Fatalf("old call = %v, want 2", got)
+	}
+	reloadUntilLabel(t, pure, `{"n":2,"unit":"pcs"}`)
+	if got := reloadBump(t, pure); got != 3.0 {
+		t.Fatalf("new call = %v, want 3", got)
 	}
 }
 
-func TestReloadThePureSwapBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADependencyHeldOnlyByItNeverEnds(t *testing.T) {
+func TestReloadARestartBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADependencyHeldOnlyByItNeverEnds(t *testing.T) {
 	depType := mustContract(declareLocal("app.dep", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 		Members: []contracts.LocalEntry{
@@ -581,7 +591,7 @@ func TestReloadThePureSwapBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesAD
 	}
 }
 
-func TestReloadThePureSwapReBindsMembersByNameOneFrameFromTheLastValueAndRebuildsInternalDerives(t *testing.T) {
+func TestReloadARestartReBindsMembersByNameOneFrameFromTheLastValueAndRebuildsInternalDerives(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, nil) }, loadedOptions{})
 	defer closeHosts(t, host)
 	pure := mustGet(t, host, reloadPure, jsonObject())
@@ -605,7 +615,7 @@ func TestReloadThePureSwapReBindsMembersByNameOneFrameFromTheLastValueAndRebuild
 	}
 }
 
-func TestReloadThePureSwapHandsItsRoutinesOverTheOldOnesAbortedTheNewOnesStartAfterTheOldCallsFinished(t *testing.T) {
+func TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart(t *testing.T) {
 	var mu sync.Mutex
 	var events []string
 	push := func(text string) {
@@ -655,7 +665,7 @@ func TestReloadThePureSwapHandsItsRoutinesOverTheOldOnesAbortedTheNewOnesStartAf
 	}
 }
 
-func TestReloadThePureSwapStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch(t *testing.T) {
+func TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch(t *testing.T) {
 	tools, err := registries.DefineRegistry[any, any]("app.tools", registries.DefineRegistryOptions{Version: 1})
 	must(t, err)
 	var mu sync.Mutex
@@ -715,9 +725,9 @@ func TestReloadThePureSwapStartsAWritableAtItsNewInitialValueAndReplacesTheContr
 	}
 }
 
-// --- reload: a stuck routine call past the handover ------------------------------------------------------------------------
+// --- reload: a stuck routine call past the drain ---------------------------------------------------------------------------
 
-func TestReloadAStuckRoutineCallPastTheHandoverAnOldRoutineCallStuckPastTheHandoverDrainTimeoutTheOldAttemptSealedItsCommitRefusedAudit12(t *testing.T) {
+func TestReloadAStuckRoutineCallPastTheDrainAnOldRoutineCallStuckPastTheReloadDrainBoundDrainTimeoutTheOldAttemptSealedItsCommitRefused(t *testing.T) {
 	stuck := newSignal()
 	t.Cleanup(stuck.fire)
 	late := make(chan error, 1)
@@ -782,7 +792,7 @@ func reloadContainsKind(kinds []HostErrorKind, kind HostErrorKind) bool {
 
 // --- reload: GC -----------------------------------------------------------------------------------------------------------
 
-func TestReloadGCCollectsASwappedOutAttemptAndItsClosuresOnceItsCallsSettled(t *testing.T) {
+func TestReloadGCCollectsARestartsOldAttemptAndItsClosuresOnceItEnded(t *testing.T) {
 	held := newReloadGate()
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, reloadGates(held)) }, loadedOptions{})
 	defer closeHosts(t, host)
@@ -794,6 +804,7 @@ func TestReloadGCCollectsASwappedOutAttemptAndItsClosuresOnceItsCallsSettled(t *
 		object := reloadObjectOf(pure)
 		host.(*chordHost).enter(func() { swapped = weak.Make(object.phase.attempt) })
 	}()
+	// The reload starts a restart: the live attempt is the old one, which the object lets go of once it ended.
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 1, nil) }))
 	held.open.fire()
 	old.wait(t)
@@ -947,9 +958,9 @@ func TestReloadAParkedAttemptsHandoverBindsReplacementRequestsBeforeReleasingThe
 	}
 }
 
-// --- reload: swaps one after another (fix round 1) ------------------------------------------------------------------------
+// --- reload: two reloads in a row -------------------------------------------------------------------------------------------
 
-func TestReloadSwapsOneAfterAnotherASecondSwapDoesNotWaitForTheFirstSwapsOldCallThatCallStillFinishesOnItsOldCode(t *testing.T) {
+func TestReloadTwoReloadsInARowTheSecondDoesNotWaitForTheFirstsOldCallWhichFinishesOnItsOldCodeTheLastCodeServes(t *testing.T) {
 	held := newReloadGate()
 	closeTimeout := time.Minute
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, reloadGates(held)) },
@@ -959,9 +970,12 @@ func TestReloadSwapsOneAfterAnotherASecondSwapDoesNotWaitForTheFirstSwapsOldCall
 	old := startReloadCall(pure, "bump", nil)
 	held.entered.wait(t)
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 10, nil) }))
-	// Not held up by v1's call (Fable, Opus F1): resolved at once, the gate open for new calls.
+	// Its report does not wait for the old attempt's drain.
 	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v3", 100, nil) }))
-	reloadUntilLabel(t, pure, "v3")
+	// The old attempt still runs v1's call: the reference sees it live meanwhile.
+	if got := memberOf(t, pure, "label"); got != "v1" {
+		t.Fatalf("label = %v, want v1 (the old attempt still shown)", got)
+	}
 	held.open.fire()
 	if got := old.wait(t); got != 1.0 {
 		t.Fatalf("old call = %v, want 1", got)
@@ -969,14 +983,15 @@ func TestReloadSwapsOneAfterAnotherASecondSwapDoesNotWaitForTheFirstSwapsOldCall
 	if got := reloadBump(t, pure); got != 101.0 {
 		t.Fatalf("new call = %v, want 101", got)
 	}
+	reloadUntilLabel(t, pure, "v3")
 	if errs.Len() != 0 {
 		t.Fatalf("errors = %v, want none", errs.All())
 	}
 }
 
-// --- reload: a reference detaching from a parked swap's old instance (Opus G1) ---------------------------------------------
+// --- reload: a reference detaching from a parked restart's old attempt (Opus G1) ------------------------------------------
 
-func TestReloadAReferenceDetachingFromAParkedSwapsOldInstanceFollowsTheOldInstanceWhileItsCallDrainsThenKeepsItsLastValueWithTheFailureOnce(t *testing.T) {
+func TestReloadAReferenceDetachingFromAParkedRestartsOldAttemptFollowsTheOldInstanceWhileItsCallDrainsThenKeepsItsLastValueWithTheFailureOnce(t *testing.T) {
 	missing := mustContract(declareLocal("app.missing", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{}}))
 	held := newReloadGate()
 	closeTimeout := time.Minute
@@ -1005,7 +1020,7 @@ func TestReloadAReferenceDetachingFromAParkedSwapsOldInstanceFollowsTheOldInstan
 	if state := stateOfRef(pure); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
 		t.Fatalf("state = %+v, want failed waiting", state)
 	}
-	// The old instance's call still commits: the reference follows it until it retires.
+	// The old attempt's call still commits: the reference follows it until it ended.
 	held.open.fire()
 	if got := bumping.wait(t); got != 1.0 {
 		t.Fatalf("old call = %v, want 1", got)
