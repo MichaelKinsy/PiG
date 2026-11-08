@@ -129,11 +129,15 @@ func BenchmarkRegistries(b *testing.B) {
 		_, _ = one.watch.Stop()
 		must(b, writable.Set(-1.0))
 		b.ReportAllocs()
-		for b.Loop() {
-			if err := writable.Set(-1.0); err != nil {
-				b.Fatal(err)
+		// Inside one section, as an object's code sets: the cost of a same-value set there, not a section entry.
+		one.host.(*chordHost).enter(func() {
+			for b.Loop() {
+				if err := writable.Set(-1.0); err != nil {
+					b.Error(err)
+					return
+				}
 			}
-		}
+		})
 		b.StopTimer()
 		must(b, one.host.Close(background))
 	})

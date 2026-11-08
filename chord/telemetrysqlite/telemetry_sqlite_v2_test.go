@@ -119,7 +119,7 @@ func TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept(t *testing.T) {
 	}
 	trace, err := recorder.GetTrace("old:1")
 	check(t, err)
-	if trace == nil || trace.Spans[0].StartedMs != 1000 || trace.Spans[0].EndedMs != 1002.5 {
+	if trace == nil || len(trace.Spans) != 1 || trace.Spans[0].StartedMs != 1000 || trace.Spans[0].EndedMs != 1002.5 {
 		t.Fatalf("trace = %+v", trace)
 	}
 	check(t, recorder.Close())
