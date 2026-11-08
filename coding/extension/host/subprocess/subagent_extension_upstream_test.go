@@ -437,12 +437,11 @@ func TestSubagentExampleChildLifecycle(t *testing.T) {
 		}
 		waitUntil(t, "the child to exit after the escalation", 10*time.Second, func() bool { return !processAlive(pid) })
 		exited = true
-		if got.err != nil {
-			t.Fatalf("the aborted call rejected: %v", got.err)
-		}
-		child := subagentResults(t, got.result)[0]
-		if child.Status != "aborted" || len(child.Messages) != 1 {
-			t.Fatalf("child = %+v, want aborted with its one partial message", child)
+		// pig divergence (D111): Pi awaits the example until its own SIGKILL at 5 s settles it with the partial details (status aborted, the one
+		// message). The host waits ToolAbortGrace (3 s) for an aborted call and then fails it as aborted, so the partial details never reach the
+		// caller; the agent loop records the abort. The escalation itself, which this case is about, is the example's and is asserted above.
+		if !errors.Is(got.err, ErrToolAborted) {
+			t.Fatalf("the aborted call = %+v, %v; want ErrToolAborted", got.result, got.err)
 		}
 	})
 
