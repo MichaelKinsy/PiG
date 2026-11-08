@@ -3476,16 +3476,16 @@ rationale = ""
 [[files]]
 path = "packages/codemode/src/declarations.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:codemode/declarations_test.go#TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments", "test:codemode/declarations_test.go#TestResolveSchemaRefReturnsNothingForRemoteMissingAndMalformedReferences"]
+rationale = "Pi 6d3e342b2 (#11803): resolveSchemaRef is exported and a malformed percent escape names nothing (codemode.ResolveSchemaRef)."
 
 [[files]]
 path = "packages/codemode/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:codemode/declarations_test.go#TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments"]
+rationale = "The package index exports resolveSchemaRef; Go exports codemode.ResolveSchemaRef and ResolveSchemaRefJSON."
 
 [[files]]
 path = "packages/coding-agent/src/cli/args.ts"
@@ -3525,9 +3525,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/cli/config-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/config_theme_test.go#TestConfigSelectorUIUsesTheUsersKeybindings"]
+rationale = "Pi b0c64f33c: selectConfig installs the user's keybindings before the UI runs (coding/cli config selector)."
 
 [[files]]
 path = "packages/coding-agent/src/core/agent-session-runtime.ts"
@@ -3553,9 +3553,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/bash-executor.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/compaction/bash_discarded_output_test.go#TestBashExecutionToTextNamesTheLogOfDiscardedOutput", "test:internal/codingagent/tools/bash_executor_truncation_test.go#TestExecuteBashWithOperationsReportsDiscardedChunks10164"]
+rationale = "Pi 66c655677: a bash result whose head the output window dropped reports truncated (D244)."
 
 [[files]]
 path = "packages/coding-agent/src/core/cache-warmer.ts"
@@ -3602,9 +3602,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/keybindings.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/keybindings_platform_test.go#TestKeybindingDefinitionsApplyPlatformDefaults"]
+rationale = "Pi: app.clipboard.pasteImage defaults to alt+v and ctrl+v where Windows defaults apply; internal/codingagent matches it."
 
 [[files]]
 path = "packages/coding-agent/src/core/mcp-servers.ts"
@@ -3665,16 +3665,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/runtime_close_credential_writes_test.go#TestRuntimeSettleCredentialWritesReturnsTheCancellationCause", "test:coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved", "test:ai/runtime_credentials_settled_test.go#TestRuntimeCredentialsSettledResolvesAfterAPendingModificationFails"]
+rationale = "Pi b2cb62923 (#11692): pending credential modifications are tracked and settled before exit."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/bash.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go#TestBashTimeoutAfterShellExit11613"]
+rationale = "Pi (#11613): a timeout after the shell exited kills background process groups and reports the command result and the still-writing background processes."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit-diff.ts"
@@ -3693,9 +3693,9 @@ rationale = "Pi d448c51e2 (#11751): the edit tool computes its diff before writi
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_ls_limit_test.go#TestFindLimitEdgeCases7121"]
+rationale = "Pi 676af1d77 (#7121): a find limit below 1 means 1 and the limit notice needs one more result (D253)."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
@@ -3707,9 +3707,9 @@ rationale = "Pi 8da141c2a (#11705, #9276, #11423) takes the context lines from r
 [[files]]
 path = "packages/coding-agent/src/core/tools/ls.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_ls_limit_test.go#TestLsLimitEdgeCases7121"]
+rationale = "Pi 676af1d77 (#7121): an ls limit of 0 means 1 (D253)."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/read.ts"
@@ -3728,9 +3728,9 @@ rationale = "Pi 9e870f6f0 keeps a surrogate pair whole when truncateLine, sliceH
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/execute.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/execute_oracle_test.go#TestTruncateTextCutsAtCodeUnits", "test:coding/extension/builtin/codemode/execute_oracle_test.go#TestTruncateOutputKeepsSurrogatePairsWhole"]
+rationale = "Pi 9e870f6f0 (D252): output truncation uses sliceHead and sliceTail, which never split a surrogate pair."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/tool.ts"
@@ -3770,9 +3770,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/truncate_slice_test.go#TestTruncateDropsASplitSurrogatePair"]
+rationale = "Pi 9e870f6f0 (D252): the MCP description truncation uses sliceHead; createMcpToolName and mcpNamespace now come from pi-mcp (mcp package)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
@@ -3861,9 +3861,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/login_dialog_device_code_test.go#TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs"]
+rationale = "Pi: the login dialog uses the web-url helper; control characters of non-web URLs are replaced."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/mermaid.ts"
@@ -3917,9 +3917,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand", "test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownFromSessionStartExits", "test:coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown", "test:coding/cli/rpc_repeated_signal_test.go#TestRPCRepeatedSignalDuringShutdownExitsAtOnce"]
+rationale = "Pi: an extension shutdown request on an idle session exits without another command; a repeated signal skips cleanup."
 
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"
@@ -3931,9 +3931,9 @@ rationale = "Pi 342514bdf (#11707) and 806cdd68e (#11711): pig update lists the 
 [[files]]
 path = "packages/coding-agent/src/utils/changelog.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/changelog_test.go#TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes"]
+rationale = "Pi 9a1953961 (#11703): getNewEntries reads only the leading major.minor.patch of the recorded version (D245)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize.ts"
@@ -3952,9 +3952,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/utils/web-url.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginOpensOnlyWebURLs", "test:tui/login_dialog_device_code_test.go#TestLoginURLsOpenOnlyHTTPSignInURLs"]
+rationale = "Pi: only http(s) sign-in URLs are opened (tui LoginBrowserTarget)."
 
 [[files]]
 path = "packages/durable/src/codemode/codemode.ts"
@@ -4617,23 +4617,23 @@ rationale = "Pi af79b0c3d: validate is Validator.Validate, and Parse reuses it."
 [[files]]
 path = "packages/telemetry/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:telemetry/telemetry_now_test.go#TestTelemetryNowCountsSubMillisecondStepsOfTheMonotonicClockWhileTheWallClockStaysInItsMillisecond"]
+rationale = "Pi 378d45a0: the span snapshot documents microsecond times and index.ts exports telemetryNow; telemetry.TelemetryNow (memory_now.go) is exported and tested against Pi's two cases."
 
 [[files]]
 path = "packages/telemetry/src/memory.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:telemetry/telemetry_now_test.go#TestInMemoryStampsStartsWithTelemetryNowToTheMicrosecondInTheirOrder", "test:telemetry/telemetry_now_test.go#TestTelemetryNowFollowsAStepOfTheWallClockPast10ms", "test:telemetry/telemetry_now_test.go#TestInMemoryRoundsEventAndEndTimesToTheMicrosecond"]
+rationale = "Pi 378d45a0: span starts use telemetryNow and event and end times round to the microsecond (telemetry/memory.go, memory_now.go), tested with a mocked Date.now and performance.now as Pi does."
 
 [[files]]
 path = "packages/telemetry/src/render.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:telemetry/render_upstream_test.go#TestRenderTraceRendersLengthsOfTimeToTheMicrosecond", "test:telemetry/render_upstream_test.go#TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessages"]
+rationale = "Pi 378d45a0: lengths of time render to the microsecond and control characters of ids, names, attribute keys and error messages are escaped (telemetry/render.go)."
 
 [[files]]
 path = "packages/tui/src/components/markdown.ts"
