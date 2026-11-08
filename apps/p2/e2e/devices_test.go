@@ -236,6 +236,8 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 	if _, err := fixture.Server.Reload([]string{"devices"}, p2test.Background); err != nil {
 		t.Fatal(err)
 	}
+	// The replacing facet's object goes live asynchronously: a call through the held reference answers once it does.
+	mint(t, devices)
 	if got := claim(tokenBody(outstanding)).Status; got != 200 {
 		t.Fatalf("compatible reloads retain invitations and the owner key: %d", got)
 	}
