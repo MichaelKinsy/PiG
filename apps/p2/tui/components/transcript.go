@@ -368,6 +368,7 @@ func newEntryView(item EntryItem, renderer *EntryRenderer, ctx TranscriptContext
 func (v *entryView) build() {
 	v.container.Clear()
 	defer func() {
+		// upstream: apps/p2/src/tui/components/transcript.ts:renderer
 		if recover() != nil {
 			v.container.Clear()
 			v.container.AddChild(NewNoticeComponent("["+v.it.Entry.Kind+": renderer failed]", "warning", v.ctx))
