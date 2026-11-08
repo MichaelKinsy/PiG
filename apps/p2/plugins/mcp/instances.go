@@ -168,7 +168,7 @@ func (i *Instances) List() []Instance {
 }
 
 // Call calls tool on instance id; it fails while it is not connected.
-func (i *Instances) Call(ctx context.Context, id, tool string, args map[string]any) (*pimcp.CallToolResult, error) {
+func (i *Instances) Call(ctx context.Context, id, tool string, args any) (*pimcp.CallToolResult, error) {
 	i.mu.Lock()
 	running := i.running[id]
 	i.mu.Unlock()
@@ -344,7 +344,7 @@ func (c *connection) view() Instance {
 
 // call calls a tool. The error says why it is not connected, never the server's stderr (the model reads it); for a sign-in,
 // where the user signs in. Tokens refused for good during a call (revoked, say) make it wait for a sign-in.
-func (c *connection) call(ctx context.Context, tool string, args map[string]any) (*pimcp.CallToolResult, error) {
+func (c *connection) call(ctx context.Context, tool string, args any) (*pimcp.CallToolResult, error) {
 	server := c.spec.Server
 	needed := func() error {
 		return fmt.Errorf(`MCP server "%s" needs a sign-in: ask the user to sign in from the MCP panel in p2's sidebar (or at %s on p2)`, server, contract.SignInLink(server))
