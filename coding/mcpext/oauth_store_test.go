@@ -65,7 +65,7 @@ func seedLegacy(t *testing.T, backend *mcpext.InMemoryAuthStorageBackend) {
 	}
 }
 
-func forServer(t *testing.T, store *mcpext.McpOAuthCredentialStore, name string) mcpext.McpOAuthServerStore {
+func forServer(t *testing.T, store *mcpext.McpOAuthCredentialStore, name string) oauth.McpOAuthServerStore {
 	t.Helper()
 	server, err := store.ForServer(name, storeServerURL)
 	if err != nil {
@@ -74,7 +74,7 @@ func forServer(t *testing.T, store *mcpext.McpOAuthCredentialStore, name string)
 	return server
 }
 
-func loadedAccessToken(t *testing.T, server mcpext.McpOAuthServerStore) *string {
+func loadedAccessToken(t *testing.T, server oauth.McpOAuthServerStore) *string {
 	t.Helper()
 	state, err := server.Load(t.Context())
 	if err != nil {

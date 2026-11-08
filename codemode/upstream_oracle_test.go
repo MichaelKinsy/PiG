@@ -3,7 +3,6 @@ package codemode_test
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -113,19 +112,7 @@ func TestSchemaToTypeMatchesPi(t *testing.T) {
 	golden := loadOracle(t)
 	var differences []string
 	for _, c := range golden.SchemaToType {
-		got, err := codemode.SchemaToType(json.RawMessage(c.Schema), codemode.SchemaToTypeOptions{MaxChars: c.MaxChars})
-		if c.Error != nil {
-			// Pi's decodeURIComponent throws a URIError out of schemaToType for a $ref segment that is not valid
-			// percent-encoding; SchemaToType returns that failure as its error.
-			if err == nil || "URIError: "+err.Error() != *c.Error {
-				differences = append(differences, "schema "+c.Schema+"\n  got  "+got+" / "+fmt.Sprint(err)+"\n  want "+*c.Error)
-			}
-			continue
-		}
-		if err != nil {
-			differences = append(differences, "schema "+c.Schema+"\n  got error "+err.Error())
-			continue
-		}
+		got := codemode.SchemaToType(json.RawMessage(c.Schema), codemode.SchemaToTypeOptions{MaxChars: c.MaxChars})
 		if c.OK != nil && got != *c.OK {
 			differences = append(differences, "schema "+c.Schema+"\n  got  "+got+"\n  want "+*c.OK)
 		}
@@ -263,8 +250,8 @@ func TestExportedConstantsMatchPi(t *testing.T) {
 	}
 }
 
-// renderToolOutputType: the type a tool call resolves to (the schema's type, unknown without one, URIError for a
-// malformed $ref); a schema shaped like an MCP CallToolResult renders as a plain type.
+// renderToolOutputType: the type a tool call resolves to (the schema's type, unknown without one; a malformed $ref
+// renders as unknown); a schema shaped like an MCP CallToolResult renders as a plain type.
 func TestToolOutputTypeMatchesPi(t *testing.T) {
 	golden := loadOracle(t)
 	if len(golden.OutputType) == 0 {
@@ -276,14 +263,8 @@ func TestToolOutputTypeMatchesPi(t *testing.T) {
 		if c.Schema == "undefined" {
 			schema = nil
 		}
-		got, err := codemode.RenderToolOutputType(schema)
-		switch {
-		case c.Type.Error != nil:
-			if err == nil || "URIError: "+err.Error() != *c.Type.Error {
-				differences = append(differences, "outputType "+c.Schema+"\n  got  "+got+" / "+fmt.Sprint(err)+"\n  want "+*c.Type.Error)
-			}
-		case err != nil || got != *c.Type.OK:
-			differences = append(differences, "outputType "+c.Schema+"\n  got  "+got+" / "+fmt.Sprint(err)+"\n  want "+*c.Type.OK)
+		if got := codemode.RenderToolOutputType(schema); got != *c.Type.OK {
+			differences = append(differences, "outputType "+c.Schema+"\n  got  "+got+"\n  want "+*c.Type.OK)
 		}
 	}
 	reportDifferences(t, "renderToolOutputType", len(golden.OutputType), differences)

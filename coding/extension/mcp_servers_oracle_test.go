@@ -3,6 +3,7 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/MichaelKinsy/PiG/mcp"
 	"strings"
 	"testing"
 
@@ -194,13 +195,13 @@ emit({
 		}
 	}
 	for j, uri := range uris {
-		if got := IsLoopbackRedirectURI(uri); got != want.Loopback[j] {
-			t.Errorf("IsLoopbackRedirectURI(%q) = %v, Pi %v", uri, got, want.Loopback[j])
+		if got := isLoopbackRedirectURI(uri); got != want.Loopback[j] {
+			t.Errorf("isLoopbackRedirectURI(%q) = %v, Pi %v", uri, got, want.Loopback[j])
 		}
 	}
 	for j, server := range servers {
-		if got := McpNamespace(server); got != want.Namespaces[j] {
-			t.Errorf("McpNamespace(%q) = %q, Pi %q", server, got, want.Namespaces[j])
+		if got := mcp.McpNamespace(server); got != want.Namespaces[j] {
+			t.Errorf("mcp.McpNamespace(%q) = %q, Pi %q", server, got, want.Namespaces[j])
 		}
 	}
 }
