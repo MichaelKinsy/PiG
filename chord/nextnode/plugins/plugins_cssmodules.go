@@ -143,11 +143,11 @@ func parseClassMap(js string) ([]ClassName, error) {
 	if exported == nil {
 		return nil, errors.New("no default export in the scoped module")
 	}
-	binding := regexp.MustCompile(`(?:^|[^\w$.])` + regexp.QuoteMeta(exported[1]) + `\s*=\s*\{`).FindStringIndex(js)
-	if binding == nil {
+	binding := bindingOf(js, exported[1])
+	if binding < 0 {
 		return nil, errors.New("the default export is not an object literal")
 	}
-	p := classMapParser{text: js, at: binding[1]}
+	p := classMapParser{text: js, at: binding}
 	var classes []ClassName
 	index := map[string]int{}
 	for {
@@ -184,6 +184,34 @@ func parseClassMap(js string) ([]ClassName, error) {
 		}
 		return classes, nil
 	}
+}
+
+// bindingOf is where the object literal `name = {` of js begins (just after its brace), or -1: the first `name` that is a whole
+// identifier (no word character, `$` or `.` before it or after it) followed by `=` and `{`.
+func bindingOf(js, name string) int {
+	for from := 0; ; {
+		at := strings.Index(js[from:], name)
+		if at < 0 {
+			return -1
+		}
+		start, end := from+at, from+at+len(name)
+		from = start + 1
+		if start > 0 && isIdentifierByte(js[start-1]) || start > 0 && js[start-1] == '.' {
+			continue
+		}
+		rest := strings.TrimLeft(js[end:], " \t\r\n")
+		if rest == "" || rest[0] != '=' {
+			continue
+		}
+		rest = strings.TrimLeft(rest[1:], " \t\r\n")
+		if rest != "" && rest[0] == '{' {
+			return len(js) - len(rest) + 1
+		}
+	}
+}
+
+func isIdentifierByte(c byte) bool {
+	return c == '_' || c == '$' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
 }
 
 // classMapParser is a cursor over the JavaScript of a mapping.
