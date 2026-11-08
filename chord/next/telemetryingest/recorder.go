@@ -168,9 +168,11 @@ type remoteParent struct {
 func (parent *remoteParent) StartSpan(options telemetry.SpanOptions, callback func(telemetry.TelemetrySpan) error) error {
 	return parent.owner.start(&parent.identity, options, callback)
 }
-func (parent *remoteParent) Metrics() telemetry.TelemetryMetrics         { return parent.owner.Metrics() }
-func (parent *remoteParent) Propagation() telemetry.TelemetryPropagation { return parent.owner.Propagation() }
-func (parent *remoteParent) recorderIdentity() identity                  { return parent.identity }
+func (parent *remoteParent) Metrics() telemetry.TelemetryMetrics { return parent.owner.Metrics() }
+func (parent *remoteParent) Propagation() telemetry.TelemetryPropagation {
+	return parent.owner.Propagation()
+}
+func (parent *remoteParent) recorderIdentity() identity { return parent.identity }
 
 // inertSpan is what a stopped recorder or a settled span hands out: it records nothing and keeps the recorder's
 // capabilities.
@@ -212,9 +214,11 @@ type recorderSpan struct {
 	settled    bool
 }
 
-func (span *recorderSpan) recorderIdentity() identity                  { return span.identity }
-func (span *recorderSpan) Metrics() telemetry.TelemetryMetrics         { return span.owner.Metrics() }
-func (span *recorderSpan) Propagation() telemetry.TelemetryPropagation { return span.owner.Propagation() }
+func (span *recorderSpan) recorderIdentity() identity          { return span.identity }
+func (span *recorderSpan) Metrics() telemetry.TelemetryMetrics { return span.owner.Metrics() }
+func (span *recorderSpan) Propagation() telemetry.TelemetryPropagation {
+	return span.owner.Propagation()
+}
 
 func (span *recorderSpan) StartSpan(options telemetry.SpanOptions, callback func(telemetry.TelemetrySpan) error) error {
 	span.owner.mu.Lock()
