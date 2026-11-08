@@ -351,3 +351,61 @@ func TestSettledScanIgnoresAChildThatLeft(t *testing.T) {
 		t.Fatalf("the container that holds the child now does not draw its change: %q", got)
 	}
 }
+
+// An Invalidate that lands after the scan read a child clean and before the container claims it reaches no owner and queues
+// nothing; the container then draws the child's change on the next frame all the same.
+func TestSettledScanKeepsAnInvalidationBetweenTheCheckAndTheClaim(t *testing.T) {
+	a, b := NewContainer(), NewContainer()
+	sa, sb := NewSpacer(1), NewSpacer(1)
+	a.Add(sa)
+	b.Add(sb)
+	fired := false
+	trustKidHook = func(ch Component) {
+		if ch == Component(sa) && !fired {
+			fired = true
+			sa.SetLines(3)
+		}
+	}
+	defer func() { trustKidHook = nil }()
+	a.Render(40) // builds the window; the second frame is the first scan that finds the child settled
+	a.Render(40)
+	if !fired {
+		t.Fatal("the hook did not run: the scan did not claim the child")
+	}
+	sb.SetLines(3)
+	wholeFrames.Store(true)
+	want := b.Render(40)
+	wholeFrames.Store(false)
+	if got := a.Render(40); !slices.Equal(got, want) {
+		t.Fatalf("lines after the invalidation = %d, want %d", len(got), len(want))
+	}
+}
+
+// selfDirtyReporter is a renderer component of an extension: it dirties itself, not through its card.
+type selfDirtyReporter struct {
+	text  string
+	dirty bool
+}
+
+func (r *selfDirtyReporter) Render(int) []string { r.dirty = false; return []string{r.text} }
+func (r *selfDirtyReporter) IsDirty() bool       { return r.dirty }
+func (r *selfDirtyReporter) Invalidate()         { r.dirty = true }
+
+// A finished card whose renderer component is not a Text and reports its own changes is not read from its invalidations: the
+// component's later change is drawn.
+func TestSettledScanRedrawsAFinishedCardWhoseRendererReportsItself(t *testing.T) {
+	reporter := &selfDirtyReporter{text: "before"}
+	card := newToolCardForTest("probe", "")
+	card.SetDefinition(&ToolDefinitionRenderers{Call: func(ToolRenderInput) (Component, bool) { return reporter, true }}, json.RawMessage(`{}`))
+	card.SetResult("done", false, time.Second)
+	chat := NewContainer()
+	chat.Add(NewSpacer(1))
+	chat.Add(card)
+	chat.Add(NewSpacer(1))
+	chat.Render(40)
+	chat.Render(40)
+	reporter.text, reporter.dirty = "after", true
+	if got := strings.Join(plainLines(chat.Render(40)), "\n"); !strings.Contains(got, "after") {
+		t.Fatalf("card drew %q after its renderer changed, want it to contain after", got)
+	}
+}
