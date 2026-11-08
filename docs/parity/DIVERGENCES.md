@@ -4047,3 +4047,63 @@ Call-site markers: `chord/nextnode/plugins/plugins_watcher_identity_other.go`.
 Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` states the identity on the systems tested; the build of the file is checked by `GOOS=dragonfly go vet ./chord/nextnode/plugins` (and netbsd, openbsd for the files that read a birth time).
 
 Parity allowance: none needed; no Pi test depends on an inode reused with no birth time.
+
+## D600 Worker base designed out: workers fork the program's own executable
+
+What: Pi bundles the worker's Node entry with the base code it imports once, when `createWorkers` runs (`workers/base.ts`, esbuild; decision "Workers start from the base code the server booted with"), so an edit of that code after the server booted runs in no worker, and `workers.inputs` records the files for the watcher's `base` mark. Its tests (`test/node/workers/base.test.ts`: the snapshot, what stays external, module locations and stack traces, `nodeBaseInputs`, the bundle's private file; `child.test.ts`: the child entry loads no esbuild; the first `workers.test.ts` case, a worker started after an edit runs the code the component was created with) have no Go counterpart. A Go worker is the program's own compiled executable (`Entry`, `ExecArgv`): its code is fixed at build time, nothing is bundled and nothing is imported from the source tree at fork. `CreateWorkers` rejects an `Entry` that cannot be started (`exec.LookPath`), as Pi's rejects a base that does not build. `Workers.inputs`, `nodeBaseInputs` and the child entry (`workers/child`) have no Go form.
+
+Why: process boundary and language residue (a compiled executable against a bundled Node module). The one way worker code can move after the server booted is replacing the executable file on disk: the OS keeps the running server's image and a fork of the replaced path runs the new file. Not guarded here; an app that wants a `base` mark for it lists its executable in `AppOptions.Base`.
+
+Pi bug: none.
+
+Scope: `chord/nextnode/workers` (`CreateWorkers`, the package doc), the 13 Pi test cases above; the rest of `workers.test.ts` is ported.
+
+Owner decision: owner sign-off pending (draft; Pi main c23b9ec1).
+
+Remove when: never; it is the process boundary of a compiled worker.
+
+Call-site markers: `chord/nextnode/workers/workers_workers.go` (`CreateWorkers`), `chord/nextnode/workers/workers_workers_test.go`.
+
+Evidence: `TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain` (the error names the entry and why it cannot be started; the kind can be routed again).
+
+Parity allowance: none.
+
+## D605 `Host.Delegate`: a host with an address takes the remote types it does not serve itself over a route of its own address kind
+
+What: Pi's server runs its plugins in its own host (`createHost({ address: Server() })` loads them), so the server serves the union of the kit's types and the plugins' from one place. The Go kit's plugins run in a Node subprocess behind the Go server host, which is also addressed `server` (it serves Go-only remote types such as telemetry ingest). `Host.Delegate(kind, RouteOptions, ctx)` is the route of the host's own address kind, consulted only for remote types placed on the host that its published table does not serve: those holds and references go over the delegate (a relayed hold, a remote object, parked while `Resolve` runs, resolved again once after a drop), everything the host serves stays here whatever the state of its object. A hold arriving on the delegate's own link for a type nobody serves is answered `unavailable` (not sent back). The app kit gives the NodeHost the address `server` and delegates to its link instead of accepting it.
+
+Why: process boundary (a Node subprocess for the plugins) and the Go server's two hosts (D462). Without it a TypeScript server plugin cannot serve a remote type (`a host without an address serves only local types`, or, with the address, `unavailable`), which every reload row on the server needs.
+
+Pi bug: none.
+
+Scope: `chord/next/host` (`Host.Delegate`, `destination`), `chord/nextnode/app` (`start`). Nothing changes for a host without a delegate. The link is attached by the first hold that goes over it (a worker's is too), so TypeScript server code that holds a worker object before any hold arrived waits for it.
+
+Owner decision: owner sign-off pending (draft).
+
+Remove when: never; it is the Go form of one host serving what a subprocess serves.
+
+Call-site markers: `chord/next/host/host_host.go` (`Delegate`), `chord/nextnode/app/app.go` (`start`), `chord/next/host/host_delegate_test.go`.
+
+Evidence: `TestDelegateServesTheUnionOfTheHostsTypes...`, `TestDelegateWhatTheDelegatesOwnLinkAsksForAndNothingServesIsNotSentBackToIt`, `TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched`, `TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestart...`, `TestDelegateIsRefusedFor...` (`chord/next/host/host_delegate_test.go`), and the server rows of the reload suite (`chord/nextnode/app/reload_*_test.go`).
+
+Parity allowance: none.
+
+## D606 The reload suite's page is a Go tab host on the server's links endpoint, not a Chromium page
+
+What: Pi's `test/node/reload/*` drive a real Chromium through CDP: the base bundle, the web plugins' React components, `globalThis.reload` as the probe. The Go rows run through the app kit with a tab host connected to the server's links endpoint as the owner (a device session's token): its views are the references it holds (every state, every value of the watched member, calls kept by number), and what a component shows is the reference's last label, count and state. The server's latches (Pi reads its own process) are a latch facet on the server plugins' process (`reload.servercontrol`). The web plugins' own update is the page holding the contract at its new version. The rows that need the page itself (DOM and typed inputs, scroll, page loads, a link dropped from the page's script, `page.errors`, the rollout's `web` step) are the browser rows run in Chromium.
+
+Why: language and process boundary (the Go kit has no JavaScript page of its own); the host-level behaviour the rows assert (restart states, gate, drain bound, fates, contracts, rollout order) is the same code path a page's references take.
+
+Pi bug: none.
+
+Scope: `chord/nextnode/app/reload_*_test.go`, `testdata/reload`.
+
+Owner decision: owner sign-off pending (draft).
+
+Remove when: the browser rows run in the Go kit's Chromium suite and the host-level ones are judged redundant.
+
+Call-site markers: `chord/nextnode/app/reload_support_test.go`.
+
+Evidence: `chord/nextnode/app/reload_*_test.go` (each test names its Pi `it`).
+
+Parity allowance: none.

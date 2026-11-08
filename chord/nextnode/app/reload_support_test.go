@@ -706,7 +706,7 @@ func (p *reloadPage) peek(index int) callResult {
 // result is call index's answer, once it has one.
 func (p *reloadPage) result(index int) callResult {
 	p.t.Helper()
-	p.until(fmt.Sprintf("call %d's answer", index), reloadWait, func() bool { return p.results[index].Status != "pending" })
+	p.until(fmt.Sprintf("call %d's answer", index), reloadWait, func() bool { return p.peek(index).Status != "pending" })
 	return p.peek(index)
 }
 
