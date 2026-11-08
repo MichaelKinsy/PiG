@@ -261,6 +261,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-30d4a6d](#bf-30d4a6d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-30e47f4](#bf-30e47f4) | fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback | PiG's own defect | All platforms | Unreleased |
+| [BF-30e4a98](#bf-30e4a98) | The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's… | PiG's own defect | All platforms | Unreleased |
 | [BF-31118b1](#bf-31118b1) | Installing a chord plugin's npm dependencies no longer waits for a process the install command left running… | PiG's own defect | All platforms | Unreleased |
 | [BF-31312ab](#bf-31312ab) | Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-31312ab-2](#bf-31312ab-2) | Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -5146,6 +5147,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `30e47f4408` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-30e4a98
+
+**The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's `setBedrockProviderLoader`, and the Go, Rust, Python and Lisp SDKs gain `SettleCredentialWrites`/`settle_credential_writes`/`runtime-settle-credential-writes`, so an extension can wait for a started OAuth refresh to be saved before it exits.
+- **Root cause:** Not recorded.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `30e4a9808d` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's `setBedrockProviderLoader`, and the Go, Rust, Python and Lisp SDKs gain `SettleCredentialWrites`/`settle_credential_writes`/`runtime-settle-credential-writes`, so an extension can wait for a started OAuth refresh to be saved before it exits.
 
 ### BF-31118b1
 
