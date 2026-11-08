@@ -582,7 +582,12 @@ func (s *serverState) handle(response http.ResponseWriter, request *http.Request
 	// A stream (the sprite events) outlives the host's root scope: dispatch hands it back to run once the scope has ended, so
 	// closing the host never waits for it.
 	var stream func()
+	var run responseHandoff
 	_, err := s.host.Root(func(ctx host.Ctx) (any, error) {
+		if !run.enter() {
+			return nil, nil
+		}
+		defer run.leave()
 		return nil, s.dispatch(response, request, path, ctx, &stream)
 	}, chordctx.Background(), host.RootOptions{})
 	if err == nil && stream != nil {
@@ -591,7 +596,50 @@ func (s *serverState) handle(response http.ResponseWriter, request *http.Request
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "p2 server: request failed", err)
+		// Root returns at once when the host closes under a request (an uncooperative fn runs on), so the dispatch may still be writing this response: the
+		// error is written once it is done, or the dispatch never starts.
+		run.abandon()
 		http.Error(response, "", http.StatusInternalServerError)
+	}
+}
+
+// responseHandoff hands one response between handle and the dispatch it runs in the host's root: whichever of the dispatch and the failure answer
+// writes it, the other has not started or has finished.
+type responseHandoff struct {
+	mu        sync.Mutex
+	abandoned bool
+	running   bool
+	finished  chan struct{}
+}
+
+// enter is whether the dispatch may start; false once the request was abandoned.
+func (h *responseHandoff) enter() bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.abandoned {
+		return false
+	}
+	h.running = true
+	h.finished = make(chan struct{})
+	return true
+}
+
+// leave is the end of the dispatch.
+func (h *responseHandoff) leave() {
+	h.mu.Lock()
+	finished := h.finished
+	h.mu.Unlock()
+	close(finished)
+}
+
+// abandon stops a dispatch that has not started and waits for one that has.
+func (h *responseHandoff) abandon() {
+	h.mu.Lock()
+	h.abandoned = true
+	running, finished := h.running, h.finished
+	h.mu.Unlock()
+	if running {
+		<-finished
 	}
 }
 

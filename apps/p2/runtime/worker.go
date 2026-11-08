@@ -284,8 +284,16 @@ var livenessKinds = []string{"activeCalls", "viewers", "durableTasks", "referenc
 // FollowActivity counts what keeps h busy (the references held on it, its calls, jobs and lingering objects, Chord's own
 // keep-alive counts) as part of the worker's: the worker is idle when those are zero too.
 func (l *Liveness) FollowActivity(h host.Host) error {
-	watch, err := h.Activity().Watch(chordctx.Background())
-	if err != nil {
+	// The watch opens in a section of the host's loop: the link's holds count their references there, and a watch opened from this goroutine read the
+	// counts while they changed.
+	var watch chord.WatchHandle[delta.JsonValue]
+	if _, err := h.Root(func(ctx host.Ctx) (any, error) {
+		var opened error
+		if err := host.InSection(ctx, func() { watch, opened = h.Activity().Watch(chordctx.Background()) }); err != nil {
+			return nil, err
+		}
+		return nil, opened
+	}, chordctx.Background(), host.RootOptions{}); err != nil {
 		return err
 	}
 	apply := func(value delta.JsonValue) {

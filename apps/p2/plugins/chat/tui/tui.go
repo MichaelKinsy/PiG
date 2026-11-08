@@ -229,6 +229,9 @@ type ChatSurface struct {
 	// outgoing: messages in flight (`send`) are shown at once, the editor already cleared; a refused one comes back to the editor.
 	outgoing func() []outgoing
 	sending  chordtui.OptimisticAdd[outgoing]
+	// lastTurn is the finish of the latest action made with perform; turnMu guards it.
+	turnMu   sync.Mutex
+	lastTurn <-chan struct{}
 	// starting: a `!cmd` in flight, its block shows as running before the server's state does.
 	starting func() *chatcontract.LiveShell
 	start    chordtui.OptimisticAdd[*chatcontract.LiveShell]
@@ -1058,10 +1061,50 @@ func (s *ChatSurface) ownAuthor() p2runtime.Author {
 	return p2runtime.Author{Kind: p2runtime.AuthorOwner, Name: "Owner"}
 }
 
-// perform runs a call off the loop and shows its failure.
-func (s *ChatSurface) perform(call func() error) {
+// performer orders what the surface sends to the server. Pi starts every call at the moment its key is handled, so two actions reach the server in the order the
+// visitor made them (Alt+Enter's send, then Alt+Up's dequeue). Here each action runs off the owner loop, and a turn per action keeps the order of their starts:
+// an action's first call waits for every earlier action to have started its own (or to have finished), and starts under the turn; the answers are awaited apart.
+type turn struct {
+	prev    <-chan struct{}
+	done    chan struct{}
+	waited  sync.Once
+	release sync.Once
+}
+
+// noTurn is the turn before the first: already finished.
+var noTurn = func() chan struct{} { done := make(chan struct{}); close(done); return done }()
+
+// begin waits for the earlier actions to have started their calls.
+func (t *turn) begin() { t.waited.Do(func() { <-t.prev }) }
+
+// finish lets the next action start.
+func (t *turn) finish() { t.release.Do(func() { close(t.done) }) }
+
+// call starts a method of ref in this action's turn, then awaits its answer with no deadline.
+func (t *turn) call(ref *host.Reference, method string, args *delta.JsonObject) (delta.JsonValue, error) {
+	t.begin()
+	pending, err := ref.Start(method, args, context.Background())
+	t.finish()
+	if err != nil {
+		return nil, err
+	}
+	return pending.Wait(context.Background())
+}
+
+// perform runs an action off the loop, in the order actions were made, and shows its failure. It is called on the owner loop.
+func (s *ChatSurface) perform(action func(t *turn) error) {
+	s.turnMu.Lock()
+	prev := s.lastTurn
+	if prev == nil {
+		prev = noTurn
+	}
+	t := &turn{prev: prev, done: make(chan struct{})}
+	s.lastTurn = t.done
+	s.turnMu.Unlock()
 	go func() {
-		if err := call(); err != nil {
+		defer t.finish()
+		t.begin()
+		if err := action(t); err != nil {
 			s.runtime.Post(func() { s.runtime.Fail(err) })
 		}
 	}()
@@ -1100,9 +1143,9 @@ func (s *ChatSurface) Shell(command string, includeInContext bool) {
 	author := s.ownAuthor()
 	guess := &chatcontract.LiveShell{ID: requestID, Command: command, Author: author, IncludeInContext: includeInContext, Running: true}
 	start := s.start
-	s.perform(func() error {
+	s.perform(func(t *turn) error {
 		err := start(guess, func() error {
-			_, err := call(ref, "shell", delta.JsonObjectOf("command", command, "includeInContext", includeInContext, "requestId", requestID))
+			_, err := t.call(ref, "shell", delta.JsonObjectOf("command", command, "includeInContext", includeInContext, "requestId", requestID))
 			return err
 		})
 		if err != nil {
@@ -1357,7 +1400,7 @@ func (s *ChatSurface) Send(mode string) {
 	sent := submission
 	sending := s.sending
 	message := outgoing{id: sent.ID, text: text, mode: mode, files: files}
-	s.perform(func() error {
+	s.perform(func(t *turn) error {
 		return sending(message, func() error {
 			// Waits through a connecting conversation; calls made while it reconnects wait for it too.
 			err := p2runtime.WhenLive(context.Background(), ref)
@@ -1379,7 +1422,7 @@ func (s *ChatSurface) Send(mode string) {
 				if replyTo != nil {
 					args.Set("replyTo", float64(replyTo.EntryID))
 				}
-				_, err = call(writer, "send", args)
+				_, err = t.call(writer, "send", args)
 			}
 			rt.Post(func() {
 				if err == nil {
@@ -1507,8 +1550,8 @@ func (s *ChatSurface) Interrupt() {
 	if !running && !compacting {
 		if shell != nil && shell.Running {
 			id := shell.ID
-			s.perform(func() error {
-				_, err := call(ref, "abortShell", delta.JsonObjectOf("shellId", id))
+			s.perform(func(t *turn) error {
+				_, err := t.call(ref, "abortShell", delta.JsonObjectOf("shellId", id))
 				return err
 			})
 			return
@@ -1524,11 +1567,11 @@ func (s *ChatSurface) Interrupt() {
 		}
 	}
 	if compacting {
-		s.perform(func() error { _, err := call(ref, "abortCompaction", nil); return err })
+		s.perform(func(t *turn) error { _, err := t.call(ref, "abortCompaction", nil); return err })
 	}
 	if running || !compacting {
-		s.perform(func() error {
-			result, err := call(ref, "stop", nil)
+		s.perform(func(t *turn) error {
+			result, err := t.call(ref, "stop", nil)
 			if err != nil {
 				return err
 			}
@@ -1649,8 +1692,8 @@ func (s *ChatSurface) OpenTree() {
 			selector = components.NewTreeSelector(runtime.Selectors(rt.Ctx), nodes, current, labels,
 				func(entry int) {
 					overlay.Close()
-					s.perform(func() error {
-						answer, err := call(owner, "navigate", delta.JsonObjectOf("entry", float64(entry)))
+					s.perform(func(t *turn) error {
+						answer, err := t.call(owner, "navigate", delta.JsonObjectOf("entry", float64(entry)))
 						if err != nil {
 							return err
 						}
@@ -1797,8 +1840,8 @@ func (s *ChatSurface) Compact(instructions string) {
 		args.Set("instructions", trimmed)
 	}
 	compactNow := s.compactNow
-	s.perform(func() error {
-		return compactNow(true, func() error { _, err := call(ref, "compact", args); return err })
+	s.perform(func(t *turn) error {
+		return compactNow(true, func() error { _, err := t.call(ref, "compact", args); return err })
 	})
 }
 
@@ -1812,8 +1855,8 @@ func (s *ChatSurface) NewContext(handoff string) {
 	if trimmed := jsstring.Trim(handoff); trimmed != "" {
 		args.Set("handoff", trimmed)
 	}
-	s.perform(func() error {
-		if _, err := call(ref, "reset", args); err != nil {
+	s.perform(func(t *turn) error {
+		if _, err := t.call(ref, "reset", args); err != nil {
 			return err
 		}
 		s.runtime.Post(func() { s.runtime.Notify("Started a new context", runtime.NoticeInfo) })
@@ -1845,8 +1888,8 @@ func (s *ChatSurface) DequeueOwn() {
 		return
 	}
 	rt := s.runtime
-	s.perform(func() error {
-		result, err := call(ref, "dequeueOwn", nil)
+	s.perform(func(t *turn) error {
+		result, err := t.call(ref, "dequeueOwn", nil)
 		if err != nil {
 			return err
 		}
