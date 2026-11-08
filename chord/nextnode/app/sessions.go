@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"regexp"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -107,6 +107,10 @@ const (
 	rollMs = 24 * 60 * 60_000
 )
 
+// sessionWrites counts the un-awaited writes an authentication started (a session's `lastUsed`, a lazy removal): tests wait for them
+// instead of sleeping.
+var sessionWrites sync.WaitGroup
+
 // SessionLimits are the sessions' limits: how many ephemeral sessions live at once (1,000 by default; past it the oldest ends).
 type SessionLimits struct{ MaxEphemeral int }
 
@@ -148,7 +152,9 @@ func sessionsFacet(cookieSecret string, ephemeral *EphemeralSessions) host.Facet
 			change := func(ctx context.Context, fn func(sessions *delta.Object)) {
 				// Not awaited by authentication: the request goes on; a write that fails is made again by a later request.
 				detached := context.WithoutCancel(ctx)
+				sessionWrites.Add(1)
 				go func() {
+					defer sessionWrites.Done()
 					_, _ = document.Change(detached, func(draft *delta.Object) (any, error) {
 						fn(draft.Object("sessions"))
 						return nil, nil
@@ -328,7 +334,7 @@ func rollingCookie(secret string, authenticate func(token string, ctx context.Co
 				}
 			}
 			signed, ok := chordhttp.ReadSignedCookie(request, SessionCookie, secret)
-			if !ok || signed.Expires == nil || *signed.Expires-float64(time.Now().UnixMilli()) > sessionIdleMs-rollMs {
+			if !ok || signed.Expires == nil || *signed.Expires-jsclock.DateNow() > sessionIdleMs-rollMs {
 				return response, nil
 			}
 			if authenticate(signed.Value, ctx) == nil {

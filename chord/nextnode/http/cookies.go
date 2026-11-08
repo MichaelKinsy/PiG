@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsclock"
 )
 
 // Ports packages/chord/src/next-node/http/cookies.ts. Cookies (decision "The HTTP component's security baseline" (5)):
@@ -18,8 +20,8 @@ import (
 // Forced Go differences. `Date.now()` is `now()`, the package's clock (tests set it for Pi's fake `Date`). Seconds until
 // expiry (`maxAge`) is a *float64 (absent: a session cookie). `encodeURIComponent` is encodeURIComponent below.
 
-// now is `Date.now()` as a time.
-var now = time.Now
+// now is `Date.now()` as a time: jsclock's, so a test that mocks the date (the app kit's rolling cookies) moves it too.
+var now = func() time.Time { return time.UnixMilli(int64(jsclock.DateNow())) }
 
 // SameSite is a cookie's `SameSite` attribute: Pi's closed union `"Strict" | "Lax"`, which no text can extend.
 type SameSite uint8
