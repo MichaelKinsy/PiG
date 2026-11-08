@@ -135,6 +135,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-184ed40](#bf-184ed40) | fix(hljs): a language's reach does not depend on the first text it highlights; red cases for resumeLimit | PiG's own defect | All platforms | Unreleased |
 | [BF-1896331](#bf-1896331) | Changing the thinking level in interactive mode (cycle key, `/thinking`, the settings selector) goes through… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-18daf7f](#bf-18daf7f) | The Go SDK's typed branch entry keeps the text, thinking and tool calls of an assistant message whose tool… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-18e7372](#bf-18e7372) | Chord: a table read from a handler's goroutine (`handle.Get`, `Page`, `Count`) while its object ended was a… | PiG's own defect | All platforms | Unreleased |
 | [BF-18f7d39](#bf-18f7d39) | Codemode `@options` errors report V8's JSON error text, tool and schema declarations keep unpaired… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-1971aae](#bf-1971aae) | A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-19a07f0](#bf-19a07f0) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
@@ -3336,6 +3337,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `18daf7fed2` (2026-10-11)
 - **Tests:** `extensions/sdk/branch_entry_tool_call_test.go::TestBranchEntryDecodeMatchesTheRustSDK`, `extensions/sdk/branch_entry_tool_call_test.go::TestBranchEntryKeepsAnAssistantMessageWithAPiToolCall`, `test/extension-conformance/conformance_test.go::TestConformance_TransportsMatch`, `test/extension-conformance/typed_branch_entries_test.go::TestConformance_TypedBranchEntriesAgreeBetweenGoAndRust`
 - **Release note:** The Go SDK's typed branch entry keeps the text, thinking and tool calls of an assistant message whose tool calls carry object arguments (Pi's `ToolCall`), and the Rust SDK's `BranchEntry` decodes Pi's nested session entries (role, text, thinking, tool calls, provider, model and usage were all empty before) and gains `id`, `first_kept_entry_id` and `UsageInfo::total_tokens`.
+
+### BF-18e7372
+
+**Chord: a table read from a handler's goroutine (`handle.Get`, `Page`, `Count`) while its object ended was a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a table read from a handler's goroutine (`handle.Get`, `Page`, `Count`) while its object ended was a data race: the check that the object is still live read the object's documents state outside the host's sections while its end wrote it.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `18e7372b98` (2026-11-07)
+- **Tests:** None recorded.
+- **Release note:** Chord: a table read from a handler's goroutine (`handle.Get`, `Page`, `Count`) while its object ended was a data race: the check that the object is still live read the object's documents state outside the host's sections while its end wrote it. The check now takes a section of its own.
 
 ### BF-18f7d39
 
