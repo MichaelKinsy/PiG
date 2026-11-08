@@ -510,7 +510,7 @@ func TestTriesASetWhoseScriptDidNotLoadAgainAfter1sThen2sUntilItApplies(t *testi
 func TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne(t *testing.T) {
 	a1, a2, a3 := script("@test/a", "d1", "hello"), script("@test/a", "d2", "hello again"), script("@test/a", "d3", "hello at last")
 	manual := &timers{}
-	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 1, manual: manual, openDelay: 200 * time.Millisecond})
+	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 1, manual: manual, openDelay: 3 * time.Millisecond})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2))
 	until(t, func() bool { return len(manual.withMs(1000)) == 1 })
