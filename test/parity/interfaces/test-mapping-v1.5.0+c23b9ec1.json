@@ -3522,8 +3522,8 @@
       ],
       "rationale": "42 of the 44 upstream cases run in store_test.go and the group commit cases in group_commit_test.go, among them 'rejects a grouped commit whose admission throws with that error' (Admit is recovered per commit; only that commit rejects, with the panic value, an error itself or a ThrownError) and 'rejects a group's commits with what its turn throws after COMMIT' (the host listener's panic rejects the commits not settled, with that error itself). The other two are drafted as designed out, DRAFT FOR OWNER REVIEW (no owner approval recorded yet; they stay open until the owner decides), because each asserts what a TypeScript metrics adapter throws and Go's callbacks do not throw: Both 'stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats' and '... after a lone commit's COMMIT too': telemetry.TelemetryCounter.Add returns nothing, so an adapter's failure is a panic; the store stops, memory takes the whole group or the lone commit (it is durable), no seq repeats, and later commits and reads reject storage_failed, as in Pi. The differences are the caller of the commit whose turn it was: Pi rejects its promise with storage_failed, Go re-panics in the caller of the group's first commit (or the lone commit), and the others of the group reject storage_failed. The panicking-adapter cases 'stops the store when a metrics adapter panics after a group's COMMIT' and '... after a lone commit's COMMIT too' in group_commit_test.go assert the Go form. Pi's int() key typing (d7704516e) is TypeScript typing and has no case.",
       "designedOutCases": [
-        "group commit \u203a stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
-        "group commit \u203a stops the store when a metrics adapter throws after a lone commit's COMMIT too"
+        "group commit › stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
+        "group commit › stops the store when a metrics adapter throws after a lone commit's COMMIT too"
       ]
     },
     {
@@ -4700,8 +4700,13 @@
     },
     {
       "path": "packages/coding-agent/test/extensions-runner.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ffcfc9f6550f3cf1eb7e2a02e94ef788713ab2ced3321dfcfca694123a7adcc1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ffcfc9f6550f3cf1eb7e2a02e94ef788713ab2ced3321dfcfca694123a7adcc1",
+      "evidence": [
+        "coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
+        "coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
+      ],
+      "rationale": "The Markdown transformer cases of Pi eebd5d90 (collection order, message-type filtering); the file's other cases are ported in the coding/extension/host/inproc upstream_*_test.go files that name it."
     },
     {
       "path": "packages/coding-agent/test/external-editor.test.ts",
@@ -4946,8 +4951,14 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-changelog.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a4a0990e70cc2cb520c65f8758f19c2214de43e5a1be52aba6f74d655919300e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a4a0990e70cc2cb520c65f8758f19c2214de43e5a1be52aba6f74d655919300e",
+      "evidence": [
+        "internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream",
+        "internal/codingagent/interactive_extension_changelog_test.go#TestStartupExtensionChangelogBlock",
+        "internal/codingagent/interactive_extension_changelog_test.go#TestStartupChangelogRunsTheChangelogMarkdownTransformers"
+      ],
+      "rationale": "The extension changelog block, collapsed or expanded, runs the changelog Markdown transformers (Pi eebd5d90)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-dialogs.test.ts",
