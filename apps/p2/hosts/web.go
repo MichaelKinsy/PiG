@@ -2,6 +2,7 @@ package hosts
 
 import (
 	"encoding/json"
+	"html"
 	"net/http"
 	"path"
 	"regexp"
@@ -46,13 +47,22 @@ func guestPage(path string, guest p2runtime.GuestPrincipal) bool {
 // webPage is the app page. The inline style and theme script run before any CSS so the first paint has the right
 // background; the bundle's stylesheet follows them, so its rules win. The module script runs after parsing, wherever it
 // stands.
-func webPage(nonce string, manifest web.Manifest, brand web.Brand) string {
+func webPage(nonce string, manifest web.Manifest, brand web.Brand, sprite *spriteHub) string {
 	style := ""
 	if manifest.Style != nil {
 		style = "\n\t\t<link rel=\"stylesheet\" href=\"" + *manifest.Style + "\" />"
 	}
+	// With a sprite source the page names the current sprite (`data-brand-sprite`: its SpriteInfo, "" for none) for the brand's mark, which then
+	// follows the selection (SpriteEventsPath), and the favicon is the sprite.
+	spriteAttribute, icon := "", `<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />`
+	if sprite != nil {
+		spriteAttribute = ` data-brand-sprite="` + html.EscapeString(sprite.info()) + `"`
+		if asset, ok := sprite.source.Current(); ok {
+			icon = `<link rel="icon" href="` + SpriteAssetPath + `?v=` + html.EscapeString(asset.Key) + `" type="image/svg+xml" />`
+		}
+	}
 	return `<!doctype html>
-<html lang="en" data-web-version="` + manifest.Version + `">
+<html lang="en" data-web-version="` + manifest.Version + `"` + spriteAttribute + `>
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
@@ -61,7 +71,7 @@ func webPage(nonce string, manifest web.Manifest, brand web.Brand) string {
 		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="` + brand.Dark + `" />
 		<!-- Installable as a home-screen app; no service worker, so nothing is cached offline. -->
 		<link rel="manifest" href="/manifest.webmanifest" />
-		<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+		` + icon + `
 		<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 		<meta name="apple-mobile-web-app-title" content="` + brand.Name + `" />
 		<meta name="mobile-web-app-capable" content="yes" />
@@ -103,6 +113,8 @@ type Web struct {
 	// Nonce is the page CSP's script nonce, written on the page's inline script.
 	Nonce  string
 	Bundle *web.Bundle
+	// Sprite is the PiG sprite hook (nil: Pi's page).
+	Sprite *spriteHub
 }
 
 // GuestMayLoad is whether a guest may load request: GET/HEAD of its session's pages, the app's public files, the bundle
@@ -153,7 +165,7 @@ func (w *Web) Handle(response http.ResponseWriter, request *http.Request) {
 	if path == "/" || pagePath.MatchString(path) {
 		header.Set("Content-Type", "text/html; charset=utf-8")
 		response.WriteHeader(http.StatusOK)
-		write([]byte(webPage(w.Nonce, w.Bundle.Manifest(), w.Bundle.Brand)))
+		write([]byte(webPage(w.Nonce, w.Bundle.Manifest(), w.Bundle.Brand, w.Sprite)))
 		return
 	}
 	if path == web.ManifestPath {
