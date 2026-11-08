@@ -37,9 +37,12 @@ plugins/logs/contract.ts
 plugins/logs/web.tsx
 plugins/logs/style.css
 plugins/sharing/web.tsx
-plugins/projects/contract.ts
-plugins/workspace/contract.ts
-plugins/workspace/protocol.ts
+plugins/artifacts/contract.ts
+plugins/send-file/contract.ts
+plugins/artifacts/store.ts
+plugins/artifacts/tool.ts
+plugins/send-file/tool.ts
+plugins/send-file/worker.ts
 plugins/envs/web.tsx
 plugins/envs/contract.web.tsx
 plugins/envs/EnvsPanel.tsx
@@ -47,6 +50,9 @@ plugins/envs/DirectoryPicker.tsx
 plugins/envs/SecretsSection.tsx
 plugins/envs/style.css
 plugins/envs/secret-presets.ts
+plugins/projects/contract.ts
+plugins/workspace/contract.ts
+plugins/workspace/protocol.ts
 plugins/ports/contract.ts
 plugins/ports/protocol.ts
 plugins/ports/web.tsx
