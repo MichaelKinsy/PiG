@@ -3,7 +3,6 @@ package sync
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -28,7 +27,7 @@ func noError(t testing.TB, err error) {
 	}
 }
 
-// backendAt is a backend over the SQLite file at path, `:memory:` for "".
+// backendAt is a backend over the SQLite file at path, `:memory:` for "", closed with the test.
 func backendAt(t testing.TB, path string) *store.Backend {
 	t.Helper()
 	if path == "" {
@@ -36,6 +35,9 @@ func backendAt(t testing.TB, path string) *store.Backend {
 	}
 	db, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})
 	noError(t, err)
+	// A backend no store ever opened (a pull refused before it opens its target) is closed with the test too; a second
+	// Close of one a store closed is refused and ignored.
+	t.Cleanup(func() { _ = db.Close() })
 	return store.SqliteBackend(db)
 }
 
@@ -125,7 +127,7 @@ func reads(t testing.TB, s store.Store) []string {
 func bytesOf(t testing.TB, body SyncBody) []byte {
 	t.Helper()
 	var out []byte
-	defer body.Close()
+	defer func() { _ = body.Close() }()
 	for {
 		chunk, ok, err := body.Next(background)
 		noError(t, err)
@@ -273,8 +275,6 @@ func isError[T error](t testing.TB, err error) T {
 	}
 	return target
 }
-
-func sprint(values ...any) string { return fmt.Sprint(values...) }
 
 // deltaObject is a JSON object of pairs.
 func deltaObject(pairs ...any) *delta.JsonObject { return delta.JsonObjectOf(pairs...) }

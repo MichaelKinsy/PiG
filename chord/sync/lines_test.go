@@ -43,7 +43,7 @@ func gzipped(t *testing.T, text string) SyncBody {
 // collect is every commit of a source.
 func collect(t *testing.T, commits CommitSource) ([]store.OutboxCommit, error) {
 	t.Helper()
-	defer commits.Close()
+	defer func() { _ = commits.Close() }()
 	var out []store.OutboxCommit
 	for {
 		commit, ok, err := commits.Next(background)
@@ -103,7 +103,7 @@ func TestBatchBodies(t *testing.T) {
 	t.Run("decode a commit only when it is read", func(t *testing.T) {
 		text := line(t, 1, 2) + line(t, 2, 3) + line(t, 3, 4)
 		commits := DecodeBatch(gzipped(t, text+"not json\n"))
-		defer commits.Close()
+		defer func() { _ = commits.Close() }()
 		first, ok, err := commits.Next(background)
 		noError(t, err)
 		if !ok || first.Seq != 1 {
@@ -165,7 +165,7 @@ func TestSnapshotBodies(t *testing.T) {
 		export, err := s.Export(background)
 		noError(t, err)
 		decoded := DecodeSnapshot(EncodeSnapshot(export))
-		defer decoded.Close()
+		defer func() { _ = decoded.Close() }()
 		var got []string
 		for {
 			part, ok, err := decoded.Next(background)

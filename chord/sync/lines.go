@@ -102,6 +102,7 @@ func safeInteger(value any) (int64, bool) {
 	if !ok || number != math.Trunc(number) || math.Abs(number) > float64(store.MaxSafeInteger) {
 		return 0, false
 	}
+	//portlint:allow numbers number is an integer within MaxSafeInteger by the checks above
 	return int64(number), true
 }
 
