@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/src/next-node/http/response.ts. Responses (slice 10 §2, D5, R6; decision "The HTTP component's
+// Ports packages/chord/src/node/http/response.ts. Responses (slice 10 §2, D5, R6; decision "The HTTP component's
 // security baseline" (4), (6)): routes return descriptions and the component turns them into an answer, a status, headers
 // and a body: the default headers first, the response's own replacing same-named ones (validated: a CR or LF is an error),
 // `json`, `html`, `redirect`, `error`, and `bytes` read in 256 KiB pieces as the consumer pulls them (ranges 206/416,

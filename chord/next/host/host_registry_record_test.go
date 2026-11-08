@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -280,4 +281,103 @@ func TestRegistriesWithoutAProviderListsARegistryWithContributionsAndNoProviderW
 		t.Fatalf("undeclaredRegistries = %v, want %v", got, want)
 	}
 	must(t, host.Close(background))
+}
+
+// Ports record.test.ts `describe("compose")` > `it("composes every served registry once at the end of load's setups, an
+// empty table too, before any object activates")`.
+func TestComposeEveryServedRegistryOnceAtTheEndOfLoadsSetupsAnEmptyTableTooBeforeAnyObjectActivates(t *testing.T) {
+	meter := nexttest.Metered(t)
+	other := rvRegistryOf("app.other", 1)
+	reader := exLocal("app.reader", contracts.Params{}, contracts.Mem("seen", contracts.Int()))
+	var mu sync.Mutex
+	var seen any
+	// activated is the objects activated when a compose ran: the title's "before any object activates".
+	var activations, activatedAtCompose atomic.Int64
+	host, _ := rvPlugins(t, HostOptions{Telemetry: meter.Telemetry}, rvPlugin("@app/provider", func(h FacetHost, self FacetSelf) error {
+		if err := h.Serve(rvNames, registries.RegistryProvider[any, any]{
+			Compose: func(table registries.RegistryTable[any], context registries.ComposeContext) (any, error) {
+				activatedAtCompose.Add(activations.Load())
+				return rvListed(table, context)
+			},
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		if err := h.Serve(other, registries.RegistryProvider[any, any]{
+			Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (any, error) {
+				activatedAtCompose.Add(activations.Load())
+				return float64(len(table)), nil
+			},
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		if err := self.Contribute(rvNames, "a"); err != nil {
+			return err
+		}
+		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			activations.Add(1)
+			names := self.Registry(rvNames)
+			self.Open(func(context.Context) (any, error) {
+				got, thrown := rvRead(names)
+				if thrown != nil {
+					return nil, thrown
+				}
+				mu.Lock()
+				seen = got
+				mu.Unlock()
+				return nil, nil
+			}, func(any, NativeCloseReason, context.Context) error { return nil })
+			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
+				"seen": self.Derive([]any{self.Registry(other)}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
+			}, nil), nil
+		}, ServeOptions{})
+	}))
+	mu.Lock()
+	got := seen
+	mu.Unlock()
+	if want := []string{"@app/provider:=a"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("seen = %v, want %v", got, want)
+	}
+	if got := rvMember(t, mustGet(t, host, reader, jsonObject()), "seen"); got != 0.0 {
+		t.Fatalf("Reader.seen = %v, want 0", got)
+	}
+	if got := meter.Counts()["chord.registry.composes"]; got != 2 {
+		t.Fatalf("composes = %v, want 2", got)
+	}
+	if got := activatedAtCompose.Load(); got != 0 {
+		t.Fatalf("composes ran after %d object activations, want both before any", got)
+	}
+	must(t, host.Close(background))
+}
+
+// Ports record.test.ts `describe("the last good composition (decision 5)")` > `it("is dropped when a contribution it was
+// built from leaves: `.value` throws until `compose` succeeds")`.
+func TestTheLastGoodCompositionIsDroppedWhenAContributionItWasBuiltFromLeavesValueThrowsUntilComposeSucceeds(t *testing.T) {
+	count := rvRegistryOf("app.count", 1)
+	run := storeRestartable(t, func(attempt int, self StoreSelf) {
+		self.Contribute(count, float64(attempt))
+	}, loadedOptions{Serve: func(h FacetHost) {
+		must(t, h.Serve(count, registries.RegistryProvider[any, any]{
+			Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (any, error) {
+				if len(table) == 0 {
+					return nil, errors.New("no contributor")
+				}
+				return table[0].Value, nil
+			},
+		}, ServeOptions{}))
+	}})
+	value, err := run.Host.Registry(background, count, GetOptions{})
+	must(t, err)
+	if got, thrown := rvRead(value); thrown != nil || got != 1.0 {
+		t.Fatalf("count.value = %v (%v), want 1", got, thrown)
+	}
+	// Its contributor failed: the last good value was built from its contribution (a native may have closed with it).
+	run.Fail()
+	if got, thrown := rvRead(value); thrown == nil || thrown.Error() != "no contributor" {
+		t.Fatalf("count.value after the failure = %v (%v), want a throw of no contributor", got, thrown)
+	}
+	run.Retry()
+	if got, thrown := rvRead(value); thrown != nil || got != 2.0 {
+		t.Fatalf("count.value after the retry = %v (%v), want 2", got, thrown)
+	}
+	must(t, run.Host.Close(background))
 }

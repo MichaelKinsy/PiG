@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/cookies.ts
+// pi: packages/chord/src/node/http/cookies.ts
 
 import (
 	"net/http"
