@@ -13,11 +13,12 @@ import (
 func TestHostIncarnationIsOneValuePerRunOfAHost(t *testing.T) {
 	a := newHost(t, HostOptions{OnError: noopOnError})
 	b := newHost(t, HostOptions{OnError: noopOnError})
-	if a.Incarnation() == "" || a.Incarnation() != a.Incarnation() {
-		t.Fatalf("incarnation = %q", a.Incarnation())
+	first := a.Incarnation()
+	if first == "" || first != a.Incarnation() {
+		t.Fatalf("incarnation = %q then %q", first, a.Incarnation())
 	}
-	if a.Incarnation() == b.Incarnation() {
-		t.Fatalf("two hosts share the incarnation %q", a.Incarnation())
+	if first == b.Incarnation() {
+		t.Fatalf("two hosts share the incarnation %q", first)
 	}
 }
 
