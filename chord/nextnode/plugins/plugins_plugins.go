@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,11 +19,11 @@ import (
 )
 
 // Ports packages/chord/src/next-node/plugins/plugins.ts. The plugins component (slice 7c §4, §5; decision "Slice 7c's
-// points"; slice 10 D11, D12): discovery, builds and the watcher, and per kind the complete current set of scripts (built on
-// first use, updated by every rollout that ships the kind), which its plugin runtime loads and reloads hosts with:
-// unchanged plugins as the same facets, removed ones left out, a failed build or evaluation keeping the plugin's loaded
-// facet. `Rollout` runs the app's steps in order (one result per host) and clears the marks of plugins applied on every host
-// of every step.
+// points"; slice 10 D11, D12; slice 12 §1, §5): discovery, builds checked against the app's API, installs and the watcher,
+// and per kind the complete current set of scripts (built on first use, updated by every rollout that ships the kind),
+// which its plugin runtime loads and reloads hosts with: unchanged plugins as the same facets, removed ones left out, a
+// failed build or evaluation keeping the plugin's loaded facet. `Rollout` runs the app's steps in order (one result per
+// host) and clears the marks of plugins applied on every host of every step.
 //
 // Execution model. The component's own state and its watcher are touched only in sections of a loop of its own (host.Loop:
 // the batch of its watcher runs on it, the file events enter it), as Pi's component runs on the one event loop; what blocks
@@ -60,12 +61,18 @@ type PluginsError struct {
 
 // PluginsOptions is what CreatePlugins takes.
 type PluginsOptions struct {
-	// Roots are the directories plugins are listed in, in order: the first root's plugin wins a duplicate name.
-	Roots []string
+	// Roots are the directories plugins are listed in, in order: the first root's plugin wins a duplicate name. A root marked
+	// Required (the app's own) makes Load return a *PluginError when one of its plugins fails.
+	Roots []PluginRoot
+	// Api is the app's API (`{Name: "@acme/app", Versions: ["v3", "v2"]}`, newest first): plugins import it at a listed
+	// version, its per-kind modules from their kind only, one version per facet, and never Chord directly. Nil: plugins
+	// import the host packages as listed.
+	Api *AppApi
 	// Kinds are the app's facet kinds (one file per kind in a plugin), each with where its builds run and the host packages
 	// they keep external, in the app's order.
 	Kinds []KindDefinition
-	// Base is the app's base code: a change sets `base` (the app restarts its hosts; Chord restarts nothing).
+	// Base is the server's own base code, files and directories, hashed when the component is created: `base` is set while one
+	// differs from it or a source file is new in one of the directories (the app restarts its hosts; Chord restarts nothing).
 	Base []string
 	// PublicPath is where the app serves browser builds' assets: the URL prefix their imports evaluate to (nil: `/`).
 	PublicPath *string
@@ -198,10 +205,19 @@ func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
 	batch := state.NewBatch(func(e state.BatchError) { report(PluginsErrorKind(e.Kind), e.Error) }, nil).
 		UseScheduler(chord.NewDeliveryScheduler()).UseMicrotasks(c.loop.Queue).UseSection(c.loop.Run)
 	c.watcher = newPluginWatcher(watcherOptions{
-		Roots: options.Roots, Base: options.Base, Kinds: c.kindNames,
+		Roots: rootPaths(options.Roots), Base: options.Base, Kinds: c.kindNames,
 		Failed: func(err error) { report(PluginsWatchFailed, err) },
 	}, batch)
 	return c
+}
+
+// rootPaths are the paths of roots: upstream's `roots.map((root) => (typeof root === "string" ? root : root.path))`.
+func rootPaths(roots []PluginRoot) []string {
+	paths := make([]string, len(roots))
+	for i, root := range roots {
+		paths[i] = root.Path
+	}
+	return paths
 }
 
 // scriptSet is a kind's current set, Pi's `Map<string, PluginScript>` by plugin name: insertion order kept.
@@ -294,10 +310,12 @@ func (c *Plugins) Discovery() Discovery {
 // plugin set changed): plain data. It changes no current set: a rollout ships it.
 func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {
 	var before []string
+	previous := map[string]Plugin{}
 	var needs bool
 	c.section(func() {
 		for _, plugin := range c.discovery.Plugins {
 			before = append(before, plugin.Name)
+			previous[plugin.Name] = plugin
 		}
 		needs = !c.discovered || c.watcher.needsDiscovery()
 	})
@@ -317,8 +335,10 @@ func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {
 				removed = append(removed, name)
 			}
 		}
+		// A plugin whose files moved (a single file became a directory, a facet file came or went) is built again too.
 		for _, plugin := range plugins {
-			if slices.Contains(names, plugin.Name) || !slices.Contains(before, plugin.Name) {
+			prior, known := previous[plugin.Name]
+			if slices.Contains(names, plugin.Name) || !known || !SameFiles(prior, plugin) {
 				wanted = append(wanted, plugin)
 			}
 		}
@@ -376,12 +396,23 @@ func (c *Plugins) Current(kind string) ([]PluginScript, bool) {
 
 // Load starts a Node subprocess that hosts options.Kind's current set, evaluated with options.Modules, and options.Core
 // (the app's own facets): a plugin whose build or evaluation fails is left out and reported with the host's report. The app
-// attaches the returned host's Link to a Go host (PluginRuntime.Load).
+// attaches the returned host's Link to a Go host (PluginRuntime.Load). A required root's plugin failing, and a problem
+// discovery reported in a required root (missing, an invalid package, a name another root has), return a *PluginError once
+// the host's load settled: the host is returned with it, loaded, and the caller's to stop.
 func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, host.LoadReport, error) {
 	scripts, err := c.Scripts(options.Kind, ctx)
 	if err != nil {
 		return nil, host.LoadReport{}, err
 	}
+	// A required root guarantees its plugins: what discovery reported in one is as fatal as a plugin that failed.
+	var problems []DiscoveryProblem
+	c.section(func() {
+		for _, problem := range c.discovery.Problems {
+			if problem.Required {
+				problems = append(problems, problem)
+			}
+		}
+	})
 	h, report, err := c.runtime.Load(RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: scripts, Modules: options.Modules,
 		Address: options.Address, Principal: options.Principal, Peer: options.Peer, Heartbeat: options.Heartbeat,
@@ -390,10 +421,22 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		GoPackages: options.GoPackages, Telemetry: options.Telemetry, PrincipalKey: options.PrincipalKey, RevokedBy: options.RevokedBy,
 		Bridged: options.Bridged,
 	}, ctx)
-	if err != nil {
+	if h == nil {
 		return nil, host.LoadReport{}, err
 	}
 	h.owner = c
+	if failure, ok := errors.AsType[*PluginError](err); ok {
+		if len(problems) == 0 {
+			return h, report, err
+		}
+		return h, report, &PluginError{Required: failure.Required, Failed: failure.Failed, Problems: problems}
+	}
+	if err != nil {
+		return nil, host.LoadReport{}, err
+	}
+	if len(problems) > 0 {
+		return h, report, &PluginError{Required: []host.PluginFailure{}, Failed: report.Failed, Problems: problems}
+	}
 	return h, report, nil
 }
 
@@ -547,6 +590,28 @@ func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 	return nil
 }
 
+// WatchBase adds a running base artifact's record (a base bundle's inputs, beside Base; see Recorder): `base` is set while one
+// of its files differs from the bytes it read or is gone; each is compared once now. Files under `node_modules` are never
+// watched.
+func (c *Plugins) WatchBase(inputs BaseInputs) {
+	c.section(func() { c.watcher.recordBase(inputs) })
+}
+
+// InstallPlugin installs new plugins from git or npm into root, one of the roots (InstallPlugin), and marks `set`: the next
+// build discovers and builds them. It returns their names.
+func (c *Plugins) InstallPlugin(source PluginSource, root string, ctx context.Context) ([]string, error) {
+	if !slices.Contains(rootPaths(c.options.Roots), root) {
+		return nil, fmt.Errorf("plugins.installPlugin: %s is not one of the roots", root)
+	}
+	options := InstallPluginOptions{InstallOptions: c.options.Install, Kinds: c.kindNames, Roots: c.options.Roots}
+	names, err := InstallPlugin(source, root, ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	c.section(c.watcher.added)
+	return names, nil
+}
+
 // Warm starts a spare Node process for the next Load (PluginRuntime.Warm).
 func (c *Plugins) Warm(ctx context.Context) error { return c.runtime.Warm(ctx) }
 
@@ -572,6 +637,13 @@ func (c *Plugins) discover(ctx context.Context) error {
 	c.section(func() {
 		c.discovery = discovery
 		c.discovered = true
+		// A plugin no longer discovered loses its builds: a name added again is built anew, never served an old build.
+		for key := range c.built {
+			name := key[:strings.IndexByte(key, 0)]
+			if !slices.ContainsFunc(discovery.Plugins, func(plugin Plugin) bool { return plugin.Name == name }) {
+				delete(c.built, key)
+			}
+		}
 		c.watcher.know(discovery, seen)
 	})
 	return nil
@@ -666,7 +738,10 @@ func (c *Plugins) buildAll(jobs []buildJob, plugins []Plugin, ctx context.Contex
 func (c *Plugins) buildOne(plugin Plugin, kind string, plugins []Plugin, ctx context.Context) (BuiltFacet, error) {
 	// Discovery finds facet files of the app's kinds only.
 	definition := c.kinds[kind]
-	options := BuildOptions{HostPackages: definition.HostPackages, Platform: definition.Platform, Plugins: plugins, PublicPath: c.options.PublicPath}
+	options := BuildOptions{
+		HostPackages: definition.HostPackages, Platform: definition.Platform, Kinds: c.kindNames, Plugins: plugins,
+		Api: c.options.Api, PublicPath: c.options.PublicPath,
+	}
 	built, err := BuildFacet(plugin, kind, options, ctx)
 	if err != nil {
 		return BuiltFacet{}, err
