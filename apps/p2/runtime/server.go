@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -435,4 +436,48 @@ func ServerCore(h host.Host, info ServerInfo, parts *ServerParts) host.Facet {
 // constant is Chord's `constant(value)` as a state member.
 func constant(value delta.JsonValue) chord.Watchable[delta.JsonValue] {
 	return host.Expose(state.NewConstant(value))
+}
+
+// NoWorkers is a test server's workers: none run, and none can be controlled.
+type NoWorkers struct{}
+
+var _ SessionWorkerControl = NoWorkers{}
+
+var errNoWorkers = errors.New("no workers in a test host")
+
+// Generation is 0: no worker ever started.
+func (NoWorkers) Generation(string) int { return 0 }
+
+// Running is none.
+func (NoWorkers) Running() []string { return nil }
+
+// Relocate fails.
+func (NoWorkers) Relocate(context.Context, string, RelocationSteps) error { return errNoWorkers }
+
+// Pause fails.
+func (NoWorkers) Pause(context.Context, string, func(context.Context) (string, error), func(context.Context) error, string) error {
+	return errNoWorkers
+}
+
+// Retry answers a worker that does not run, with the reason.
+func (NoWorkers) Retry(context.Context, string) (WorkerState, error) {
+	reason := errNoWorkers.Error()
+	return WorkerState{Running: false, Generation: 0, Error: &reason}, nil
+}
+
+// Resume does nothing.
+func (NoWorkers) Resume(context.Context, string) error { return nil }
+
+// Stop does nothing.
+func (NoWorkers) Stop(context.Context, string) error { return nil }
+
+// Suspend does nothing.
+func (NoWorkers) Suspend(context.Context, string) error { return nil }
+
+// Subscribe never calls listener.
+func (NoWorkers) Subscribe(func(HostEvent)) func() { return func() {} }
+
+// Observe follows an empty record.
+func (NoWorkers) Observe(host.FollowObserver[any], context.Context) (*host.FollowAttachment[delta.JsonValue], error) {
+	return &host.FollowAttachment[delta.JsonValue]{Value: delta.NewJsonObject(0), Detach: func() {}}, nil
 }

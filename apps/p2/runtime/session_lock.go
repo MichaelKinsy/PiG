@@ -31,8 +31,8 @@ var SessionLockSchema = schema.Obj(schema.Properties{
 
 // SessionLock is a session's lock (`SessionLockSchema`).
 type SessionLock struct {
-	MCP          []string
-	ProjectMCP   bool
-	Instructions bool
-	Capabilities []LockCapability
+	MCP          []string         `json:"mcp"`
+	ProjectMCP   bool             `json:"projectMcp"`
+	Instructions bool             `json:"instructions"`
+	Capabilities []LockCapability `json:"capabilities"`
 }
