@@ -467,11 +467,14 @@ func TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectI
 	tracedUnder(t, recorder, "page load", func(ctx context.Context) { notes = placedEditor(t, rel, ctx) })
 	flushOwn(rel)
 	var current link.Link = rel.TabLink
+	var pair []*link.MemoryLink
 	for range 3 {
 		current.Close()
+		// The close reaches the tab's end too before it connects again (Pi's `await transported()` flushes every memory link).
+		transported(pair...)
 		flushOwn(rel)
 		a, b := link.MemoryLinkPair()
-		current = a
+		current, pair = a, []*link.MemoryLink{a, b}
 		must(t, rel.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 		must(t, rel.Tab.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 		for range 5 {
