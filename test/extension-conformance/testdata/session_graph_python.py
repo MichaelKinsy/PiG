@@ -2,6 +2,7 @@
 import json
 import os
 import threading
+import time
 
 import pig_sdk
 from pig_sdk import DefaultPackageManager, DefaultResourceLoader, ModelRuntime, ProjectTrustStore, SessionManager, SettingsManager, has_trust_requiring_project_resources
@@ -688,7 +689,34 @@ def model_runtime_script(ctx, args):
     r["settled"] = True
     with open(auth) as handle:
         r["stored"] = json.load(handle)
+    r["pending"] = settle_pending_probe(rt, auth)
     return r
+
+
+def settle_pending_probe(rt, auth):
+    lock = auth + ".lock"
+    os.mkdir(lock)
+    logged_in = {}
+
+    def login():
+        try:
+            rt.login("openai", "api_key", lambda prompt: "sk-pending", lambda event: None)
+            logged_in["ok"] = True
+        except Exception:
+            logged_in["ok"] = False
+
+    thread = threading.Thread(target=login)
+    thread.start()
+    time.sleep(0.8)
+    threading.Timer(1.5, lambda: os.rmdir(lock)).start()
+    start = time.monotonic()
+    rt.settle_credential_writes()
+    waited = time.monotonic() - start >= 1.0
+    with open(auth) as handle:
+        key = (json.load(handle).get("openai") or {}).get("key")
+    thread.join()
+    rt.logout("openai")
+    return {"keyAtSettle": key, "waited": waited, "login": logged_in.get("ok", False)}
 
 
 def model_runtime_tool(ctx, params):

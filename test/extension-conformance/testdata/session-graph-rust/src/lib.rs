@@ -2219,7 +2219,41 @@ fn model_runtime_script(ctx: &Context, args: &Value) -> io::Result<Value> {
         "stored".into(),
         serde_json::from_str(&std::fs::read_to_string(auth)?).map_err(io::Error::other)?,
     );
+    r.insert("pending".into(), settle_pending_probe(&rt, auth)?);
     Ok(Value::Object(r))
+}
+
+/// Holds auth.json's lock so a login's credential write is in flight, then reports the stored key when `settle_credential_writes` returns with the lock released 1.5 s later.
+fn settle_pending_probe(rt: &ModelRuntime, auth: &str) -> io::Result<Value> {
+    let lock = format!("{auth}.lock");
+    std::fs::create_dir(&lock)?;
+    std::thread::scope(|scope| {
+        let login = scope.spawn(|| {
+            rt.login(
+                "openai",
+                "api_key",
+                Arc::new(|_: Value| Ok("sk-pending".to_string())),
+                Some(Arc::new(|_: Value| {})),
+                None,
+                None,
+            )
+            .is_ok()
+        });
+        std::thread::sleep(std::time::Duration::from_millis(800));
+        let release = lock.clone();
+        scope.spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(1500));
+            let _ = std::fs::remove_dir(release);
+        });
+        let start = std::time::Instant::now();
+        rt.settle_credential_writes()?;
+        let waited = start.elapsed() >= std::time::Duration::from_secs(1);
+        let stored: Value = serde_json::from_str(&std::fs::read_to_string(auth)?).map_err(io::Error::other)?;
+        let key = stored["openai"]["key"].clone();
+        let logged_in = login.join().unwrap_or(false);
+        rt.logout("openai")?;
+        Ok(json!({"keyAtSettle": key, "waited": waited, "login": logged_in}))
+    })
 }
 
 /// `ModelRegistry::new(runtime)` over the parts of testdata/session-graph.mjs modelRegistryScript; the report is Pi's own run's except `builtin` (D78: Pi answers a builtin provider's Provider object, this SDK fails with the D78 error and the test expects that).
