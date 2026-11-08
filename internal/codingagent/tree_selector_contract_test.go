@@ -388,11 +388,14 @@ func wantSearch(want string) func(t *testing.T, tr treeContractTrace) {
 	return func(t *testing.T, tr treeContractTrace) {
 		t.Helper()
 		got := treeSearchRow(tr.lastFrame())
-		// tree-selector.ts SearchLine: an empty query's row ends in a space, and the focused selector's row ends in the cursor cell (a reverse-video space; the cursor marker is invisible).
+		// tree-selector.ts SearchLine: an empty query's row ends in a space, and the row of the focused selector ends in the cursor cell (a reverse-video space; the
+		// cursor marker is invisible). The label input takes the cursor while a label is edited (`searchLine.focused = value && labelInput === null`).
 		if want == "  Type to search:" {
 			want += " "
 		}
-		want += " "
+		if !strings.Contains(treeFrameText(tr.lastFrame()), "Label (empty to remove):") {
+			want += " "
+		}
 		if got != want {
 			t.Errorf("search row = %q, want %q", got, want)
 		}
