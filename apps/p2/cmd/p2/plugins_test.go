@@ -8,7 +8,14 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
+	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	locationscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/locations/contract"
+	portscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/ports/contract"
+	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/web"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
 // Every plugin package of plugins/ is linked into the executable.
@@ -69,4 +76,32 @@ func TestBundleHoldsTheLinkedPluginsWebFacets(t *testing.T) {
 	if !slices.Equal(strings.Fields(string(listedPlugins)), want) {
 		t.Errorf("web/plugins.txt is %v, want %v", strings.Fields(string(listedPlugins)), want)
 	}
+}
+
+// The executable's own server, with the plugins main.go links, serves the ports and locations plugins: the owner holds
+// `Ports`, and `AgentLocations` (a worker's contract) is served and refuses the owner, as it would not be where no linked
+// plugin serves it. A blank import in the e2e tests links a plugin there; this is the executable's set.
+func TestTheExecutableServesPortsAndLocations(t *testing.T) {
+	registered := map[string]bool{}
+	for _, plugin := range hosts.ListPlugins() {
+		registered[plugin.Name] = true
+	}
+	for _, name := range []string{"ports", "locations"} {
+		if !registered[name] {
+			t.Errorf("plugin %s is not registered in the executable", name)
+		}
+	}
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{})
+	owner := fixture.Browser()
+	ports, err := p2test.HoldIn(owner, portscontract.Ports, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatalf("the owner cannot hold Ports: %v", err)
+	}
+	ports.Release()
+	locations, err := owner.Hold(p2test.Background, locationscontract.AgentLocations, delta.NewJsonObject(0), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer locations.Release()
+	p2test.ExpectChord(t, p2runtime.WhenLive(p2test.Background, locations), data.CodeForbidden)
 }

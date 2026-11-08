@@ -1,6 +1,7 @@
 chat
 envs
 login
+ports
 sessions
 subagents
 web-shell

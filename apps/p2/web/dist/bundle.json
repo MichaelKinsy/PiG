@@ -1,11 +1,12 @@
 {
-	"version": "7859122b2241349287679bb74a7af1cdfec9decdd86b5242548da8a787b25a1b",
-	"script": "app-T7P2LT7M.js",
-	"style": "app-MMH4KMJY.css",
+	"version": "ef6b530b121a6b2d29bb4036543c88e90ac78d4eb688b780fcd4f8422617b179",
+	"script": "app-HQUDEYY6.js",
+	"style": "app-DILDAFUK.css",
 	"plugins": [
 		"chat",
 		"envs",
 		"login",
+		"ports",
 		"sessions",
 		"subagents",
 		"web-shell"
@@ -42,28 +43,28 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-MMH4KMJY.css",
+			"name": "app-DILDAFUK.css",
 			"type": "text/css; charset=utf-8",
-			"size": 342859,
-			"sha256": "477be00a2e2ef8650a678e4a4def3e10170101fb73cc946dfbb14b4a1dc233d2"
+			"size": 343106,
+			"sha256": "f814207cabde5aa140a998afe22b328b60518989b8d9daaf8aa1cb605552abfb"
 		},
 		{
-			"name": "app-MMH4KMJY.css.map",
+			"name": "app-DILDAFUK.css.map",
 			"type": "application/json",
-			"size": 616181,
-			"sha256": "29a4c269e50bda0d11aaf86f831f24693ec25dfed9ff79d3fae0e64be58aaa10"
+			"size": 616705,
+			"sha256": "4a1d98173cab7d90ab3099de94af925b3a82f27914f048a1015268eedc5c45ba"
 		},
 		{
-			"name": "app-T7P2LT7M.js",
+			"name": "app-HQUDEYY6.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1106666,
-			"sha256": "1e1ffbb9652144b7fcc4c81d47fdf6616c2a962447c35e1e7df4174f46d1c65f"
+			"size": 1113781,
+			"sha256": "3da8c44a62b359af1295287cceb02dc6a0b6f600d7ea15ae9428b94bdafbcdd2"
 		},
 		{
-			"name": "app-T7P2LT7M.js.map",
+			"name": "app-HQUDEYY6.js.map",
 			"type": "application/json",
-			"size": 5354550,
-			"sha256": "b471f916178f78c7bec29e9f30682662337f591e26c33958111b14be85bd5237"
+			"size": 5379725,
+			"sha256": "3c6ea5c356047db6f2945c05ec9fec26125102c58febe2b98f16f0f1861621e8"
 		}
 	],
 	"brand": {
@@ -72,7 +73,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "1f9cbf9cf01cdf17bf204cd9fdba20f20cb880832b6851fba69165e5d338af68",
+		"upstreamVersion": "82895abf2595085ff8ace629eef45f94f5c8049397553ce67816c1d130e7ede7",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",
