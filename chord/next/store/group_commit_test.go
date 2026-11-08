@@ -95,7 +95,7 @@ func traced(events *[]string, name string, admit bool) CommitFence {
 			*events = append(*events, "admit "+name)
 			return admit
 		},
-		Adopt: func(seq int64, ids []int64) error {
+		Adopt: func(seq int64, ids []int64, _ int) error {
 			*events = append(*events, fmt.Sprintf("adopt %s %d %s", name, seq, idsText(ids)))
 			return nil
 		},
@@ -331,7 +331,7 @@ func TestGroupCommit(t *testing.T) {
 		var late *pendingCommit
 		issuing := CommitFence{
 			Admit: func() bool { return true },
-			Adopt: func(seq int64, _ []int64) error {
+			Adopt: func(seq int64, _ []int64, _ int) error {
 				events = append(events, fmt.Sprintf("adopt b %d", seq))
 				late = ctl.store.enlist([]StagedWrite{created("late")}, traced(&events, "late", true), background)
 				return nil
@@ -397,7 +397,7 @@ func TestGroupCommit(t *testing.T) {
 			noError(t, ctl.store.Attach(Attachment{Failed: func(err error) { told = append(told, err) }, Batch: newBatch()}))
 			gate := ctl.arm()
 			// Armed after the held step's COMMIT, before the group's turn: the group's statement fails.
-			arming := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error {
+			arming := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error {
 				ctl.fail(c.at)
 				return nil
 			}}
@@ -428,7 +428,7 @@ func TestGroupCommit(t *testing.T) {
 		_, fence := recording()
 		running := startCommit(ctl.store, fence, created("a"))
 		<-gate.Entered()
-		throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return errors.New("adopt threw") }}
+		throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return errors.New("adopt threw") }}
 		first := startCommit(ctl.store, fence, created("b"))
 		second := startCommit(ctl.store, throwing, created("c"))
 		third := startCommit(ctl.store, fence, created("d"))
@@ -574,7 +574,7 @@ func TestGroupCommit(t *testing.T) {
 		ctl := controlledStore(t)
 		thrown := errors.New("listener threw")
 		noError(t, ctl.store.Attach(Attachment{Failed: func(error) { panic(thrown) }, Batch: newBatch()}))
-		throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return errors.New("adopt threw") }}
+		throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return errors.New("adopt threw") }}
 		gate := ctl.arm()
 		_, fence := recording()
 		running := startCommit(ctl.store, fence, created("a"))
@@ -606,7 +606,7 @@ func TestGroupCommit(t *testing.T) {
 	t.Run("a value that is no error rides in a ThrownError", func(t *testing.T) {
 		ctl := controlledStore(t)
 		noError(t, ctl.store.Attach(Attachment{Failed: func(error) { panic("plain value") }, Batch: newBatch()}))
-		failing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return errors.New("adopt failed") }}
+		failing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return errors.New("adopt failed") }}
 		_, err := ctl.store.Commit([]StagedWrite{created("a")}, failing, background)
 		var thrown *ThrownError
 		if !errors.As(err, &thrown) || thrown.Value != "plain value" {
@@ -617,7 +617,7 @@ func TestGroupCommit(t *testing.T) {
 	t.Run("advances memory commit by commit while a group adopts, as lone steps do", func(t *testing.T) {
 		ctl := controlledStore(t)
 		var seen [][3]int64
-		fence := CommitFence{Admit: func() bool { return true }, Adopt: func(seq int64, _ []int64) error {
+		fence := CommitFence{Admit: func() bool { return true }, Adopt: func(seq int64, _ []int64, _ int) error {
 			seen = append(seen, [3]int64{seq, ctl.store.LastSeq(), ctl.store.NextID()})
 			return nil
 		}}
@@ -638,7 +638,7 @@ func TestGroupCommit(t *testing.T) {
 
 	t.Run("a panic out of a lone commit's adoption stops the store too: it is durable, memory stands at it", func(t *testing.T) {
 		store := memoryStore(t)
-		panicking := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { panic("adopt panicked") }}
+		panicking := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { panic("adopt panicked") }}
 		pending := store.enlist([]StagedWrite{created("a")}, panicking, background)
 		panicked := make(chan any, 1)
 		go func() {
@@ -707,7 +707,7 @@ func TestGroupCommit(t *testing.T) {
 	t.Run("rejects a grouped commit whose admission throws with that error; the others commit, the queue goes on", func(t *testing.T) {
 		ctl := controlledStore(t)
 		thrown := errors.New("admit threw")
-		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64) error { return nil }}
+		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64, int) error { return nil }}
 		gate := ctl.arm()
 		_, fence := recording()
 		running := startCommit(ctl.store, fence, created("a"))
@@ -734,7 +734,7 @@ func TestGroupCommit(t *testing.T) {
 	t.Run("a lone commit whose admission throws rejects with that error and the queue goes on", func(t *testing.T) {
 		store := memoryStore(t)
 		thrown := errors.New("admit threw")
-		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64) error { return nil }}
+		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64, int) error { return nil }}
 		if _, err := store.Commit([]StagedWrite{created("x")}, throwing, background); err != thrown {
 			t.Fatalf("err = %v, want the admission's error itself", err)
 		}
