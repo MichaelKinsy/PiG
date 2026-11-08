@@ -44,13 +44,13 @@ var languageContract = mustRemote("probe.lang", contracts.RemoteDeclaration{
 	})},
 })
 
-// lastFrame is the last value the page's view saw of its watched member, "" before one.
-func lastFrame(page *reloadPage, name string) string {
-	frames := page.frames(name)
-	if len(frames) == 0 {
+// memberText is the member's current value of the page's view as JSON, "" while it has none.
+func memberText(page *reloadPage, name, member string) string {
+	value, err := page.view(name).ref.Member(member).Value()
+	if err != nil {
 		return ""
 	}
-	return jsonText(frames[len(frames)-1])
+	return jsonText(value)
 }
 
 func TestAServerPluginsObjectHoldsTheTypesTheGoServerServesAsThePrincipalItActsAs(t *testing.T) {
@@ -58,19 +58,20 @@ func TestAServerPluginsObjectHoldsTheTypesTheGoServerServesAsThePrincipalItActsA
 	page := signIn(t, s)
 	// The page holds the Go server's choice itself, as the owner.
 	page.hold("choice", surfaces.LocaleChoice, "", 0, "pick")
-	page.until("the choice's first value", reloadWait, func() bool { return len(page.frames("choice")) > 0 })
-	expectEqual(t, "the choice before", lastFrame(page, "choice"), "null")
+	page.waitState("choice", "live")
+	page.until("the choice's first value", reloadWait, func() bool { return memberText(page, "choice", "pick") == "null" })
 	// The plugin's object, which acts as the owner, holds that same choice through the Node host's link to the Go host: it binds.
 	page.hold("lang", languageContract, "", 0, "pick")
 	page.waitState("lang", "live")
-	page.until("the plugin's view of the choice", reloadWait, func() bool { return lastFrame(page, "lang") == `"pick=null"` })
+	page.until("the plugin's view of the choice", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=null"` })
 	// The theme choice, the other Go-served type the plugin's object holds.
-	page.hold("theme", languageContract, "", 0, "theme")
-	page.until("the plugin's view of the theme choice", reloadWait, func() bool { return lastFrame(page, "theme") == "\"{\\\"dark\\\":null,\\\"light\\\":null}\"" })
+	page.until("the plugin's view of the theme choice", reloadWait, func() bool {
+		return memberText(page, "lang", "theme") == "\"{\\\"dark\\\":null,\\\"light\\\":null}\""
+	})
 	// A call of the plugin's object changes the Go server's object of the same principal.
 	if got := page.result(page.call("lang", "choose", "de")); got.Status != "ok" {
 		t.Fatalf("choose = %+v, want ok", got)
 	}
-	page.until("the page's own choice follows", reloadWait, func() bool { return lastFrame(page, "choice") == `"de"` })
-	page.until("the plugin's view follows", reloadWait, func() bool { return lastFrame(page, "lang") == `"pick=de"` })
+	page.until("the page's own choice follows", reloadWait, func() bool { return memberText(page, "choice", "pick") == `"de"` })
+	page.until("the plugin's view follows", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=de"` })
 }
