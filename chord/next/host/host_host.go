@@ -1377,10 +1377,10 @@ func (h *chordHost) startTicking() {
 		}
 		now := h.events.Now()
 		// A tick a whole interval late is time this process did not run (a sleeping laptop, a blocked event loop).
-		late := float64(now-last) - float64(interval)/float64(time.Millisecond)
+		late := time.Duration(now-last)*time.Millisecond - interval
 		var paused int64
-		if late >= float64(interval)/float64(time.Millisecond) {
-			paused = int64(late)
+		if late >= interval {
+			paused = late.Milliseconds()
 		}
 		last = now
 		for _, each := range slices.Clone(h.links) {

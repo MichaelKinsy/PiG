@@ -77,7 +77,7 @@ func clearStaleLockAt(location lockLocation, ctx context.Context) (bool, error) 
 	if ctx.Err() != nil {
 		return false, context.Cause(ctx)
 	}
-	if location.kind != lockFile || !nobodyAccepts(location) {
+	if location.kind != lockFile || !nobodyAccepts(ctx, location) {
 		return false, nil
 	}
 	if err := os.Remove(location.address); err != nil {
@@ -91,8 +91,8 @@ func clearStaleLockAt(location lockLocation, ctx context.Context) (bool, error) 
 
 // nobodyAccepts is whether the path of location exists and nobody accepts on it: the connect's errors that mean a socket
 // file nobody listens on, or no socket there (`NOBODY_ACCEPTS`).
-func nobodyAccepts(location lockLocation) bool {
-	conn, err := platformDialLock(location, context.Background())
+func nobodyAccepts(ctx context.Context, location lockLocation) bool {
+	conn, err := platformDialLock(location, ctx)
 	if err != nil {
 		return lockRefused(err)
 	}

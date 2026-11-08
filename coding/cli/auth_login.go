@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -92,7 +93,7 @@ func RunAuthLogin(ctx context.Context, args []string, options AuthLoginOptions) 
 		message := err.Error()
 		if _, ok := errors.AsType[*codingagent.CredentialSynchronizationError](err); ok {
 			terminal.Error("Logged in to " + provider.Name + ", but local model state could not be synchronized: " + message)
-		} else if ctx.Err() != nil || message == errLoginCancelled.Error() {
+		} else if ctx.Err() != nil || message == errLoginCancelled.Error() { //portlint:allow erroridentity Pi compares the message (auth-login.ts:78 `message === "Login cancelled"`): providers, extension subprocesses and the OAuth callback server each build their own "Login cancelled" error, so there is no shared identity to match
 			terminal.Error("Login cancelled.")
 		} else {
 			terminal.Error("Failed to log in to " + provider.Name + ": " + message)
@@ -276,17 +277,19 @@ func selectInTerminal(ctx context.Context, message string, options []ai.AuthSele
 		if option.Description != "" {
 			description = " - " + option.Description
 		}
-		terminal.Write(fmt.Sprintf("  %d. %s%s", index+1, option.Label, description))
+		terminal.Write("  " + strconv.Itoa(index+1) + ". " + option.Label + description)
 	}
+	count := strconv.Itoa(len(options))
+	prompt, invalid := "Select 1-"+count+": ", "Enter a number from 1 to "+count+"."
 	for {
-		answer, err := terminal.Question(ctx, fmt.Sprintf("Select 1-%d: ", len(options)))
+		answer, err := terminal.Question(ctx, prompt)
 		if err != nil {
 			return "", err
 		}
 		if number, ok := parseSelection(widthx.JSTrim(answer)); ok && number >= 1 && number <= len(options) {
 			return options[number-1].ID, nil
 		}
-		terminal.Write(fmt.Sprintf("Enter a number from 1 to %d.", len(options)))
+		terminal.Write(invalid)
 	}
 }
 
