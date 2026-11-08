@@ -165,8 +165,8 @@ func TestDoesNotExecuteSQLWhileRecordingAndStoresOnlySettledSpans(t *testing.T) 
 	if len(rows) != 1 {
 		t.Fatalf("rows = %v, want one", rows)
 	}
-	if rowNumberOf(t, rows[0], "ended_ms") < rowNumberOf(t, rows[0], "started_ms") {
-		t.Fatalf("ended_ms %v < started_ms %v", rows[0]["ended_ms"], rows[0]["started_ms"])
+	if rowNumberOf(t, rows[0], "ended_us") < rowNumberOf(t, rows[0], "started_us") {
+		t.Fatalf("ended_us %v < started_us %v", rows[0]["ended_us"], rows[0]["started_us"])
 	}
 	var events []eventRow
 	check(t, json.Unmarshal([]byte(rows[0]["events"].(string)), &events))

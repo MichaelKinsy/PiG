@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"slices"
 	"time"
@@ -116,7 +117,7 @@ const (
 
 // swap is a pure swap in progress (slice 7b §5): the attempt it replaces (its calls run on, then it is sealed), whether the
 // new attempt parked (holders then see what it shows, and the old one's contributions left the tables), and the end of the
-// swap (its new attempt live, parked or failed, or the object ended), which calls arriving meanwhile wait for.
+// swap (its new attempt live, parked or failed, or the object ended), which the old attempt's retirement waits for.
 type swap struct {
 	old    *attempt
 	parked bool
@@ -232,6 +233,8 @@ type chordObject struct {
 	chain []string
 	// documents are its documents and line, across its attempts.
 	documents *documents.Documents
+	// liveQueries are its live queries by table, across its attempts; made by the first table it declares.
+	liveQueries *store.LiveQueries
 	// ctx is the context of every attempt: its creator's, without the creator's cancellation.
 	ctx context.Context
 	// jobs are its job runs by job name, across its attempts, in the order they were declared.
@@ -253,6 +256,8 @@ type chordObject struct {
 	failure *data.ChordError
 	// lingering ends the object when its type's `linger` passed after its last reference; cleared by a new one.
 	lingering Timer
+	// changed resolves at its next change of state, for calls waiting at the gate; made by the first one.
+	changed *keyedPromise[struct{}]
 	// runs are its running and finishing job runs: they keep it alive like references (D4), without being references.
 	runs int
 	// exposed is the instance its references follow (`followed`): the live one, the old one while a swap brings its
@@ -481,11 +486,11 @@ func (o *chordObject) retryOn(sources []retrySourceType) {
 }
 
 // call calls a method of the live object for from, bound at version (an older one maps its arguments and result, Q10). While
-// a reload's pure swap runs, the call waits for its new attempt (the gate), bounded by ctx; a refusal (not live, ended,
+// an attempt activates (a reload's swap or restart), the call waits for its outcome (the gate); a refusal (not live, ended,
 // failed) rejects the result.
 func (o *chordObject) call(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
-	if st := o.phase; st.kind == objectActivating && st.swap != nil {
-		return o.gated(st.swap, method, args, ctx, from, version)
+	if o.phase.kind == objectActivating {
+		return o.gated(method, args, ctx, from, version)
 	}
 	live, err := o.live()
 	if err != nil {
@@ -496,25 +501,64 @@ func (o *chordObject) call(method string, args any, ctx context.Context, from ca
 	return live.call(method, args, ctx, from, version)
 }
 
-// gated is a call that waits until sw ended (its new attempt live, parked, failed, or the object ended), then goes to the live
-// attempt. No timer of its own: the swap ends when its new attempt is live, parked or failed, and `readyTimeout` bounds the
-// new attempt's own steps (Fable).
-func (o *chordObject) gated(sw *swap, method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
+// gated is a call that waits while an attempt activates until the object is live, failed or ended (`live` then calls or
+// returns the error); it is rejected with the cause once the attempt parks on a failed dependency (`failed { waiting }`), and
+// with `unavailable/park_timeout` after `readyTimeout`, as a call parked on a reference. A hold over a link stays bound while
+// the old instance still changes (a swap, a restart's drain), so its consumer sees `live` and sends calls that arrive here:
+// they wait for the new attempt, never `not_ready` (decision "Swaps: dependents first"). Pi's `#gate` loop is a continuation.
+func (o *chordObject) gated(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
 	result := newParkedCallResult()
 	loop := o.host.loop()
-	sw.done.thenWithContext(ctx, func(_ struct{}, err error) {
-		if err != nil {
-			result.settle(nil, err)
+	ready := o.host.timeouts.ready
+	due := loop.Now() + ready.Milliseconds()
+	var step func()
+	step = func() {
+		st := o.phase
+		if st.kind != objectActivating {
+			live, err := o.live()
+			if err != nil {
+				result.settle(nil, err)
+				return
+			}
+			live.call(method, args, ctx, from, version).then(loop, result.settle)
 			return
 		}
-		live, err := o.live()
-		if err != nil {
-			result.settle(nil, err)
+		if st.shown.Kind == RefStateFailed {
+			result.settle(nil, st.shown.Cause.Error)
 			return
 		}
-		live.call(method, args, ctx, from, version).then(loop, result.settle)
-	})
+		left := due - loop.Now()
+		if left <= 0 {
+			message := fmt.Sprintf("%s: a call waited %d ms for its object to go live", o.text, ready.Milliseconds())
+			result.settle(nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Reason: data.ReasonParkTimeout, Message: message}, nil))
+			return
+		}
+		if o.changed == nil {
+			o.changed = newKeyedPromise[struct{}](loop)
+		}
+		woken := newKeyedPromise[struct{}](loop)
+		timer := loop.AfterFunc(time.Duration(left)*time.Millisecond, func() { woken.resolve(struct{}{}) })
+		o.changed.then(func(struct{}, error) { woken.resolve(struct{}{}) })
+		woken.thenWithContext(ctx, func(_ struct{}, err error) {
+			timer.Stop()
+			if err != nil {
+				result.settle(nil, err)
+				return
+			}
+			step()
+		})
+	}
+	step()
 	return result
+}
+
+// wakeGate is that calls waiting at the gate check the state again.
+func (o *chordObject) wakeGate() {
+	if o.changed != nil {
+		changed := o.changed
+		o.changed = nil
+		changed.resolve(struct{}{})
+	}
 }
 
 // swapsInPlace is whether a reload's pure swap runs in place: the new attempt neither parked nor failed yet. Holds stay bound
@@ -698,6 +742,14 @@ func (o *chordObject) checkJob(definition *JobDefinition) error {
 // claimTable claims table (its SQL name) in the host's store for this object, until its end (slice 6b claims); held by
 // another owner: `invalid/args`, which fails the declaring factory.
 func (o *chordObject) claimTable(table string) error { return o.host.store.Claims.Table(table, o) }
+
+// queries are its live queries by table (`self.query`), across its attempts: what its commits writing a table re-run.
+func (o *chordObject) queries() *store.LiveQueries {
+	if o.liveQueries == nil {
+		o.liveQueries = store.NewLiveQueries()
+	}
+	return o.liveQueries
+}
 
 // claimDocuments claims this object's documents in namespace of the host's store, as claimTable.
 func (o *chordObject) claimDocuments(namespace string) error {
@@ -1432,6 +1484,7 @@ func (o *chordObject) stopFollowing(a *attempt) {
 
 // notify tells every holder that the state changed: references first follow what it shows now (`followed`).
 func (o *chordObject) notify() {
+	o.wakeGate()
 	holders := slices.Clone(o.holderList)
 	// In one batch when some reference's members move (one frame each, a diamond over several sees one change); no commit
 	// at all for references that used none (activation churn).
@@ -1484,6 +1537,7 @@ func (o *chordObject) seal(by ending) teardown {
 		both.then(func(struct{}, error) { previous.resolve(struct{}{}) })
 	}
 	o.phase = objectState{kind: objectEnded, shown: &RefState{Kind: RefStateEnded, Error: err}}
+	o.wakeGate()
 	for _, records := range o.jobRecordsInOrder() {
 		records.end(err)
 	}

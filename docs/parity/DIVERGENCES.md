@@ -3936,7 +3936,7 @@ Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main
 
 ## D370 The OAuth callback server drops connections that have not sent a request when it closes
 
-What: PiG ports Pi main 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311), which is not in Pi 1.5.0. Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`. Two Go mechanics ride with it: `WaitForCallback` fails at once when it is called after `Close` (Pi's wait would run to its timeout), and a wait that ends with its context frees its state so the same state can wait again (Pi's wait has no signal).
+What: PiG ports Pi main 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311), which is not in Pi 1.5.0. Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`.
 
 Why: Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.
 
@@ -3948,9 +3948,7 @@ SCRUTINIZED:pending
 
 Remove when: the pinned Pi release contains 63ea042ce and PiG's close matches it.
 
-Call-site markers: `mcp/oauth/callback.go` (`Close`).
-
-Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`, `TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` (`mcp/oauth/oauth_test.go`), `TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose` (`mcp/oauth/goroutines_test.go`).
+Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen` (`mcp/oauth/oauth_test.go`).
 
 ## D371 Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`
 
@@ -3966,42 +3964,48 @@ SCRUTINIZED:pending
 
 Remove when: the pinned Pi release contains 6d3e342b2.
 
-Call-site markers: `codemode/declarations.go` (`refSegments`).
-
 Evidence: `TestMalformedRefPercentEncodingRendersAsUnknown`, `TestResolveSchemaRef*` (`codemode/declarations_test.go`), `TestSchemaRefs*` (`coding/extension/builtin/toolsearch/schema_refs_pi_test.go`), `TestFindsAToolByAParameterDescriptionBehindALocalReference...` (`durable/toolsearch/toolsearch_test.go`), `TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`.
 
-## D372 `mcp add` reports an invalid url before an invalid exposure
+## D430 Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking remainder from outside the host package (AwaitingCtx)
 
-What: PiG ports Pi main 76c040a2a (the MCP server config validation moved into the mcp package), which is not in Pi 1.5.0. The validator checks the shared fields first, then the transport fields (url, headers, OAuth), and the exposure last. Pi 1.5.0 checked the exposure first, so a command with both an invalid url and an invalid exposure names the exposure there and the url in PiG.
+What: Pi's `ref.method(args)` starts the call at once and returns a Promise. A caller may start several calls before awaiting any (Files v2's pipelined `append`s, which the call window allows) and the host accepts them in the order they were started. A blocking Go `Reference.Call` cannot express that, so `Reference.Start(method, args, ctx)` is the synchronous half (the call is admitted and its handler's synchronous part has run when it returns) and `PendingCall.Wait(ctx)` the awaiting half. `host.AwaitingCtx(ctx, work)` is `Awaiting` for a caller outside the package, which cannot name the host's loop: the blocking remainder of an `onLive` or `on` handler (the awaits of Pi's async function).
 
-Why: one validator now serves the CLI, the config loader and the extension.
+Why: AGENTS.md "TypeScript async/Promise parity": an awaited Promise is a blocking call, but a Promise started and awaited later is two Go operations. Without Start the pipelined-append behaviour could not be tested or used through a reference; without AwaitingCtx a package outside `chord/next/host` (the app kit) could not declare an `onLive` routine.
 
-Pi bug: none; an ordering change in Pi main.
+Pi bug: none.
+
+Scope: additive Go API of `chord/next/host`; no Pi behaviour changes.
 
 Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
 
-SCRUTINIZED:pending
+SCRUTINIZED:approved
 
-Remove when: the pinned Pi release contains 76c040a2a.
+Remove when: never; it is the Go form of an un-awaited Promise and of a handler's async remainder.
 
-Call-site markers: `internal/mcpshared/config.go` (`validateHTTPFields`).
+Call-site markers: `chord/next/host/host_pending.go`, `chord/nextnode/app/files.go` (`FilesFacet`), `chord/nextnode/app/files_support_test.go`.
 
-Evidence: `TestMcpCommandMatchesPi` (`coding/mcpext/cli_oracle_test.go`) skips probes that give both an invalid exposure and a non-http(s) url.
+Evidence: `TestChunkedUploadsWriteAppendsSentWithoutWaitingAtTheirOwnOffsetsByteForByte` and `TestChunkedUploadsFinishAnUploadOnlyOnceTheAppendsSentBeforeItLanded` (`chord/nextnode/app/files_test.go`), `TestChunkedUploadsDropTheUploadsAPreviousRunLeft` (the `onLive` routine).
 
-## D373 The stored PKCE verifier is dropped once its code exchange succeeded
+Parity allowance: none.
 
-What: after `AuthorizeMcp` exchanged an authorization code and saved the tokens, PiG removes the `codeVerifier` of that sign-in from the stored OAuth state. Pi keeps it in `mcp-auth.json` until the next sign-in overwrites it or the credentials are invalidated.
+## D431 PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)
 
-Why: a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.
+What: PiG ports Pi main `2439933cf` (`self.query(table, q, limit)`), which is not in Pi 1.5.0: a watchable of up to `limit` rows over a table of the object itself, run at activation and in the commit step of every commit that writes the table, publishing the diff in that commit's batch; `query_failed` reports a failing run once per failure episode.
 
-Pi bug: none observable in behavior; additive hardening.
+Why: owner decision of 2026-11-07 23:33Z, port all of Pi main.
 
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-08).
+Pi bug: none.
 
-SCRUTINIZED:pending
+Scope: `chord/next/store` (`live_query.go`), `chord/next/documents` (`Transaction` stages the refresh), `chord/next/host` (`StoreSelf.Query`, `HostError.Table`). A reload reports the object `swapped` until Pi a5d209afd (restart model) is ported, where Pi main says `restarted`.
 
-Remove when: Pi drops the verifier after the exchange, or the owner declines the hardening.
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
 
-Call-site markers: `mcp/oauth/flow.go` (the exchange branch of `runFlow`).
+SCRUTINIZED:approved
 
-Evidence: `TestAuthorizeMcpDropsTheVerifierAfterTheExchange` (`mcp/oauth/oauth_test.go`).
+Remove when: the pin reaches a Pi release containing 2439933cf. Then this record goes.
+
+Call-site markers: `chord/next/store/live_query.go`, `chord/next/host/host_attempt.go` (`Query`).
+
+Evidence: `TestLiveQuery*` (`chord/next/host/host_live_query_test.go`), `TestQueryRefreshAdoptsItsLastApplicationsRunsOnly...` (`chord/next/store/live_query_test.go`).
+
+Parity allowance: Go limits are int64: Pi's fractional and absent limits cannot be written.

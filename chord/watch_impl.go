@@ -400,6 +400,26 @@ func (watch *watchLifecycle[T, L]) useScheduler(scheduler *DeliveryScheduler) {
 	watch.scheduler = scheduler.pending
 }
 
+// ErrWatchStopped is the panic of Start on a watch that already ended (Pi's `Watch is stopped` throw): a caller whose watch may end
+// before it starts it (a holder released the reference it follows) recovers it.
+var ErrWatchStopped = errors.New("Watch is stopped")
+
+// StartUnlessEnded runs start, which starts a watch, and says false when the watch had ended already (it panicked with ErrWatchStopped):
+// a watch whose context was cancelled or whose holder released it between its making and its start has nothing to follow.
+func StartUnlessEnded(start func()) (started bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok && errors.Is(err, ErrWatchStopped) {
+				started = false
+				return
+			}
+			panic(r)
+		}
+	}()
+	start()
+	return true
+}
+
 func (watch *watchLifecycle[T, L]) start(listener L) {
 	watch.mu.Lock()
 	defer watch.mu.Unlock()
@@ -407,7 +427,7 @@ func (watch *watchLifecycle[T, L]) start(listener L) {
 		panic(errors.New("Watch is already started"))
 	}
 	if watch.end != nil {
-		panic(errors.New("Watch is stopped"))
+		panic(ErrWatchStopped)
 	}
 	watch.started = true
 	watch.listener, watch.listening = listener, true
