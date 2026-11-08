@@ -336,6 +336,8 @@ func importStoreArchive(ctx context.Context, archive, path string) error {
 	if err != nil {
 		return errors.Join(err, database.Close())
 	}
+	// The import closes the source when it ends early; closing it here too makes sure the file is closed on every path.
+	defer func() { _ = file.Close() }()
 	opened, err := store.ImportStore(store.SqliteBackend(database), store.DecodeJsonl(&fileBytes{file: file}), ctx, store.StoreOptions{})
 	if err != nil {
 		return errors.Join(err, database.Close())

@@ -23,8 +23,8 @@ type ThemeFollower struct {
 }
 
 // FollowActiveTheme follows the active theme on h for mode, calling changed with it at once (the fallback or the first
-// of its mode) and at every change of the registry, the user's pick or the mode, until Stop. Watches end in Stop itself
-// (D452).
+// of its mode) and at every change of the registry, the user's pick or the mode, until Stop. Stop ends its watches; so does the
+// cancellation of ctx (a pick watch that ended before its start follows nothing).
 func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx context.Context) (*ThemeFollower, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	var mu sync.Mutex
@@ -107,16 +107,20 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 			return
 		}
 		addStop(func() { _, _ = watch.Stop() })
-		watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-			if call.Kind == chord.WatchCallValue {
-				if value, ok := call.Value.(*delta.JsonObject); ok {
-					mu.Lock()
-					pick = ThemePick{Dark: idOf(value.Value("dark")), Light: idOf(value.Value("light"))}
-					mu.Unlock()
+		// The caller may cancel the ctx it passed instead of calling Stop: the watch has ended then, and there is nothing to follow
+		// (Pi: `watch(ctx).then(start, () => {})` ignores it).
+		chord.StartUnlessEnded(func() {
+			watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+				if call.Kind == chord.WatchCallValue {
+					if value, ok := call.Value.(*delta.JsonObject); ok {
+						mu.Lock()
+						pick = ThemePick{Dark: idOf(value.Value("dark")), Light: idOf(value.Value("light"))}
+						mu.Unlock()
+					}
 				}
-			}
-			update()
-			return nil
+				update()
+				return nil
+			})
 		})
 	}()
 	return &ThemeFollower{

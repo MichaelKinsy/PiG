@@ -28,8 +28,8 @@ type LanguageFollower struct {
 
 // FollowActiveLanguage follows the active language on h for the device's preferred languages: sets the host's language
 // (and calls changed with it) at once and at every change of the registry, the user's pick or the device's languages that
-// changes the locale or the catalogs, until Stop. report gets each distinct report once. Watches end in Stop itself, not
-// through ctx's cancellation (D452).
+// changes the locale or the catalogs, until Stop. report gets each distinct report once. Stop ends its watches; so does the
+// cancellation of ctx, which the follower's own pick watch may meet before it starts (it then follows nothing).
 func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Language), report func(MessagesReport), ctx context.Context) (*LanguageFollower, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	state := HostLanguage(h)
@@ -127,18 +127,22 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 			return
 		}
 		addStop(func() { _, _ = watch.Stop() })
-		watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-			if call.Kind == chord.WatchCallValue {
-				mu.Lock()
-				if text, ok := call.Value.(string); ok {
-					pick = &text
-				} else {
-					pick = nil
+		// The caller may cancel the ctx it passed instead of calling Stop: the watch has ended then, and there is nothing to follow
+		// (Pi: `watch(ctx).then(start, () => {})` ignores it).
+		chord.StartUnlessEnded(func() {
+			watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+				if call.Kind == chord.WatchCallValue {
+					mu.Lock()
+					if text, ok := call.Value.(string); ok {
+						pick = &text
+					} else {
+						pick = nil
+					}
+					mu.Unlock()
 				}
-				mu.Unlock()
-			}
-			update()
-			return nil
+				update()
+				return nil
+			})
 		})
 	}()
 	return &LanguageFollower{

@@ -20,6 +20,15 @@ func (o *outbox) run(deliver func()) {
 		return
 	}
 	o.running = true
+	// A delivery that panics leaves the outbox usable: the next change delivers again.
+	delivering := true
+	defer func() {
+		if delivering {
+			o.mu.Lock()
+			o.running = false
+			o.mu.Unlock()
+		}
+	}()
 	for len(o.queue) > 0 {
 		next := o.queue[0]
 		o.queue[0] = nil
@@ -29,5 +38,6 @@ func (o *outbox) run(deliver func()) {
 		o.mu.Lock()
 	}
 	o.running = false
+	delivering = false
 	o.mu.Unlock()
 }

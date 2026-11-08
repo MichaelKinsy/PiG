@@ -100,3 +100,17 @@ func TestAThemeFollowersCallbackMayStopItAndSetTheMode(t *testing.T) {
 		t.Fatal("the callback's SetMode and Stop did not return: the follower holds a lock across the callback")
 	}
 }
+
+// A change whose delivery panicked does not stop the next ones.
+func TestAnOutboxDeliversAgainAfterADeliveryPanicked(t *testing.T) {
+	var o outbox
+	func() {
+		defer func() { _ = recover() }()
+		o.run(func() { panic("deliver") })
+	}()
+	delivered := false
+	o.run(func() { delivered = true })
+	if !delivered {
+		t.Fatal("the outbox delivers nothing after a delivery panicked")
+	}
+}

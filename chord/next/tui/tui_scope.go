@@ -17,7 +17,6 @@ package tui
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -95,7 +94,7 @@ func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.
 		}
 		// A holder that released its own reference ended the watch already: nothing to follow (Pi's watch.start throws "Watch is
 		// stopped" there, an unhandled rejection that ends a Node process; D452).
-		if !startUnlessEnded(func() { started(func() { s.redraw() }) }) {
+		if !chord.StartUnlessEnded(func() { started(func() { s.redraw() }) }) {
 			return
 		}
 		// The value it acquired may be newer than what was drawn (a reference bound since): draw it.
@@ -112,21 +111,6 @@ func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.
 		current, err := value()
 		return current, err == nil
 	}
-}
-
-// startUnlessEnded runs start, which starts a watch, and says false when the watch had ended already (chord.ErrWatchStopped).
-func startUnlessEnded(start func()) (started bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			if err, ok := r.(error); ok && errors.Is(err, chord.ErrWatchStopped) {
-				started = false
-				return
-			}
-			panic(r)
-		}
-	}()
-	start()
-	return true
 }
 
 // WatchNative follows source (an in-process value: a reference's state, a registry's value) until Dispose; returns a
