@@ -182,6 +182,21 @@ async function nestedWithRequest(shape) {
 out.nestedHanded = await nestedWithRequest("handed");
 out.nestedQueued = await nestedWithRequest("queued");
 
+// The frame the loop was handed is read by the loop, which clears it from handedOff: a synchronous call a handler makes later, one that pushes no state
+// (ctx.getContextUsage), finds nothing to apply, and the push the loop applied is not applied a second time.
+{
+  const result = {};
+  const { host, stop } = await start((pi) => {
+    pi.registerCommand("a", { handler: async (_args, ctx) => { await timer(30); ctx.getContextUsage(); result.ids = ids(ctx); } });
+  });
+  await host.deliver(command("ra", "a"));
+  host.append("custom", { customType: "other" });
+  await host.deliver(host.push(host.entries[host.entries.length - 1]));
+  await timer(60);
+  await stop();
+  out.staleHandedOff = result.ids;
+}
+
 // A replicated log is replaced by a page with a lower count that holds the whole log: the page the host sends from 0 when its cursor is out of range
 // (Session.RawEntriesPage restarts at 0 and the push's count is the cursor after the page), and the pages after it extend it.
 {
