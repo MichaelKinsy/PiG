@@ -188,7 +188,7 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 			return nil, err
 		}
 		state.web = &Web{Nonce: state.nonce, Bundle: bundle}
-		if options.Sprite != nil && bundle.UpstreamVersion != "" {
+		if spriteApplies(options.Sprite, bundle) {
 			state.sprite = newSpriteHub(options.Sprite)
 			state.web.Sprite = state.sprite
 		}
