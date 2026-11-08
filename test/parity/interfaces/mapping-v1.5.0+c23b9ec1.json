@@ -121107,15 +121107,15 @@
       ],
       "evidence": [
         "test:chord/json_test.go#TestCopyJSONDetachesSharedAliases",
-        "test:chord/json_test.go#TestCopyJSONNormalizesNumbersAndKeepsObjectRoot",
-        "test:chord/json_test.go#TestCopyJSONPreservesOwnProtoKeys"
+        "test:chord/json_test.go#TestCopyJSONKeepsNilAsNullAndRefusesNonJSONKindsInObjectsAndArrays",
+        "test:chord/json_test.go#TestCopyJSONNormalizesNumbersAndKeepsObjectRoot"
       ]
     },
     {
       "id": "pkg:chord/json#copyJson::call:0",
       "upstreamShapeHash": "sha256:566c14e17ae755515946082a83d66b060dba2e9a08ed53b81883aa7fad8923ec",
       "disposition": "designed-out",
-      "rationale": "chord json.ts:10 `CopyJsonOptions.omitUndefinedProperties` makes copyJson drop object properties whose value is `undefined`. Go has no undefined: a Go value either holds a key or does not, so there is nothing to omit and the option has no counterpart (chord/json.go CopyJSON documents this). Designed out as a JavaScript runtime mechanic; the value argument and result are covered by the CopyJSON row.",
+      "rationale": "INTENTION CHECK: the second parameter is CopyJsonOptions.omitUndefinedProperties (json.ts:10). Pi's guard (json.test.ts \"optionally omits undefined object properties without normalizing arrays\": non-JSON values never become JSON silently, arrays stay strict) is ported as the PiG test TestCopyJSONKeepsNilAsNullAndRefusesNonJSONKindsInObjectsAndArrays (chord/json_test.go). Go has no undefined, so the flag has nothing to select; the value argument and result are the CopyJSON row.",
       "pigTargets": [
         "chord/json.go#CopyJSON"
       ]
@@ -121124,7 +121124,7 @@
       "id": "pkg:chord/json#CopyJsonOptions",
       "upstreamShapeHash": "sha256:13e53eba146f305198c4eea23688583ed0a105614771ed4ec62803e821de2fdc",
       "disposition": "designed-out",
-      "rationale": "chord json.ts:10 `CopyJsonOptions.omitUndefinedProperties` makes copyJson drop object properties whose value is `undefined`. Go has no undefined: a Go value either holds a key or does not, so there is nothing to omit and the option has no counterpart (chord/json.go CopyJSON documents this). Designed out as a JavaScript runtime mechanic; the value argument and result are covered by the CopyJSON row.",
+      "rationale": "INTENTION CHECK: Pi's test (chord/test/json.test.ts \"optionally omits undefined object properties without normalizing arrays\") guards that a value that is not JSON never becomes JSON silently, that an absent property is dropped only where the option allows, and that arrays stay strict. The option itself has no counterpart because Go has no `undefined` (an `any` nil is JSON null, a Go value either holds a key or not), but the intention exists in PiG and is tested: TestCopyJSONKeepsNilAsNullAndRefusesNonJSONKindsInObjectsAndArrays (chord/json_test.go) asserts a nil member is kept as null, [nil] stays, and a func is refused as strict JSON in an object and in an array. Designed out only the omit flag.",
       "pigTargets": [
         "chord/json.go#CopyJSON"
       ]
@@ -121146,6 +121146,7 @@
         "call:chord/json.go#IsJsonValue"
       ],
       "evidence": [
+        "test:chord/json_test.go#TestCopyJSONResultIsAlwaysStrictJSON",
         "test:chord/json_test.go#TestIsJsonValueChecksStrictJSONWithoutNormalizing"
       ]
     },
@@ -121166,6 +121167,7 @@
         "call:chord/json.go#IsJsonValue"
       ],
       "evidence": [
+        "test:chord/json_test.go#TestCopyJSONResultIsAlwaysStrictJSON",
         "test:chord/json_test.go#TestIsJsonValueChecksStrictJSONWithoutNormalizing"
       ]
     },
@@ -121173,7 +121175,7 @@
       "id": "pkg:chord/json#JsonRepresentation",
       "upstreamShapeHash": "sha256:eb037ccd1e012caeee0dd7194fd9feeefcad47c83b83798e881fdc124aef3a85",
       "disposition": "designed-out",
-      "rationale": "chord/src/json.ts:5-17 JsonRepresentation<T> is a recursive conditional/mapped type that computes the strict-JSON type of T at compile time; it has no runtime value. Go values cross JSON through a concrete Go type, so there is no type to compute; CopyJSON returns the strict JSON representation of a value. Designed out as a compile-time type mechanic with no Go meaning.",
+      "rationale": "INTENTION CHECK: JsonRepresentation<T> (json.ts:5-17) guards at compile time that what crosses as JSON is only strict JSON values. The PiG form is a runtime check of the same intention: TestCopyJSONResultIsAlwaysStrictJSON (chord/json_test.go) asserts that whatever CopyJSON accepts comes back as a value IsJsonValue accepts, for every Go kind it normalizes. Only the type-level computation has no Go meaning (Go has no conditional or mapped types).",
       "pigTargets": [
         "chord/json.go#CopyJSON"
       ]
@@ -125692,7 +125694,7 @@
       "id": "pkg:chord/sync#FileResult",
       "upstreamShapeHash": "sha256:d62517869afcf75214f53a1fc70ab4b9c9407415f0bac18361fab5f76571eab9",
       "disposition": "designed-out",
-      "rationale": "chord/src/sync/files.ts:9 FileResult<T> is `{ ok: true; value: T } | { ok: false; error: Error }`, the outcome of a Promise-returning file operation reported as data. Go spells that outcome as the (T, error) results of the call, the language's form of a value-or-error result: SyncFileSystem and SyncFileReader methods return (T, error), and a missing file or directory is an error that is fs.ErrNotExist (IsNotFound) where Pi tests `code: \"not_found\"` (chord/sync/files.go). The detector's rule S13f reads every call that returns FileResult<T> as the Go results (T, error).",
+      "rationale": "INTENTION CHECK: FileResult<T> and isNotFound (sync/files.ts:9-45) guard that an operation reports its failure as data and that a missing file is told apart from every other failure, which the remote relies on (a missing body is none, anything else fails). The intention exists in PiG and is tested: TestIsNotFoundTellsAMissingFileFromOtherFailures (chord/sync/lines_test.go) asserts IsNotFound is true exactly for fs.ErrNotExist, wrapped or joined, and that GetBatch of a missing slot returns none without a failure. Only the data-carrying union has no Go form: the (T, error) results carry it. chord/src/sync/files.ts:9 FileResult<T> is `{ ok: true; value: T } | { ok: false; error: Error }`, the outcome of a Promise-returning file operation reported as data. Go spells that outcome as the (T, error) results of the call, the language's form of a value-or-error result: SyncFileSystem and SyncFileReader methods return (T, error), and a missing file or directory is an error that is fs.ErrNotExist (IsNotFound) where Pi tests `code: \"not_found\"` (chord/sync/files.go). The detector's rule S13f reads every call that returns FileResult<T> as the Go results (T, error).",
       "pigTargets": [
         "chord/sync/files.go#SyncFileSystem"
       ]
@@ -125881,9 +125883,9 @@
         "call:chord/sync/filesystem.go#NewFileSystemSyncRemote"
       ],
       "evidence": [
+        "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures",
         "test:chord/sync/sync_test.go#TestHostPieces",
-        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices",
-        "test:chord/sync/limits_test.go#TestLineLimit"
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -126010,6 +126012,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetBatch"
       ],
       "evidence": [
+        "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -126031,6 +126034,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetBatch"
       ],
       "evidence": [
+        "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
