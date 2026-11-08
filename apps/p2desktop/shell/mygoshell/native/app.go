@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/apps/p2/tui/transcript"
+	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/activity"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/screens"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/sprite"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/surfacehost"
@@ -64,7 +66,12 @@ type App struct {
 	chatErr      error
 	chatList     ui.ListState
 	draftText    string
-	thinking     map[string]bool
+	thinking     map[string]bool // activity rows opened
+	actItems     []activity.Item
+	actFor       *transcript.Item
+	actLen       int
+	actWorking   bool
+	picked       []string // files chosen with the composer's +, by path, until the next frame
 	md           markdown.Options
 	firstText    string
 	firstFor     string
@@ -78,7 +85,8 @@ func New() *App {
 	if mode != "light" && mode != "dark" {
 		mode = ""
 	}
-	return &App{modeChoice: mode}
+	// The web's running text: 16 px on a 26.4 px line.
+	return &App{modeChoice: mode, md: markdown.Options{Theme: &markdown.Theme{FontSize: 16, LineHeight: 1.65}}}
 }
 
 // Attach gives the content its window's redraw (from any goroutine); it implements shell.Content.

@@ -306,3 +306,33 @@ func (a Activity) Face() (words, extra string, label *Label, failed bool) {
 	steps := len(a.Entries)
 	return a.Done(), fmt.Sprintf(" · %d %s", steps, map[bool]string{true: "step", false: "steps"}[steps == 1]), nil, false
 }
+
+// StepState is a step's state for its row: done with its time, how it failed, running.
+func StepState(s Step) string {
+	switch {
+	case s.Status == StepRunning:
+		return "● running"
+	case s.Status == StepError:
+		if s.Tool.Status == transcript.ToolInterrupted {
+			return "✗ interrupted"
+		}
+		if s.Tool.Name == "bash" {
+			if m := exitCode.FindStringSubmatch(s.Tool.Output); m != nil {
+				return "✗ exit " + m[1]
+			}
+		}
+		return "✗ failed"
+	case s.Tool.DurationMs == nil:
+		return "✓"
+	}
+	ms := *s.Tool.DurationMs
+	switch {
+	case ms < 1000:
+		return fmt.Sprintf("✓ %dms", int(ms+0.5))
+	case ms < 60_000:
+		return fmt.Sprintf("✓ %.1fs", ms/1000)
+	}
+	return "✓ " + Elapsed(int64(ms))
+}
+
+var exitCode = regexp.MustCompile(`exited with code (\d+)`)
