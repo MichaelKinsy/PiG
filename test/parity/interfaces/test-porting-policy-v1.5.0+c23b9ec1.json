@@ -3013,11 +3013,9 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Codemode sandbox execution reached on coding turns: the built-in codemode tool runs every script through codemode.NewSandbox (coding/extension/builtin/codemode/execute.go); the inline and remote backends serve the durable and Cloudflare hosts. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, 'Yes go with recommendations'): the cases 'accepts a worker path string' and 'reports a missing worker file as a sandbox error' are designed out because the Go engine runs QuickJS on wazero in process and has no worker file. Carried to 1.2.0: both cases are unchanged in the 1.2.0 'worker host' describe and the Go engine still has no worker file. The 1.2.0 case 'ignores Node --watch notifications from the worker' is designed out on the same mechanic: the in-process wazero QuickJS engine has no worker message channel, so no Node --watch notification can arrive (nodejs/node#65044 is the Node behavior the case guards against). SCRUTINIZED:approved by the lead ruling of 2026-10-11T18:42Z (Q5, commit 4c6bb3897f), confirmed for 1.2.0 by the lead on 2026-10-12.",
+      "rationale": "Codemode sandbox execution reached on coding turns: the built-in codemode tool runs every script through codemode.NewSandbox (coding/extension/builtin/codemode/execute.go); the inline and remote backends serve the durable and Cloudflare hosts. The cases 'accepts a worker path string' and 'reports a missing worker file as a sandbox error', first designed out because the Go engine runs QuickJS on wazero in process and has no worker file, are ported against SandboxOptions.Wasm, the PiG analogue of the worker file (TestWorkerHostAcceptsAModuleFromAFilePath, TestWorkerHostReportsAMissingModuleFileAsASandboxError). The 1.2.0 case 'ignores Node --watch notifications from the worker' is designed out: the in-process wazero QuickJS engine has no worker message channel, so no Node --watch notification can arrive (nodejs/node#65044 is the Node behavior the case guards against). SCRUTINIZED:approved by the lead ruling of 2026-10-11T18:42Z (Q5, commit 4c6bb3897f), confirmed for 1.2.0 by the lead on 2026-10-12.",
       "designedOutCases": [
-        "worker host › accepts a worker path string",
-        "worker host › ignores Node --watch notifications from the worker",
-        "worker host › reports a missing worker file as a sandbox error"
+        "worker host › ignores Node --watch notifications from the worker"
       ]
     },
     {
@@ -4413,7 +4411,7 @@
       "upstreamTestHash": "sha256:e9a25e5e160394561ca1893b5080d447424909678f503a3043bcf99c3dd43bdb",
       "area": "utilities",
       "tags": [],
-      "rationale": "New in Pi 8efd314f (1.3.0+8efd314f): a docs check of the generated models.json reference; no production path. Designed out: PiG has no generated reference doc, and the schemas are byte-identical to Pi's."
+      "rationale": "New in Pi 8efd314f (1.3.0+8efd314f): a docs check of the generated models.json reference; no production path. Ported: configschema.RenderReferences renders the page from the Go schema trees, and the committed docs/site/docs/models-configuration.md is checked against it and against Pi's page."
     },
     {
       "path": "packages/coding-agent/test/remote-catalog-provider.test.ts",
