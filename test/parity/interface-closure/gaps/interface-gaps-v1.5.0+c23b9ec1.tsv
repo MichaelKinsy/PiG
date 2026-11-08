@@ -76,8 +76,6 @@ pkg:chord/.#FacetHost::property:serve::call:1	chord	signature-mismatch	chord/nex
 pkg:chord/.#FacetSelf	chord	child-gap	chord/next/host/host_facet.go#FacetSelf
 pkg:chord/.#FacetSelf::property:contribute	chord	not-exercised	chord/next/host/host_facet.go#FacetSelf.Contribute
 pkg:chord/.#FacetSelf::property:contribute::call:0	chord	undecidable	chord/next/host/host_facet.go#FacetSelf.Contribute
-pkg:chord/.#Factory	chord	no-go-symbol	
-pkg:chord/.#Factory::call:0	chord	child-gap	
 pkg:chord/.#Held	chord	undecidable	chord/next/host/host_reference.go#Held
 pkg:chord/.#Host	chord	child-gap	chord/next/host/host_host.go#Host
 pkg:chord/.#Host::property:activity	chord	undecidable	chord/next/host/host_host.go#Host.Activity
@@ -338,14 +336,6 @@ pkg:chord/.#Tx::property:update	chord	child-gap	chord/next/documents/transaction
 pkg:chord/.#Tx::property:update::call:0	chord	undecidable	chord/next/documents/transaction.go#Tx.Update
 pkg:chord/.#Tx::property:updateWhere	chord	child-gap	chord/next/documents/transaction.go#Tx.UpdateWhere
 pkg:chord/.#Tx::property:updateWhere::call:0	chord	undecidable	chord/next/documents/transaction.go#Tx.UpdateWhere
-pkg:chord/.#WebSocketLike	chord	child-gap	chord/next/link/websocket.go#WebSocketLike
-pkg:chord/.#WebSocketLike::property:addEventListener	chord	child-gap	chord/next/link/websocket.go#WebSocketLike.AddEventListener
-pkg:chord/.#WebSocketLike::property:addEventListener::call:0	chord	signature-mismatch	chord/next/link/websocket.go#WebSocketLike.AddEventListener
-pkg:chord/.#WebSocketLike::property:addEventListener::call:message	chord	signature-mismatch	chord/next/link/websocket.go#WebSocketLike.AddEventListener
-pkg:chord/.#WebSocketLike::property:binaryType	chord	member-missing	chord/next/link/websocket.go#WebSocketLike
-pkg:chord/.#WebSocketLike::property:removeEventListener	chord	member-missing	chord/next/link/websocket.go#WebSocketLike
-pkg:chord/.#WebSocketLike::property:removeEventListener::call:0	chord	member-missing	chord/next/link/websocket.go#WebSocketLike
-pkg:chord/.#WebSocketLike::property:removeEventListener::call:message	chord	member-missing	chord/next/link/websocket.go#WebSocketLike
 pkg:chord/.#WhereNode	chord	type-mismatch	chord/next/store/expression.go#WhereNode
 pkg:chord/.#Writable	chord	child-gap	chord/next/state/writable.go#Writable
 pkg:chord/.#Writable::property:set	chord	not-exercised	chord/next/state/writable.go#Writable.Set
@@ -390,8 +380,6 @@ pkg:chord/.#int::call:0	chord	signature-mismatch	chord/next/store/columns.go#Int
 pkg:chord/.#int::call:1	chord	signature-mismatch	chord/next/store/columns.go#Int
 pkg:chord/.#invalid	chord	child-gap	chord/next/data/errors.go#Invalid
 pkg:chord/.#invalid::call:0	chord	undecidable	chord/next/data/errors.go#Invalid
-pkg:chord/.#isChordError	chord	child-gap	chord/next/data/errors.go#IsChordError
-pkg:chord/.#isChordError::call:0	chord	signature-mismatch	chord/next/data/errors.go#IsChordError
 pkg:chord/.#listDocumentEntries	chord	child-gap	chord/next/store/engine.go#ListDocumentEntries
 pkg:chord/.#listDocumentEntries::call:0	chord	undecidable	chord/next/store/engine.go#ListDocumentEntries
 pkg:chord/.#listDocuments	chord	child-gap	chord/next/store/engine.go#ListDocuments
