@@ -114,8 +114,14 @@ func (s *setup) reload(t *testing.T, facets ...host.Facet) {
 	}
 }
 
+// surfaceNow is the chat surface; call it on the owner loop (inside Do).
+func (s *setup) surfaceNow() *chattui.ChatSurface {
+	surface, _ := s.Runtime.Surface("chat").(*chattui.ChatSurface)
+	return surface
+}
+
 func (s *setup) surface() (surface *chattui.ChatSurface) {
-	s.Do(func() { surface, _ = s.Runtime.Surface("chat").(*chattui.ChatSurface) })
+	s.Do(func() { surface = s.surfaceNow() })
 	return surface
 }
 
@@ -129,7 +135,7 @@ func (s *setup) navigate(conversation int) {
 }
 
 func (s *setup) editorText() (text string) {
-	s.Do(func() { text = s.surface().Editor.Text() })
+	s.Do(func() { text = s.surfaceNow().Editor.Text() })
 	return text
 }
 
