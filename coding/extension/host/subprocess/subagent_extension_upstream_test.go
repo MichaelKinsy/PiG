@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -21,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
 // Ports packages/coding-agent/test/subagent-extension.test.ts at Pi c23b9ec1 (Pi aba42ae6b #8250, 5c808e17b): the subagent example extension
@@ -87,6 +89,7 @@ type subagentRig struct {
 	dir    string
 	host   *Host
 	tool   extension.ToolDefinition
+	loaded *extension.Extension
 	ui     *subagentConfirmUI
 	cancel context.CancelFunc
 	ctx    context.Context
@@ -123,7 +126,13 @@ func newSubagentRig(t *testing.T, cwd string, interactive, trusted bool) *subage
 		t.Fatal(err)
 	}
 	launcher := filepath.Join(dir, "pi-fixture.sh")
-	write(t, launcher, "#!/bin/sh\nexec "+shellQuote(node)+" "+shellQuote(fixture)+" \"$@\"\n")
+	// The pi the example starts is the fixture. The harness entry (argv[1] of the extension) sits between them, and killing it with SIGKILL leaves its
+	// child running, which Pi's direct child would not survive; for the one scenario that waits for that kill the launcher therefore ends its fixture
+	// when it is itself killed, and forwards SIGTERM as the harness entry does. Every other scenario execs the fixture, so its exit status reaches the entry.
+	write(t, launcher, "#!/bin/sh\ncase \"$*\" in\n*'Task: ignore-sigterm:'*) ;;\n*) exec "+shellQuote(node)+" "+shellQuote(fixture)+" \"$@\" ;;\nesac\n"+
+		shellQuote(node)+" "+shellQuote(fixture)+" \"$@\" &\nchild=$!\ntrap 'kill -TERM $child 2>/dev/null' TERM INT HUP\n"+
+		"( while kill -0 $$ 2>/dev/null; do sleep 0.05; done; kill -KILL $child 2>/dev/null ) &\n"+
+		"while kill -0 $child 2>/dev/null; do wait $child; done\n")
 	if err := os.Chmod(launcher, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -149,6 +158,7 @@ func newSubagentRig(t *testing.T, cwd string, interactive, trusted bool) *subage
 		t.Fatal("the subagent extension did not register its tool")
 	}
 	rig.tool = loadedTool.Definition
+	rig.loaded = loaded
 	rig.ctx, rig.cancel = ctx, cancel
 	rig.createProjectAgent(cwd, "worker", "")
 	return rig
@@ -436,29 +446,24 @@ func TestSubagentExampleChildLifecycle(t *testing.T) {
 		}
 	})
 
-	t.Run("returns aborted task details when the signal is already aborted", func(t *testing.T) {
+	// Pi's case passes a signal that is already aborted and expects five aborted results. A PiG call whose context has ended is never sent to the
+	// extension: the host returns the context's error before the example runs, so no child can start either. This asserts both.
+	t.Run("starts no work when the signal is already aborted", func(t *testing.T) {
 		rig := newSubagentRig(t, "", false, false)
 		ctx, abort := context.WithCancel(rig.ctx)
 		abort()
+		starts := filepath.Join(rig.dir, "never-started.txt")
 		tasks := make([]map[string]any, 5)
 		for i := range tasks {
-			tasks[i] = map[string]any{"agent": "worker", "task": "tool-then-final"}
+			tasks[i] = map[string]any{"agent": "worker", "task": "hold:" + starts}
 		}
-		result, err := rig.execute(ctx, map[string]any{"tasks": tasks, "agentScope": "project", "confirmProjectAgents": false}, nil)
-		if err != nil {
-			t.Fatal(err)
+		_, err := rig.execute(ctx, map[string]any{"tasks": tasks, "agentScope": "project", "confirmProjectAgents": false}, nil)
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("error = %v, want the context's cancellation", err)
 		}
-		children := subagentResults(t, result)
-		if len(children) != 5 {
-			t.Fatalf("%d results, want 5", len(children))
-		}
-		for _, child := range children {
-			if child.Status != "aborted" || len(child.Messages) != 0 {
-				t.Fatalf("child = %+v, want aborted without messages", child)
-			}
-		}
-		if !strings.Contains(subagentText(result), "aborted") {
-			t.Fatalf("text = %q", subagentText(result))
+		time.Sleep(500 * time.Millisecond)
+		if started := readLines(starts); len(started) != 0 {
+			t.Fatalf("%d children started for an aborted call", len(started))
 		}
 	})
 
@@ -504,8 +509,8 @@ func TestSubagentExampleRuntimeIntegration(t *testing.T) {
 	t.Run("marks a failed subagent invocation as an error tool result while preserving details", func(t *testing.T) {
 		rig := newSubagentRig(t, "", false, false)
 		result := rig.mustExecute(singleTask("error", nil))
-		if !result.IsError {
-			t.Fatalf("result is not an error: %+v", result)
+		if !rig.toolResultMarksError(result) {
+			t.Fatalf("the tool_result hook did not mark the result an error: %+v", result)
 		}
 		if got := subagentResults(t, result)[0].ErrorMessage; got != "provider evidence" {
 			t.Fatalf("errorMessage = %q, want provider evidence", got)
@@ -517,10 +522,29 @@ func TestSubagentExampleRuntimeIntegration(t *testing.T) {
 		result, err := rig.execute(rig.ctx, map[string]any{
 			"agent": "worker", "task": "single", "tasks": []map[string]any{{"agent": "worker", "task": "parallel"}},
 		}, nil)
-		if err == nil && !result.IsError {
-			t.Fatalf("an invalid mode combination returned a success: %+v", result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !rig.toolResultMarksError(result) {
+			t.Fatalf("an invalid mode combination was not marked an error: %+v", result)
 		}
 	})
+}
+
+// toolResultMarksError is what the session records as the tool result's isError: the example reports failure through its tool_result hook
+// (`return { isError: true }` for details.isError), which the runner emits after the call.
+func (r *subagentRig) toolResultMarksError(result agent.AgentToolResult) bool {
+	r.t.Helper()
+	runner := inproc.NewRunner([]extension.Extension{*r.loaded}, r.dir)
+	patched, err := runner.EmitToolResult(r.ctx, extension.CustomToolResultEvent{
+		ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "test", Input: map[string]any{}, Content: nil},
+		ToolName:            "subagent",
+		Details:             result.Details,
+	})
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	return result.IsError || (patched != nil && patched.IsError != nil && *patched.IsError)
 }
 
 // Covers what Pi's `does not pass a Windows Bun virtual entry path to the child` asserts: the child the example starts is the fixture, not the
