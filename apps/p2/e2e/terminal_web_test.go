@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	"github.com/MichaelKinsy/PiG/apps/p2/web"
 	sessionscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
@@ -117,6 +119,15 @@ func withTerminal(t *testing.T, touch bool, run func(page *terminalPage)) {
 	t.Helper()
 	if p2test.ChromiumBinary(t.Context()) == "" {
 		t.Skip("no Chromium: set CHROMIUM_BIN (or put chromium-docker on the PATH)")
+	}
+	bundle, err := web.Embedded()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The terminal button opens the panel in the workspace (Pi's `terminalPlacement`) or at the bottom of the chat; both are
+	// slots another plugin hosts, and the workspace plugin's web facet is not in the bundle yet.
+	if !slices.Contains(bundle.Plugins, "workspace") {
+		t.Skip("the web bundle has no workspace plugin (its web facet is the workspace lane's): the terminal panel has no host to open in")
 	}
 	p2test.UseTerminalDaemon(t)
 	enabled := true
