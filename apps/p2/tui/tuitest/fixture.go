@@ -70,6 +70,17 @@ func (f *Fixture) Send(data string) {
 	f.Do(func() { f.TUI.HandleTerminalInput(data) })
 }
 
+// Burst sends every input in one owner-loop turn, so no asynchronous result (an autocomplete answer, a posted continuation)
+// lands between two of them: Pi's tests call `terminal.sendInput` synchronously in a row and rely on the same.
+func (f *Fixture) Burst(inputs ...string) {
+	f.T.Helper()
+	f.Do(func() {
+		for _, data := range inputs {
+			f.TUI.HandleTerminalInput(data)
+		}
+	})
+}
+
 // Poll waits for cond (run on the owner loop) to hold.
 func (f *Fixture) Poll(cond func() bool) {
 	f.T.Helper()

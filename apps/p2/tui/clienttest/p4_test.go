@@ -242,8 +242,7 @@ func TestSessionSelectorScopesThreadedSubagentsMessageHitsArchiveAndRestoreRenam
 	pollContains(t, s.Fixture, "Rename session")
 	s.Send(ctrlA) // line start, then Ctrl+K: the prompt is empty
 	s.Send(ctrlK)
-	typed(s.Fixture, "Renamed")
-	s.Send(enter)
+	typedEnter(s.Fixture, "Renamed")
 	tuitest.Poll(t, func() bool { return s.calls.count("rename") == 1 })
 	if got := s.calls.get("rename")[0].([2]any)[1]; got != "Renamed" {
 		t.Fatalf("rename = %v", got)
