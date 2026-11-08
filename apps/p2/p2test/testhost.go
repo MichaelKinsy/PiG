@@ -63,9 +63,16 @@ type Stub struct {
 	// Factory makes the members of the object for params; principal is the caller of a remote type (the host's own for a
 	// local one).
 	Factory func(params *delta.JsonObject, principal p2runtime.Principal, self StubSelf) StubMembers
+	// Refuse, when set, runs before Factory: a non-nil error refuses the hold (a server that forbids this principal).
+	Refuse func(params *delta.JsonObject, principal p2runtime.Principal) error
 }
 
 func (stub Stub) implementation(params *delta.JsonObject, principal p2runtime.Principal, self host.Self) (contracts.Implementation, error) {
+	if stub.Refuse != nil {
+		if err := stub.Refuse(params, principal); err != nil {
+			return contracts.Implementation{}, err
+		}
+	}
 	members := stub.Factory(params, principal, StubSelf{self})
 	implementation := contracts.Implementation{Variant: members.Variant}
 	implementation.Members.State = map[string]chord.Watchable[delta.JsonValue]{}
@@ -331,6 +338,18 @@ func (h *TestHost) Reload(base host.Facet, facets []host.Facet) error {
 
 // ReloadFacets reloads the host with facets in place of the loaded ones, under the host's own base.
 func (h *TestHost) ReloadFacets(facets []host.Facet) error { return h.Reload(h.base, facets) }
+
+// StubFacet is a facet that serves stubs: a dependency a host under test needs, on a host that takes facets only (WorkerHost).
+func StubFacet(stubs ...Stub) host.Facet {
+	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+		for _, stub := range stubs {
+			if err := stub.serve(facet); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
 
 // WorkerHost is the worker of session, a host of its own at the session's address with a link to this server host, which
 // stamps it the worker's principal (as a real worker's link is): the registries of a worker and the given facets are loaded

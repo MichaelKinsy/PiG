@@ -2,6 +2,7 @@ package transcript
 
 import (
 	"container/list"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/jsvalue"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
@@ -203,7 +205,7 @@ func resultTool(result ai.ToolResultMessage, name string) ToolView {
 		Args:    jsvalue.NewObject(),
 		Status:  ToolDone,
 		Output:  resultText(result.Content),
-		Details: jsvalue.FromDelta(result.Details),
+		Details: detailsOf(result.Details),
 	}
 	if result.IsError {
 		view.Status = ToolError
@@ -218,6 +220,23 @@ func resultTool(result ai.ToolResultMessage, name string) ToolView {
 		view.DurationMs = &duration
 	}
 	return view
+}
+
+// detailsOf is a tool result's details as the cards read them: a decoded result holds them as Go maps and slices, which the cards' value type does not read.
+func detailsOf(details any) any {
+	switch details.(type) {
+	case nil, *delta.JsonObject:
+		return jsvalue.FromDelta(details)
+	}
+	text, err := json.Marshal(details)
+	if err != nil {
+		return nil
+	}
+	value, err := jsvalue.Parse(text)
+	if err != nil {
+		return nil
+	}
+	return value
 }
 
 // shellItems is a `p2.shell` entry as a marker: `$ command`, and the output with how it ended.
@@ -389,7 +408,7 @@ func BuildTranscript(view harness.TranscriptView, display EntryDisplayOf, fillin
 			// Live slots belong to the current tool round; an unfinished older call is interrupted.
 			slot, hasSlot := slots[part.ID]
 			callList := nestedCalls(part.ID, nested[part.ID], hasResult || !current || !busy)
-			args := jsvalue.ObjectFromDelta(part.Arguments)
+			args := CallArguments(part)
 			if hasResult {
 				tool := resultTool(result, part.Name)
 				tool.Args = args
@@ -624,3 +643,22 @@ func artifactsOf(docs harness.ViewDocs) []runtime.ArtifactInfo {
 	}
 	return infos
 }
+
+// CallArguments are a tool call's arguments as the cards read them: an object in the member order the model sent (an empty one when the call has none).
+func CallArguments(call ai.ToolCall) *jsvalue.Object {
+	text, err := call.ArgumentsJSON()
+	if err != nil {
+		return jsvalue.NewObject()
+	}
+	value, err := jsvalue.Parse(text)
+	if err != nil {
+		return jsvalue.NewObject()
+	}
+	if object, ok := value.(*jsvalue.Object); ok {
+		return object
+	}
+	return jsvalue.NewObject()
+}
+
+// DocOf is the document of kind in docs (a view's `pi.live`, `pi.agent`), nil when absent.
+func DocOf[T any](docs harness.ViewDocs, kind string) *T { return doc[T](docs, kind) }

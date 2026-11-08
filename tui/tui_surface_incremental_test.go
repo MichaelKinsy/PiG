@@ -510,6 +510,7 @@ func TestSurfacePollsEveryIsDirtyOverride(t *testing.T) {
 		"codingagent.CustomEntryComponent":      true, // SurfaceLive
 		"codingagent.SessionSelectorComponent":  true, // SurfaceLive
 		"codingagent.SettingsSelectorComponent": true, // SurfaceLive
+		"components.CustomEditor":               true, // SurfaceLive (p2's editor, whose indicator animates without invalidating it)
 		"tui.ToolExecutionComponent":            true, // the surface tracks its result component
 		"tui.StaticText":                        true, // never dirty, embeds no invalidatable
 		"subprocess.toolRenderProxy":            true, // embeds no invalidatable

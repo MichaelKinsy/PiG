@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
+	terminalstui "github.com/MichaelKinsy/PiG/apps/p2/plugins/terminals/tui"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 )
 
@@ -16,8 +17,8 @@ import (
 var ghosttyWasm []byte
 
 func init() {
-	server, worker := ServerFacet, WorkerFacet
-	hosts.RegisterPlugin(hosts.Plugin{Name: "terminals", Server: &server, Worker: &worker})
+	server, worker, tuiFacet := ServerFacet, WorkerFacet, terminalstui.Facet
+	hosts.RegisterPlugin(hosts.Plugin{Name: "terminals", Server: &server, Worker: &worker, TUI: &tuiFacet})
 	hosts.RegisterSubcommand(HostCommand, func(args []string) int {
 		if len(args) < 1 {
 			_, _ = os.Stderr.WriteString("usage: p2 terminals-host <data directory>\n")
