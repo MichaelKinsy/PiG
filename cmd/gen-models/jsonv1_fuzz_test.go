@@ -18,5 +18,5 @@ func FuzzDecodeJSONModelGroupMatchesV1(f *testing.F) {
 
 func BenchmarkDecodeJSONModelGroup(b *testing.B) {
 	doc := []byte(`{"chat:a":{"type":"chat","id":"a","provider":"p","api":"x"},"chat:b":{"type":"chat","id":"b","provider":"p","api":"x"}}`)
-	jsonseed.Bench(b, doc, func(d []byte) { decodeJSONModelGroupV1(d, map[string]string{}) }, func(d []byte) { decodeJSONModelGroup(d, map[string]string{}) })
+	jsonseed.Bench(b, doc, func(d []byte) { _, _ = decodeJSONModelGroupV1(d, map[string]string{}) }, func(d []byte) { _, _ = decodeJSONModelGroup(d, map[string]string{}) })
 }
