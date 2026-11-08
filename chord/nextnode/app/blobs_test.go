@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -104,7 +105,7 @@ func TestBlobFilesPutABlobIntoAnotherHostsDirectoryAsAHardLinkNeverOverAnExistin
 
 func isEEXIST(err error) bool {
 	for err != nil {
-		if errno, ok := err.(syscall.Errno); ok {
+		if errno, ok := errors.AsType[syscall.Errno](err); ok {
 			return errno == syscall.EEXIST
 		}
 		unwrapper, ok := err.(interface{ Unwrap() error })

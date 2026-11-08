@@ -227,9 +227,17 @@ async function load(request, context) {
 		onError: (error) => port.control({ event: "error", error: hostError(error) }),
 	});
 	const runtime = createPluginRuntime();
+	// The names the runtime offered the host (`TestPlugin` tells a plugin that failed before the host, in its build or
+	// evaluation, from one whose setup failed in it: a plugin that never reached the host was not offered).
+	const offered = [];
+	const hostLoad = host.load.bind(host);
+	host.load = (facets, loadContext) => {
+		offered.push(...facets.map(({ name }) => name));
+		return hostLoad(facets, loadContext);
+	};
 	// What the host's work runs under: the app's telemetry parent, when it gave an adapter.
 	const base = telemetry === undefined ? BACKGROUND_CONTEXT : withTelemetry(telemetry, BACKGROUND_CONTEXT);
-	hosted = { host, runtime, store, peer: request.peer, base };
+	hosted = { host, runtime, store, peer: request.peer, base, core, scripts: request.scripts, offered };
 	// The host's keep-alive counts, for the app that supervises it (NodeOptions.OnActivity): now, and at each change.
 	port.control({ event: "activity", counts: host.activity.value });
 	void host.activity.watch(BACKGROUND_CONTEXT).then((watch) =>
@@ -266,6 +274,7 @@ function hostError(error) {
 
 async function reload(request, context) {
 	if (hosted === undefined) throw new Error("reload: no host is loaded");
+	hosted.scripts = request.scripts;
 	const report = await hosted.runtime.reload(hosted.host, request.scripts, context);
 	return {
 		plugins: report.plugins,
@@ -294,7 +303,8 @@ async function revoke(request, context) {
 // The reference RPC and contracts as data (bridge.mjs, contracts.mjs): the control requests of `NodeHost.Get` and the Go host's `Bridged` facets.
 const { createBridge, GO_PACKAGE } = await import("./bridge.mjs");
 const bridge = createBridge({ port, wireError, host: () => hosted?.host });
-const operations = { load, reload, revoke, ...bridge.operations };
+const { testOperations } = await import("./testing.mjs");
+const operations = { load, reload, revoke, ...bridge.operations, ...testOperations({ hosted: () => hosted, chord: chordNext }) };
 
 port.on("message", (message) => {
 	if (message instanceof Uint8Array) return;

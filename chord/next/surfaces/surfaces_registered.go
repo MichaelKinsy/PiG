@@ -55,11 +55,12 @@ func RegisteredSource(plugin, digest, source string) string {
 
 // EvaluateRegistered runs script's function and returns its facet (its default export). Its require answers modules only (the
 // build kept nothing else external for a client kind); anything else fails naming the plugin. It returns what the script
-// returns, and an error when its default export is no facet.
+// throws as its error (a panic, and a missing function, are recovered as one: client.ts `entryOf.prepare` catches what
+// evaluateRegistered throws), and an error when its default export is no facet.
 func EvaluateRegistered(script RegisteredScript, modules ClientModules) (host.Facet, error) {
 	where := fmt.Sprintf("plugin %q", script.Plugin)
 	var module Module
-	err := script.Run(func(specifier string) (any, error) {
+	err := runScript(script, func(specifier string) (any, error) {
 		if value, ok := modules[specifier]; ok {
 			return value, nil
 		}
@@ -73,4 +74,19 @@ func EvaluateRegistered(script RegisteredScript, modules ClientModules) (host.Fa
 		return facet, nil
 	}
 	return host.Facet{}, fmt.Errorf("%s: its default export is not a facet (defineFacet)", where)
+}
+
+// runScript runs script's function under a recover: what a plugin's script throws, a Go panic or a call of a nil function
+// among it, is its error, as the TypeError or the throw of JavaScript that Pi's client catches. A trust boundary: plugin code.
+func runScript(script RegisteredScript, require func(specifier string) (any, error), module *Module) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if recoveredErr, ok := recovered.(error); ok {
+				err = recoveredErr
+			} else {
+				err = fmt.Errorf("%v", recovered)
+			}
+		}
+	}()
+	return script.Run(require, module)
 }

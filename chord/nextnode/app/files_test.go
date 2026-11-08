@@ -42,7 +42,7 @@ func TestSpacesKeepTheSamePathApartInTwoSpacesRefuseANameOutsideTheRule(t *testi
 	}
 	for _, space := range []string{"", "Upper", "a/b", strings.Repeat("x", 65)} {
 		_, err := f.putErr(space, "a.txt", []byte("x"))
-		wantCode(t, err, data.CodeInvalid)
+		_ = wantCode(t, err, data.CodeInvalid)
 	}
 	f.close()
 }
@@ -120,7 +120,7 @@ func TestPathsPageAListingAcrossItsFoldersAndFilesWithCursors(t *testing.T) {
 		t.Fatalf("entry = %s", jsonOf(t, entry))
 	}
 	_, err := f.call("list", "space", "shared", "folder", "", "after", "nope")
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	folders.close()
 	f.close()
 }
@@ -129,7 +129,7 @@ func TestPathsRefuseBadPathsAFileWhereAFolderIsAndAFolderWhereAFileIs(t *testing
 	f := filesOf(t)
 	for _, path := range []string{"", "/a", "a/", "a//b", "a/../b", ".", "a/./b", "a\x00b", strings.Repeat("x", 1025)} {
 		_, err := f.putErr("shared", path, []byte("x"))
-		wantCode(t, err, data.CodeInvalid)
+		_ = wantCode(t, err, data.CodeInvalid)
 	}
 	f.put("docs/a.txt", "a")
 	_, err := f.putErr("shared", "docs", []byte("x"))
@@ -141,9 +141,9 @@ func TestPathsRefuseBadPathsAFileWhereAFolderIsAndAFolderWhereAFileIs(t *testing
 		t.Fatalf("details = %s", jsonOf(t, got.Details))
 	}
 	_, err = f.call("mkdir", "space", "shared", "path", "docs/a.txt")
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	_, err = f.call("begin", "space", "shared", "path", "docs", "mime", "x", "source", "t")
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	f.close()
 }
 
@@ -188,13 +188,13 @@ func TestPathsMoveAFolderWithEverythingUnderItRefuseATargetThatExistsOrLiesInsid
 		t.Fatalf("version = %v", got.Value("version"))
 	}
 	_, err := f.call("move", "space", "shared", "from", "old", "to", "old/inner")
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	_, err = f.call("move", "space", "shared", "from", "old", "to", "taken.txt")
 	if e := wantCode(t, err, data.CodeInvalid); jsonOf(t, e.Details) != `{"conflict":"taken.txt"}` {
 		t.Fatalf("details = %s", jsonOf(t, e.Details))
 	}
 	_, err = f.call("move", "space", "shared", "from", "missing", "to", "x")
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	f.close()
 }
 
@@ -253,7 +253,7 @@ func TestVersionsRemovingTheNewestMakesTheNextOlderOneTheNewest(t *testing.T) {
 		t.Fatalf("version = %v, want 3", got.Value("version"))
 	}
 	_, err := f.call("read", "id", str(v2, "id"), "offset", float64(0), "length", float64(1))
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	f.close()
 }
 
@@ -509,9 +509,9 @@ func TestChunkedUploadsWriteALargeFileInChunksBeginAppendAtTheStoredOffsetFinish
 		t.Fatalf("tail = %v", tail)
 	}
 	_, err = f.call("append", "upload", upload, "offset", float64(0), "bytes", chunk)
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	_, err = f.callRaw("uploaded", upload)
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	f.close()
 	// The routine sweeping expired uploads ends with the object, quietly.
 	if errors := f.errors.all(); len(errors) != 0 {
@@ -593,7 +593,7 @@ func TestChunkedUploadsCapTheUploadsUnderWayPerObjectPastItBeginIsRefusedBusyAnE
 		}
 	}
 	_, err := f.call("begin", write(3)...)
-	wantCode(t, err, data.CodeUnavailable, data.ReasonBusy)
+	_ = wantCode(t, err, data.CodeUnavailable, data.ReasonBusy)
 	if after, ok := openDescriptors(t); counted && ok && after-before > 3 {
 		t.Fatalf("descriptors grew by %d, want at most 3", after-before)
 	}
@@ -610,7 +610,7 @@ func TestChunkedUploadsCancelAnUploadItsBytesNoLongerCountItsSlotIsFree(t *testi
 	f.must("append", "upload", upload, "offset", float64(0), "bytes", make([]byte, 90))
 	f.mustRaw("cancel", upload)
 	_, err := f.callRaw("uploaded", upload)
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	if _, err := f.putErr("shared", "p", make([]byte, 90)); err != nil {
 		t.Fatal(err)
 	}
@@ -658,24 +658,24 @@ func TestCapsRefuseAFileOverThePerFileCapAndWritesOverTheTotalACopyAddsNoBytes(t
 		return f.putErr("shared", path, make([]byte, size))
 	}
 	_, err := putSized("a", 1001)
-	wantCode(t, err, data.CodeTooLarge)
+	_ = wantCode(t, err, data.CodeTooLarge)
 	big, err := putSized("a", 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = putSized("b", 501)
-	wantCode(t, err, data.CodeTooLarge)
+	_ = wantCode(t, err, data.CodeTooLarge)
 	f.must("copy", "id", str(big.(*delta.JsonObject), "id"), "space", "shared", "path", "a-copy")
 	// An upload under way counts against the total.
 	upload := beginUpload(t, f, "u")
 	f.must("append", "upload", upload, "offset", float64(0), "bytes", make([]byte, 400))
 	_, err = putSized("c", 101)
-	wantCode(t, err, data.CodeTooLarge)
+	_ = wantCode(t, err, data.CodeTooLarge)
 	if _, err := putSized("c", 100); err != nil {
 		t.Fatal(err)
 	}
 	_, err = f.call("append", "upload", upload, "offset", float64(400), "bytes", make([]byte, 1))
-	wantCode(t, err, data.CodeTooLarge)
+	_ = wantCode(t, err, data.CodeTooLarge)
 	// Removing frees room.
 	f.must("removePath", "space", "shared", "path", "c")
 	if _, err := putSized("d", 100); err != nil {
@@ -689,17 +689,18 @@ func TestCapsRefuseAPutAndAReadOfMoreThan4MiB(t *testing.T) {
 	limit := 4 * 1024 * 1024
 	id := str(f.put("f", "0123456789"), "id")
 	_, err := f.call("read", "id", id, "offset", float64(0), "length", float64(limit+1))
-	wantCode(t, err, data.CodeTooLarge)
+	_ = wantCode(t, err, data.CodeTooLarge)
 	_, err = f.putErr("shared", "g", make([]byte, limit+1))
-	wantCode(t, err, data.CodeTooLarge)
+	_ = wantCode(t, err, data.CodeTooLarge)
 	f.close()
 }
 
 func TestSummaryCountsASpacesFilesVersionsAndBytesAndKeepsItsNewestVersions(t *testing.T) {
 	f := filesOf(t)
-	a1 := f.put("docs/a.txt", "1")
-	a2 := f.put("docs/a.txt", "22")
-	b := f.put("b.txt", "333")
+	// Each write names its time (see the newest-20 test): Pi's puts differ in the millisecond, Go's may not, and equal times order by id.
+	a1 := f.put("docs/a.txt", "1", "created", float64(1_000))
+	a2 := f.put("docs/a.txt", "22", "created", float64(2_000))
+	b := f.put("b.txt", "333", "created", float64(3_000))
 	want := `{"files":2,"versions":3,"bytes":6,"newest":[` + jsonOf(t, b) + `,` + jsonOf(t, a2) + `,` + jsonOf(t, a1) + `]}`
 	if got := jsonOf(t, f.summary("shared")); got != want {
 		t.Fatalf("summary = %s, want %s", got, want)
@@ -724,8 +725,10 @@ func TestSummaryCountsASpacesFilesVersionsAndBytesAndKeepsItsNewestVersions(t *t
 
 func TestSummaryKeepsTheNewest20AndStaysAcrossARestart(t *testing.T) {
 	first := filesOf(t)
+	// Pi's puts are slow enough to differ in the millisecond their `created` has; a Go put is not, and equal times order by the random
+	// id: each write names its time (an import's `created`), a millisecond apart.
 	for index := range 25 {
-		first.put(fmt.Sprintf("f%d", index), "x")
+		first.put(fmt.Sprintf("f%d", index), "x", "created", float64(1_700_000_000_000+index))
 	}
 	summary := jsonOf(t, first.summary("shared"))
 	newest := first.summary("shared").Value("newest").([]any)

@@ -53,7 +53,7 @@ func cssModuleGoldens(t *testing.T) []cssModuleGolden {
 // scopedOf is the CSS module css scoped as plugin "p" at `/d/x.module.css`: its stylesheet and its mapping as the facet's
 // module embeds it, or the failure's text.
 func scopedOf(evaluator *mappingEvaluator, css string) (sheet, mapping, failure string) {
-	scoped, err := scopeCSSModule("p", "/d", "/d/x.module.css", css, evaluator)
+	scoped, err := scopeCSSModule("p", "/d", "/d/x.module.css", css, evaluator, context.Background())
 	if err != nil {
 		return "", "", err.Error()
 	}
@@ -68,7 +68,7 @@ func TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase(t *test
 	if len(goldens) < 3000 {
 		t.Fatalf("%d golden cases, want 3000 or more", len(goldens))
 	}
-	evaluator := newMappingEvaluator(NodeOptions{}, context.Background())
+	evaluator := newMappingEvaluator(NodeOptions{})
 	defer evaluator.close()
 	differing := 0
 	for i, golden := range goldens {

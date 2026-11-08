@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode/utf16"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -64,8 +65,11 @@ type BuildOptions struct {
 	// PublicPath is where the app serves a browser build's assets: the URL prefix their imports evaluate to (nil: `/`).
 	PublicPath *string
 	// Node is how the Node subprocess that reads the mapping of a CSS module is started (NodeOptions.Command and ReadyTimeout;
-	// the Node is found as the plugin host's is): one per build that has a CSS module.
+	// the Node is found as the plugin host's is): one per build that has a CSS module, unless the build is the component's,
+	// which shares one.
 	Node NodeOptions
+	// mappings is the component's evaluator of CSS module mappings (nil: the build starts its own).
+	mappings *mappingEvaluator
 }
 
 // BuildInput is a file a build read, with the hash of the bytes it handed its tool (the watcher's inputs).
@@ -160,7 +164,10 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 		return BuiltFacet{}, err
 	}
 	rules := newImportRules(plugin, kind, entry, options, ctx)
-	defer rules.mappings.close()
+	if options.mappings == nil {
+		rules.mappings = newMappingEvaluator(options.Node)
+		defer rules.mappings.close()
+	}
 	if wrongEntry := rules.checkEntry(named, entry); wrongEntry != "" {
 		return failed([]string{wrongEntry}), nil
 	}
@@ -214,8 +221,8 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 	}
 	result := api.Build(buildOptions)
 	// A CSS module whose mapping could not be read because ctx ended is an abort, not a failed build.
-	if cause := rules.mappings.abort(); cause != nil {
-		return BuiltFacet{}, cause
+	if rules.aborted.Load() {
+		return BuiltFacet{}, context.Cause(ctx)
 	}
 	if len(result.Errors) > 0 {
 		errors := make([]string, len(result.Errors))
@@ -444,6 +451,8 @@ type importRules struct {
 	scoped map[string]string
 	// mappings reads the mapping of each CSS module (one Node subprocess, started by the first).
 	mappings *mappingEvaluator
+	// aborted is set when ctx ended a read of a mapping: the build is aborted, not failed.
+	aborted atomic.Bool
 	// importers is the first importer of every file resolved, by file.
 	importers map[string]string
 	// versions is the API versions imported, in the order they were first imported.
@@ -462,7 +471,7 @@ func newImportRules(own Plugin, kind, entry string, options BuildOptions, ctx co
 		readInputs:   map[string]string{},
 		readCopied:   map[string]bool{},
 		scoped:       map[string]string{},
-		mappings:     newMappingEvaluator(options.Node, ctx),
+		mappings:     options.mappings,
 		importers:    map[string]string{},
 	}
 	for _, each := range options.Plugins {
@@ -605,11 +614,14 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 // cssModule is the CSS module file with contents as the facet imports it: a module whose default export is the class
 // mapping, importing the scoped stylesheet (ScopeCSSModule), which the build collects with the facet's other CSS.
 func (rules *importRules) cssModule(file, contents string) (api.OnLoadResult, error) {
-	scoped, err := scopeCSSModule(rules.own.Name, rules.own.Dir, file, contents, rules.mappings)
+	scoped, err := scopeCSSModule(rules.own.Name, rules.own.Dir, file, contents, rules.mappings, rules.ctx)
 	if err != nil {
 		var failure *cssModuleError
 		if errors.As(err, &failure) {
 			return api.OnLoadResult{Errors: failure.messages}, nil
+		}
+		if rules.ctx.Err() != nil {
+			rules.aborted.Store(true)
 		}
 		return api.OnLoadResult{}, err
 	}

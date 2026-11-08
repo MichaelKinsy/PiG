@@ -67,8 +67,8 @@ func OpenDataDir(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := checkDirectoryOwner(dataDir, info); err != nil {
-		return "", err
+	if owner, ok := ownerOf(info); ok && owner != os.Getuid() {
+		return "", fmt.Errorf("startServer: the data directory %s belongs to another user (uid %d)", dataDir, owner)
 	}
 	return dataDir, nil
 }
@@ -149,6 +149,7 @@ func encodedKey(key string) string {
 			out.WriteByte(b)
 		}
 	}
+	//portlint:allow utf16units encodeURIComponent output is ASCII, so its byte length is its UTF-16 length
 	if encoded := out.String(); len(encoded) <= readableKey {
 		return encoded
 	}

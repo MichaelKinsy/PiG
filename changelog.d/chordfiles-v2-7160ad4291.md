@@ -5,4 +5,4 @@
 
 ### Fixed
 
-- Chord: a table read made while its object ended no longer races with the end. <!-- fix: tablehandle-assertlive -->
+- Chord: a table read made while its object ended no longer races with the end. <!-- fix: 7160ad4291 -->

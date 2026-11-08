@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -45,6 +46,10 @@ type fixture struct {
 	host   host.Host
 	files  *host.Reference
 	errors *errorLog
+
+	// lastPut is the millisecond of the latest put: the next one waits for the clock to pass it, so no two versions share a
+	// `created` (Pi's awaits take more than a millisecond between puts; Go's do not, and the summary orders by `created`).
+	lastPut int64
 }
 
 // fixtureOptions are what a test varies: the host directory (to reopen one), the caps and the uploads under way.
@@ -54,6 +59,8 @@ type fixtureOptions struct {
 	Uploads int
 	// Extra loads more facets on the same host.
 	Extra []host.HostFacet
+	// Store is the store file's name in Dir: `store.sqlite` unless it names another (a worker's kit store is `kit.sqlite`).
+	Store string
 }
 
 func openStoreAt(t testing.TB, path string) *store.ChordStore {
@@ -82,7 +89,11 @@ func filesOf(t *testing.T, options ...fixtureOptions) *fixture {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	chordStore := openStoreAt(t, filepath.Join(dir, "store.sqlite"))
+	storeFile := opts.Store
+	if storeFile == "" {
+		storeFile = "store.sqlite"
+	}
+	chordStore := openStoreAt(t, filepath.Join(dir, storeFile))
 	errs := &errorLog{}
 	h, err := host.CreateHost(host.HostOptions{Store: chordStore, OnError: errs.push})
 	if err != nil {
@@ -156,7 +167,11 @@ func (f *fixture) put(path, text string, extra ...any) *delta.JsonObject {
 // putIn is put in space.
 func (f *fixture) putIn(space, path, text string, extra ...any) *delta.JsonObject {
 	f.t.Helper()
+	for time.Now().UnixMilli() <= f.lastPut {
+		runtime.Gosched()
+	}
 	value, err := f.putErr(space, path, []byte(text), extra...)
+	f.lastPut = time.Now().UnixMilli()
 	if err != nil {
 		f.t.Fatalf("put %s:%s: %v", space, path, err)
 	}

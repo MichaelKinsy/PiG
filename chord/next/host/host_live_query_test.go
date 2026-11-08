@@ -254,7 +254,7 @@ func TestLiveQueryPublicationAnInsertAnUpdateAndADeleteReachAWatchAsOpsInTheComm
 	if got := lqJSON(t, b.items(t)); got != `[{"id":1,"text":"A"}]` {
 		t.Fatalf("items = %s", got)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, b.host)
 }
 
@@ -274,7 +274,7 @@ func TestLiveQueryPublicationKeepsTheWindowAtItsLimitANewerRowPushesTheOldestOut
 	if len(ops) != 1 || ops[0] != `[["p",[],0,0,[{"id":3,"text":"t3"}]],["p",[],2,1,[]]]` {
 		t.Fatalf("frames = %v", ops)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, b.host)
 }
 
@@ -316,7 +316,7 @@ func TestLiveQueryPublicationACommitWritingAnotherTableRunsNoQueryAndPublishesNo
 	if got := len(frames.all()); got != 1 {
 		t.Fatalf("calls = %d, want 1", got)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, b.host)
 }
 
@@ -331,8 +331,13 @@ func TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver(t *te
 		t.Fatalf("objects = %+v, failed = %+v, plugins = %+v", report.Objects, report.Failed, report.Plugins)
 	}
 	turn(b.host)
-	// The old attempt detaches once the swap's teardown ran (Pi's `await flushed()`).
+	// The old attempt detaches once the restart's teardown ran (Pi's `await flushed()`); the new attempt's query serves
+	// once it is live (a restart's new attempt starts after the old one's drain).
 	eventually(t, "the old attempt's query to detach", func() bool { _, err := queries.live[0].Value(); return err != nil })
+	eventually(t, "the new attempt's query to serve its limit", func() bool {
+		ids := idsOf(b.items(t))
+		return len(ids) == 2 && ids[0] == 3 && ids[1] == 2
+	})
 	equalInts(t, "ids", idsOf(b.items(t)), 3, 2)
 	runs := b.counts()["chord.query.runs"]
 	b.put(t, 4, "t4")
@@ -423,7 +428,7 @@ func TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHea
 	if state := b.board.State().Value(); state.Kind != RefStateLive {
 		t.Fatalf("state = %v, want live", state.Kind)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, b.host)
 }
 
