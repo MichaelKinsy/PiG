@@ -62,3 +62,9 @@ plugins/ports/activity.css
 plugins/locations/contract.ts
 plugins/search/contract.ts
 plugins/prompt/contract.ts
+plugins/workspace/web.tsx
+plugins/workspace/Workspace.tsx
+plugins/workspace/file.tsx
+plugins/workspace/fuzzy.ts
+plugins/prompt/web.tsx
+plugins/prompt/composer.ts
