@@ -135,7 +135,7 @@ func TestDependencyLiteralProofAcceptsANodeRuntimeSource(t *testing.T) {
 		}
 		return root, mirror
 	}
-	environment, err := loadEnv(fixture(t, "24.22.2\n"))
+	environment, err := loadEnv(fixture(t, "24.22.1\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
