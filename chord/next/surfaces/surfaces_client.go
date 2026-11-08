@@ -412,7 +412,10 @@ func (u *updates) work() {
 	}
 }
 
-// retryLater tries set again after the next pause (1 s doubling to 30 s).
+// retryLater tries set again after the next pause (1 s doubling to 30 s). The retry's cancel is in place before its timer
+// exists: Pi's `#retry = { cancel: after(…) }` is one step, and the two steps here must not leave a gap a newer set could land
+// in unseen (its watch call then finds nothing to cancel). A newer set that lands while the timer is being set cancels it the
+// moment it exists.
 func (u *updates) retryLater(set *ScriptSet) {
 	u.mu.Lock()
 	if u.pause == 0 {
@@ -421,8 +424,18 @@ func (u *updates) retryLater(set *ScriptSet) {
 		u.pause = min(u.pause*2, updateRetryMaxMs)
 	}
 	pause := u.pause
-	u.mu.Unlock()
 	var cancelled bool
+	var cancelTimer func()
+	u.retry = func() {
+		u.mu.Lock()
+		cancelled = true
+		cancel := cancelTimer
+		u.mu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
+	}
+	u.mu.Unlock()
 	cancel := u.options.Environment.After(pause, func() {
 		u.mu.Lock()
 		if cancelled {
@@ -434,13 +447,12 @@ func (u *updates) retryLater(set *ScriptSet) {
 		u.enqueue(set)
 	})
 	u.mu.Lock()
-	u.retry = func() {
-		u.mu.Lock()
-		cancelled = true
-		u.mu.Unlock()
+	cancelTimer = cancel
+	replaced := cancelled
+	u.mu.Unlock()
+	if replaced {
 		cancel()
 	}
-	u.mu.Unlock()
 }
 
 // apply applies set: a new base calls Outdated; else the changed scripts fetched, their new stylesheets loaded, the host
