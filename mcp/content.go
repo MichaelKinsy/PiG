@@ -93,7 +93,7 @@ type contentBlockWire struct {
 func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 	*b = ContentBlock{raw: append(json.RawMessage(nil), data...)}
 	var members map[string]json.RawMessage
-	if err := deepFallback(json.Unmarshal(data, &members), data, &members); err != nil {
+	if err := deepFallback(json.Unmarshal(data, &members), data, &members, func(shallow []byte) error { return json.Unmarshal(shallow, &members) }); err != nil {
 		return nil
 	}
 	str := func(name string) (string, bool) {
@@ -125,7 +125,7 @@ func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 	}
 	if raw, ok := members["annotations"]; ok {
 		var a ContentAnnotations
-		if deepFallback(json.Unmarshal(raw, &a), raw, &a) == nil {
+		if deepFallback(json.Unmarshal(raw, &a), raw, &a, func(shallow []byte) error { return json.Unmarshal(shallow, &a) }) == nil {
 			b.Annotations = &a
 		}
 	}
@@ -136,7 +136,7 @@ func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 // lenientResource decodes the embedded resource of a block, keeping the members that have their declared type.
 func lenientResource(raw json.RawMessage) *ResourceContents {
 	var members map[string]json.RawMessage
-	if deepFallback(json.Unmarshal(raw, &members), raw, &members) != nil || members == nil {
+	if deepFallback(json.Unmarshal(raw, &members), raw, &members, func(shallow []byte) error { return json.Unmarshal(shallow, &members) }) != nil || members == nil {
 		return nil
 	}
 	str := func(name string) *string {
@@ -198,13 +198,13 @@ type CallToolResult struct {
 // (client.ts passes the server's value through and tools.ts tests `result.isError`), and no member is rejected for its type.
 func (r *CallToolResult) UnmarshalJSON(data []byte) error {
 	var members map[string]json.RawMessage
-	if err := deepFallback(json.Unmarshal(data, &members), data, &members); err != nil {
+	if err := deepFallback(json.Unmarshal(data, &members), data, &members, func(shallow []byte) error { return json.Unmarshal(shallow, &members) }); err != nil {
 		return err
 	}
 	*r = CallToolResult{StructuredContent: members["structuredContent"], Meta: members["_meta"]}
 	if raw, ok := members["content"]; ok {
 		var blocks []ContentBlock
-		if err := deepFallback(json.Unmarshal(raw, &blocks), raw, &blocks); err == nil {
+		if err := deepFallback(json.Unmarshal(raw, &blocks), raw, &blocks, func(shallow []byte) error { return json.Unmarshal(shallow, &blocks) }); err == nil {
 			r.Content = blocks
 		}
 	}
@@ -248,7 +248,7 @@ func jsString(raw json.RawMessage, present bool) string {
 		return "undefined"
 	}
 	var v any
-	if err := deepFallback(json.Unmarshal(raw, &v), raw, &v); err != nil {
+	if err := deepFallback(json.Unmarshal(raw, &v), raw, &v, func(shallow []byte) error { return json.Unmarshal(shallow, &v) }); err != nil {
 		return "undefined"
 	}
 	return jsValueString(v)
@@ -343,7 +343,7 @@ func blockToLLMContent(block ContentBlock) LLMContent {
 // is a TypeError upstream, which has no Go result, so it renders the unsupported placeholder.
 func decodedBlockToLLMContent(block ContentBlock) LLMContent {
 	var members map[string]json.RawMessage
-	_ = deepFallback(json.Unmarshal(block.raw, &members), block.raw, &members)
+	_ = deepFallback(json.Unmarshal(block.raw, &members), block.raw, &members, func(shallow []byte) error { return json.Unmarshal(shallow, &members) })
 	text := func(name string) string { return stringOrUndefined(members[name]) }
 	member := func(name string) string {
 		raw, ok := members[name]
@@ -361,7 +361,7 @@ func decodedBlockToLLMContent(block ContentBlock) LLMContent {
 		return LLMContent{Type: LLMContentTypeText, Text: member("name") + ": " + member("uri")}
 	case "resource":
 		var resource map[string]json.RawMessage
-		if deepFallback(json.Unmarshal(members["resource"], &resource), members["resource"], &resource) != nil || resource == nil {
+		if deepFallback(json.Unmarshal(members["resource"], &resource), members["resource"], &resource, func(shallow []byte) error { return json.Unmarshal(shallow, &resource) }) != nil || resource == nil {
 			return LLMContent{Type: LLMContentTypeText, Text: "[unsupported MCP content resource]"}
 		}
 		if raw, ok := resource["text"]; ok {
