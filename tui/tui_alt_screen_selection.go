@@ -303,7 +303,7 @@ func (t *TuiAltScreen) dispatchAutoScrollTick(fn func()) {
 // autoScrollSelection.
 func (t *TuiAltScreen) autoScrollSelection(gen uint64) {
 	t.mu.Lock()
-	if t.stopped || gen != t.selectionAutoScrollGen {
+	if t.stopped.Load() || gen != t.selectionAutoScrollGen {
 		t.mu.Unlock()
 		return
 	}
@@ -327,7 +327,7 @@ func (t *TuiAltScreen) autoScrollSelection(gen uint64) {
 	// have cancelled this generation while we were scrolling. Bailing instead
 	// of re-arming prevents resurrecting cleared selection state and leaking a
 	// zombie timer.
-	if t.stopped || gen != t.selectionAutoScrollGen {
+	if t.stopped.Load() || gen != t.selectionAutoScrollGen {
 		t.mu.Unlock()
 		return
 	}
