@@ -2,18 +2,19 @@
 
 Upstream Pi calls a widget component's ``invalidate()`` when the theme or the tool-expansion state changes, and the component reads the new value at its next render. A subprocess extension has no component to invalidate, so it subscribes (``on_theme_change``, ``on_tools_expanded_change``).
 
-Handlers run on a worker thread, one delivery at a time in the order the changes arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call. A handler that raises is reported on stderr and does not stop the others. An unsubscribe changes only later deliveries: a delivery already queued still reaches the handlers subscribed when the change arrived.
+Handlers run on a worker thread, one delivery at a time in the order the changes arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call. A handler that raises is reported in the extension's log and does not stop the others. An unsubscribe changes only later deliveries: a delivery already queued still reaches the handlers subscribed when the change arrived.
 """
 
 from __future__ import annotations
 
 import collections
 import itertools
-import sys
 import threading
 import traceback
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
+
+from ._diagnostic import diagnose
 
 if TYPE_CHECKING:
     from . import Extension
@@ -65,7 +66,7 @@ class StateFeed:
             with self._lock:
                 self._queue.clear()
                 self._running = False
-            print(f"pig: start {self._what} change handlers: {exc}", file=sys.stderr)
+            diagnose(f"pig: start {self._what} change handlers: {exc}" + "\n")
 
     def _run(self) -> None:
         extension = self._extension
@@ -82,7 +83,7 @@ class StateFeed:
                         handler(value)
                     except Exception:  # noqa: BLE001 - one handler's failure must not stop the others
                         if not extension._shutdown.is_set():
-                            print(f"pig: {self._what} change handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
+                            diagnose(f"pig: {self._what} change handler failed:\n{traceback.format_exc()}")
         except BaseException:
             with self._lock:
                 self._queue.clear()

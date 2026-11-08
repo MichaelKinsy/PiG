@@ -511,3 +511,5 @@ src/web/transcript.ts
 src/web/use-chat-scroll.ts
 src/web/virtual-list.ts
 tsconfig.json
+plugins/terminals/protocol.ts
+plugins/terminals/wasm.d.ts

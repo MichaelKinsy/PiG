@@ -184,7 +184,7 @@ func (e *Extension) registerProviderNow(c *Context, conn *conn, name string, con
 	if err != nil {
 		return fmt.Errorf("provider %s: encode config: %w", name, err)
 	}
-	result, err := hostCallFor(c, conn, "registerProvider", declaration)
+	result, err := e.hostCallFor(c, conn, "registerProvider", declaration)
 	err = callResultError(result, err)
 	if err != nil {
 		e.providerMu.Lock()
@@ -222,7 +222,7 @@ func (r ModelRegistry) UnregisterProvider(name string) error {
 
 // unregisterProviderNow removes a provider through the host, as part of request c or on conn, and then drops the callbacks the extension held for it.
 func (e *Extension) unregisterProviderNow(c *Context, conn *conn, name string) error {
-	result, err := hostCallFor(c, conn, "unregisterProvider", map[string]string{"name": name})
+	result, err := e.hostCallFor(c, conn, "unregisterProvider", map[string]string{"name": name})
 	if err = callResultError(result, err); err != nil {
 		return err
 	}
