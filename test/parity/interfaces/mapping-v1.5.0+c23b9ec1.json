@@ -249717,8 +249717,8 @@
       ],
       "evidence": [
         "test:env/process_test.go#TestOpenProcessReportsDaemonsReleasedBeforeTheOperationAsNotSupported",
-        "test:env/process_test.go#TestOpenProcessDeliversLargeOutputCompletely",
-        "test:env/process_test.go#TestOpenProcessFailsForAProgramThatDoesNotExist"
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessKillsAProgramThatDoesNotEndAfterItsStdinEnds",
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessRunsInitializeAndToolsListThenClosesStdinAndTheProgramExits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -249740,8 +249740,8 @@
       ],
       "evidence": [
         "test:env/process_test.go#TestOpenProcessReportsDaemonsReleasedBeforeTheOperationAsNotSupported",
-        "test:env/process_test.go#TestOpenProcessDeliversLargeOutputCompletely",
-        "test:env/process_test.go#TestOpenProcessFailsForAProgramThatDoesNotExist"
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessKillsAProgramThatDoesNotEndAfterItsStdinEnds",
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessRunsInitializeAndToolsListThenClosesStdinAndTheProgramExits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -249956,7 +249956,9 @@
         "call:env/process.go#OpenProcess"
       ],
       "evidence": [
-        "test:env/process_test.go#TestOpenProcessPipesStdinToTheProgramAndItsStdoutAndStderrBackSeparately"
+        "test:env/process_test.go#TestOpenProcessPipesStdinToTheProgramAndItsStdoutAndStderrBackSeparately",
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessKillsAProgramThatDoesNotEndAfterItsStdinEnds",
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessRunsInitializeAndToolsListThenClosesStdinAndTheProgramExits"
       ]
     },
     {
@@ -254839,7 +254841,9 @@
         "call:mcp/client.go#Client.Connect"
       ],
       "evidence": [
-        "test:mcp/pipe_pi_test.go#TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall"
+        "test:mcp/pipe_pi_test.go#TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall",
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessKillsAProgramThatDoesNotEndAfterItsStdinEnds",
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessRunsInitializeAndToolsListThenClosesStdinAndTheProgramExits"
       ]
     },
     {
@@ -254919,7 +254923,9 @@
         "call:mcp/client.go#Client.initialize"
       ],
       "evidence": [
-        "test:mcp/pipe_pi_test.go#TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall"
+        "test:mcp/pipe_pi_test.go#TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall",
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessKillsAProgramThatDoesNotEndAfterItsStdinEnds",
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessRunsInitializeAndToolsListThenClosesStdinAndTheProgramExits"
       ]
     },
     {
@@ -256083,7 +256089,7 @@
       "evidence": [
         "test:mcp/errors_abort_test.go#TestMcpAbortErrorHasPiDefaultsNameAndNoCause",
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+        "test:env/error_classes_test.go#TestEnvErrorClassesCarryTheirNames"
       ]
     },
     {
@@ -256221,8 +256227,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:env/error_classes_test.go#TestEnvErrorClassesCarryTheirNames",
+        "test:env/error_members_test.go#TestSshErrorClassMembers"
       ]
     },
     {
@@ -257399,8 +257405,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:env/error_classes_test.go#TestEnvErrorClassesCarryTheirNames",
+        "test:env/error_members_test.go#TestSshErrorClassMembers"
       ]
     },
     {
@@ -257547,8 +257553,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:env/error_classes_test.go#TestEnvErrorClassesCarryTheirNames",
+        "test:env/error_members_test.go#TestSshErrorClassMembers"
       ]
     },
     {
@@ -257731,8 +257737,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:env/error_classes_test.go#TestEnvErrorClassesCarryTheirNames",
+        "test:env/error_members_test.go#TestSshErrorClassMembers"
       ]
     },
     {
@@ -258773,8 +258779,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:env/error_classes_test.go#TestEnvErrorClassesCarryTheirNames",
+        "test:env/error_members_test.go#TestSshErrorClassMembers"
       ]
     },
     {
@@ -259088,8 +259094,8 @@
       ],
       "evidence": [
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:env/error_classes_test.go#TestEnvErrorClassesCarryTheirNames",
+        "test:env/error_members_test.go#TestSshErrorClassMembers"
       ]
     },
     {
@@ -260001,9 +260007,9 @@
         "public-api:mcp/pipe.go#PipeTransportOptions"
       ],
       "evidence": [
-        "test:mcp/pipe_pi_test.go#TestPipeTransportCloseFailsWhenTheProgramDoesNotExitAfterTheKill",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
-        "test:mcp/pipe_pi_test.go#TestPipeTransportDropsMessagesOverMaxMessageBytesCompleteOrNot"
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessKillsAProgramThatDoesNotEndAfterItsStdinEnds",
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessRunsInitializeAndToolsListThenClosesStdinAndTheProgramExits",
+        "test:mcp/pipe_pi_test.go#TestPipeTransportCloseFailsWhenTheProgramDoesNotExitAfterTheKill"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -260024,7 +260030,7 @@
         "public-api:mcp/pipe.go#PipeTransportOptions.CloseTimeoutMs"
       ],
       "evidence": [
-        "test:mcp/pipe_pi_test.go#TestPipeTransportKeepsACopyOfItsOptions"
+        "test:env/process_mcp_pipe_test.go#TestPipeTransportOverARemoteProcessKillsAProgramThatDoesNotEndAfterItsStdinEnds"
       ]
     },
     {
@@ -266268,7 +266274,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:mcp/oauth/sign_in.go#McpSignInStart.Redirect"
+        "call:mcp/oauth/sign_in.go#StartMcpSignIn"
       ],
       "evidence": [
         "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderLeavesAPendingSignInUsableWhenTheRefreshFails",
@@ -266290,7 +266296,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:mcp/oauth/sign_in.go#McpSignInStart.Redirect"
+        "call:mcp/oauth/sign_in.go#startBrowserStep"
       ],
       "evidence": [
         "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderDoesNotRegisterAClientToRefresh",
