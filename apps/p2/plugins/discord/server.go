@@ -225,7 +225,7 @@ func serveDiscord(_ *delta.JsonObject, principal data.Principal, self host.Self)
 		State: map[string]chord.Watchable[delta.JsonValue]{
 			"bots": host.Expose(store.Member("bots")), "bindings": host.Expose(store.Member("bindings")),
 		},
-		Methods: map[string]contracts.MethodFunction{
+		Methods: suspending(map[string]contracts.MethodFunction{
 			"addBot": forward("addBot"), "setBotToken": forward("setBotToken"), "removeBot": forward("removeBot"),
 			"server": forward("server"), "mcpServers": forward("mcpServers"), "link": forward("link"),
 			"unlink": forward("unlink"), "updateLink": forward("updateLink"),
@@ -535,7 +535,7 @@ func serveStore(_ *delta.JsonObject, raw host.Self) (contracts.Implementation, e
 					}
 				})
 			},
-		},
+		}),
 	}}, nil
 }
 

@@ -6,7 +6,6 @@
 package e2e_test
 
 import (
-	"encoding/json"
 	"context"
 	"fmt"
 	"net/http"
@@ -60,21 +59,7 @@ func (r *discordRig) must(method string, args delta.JsonValue) *delta.JsonObject
 	r.t.Helper()
 	value, err := r.ingress(method, args)
 	if err != nil {
-		workers, _ := r.f.Fixture.Server.Host.Root(func(ctx host.Ctx) (any, error) {
-			hosts, err := ctx.Get(p2runtime.Hosts, delta.NewJsonObject(0), host.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-			return hosts.Member("workers").Value()
-		}, p2test.Background, host.RootOptions{})
-		encoded, _ := json.Marshal(workers)
-		for _, line := range p2runtime.ProcessLogs.Lines(hosts.SessionPrefix + r.session) {
-			r.t.Log(line)
-		}
-		r.t.Log(p2runtime.ProcessLogs.Notices())
-		log, _ := os.ReadFile("/tmp/discord-dbg.log")
-		r.t.Logf("dbg log:\n%s", log)
-		r.t.Fatalf("%s: %v (workers %s)", method, err, encoded)
+		r.t.Fatalf("%s: %v", method, err)
 	}
 	return object(value)
 }
@@ -240,6 +225,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 	r := &discordRig{t: t, f: f, cdnURL: cdn.URL, session: f.Session}
 
 	t.Run("places a batch as the Discord author's input with its attachment, and reads the turn's answer", func(t *testing.T) {
+		r.t = t
 		in := r.input("discord:500", "[Discord #general (Guild): 1 message since the last delivery]\nAda: @Pi read this", 0, "")
 		in.Set("files", []any{delta.JsonObjectOf("url", cdn.URL+"/notes.txt", "name", "notes.txt", "size", float64(20), "key", "discord:500:0", "ref", "500")})
 		in.Set("lock", noLock())
@@ -281,6 +267,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 	})
 
 	t.Run("a turn's answer lists the files its conversation offered during it, readable through the ingress", func(t *testing.T) {
+		r.t = t
 		if err := os.WriteFile(filepath.Join(f.Fixture.Workspace, "created.txt"), []byte("made for Discord\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -314,6 +301,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 	})
 
 	t.Run("end to end: a mention, a turn that calls send_file, and the reply in Discord carries the file", func(t *testing.T) {
+		r.t = t
 		if err := os.WriteFile(filepath.Join(f.Fixture.Workspace, "created.txt"), []byte("# Rules\nBe brief.\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -350,6 +338,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 	})
 
 	t.Run("the owner's Discord view: updateLink needs a linked session; pages of version 2 still bind", func(t *testing.T) {
+		r.t = t
 		view, err := p2test.HoldIn(f.Owner, discordcontract.Discord, delta.NewJsonObject(0), "owner")
 		if err != nil {
 			t.Fatal(err)
@@ -369,6 +358,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 	})
 
 	t.Run("tells a linked session's agents where their answer goes; unlinking takes it back", func(t *testing.T) {
+		r.t = t
 		r.ended(r.must("deliver", r.input("discord:1000", "hello", 0, "")).Value("submissionId"))
 		said := sectionsOf(r.view(1, func(view delta.JsonValue) bool { return sectionsOf(view)["discord"] != "" }))["discord"]
 		for _, want := range []string{
@@ -398,6 +388,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 	})
 
 	t.Run("stop aborts the running turn and withdraws the queued inputs, as the web's Stop", func(t *testing.T) {
+		r.t = t
 		running := r.must("deliver", r.input("discord:700", "slow-tool", 0, ""))
 		queued := r.must("deliver", r.input("discord:701", "queued behind", 0, ""))
 		if err := p2test.Poll(func() (bool, error) { return strings.Contains(r.command("status"), "Working: yes"), nil }, 60*time.Second, "the turn to run"); err != nil {
@@ -426,6 +417,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 	})
 
 	t.Run("stop also aborts a running compaction (a task of its own), and says so", func(t *testing.T) {
+		r.t = t
 		if err := p2test.Poll(func() (bool, error) { return !strings.Contains(r.command("status"), "Compacting: yes"), nil }, 60*time.Second, "the earlier compaction to end"); err != nil {
 			t.Fatal(err)
 		}
@@ -448,6 +440,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 	})
 
 	t.Run("status reports the cost so far from the cost sheet's data, and the last turn's", func(t *testing.T) {
+		r.t = t
 		r.ended(r.must("deliver", r.input("discord:950", "what does it cost", 0, "")).Value("submissionId"))
 		sheet, err := p2test.HoldIn(f.Owner, chatcontract.ChatCosts, delta.JsonObjectOf("session", r.session, "conversation", float64(1)), "viewer")
 		if err != nil {
@@ -471,6 +464,7 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 	})
 
 	t.Run("forks a thread's subagent from the main conversation's last answer before the thread", func(t *testing.T) {
+		r.t = t
 		thread := r.must("thread", delta.JsonObjectOf("name", "Release Plan!", "before", float64(time.Now().UnixMilli())))
 		conversation := thread.Value("conversation").(float64)
 		if conversation == 1 {

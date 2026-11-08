@@ -93,7 +93,6 @@ func discordSection() *durable.PromptSection {
 }
 
 var workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
-	dbg("facet")
 	if err := p2runtime.Contribute(facet, "p2.discord-extension", func(self host.StoreSelf) error {
 		p2runtime.ContributeKeyed(self, p2runtime.Extensions, p2runtime.Entry(extensionName, &p2runtime.P2Extension{
 			Extension: &durable.Extension{Name: extensionName, Sections: []*durable.PromptSection{discordSection()}},
@@ -108,7 +107,6 @@ var workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) 
 func floatOf(object *delta.JsonObject, key string) float64 { f, _ := object.Value(key).(float64); return f }
 
 func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) (contracts.Implementation, error) {
-	dbg("DBG serveIngress")
 	if who, err := p2runtime.FromChord(principal); err != nil || !isServer(who) {
 		return contracts.Implementation{}, p2runtime.Forbidden("server only")
 	}
@@ -130,32 +128,16 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 		}
 		return scope.Get(chatcontract.Conversation, delta.JsonObjectOf("conversation", float64(id)), host.GetOptions{})
 	}
-	return contracts.Implementation{Variant: "server", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+	return contracts.Implementation{Variant: "server", Members: contracts.VariantImplementation{Methods: suspending(map[string]contracts.MethodFunction{
 		"deliver": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-			dbg("DBG deliver start")
 			in := argsOf(args)
-			dbg("session()")
 			durableSession, err := session()
 			if err != nil {
 				return nil, err
 			}
-			_, snapErr := durable.Snapshot(ctx, durableSession, p2runtime.SessionLockDoc)
-			dbg(fmt.Sprint("snapshot done ", snapErr))
-			_, commitErr := durableSession.Commit(ctx, func(tx durable.Tx) (any, error) { return nil, nil })
-			dbg(fmt.Sprint("empty commit done ", commitErr))
-			dbg("MirrorLock")
-			defer func() {
-				if recovered := recover(); recovered != nil {
-					dbg(fmt.Sprint("PANIC ", recovered))
-					panic(recovered)
-				}
-			}()
-			mirrorErr := sessions.MirrorLock(ctx, durableSession, in.Value("lock"))
-			dbg(fmt.Sprint("MirrorLock done ", mirrorErr))
-			if mirrorErr != nil {
-				return nil, mirrorErr
+			if err := sessions.MirrorLock(ctx, durableSession, in.Value("lock")); err != nil {
+				return nil, err
 			}
-			dbg("DBG lock mirrored")
 			var target int
 			var thread *string
 			where := argsOf(in.Value("context"))
@@ -187,7 +169,6 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			}); err != nil {
 				return nil, err
 			}
-			dbg("DBG committed")
 			type uploaded struct{ id, name string }
 			var ids []uploaded
 			downloads, _ := in.Value("files").([]any)
@@ -201,14 +182,12 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 					ids = append(ids, uploaded{id, str(file, "name")})
 				}
 			}
-			dbg("DBG downloaded")
 			// The Files sheet lists them as it lists the composer's uploads.
 			if len(ids) > 0 {
 				if _, err := mirror.Call("push", p2runtime.UploadsSpace, ctx); err != nil {
 					return nil, err
 				}
 			}
-			dbg("DBG pushed")
 			var resolved delta.JsonValue
 			if len(ids) > 0 {
 				keys := make([]any, len(ids))
@@ -219,7 +198,6 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 					return nil, err
 				}
 			}
-			dbg("DBG resolved")
 			author := argsOf(in.Value("author"))
 			who := delta.JsonObjectOf("kind", "guest", "id", "discord:"+str(author, "id"), "name", str(author, "name")+" · Discord")
 			listed := make([]any, len(ids))
@@ -237,7 +215,6 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			if err != nil {
 				return nil, err
 			}
-			dbg("DBG submitting")
 			submitted, err := chat.Call("submit", submit, ctx)
 			if err != nil {
 				return nil, err
@@ -317,7 +294,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			}
 			return delta.JsonObjectOf("conversation", float64(child)), nil
 		},
-	}}}, nil
+	})}}, nil
 }
 
 func isServer(who p2runtime.Principal) bool { _, ok := who.(p2runtime.ServerPrincipal); return ok }
