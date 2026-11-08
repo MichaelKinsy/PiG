@@ -39,7 +39,7 @@ import (
 //     attaching it, so a close on another goroutine cannot reach it first.
 
 // UpgradeAdmission is what admitted an upgrade: the allowed host or the relay it came through (local: neither), and its
-// principal.
+// principal (nil for a public socket).
 type UpgradeAdmission struct {
 	// Allowed is the allowed host, "" for none.
 	Allowed   string
@@ -226,7 +226,7 @@ func (u *Upgrades) Socket(w nethttp.ResponseWriter, r *nethttp.Request, admissio
 			return nil, nil
 		}
 		// The scope sealed (its socket closed, the host closing) is no failure of the handler.
-		go func() { _, _ = h.Root(run, scope, host.RootOptions{Principal: admission.Principal}) }()
+		go func() { _, _ = h.Root(run, scope, host.RootOptions{Principal: admission.Principal, Anonymous: admission.Principal == nil}) }()
 		u.recheck(connection)
 	})
 }

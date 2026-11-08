@@ -433,6 +433,10 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 			return served{answer: c.refusal(503, admitted, router, head)}
 		}
 	}
+	// Deny by default (decision "The app kit, point 3"): no plugin code runs for nobody unless the route is public.
+	if principal == nil && !match.Public {
+		return served{answer: c.refusal(401, admitted, router, head)}
+	}
 	answered := make(chan Answer, 1)
 	scope := make(chan struct{})
 	rootCtx := chordctx.WithAbortSignal(c.base, controller)
@@ -665,10 +669,6 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		refuse(w, 503)
 		return
 	}
-	if principal == nil {
-		refuse(w, 403)
-		return
-	}
 	// The deliveries before the router check: a change delivered after it that misses the connection is seen once it is kept.
 	seen := c.upgrades.admitting()
 	defer c.upgrades.settled(seen)
@@ -680,6 +680,11 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 	}
 	admission2 := UpgradeAdmission{Allowed: admitted.Allowed, Relay: admitted.Relay, Principal: principal}
 	if links := c.options.Links; links != nil && webRequest.Path() == links.Path {
+		// The links endpoint always needs a principal: a link acts as one.
+		if principal == nil {
+			refuse(w, 401)
+			return
+		}
 		options := links.Options
 		if links.OptionsFunc != nil {
 			var err error
@@ -705,6 +710,10 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		return
 	case NoMatch:
 		refuse(w, 404)
+		return
+	}
+	if principal == nil && !match.Public {
+		refuse(w, 401)
 		return
 	}
 	webRequest.params = match.Params
