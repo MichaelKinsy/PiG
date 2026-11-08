@@ -122498,8 +122498,23 @@
     },
     {
       "id": "pkg:chord/app#WorkerOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c42b08fb1dfd4af728c5679ce8585b1defdd05a837a48d375a9e5a6497d42bc4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c42b08fb1dfd4af728c5679ce8585b1defdd05a837a48d375a9e5a6497d42bc4",
+      "rationale": "Derived by the interface gap detector: WorkerOptions is Go chord/nextnode/app/worker.go#WorkerOptions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/worker.go#WorkerOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/worker.go#StartWorker"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/app/worker.go#StartWorker"
+      ]
     },
     {
       "id": "pkg:chord/context#awaitWithContext",

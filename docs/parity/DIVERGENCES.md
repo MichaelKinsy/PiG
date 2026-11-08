@@ -4119,3 +4119,39 @@ Evidence: `TestDelegateServesTheUnionOfTheHostsTypes...`, `TestDelegateWhatTheDe
 Parity allowance: none.
 
 SCRUTINIZED:approved
+
+## D607 The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime run in that subprocess, not in the Go process
+
+What: Pi's plugin runtime (`packages/chord/src/node/plugins/runtime.ts`, `plugins.ts`) is handed a live `Host` and evaluates each plugin script in the same process (`evaluateFacet` with `vm.Script`, `mapStack` through a registry of source maps, `createPluginRuntime()` taking nothing). PiG's plugins are JavaScript and a Go process cannot run them, so Pi's files run verbatim in a Node subprocess (`chord/nextnode/plugins/node/pi/chord/src/node/plugins/`) and the Go side keeps what is data: `PluginRuntime.Load/Reload` and `Plugins.Load/Reload` start the subprocess host themselves (`NodeHost`) and take the options of that start (`RuntimeLoad.Core` is a module file, `Modules` are module paths) where Pi takes a `Host`, core `PluginFacet`s and live module values. `RolloutStep.Reload` also receives `applied`, the set the rollout left (Pi reads `plugins.current(kind)` atomically after its `ship`). `evaluateFacet`, `EvaluateOptions`, `BuiltScript`, `mapStack` and `HostPackages` have no Go form: Go sees the evaluation's failure as `*NodeError` with its `Stack`.
+
+Why: a JavaScript facet, module instance or `Host` cannot cross the process boundary, and a second evaluator of plugins in the Go process is forbidden (see D502, D605).
+
+Scope: `chord/nextnode/plugins` (`plugins_runtime.go`, `plugins_plugins.go`, `plugins_node*.go`, `node/`), `chord/nextnode/surfaces` (surfaces build after the server's listen, D462).
+
+Owner decision: APPROVED for 0.8.0 (owner, 2026-11-08 17:29Z): the live-JS rows evaluateFacet, EvaluateOptions, BuiltScript, mapStack and HostPackages stay under D607 with their intention checks; follow-up after 0.8.0: Load takes a host as Pi does. SCRUTINIZED:approved 2026-11-08.
+
+Call-site markers: `chord/nextnode/plugins/plugins_runtime.go` (`PluginRuntime`, `RuntimeLoad`), `chord/nextnode/plugins/plugins_plugins.go` (`Plugins.Load`, `Plugins.Step`, `RolloutStep`).
+
+Evidence: `evaluate.test.ts`, `stack.test.ts` and `runtime.test.ts` ported through the subprocess (`plugins_evaluate_test.go`, `plugins_stack_test.go`, `plugins_runtime_test.go`); `plugins.test.ts` (per plugin at startup and reload, rollout, current sets, the app's API and required roots, fix round 1, GC) through `RuntimeLoad` and the Node host (`plugins_plugins_test.go`, `plugins_endtoend_test.go`, examples 35 and 38 in `plugins_examples_test.go`). The designed-out rows `PluginRuntime`/`Plugins` load, reload and step, `RuntimeLoad` (both packages) and `RolloutStep` carry the intention check in `test/parity/interface-closure/autobind/reviewed-decisions.json`.
+
+Parity allowance: none beyond the forms above.
+
+Remove when: PiG gets an in-process evaluator of plugins or Pi evaluates plugins out of process.
+
+## D608 A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and `Build` builds the base bundle, where Pi's `webSurface`/`tuiSurface` await it
+
+What: Pi's `webSurface(server, options, context)` and `tuiSurface(...)` (`packages/chord/src/node/surfaces/web.ts`, `tui.ts`) build the base bundle and take the kind's first set before they resolve, and the app awaits them before the server's load; the result carries `base` and `inputs`. PiG's `NewWebSurface` and `NewTuiSurface` (`chord/nextnode/surfaces`) return the surface at once and its `Build` runs after the server's listen (owner decision "A" of the kit, `chord/nextnode/app/app_bases.go`: nothing is kept between starts, the server answers meanwhile and each request needing the base waits for it; a failed build answers 503 and is reported `base_build`). The base and the inputs are read from `Build`'s result (`SurfaceBuilt`) or `Built`. The facet is two Go facets (`Facet`, `Scripts`), as a Go facet is opaque.
+
+Why: the first set is published to the scripts object of the loaded server host (`PublishTo`), which needs the host loaded; Pi's facet publishes from its own `setup`.
+
+Scope: `chord/nextnode/surfaces` (`surfaces_web.go`, `surfaces_tui.go`, `surfaces_build.go`), `chord/nextnode/app` (`app_surfaces.go`, `app_bases.go`).
+
+Owner decision: APPROVED for 0.8.0 (owner, 2026-11-08 17:29Z); follow-up after 0.8.0: eager-build surfaces, design back to the owner first. SCRUTINIZED:approved 2026-11-08.
+
+Call-site markers: `chord/nextnode/surfaces/surfaces_web.go` (`NewWebSurface`), `chord/nextnode/surfaces/surfaces_tui.go` (`NewTuiSurface`).
+
+Evidence: `chord/nextnode/surfaces/surfaces_build_test.go`, `chord/nextnode/app/app_web_browser_test.go`.
+
+Parity allowance: none beyond the forms above.
+
+Remove when: a Go facet can publish from its own setup (the first set before the host is served).

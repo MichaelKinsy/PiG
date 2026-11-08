@@ -525,6 +525,25 @@
       ]
     },
     {
+      "id": "BF-03fa91c",
+      "title": "chord: fix the principalAttributes wiring and import groups",
+      "symptom": "chord: fix the principalAttributes wiring and import groups",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "03fa91c5d2",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-040088e",
       "title": "`ai.CloudflareStreams` drops the deferred fetch and cancel operations of the API it wraps, as Pi's…",
       "symptom": "It passed them through without materializing the Cloudflare endpoint placeholders.",
@@ -54209,6 +54228,14 @@
       "id": "D605",
       "title": "The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other",
       "entry": "BF-D605"
+    },
+    {
+      "id": "D607",
+      "title": "The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime…"
+    },
+    {
+      "id": "D608",
+      "title": "A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and…"
     }
   ],
   "exemptCommits": {
