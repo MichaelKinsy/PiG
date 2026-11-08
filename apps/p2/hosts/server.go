@@ -330,11 +330,7 @@ func newNonce() string {
 // required.
 func workerValues(h host.Host, session string, ctx context.Context) (*delta.JsonObject, error) {
 	result, err := h.Root(func(rootCtx host.Ctx) (any, error) {
-		source, err := h.Registry(rootCtx, p2runtime.WorkerInitValues.Registry, host.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-		table, err := p2runtime.WorkerInitValues.Table(source)
+		table, err := p2runtime.WorkerInitValues.Load(rootCtx, h)
 		if err != nil {
 			return nil, err
 		}
@@ -390,11 +386,7 @@ type serverState struct {
 // which wins over a guest cookie; without it, a guest cookie wins over the cookieless loopback fallback, so a browser that
 // joined a share on loopback is that guest everywhere.
 func (s *serverState) authenticate(request *http.Request, origin p2runtime.RequestOrigin, ctx host.Ctx) (p2runtime.Principal, error) {
-	source, err := s.host.Registry(ctx, p2runtime.Authenticators.Registry, host.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	table, err := p2runtime.Authenticators.Table(source)
+	table, err := p2runtime.Authenticators.Load(ctx, s.host)
 	if err != nil {
 		return nil, err
 	}
@@ -435,11 +427,7 @@ func (s *serverState) authenticate(request *http.Request, origin p2runtime.Reque
 }
 
 func (s *serverState) credentialAccess(request *http.Request, ctx host.Ctx) (*p2runtime.RequestAccess, error) {
-	source, err := s.host.Registry(ctx, p2runtime.RequestResolvers.Registry, host.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	table, err := p2runtime.RequestResolvers.Table(source)
+	table, err := p2runtime.RequestResolvers.Load(ctx, s.host)
 	if err != nil {
 		return nil, err
 	}
@@ -529,11 +517,7 @@ func (s *serverState) upgrade(response http.ResponseWriter, request *http.Reques
 		return
 	}
 	_, err = s.host.Root(func(ctx host.Ctx) (any, error) {
-		source, err := s.host.Registry(ctx, p2runtime.Upgrades.Registry, host.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-		table, err := p2runtime.Upgrades.Table(source)
+		table, err := p2runtime.Upgrades.Load(ctx, s.host)
 		if err != nil {
 			return nil, err
 		}
@@ -633,11 +617,7 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 		}
 		return nil
 	}
-	source, err := s.host.Registry(ctx, p2runtime.Routes.Registry, host.GetOptions{})
-	if err != nil {
-		return err
-	}
-	routes, err := p2runtime.Routes.Table(source)
+	routes, err := p2runtime.Routes.Load(ctx, s.host)
 	if err != nil {
 		return err
 	}
