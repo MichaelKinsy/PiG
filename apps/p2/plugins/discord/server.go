@@ -317,9 +317,12 @@ func serveStore(_ *delta.JsonObject, raw host.Self) (contracts.Implementation, e
 	})
 	self.OnLive(func(ctx host.Ctx) *host.Handled {
 		return host.AwaitingCtx(ctx, func() error {
+			// One timer, armed again after each round's work: a time.After per round leaves a timer behind until it fires.
+			timer := time.NewTimer(typingEvery)
+			defer timer.Stop()
 			for tick := 1; ctx.Err() == nil; tick++ {
 				select {
-				case <-time.After(typingEvery):
+				case <-timer.C:
 				case <-ctx.Done():
 					return nil
 				}
@@ -327,6 +330,7 @@ func serveStore(_ *delta.JsonObject, raw host.Self) (contracts.Implementation, e
 				if tick%checkEvery == 0 && len(storeState(doc).Pending) > 0 {
 					_ = relay.CheckPending(ctx, nil)
 				}
+				timer.Reset(typingEvery)
 			}
 			return nil
 		})

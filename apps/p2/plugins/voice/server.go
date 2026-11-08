@@ -160,6 +160,7 @@ func newConfigChanges(dataDir string) (*configChanges, error) {
 func (c *configChanges) watch() {
 	defer close(c.stopped)
 	for {
+		//portlint:allow golifetime both channels are closed with the watcher (close), which ends the loop
 		select {
 		case event, ok := <-c.watcher.Events:
 			if !ok {

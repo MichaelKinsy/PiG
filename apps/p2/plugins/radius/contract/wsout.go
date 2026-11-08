@@ -31,6 +31,7 @@ type wsItem struct {
 func newWsConn(conn *websocket.Conn) *wsConn {
 	w := &wsConn{conn: conn, done: make(chan struct{})}
 	w.cond = sync.NewCond(&w.mu)
+	//portlint:allow golifetime the writer ends when the socket is dead (a failed write, or the close frame it sent); done is closed then
 	go w.write()
 	return w
 }
