@@ -498,7 +498,7 @@ func TestCancellationCancelsAtOnceWhileAnotherProcessHoldsTheRefreshLockAndRefre
 
 	// The lock arrives after the cancellation: nothing runs under it, and it is released.
 	release()
-	store.runs.Wait()
+	store.waitRuns(t)
 	if store.isLocked() {
 		t.Fatal("the lock was not released")
 	}
