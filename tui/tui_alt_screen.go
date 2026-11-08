@@ -113,6 +113,7 @@ type TuiAltScreen struct {
 	searchNavigationButtonStyle func(text string, hovered bool) string
 	scrollToEndIndicator        func() string
 	onRightClickPaste           func()
+	resolveMouseFocus           func(component, resolved Component) Component
 
 	// activeSearch is the open transcript search (nil when closed); guarded
 	// by t.mu. scrollToEndIndicatorRect is where the last frame painted the
@@ -198,6 +199,11 @@ type TuiAltScreenOptions struct {
 	// OnRightClickPaste handles an unmodified secondary-button press for
 	// clipboard paste. Currently enabled on Windows only.
 	OnRightClickPaste func()
+	// ResolveMouseFocusTarget is Go's form of overriding upstream's protected TuiBase.resolveMouseFocusTarget in a subclass (Go has no virtual
+	// methods): it receives the clicked component and what the base resolution chose (an overlay container stays the keyboard focus owner of a
+	// nested control) and returns the component to focus. A click on a component the base left alone may be sent to the app's own focus owner, as
+	// p2's RuntimeAltScreen does (`target === component ? focusOwner ?? target : target`).
+	ResolveMouseFocusTarget func(component, resolved Component) Component
 }
 
 // altScreenDocument wraps the base component tree so it can be placed inside the
@@ -248,6 +254,7 @@ func newTuiAltScreen(out io.Writer, showHardwareCursor bool, options TuiAltScree
 		searchNavigationButtonStyle: options.SearchNavigationButtonStyle,
 		scrollToEndIndicator:        options.ScrollToEndIndicator,
 		onRightClickPaste:           options.OnRightClickPaste,
+		resolveMouseFocus:           options.ResolveMouseFocusTarget,
 		selectionGranularity:        selectCharacter,
 	}
 	if t.searchMatchStyle == nil {
