@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
@@ -129,6 +130,7 @@ type Client struct {
 	closing          sync.Once
 	stopPoll         chan struct{}
 	scope            *chordtui.TuiScope // the access scope: set once in setup, disposed by Close
+	crashed          atomic.Bool
 
 	// reported is what report last sent (owner loop only).
 	reportedTarget  string
@@ -186,6 +188,9 @@ func (o terminalOutput) Columns() int { return o.Terminal.Columns() }
 func (o terminalOutput) Rows() int    { return o.Terminal.Rows() }
 
 // StartClient starts the TUI on options.Terminal.
+//
+// pig divergence (D611): the runtime and the launcher share this process: the plugins' TUI facets are compiled in, so no sandbox worker is started and no bundle
+// is fetched, versioned or swapped (Pi: tui-sandbox.ts, tui-bootstrap.ts, the `/__p2_tui` manifest and `client.reload`).
 func StartClient(options ClientOptions) (*Client, error) {
 	c := &Client{
 		options: options, queue: make(chan func(), 4096), stop: make(chan struct{}), stopPoll: make(chan struct{}),
@@ -259,7 +264,7 @@ func (c *Client) loop() {
 	for {
 		select {
 		case fn := <-c.queue:
-			fn()
+			c.run(fn)
 		case <-c.stop:
 			return
 		}
@@ -281,6 +286,29 @@ func (c *Client) Do(fn func()) {
 	case c.queue <- func() { defer close(done); fn() }:
 		<-done
 	case <-c.stop:
+	}
+}
+
+// closeGrace is how long Close waits for the runtime's own teardown before it cleans the terminal without it.
+const closeGrace = 2 * time.Second
+
+// doWithin is Do with a limit: false when the loop did not take or finish fn in time.
+func (c *Client) doWithin(limit time.Duration, fn func()) bool {
+	done := make(chan struct{})
+	timer := time.NewTimer(limit)
+	defer timer.Stop()
+	select {
+	case c.queue <- func() { defer close(done); fn() }:
+	case <-c.stop:
+		return true
+	case <-timer.C:
+		return false
+	}
+	select {
+	case <-done:
+		return true
+	case <-timer.C:
+		return false
 	}
 }
 
@@ -512,18 +540,21 @@ func (c *Client) setKitty(kitty bool) {
 	c.postCapabilities()
 }
 
-func (c *Client) postCapabilities() {
+// capabilityApplier is the capabilities as they are now, ready to apply on the owner loop.
+func (c *Client) capabilityApplier() func() {
 	c.mu.Lock()
 	capabilities := c.capabilities
 	kitty := c.kitty
 	c.mu.Unlock()
-	c.Post(func() {
+	return func() {
 		pitui.SetKittyProtocolActive(kitty)
 		c.rt.Appearance.Update(tuiruntime.AppearanceUpdate{Capabilities: &tuiruntime.TuiCapabilities{
 			TrueColor: capabilities.TrueColor, KeyPlatform: prefs.KeyPlatform{Platform: jsSlice(capabilities.Platform, 16), WindowsKeys: capabilities.WindowsKeys},
 		}})
-	})
+	}
 }
+
+func (c *Client) postCapabilities() { c.Post(c.capabilityApplier()) }
 
 func (c *Client) onResize() {
 	if c.ui.Active() {
@@ -749,6 +780,12 @@ func (l *clientLink) OnClose(listener func()) {
 	l.mu.Unlock()
 }
 
+func (l *clientLink) isClosed() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.closed
+}
+
 func (l *clientLink) Close() {
 	l.mu.Lock()
 	closed := l.closed
@@ -911,6 +948,15 @@ func (c *Client) setup() error {
 		}
 		c.rt.OnGrant = c.consent
 		c.rt.AddListener(c.report)
+		// Pi's order is capabilities, preferences, then activate: the first frame is drawn with the visitor's color mode and theme.
+		c.capabilityApplier()()
+		c.mu.Lock()
+		local := c.preferences
+		c.mu.Unlock()
+		if local != nil {
+			initial := *local
+			c.rt.Appearance.Update(tuiruntime.AppearanceUpdate{Local: &initial})
+		}
 		c.rt.Start()
 		// A facet left out at load (its setup threw) is shown, not silently missing.
 		for _, failed := range report.Failed {
@@ -918,16 +964,9 @@ func (c *Client) setup() error {
 		}
 		c.tui.SetLayoutRoot(c.rt.Root)
 		c.tui.SetFocus(c.rt)
-		c.mu.Lock()
-		if c.preferences != nil {
-			local := *c.preferences
-			c.rt.Appearance.Update(tuiruntime.AppearanceUpdate{Local: &local})
-		}
-		c.mu.Unlock()
 		c.tui.Start()
 		c.term.SetTitle("π p2 · " + c.options.URL.Host)
 	})
-	c.postCapabilities()
 	scope := chordtui.NewTuiScope(c.root, h, func() { c.Post(c.syncAccess) })
 	c.mu.Lock()
 	c.scope = scope
@@ -1018,11 +1057,15 @@ func (c *Client) connect(attempt int) {
 			c.connected = true
 			pending := c.pending
 			c.pending, c.pendingBytes = nil, 0
-			fresh := c.link.closed
+			previous := c.link
 			c.mu.Unlock()
-			if fresh {
-				c.link = &clientLink{client: c}
-				_ = c.host.Connect(c.link, host.LinkOptions{Principal: p2runtime.ToChord(p2runtime.Server)}, c.root)
+			// `closed` is the link's own (its mutex), the swap of c.link is the client's (c.mu).
+			if previous.isClosed() {
+				fresh := &clientLink{client: c}
+				c.mu.Lock()
+				c.link = fresh
+				c.mu.Unlock()
+				_ = c.host.Connect(fresh, host.LinkOptions{Principal: p2runtime.ToChord(p2runtime.Server)}, c.root)
 			}
 			for _, data := range pending {
 				_ = current.Send(data)
@@ -1240,8 +1283,11 @@ func (c *Client) Close() {
 		if scope := c.activeScope(); scope != nil {
 			scope.Dispose()
 		}
+		// A runtime that no longer answers (a facet stuck in a render or a handler) cannot hold the visitor's terminal hostage: Pi killed the worker, which here is
+		// stopped at the owner loop's next turn. The terminal below is cleaned either way.
+		stuck := false
 		if c.tui != nil {
-			c.Do(func() {
+			stuck = !c.doWithin(closeGrace, func() {
 				c.tui.Stop()
 				if c.rt != nil {
 					c.rt.Dispose()
@@ -1262,6 +1308,8 @@ func (c *Client) Close() {
 			_ = c.host.Close(c.root)
 		}
 		close(c.stop)
-		c.loops.Wait()
+		if !stuck {
+			c.loops.Wait()
+		}
 	})
 }

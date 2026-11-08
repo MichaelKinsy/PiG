@@ -26,6 +26,7 @@ type recordingTerminal struct {
 	mu     sync.Mutex
 	writes []string
 	titles []string
+	stops  int
 	kitty  bool
 }
 
@@ -45,6 +46,20 @@ func (r *recordingTerminal) SetTitle(title string) {
 	r.titles = append(r.titles, title)
 	r.mu.Unlock()
 	r.Terminal.SetTitle(title)
+}
+
+// Stop counts the stops: the visitor's terminal is restored exactly once.
+func (r *recordingTerminal) Stop() {
+	r.mu.Lock()
+	r.stops++
+	r.mu.Unlock()
+	r.Terminal.Stop()
+}
+
+func (r *recordingTerminal) stopCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.stops
 }
 
 func (r *recordingTerminal) KittyProtocolActive() bool {
@@ -112,14 +127,26 @@ type launcherOptions struct {
 	rows        int
 	kitty       *bool
 	options     func(*host.ClientOptions)
+	// fixture is a server the test started itself (default: one without plugins); address is the URL the launcher is given (default: the fixture's loopback URL).
+	fixture *p2test.Fixture
+	address *url.URL
+	// offline: the server is not expected to speak Chord, so the launcher is not waited for to connect.
+	offline bool
 }
 
 func startLauncher(t *testing.T, options launcherOptions) *launcher {
 	t.Helper()
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{}})
-	address, err := url.Parse("http://127.0.0.1:" + strconv.Itoa(fixture.Server.Port))
-	if err != nil {
-		t.Fatal(err)
+	fixture := options.fixture
+	if fixture == nil {
+		fixture = p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{}})
+	}
+	address := options.address
+	if address == nil {
+		var err error
+		address, err = url.Parse("http://127.0.0.1:" + strconv.Itoa(fixture.Server.Port))
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	columns, rows := options.columns, options.rows
 	if columns == 0 {
@@ -166,7 +193,9 @@ func startLauncher(t *testing.T, options launcherOptions) *launcher {
 	}
 	l.client = client
 	t.Cleanup(client.Close)
-	poll(t, client.Connected)
+	if !options.offline {
+		poll(t, client.Connected)
+	}
 	return l
 }
 
