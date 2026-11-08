@@ -1,5 +1,5 @@
-// Package subagents is p2's subagents plugin. Ported so far: the server's `ChildStore` and the worker init contribution
-// (server.ts); `Subagents`, the worker's tools and the UI are recorded gaps (rows/p2-A.md).
+// Package subagents is p2's subagents plugin: the server's `ChildStore`, `Subagents` and the worker init contribution
+// (server.go), the worker's `SubagentControl`, tools and registry reporting (worker.go, tools.go).
 package subagents
 
 import (
@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	_ "modernc.org/sqlite" // the store's driver
@@ -48,6 +49,9 @@ func placed(child *delta.JsonObject, env any) *delta.JsonObject {
 
 var serverFacet = host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 	if err := facet.Serve(contract.ChildStore, host.LocalFactory(serveChildStore), host.ServeOptions{}); err != nil {
+		return err
+	}
+	if err := facet.Serve(contract.Subagents, host.RemoteFactory(serveSubagents), host.ServeOptions{}); err != nil {
 		return err
 	}
 	// A worker places own cwds stored before locations existed on the environment recorded here.
@@ -204,4 +208,43 @@ func serveChildStore(_ *delta.JsonObject, self host.Self) (contracts.Implementat
 			},
 		},
 	}}, nil
+}
+
+// serveSubagents serves `Subagents`: a worker reports its own session's children, the owner reads every session's, a guest
+// those of the sessions shared with them.
+func serveSubagents(_ *delta.JsonObject, principal data.Principal, self host.Self) (contracts.Implementation, error) {
+	who, err := p2runtime.FromChord(principal)
+	if err != nil {
+		return contracts.Implementation{}, p2runtime.Forbidden("owners and guests only")
+	}
+	store := self.Get(contract.ChildStore, delta.NewJsonObject(0))
+	switch typed := who.(type) {
+	case p2runtime.WorkerPrincipal:
+		return contracts.Implementation{Variant: "reporter", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			"report": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+				return store.Call("report", delta.JsonObjectOf("session", typed.Session, "generation", float64(typed.Generation), "children", object(args).Value("children")), ctx)
+			},
+		}}}, nil
+	case p2runtime.GuestPrincipal:
+		children := self.Derive([]any{store.Member("children")}, func(values []any) (delta.JsonValue, error) {
+			all := object(values[0])
+			visible := delta.NewJsonObject(len(typed.Sessions))
+			for session := range typed.Sessions {
+				if list := all.Value(session); list != nil {
+					visible.Set(session, list)
+				} else {
+					visible.Set(session, []any{})
+				}
+			}
+			return visible, nil
+		})
+		return contracts.Implementation{Variant: "reader", Members: contracts.VariantImplementation{
+			State: map[string]chord.Watchable[delta.JsonValue]{"children": children},
+		}}, nil
+	case p2runtime.OwnerPrincipal:
+		return contracts.Implementation{Variant: "reader", Members: contracts.VariantImplementation{
+			State: map[string]chord.Watchable[delta.JsonValue]{"children": self.Derive([]any{store.Member("children")}, func(values []any) (delta.JsonValue, error) { return values[0], nil })},
+		}}, nil
+	}
+	return contracts.Implementation{}, p2runtime.Forbidden("owners and guests only")
 }
