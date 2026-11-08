@@ -35,7 +35,7 @@ type McpSignInOptions struct {
 // Plain data, so an application can persist it: its JSON is Pi's.
 type McpSignInRedirect struct {
 	// Kind is "redirect" ([McpSignInKindRedirect]).
-	Kind string `json:"kind"`
+	Kind McpSignInKind `json:"kind"`
 	// AuthorizationURL is opened in the user's browser.
 	AuthorizationURL string `json:"authorizationUrl,omitempty"`
 	// RedirectURL is the redirect URI of the authorization request; the authorization response must arrive on it.
@@ -46,10 +46,13 @@ type McpSignInRedirect struct {
 	Scope string `json:"scope,omitempty"`
 }
 
+// McpSignInKind is the `kind` of a [McpSignInStart] or a [McpSignInRedirect].
+type McpSignInKind string
+
 // The kinds of a [McpSignInStart].
 const (
-	McpSignInKindAuthorized = "authorized"
-	McpSignInKindRedirect   = "redirect"
+	McpSignInKindAuthorized McpSignInKind = "authorized"
+	McpSignInKindRedirect   McpSignInKind = "redirect"
 )
 
 // McpSignInStart is the result of [StartMcpSignIn]: signed in by refreshing the stored tokens (Kind "authorized"), or the browser step (Kind
@@ -58,7 +61,7 @@ const (
 // Go mechanic: Pi's `{ kind: "authorized" } | McpSignInRedirect` is a struct that carries both members, told apart by Kind. The members of
 // [McpSignInRedirect] are zero for an "authorized" result and omitted from its JSON.
 type McpSignInStart struct {
-	Kind string `json:"kind"`
+	Kind McpSignInKind `json:"kind"`
 	McpSignInRedirect
 }
 

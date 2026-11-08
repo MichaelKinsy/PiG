@@ -696,7 +696,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/mcp/src/transports/stdio.ts` | `mcp/stdio.go; mcp/stdio_unix.go; mcp/stdio_windows.go` | ✅ |
 | `packages/mcp/src/transports/streamable-http.ts` | `mcp/streamable_http.go; mcp/sse.go` (Send(ctx) carries McpTransportSendOptions.signal as its context) | ✅ |
 | `packages/mcp/src/transports/transport.ts` | `mcp/transport.go` (Send(ctx) carries McpTransportSendOptions.signal as its context) | ✅ |
-| `packages/mcp/src/config.ts` | `internal/mcpshared/config.go (re-exported by mcp/config.go: coding/extension validates entries in a pig_strip_mcp build, which links neither mcp nor mcp/oauth)` | ✅ |
+| `packages/mcp/src/config.ts` | `internal/mcpshared/config.go (re-exported by mcp/config.go: coding/extension validates entries in a pig_strip_mcp build, which links neither mcp nor mcp/oauth); coding/extension/mcp_servers.go (McpServerConfig and McpOAuthConfig: the field types of McpStdioServerConfig, McpHttpServerConfig and McpOAuthConfig, which Pi's coding-agent extends with its own fields)` | ✅ |
 | `packages/mcp/src/input-schema.ts` | `mcp/input_schema.go` | ✅ |
 | `packages/mcp/src/naming.ts` | `internal/mcpshared/naming.go (re-exported by mcp/naming.go, for the same reason)` | ✅ |
 | `packages/mcp/src/oauth/auth-provider.ts` | `mcp/oauth/auth_provider.go` | ✅ |
