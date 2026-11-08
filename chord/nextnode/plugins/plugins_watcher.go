@@ -904,13 +904,11 @@ func (w *pluginWatcher) watchAlone(dir string) {
 	w.baseWatched[dir] = struct{}{}
 }
 
-// baseEvent handles an event for path in a directory watched alone: a recorded (or differing) file there is compared; an
-// entry on the way to base code created, removed or moved is renewed after this burst of events (an attribute change is no
-// replacement).
+// baseEvent handles an event for path in a directory watched alone: a recorded (or differing) file there is compared, whatever
+// the event (an attribute change too: `#watchAlone` passes every event of a recorded file to `mark`, and libuv reports an
+// `IN_ATTRIB` as a change); an entry on the way to base code created, removed or moved is renewed after this burst of events
+// (an attribute change is no replacement).
 func (w *pluginWatcher) baseEvent(path string, op fsnotify.Op) {
-	if op == fsnotify.Chmod {
-		return
-	}
 	_, recorded := w.recorded[path]
 	_, differing := w.differing[path]
 	if recorded || differing {
