@@ -1369,6 +1369,10 @@ func (o *chordObject) wentLive(a *attempt) {
 				contribution.Record.Add(contribution)
 			}
 		})
+		// Contributions entering a registry nobody serves are reported as at a publication.
+		for _, contribution := range contributions {
+			contribution.Record.ReportUndeclared()
+		}
 	}
 	o.failure = nil
 	o.host.wentLive(o)

@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/node.ts
+// pi: packages/chord/src/node/http/node.ts
 
 import (
 	"io"
@@ -17,7 +17,7 @@ import (
 
 // Tests of Chord's own listener (the listener's native): request targets (origin-form only; a malformed or double-slash path
 // never crashes or reroutes), raw `Host` headers, the request's scope lasting until its response is flushed (and `close`
-// waiting for it), and a client's disconnect aborting the scope. Ports packages/chord/test/next-node/http/node.test.ts.
+// waiting for it), and a client's disconnect aborting the scope. Ports packages/chord/test/node/http/node.test.ts.
 //
 // Not ported: "makes a Web Request only when something reads the headers or the body" counts `new Request` calls
 // (designed out: Go's *net/http.Request exists when the server hands it over, there is no lazily made Web object).

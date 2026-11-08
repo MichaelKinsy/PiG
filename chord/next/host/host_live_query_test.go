@@ -25,9 +25,6 @@ import (
 // Forced differences: a `limit` is an int64, so Pi's fractional and absent limits cannot be written (designed out; 0 and a
 // negative one are the Go cases of "a limit is required").
 
-// reloadedKindOfABoard is the kind a reload reports for the board (Pi main's restart model, a5d209afd).
-const reloadedKindOfABoard = ReloadRestarted
-
 var (
 	lqItems = mustTableDef("items", store.TableOptions{
 		Version: 1,
@@ -330,7 +327,7 @@ func TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver(t *te
 		b.put(t, id, "t"+string(rune('0'+id)))
 	}
 	report := reloadMust(t)(reloadApp(b.host, func(h FacetHost) error { return (&lqQueries{}).serveBoard(h, 2, nil) }))
-	if len(report.Objects) != 1 || report.Objects[0].Object != "app.board" || report.Objects[0].Kind != reloadedKindOfABoard {
+	if len(report.Objects) != 1 || report.Objects[0].Object != "app.board" || report.Objects[0].Kind != ReloadRestarted {
 		t.Fatalf("objects = %+v, failed = %+v, plugins = %+v", report.Objects, report.Failed, report.Plugins)
 	}
 	turn(b.host)
