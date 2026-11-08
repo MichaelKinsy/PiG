@@ -191,6 +191,7 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 		return nil, err
 	}
 	actualPort := listener.Addr().(*net.TCPAddr).Port
+	//portlint:allow golifetime Serve returns when Close shuts httpServer down
 	go func() { _ = httpServer.Serve(listener) }()
 	info := p2runtime.ServerInfo{App: appDirectory(), DataDir: dataDir, Fake: fake, AllowedHosts: allowedHosts, Port: actualPort}
 	entry, execArgv := options.Entry, options.ExecArgv

@@ -137,7 +137,8 @@ func (store *FileModelsStore) Read(ctx context.Context, providerID string) (*ai.
 		return nil, err
 	}
 	var decoded ai.ModelsStoreEntry
-	if err := json.Unmarshal(encoded, &decoded); err != nil {
+	//perf:ok a catalog read of the models store file (cold)
+	if err := json.Unmarshal(encoded, &decoded); err != nil { //portlint:allow jsonclone a typed value converted from its stored JSON form, cold (see the perf:ok above)
 		return nil, err
 	}
 	return &decoded, nil
@@ -178,6 +179,7 @@ func (store *FileModelsStore) Write(ctx context.Context, providerID string, entr
 	if err != nil {
 		return err
 	}
+	//perf:ok a catalog write of the models store file (cold)
 	value, err := chordjson.Decode(encoded)
 	if err != nil {
 		return err

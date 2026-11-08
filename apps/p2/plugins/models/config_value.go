@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
-	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports apps/p2/plugins/models/config-value.ts (adapted upstream from Pi, MIT): configuration values that may be shell
@@ -149,15 +149,14 @@ func missingConfigValueEnvVarNames(config string, env map[string]string) []strin
 // IsCommandConfigValue is whether the value is a shell command (`!command`).
 func IsCommandConfigValue(config string) bool { return strings.HasPrefix(config, "!") }
 
-// ResolveConfigValueUncached resolves a value (a command runs every time, with the default shell and a 10 s limit); ok is
+// ResolveConfigValueUncached resolves a value (a command runs every time, under $SHELL with a 10 s limit); ok is
 // false when a command fails or prints nothing, or a referenced variable is unset. The resolved value is added to the
 // process logs' secrets: actual values are protected, not only the references in the configuration files.
 func ResolveConfigValueUncached(config string, env map[string]string) (string, bool) {
 	var resolved string
 	var ok bool
 	if IsCommandConfigValue(config) {
-		resolved = configvalue.ResolveUncached(config, env)
-		ok = resolved != ""
+		resolved, ok = runConfigCommand(config[1:])
 	} else {
 		resolved, ok = resolveTemplate(parseConfigValueTemplate(config), env)
 	}
@@ -189,7 +188,9 @@ func ResolveConfigValueOrError(config, description string, env map[string]string
 // Header is a header of models.json: a name and its (unresolved) value.
 type Header struct{ Name, Value string }
 
-// ResolveHeadersOrError resolves each header value as an API key is, in order; nil when there are none.
+// ResolveHeadersOrError resolves each header value as an API key is, in order; nil when there are none. Names that differ
+// only in case are one header, the last in order winning with its spelling (as Pi's mergeHeaders folds them, which keeps
+// the last of a case-variant pair whichever way the map is read later).
 func ResolveHeadersOrError(headers []Header, description string, env map[string]string) (map[string]string, error) {
 	if len(headers) == 0 {
 		return nil, nil
@@ -199,6 +200,12 @@ func ResolveHeadersOrError(headers []Header, description string, env map[string]
 		value, err := ResolveConfigValueOrError(header.Value, fmt.Sprintf(`%s header "%s"`, description, header.Name), env)
 		if err != nil {
 			return nil, err
+		}
+		lower := jsstring.ToLower(header.Name)
+		for name := range resolved {
+			if jsstring.ToLower(name) == lower {
+				delete(resolved, name)
+			}
 		}
 		resolved[header.Name] = value
 	}

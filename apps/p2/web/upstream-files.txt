@@ -25,3 +25,7 @@ plugins/files/contract.ts
 plugins/sessions/contract.ts
 plugins/status/contract.ts
 plugins/models/contract.ts
+src/runtime/server.ts
+plugins/envs/contract.ts
+plugins/envs/schema.ts
+plugins/subagents/contract.ts

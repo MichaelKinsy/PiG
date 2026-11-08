@@ -667,6 +667,7 @@ func (w *SessionWorkers) crashed(session string) {
 	// After the session's running steps (one may have restarted it already: then nothing is left to do). A stop first: a
 	// holder's start already waiting on this exit fails with the crash, and a bare retry while that start runs would be
 	// lost; the stop queues behind it, the retry after the stop starts the holders' worker.
+	//portlint:allow golifetime one queued step of the session's serial chain, which ends with the host
 	go func() {
 		_ = w.serial(chordctx.Background(), session, func() error {
 			if w.statusOf(session) == "failed" {

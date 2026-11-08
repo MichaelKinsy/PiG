@@ -67,7 +67,8 @@ func lockJSON(lock p2runtime.SessionLock) (delta.JsonValue, error) {
 		return nil, err
 	}
 	var out *delta.JsonObject
-	return out, json.Unmarshal(data, &out)
+	//perf:ok a lock change, published once per lock call (cold)
+	return out, json.Unmarshal(data, &out) //portlint:allow jsonclone a typed value converted from its stored JSON form, cold (see the perf:ok above)
 }
 
 func sameJSON(a, b delta.JsonValue) bool {

@@ -30,6 +30,7 @@ type HeldRef interface {
 // one fn has, and with each change, until the returned stop. watch starts one watch of the source and returns its value
 // and a function installing the listener (it never delivers inline).
 func follow[T any](current func() T, watch func(ctx context.Context) (value T, start func(deliver func(T)), err error), fn func(T)) (stop func()) {
+	//portlint:allow ctxbackground the follow owns this context for its life: the returned stop cancels it
 	ctx, cancel := context.WithCancel(context.Background())
 	// The value it has now, at once (a bound member, a registry's value), as a UI renders it before the watch is up.
 	last := current()

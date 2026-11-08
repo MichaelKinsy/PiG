@@ -84,6 +84,7 @@ func NewResources(options ResourceOptions) (*Resources, error) {
 		unconfirmed:  map[string]bool{},
 		listeners:    map[int]func(){},
 	}
+	//portlint:allow ctxbackground the resources own this context for their life: Close cancels it
 	resources.ctx, resources.cancel = context.WithCancel(context.Background())
 	current, err := resources.baseModels(resources.credentials)
 	if err != nil {
@@ -343,6 +344,7 @@ func (resources *Resources) load(ctx context.Context, retrying bool) bool {
 			return nil
 		}
 		config := LoadModelConfig(path)
+		//portlint:allow erroridentity config.Error() is the text of a models.json problem (what Pi shows), not an error value
 		if config.Error() != "" {
 			return errors.New("Invalid models configuration")
 		}

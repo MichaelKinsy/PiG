@@ -117,12 +117,15 @@ func (m *Models) GetAuth(ctx context.Context, providerID string, overrides ...Au
 
 func (m *Models) GetModelAuth(ctx context.Context, anyModel AnyModel, overrides ...AuthResolutionOverrides) (*AuthResult, error) {
 	model, isChat := anyModel.(*Model)
-	if m.modelAuth != nil && isChat {
+	m.mu.RLock()
+	modelAuth := m.modelAuth
+	m.mu.RUnlock()
+	if modelAuth != nil && isChat {
 		var opts AuthResolutionOverrides
 		if len(overrides) > 0 {
 			opts = overrides[0]
 		}
-		return m.modelAuth(ctx, model, opts)
+		return modelAuth(ctx, model, opts)
 	}
 	return m.providerModelAuth(ctx, anyModel, overrides...)
 }

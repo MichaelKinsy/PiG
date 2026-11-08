@@ -69,14 +69,20 @@ type LogNotice struct {
 const redacted = "[redacted]"
 
 var (
-	sensitiveKey  = regexp.MustCompile(`(?i)(?:api[-_]?key|access[-_]?token|refresh[-_]?token|token|secret|password|authorization|cookie|credential|private[-_]?key|^key$|^access$|^refresh$)`)
-	secretParam   = regexp.MustCompile(`(?i)^(?:code|state|token|access_token|refresh_token|id_token|api_key)$`)
-	headerRedact  = regexp.MustCompile(`(?i)\b(authorization|proxy-authorization|cookie|set-cookie)\s*:\s*[^\r\n]*`)
-	bearerRedact  = regexp.MustCompile(`(?i)\b(Bearer|Basic)\s+[A-Za-z0-9+/=_~.%-]+`)
+	//portlint:allow regexfold extra folds (the Kelvin sign, long s) only redact more
+	sensitiveKey = regexp.MustCompile(`(?i)(?:api[-_]?key|access[-_]?token|refresh[-_]?token|token|secret|password|authorization|cookie|credential|private[-_]?key|^key$|^access$|^refresh$)`)
+	//portlint:allow regexfold extra folds (the Kelvin sign, long s) only redact more
+	secretParam = regexp.MustCompile(`(?i)^(?:code|state|token|access_token|refresh_token|id_token|api_key)$`)
+	//portlint:allow regexfold extra folds (the Kelvin sign, long s) only redact more
+	headerRedact = regexp.MustCompile(`(?i)\b(authorization|proxy-authorization|cookie|set-cookie)\s*:\s*[^\r\n]*`)
+	//portlint:allow regexfold extra folds (the Kelvin sign, long s) only redact more
+	bearerRedact = regexp.MustCompile(`(?i)\b(Bearer|Basic)\s+[A-Za-z0-9+/=_~.%-]+`)
+	//portlint:allow regexfold extra folds (the Kelvin sign, long s) only redact more
 	urlUserRedact = regexp.MustCompile(`(?i)(https?://)[^\s/@]+:[^\s/@]+@`)
 	skRedact      = regexp.MustCompile(`\bsk-[A-Za-z0-9_-]+\b`)
-	fieldRedact   = regexp.MustCompile(`(?i)(["']?(?:api[-_]?key|access[-_]?token|refresh[-_]?token|token|secret|password|cookie|authorization|proxy[-_]?secret|key|access|refresh)["']?\s*[:=]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;&}]+)`)
-	lineBreak     = regexp.MustCompile(`\r?\n`)
+	//portlint:allow regexfold extra folds (the Kelvin sign, long s) only redact more
+	fieldRedact = regexp.MustCompile(`(?i)(["']?(?:api[-_]?key|access[-_]?token|refresh[-_]?token|token|secret|password|cookie|authorization|proxy[-_]?secret|key|access|refresh)["']?\s*[:=]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;&}]+)`)
+	lineBreak   = regexp.MustCompile(`\r?\n`)
 )
 
 // redactedFiles are the files of a registered directory whose values are secrets.
@@ -682,6 +688,7 @@ func PersistLogSource(source, path string, store *LogStore) (stop func() error) 
 			return
 		}
 		writing = true
+		//portlint:allow golifetime the only writer goroutine: started only when none runs (writing) and ends when the queue drains
 		go run()
 	}
 	unsubscribe := store.Subscribe(func(changed string) {
