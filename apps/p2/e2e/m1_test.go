@@ -3,8 +3,9 @@
 //
 // Pi's "keeps streaming through a compatible reload of the chat plugin" reloads unchanged code: Pi's build digests are the
 // same, so nothing reaches the server host or the workers (the case asserts `stopped` is unset, the stream goes on and
-// calls after it work). The Go case asserts the same, and more: P2Server.Reload re-evaluates the plugin's facets on the
-// server and the running worker (twice: the second ships too), see hosts/reload.go.
+// calls after it work). The Go case asserts the same: P2Server.Reload of unchanged code is a no-op (an empty result), and
+// more: a plugin whose build revision changed (p2test.Rebuilds, Pi's changed source) is re-evaluated on the server and the
+// running worker, see hosts/reload.go.
 
 package e2e_test
 
@@ -135,7 +136,8 @@ func TestSmokeCreatesASessionAndGetsAnAnswer(t *testing.T) {
 // plugin reload, reopen after the worker stopped idle, archive and restore. The cases run in order, as the TypeScript's.
 func TestM1WorkingChat(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{Idle: 1500 * time.Millisecond})
+	var rebuilds p2test.Rebuilds
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Idle: 1500 * time.Millisecond, BuildRevision: rebuilds.Revision})
 	browser := fixture.Browser()
 	sessions, err := p2test.HoldIn(browser, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
 	if err != nil {
@@ -307,9 +309,17 @@ func TestM1WorkingChat(t *testing.T) {
 		until(t, chat().Member("view"), func(value delta.JsonValue) bool { return value != nil && len(partial(value)) > 20 }, 0)
 		current, _ := chat().Member("view").Value()
 		before := partial(current)
-		// Pi's reload of unchanged code is a no-op (the build's digests are the same); here it re-evaluates the plugin on the
-		// server and the running worker. Twice: a second reload of the same code ships as well (the counter is in the key).
+		// Pi's reload of unchanged code is a no-op (the build's digests are the same): nothing reaches the server or the worker.
+		unchanged, err := fixture.Server.Reload([]string{"chat"}, context.Background())
+		if err != nil {
+			t.Fatalf("reload of unchanged code: %v", err)
+		}
+		if len(unchanged.Server.Plugins.Changed) != 0 || len(unchanged.Server.Failed) != 0 || len(unchanged.Workers) != 0 {
+			t.Fatalf("reload of unchanged code = %+v, want a no-op", unchanged)
+		}
+		// A changed build is re-evaluated on the server and the running worker; twice: each new revision ships.
 		for round := 1; round <= 2; round++ {
+			rebuilds.Rebuild("chat")
 			result, err := fixture.Server.Reload([]string{"chat"}, context.Background())
 			if err != nil {
 				t.Fatalf("reload %d: %v", round, err)
@@ -341,6 +351,7 @@ func TestM1WorkingChat(t *testing.T) {
 	t.Run("stops a session's worker through p2.hosts right after a reload of a server plugin", func(t *testing.T) {
 		// Hosts.stop waits for the worker's exit; without chordctx.Suspend it blocked the server loop that delivers the exit, and
 		// hung right after P2Server.Reload.
+		rebuilds.Rebuild("status")
 		if _, err := fixture.Server.Reload([]string{"status"}, context.Background()); err != nil {
 			t.Fatal(err)
 		}
