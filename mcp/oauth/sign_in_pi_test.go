@@ -426,3 +426,84 @@ func TestCancellationFailsAtOnceWithAnEndedContext(t *testing.T) {
 		t.Fatalf("registrations = %v", server.registered())
 	}
 }
+func TestMetadataDocumentsListingOnlyAnHTTPSRouteRefreshTheTokensOfADocument(t *testing.T) {
+	for _, registration := range []string{"auto", "cimd"} {
+		t.Run(registration, func(t *testing.T) {
+			server := startAuthorizationServer(t, authServerOptions{cimd: true, issParameter: true})
+			options := signInOptions(server, oauth.McpOAuthSettings{ClientRegistration: registration})
+			options.ClientMetadataDocuments = &oauth.McpClientMetadataDocuments{BaseURL: "https://app.example/oauth", ListsRedirectURL: func(redirectURL string) bool { return redirectURL == routeURL }}
+			authorization := signIn(t, options)
+			if got := queryOf(t, authorization.AuthorizationURL).Get("client_id"); got != "https://app.example/oauth/client.json" {
+				t.Fatalf("client_id = %q", got)
+			}
+			if loadState(t, options).ClientInformation != nil {
+				t.Fatal("a document client was stored")
+			}
+			started, err := oauth.StartMcpSignIn(t.Context(), options)
+			if err != nil || !started.Authorized {
+				t.Fatalf("start = %+v, %v", started, err)
+			}
+			refresh := server.tokens()[1]
+			if len(server.authorized()) != 1 || refresh.Get("grant_type") != "refresh_token" || refresh.Get("client_id") != "https://app.example/oauth/client.json" {
+				t.Fatalf("refresh = %v", refresh)
+			}
+			if got := loadState(t, options).Tokens.AccessToken; got != "access-2" {
+				t.Fatalf("access token = %q", got)
+			}
+		})
+	}
+}
+
+// Pi 797e122cb: the lock failures and the cancellation while waiting for the refresh lock.
+
+func TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong(t *testing.T) {
+	server := startAuthorizationServer(t, authServerOptions{})
+	store := &recordingStore{}
+	options := signInOptions(server, oauth.McpOAuthSettings{})
+	options.Store = store
+	signIn(t, options)
+	store.lockError = oauth.NewMcpRefreshLockBusyError()
+	started, err := oauth.StartMcpSignIn(t.Context(), options)
+	if err != nil || started.Authorized {
+		t.Fatalf("start = %+v, %v", started, err)
+	}
+	expectGrants(t, server, "authorization_code")
+}
+
+func TestSignInFailsWhenTheRefreshLockFailsForAnotherReason(t *testing.T) {
+	server := startAuthorizationServer(t, authServerOptions{})
+	lockError := errors.New("EACCES: permission denied")
+	options := signInOptions(server, oauth.McpOAuthSettings{})
+	options.Store = &recordingStore{lockError: lockError}
+	if _, err := oauth.StartMcpSignIn(t.Context(), options); !errors.Is(err, lockError) {
+		t.Fatalf("start error = %v, want %v", err, lockError)
+	}
+	if len(server.registered()) != 0 || len(server.authorized()) != 0 {
+		t.Fatalf("registrations = %v, authorizations = %d", server.registered(), len(server.authorized()))
+	}
+}
+
+func TestCancellationCancelsAtOnceWhileAnotherProcessHoldsTheRefreshLockAndRefreshesNothing(t *testing.T) {
+	server := startAuthorizationServer(t, authServerOptions{})
+	store := &recordingStore{}
+	options := signInOptions(server, oauth.McpOAuthSettings{})
+	options.Store = store
+	signIn(t, options)
+
+	release := store.hold()
+	ctx, cancel := context.WithTimeout(t.Context(), 100_000_000)
+	defer cancel()
+	_, err := oauth.StartMcpSignIn(ctx, options)
+	expectCancelled(t, err)
+
+	// The lock arrives after the cancellation: nothing runs under it, and it is released.
+	release()
+	store.runs.Wait()
+	if store.isLocked() {
+		t.Fatal("the lock was not released")
+	}
+	expectGrants(t, server, "authorization_code")
+	if len(server.authorized()) != 1 {
+		t.Fatalf("authorizations = %d", len(server.authorized()))
+	}
+}

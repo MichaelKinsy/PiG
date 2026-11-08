@@ -39,6 +39,10 @@ type McpAuthProviderOptions struct {
 	Fetch mcp.McpFetch
 	// OnChallenge receives the server's `WWW-Authenticate` challenge so sign-in can use its resource metadata URL and scope.
 	OnChallenge func(OAuthChallenge)
+	// RedirectURL is a redirect URI the application signs in with, such as its https callback route. Refreshing tokens from a sign-in with a Client ID
+	// Metadata Document needs a redirect URI the documents list; a refresh never redirects, so any listed one works. Default: the loopback redirect URI of
+	// the settings.
+	RedirectURL string
 }
 
 type refreshRun struct {
@@ -121,7 +125,7 @@ func (p *authProvider) refreshLocked(ctx context.Context, staleToken string, fet
 		ServerURL: p.options.ServerURL, Store: p.options.Store, Settings: settings, ClientName: p.options.ClientName,
 		ClientMetadataDocuments: p.options.ClientMetadataDocuments, Fetch: p.options.Fetch,
 	}
-	result, err := RefreshStoredTokens(ctx, client, *state, RefreshStoredTokensOptions{Fetch: fetch, Challenge: challenge})
+	result, err := RefreshStoredTokens(ctx, client, *state, RefreshStoredTokensOptions{Fetch: fetch, Challenge: challenge, RedirectURL: p.options.RedirectURL})
 	if err != nil {
 		return err
 	}
@@ -188,6 +192,8 @@ func (p *authProvider) Settled(ctx context.Context) {
 type RefreshStoredTokensOptions struct {
 	Fetch     mcp.McpFetch
 	Challenge *OAuthChallenge
+	// RedirectURL is a redirect URI the application signs in with, tried before the loopback ones of the settings and the stored client.
+	RedirectURL string
 }
 
 // RefreshStoredTokens refreshes the tokens of state with the stored client (or the document it signed in with), or reports [OAuthRedirect] when
@@ -195,19 +201,22 @@ type RefreshStoredTokensOptions struct {
 // holding the store's refresh lock. Not cancellable: a refresh the server answered may have rotated the refresh token, so its answer must be
 // saved; pass a context that does not end with the request.
 func RefreshStoredTokens(ctx context.Context, client McpOAuthClientOptions, state McpOAuthState, options RefreshStoredTokensOptions) (OAuthFlowResult, error) {
-	// Refreshing never redirects the user; the redirect URI only picks the client metadata.
+	// Refreshing never redirects the user; the redirect URI only decides whether tokens without a stored client can be refreshed with a Client ID Metadata
+	// Document, so any URI the documents list works.
 	loopbackSettings, err := GetLoopbackSettings(client.Settings)
 	if err != nil {
 		return "", err
 	}
-	redirectURL := loopbackSettings.FixedRedirectURL
-	if redirectURL == "" {
-		if registered := RegisteredRedirectURLs(state.ClientInformation); len(registered) > 0 {
-			redirectURL = registered[0]
-		}
+	candidates := []string{options.RedirectURL, loopbackSettings.FixedRedirectURL}
+	if registered := RegisteredRedirectURLs(state.ClientInformation); len(registered) > 0 {
+		candidates = append(candidates, registered[0])
 	}
-	if redirectURL == "" {
-		redirectURL = DefaultRedirectURL
+	redirectURL := DefaultRedirectURL
+	for _, candidate := range candidates {
+		if candidate != "" && client.ClientMetadataDocuments != nil && client.ClientMetadataDocuments.ListsRedirectURL != nil && client.ClientMetadataDocuments.ListsRedirectURL(candidate) {
+			redirectURL = candidate
+			break
+		}
 	}
 	provider, err := CreateOAuthClientProvider(client, redirectURL, nil)
 	if err != nil {

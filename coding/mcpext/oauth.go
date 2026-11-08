@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -245,6 +246,10 @@ func (c *McpOAuthCredentialStore) withRefreshLock(ctx context.Context, key strin
 		OnCompromised: func(error) {},
 	})
 	if err != nil {
+		// proper-lockfile reports a lock held by another process as `ELOCKED`.
+		if errors.Is(err, pilock.ErrLocked) {
+			return oauth.NewMcpRefreshLockBusyError()
+		}
 		return err
 	}
 	defer func() { _ = lock.Release() }()

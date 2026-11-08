@@ -174,3 +174,28 @@ func TestAuthProviderKeepsTheTokensAndThePendingSignInAfterANetworkError(t *test
 		t.Fatalf("state = %+v", state)
 	}
 }
+
+func TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed(t *testing.T) {
+	for _, registration := range []string{"auto", "cimd"} {
+		t.Run(registration, func(t *testing.T) {
+			server := startAuthorizationServer(t, authServerOptions{cimd: true, issParameter: true})
+			options := signInOptions(server, oauth.McpOAuthSettings{ClientRegistration: registration})
+			options.ClientMetadataDocuments = &oauth.McpClientMetadataDocuments{BaseURL: "https://app.example/oauth", ListsRedirectURL: func(redirectURL string) bool { return redirectURL == routeURL }}
+			signIn(t, options)
+			if loadState(t, options).ClientInformation != nil {
+				t.Fatal("a document client was stored")
+			}
+			provider := oauth.CreateMcpAuthProvider(oauth.McpAuthProviderOptions{
+				ServerURL: options.ServerURL, Store: options.Store, ClientName: options.ClientName, ClientMetadataDocuments: options.ClientMetadataDocuments,
+				Settings: func() (oauth.McpOAuthSettings, error) { return options.Settings, nil }, RedirectURL: routeURL,
+			})
+			if err := provider.OnUnauthorized(t.Context(), rejectedToken(server, "access-1", nil)); err != nil {
+				t.Fatal(err)
+			}
+			expectToken(t, provider, "access-2")
+			if got := server.tokens()[1].Get("client_id"); got != "https://app.example/oauth/client.json" || len(server.authorized()) != 1 {
+				t.Fatalf("client_id = %q, authorizations = %d", got, len(server.authorized()))
+			}
+		})
+	}
+}
