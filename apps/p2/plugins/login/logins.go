@@ -89,12 +89,14 @@ type Logins struct {
 	mu        sync.Mutex
 	listeners map[int]func()
 	nextID    int
-	// version counts the changes told; a listener that reads the state and publishes it outside the lock may be overtaken by a
-	// newer change's publication, so it runs again until no change happened meanwhile (the last published state is the latest).
-	version uint64
-	active    *attempt
-	current   loginsState
-	device    sync.Mutex
+	// publish serializes the publications of the state: a listener reads the state and gives it to the host (which takes the host's
+	// loop), and two of them in flight could apply in the other order, the older read last. It is held across the read and the
+	// apply, so every caller of changed must be off the host's loop (the methods give it up first: chordctx.Suspend), or it
+	// would wait for the loop while a publication in flight holds this.
+	publish sync.Mutex
+	active  *attempt
+	current loginsState
+	device  sync.Mutex
 }
 
 // NewLogins is the logins keeping their device identity in directory. The resources a method works on come from its caller,
@@ -125,26 +127,16 @@ func (l *Logins) Subscribe(listener func()) func() {
 }
 
 func (l *Logins) changed() {
+	l.publish.Lock()
+	defer l.publish.Unlock()
 	l.mu.Lock()
-	l.version++
 	listeners := make([]func(), 0, len(l.listeners))
 	for _, listener := range l.listeners {
 		listeners = append(listeners, listener)
 	}
 	l.mu.Unlock()
 	for _, listener := range listeners {
-		for {
-			l.mu.Lock()
-			seen := l.version
-			l.mu.Unlock()
-			listener()
-			l.mu.Lock()
-			current := l.version
-			l.mu.Unlock()
-			if current == seen {
-				break
-			}
-		}
+		listener()
 	}
 }
 
