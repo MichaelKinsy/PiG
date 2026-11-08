@@ -588,7 +588,7 @@ func TestGroupCommit(t *testing.T) {
 		follower := startCommit(ctl.store, fence, created("c"))
 		gate.Release()
 		seqOf(t, running)
-		if got := <-panicked; got != thrown {
+		if got := <-panicked; !panickedWith(got, thrown) {
 			t.Fatalf("the leader's caller recovered %v, want the listener's panic", got)
 		}
 		_ = rejected(t, failureOf(t, follower), data.CodeUnavailable, data.ReasonStorageFailed)
@@ -659,7 +659,7 @@ func TestGroupCommit(t *testing.T) {
 		if seqOf(t, running) != 1 {
 			t.Fatal("the running commit did not take seq 1")
 		}
-		if got := <-panicked; got != thrown {
+		if got := <-panicked; !panickedWith(got, thrown) {
 			t.Fatalf("the leader's caller recovered %v, want the metrics adapter's panic", got)
 		}
 		_ = rejected(t, failureOf(t, follower), data.CodeUnavailable, data.ReasonStorageFailed)
@@ -680,7 +680,7 @@ func TestGroupCommit(t *testing.T) {
 			defer func() { panicked <- recover() }()
 			_, _ = pending.Wait()
 		}()
-		if got := <-panicked; got != thrown {
+		if got := <-panicked; !panickedWith(got, thrown) {
 			t.Fatalf("recovered %v, want the metrics adapter's panic", got)
 		}
 		if len(*adopted) != 0 || store.LastSeq() != 1 {
@@ -709,7 +709,7 @@ func TestGroupCommit(t *testing.T) {
 		if seqOf(t, running) != 1 {
 			t.Fatal("the running commit did not take seq 1")
 		}
-		if got := <-panicked; got != thrown {
+		if got := <-panicked; !panickedWith(got, thrown) {
 			t.Fatalf("the leader's caller recovered %v, want Admit's panic", got)
 		}
 		_ = rejected(t, failureOf(t, follower), data.CodeUnavailable, data.ReasonStorageFailed)
@@ -719,4 +719,10 @@ func TestGroupCommit(t *testing.T) {
 		_, err := ctl.store.Commit([]StagedWrite{created("c")}, fence, background)
 		_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 	})
+}
+
+// panickedWith reports whether a recovered value is want.
+func panickedWith(recovered any, want error) bool {
+	err, ok := recovered.(error)
+	return ok && errors.Is(err, want)
 }

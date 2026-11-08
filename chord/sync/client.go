@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
@@ -262,33 +263,33 @@ func newOutboxCommits(s store.Store, after, to Seq) *outboxCommits {
 }
 
 func (source *outboxCommits) Next(ctx context.Context) (store.OutboxCommit, bool, error) {
-	for !source.done {
-		if len(source.page) == 0 {
-			if source.at >= source.to {
-				source.done = true
-				break
-			}
-			page, err := source.pages.next(ctx)
-			if err != nil {
-				source.done = true
-				return store.OutboxCommit{}, false, err
-			}
-			if len(page) == 0 {
-				source.done = true
-				return store.OutboxCommit{}, false, &OutboxUnavailableError{fmt.Sprintf("The outbox ends at %d, before %d", source.at, source.to)}
-			}
-			source.page = page
-		}
-		commit := source.page[0]
-		source.page = source.page[1:]
-		if commit.Seq > source.to {
-			source.done = true
-			break
-		}
-		source.at = commit.Seq
-		return commit, true, nil
+	if source.done {
+		return store.OutboxCommit{}, false, nil
 	}
-	return store.OutboxCommit{}, false, nil
+	if len(source.page) == 0 {
+		if source.at >= source.to {
+			source.done = true
+			return store.OutboxCommit{}, false, nil
+		}
+		page, err := source.pages.next(ctx)
+		if err != nil {
+			source.done = true
+			return store.OutboxCommit{}, false, err
+		}
+		if len(page) == 0 {
+			source.done = true
+			return store.OutboxCommit{}, false, &OutboxUnavailableError{fmt.Sprintf("The outbox ends at %d, before %d", source.at, source.to)}
+		}
+		source.page = page
+	}
+	commit := source.page[0]
+	source.page = source.page[1:]
+	if commit.Seq > source.to {
+		source.done = true
+		return store.OutboxCommit{}, false, nil
+	}
+	source.at = commit.Seq
+	return commit, true, nil
 }
 
 func (source *outboxCommits) Close() error {
@@ -329,8 +330,11 @@ func (pages *outboxPages) next(ctx context.Context) ([]store.OutboxCommit, error
 		}
 		total += size
 	}
-	average := max(1, total/len(page))
-	pages.limit = max(1, min(outboxPage, int64(pageBytes/average)))
+	average := float64(total) / float64(len(page))
+	pages.limit = outboxPage
+	if average > 0 {
+		pages.limit = max(1, min(outboxPage, int64(math.Floor(pageBytes/average))))
+	}
 	return page, nil
 }
 
@@ -393,7 +397,7 @@ type applyFunc func(target *store.ChordStore, commits []store.OutboxCommit, ctx 
 // last applied one.
 func applyBody(ctx context.Context, s *store.ChordStore, body SyncBody, apply applyFunc) error {
 	lines := DecodeBatchLines(body)
-	defer lines.Close()
+	defer func() { _ = lines.Close() }()
 	var chunk []store.OutboxCommit
 	bytes := 0
 	for {

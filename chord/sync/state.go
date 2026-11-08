@@ -60,7 +60,7 @@ func (store *FileSyncStateStore) Set(ctx context.Context, sessionID string, stat
 	if err != nil {
 		return err
 	}
-	text, err := json.Marshal(stateFile{SyncedHead: state.SyncedHead, Pulling: state.Pulling})
+	text, err := json.Marshal(stateFile(state))
 	if err != nil {
 		return err
 	}

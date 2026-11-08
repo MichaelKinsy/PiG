@@ -42,7 +42,7 @@ func TestSpacesKeepTheSamePathApartInTwoSpacesRefuseANameOutsideTheRule(t *testi
 	}
 	for _, space := range []string{"", "Upper", "a/b", strings.Repeat("x", 65)} {
 		_, err := f.putErr(space, "a.txt", []byte("x"))
-		wantCode(t, err, data.CodeInvalid)
+		_ = wantCode(t, err, data.CodeInvalid)
 	}
 	f.close()
 }
@@ -120,7 +120,7 @@ func TestPathsPageAListingAcrossItsFoldersAndFilesWithCursors(t *testing.T) {
 		t.Fatalf("entry = %s", jsonOf(t, entry))
 	}
 	_, err := f.call("list", "space", "shared", "folder", "", "after", "nope")
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	folders.close()
 	f.close()
 }
@@ -129,7 +129,7 @@ func TestPathsRefuseBadPathsAFileWhereAFolderIsAndAFolderWhereAFileIs(t *testing
 	f := filesOf(t)
 	for _, path := range []string{"", "/a", "a/", "a//b", "a/../b", ".", "a/./b", "a\x00b", strings.Repeat("x", 1025)} {
 		_, err := f.putErr("shared", path, []byte("x"))
-		wantCode(t, err, data.CodeInvalid)
+		_ = wantCode(t, err, data.CodeInvalid)
 	}
 	f.put("docs/a.txt", "a")
 	_, err := f.putErr("shared", "docs", []byte("x"))

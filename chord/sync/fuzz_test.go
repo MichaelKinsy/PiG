@@ -38,8 +38,7 @@ func FuzzDecodeLogLine(f *testing.F) {
 	f.Fuzz(func(t *testing.T, text string, number int) {
 		commit, err := DecodeLogLine(text, number)
 		if err != nil {
-			var format *LogFormatError
-			if !errors.As(err, &format) {
+			if _, ok := errors.AsType[*LogFormatError](err); !ok {
 				t.Fatalf("DecodeLogLine(%q) failed with %T %v, want a *LogFormatError", text, err, err)
 			}
 			if !strings.Contains(err.Error(), fmt.Sprint(number)) {
@@ -85,8 +84,7 @@ func decodeAll(t *testing.T, body SyncBody) decoded {
 	for {
 		line, ok, err := lines.Next(background)
 		if err != nil {
-			var format *LogFormatError
-			if !errors.As(err, &format) {
+			if _, ok := errors.AsType[*LogFormatError](err); !ok {
 				t.Fatalf("DecodeBatchLines failed with %T %v, want a *LogFormatError", err, err)
 			}
 			out.failure = err.Error()

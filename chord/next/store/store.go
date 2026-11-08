@@ -163,6 +163,7 @@ func (queued *queuedCommit) settle(seq int64, err error) {
 	queued.settled = true
 	queued.seq, queued.err = seq, err
 	if queued.ready != nil {
+		//portlint:allow doubleclose settled makes this the one close of ready
 		close(queued.ready)
 	}
 }
@@ -768,7 +769,7 @@ func (store *ChordStore) runGroup(group *commitGroup) {
 			for _, queued := range group.commits {
 				queued.settle(0, failed)
 			}
-			store.fail(cause)
+			_ = store.fail(cause)
 			panic(recovered)
 		}
 	}()

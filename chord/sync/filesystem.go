@@ -154,6 +154,7 @@ func (remote *FileSystemSyncRemote) List(ctx context.Context, sessionID string) 
 		if match == nil {
 			continue
 		}
+		//portlint:allow numbers the pattern matches digits only, and a longer number is no valid slot
 		after, _ := strconv.ParseInt(match[1], 10, 64)
 		slot, err := remote.slot(ctx, sessionID, after)
 		if err != nil {
@@ -169,6 +170,7 @@ func (remote *FileSystemSyncRemote) List(ctx context.Context, sessionID string) 
 	}
 	for _, name := range names {
 		if match := snapshotName.FindStringSubmatch(name); match != nil {
+			//portlint:allow numbers the pattern matches digits only, and a longer number is no valid slot
 			to, _ := strconv.ParseInt(match[1], 10, 64)
 			listing.Snapshots = append(listing.Snapshots, to)
 		}
@@ -242,7 +244,7 @@ func (remote *FileSystemSyncRemote) slot(ctx context.Context, sessionID string, 
 }
 
 func (remote *FileSystemSyncRemote) writeSlot(ctx context.Context, sessionID string, slot BatchInfo) error {
-	text, err := json.Marshal(slotFile{After: slot.After, To: slot.To, Device: slot.Device, Archive: slot.Archive, Folded: slot.Folded})
+	text, err := json.Marshal(slotFile(slot))
 	if err != nil {
 		return err
 	}
