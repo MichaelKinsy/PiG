@@ -306,7 +306,7 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 	}
 	if err == nil {
 		if timed {
-			started = time.Now()
+			started = commitNow()
 		}
 		// In-memory-only commits are synchronous (W12): the store's step is taken only for persisted writes.
 		err = tx.Commit()
@@ -323,10 +323,13 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 		return nil, err
 	}
 	if timed {
-		d.Do(func() { d.recordCommit(tx, time.Since(started), ctx, metrics) })
+		d.Do(func() { d.recordCommit(tx, commitNow().Sub(started), ctx, metrics) })
 	}
 	return result, nil
 }
+
+// commitNow reads the clock a timed commit uses; a package var so a test can count its reads (as host_uuid.go's setUUIDClock).
+var commitNow = time.Now
 
 // recordCommit records a commit of tx that took duration (from its start to its adoption): its event on ctx's span (the
 // method, routine or job it ran in) and the host's commit duration metric; a commit that changed nothing records

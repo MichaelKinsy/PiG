@@ -29,7 +29,7 @@ import (
 // stay (a crash, a `fatal`, a failed start: no fork for a new hold, holders `failed { waiting }`) until `retry` or a
 // rollout, a running worker's lost link recovered from once a minute (workers_blocked_unix_test.go), idle stops and `busy`,
 // `stop` and its suspension, the per-address queue, `close`, stale lock files cleared, nothing kept of 1,000 addresses, and
-// the worker base (designed out: docs/parity/divergences; a broken entry rejects its creation). Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
+// the worker base (a worker runs the private copy of the entry made at creation; a broken entry rejects its creation). Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
 
 func requireCode(t *testing.T, err error, code data.ChordErrorCode, reason data.ChordErrorReason) {
 	t.Helper()
@@ -733,11 +733,55 @@ func TestGC1000FailedAndRetriedAddressesLeaveNoStateNoRecordAndNoSuspension(t *t
 	expectCollected(t, collected...)
 }
 
-// Pi's `describe('the worker base (decision "Workers start from the base code the server booted with")')`: its first test
-// (an edit of the entry's imported source after the component was created runs in no worker, `workers.inputs` names the
-// bundled files, the bundle's file is removed by `close`) is a property of Pi's esbuild bundle of a Node entry; a Go worker
-// is this program's own compiled executable, which holds all of its code already (no counterpart, see the worker base note in
-// docs/parity/divergences).
+// Pi's `describe('the worker base (decision "Workers start from the base code the server booted with")')`: its first test.
+// Pi's base is a bundle of the entry's imported source in a private file; Go's is a private copy of the entry executable
+// made by CreateWorkers, which every worker forks and Close removes.
+
+// TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheComponentWasCreatedWith runs `it("a worker
+// started after an edit of the entry's imported source runs the code the component was created with")`.
+func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheComponentWasCreatedWith(t *testing.T) {
+	dir := t.TempDir()
+	entry := filepath.Join(dir, "entry"+filepath.Ext(fixtureEntry(t)))
+	original, err := os.ReadFile(fixtureEntry(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(entry, original, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f := newFleet(t, fleetOptions{entry: entry, env: map[string]string{fixtureReportExecutable: "1"}})
+	// Half way through an edit: the program on disk is no longer one that runs.
+	if err := os.Remove(entry); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(entry, []byte("not a program\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	notes := f.hold(fixtureNotes, "S1")
+	until(t, func() bool { return refKind(notes) == host.RefStateLive })
+	if label := labelOf(t, notes); label != "S1 v1" {
+		t.Fatalf("label = %q, want S1 v1", label)
+	}
+	var forkedFrom string
+	for _, line := range f.output.all() {
+		if path, ok := strings.CutPrefix(line, "session|S1 executable "); ok {
+			forkedFrom = path
+		}
+	}
+	if forkedFrom == "" || forkedFrom == entry {
+		t.Fatalf("the worker ran from %q, want the component's private copy (not %q)", forkedFrom, entry)
+	}
+	if _, err := os.Stat(forkedFrom); err != nil {
+		t.Fatalf("the worker's file is gone while the component lives: %v", err)
+	}
+	notes.Release()
+	if err := f.workers.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(forkedFrom); !os.IsNotExist(err) {
+		t.Fatalf("the worker's file after Close: %v, want it removed", err)
+	}
+}
 
 func TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain(t *testing.T) {
 	dir := t.TempDir()

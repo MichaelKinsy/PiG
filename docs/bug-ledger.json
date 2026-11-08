@@ -45674,6 +45674,27 @@
       ]
     },
     {
+      "id": "BF-e3b5d44",
+      "title": "fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close",
+      "symptom": "fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close",
+      "rootCause": "Ports Pi's 'a worker started after an edit of the entry's imported source runs the code the component was created with'.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e3b5d44443",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheComponentWasCreatedWith"
+      ]
+    },
+    {
       "id": "BF-e3f39b7",
       "title": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\"",
       "symptom": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\".",
@@ -46087,6 +46108,25 @@
       "tests": [
         "chord/next/data/validator_test.go::TestFailedChecks"
       ]
+    },
+    {
+      "id": "BF-e5d242d",
+      "title": "fix(chord/nextnode/workers): check the base copy's source close",
+      "symptom": "fix(chord/nextnode/workers): check the base copy's source close",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e5d242d8a4",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-e5f9fdd",
