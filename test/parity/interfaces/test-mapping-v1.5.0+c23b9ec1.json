@@ -6381,9 +6381,16 @@
     },
     {
       "path": "packages/coding-agent/test/subagent-extension.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:9cf1826b09fd6a57b74e51696aa4199a01f2c5c277e46fe2fbca743e36247266",
-      "rationale": "New in Pi aba42ae6b (#8250) and 5c808e17b: it drives packages/coding-agent/examples/extensions/subagent/index.ts under vitest, with a fixture child (test/fixtures/subagent-child.mjs) standing in for the pi CLI the example spawns. PiG has no example source of its own: it ships Pi's file unmodified as part of the vendored runtime (runtime-node/shims/pi-dist/pi-coding-agent/examples/extensions/subagent, vendor-manifest.json), and that copy is the @earendil-works/pi-coding-agent 1.5.0 file (sha256 1d11858d..., identical to Pi v1.5.0), not the c23b9ec1 revision the test exercises (the pin changes index.ts by 565 lines). The behaviour under test is that JavaScript example's own spawn, progress and abort logic, which a Go test cannot reach without re-vendoring it; `make vendor-pi-dist` regenerates the copy when the vendored runtime moves to a Pi build that contains it. The vendored example's trust behaviour stays covered by subagent_trust_upstream_test.go."
+      "evidence": [
+        "coding/extension/host/subprocess/subagent_extension_upstream_test.go#TestSubagentExampleChildLifecycle",
+        "coding/extension/host/subprocess/subagent_extension_upstream_test.go#TestSubagentExampleRuntimeIntegration",
+        "coding/extension/host/subprocess/subagent_extension_upstream_test.go#TestSubagentExampleStartsTheChildThroughTheHarnessEntry",
+        "coding/extension/host/subprocess/subagent_extension_upstream_test.go#TestSubagentExampleTaskCwdAgentDiscovery",
+        "coding/extension/host/subprocess/subagent_extension_upstream_test.go#TestSubagentExampleModelFacingOutputAndRendering"
+      ],
+      "rationale": "New in Pi aba42ae6b (#8250) and 5c808e17b. The Go test loads the vendored example (pi-dist/.../subagent/index.ts, checked against Pi c23b9ec1's sha256 3b738fd1...) in a Node extension process and drives the tool with Pi's inputs and Pi's fixture child (testdata/subagent-child.mjs), one subtest per Pi case: child lifecycle 7, runtime integration 2, pi invocation 1, task cwd agent discovery 4, output and rendering 5. Differences, each from PiG's architecture and none of input: (1) the example starts argv[1], which in a PiG extension process is the harness entry that runs the Host's harness binary, a launcher for the fixture; (2) Pi's fake timers are not used; (3) the Windows Bun virtual-entry path cannot occur in a PiG extension process, so the pi invocation case asserts the child gets the fixture and not the entry; (4) an already-aborted call is never sent to the extension (the host returns the context error), so that case asserts no child starts, in place of five aborted results; (5) pig divergence D111: an aborted call that ignores SIGTERM fails as aborted after the 3 s tool abort grace, before the example's 5 s SIGKILL settles it with partial details, so that case asserts the SIGKILL escalation ends the child and the call fails as aborted; (6) isError is read through the example's tool_result hook, as the session applies it."
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts",
