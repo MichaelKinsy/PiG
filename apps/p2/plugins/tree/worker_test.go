@@ -84,7 +84,9 @@ func newFixture(t *testing.T) *fixture {
 		Stubs: []p2test.Stub{{Contract: sessionscontract.Sessions, Factory: func(*delta.JsonObject, p2runtime.Principal, p2test.StubSelf) p2test.StubMembers {
 			return p2test.StubMembers{Variant: "worker", State: map[string]any{"session": nil}, Methods: map[string]p2test.StubMethod{
 				// The worker's other members: stubs the tree never calls.
-				"renameSelf":    func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("previous", ""), nil },
+				"renameSelf": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+					return delta.JsonObjectOf("previous", ""), nil
+				},
 				"configureSelf": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 				"treeSelf": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					f.reports.add(args.(*delta.JsonObject))

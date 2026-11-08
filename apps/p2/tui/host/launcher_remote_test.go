@@ -252,7 +252,9 @@ func TestAGuestJoinsByLinkWithANameSeesItsSessionAsAGuestAndTheLauncherEndsOnRev
 		options.OnAccessEnded = func() { ended.Add(1) }
 		options.OnExit = func() { exited.Add(1) }
 	}})
-	pollFor(t, 20*time.Second, func() bool { return strings.Contains(l.terminal.screen(), "guest · TUI guest (unverified) · view only") })
+	pollFor(t, 20*time.Second, func() bool {
+		return strings.Contains(l.terminal.screen(), "guest · TUI guest (unverified) · view only")
+	})
 	pollFor(t, 20*time.Second, func() bool { return l.client.Snapshot().Session == session })
 	if encoded, _ := json.Marshal(l.client.Snapshot()); strings.Contains(string(encoded), admission.Cookie) {
 		t.Fatal("the cookie reached the runtime")
