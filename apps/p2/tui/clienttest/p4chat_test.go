@@ -33,8 +33,8 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/transcript"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/tuitest"
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/schema"
 	pitui "github.com/MichaelKinsy/PiG/tui"
@@ -230,6 +230,7 @@ func TestModelSelectorConfiguresTheConversationCtrlSSavesTheDefaultModelProvider
 		t.Fatalf("setDefault modelId = %v: the current model is preselected", got)
 	}
 	typed(s.Fixture, "/model faux/faux-1")
+	pollContains(t, s.Fixture, "Faux one")
 	s.Send(enter)
 	s.pollCalls(t, "configure", 3)
 	configures := s.calls.get("configure")
