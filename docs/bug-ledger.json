@@ -206,6 +206,28 @@
       ]
     },
     {
+      "id": "BF-01f1936",
+      "title": "Print and JSON mode: on SIGTERM or SIGHUP the interrupted run now settles before `session_shutdown` handlers…",
+      "symptom": "Print and JSON mode: on SIGTERM or SIGHUP the interrupted run now settles before `session_shutdown` handlers run, as the pinned Pi's `runtimeHost.dispose()` does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Print and JSON mode: on SIGTERM or SIGHUP the interrupted run now settles before `session_shutdown` handlers run, as the pinned Pi's `runtimeHost.dispose()` does. The session file gets the killed tool's result and the aborted assistant message, no second model request is made, and text mode reports the aborted result on stderr after a throwing handler's error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "01f1936690",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/cli/print_signal_exit_test.go::TestPrintModeJSONSignalStopsOutputAndPersistence"
+      ]
+    },
+    {
       "id": "BF-02114ff",
       "title": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
       "symptom": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
@@ -9372,6 +9394,38 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-3838d0b",
+      "title": "Interactive mode is ready to type about 10 ms sooner when the recorded \"what's new\" version differs from the…",
+      "symptom": "Interactive mode is ready to type about 10 ms sooner when the recorded \"what's new\" version differs from the running version without a newer release to show (a downgrade, or a settings file that carries a later version).",
+      "rootCause": "The ready-to-type regression (0.7.0 24 ms, pi-main 37 ms on xd6702, pinned) bisected to, which moved the startup What's New check to the start of Init, as Pi does. Its work did not change, but it now ran before the first frame: with a recorded changelog version other than the running one (the Pi-Bolt harness records 9999.0.0), it inflated the whole 1 MB bundled changelog and parsed it to find that no release is newer.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode is ready to type about 10 ms sooner when the recorded \"what's new\" version differs from the running version without a newer release to show (a downgrade, or a settings file that carries a later version). The startup check inflated the whole bundled changelog (about 1 MB) before drawing the first frame; it now decodes the changelog only as far as the releases newer than the recorded version extend, which is a few kilobytes here. What's New, the recorded version and the install report are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7434ca91ae",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "3838d0b70e",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "automation/release/set-version/main_test.go::TestSetVersionRejectsAREADMEWithoutTheVersionExample",
+        "automation/release/set-version/main_test.go::TestSetVersionWritesTheREADMEVersionExample",
+        "internal/codingagent/changelog_newer_test.go::TestBundledChangelogIsNewestFirst",
+        "internal/codingagent/changelog_newer_test.go::TestParseChangelogNewerThanMatchesTheFilteredParse",
+        "internal/codingagent/changelog_newer_test.go::TestParseChangelogNewerThanStopsAtTheFirstOlderRelease",
+        "test/parity/runner/asserts_version_test.go::TestDivergeTokensAreEvaluatedAgainstOutput",
+        "test/parity/runner/asserts_version_test.go::TestExpandVersionTokensUsesThePins"
+      ]
     },
     {
       "id": "BF-3840820",
@@ -23997,30 +24051,6 @@
         "coding/session_tool_modifiers_port_test.go::TestToolModifierOptionsSurviveReloadPort",
         "internal/codingagent/tool_modifiers_test.go::TestApplyToolModifiersMatchesUpstream",
         "internal/codingagent/tool_modifiers_test.go::TestGetToolListErrorMatchesUpstream"
-      ]
-    },
-    {
-      "id": "BF-7434ca9",
-      "title": "fix(cli): pig --version prints Pi's bare version; remove D63",
-      "symptom": "fix(cli): pig --version prints Pi's bare version; remove D63",
-      "rootCause": "pig --version and -v print coding.UpstreamPackageVersion, as pi --version does. The composite version stays in the help banner, the startup line and the separate fields of pig version. Self-update, the installer, the npm e2e and the bench arm check read the PiG release from pig version. PIG_VERSION_FORMAT, the D63 entry, its docs and its call-site markers are removed.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "7434ca91ae",
-          "date": "2026-11-06"
-        }
-      ],
-      "tests": [
-        "automation/release/set-version/main_test.go::TestSetVersionRejectsAREADMEWithoutTheVersionExample",
-        "automation/release/set-version/main_test.go::TestSetVersionWritesTheREADMEVersionExample",
-        "test/parity/runner/asserts_version_test.go::TestDivergeTokensAreEvaluatedAgainstOutput",
-        "test/parity/runner/asserts_version_test.go::TestExpandVersionTokensUsesThePins"
       ]
     },
     {
@@ -42188,6 +42218,34 @@
       "tests": []
     },
     {
+      "id": "BF-d06e6cf",
+      "title": "Ending an RPC session while a response is running (stdin closes, an extension calls `ctx.shutdown()`, or pig…",
+      "symptom": "Ending an RPC session while a response is running (stdin closes, an extension calls `ctx.shutdown()`, or pig gets SIGTERM or SIGHUP) now settles that run before the `session_shutdown` handlers run, as Pi does.",
+      "rootCause": "Pi main (#9126): dispose() awaits session.abort() before it emits session_shutdown. RPC shutdown (stdin end, ctx.shutdown() or a termination signal) now sets the abort flag, ends a signal's hold on the Agent, waits for the run to settle with the Session still connected, and only then emits session_shutdown and disposes the Session. A run blocked on a dialog stdin can no longer answer never settles in Pi, whose process exits when its event loop drains; PiG abandons the wait once stdin ended and a dialog is pending and exits without session_shutdown.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Ending an RPC session while a response is running (stdin closes, an extension calls `ctx.shutdown()`, or pig gets SIGTERM or SIGHUP) now settles that run before the `session_shutdown` handlers run, as Pi does. The aborted tool call's result and the aborted assistant message are saved to the session file, extensions receive the run's remaining `turn_end`, `agent_end` and `agent_settled` events first, and a `session_shutdown` handler that throws no longer leaves the tool call unanswered. A run that waits on a dialog the client can no longer answer ends the process without `session_shutdown`, as Pi's does when its event loop drains.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d06e6cfbc9",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_shutdown_drain_test.go::TestRPCInputEndJoinsDelayedTurnEndBeforeShutdown",
+        "coding/cli/rpc_shutdown_drain_test.go::TestRPCInputEndMidToolDoesNotCompletePendingShutdown",
+        "coding/cli/rpc_shutdown_regression_test.go::TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder",
+        "coding/cli/rpc_shutdown_retire_test.go::TestRPCInputEndAfterCommandReplacementKeepsPendingQuitShutdownQuiet",
+        "coding/cli/rpc_shutdown_signal_test.go::TestRPCSignalMidPromptDeliversPiShutdownSequence",
+        "coding/cli/rpc_shutdown_test.go::TestRPCExtensionShutdownRequestExits",
+        "coding/cli/rpc_signal_disposal_test.go::TestRPCSignalDisposalHoldsTheRunLikePisEventLoop"
+      ]
+    },
+    {
       "id": "BF-d0c2727",
       "title": "fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization…",
       "symptom": "fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization inventory",
@@ -47339,6 +47397,26 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
       ]
+    },
+    {
+      "id": "BF-df43f7b",
+      "title": "RPC: a `prompt` that starts a run, and a `prompt` that fails in preparation, answer one microtask later than…",
+      "symptom": "RPC: a `prompt` that starts a run, and a `prompt` that fails in preparation, answer one microtask later than before, as the pinned Pi's extracted `_preparePrompt` orders them, so `steer` and `follow_up` sent in the same input batch before the prompt are answered first.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC: a `prompt` that starts a run, and a `prompt` that fails in preparation, answer one microtask later than before, as the pinned Pi's extracted `_preparePrompt` orders them, so `steer` and `follow_up` sent in the same input batch before the prompt are answered first.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "df43f7bb53",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-df5964b",

@@ -41,8 +41,8 @@ pkg:chord/.#Ctx::property:toString	chord	member-missing	chord/next/host/host_ctx
 pkg:chord/.#Ctx::property:toString::call:0	chord	member-missing	chord/next/host/host_ctx.go#Ctx
 pkg:chord/.#Ctx::property:trace	chord	not-exercised	chord/next/host/host_ctx.go#Ctx.Trace
 pkg:chord/.#Ctx::property:trace::call:0	chord	not-exercised	chord/next/host/host_ctx.go#Ctx.Trace
-pkg:chord/.#Ctx::property:value	chord	child-gap	../../../usr/local/go/src/context/context.go#Context.Value
-pkg:chord/.#Ctx::property:value::call:0	chord	undecidable	../../../usr/local/go/src/context/context.go#Context.Value
+pkg:chord/.#Ctx::property:value	chord	child-gap	../../../../usr/local/go/src/context/context.go#Context.Value
+pkg:chord/.#Ctx::property:value::call:0	chord	undecidable	../../../../usr/local/go/src/context/context.go#Context.Value
 pkg:chord/.#DataKeys	chord	no-go-symbol	
 pkg:chord/.#Defaulted	chord	no-go-symbol	
 pkg:chord/.#EncodedRow	chord	type-mismatch	chord/next/store/rows.go#EncodedRow
@@ -680,8 +680,6 @@ pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-ga
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
 pkg:durable/storage/sqlite/node#NodeSqliteDatabase	durable	child-gap	durable/storage/sqlite/node/node.go#NodeSqliteDatabase
 pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0	durable	signature-mismatch	durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase
-pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions	durable	type-mismatch	durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions
-pkg:durable/storage/sqlite/node#NodeSqliteStorageOptions	durable	type-mismatch	durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions
 pkg:schema/.#BigintBounds	schema	no-go-symbol	
 pkg:schema/.#BigintBounds::property:exclusiveMaximum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:exclusiveMinimum	schema	child-gap	
