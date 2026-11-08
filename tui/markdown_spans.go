@@ -409,7 +409,7 @@ func (w *spanWriter) endToken() {
 }
 
 func (m *Markdown) writeInlineTokens(w *spanWriter, tokens []markedToken, style inlineStyleContext, theme *MarkdownTheme) {
-	// pig divergence (D265): after a skipped HTML comment the next text may lose its leading blanks, as in Pi main 54280c4ff.
+	// after a skipped HTML comment the next text may lose its leading blanks, as in Pi main 54280c4ff.
 	dropLeadingSpace := false
 	for i, token := range tokens {
 		if !w.ok {

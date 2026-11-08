@@ -1,11 +1,10 @@
 // Drive the installed pi-tui Markdown, never a translated oracle.
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { piMarkdown } from "./pi_markdown_overlay.mjs";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
 const { Markdown: pinnedMarkdown, setCapabilities } = await import(pathToFileURL(root + "node_modules/@earendil-works/pi-tui/dist/index.js"));
-const Markdown = await piMarkdown(root, pinnedMarkdown);
+const Markdown = pinnedMarkdown;
 setCapabilities({ images: null, trueColor: true, hyperlinks: false });
 let input = "";
 process.stdin.setEncoding("utf8"); // decode across chunk boundaries: `input += chunk` on Buffers splits a multi-byte character at a 64 KiB edge
