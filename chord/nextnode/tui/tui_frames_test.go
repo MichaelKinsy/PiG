@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf16"
 )
 
@@ -36,11 +38,14 @@ process.stdout.write(JSON.stringify({ units: FRAME_UNITS, frames: splitFrames(JS
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command(node, script)
+	// A deadline: a looping frames.ts held the package for ten minutes.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	command := exec.CommandContext(ctx, node, script)
 	command.Stdin = strings.NewReader(string(input))
 	out, err := command.Output()
 	if err != nil {
-		t.Fatalf("running frames.ts: %v", err)
+		t.Fatalf("running frames.ts: %v (deadline: %v)", err, ctx.Err())
 	}
 	var result struct {
 		Units  int      `json:"units"`
