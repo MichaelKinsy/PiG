@@ -112,7 +112,7 @@ func watcherOver(t *testing.T, roots []string, base string) *watcherFixture {
 		root = roots[0]
 	}
 	f := &watcherFixture{t: t, root: root, base: base, loop: host.NewLoop(), scheduler: chord.NewDeliveryScheduler()}
-	batch := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(f.scheduler).UseMicrotasks(f.loop.Queue).UseSection(f.loop.Run)
+	batch := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(f.scheduler).UseMicrotasks(f.loop.Queue).UseSection(f.loop.Run, f.loop.InSection)
 	f.watcher = newPluginWatcher(watcherOptions{
 		Roots: roots, Base: []string{base}, Kinds: kinds,
 		Failed: func(err error) {

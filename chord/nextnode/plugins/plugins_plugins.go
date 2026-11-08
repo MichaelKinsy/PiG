@@ -204,7 +204,7 @@ func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
 		}
 	}
 	batch := state.NewBatch(func(e state.BatchError) { report(PluginsErrorKind(e.Kind), e.Error) }, nil).
-		UseScheduler(chord.NewDeliveryScheduler()).UseMicrotasks(c.loop.Queue).UseSection(c.loop.Run)
+		UseScheduler(chord.NewDeliveryScheduler()).UseMicrotasks(c.loop.Queue).UseSection(c.loop.Run, c.loop.InSection)
 	c.watcher = newPluginWatcher(watcherOptions{
 		Roots: rootPaths(options.Roots), Base: options.Base, Kinds: c.kindNames,
 		Failed: func(err error) { report(PluginsWatchFailed, err) },
