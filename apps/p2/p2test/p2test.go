@@ -282,7 +282,10 @@ func (f *Fixture) Client(headers map[string]string, facets ...host.HostFacet) (h
 }
 
 // As is a memory-linked client the server accepts as principal (a relay owner, a worker, a guest of a test).
-func (f *Fixture) As(principal p2runtime.Principal) host.Host {
+func (f *Fixture) As(principal p2runtime.Principal) host.Host { return f.AsWith(principal) }
+
+// AsWith is As with facets loaded on the client (TUI facets, say).
+func (f *Fixture) AsWith(principal p2runtime.Principal, facets ...host.HostFacet) host.Host {
 	f.t.Helper()
 	down, up := link.MemoryLinkPair()
 	if err := f.Server.Host.Accept(down, host.LinkOptions{Principal: p2runtime.ToChord(principal)}, Background); err != nil {
@@ -295,7 +298,11 @@ func (f *Fixture) As(principal p2runtime.Principal) host.Host {
 	if err := client.Connect(up, host.LinkOptions{Principal: p2runtime.ToChord(p2runtime.Server)}, Background); err != nil {
 		f.t.Fatal(err)
 	}
-	if _, err := client.Load(nil, Background); err != nil {
+	report, err := client.Load(facets, Background)
+	if err == nil && len(report.Failed) > 0 {
+		err = report.Failed[0].Error
+	}
+	if err != nil {
 		f.t.Fatal(err)
 	}
 	f.mu.Lock()
