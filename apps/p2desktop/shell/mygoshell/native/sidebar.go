@@ -61,13 +61,15 @@ func (a *App) sidebar(c *ui.Context, h *surfacehost.Host, sessions *screens.Sess
 			chosen = i
 		}
 	}
-	a.list.Selected = &chosen
 	now := time.Now()
-	list := ui.List(c, &a.list, len(items), func(i int) {
+	clicked := -1
+	ui.List(c, &a.list, len(items), func(i int) {
 		if items[i].Group != nil {
 			a.groupHeader(c, items[i].Group, h, sessions)
 		} else {
-			a.sessionRow(c, items[i].Row, now, i == chosen, pal)
+			if a.sessionRow(c.Key(items[i].Row.ID), items[i].Row, now, i == chosen, pal) {
+				clicked = i
+			}
 		}
 	}).Grow(1).Children(func() {
 		if len(items) == 0 {
@@ -83,8 +85,8 @@ func (a *App) sidebar(c *ui.Context, h *surfacehost.Host, sessions *screens.Sess
 			ui.Text(c, text).TextColor(t.TextMuted).FontSize(13).Padding(22, 16, 16).TextAlign(ui.Center)
 		}
 	})
-	if list.Changed() && chosen >= 0 && chosen < len(items) && items[chosen].Row != nil {
-		row := items[chosen].Row
+	if clicked >= 0 && items[clicked].Row != nil {
+		row := items[clicked].Row
 		a.setSel(row.ID)
 		a.creating = false
 		a.showDrawer = false
@@ -181,13 +183,9 @@ func (a *App) groupHeader(c *ui.Context, g *screens.Group, h *surfacehost.Host, 
 
 // sessionRow is a session as the drawer shows it: its title, its age in the mono font at the right, the whole width
 // filled when it is the open one.
-func (a *App) sessionRow(c *ui.Context, r *screens.Row, now time.Time, selected bool, pal surfacehost.Palette) {
+func (a *App) sessionRow(c *ui.Context, r *screens.Row, now time.Time, selected bool, pal surfacehost.Palette) bool {
 	t := c.Theme()
-	bg := ui.Color{}
-	if selected {
-		bg = t.SurfaceHover
-	}
-	ui.Row(c).Background(bg).Padding(11, 16).Gap(8).AlignItems(ui.Center).Children(func() {
+	row := ui.Row(c).Padding(11, 16).Gap(8).AlignItems(ui.Center).Focusable().Label(r.Title).Children(func() {
 		if r.Pinned {
 			ui.Icon(c, iconPin).Size(12, 12).TextColor(t.TextMuted)
 		}
@@ -208,6 +206,13 @@ func (a *App) sessionRow(c *ui.Context, r *screens.Row, now time.Time, selected 
 			ui.Text(c, screens.Ago(time.UnixMilli(r.UpdatedAt), now)).FontSize(11).Font("monospace").TextColor(ui.RGB(col.R, col.G, col.B))
 		}
 	})
+	switch {
+	case selected:
+		row.Background(t.SurfaceHover)
+	case row.Hovered():
+		row.Background(t.SurfaceHover.Alpha(0.5))
+	}
+	return row.Clicked()
 }
 
 func rowBackground(selected bool) string {
