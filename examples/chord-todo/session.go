@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/tui"
+	"github.com/MichaelKinsy/PiG/chord/telemetrysqlite"
 )
 
 // session is what the steps after the first share: the running app, its address and the owner's cookie.
@@ -21,6 +22,7 @@ type session struct {
 	out     io.Writer
 	app     *app.App
 	dataDir string
+	store   *telemetrysqlite.SqliteTelemetry
 	// root is the plugins root, base the directory holding it and the data directory.
 	root, base string
 	origin     string

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/chord/telemetrysqlite"
+	"github.com/MichaelKinsy/PiG/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 

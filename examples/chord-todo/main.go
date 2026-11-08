@@ -26,6 +26,7 @@ import (
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
+	"github.com/MichaelKinsy/PiG/chord/telemetrysqlite"
 )
 
 // here is this directory: the API's modules are files of it.
@@ -65,8 +66,9 @@ func kinds() []app.AppKind {
 	}
 }
 
-// startTodo starts the todo app on a free loopback port, with its data in dataDir and its built-in plugins in root.
-func startTodo(ctx context.Context, dataDir, root string) (*app.App, error) {
+// startTodo starts the todo app on a free loopback port, with its data in dataDir, its built-in plugins in root, recording to store (the
+// telemetry store in dataDir).
+func startTodo(ctx context.Context, dataDir, root string, store *telemetrysqlite.SqliteTelemetry) (*app.App, error) {
 	executable, err := os.Executable()
 	if err != nil {
 		return nil, err
@@ -94,12 +96,17 @@ func startTodo(ctx context.Context, dataDir, root string) (*app.App, error) {
 			},
 		}},
 		// The kit's pick-a-name login (a Go app loads it itself, where Pi's app has a one-line plugin) and the lists' routes.
+		// The store the server writes: its own spans and metrics, and what the workers and recording pages send.
+		Telemetry: store,
+		// Who a span was for: a short key and a user's name.
+		PrincipalAttributes: principalAttributes,
 		Facets: []host.HostFacet{
 			{Name: "chord.app.ephemeral", Facet: app.EphemeralLoginFacet()},
 			{Name: "@todo/routes", Facet: routes()},
+			{Name: "@todo/traces", Facet: tracesFacet(dataDir)},
 		},
 		// The page: the app's own HTML around the assets the kit made.
-		Web:     &app.AppWeb{Entry: filepath.Join(here, "client", "page.ts"), Page: page, Conditions: []string{"source"}},
+		Web:     &app.AppWeb{Entry: filepath.Join(here, "client", "page.ts"), Page: page, Paths: []string{"/", "/traces"}, Conditions: []string{"source"}},
 		Tui:     &app.AppTui{Entry: filepath.Join(here, "client", "terminal.ts"), Conditions: []string{"source"}},
 		OnError: func(err app.AppError) { fmt.Fprintln(os.Stderr, "todo:", err.Kind, err.Error) },
 	}, ctx)
@@ -137,7 +144,12 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 	// 1. Start the app: the kit makes the data directory, the server's store and host, HTTP and the owner link. Nobody is signed
 	//    in yet, so the page answers 401. The owner opens the link: its page posts the token from the URL's fragment and gets
 	//    a session cookie.
-	server, err := startTodo(ctx, dataDir, root)
+	store, err := openTelemetry(telemetryFile(dataDir))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = store.Close() }()
+	server, err := startTodo(ctx, dataDir, root, store)
 	if err != nil {
 		return err
 	}
@@ -187,9 +199,9 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 	_ = signedIn.Body.Close()
 	fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
 
-	s := &session{ctx: ctx, out: out, app: server, dataDir: dataDir, root: root, base: base, origin: origin}
+	s := &session{ctx: ctx, out: out, app: server, dataDir: dataDir, store: store, root: root, base: base, origin: origin}
 	defer s.stop()
-	for _, step := range []func() error{s.listsStep, s.routesStep, s.pageStep, s.terminalStep, s.themeStep, s.userStep, s.languagesStep, s.reloadStep, s.exportStep} {
+	for _, step := range []func() error{s.listsStep, s.routesStep, s.pageStep, s.terminalStep, s.themeStep, s.userStep, s.languagesStep, s.reloadStep, s.exportStep, s.telemetryStep} {
 		if err := step(); err != nil {
 			return err
 		}
@@ -207,6 +219,13 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 func main() {
 	if os.Getenv(workerEnv) != "" {
 		startWorker()
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "trace" {
+		if err := traceCommand(os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "todo:", err)
+			os.Exit(1)
+		}
 		return
 	}
 	base, err := os.MkdirTemp("", "todo-")

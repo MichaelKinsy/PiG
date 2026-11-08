@@ -9,12 +9,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/tui"
 )
 
 // The tutorial's checks (docs/chord/tutorial.md), as Pi's tutorial.test.ts has them: every Go, TypeScript, JSON and CSS block of
 // the book is quoted from this example's files (`<!-- quote: path -->` above it) and fails here when the file no longer has those
 // lines; the example's steps run (`run`, the code the book quotes), and every console output the book shows
-// (`<!-- output: main -->`) is among the lines they print, in order.
+// (`<!-- output: main -->`, and `<!-- output: tui -->` with a Node for the terminal's sandbox) is among the lines they print, in order.
 
 const bookPath = "../../docs/chord/tutorial.md"
 
@@ -113,8 +115,8 @@ func TestTheTutorialQuotesEveryGoTypeScriptJSONAndCSSBlockFromAFile(t *testing.T
 
 func TestTheTutorialsBlocksMatchTheExamplesFiles(t *testing.T) {
 	quotes, values := marked(bookBlocks(t), "quote")
-	if len(quotes) < 6 {
-		t.Fatalf("the book quotes %d blocks, want at least 6", len(quotes))
+	if len(quotes) < 40 {
+		t.Fatalf("the book quotes %d blocks, want at least 40", len(quotes))
 	}
 	for i, b := range quotes {
 		file, err := os.ReadFile(filepath.FromSlash(values[i]))
@@ -134,8 +136,10 @@ func TestTheTutorialsStepsPrintWhatTheBookShows(t *testing.T) {
 	}
 	outputs, values := marked(bookBlocks(t), "output")
 	shown := 0
+	// The terminal's output (`<!-- output: tui -->`) is checked when a Node for its sandbox is there, as Pi's test does.
+	sandbox := tui.CheckSandboxNode(terminalNode()) == nil
 	for i, b := range outputs {
-		if values[i] == "main" {
+		if values[i] == "main" || (values[i] == "tui" && sandbox) {
 			expectPrinted(t, b, out.String())
 			shown++
 		}

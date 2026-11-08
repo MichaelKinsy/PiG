@@ -462,13 +462,19 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if listen == nil {
 		listen = &chordhttp.ListenAddress{Host: "127.0.0.1", Port: 0}
 	}
-	a.HTTP = chordhttp.CreateHttp(h, chordhttp.HttpOptions{
+	httpOptions := chordhttp.HttpOptions{
 		Listen: listen,
 		Links: &chordhttp.LinksOptions{Path: "/chord", OptionsFunc: a.linksAfterTheBases, Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
 			return sessions.Opened(request), nil
 		}},
 		OnError: func(err chordhttp.HttpError) { a.report(AppErrorHTTP, err) },
-	}, ctx)
+	}
+	// The HTTP component records with the server host's adapter, as Pi's `createHttp` gets the app's `telemetry`: each request is a
+	// `chord.http` span. A nil store stays a nil adapter (a nil AppTelemetry is not a nil interface of the option's type).
+	if options.Telemetry != nil {
+		httpOptions.Telemetry = options.Telemetry
+	}
+	a.HTTP = chordhttp.CreateHttp(h, httpOptions, ctx)
 	root := options.Root
 	if root == "" {
 		root = "plugins"

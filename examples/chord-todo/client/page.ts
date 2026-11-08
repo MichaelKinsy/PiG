@@ -8,12 +8,15 @@ import { createElement as h, createRoot, jsx, React } from "./react.ts";
 import * as v1 from "./v1.ts";
 import * as v1web from "./web.ts";
 import "./style.css";
+import { TraceViewer } from "./traces.ts";
 
 /** The page's own facet: it serves `Panels`, composing the contributions in plugin-name order. */
 const core = defineFacet((host) => host.serve(v1web.Panels, { compose: (table) => table.map(({ value }) => value) }));
 
 function Page() {
 	const panels = useRegistry(v1web.Panels) ?? [];
+	// The page's one other path (`startTodo` serves the page at `/` and `/traces`).
+	if (location.pathname === "/traces") return h("main", { className: "wide" }, h("h1", null, "Todo"), h(TraceViewer));
 	return h(
 		"main",
 		null,
@@ -26,5 +29,7 @@ void startPage({
 	connect: () => new WebSocket(`${location.origin.replace(/^http/, "ws")}/chord`),
 	modules: { "@todo/app/v1": v1, "@todo/app/v1/web": v1web, react: React, "react/jsx-runtime": jsx },
 	core: [{ name: "@todo/web", facet: core }],
+	// The page records its clicks and the calls under them, and sends them to the server every few seconds.
+	telemetry: true,
 	render: (host) => createRoot(document.getElementById("root")!).render(h(HostProvider, { host }, h(Page))),
 });

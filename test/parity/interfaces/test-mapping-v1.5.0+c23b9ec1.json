@@ -2383,16 +2383,14 @@
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/tutorial.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:80138fbe8d042d39d7aec298c286f32a580e97d98bd7524e50e35e003f13b0d1",
       "evidence": [
-        "examples/chord-todo/tutorial_test.go"
+        "examples/chord-todo/tutorial_test.go",
+        "examples/chord-todo/screens_test.go",
+        "examples/chord-todo/lists_test.go"
       ],
-      "rationale": "Owner order (2026-11-08): the tutorial is ported as a PiG tutorial with Pi's three checks (quoted blocks match the files, the files are what runs, the shown output is what they print). docs/chord/tutorial.md is the PiG book (Go app, TypeScript plugins) and examples/chord-todo its example; tutorial_test.go does the three checks. Ported: \"quotes every TypeScript, JSON and CSS block from a file\" is TestTheTutorialQuotesEveryGoTypeScriptJSONAndCSSBlockFromAFile (Go blocks too) and \"matches the example's files\" is TestTheTutorialsBlocksMatchTheExamplesFiles. Killed mutants (host run): a quoted block's line changed in the example, an unquoted Go block added to the book. Still to port: \"prints what the book shows\" is TestTheTutorialsStepsPrintWhatTheBookShows for the one chapter written so far (\"One Server\": the owner link, the data directory, the sign-in; killed mutant: a printed label changed); the book's other chapters (a list on its own worker, routes, a page, a terminal, a theme, a second user, languages, changing code, moving a list, telemetry, testing one plugin) and their steps are not written, so the case stays missing until the book and its steps are complete. \"takes the screenshots\" needs Chromium and a page, which the book has not reached.",
-      "missingCases": [
-        "the tutorial's steps › prints what the book shows",
-        "the tutorial's steps › takes the screenshots"
-      ]
+      "rationale": "Owner order (2026-11-08): the tutorial is ported as a PiG tutorial with Pi's three checks per chapter (quoted blocks match the files, the files are what runs, the shown output is what they print). docs/chord/tutorial.md is the PiG book (chapters I to XII of Pi's, the p2 chapter noted as having nothing to port: PiG has no p2) and examples/chord-todo its example (Go app, TypeScript plugins). The four upstream cases are: \"quotes every TypeScript, JSON and CSS block from a file\" = TestTheTutorialQuotesEveryGoTypeScriptJSONAndCSSBlockFromAFile (Go blocks too); \"matches the example's files\" = TestTheTutorialsBlocksMatchTheExamplesFiles; \"prints what the book shows\" = TestTheTutorialsStepsPrintWhatTheBookShows (the terminal's output only with a Node for its sandbox, as Pi's); \"takes the screenshots\" = TestTheTutorialTakesTheScreenshots (headless Chromium through internal/browsertest, skipped without one; the printed lines checked as Pi's, and each figure is a PNG of the size it was taken at). Pi's lists/worker.test.ts is the example's lists_test.go (plugins.TestPlugin). Killed mutants (host run): a printed label changed, a terminal label changed, a quoted TypeScript and a quoted Go line changed, an unquoted Go block added to the book, a screenshot's printed line changed, a viewport size changed."
     },
     {
       "path": "packages/chord/test/host/activity.test.ts",

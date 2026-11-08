@@ -6,6 +6,7 @@ import { defineFacet as chordFacet, type FacetHost, type FacetSelf, hostKind, st
 import type { TodoPrincipal } from "../api/principals.ts";
 
 export * from "../../../chord/nextnode/surfaces/client/pi/chord/src/index.ts";
+export { BACKGROUND_CONTEXT } from "../../../chord/nextnode/surfaces/client/pi/chord/src/context/index.ts";
 export type { TodoPrincipal } from "../api/principals.ts";
 
 /** Defines a facet of the todo app: its factories get the app's principals. */

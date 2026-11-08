@@ -13,8 +13,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/internal/browsertest"
 )
 
 // The reload suite's browser kit (Pi's test/node/fixtures/reload/{app,plugins}.ts over the vendored base bundle

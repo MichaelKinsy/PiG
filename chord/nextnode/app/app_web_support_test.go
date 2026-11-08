@@ -14,9 +14,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	nextsurfaces "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
-	"github.com/MichaelKinsy/PiG/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
+	"github.com/MichaelKinsy/PiG/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
