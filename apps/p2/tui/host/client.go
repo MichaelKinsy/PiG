@@ -38,6 +38,9 @@ import (
 // gestureWindow is how long after the launcher saw a selection gesture pi-tui's copy request is accepted.
 const gestureWindow = 2 * time.Second
 
+// OutdatedBuildMessage is what a client that met a server on a newer link protocol reports before it exits.
+const OutdatedBuildMessage = "This p2 build is outdated: the server speaks a newer link protocol. Update p2 and run it again"
+
 // ErrAccessEnded is the server no longer admitting this sign-in (401/403): a revoked or reset share, an archived session, a logout.
 var ErrAccessEnded = errors.New("Access to this server ended")
 
@@ -289,8 +292,10 @@ func (c *Client) Do(fn func()) {
 	}
 }
 
-// closeGrace is how long Close waits for the runtime's own teardown before it cleans the terminal without it.
-const closeGrace = 2 * time.Second
+// closeGrace is how long Close waits for the runtime's own teardown before it cleans the terminal without it. Pi's close awaits `worker.terminate()`, which
+// kills the thread whatever it runs; a goroutine cannot be killed, so the launcher gives up on it instead, after Pi's own limit for a launcher request that the
+// worker leaves unanswered (TuiSandbox.request, tui-sandbox.ts: 3000 ms).
+const closeGrace = 3 * time.Second
 
 // doWithin is Do with a limit: false when the loop did not take or finish fn in time.
 func (c *Client) doWithin(limit time.Duration, fn func()) bool {
@@ -904,7 +909,12 @@ func (c *Client) setup() error {
 		}
 	})
 	h, err := p2runtime.NewHost(host.HostOptions{OnError: func(failure host.HostError) {
-		// A server that speaks another link protocol was updated: this build is outdated.
+		// A server that speaks a newer link protocol was updated: this build is outdated. Pi loads the server's current bundle into a fresh worker; the
+		// facets are compiled into this executable, so the visitor is told to update it (D611).
+		if host.NewerPeerProtocol(failure) {
+			go c.fail(OutdatedBuildMessage)
+			return
+		}
 		switch string(failure.Kind) {
 		case "routine_failed", "derive_failed", "activation_failed", "object_failed", "registry_undeclared", "unbound_long", "transaction_cancelled":
 			text := hostErrorText(failure)
