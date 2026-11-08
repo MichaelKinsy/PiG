@@ -477,11 +477,12 @@ func (m *ModelSelectorComponent) applyFilterPreferring(preferred string) {
 	if preferred != "" {
 		preferredIndex = slices.IndexFunc(m.filtered, func(index int) bool { return m.active[index].FQ() == preferred })
 	}
-	if preferredIndex >= 0 {
+	switch {
+	case preferredIndex >= 0:
 		m.cursor = preferredIndex
-	} else if query != "" {
+	case query != "":
 		m.cursor = 0
-	} else if m.cursor >= len(m.filtered) {
+	case m.cursor >= len(m.filtered):
 		m.cursor = len(m.filtered) - 1
 	}
 	if m.cursor < 0 {

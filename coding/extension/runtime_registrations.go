@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 // PendingVirtualModelRegistration retains a virtual model and its owning extension until the runner binds.

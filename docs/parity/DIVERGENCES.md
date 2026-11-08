@@ -3846,28 +3846,6 @@ Evidence: `TestCtrlOExpandsUserBashOutputInThePendingArea`, `TestQueuedMessageUp
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 
-## D312 The model selector and the Hugging Face search keep the row the user browsed to
-
-What: PiG ports Pi main df0d88aac (`fix(coding-agent): keep the model selector selection when results refresh`, #11810, #9109), which is not in Pi 1.5.0. When the catalog refreshes behind the model selector, or a Hugging Face search lands while the user has moved the cursor, the selector keeps the browsed model selected if it is still listed. Otherwise the best match (top row) is highlighted. Pi 1.5.0 reset the selection to the first row on every refresh.
-
-Why: the cursor jumped away from the row the user was about to pick whenever results arrived.
-
-Pi bug: 1.5.0 moves the model selector selection when results refresh (#11810, #9109).
-
-Scope: `ModelSelectorComponent` (`tui/model_select.go` `applyFilterPreferring`) and the llama model browser (`internal/codingagent/llama/ui.go` search result handling).
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.
-
-Call-site markers: `tui/model_select.go` (`applyFilterPreferring`), `internal/codingagent/llama/ui.go` (search results applied).
-
-Evidence: `TestModelSelectorUpdateModels`, `TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive` (`tui/model_select_refresh_test.go`, port Pi's `model-selector.test.ts` "when the catalog refresh lands"); `TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands`, `TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse`, `TestHuggingFaceSearchSelectsTheBestMatchWhenTheBrowsedModelIsNotInTheNewResults` (`internal/codingagent/llama/ui_selection_test.go`, port Pi's `llama-ui.test.ts`).
-
-Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
-
 ## D350 OpenCode Zen and Go Claude models send per-message effort
 
 What: PiG's catalog generator (`internal/modelgen/providers/opencode.go`) gives OpenCode Zen and Go Claude models per-message effort and `block_binding: drop_block`, as Pi main does. Pi 1.5.0 sends neither. Ports Pi main 9ee7586a9 (`fix(ai): send drop_block for OpenCode Zen and Go Claude models`, #10954), which is not in Pi 1.5.0.
@@ -3951,42 +3929,6 @@ Remove when: the pinned Pi release contains 63ea042ce and PiG's close matches it
 Call-site markers: `mcp/oauth/callback.go` (`Close`).
 
 Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`, `TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` (`mcp/oauth/oauth_test.go`), `TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose` (`mcp/oauth/goroutines_test.go`).
-
-## D371 Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`
-
-What: PiG ports Pi main 6d3e342b2 (`fix(coding-agent): follow local schema refs in tool search and codemode summaries`, #11850, fixing #11803), which is not in Pi 1.5.0. `tool_search` reads names and descriptions behind local `$ref`s, the codemode summary resolves `$ref` chains, and a `$ref` with a malformed percent escape names nothing, so the `codemode` render functions return a string only (they returned the URIError as an error).
-
-Why: One MCP tool with such a ref failed every codemode run.
-
-Pi bug: 1.5.0 throws `URI malformed` out of every codemode run.
-
-Owner decision: owner sign-off pending.
-
-SCRUTINIZED:pending
-
-Remove when: the pinned Pi release contains 6d3e342b2.
-
-Call-site markers: `codemode/declarations.go` (`refSegments`).
-
-Evidence: `TestMalformedRefPercentEncodingRendersAsUnknown`, `TestResolveSchemaRef*` (`codemode/declarations_test.go`), `TestSchemaRefs*` (`coding/extension/builtin/toolsearch/schema_refs_pi_test.go`), `TestFindsAToolByAParameterDescriptionBehindALocalReference...` (`durable/toolsearch/toolsearch_test.go`), `TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`.
-
-## D372 `mcp add` reports an invalid url before an invalid exposure
-
-What: PiG ports Pi main 76c040a2a (the MCP server config validation moved into the mcp package), which is not in Pi 1.5.0. The validator checks the shared fields first, then the transport fields (url, headers, OAuth), and the exposure last. Pi 1.5.0 checked the exposure first, so a command with both an invalid url and an invalid exposure names the exposure there and the url in PiG.
-
-Why: one validator now serves the CLI, the config loader and the extension.
-
-Pi bug: none; an ordering change in Pi main.
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
-
-SCRUTINIZED:pending
-
-Remove when: the pinned Pi release contains 76c040a2a.
-
-Call-site markers: `internal/mcpshared/config.go` (`validateHTTPFields`).
-
-Evidence: `TestMcpCommandMatchesPi` (`coding/mcpext/cli_oracle_test.go`) skips probes that give both an invalid exposure and a non-http(s) url.
 
 ## D373 The stored PKCE verifier is dropped once its code exchange succeeded
 
