@@ -593,10 +593,11 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		rules.mu.Lock()
 		rules.readInputs[args.Path] = hex.EncodeToString(sum[:])
 		rules.mu.Unlock()
-		text := string(contents)
 		if args.PluginData != any(assetData{}) && strings.HasSuffix(args.Path, ".module.css") {
-			return rules.cssModule(args.Path, text)
+			// build.ts: `scopeCssModule(…, new TextDecoder().decode(contents))`.
+			return rules.cssModule(args.Path, decodeUTF8(contents))
 		}
+		text := string(contents)
 		return api.OnLoadResult{Contents: &text, Loader: loader, ResolveDir: filepath.Dir(args.Path)}, nil
 	})
 }
