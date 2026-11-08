@@ -148,6 +148,10 @@ jobs:
     # sign-off or a broken policy gate stops the run in minutes. It runs only what needs Go, Python and the Pi source mirror
     # (make ci-bookkeeping): no oracle build, no npm install, no test binaries. Gates that need those stay in their shards.
     # A failure whose only cause is a committed file that make generate rewrites feeds the autofix workflow (item below).
+    # The shards wait on the output, not on this job's result: known-gaps-drift alone keeps this job (and the CI result) red without stopping
+    # them (automation/ci/bookkeeping_shards.py; any other failed gate still blocks). Empty when the gates never ran, which blocks.
+    outputs:
+      shards-blocked: ${{ steps.shards.outputs.blocked }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -176,6 +180,8 @@ jobs:
       # Dependabot commits carry no Signed-off-by trailer; the maintainer's signed-off squash merge records the DCO for them.
       - name: Test the sign-off check
         run: python3 -B -m unittest automation/ci/test_check_dco.py
+      - name: Test the shard verdict
+        run: python3 -B -m unittest automation/ci/test_bookkeeping_shards.py
       - name: Check commit sign-offs
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         env:
@@ -225,6 +231,13 @@ jobs:
         run: |
           set -o pipefail
           make -k -j4 -O ci-bookkeeping 2>&1 | tee "$RUNNER_TEMP/bookkeeping.log"
+      - name: Decide whether the shards wait for these gates
+        id: shards
+        if: steps.gates.outcome == 'success' || steps.gates.outcome == 'failure'
+        env:
+          OUTCOME: ${{ steps.gates.outcome }}
+          LOG: ${{ runner.temp }}/bookkeeping.log
+        run: python3 automation/ci/bookkeeping_shards.py --outcome "$OUTCOME" --log "$LOG"
       # When every failed gate is one whose remedy is regenerating committed files (automation/ci/autofix-gates.txt), regenerate
       # them here, check the failed gates pass on the result, and keep the changed files as an artifact. This job holds a read-only
       # token and runs the pull request's own code; the autofix workflow, which holds the write token, runs none of it. It reads
@@ -258,7 +271,7 @@ jobs:
     # On release and integration branches (os-parallel) a failed Bookkeeping or preflight no longer skips them. !cancelled(), not
     # always(): a run that concurrency cancels must stop these jobs too.
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -294,7 +307,7 @@ jobs:
   linux:
     name: Linux / ${{ matrix.shard }}
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -539,7 +552,7 @@ jobs:
   node-runtime:
     name: Node extensions
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -664,7 +677,7 @@ jobs:
   durable-cf-host:
     name: Durable Cloudflare host
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -721,7 +734,7 @@ jobs:
   durable-contract:
     name: Durable contract / ${{ matrix.impl }}
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -1195,7 +1208,7 @@ jobs:
   android:
     name: Android build
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-android == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-android == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
     # Termux runs this binary. The runner image provides the NDK; no hosted
     # runner executes the result, so this builds it with cgo and checks its ELF
     # headers (PIE, /system/bin/linker64, bionic libc) as the release does.
@@ -1310,7 +1323,7 @@ jobs:
           # Every job that spends real minutes waits for bookkeeping, and on main it skips when bookkeeping fails; on a release or
           # integration branch it still runs, so this message names the failure and the other jobs' own results follow in the log.
           if [ "$BOOKKEEPING" != success ]; then
-            echo "::error::Bookkeeping: $BOOKKEEPING; the jobs that wait for it did not run, or on a release or integration branch ran regardless (see the Bookkeeping job's log)"
+            echo "::error::Bookkeeping: $BOOKKEEPING; the jobs that wait for it did not run, or ran regardless on a release or integration branch or when known-gaps-drift was the only failed gate (see the Bookkeeping job's log)"
             exit 1
           fi
           product_skip=false; docs_skip=false

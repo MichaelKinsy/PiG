@@ -5319,12 +5319,6 @@ snippet = "ctx, cancel := signal.NotifyContext(context.Background(), os.Interrup
 [[hit]]
 check = "ctxbackground"
 file = "coding/cli/auth_run.go"
-func = "runParsedAuthCommand"
-snippet = "ctx, cancel := context.WithTimeout(context.Background(), credentialPrintTimeout)"
-
-[[hit]]
-check = "ctxbackground"
-file = "coding/cli/auth_run.go"
 func = "runAuthCheck"
 snippet = "ctx := context.Background()"
 
