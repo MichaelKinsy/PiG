@@ -305,7 +305,8 @@ func ResolveSchemaRef(ref string, root any) (any, bool) {
 }
 
 // ResolveSchemaRefJSON is [ResolveSchemaRef] on schema text: it returns the text of the subschema a local `$ref` names in root, with its members in the
-// order root has them. It reads root once, token by token, without building a tree: the cost is the size of root, not its depth times its size.
+// order root has them. It reads root once, as bytes, without building a tree or boxing tokens: the cost is the size of root, not its depth times its
+// size. Text that is not valid JSON up to the end of the value it names resolves nothing.
 func ResolveSchemaRefJSON(ref string, root json.RawMessage) (json.RawMessage, bool) {
 	segments, ok := refSegments(ref)
 	if !ok {
@@ -313,82 +314,311 @@ func ResolveSchemaRefJSON(ref string, root json.RawMessage) (json.RawMessage, bo
 	}
 	current := root
 	if len(segments) > 0 {
-		decoder := json.NewDecoder(bytes.NewReader(root))
-		var err error
-		if current, ok, err = walkSchemaRef(decoder, segments); err != nil || !ok {
+		scan := refScanner{text: root}
+		start, end, found := scan.walk(segments)
+		if scan.bad || !found {
 			return nil, false
 		}
+		// The result does not alias root: callers own it.
+		current = bytes.Clone(root[start:end])
 	}
-	switch trimmed := strings.TrimLeft(string(current), " \t\r\n"); {
-	case strings.HasPrefix(trimmed, "{"), strings.HasPrefix(trimmed, "true"), strings.HasPrefix(trimmed, "false"):
-		return current, true
+	for i, c := range current {
+		switch c {
+		case ' ', '\t', '\r', '\n':
+			continue
+		}
+		rest := current[i:]
+		if c == '{' || bytes.HasPrefix(rest, []byte("true")) || bytes.HasPrefix(rest, []byte("false")) {
+			return current, true
+		}
+		break
 	}
 	return nil, false
 }
 
-// walkSchemaRef reads one JSON value from decoder: when it is an object it follows segments through its members and returns the text of the
-// member they name. Like JSON.parse, a repeated name is the last one. A value that is not an object names nothing, and is read to its end.
-func walkSchemaRef(decoder *json.Decoder, segments []string) (json.RawMessage, bool, error) {
-	token, err := decoder.Token()
-	if err != nil {
-		return nil, false, err
-	}
-	if delim, isDelim := token.(json.Delim); !isDelim || delim != '{' {
-		return nil, false, skipToken(decoder, token)
-	}
-	var found json.RawMessage
-	var ok bool
-	for decoder.More() {
-		keyToken, err := decoder.Token()
-		if err != nil {
-			return nil, false, err
-		}
-		if key, _ := keyToken.(string); key != segments[0] {
-			valueToken, err := decoder.Token()
-			if err != nil {
-				return nil, false, err
-			}
-			if err := skipToken(decoder, valueToken); err != nil {
-				return nil, false, err
-			}
-			continue
-		}
-		if len(segments) > 1 {
-			if found, ok, err = walkSchemaRef(decoder, segments[1:]); err != nil {
-				return nil, false, err
-			}
-			continue
-		}
-		var raw json.RawMessage
-		if err := decoder.Decode(&raw); err != nil {
-			return nil, false, err
-		}
-		found, ok = raw, true
-	}
-	_, err = decoder.Token() // the closing brace
-	return found, ok, err
+// maxRefNesting is encoding/json's nesting limit for a value it decodes; the value a ref names is held to it, the values read past are not.
+const maxRefNesting = 10000
+
+// refScanner is a strict RFC 8259 reader over text with the acceptance of encoding/json: it reports malformed text through bad.
+type refScanner struct {
+	text []byte
+	pos  int
+	bad  bool
 }
 
-// skipToken reads to the end of the value token began.
-func skipToken(decoder *json.Decoder, token json.Token) error {
-	delim, isDelim := token.(json.Delim)
-	if !isDelim || (delim != '{' && delim != '[') {
-		return nil
-	}
-	for depth := 1; depth > 0; {
-		next, err := decoder.Token()
-		if err != nil {
-			return err
+func (s *refScanner) space() {
+	for s.pos < len(s.text) {
+		switch s.text[s.pos] {
+		case ' ', '\t', '\r', '\n':
+			s.pos++
+		default:
+			return
 		}
-		if d, ok := next.(json.Delim); ok {
-			if d == '{' || d == '[' {
-				depth++
-			} else {
+	}
+}
+
+// next returns the byte at pos after white space, or 0 and bad at the end of text.
+func (s *refScanner) next() byte {
+	s.space()
+	if s.pos >= len(s.text) {
+		s.bad = true
+		return 0
+	}
+	return s.text[s.pos]
+}
+
+// walk reads one value: when it is an object it follows segments through its members and returns the range of the member they name. Like
+// JSON.parse, a repeated name is the last one. A value that is not an object names nothing, and is read to its end.
+func (s *refScanner) walk(segments []string) (start, end int, found bool) {
+	if s.next() != '{' {
+		if !s.bad {
+			s.value(math.MaxInt)
+		}
+		return 0, 0, false
+	}
+	s.pos++
+	if s.next() == '}' {
+		s.pos++
+		return 0, 0, false
+	}
+	for !s.bad {
+		if s.next() != '"' {
+			s.bad = true
+			break
+		}
+		match := s.key(segments[0])
+		if s.next() != ':' {
+			s.bad = true
+			break
+		}
+		s.pos++
+		switch {
+		case !match:
+			s.value(math.MaxInt)
+		case len(segments) > 1:
+			start, end, found = s.walk(segments[1:])
+		default:
+			s.space()
+			start = s.pos
+			s.value(maxRefNesting)
+			end, found = s.pos, true
+		}
+		if s.bad {
+			break
+		}
+		switch s.next() {
+		case ',':
+			s.pos++
+			continue
+		case '}':
+			s.pos++
+			return start, end, found
+		}
+		s.bad = true
+	}
+	return 0, 0, false
+}
+
+// key reads the string at pos and reports whether it decodes to name.
+func (s *refScanner) key(name string) bool {
+	begin := s.pos
+	plain := s.str()
+	if s.bad {
+		return false
+	}
+	if plain {
+		return string(s.text[begin+1:s.pos-1]) == name
+	}
+	var decoded string
+	return json.Unmarshal(s.text[begin:s.pos], &decoded) == nil && decoded == name
+}
+
+// str reads the string at pos. It reports whether its text is plain: ASCII without escapes, so its bytes are its value.
+func (s *refScanner) str() (plain bool) {
+	plain = true
+	for s.pos++; s.pos < len(s.text); s.pos++ {
+		switch c := s.text[s.pos]; {
+		case c == '"':
+			s.pos++
+			return plain
+		case c < 0x20:
+			s.bad = true
+			return false
+		case c == '\\':
+			plain = false
+			s.pos++
+			if s.pos >= len(s.text) {
+				s.bad = true
+				return false
+			}
+			switch s.text[s.pos] {
+			case '"', '\\', '/', 'b', 'f', 'n', 'r', 't':
+			case 'u':
+				for range 4 {
+					s.pos++
+					if s.pos >= len(s.text) || !isHex(s.text[s.pos]) {
+						s.bad = true
+						return false
+					}
+				}
+			default:
+				s.bad = true
+				return false
+			}
+		case c >= 0x80:
+			plain = false
+		}
+	}
+	s.bad = true
+	return false
+}
+
+func isHex(c byte) bool {
+	return '0' <= c && c <= '9' || 'a' <= c && c <= 'f' || 'A' <= c && c <= 'F'
+}
+
+func (s *refScanner) digits() bool {
+	begin := s.pos
+	for s.pos < len(s.text) && '0' <= s.text[s.pos] && s.text[s.pos] <= '9' {
+		s.pos++
+	}
+	return s.pos > begin
+}
+
+// number reads a JSON number at pos.
+func (s *refScanner) number() {
+	if s.pos < len(s.text) && s.text[s.pos] == '-' {
+		s.pos++
+	}
+	switch {
+	case s.pos < len(s.text) && s.text[s.pos] == '0':
+		s.pos++
+	case s.pos < len(s.text) && '1' <= s.text[s.pos] && s.text[s.pos] <= '9':
+		s.digits()
+	default:
+		s.bad = true
+		return
+	}
+	if s.pos < len(s.text) && s.text[s.pos] == '.' {
+		s.pos++
+		if !s.digits() {
+			s.bad = true
+			return
+		}
+	}
+	if s.pos < len(s.text) && (s.text[s.pos] == 'e' || s.text[s.pos] == 'E') {
+		s.pos++
+		if s.pos < len(s.text) && (s.text[s.pos] == '+' || s.text[s.pos] == '-') {
+			s.pos++
+		}
+		if !s.digits() {
+			s.bad = true
+		}
+	}
+}
+
+func (s *refScanner) literal(word string) {
+	if len(s.text)-s.pos < len(word) || string(s.text[s.pos:s.pos+len(word)]) != word {
+		s.bad = true
+		return
+	}
+	s.pos += len(word)
+}
+
+// value reads one value at pos, up to limit levels of nesting. Whether each open level is an object is a bit of a stack, which stays on the
+// goroutine stack until the nesting passes 256.
+func (s *refScanner) value(limit int) {
+	var inline [4]uint64
+	objects := inline[:]
+	depth := 0
+	const (
+		wantValue = iota
+		wantKey
+		afterValue
+	)
+	state := wantValue
+	for !s.bad {
+		switch state {
+		case wantValue:
+			switch c := s.next(); {
+			case s.bad:
+			case c == '{' || c == '[':
+				s.pos++
+				if depth++; depth > limit {
+					s.bad = true
+					return
+				}
+				if depth > len(objects)*64 {
+					objects = append(objects, 0)
+				}
+				word, bit := (depth-1)/64, uint64(1)<<((depth-1)%64)
+				if c == '{' {
+					objects[word] |= bit
+				} else {
+					objects[word] &^= bit
+				}
+				closer := byte(']')
+				state = wantValue
+				if c == '{' {
+					closer, state = '}', wantKey
+				}
+				if s.next() == closer {
+					s.pos++
+					depth--
+					state = afterValue
+				}
+			case c == '"':
+				s.str()
+				state = afterValue
+			case c == 't':
+				s.literal("true")
+				state = afterValue
+			case c == 'f':
+				s.literal("false")
+				state = afterValue
+			case c == 'n':
+				s.literal("null")
+				state = afterValue
+			default:
+				s.number()
+				state = afterValue
+			}
+		case wantKey:
+			if s.next() != '"' {
+				s.bad = true
+				return
+			}
+			s.str()
+			if s.next() != ':' {
+				s.bad = true
+				return
+			}
+			s.pos++
+			state = wantValue
+		case afterValue:
+			if depth == 0 {
+				return
+			}
+			c := s.next()
+			if s.bad {
+				return
+			}
+			object := objects[(depth-1)/64]&(1<<((depth-1)%64)) != 0
+			switch {
+			case c == ',':
+				s.pos++
+				state = wantValue
+				if object {
+					state = wantKey
+				}
+			case object && c == '}', !object && c == ']':
+				s.pos++
 				depth--
+			default:
+				s.bad = true
 			}
 		}
 	}
-	return nil
 }
 
 // refSegments are the members a local `$ref` (`#`, `#/$defs/Item`) walks through, URI-decoded and JSON Pointer unescaped. It reports false for a
