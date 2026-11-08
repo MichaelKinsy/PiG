@@ -116,7 +116,7 @@ func TestLegacyAPIAliasesKeepTheAuthenticationTimingOfTheirMethodUpstream(t *tes
 		for _, simple := range []bool{false, true} {
 			name, call, want := tc.name+"/stream", tc.stream, StopReasonAborted
 			if simple {
-				name, call, want = tc.name+"/streamSimple", tc.simple, StopReasonError
+				name, call, want = tc.name+"/streamSimple", tc.simple, StopReasonAborted // lazy.ts:83 (Pi f3a64af07)
 			}
 			t.Run(name, func(t *testing.T) {
 				srv, seen := rawRecordingEndpoint(t)

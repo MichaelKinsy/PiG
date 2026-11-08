@@ -71,6 +71,8 @@ class HuggingFaceSearch extends Container {
     results = [];
     filteredResults = [];
     selectedIndex = 0;
+    // Whether the user moved the selection since the query last changed.
+    selectionTouched = false;
     query = "";
     status = "Type at least 2 characters";
     debounce;
@@ -123,7 +125,7 @@ class HuggingFaceSearch extends Container {
         }
         this.tui.requestRender();
     }
-    filterResults() {
+    filterResults(preferredId) {
         if (this.query) {
             const matches = new Set(fuzzyFilter(this.results, this.query, (model) => model.id).map((model) => model.id));
             this.filteredResults = this.results.filter((model) => matches.has(model.id));
@@ -131,7 +133,11 @@ class HuggingFaceSearch extends Container {
         else {
             this.filteredResults = this.results;
         }
-        this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredResults.length - 1));
+        const preferredIndex = preferredId ? this.filteredResults.findIndex((model) => model.id === preferredId) : -1;
+        if (preferredIndex >= 0)
+            this.selectedIndex = preferredIndex;
+        else
+            this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredResults.length - 1));
         this.updateResults();
     }
     scheduleSearch() {
@@ -163,10 +169,12 @@ class HuggingFaceSearch extends Container {
             this.cache.set(query.toLowerCase(), results);
             if (this.closed || request.signal.aborted || this.query !== query)
                 return;
+            // Keep the row the user browsed to while the search was in flight; otherwise show the best match.
+            const selectedId = this.selectionTouched ? this.filteredResults[this.selectedIndex]?.id : undefined;
             this.results = results;
             this.selectedIndex = 0;
             this.status = results.length === 0 ? "No GGUF models found" : "";
-            this.filterResults();
+            this.filterResults(selectedId);
         }
         catch (error) {
             if (this.closed || request.signal.aborted || this.query !== query)
@@ -193,6 +201,7 @@ class HuggingFaceSearch extends Container {
         if (this.keybindings.matches(data, "tui.select.up")) {
             if (this.filteredResults.length > 0) {
                 this.selectedIndex = this.selectedIndex === 0 ? this.filteredResults.length - 1 : this.selectedIndex - 1;
+                this.selectionTouched = true;
                 this.updateResults();
             }
             return;
@@ -200,6 +209,7 @@ class HuggingFaceSearch extends Container {
         if (this.keybindings.matches(data, "tui.select.down")) {
             if (this.filteredResults.length > 0) {
                 this.selectedIndex = this.selectedIndex === this.filteredResults.length - 1 ? 0 : this.selectedIndex + 1;
+                this.selectionTouched = true;
                 this.updateResults();
             }
             return;
@@ -208,6 +218,7 @@ class HuggingFaceSearch extends Container {
         if (pageIndex !== undefined) {
             if (this.filteredResults.length > 0) {
                 this.selectedIndex = pageIndex;
+                this.selectionTouched = true;
                 this.updateResults();
             }
             return;
@@ -228,6 +239,7 @@ class HuggingFaceSearch extends Container {
         if (query === this.query)
             return;
         this.query = query;
+        this.selectionTouched = false;
         this.scheduleSearch();
     }
 }
