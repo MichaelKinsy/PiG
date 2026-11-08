@@ -6,7 +6,10 @@
 
 package widthx
 
-import "strings"
+import (
+	"math/bits"
+	"strings"
+)
 
 // SegmentReset is the hard ANSI/OSC barrier appended to non-image lines after
 // rendering. It resets all SGR attributes and closes any open OSC 8 hyperlink.
@@ -51,12 +54,111 @@ func IsImageLine(line string) bool {
 // `TUI.applyLineResets` (tui.ts:427), factored out so callers can apply
 // it selectively (e.g. an index-aligned reuse cache) without duplicating
 // the rule.
+//
+// Every cursor marker is stripped from the line before it is normalized:
+// markers are internal render metadata and must never reach terminal output
+// (Pi main 25490ea49). The result is
+// NormalizeTerminalOutput(strings.ReplaceAll(line, CursorMarker, "")) + SegmentReset
+// for a line that is not an image line, in one allocation unless the line
+// needs the rewrites of NormalizeTerminalOutput.
 func ApplyLineReset(line string) string {
-	if IsImageLine(line) {
+	marker, image := scanImageAndMarker(line)
+	if image {
 		return line
 	}
-	// cursor markers are internal render metadata and must never reach terminal output (Pi main 25490ea49).
-	return NormalizeTerminalOutput(strings.ReplaceAll(line, CursorMarker, "")) + SegmentReset
+	if marker >= 0 {
+		return stripMarkersAndReset(line, marker)
+	}
+	thai := containsThaiLaoAM(line)
+	if !thai && strings.IndexByte(line, '\t') < 0 {
+		return line + SegmentReset
+	}
+	return rewriteTerminalOutput(line, thai, SegmentReset)
+}
+
+// scanImageAndMarker is IsImageLine and the position of the first CursorMarker (-1 for none) in one pass over the line's ESC bytes: the
+// image prefixes and the marker all start with ESC, so the pass that answers the image question finds the marker without a search of its
+// own. The image answer needs the whole line, so the scan goes on after a marker.
+func scanImageAndMarker(line string) (marker int, image bool) {
+	marker = -1
+	for i := 0; ; {
+		var j int
+		if i == 0 {
+			j = strings.IndexByte(line, 0x1B)
+		} else {
+			j = indexESCNear(line[i:])
+		}
+		if j < 0 {
+			return marker, false
+		}
+		at := i + j
+		rest := line[at:]
+		if len(rest) > 1 {
+			switch rest[1] {
+			case '_':
+				if strings.HasPrefix(rest, kittyImagePrefix) {
+					return marker, true
+				}
+				if marker < 0 && strings.HasPrefix(rest, CursorMarker) {
+					marker = at
+				}
+			case ']':
+				if strings.HasPrefix(rest, iTerm2ImagePrefix) {
+					return marker, true
+				}
+			}
+		}
+		i = at + 1
+	}
+}
+
+// indexESCNear is strings.IndexByte(s, 0x1B) for a search that probably ends soon: a styled row holds an ESC every few bytes, where a call to
+// the vectorized search per ESC costs more than looking at two words. A longer gap goes to the vectorized search.
+func indexESCNear(s string) int {
+	const lo, hi = 0x0101010101010101, 0x8080808080808080
+	i := 0
+	for ; i < 16 && len(s)-i >= 8; i += 8 {
+		w := load64(s[i:]) ^ (lo * 0x1B)
+		// The lowest set bit of this zero-byte test is exact: only the bytes above a zero byte can be false positives.
+		if t := (w - lo) &^ w & hi; t != 0 {
+			return i + bits.TrailingZeros64(t)>>3
+		}
+	}
+	if j := strings.IndexByte(s[i:], 0x1B); j >= 0 {
+		return i + j
+	}
+	return -1
+}
+
+// load64 reads the first eight bytes of s, least significant first; len(s) must be at least eight.
+func load64(s string) uint64 {
+	_ = s[7]
+	return uint64(s[0]) | uint64(s[1])<<8 | uint64(s[2])<<16 | uint64(s[3])<<24 |
+		uint64(s[4])<<32 | uint64(s[5])<<40 | uint64(s[6])<<48 | uint64(s[7])<<56
+}
+
+// stripMarkersAndReset is NormalizeTerminalOutput(strings.ReplaceAll(line, CursorMarker, "")) + SegmentReset for a line whose first
+// CursorMarker is at first. The stripped line and the reset share one buffer, so a line that needs no normalization is one allocation
+// (the rewrites run on the stripped line, not the original: removing a marker can join the bytes of a UTF-8 sequence around it).
+func stripMarkersAndReset(line string, first int) string {
+	var b strings.Builder
+	b.Grow(len(line) + len(SegmentReset))
+	b.WriteString(line[:first])
+	for rest := line[first+len(CursorMarker):]; ; {
+		at := strings.Index(rest, CursorMarker)
+		if at < 0 {
+			b.WriteString(rest)
+			break
+		}
+		b.WriteString(rest[:at])
+		rest = rest[at+len(CursorMarker):]
+	}
+	stripped := b.String()
+	if thai := containsThaiLaoAM(stripped); thai || strings.IndexByte(stripped, '\t') >= 0 {
+		return rewriteTerminalOutput(stripped, thai, SegmentReset)
+	}
+	b.WriteString(SegmentReset)
+	return b.String()
 }
 
 // ApplyLineResets returns a new slice where every non-image line has the

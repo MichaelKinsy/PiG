@@ -57,24 +57,13 @@ func probeOutcome(result piResult) string {
 // TestValidateToolArgumentsValidatesTheSchemaItIsGiven carries that behavior.
 const identityCacheProbe = "reviewer probes (Sol) > keeps the validator of a schema object, as before, also when the schema is changed later"
 
-// designedOutProbes are the probes whose expected outcome needs a bigint or an undefined value (Pi main af79b0c3d, TypeBox parity for extra types: Type.BigInt
-// converts a JSON number or string to a bigint, Type.Undefined converts null to undefined). Go has no such value, so schema/builders.go, checks.go and
-// coerce.go design the conversions out (PORT_MAP rows of those files) and the schema {"type":"bigint"} rejects what Pi converts. TestPiAnswersItsRecordedProbeOutcomes
-// still holds Pi to these outcomes; no Go test compares them.
-var designedOutProbes = map[string]bool{
-	`reviewer probes > bigint {"n":1}`:                  true,
-	`reviewer probes > bigint {"n":"12"}`:               true,
-	"reviewer probes (Sol) > BigInt from a JSON string": true,
-	"reviewer probes (Sol) > Undefined from JSON null":  true,
-}
-
 func TestValidationProbesMatchPi(t *testing.T) {
 	probes := loadValidationProbes(t)
 	if len(probes) != 168 {
 		t.Fatalf("corpus has %d probes, Pi's file has 168", len(probes))
 	}
 	for _, probe := range probes {
-		if (probe.Test == identityCacheProbe && strings.Contains(probe.Schema, `"minimum":10`)) || designedOutProbes[probe.Test] {
+		if probe.Test == identityCacheProbe && strings.Contains(probe.Schema, `"minimum":10`) {
 			continue
 		}
 		t.Run(probe.Test, func(t *testing.T) {
@@ -126,5 +115,18 @@ func TestValidateToolArgumentsValidatesTheSchemaItIsGiven(t *testing.T) {
 	changed := piProbe{"late", `{"type":"object","properties":{"n":{"type":"number","minimum":10}},"required":["n"]}`, `{"n":"4"}`}
 	if want := piValidate(t, []piProbe{changed})[0]; want.Err == nil || err.Error() != *want.Err {
 		t.Fatalf("error = %v, want Pi's %s", err, want)
+	}
+}
+
+// A root schema of `{"type":"undefined"}` converts null arguments to undefined, which Pi's validateToolArguments returns as undefined: no arguments, not an error.
+func TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments(t *testing.T) {
+	tool := ai.ToolSchema{Name: "none", Parameters: map[string]any{"type": "undefined"}}
+	got, err := ai.ValidateToolArguments(tool, ai.ToolCall{Name: "none"})
+	if err != nil || got != nil {
+		t.Fatalf("ValidateToolArguments = %v, %v; want no arguments and no error", got, err)
+	}
+	raw, err := ai.ValidateToolArgumentsJSON("none", []byte(`{"type":"undefined"}`), []byte(`null`))
+	if err != nil || raw != nil {
+		t.Fatalf("ValidateToolArgumentsJSON = %q, %v; want nil, nil", raw, err)
 	}
 }

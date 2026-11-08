@@ -1,6 +1,7 @@
 // Run Pi's packages/ai/src/utils/validation.ts validateToolArguments (pi-schema compile with coerce, formats and unresolvedRefs "reject") over {name, schema, args} probes from stdin.
 // usage: node --disable-warning=ExperimentalWarning validate_tool_args.mjs <repo root>
-// The probes are JSON texts: schema is the tool's parameters, args the call's arguments. Result per probe: {ok: JSON.stringify of the validated arguments, a bigint as `<n>n` as validation-probes.test.ts renders it} or {err: the error's message}.
+// The probes are JSON texts: schema is the tool's parameters, args the call's arguments. Result per probe: {ok: JSON.stringify of the validated arguments} or {err: the error's message}.
+// A bigint (Type.BigInt, which a JSON argument converts to) has no JSON form and JSON.stringify throws on it, so the arguments are written as Pi's validation-probes.test.ts outcome() writes them: a bigint as `${value}n`.
 // The Pi tree is .upstream/current, which must be Pi b556cfe5 or later (validation.ts imports @earendil-works/pi-schema); the package resolves to its TypeScript source there.
 import module from "node:module";
 import { readFileSync } from "node:fs";
