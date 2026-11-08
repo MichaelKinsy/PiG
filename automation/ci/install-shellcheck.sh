@@ -29,17 +29,14 @@ case "$(uname -s)/$(uname -m)" in
     ;;
 esac
 
-sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi; }
-
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 archive="shellcheck-v$version.linux.$arch.tar.xz"
-curl -fsSL --retry 3 -o "$work/$archive" "https://github.com/koalaman/shellcheck/releases/download/v$version/$archive"
-actual=$(sha256 "$work/$archive")
-if [ "$actual" != "$expected" ]; then
-  echo "install-shellcheck.sh: $archive has sha256 $actual, pinned $expected" >&2
-  exit 1
-fi
+# Cache, then the same tarball as a ghcr.io OCI blob (pig-ci-tools), then the upstream release asset. All three are
+# held to the pinned digest by fetch-pinned.sh, which also serves a digest-keyed cache that security.yml restores.
+"$(dirname "${BASH_SOURCE[0]}")/fetch-pinned.sh" "$expected" "$work/$archive" \
+  "https://github.com/koalaman/shellcheck/releases/download/v$version/$archive" \
+  || { echo "install-shellcheck.sh: $archive has no source with sha256 $expected (pinned)" >&2; exit 1; }
 tar -xJf "$work/$archive" -C "$work" "shellcheck-v$version/shellcheck"
 
 dir="${SHELLCHECK_INSTALL_DIR:-/usr/local/bin}"

@@ -3,11 +3,11 @@ package codingagent
 import (
 	"bytes"
 	"math"
-	"slices"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // SessionAccounting is the immutable all-entry accounting maintained with a Session.
@@ -324,7 +324,7 @@ func (a sessionAccountingAccumulator) snapshot() SessionAccounting {
 			stats.UsageBreakdown = append(stats.UsageBreakdown, breakdown)
 		}
 	}
-	slices.SortStableFunc(stats.UsageBreakdown, func(left, right SessionUsageBreakdown) int {
+	sortx.Stable(stats.UsageBreakdown, func(left, right SessionUsageBreakdown) int {
 		switch {
 		case left.Cost > right.Cost:
 			return -1

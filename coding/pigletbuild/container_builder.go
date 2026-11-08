@@ -12,13 +12,13 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"go.yaml.in/yaml/v3"
 
@@ -525,7 +525,7 @@ func localizeContainerPiglet(p *piglet.Piglet) ([]byte, []containerPigletMount, 
 	for target, source := range mountSet {
 		mounts = append(mounts, containerPigletMount{Source: source, Target: target})
 	}
-	slices.SortFunc(mounts, func(a, b containerPigletMount) int {
+	sortx.Func(mounts, func(a, b containerPigletMount) int {
 		return strings.Compare(a.Target, b.Target)
 	})
 	localizedData, err := yaml.Marshal(localized)

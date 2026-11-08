@@ -7,6 +7,7 @@ import json
 import os
 import pathlib
 import re
+import socket
 import struct
 import sys
 import threading
@@ -22,6 +23,39 @@ sys.path.insert(0, str(ROOT / "extensions" / "sdk-py"))
 
 import pig_sdk  # noqa: E402
 from pig_sdk import kit  # noqa: E402
+
+
+def dumps_deep(value: Any, separators: tuple[str, str] = (", ", ": ")) -> str:
+    """json.dumps of a payload, written with a stack of its own when its nesting passes what the interpreter's JSON writer takes (its recursion limit: about 990 levels on 3.11, and a lower C limit than Linux's on Windows)."""
+    try:
+        return json.dumps(value, separators=separators)
+    except RecursionError:
+        pass
+    comma, colon = separators
+    out: list[str] = []
+    stack: list[Any] = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, tuple):  # a literal to write: a bracket, a comma, or an object key and its colon
+            out.append(item[0])
+        elif isinstance(item, dict):
+            out.append("{")
+            stack.append(("}",))
+            for index, (key, member) in enumerate(reversed(list(item.items()))):
+                stack.append(member)
+                stack.append((json.dumps(key) + colon,))
+                if index < len(item) - 1:
+                    stack.append((comma,))
+        elif isinstance(item, list):
+            out.append("[")
+            stack.append(("]",))
+            for index in range(len(item) - 1, -1, -1):
+                stack.append(item[index])
+                if index:
+                    stack.append((comma,))
+        else:
+            out.append(json.dumps(item))
+    return "".join(out)
 
 
 def kit_probe_view() -> kit.View:
@@ -516,6 +550,15 @@ def dialog_text(value) -> str:
     return value if isinstance(value, str) else ""
 
 
+def io_wait(addr: str) -> None:
+    """Dial addr ("host:port"), write "waiting\n" and return when the peer writes a line."""
+    host, port = addr.rsplit(":", 1)
+    with socket.create_connection((host, int(port))) as peer:
+        peer.sendall(b"waiting\n")
+        with peer.makefile("rb") as lines:
+            lines.readline()
+
+
 def new_extension() -> pig_sdk.Extension:
     # factory_agent_dir is get_agent_dir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
     try:
@@ -663,6 +706,8 @@ def new_extension() -> pig_sdk.Extension:
         """Swallows "q", rewrites "a" to "A", upper-cases the host's setText, and frames super.render."""
 
         def handle_input(self, data):
+            if data == "!":
+                raise RuntimeError("bad key")
             if data == "q":
                 return
             if data == "L":
@@ -1322,6 +1367,21 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", ui_forward_probe)
 
+    # conformance-click-message / conformance-click-entry: a card whose mouse region counts clicks in the renderer state the SDK keeps per displayed message. The handler runs for each event the host's view took, before the render.
+    def click_state(options, event):
+        if event.type == kit.MOUSE and event.node == "card":
+            options.state["clicks"] = options.state.get("clicks", 0) + 1
+            options.state["last"] = f"{int(event.mouse['x'])},{int(event.mouse['y'])}"
+
+    def click_view(prefix, subject_text, options):
+        text = f"{prefix}:{subject_text}:clicks={options.state.get('clicks', 0)}:last={options.state.get('last', 'none')}:expanded={'true' if options.get('expanded') else 'false'}"
+        return kit.View(kit.MouseRegion("card", kit.Text(text, 0, 0), types=["click"]))
+
+    ext.message_view_renderer("conformance-click-message", lambda ctx, message, options, width: click_view("clickcard", message.get("content", ""), options))
+    ext.message_view_event("conformance-click-message", lambda ctx, message, options, event: click_state(options, event))
+    ext.entry_view_renderer("conformance-click-entry", lambda ctx, entry, options, width: click_view("clickentry", entry.get("data", ""), options))
+    ext.entry_view_event("conformance-click-entry", lambda ctx, entry, options, event: click_state(options, event))
+
     # The extension owns the thinking runs from load; thinking_runs_off/on flip the flag through the runtime entry point (the conformance row reads the host's aggregated flag).
     ext.own_thinking_runs(True)
     ext.command("thinking_runs_off", "Clear the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(False))
@@ -1758,6 +1818,21 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": "soft tool error", "is_error": True}
 
     ext.tool("echo", "Echo input text", {"type": "object", "required": ["text"], "properties": {"text": {"type": "string", "description": "Text to echo"}, "offset": {"type": "number"}}}, echo)
+    # D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+    shared = {"calls": 0, "heard": []}
+    ext.events.on("shared-cells", lambda _ctx, data: shared["heard"].append(data["from"]))
+
+    def shared_counter(_ctx, _params):
+        shared["calls"] += 1
+        return str(shared["calls"])
+
+    def shared_ping(ctx, params):
+        ctx.events.emit("shared-cells", {"from": params["name"]})
+        return "pinged"
+
+    ext.tool("counter", "This instance's call count", {"type": "object", "properties": {}}, shared_counter)
+    ext.tool("ping", "Emit on the shared-cells channel", {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}, shared_ping)
+    ext.tool("received", "What this instance heard on shared-cells", {"type": "object", "properties": {}}, lambda _ctx, _params: "received=" + ",".join(shared["heard"]))
     ext.tool("render_probe", "Render its own tool card", {"type": "object", "properties": {}}, lambda _ctx, _params: "render ok")
 
     def render_probe_call(_ctx, args, render, width):
@@ -2144,6 +2219,14 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("liveness_user_call", "Exercise an interactive host call", lambda ctx, args: ctx.input("Question", "Answer"))
     ext.command("liveness_fire_call", "Exercise a no-result UI host call", lambda ctx, args: ctx.set_title("Conformance title"))
 
+    # io_wait and io_wait_settled wait on a plain TCP read: they dial the address they get, announce themselves with a "waiting" line and return when the peer writes a line.
+    ext.command("io_wait", "Wait on a socket read", lambda ctx, args: io_wait(args))
+
+    def io_wait_settled(ctx: pig_sdk.Context, args: str) -> None:
+        ext.on_event("agent_settled", lambda hctx, data: io_wait(args))
+
+    ext.command("io_wait_settled", "Make agent_settled wait on a socket read", io_wait_settled)
+
     ext.command("command_error", "Return a command error", command_error)
 
     def command_awaited_error(ctx: pig_sdk.Context, args: str) -> None:
@@ -2396,7 +2479,7 @@ def new_extension() -> pig_sdk.Extension:
 
         def probe(hctx, data):
             hctx.notify("event_probe_on:%s" % name, "info")
-            hctx.notify("event_payload:%s:%s" % (name, json.dumps(data)), "info")
+            hctx.notify("event_payload:%s:%s" % (name, dumps_deep(data)), "info")
             # The event as the host sent it, for the tests that compare a payload field with the Go reference's.
             hctx.notify("event_probe_data:%s:%s" % (name, json.dumps(data, separators=(",", ":"))), "info")
             # mcp_servers_change carries every registered server (types.ts:699-709): report their names, which only the host's registry knows.
@@ -2422,10 +2505,46 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, lambda hctx, data: result)
 
     ext.command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", event_result_probe)
+
+    def event_ordered_result_probe(ctx, args):
+        # A Python dict keeps its members in the order they were written, so this is event_result_probe.
+        name, _, raw = args.strip().partition(" ")
+        result = json.loads(raw)
+        ext.on_event(name, lambda hctx, data: result)
+
+    ext.command("event_ordered_result_probe", "Subscribe to an event with a handler that returns the given JSON, members in written order", event_ordered_result_probe)
+
+    def event_keys_probe(ctx, args):
+        # Subscribe to the event named by the argument with a handler that reports the key order of its payload (dict keeps the order the host wrote).
+        name = args.strip()
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_keys:%s:%s" % (name, json.dumps([list(data["payload"]), list(data["payload"]["zeta"])], separators=(",", ":"))), "info"))
+
+    ext.command("event_keys_probe", "Subscribe to the event named by the argument with a handler that reports the key order of its payload", event_keys_probe)
+
+    def event_echo_probe(ctx, args):
+        # Subscribe to the event named by the argument with a handler that hands back, unchanged, the objects it was sent.
+        name = args.strip()
+
+        def echo(hctx, data):
+            if name == "turn_end":
+                return {"entries": data["entries"]}
+            if name == "context":
+                return {"messages": data["messages"][1:]}
+            if name == "before_provider_request":
+                return data["payload"]
+            if name == "tool_result":
+                return {"content": data["content"], "details": data["details"]}
+            if name == "message_end":
+                return {"message": data["message"]}
+            raise RuntimeError("event_echo_probe has no echo for " + name)
+
+        ext.on_event(name, echo)
+
+    ext.command("event_echo_probe", "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", event_echo_probe)
     ext.command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", event_probe_on_off)
     def event_payload_probe(ctx, args):
         name = args.strip()
-        ext.on_event(name, lambda hctx, data: hctx.notify("event_payload:%s:%s" % (name, json.dumps(data)), "info"))
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_payload:%s:%s" % (name, dumps_deep(data)), "info"))
 
     ext.command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", event_payload_probe)
     def event_isolation_probe(ctx, args):
@@ -2975,7 +3094,7 @@ def new_extension() -> pig_sdk.Extension:
             return
         ctx.notify(
             "tool-update=%s:%s:%s:%s"
-            % (data.get("toolName"), json.dumps(data.get("args"), separators=(",", ":")), data.get("partialResult", {}).get("content", [{}])[0].get("text"), data.get("partialResult", {}).get("details", {}).get("progress")),
+            % (data.get("toolName"), dumps_deep(data.get("args"), (",", ":")), data.get("partialResult", {}).get("content", [{}])[0].get("text"), data.get("partialResult", {}).get("details", {}).get("progress")),
             "info",
         )
 

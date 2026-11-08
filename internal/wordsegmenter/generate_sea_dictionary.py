@@ -2,8 +2,9 @@
 """Build ICU 78.3's four byte dictionaries and Unicode 17 complex-context sets."""
 import hashlib
 import pathlib
-import struct
 import sys
+
+import dictionary_format
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SOURCE = pathlib.Path(sys.argv[1])
@@ -39,13 +40,8 @@ for name, file, digest, base in DICTIONARIES:
     rows.sort()
     if len(set(rows)) != len(rows):
         raise SystemExit("duplicate dictionary word")
-    offsets = [0]
-    for word in rows:
-        offsets.append(offsets[-1] + len(word))
-    if max(len(rows), offsets[-1]) > 0xFFFFFFFF:
-        raise SystemExit("dictionary offsets exceed uint32")
-    # Current unversioned byte index: uint32 count, count+1 uint32 offsets, word bytes.
-    encoded = struct.pack("<I", len(rows)) + struct.pack("<" + "I" * len(offsets), *offsets) + b"".join(rows)
+    encoded = dictionary_format.encode_trie([(tuple(row), 0) for row in rows], 1, False)
+    dictionary_format.write_flat(ROOT / "testdata" / (name + "_flat.bin.gz"), rows)
     (ROOT / (name + "_dictionary.bin")).write_bytes(encoded)
     notices.append(file + ".txt (ICU release-78.3)\n\n" + "\n".join(notice).strip())
     print(f"{name}: {len(rows)} entries, {len(encoded)} bytes, sha256:{digest}")

@@ -39766,46 +39766,40 @@
       "id": "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6faf4e9bd346cc30f976ae0f7e762f0d633f946d351228897180c4094f000d49",
-      "rationale": "isStrictToolLimitErrorMessage: Go isStrictToolLimitErrorMessage has the upstream parameters and result (signatures reviewed); callers and tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isStrictToolLimitErrorMessage is Go ai/provider_kit.go#IsStrictToolLimitErrorMessage (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "ai/constrained_sampling.go#isStrictToolLimitErrorMessage"
+        "ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthropicStrictToolLimitsExceeded",
-        "call:ai/providers/bedrock/bedrock.go#bedrockStrictToolLimitMessage"
+        "call:ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ],
       "evidence": [
-        "test:ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream"
+        "reach:ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ]
     },
     {
       "id": "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b350c14870bf68cc304b6ce2cf655767817bf780f3547c5b8a0e33fe26b51167",
-      "rationale": "isStrictToolLimitErrorMessage::call:0: Go isStrictToolLimitErrorMessage has the upstream parameters and result (signatures reviewed); callers and tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isStrictToolLimitErrorMessage::call:0 is Go ai/provider_kit.go#IsStrictToolLimitErrorMessage (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "ai/constrained_sampling.go#isStrictToolLimitErrorMessage"
+        "ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthropicStrictToolLimitsExceeded",
-        "call:ai/providers/bedrock/bedrock.go#bedrockStrictToolLimitMessage"
+        "call:ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ],
       "evidence": [
-        "test:ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream"
+        "reach:ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ]
     },
     {
@@ -100990,40 +100984,40 @@
       "id": "pkg:ai/utils/provider-env#getProviderEnvValue",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d58f5163ba4559a4c1c404325dae3482ca6a8c08ad6b6a1f29088cb1471f4736",
-      "rationale": "getProviderEnvValue: Go getProviderEnvValue has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: getProviderEnvValue is Go ai/provider_kit.go#GetProviderEnvValue (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "ai/provider_env.go#getProviderEnvValue"
+        "ai/provider_kit.go#GetProviderEnvValue"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#resolveAnthropicCacheRetention"
+        "call:ai/provider_kit.go#GetProviderEnvValue"
       ],
       "evidence": [
-        "test:ai/provider_env_test.go#TestGetProviderEnvValue"
+        "reach:ai/provider_kit.go#GetProviderEnvValue"
       ]
     },
     {
       "id": "pkg:ai/utils/provider-env#getProviderEnvValue::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2a9ab1420d9109021b5a5ebea2d2f69f70fe936032024c0f334a261ed6684578",
-      "rationale": "getProviderEnvValue: Go getProviderEnvValue has the upstream parameters and result (signatures reviewed; a throw is an error return and undefined is the zero value or a pointer); callers and tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: getProviderEnvValue::call:0 is Go ai/provider_kit.go#GetProviderEnvValue (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "ai/provider_env.go#getProviderEnvValue"
+        "ai/provider_kit.go#GetProviderEnvValue"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#resolveAnthropicCacheRetention"
+        "call:ai/provider_kit.go#GetProviderEnvValue"
       ],
       "evidence": [
-        "test:ai/provider_env_test.go#TestGetProviderEnvValue"
+        "reach:ai/provider_kit.go#GetProviderEnvValue"
       ]
     },
     {
@@ -137394,7 +137388,7 @@
       "evidence": [
         "test:codemode/bridge_test.go#TestStoreWritesListSetKeysInObjectOrder",
         "test:codemode/bridge_test.go#TestAcceptsWellFormedBridgePayloads",
-        "test:codemode/sandbox_test.go#TestEndsTheScriptSuccessfullyOnExitKeepingOutputAndStoreWrites"
+        "test:codemode/execution_call_join_test.go#TestACallMessageRacingTheFinishIsJoinedBeforeTheWaitReturns"
       ]
     },
     {
@@ -141294,7 +141288,7 @@
       "evidence": [
         "test:codemode/bridge_test.go#TestStoreWritesListSetKeysInObjectOrder",
         "test:codemode/bridge_test.go#TestAcceptsWellFormedBridgePayloads",
-        "test:codemode/sandbox_test.go#TestEndsTheScriptSuccessfullyOnExitKeepingOutputAndStoreWrites"
+        "test:codemode/execution_call_join_test.go#TestACallMessageRacingTheFinishIsJoinedBeforeTheWaitReturns"
       ]
     },
     {
@@ -143322,8 +143316,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
+        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
       ]
     },
     {
@@ -151772,9 +151766,9 @@
         "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.appendJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
         "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs",
-        "test:coding/extension/host/subprocess/packed_go_test.go#TestHost_MixedFusedPackedAndIsolatedExtensions",
-        "test:coding/extension/host/subprocess/packed_go_test.go#TestPackedSDKFocusedComponentAndSessionActionsMatch"
+        "test:coding/extension/host/subprocess/packed_go_test.go#TestHost_MixedFusedPackedAndIsolatedExtensions"
       ]
     },
     {
@@ -151795,8 +151789,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
+        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
       ]
     },
     {
@@ -151817,8 +151811,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
+        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
       ]
     },
     {
@@ -151838,9 +151832,9 @@
         "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.appendJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
         "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs",
-        "test:coding/extension/host/subprocess/turn_boundary_packed_test.go#TestTurnBoundaryPackedFactoriesMatchIsolated"
+        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
       ]
     },
     {
@@ -151861,8 +151855,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
+        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
       ]
     },
     {
@@ -154749,20 +154743,20 @@
       "id": "pkg:coding-agent/.#CompactionResult::property:estimatedTokensAfter",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b2b8746a853915fa9e5cb4f8006138061fbfae08cbba29f61a829607ea43852c",
-      "rationale": "CompactionResult: Go CompactionResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CompactionResult::property:estimatedTokensAfter is Go internal/codingagent/session_handle.go#CompactionResult.EstimatedTokensAfter (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "internal/codingagent/session_handle.go#CompactionResult.EstimatedTokensAfter"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/session.go#Session.compact"
+        "call:coding/cli/rpc_types.go#rpcCompactionResult"
       ],
       "evidence": [
-        "test:coding/session_manual_compact_response_upstream_test.go#TestManualCompactPersistsAbortedResponseBeforeCompaction",
+        "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream",
         "test:coding/cli/rpc_mode_test.go#TestRPCCompactionResultShape"
       ]
     },
@@ -160819,9 +160813,9 @@
         "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_message_click_test.go#TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds",
         "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageFallbackOutputPadProduction",
-        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction",
-        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageFallsBackWhenRendererReturnsNoComponent"
+        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction"
       ]
     },
     {
@@ -160841,9 +160835,9 @@
         "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_message_click_test.go#TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds",
         "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageFallbackOutputPadProduction",
-        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction",
-        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageFallsBackWhenRendererReturnsNoComponent"
+        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction"
       ]
     },
     {
@@ -160883,9 +160877,9 @@
         "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_message_click_test.go#TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds",
         "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageFallbackOutputPadProduction",
-        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction",
-        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageFallsBackWhenRendererReturnsNoComponent"
+        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction"
       ]
     },
     {
@@ -171757,7 +171751,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnBeforeProviderRequestChainsThePayload",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -171780,7 +171774,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnBeforeProviderRequestChainsThePayload",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -171803,7 +171797,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -171826,7 +171820,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -171895,7 +171889,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -171918,7 +171912,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -172029,7 +172023,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -172052,7 +172046,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -172167,7 +172161,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerToolResult",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolResultChainsModifications",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -172190,7 +172184,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerToolResult",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolResultChainsModifications",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -181826,42 +181820,44 @@
       "id": "pkg:coding-agent/.#KeybindingsManager::property:reload",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:05b53e12301cb4ff8a97c1176f0d7252e4d791abbd17b53711737717112d41ac",
-      "rationale": "KeybindingsManager.reload is the Go method Reload (no return, as upstream's void: a missing, unreadable, unparsable or non-object keybindings.json yields no user bindings and a BOM is stripped, like loadRawConfig). Red: TestKeybindingsManagerReloadMatchesUpstreamLoadFromFile (Go returned the parse error and kept the stale bindings).",
+      "rationale": "Derived by the interface gap detector: KeybindingsManager::property:reload is Go internal/codingagent/keybindings.go#KeybindingsManager.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "internal/codingagent/keybindings.go#KeybindingsManager.Reload"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/keybindings.go#NewKeybindingsManager"
+        "call:internal/codingagent/keybindings.go#KeybindingsManager.Reload"
       ],
       "evidence": [
+        "test:internal/codingagent/keybindings_reload_upstream_test.go#TestKeybindingsManagerFromTakesUserBindingsAndConfigPath",
         "test:internal/codingagent/keybindings_reload_upstream_test.go#TestKeybindingsManagerReloadMatchesUpstreamLoadFromFile",
-        "test:internal/codingagent/keybindings_test.go#TestKeybindingsManagerSaveRoundTrip"
+        "test:internal/codingagent/keybindings_reload_upstream_test.go#TestKeybindingsManagerWithoutConfigPathReloadKeepsUserBindings"
       ]
     },
     {
       "id": "pkg:coding-agent/.#KeybindingsManager::property:reload::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "KeybindingsManager.reload is the Go method Reload (no return, as upstream's void: a missing, unreadable, unparsable or non-object keybindings.json yields no user bindings and a BOM is stripped, like loadRawConfig). Red: TestKeybindingsManagerReloadMatchesUpstreamLoadFromFile (Go returned the parse error and kept the stale bindings).",
+      "rationale": "Derived by the interface gap detector: KeybindingsManager::property:reload::call:0 is Go internal/codingagent/keybindings.go#KeybindingsManager.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "internal/codingagent/keybindings.go#KeybindingsManager.Reload"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/keybindings.go#NewKeybindingsManager"
+        "call:internal/codingagent/keybindings.go#KeybindingsManager.Reload"
       ],
       "evidence": [
+        "test:internal/codingagent/keybindings_reload_upstream_test.go#TestKeybindingsManagerFromTakesUserBindingsAndConfigPath",
         "test:internal/codingagent/keybindings_reload_upstream_test.go#TestKeybindingsManagerReloadMatchesUpstreamLoadFromFile",
-        "test:internal/codingagent/keybindings_test.go#TestKeybindingsManagerSaveRoundTrip"
+        "test:internal/codingagent/keybindings_reload_upstream_test.go#TestKeybindingsManagerWithoutConfigPathReloadKeepsUserBindings"
       ]
     },
     {
@@ -184469,7 +184465,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
@@ -184600,8 +184596,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs",
-        "test:coding/extension/host/subprocess/render_proxy_test.go#TestRenderProxyExpandedStateRefreshesOffLoop",
-        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageUsesRegisteredProductionRenderer"
+        "test:test/extension-conformance/renderer_click_test.go#TestRendererClickAcrossSDKs",
+        "test:coding/extension/host/subprocess/render_proxy_test.go#TestRenderProxyExpandedStateRefreshesOffLoop"
       ]
     },
     {
@@ -200357,42 +200353,44 @@
       "id": "pkg:coding-agent/.#SessionInfoChangedEvent",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8ebfec2f0b62017f202f913a31ba826bc989cb983f5ee75747f0bd4d0c54f3e9",
-      "rationale": "SessionInfoChangedEvent: Go SessionInfoChangedEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: SessionInfoChangedEvent is Go coding/extension/events.go#SessionInfoChangedEvent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#SessionInfoChangedEvent"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/session.go#Session.dispatchSessionNameEvent"
+        "call:coding/extension/factoryload/events.go#api.OnSessionInfoChanged"
       ],
       "evidence": [
         "test:coding/session_name_upstream_test.go#TestSessionNameNotificationReentrantPrefix",
-        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationsDoNotAwaitSuspendedHandlers"
+        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationsDoNotAwaitSuspendedHandlers",
+        "test:coding/session_name_upstream_test.go#TestUpstreamSessionNameEmitsSessionInfoChangedToExtensions"
       ]
     },
     {
       "id": "pkg:coding-agent/.#SessionInfoChangedEvent::property:name",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:db02ee42681c700a1153b6adc601289ef1e58a9a8d1c800a486b2bdcfdd2bf17",
-      "rationale": "SessionInfoChangedEvent: Go SessionInfoChangedEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: SessionInfoChangedEvent::property:name is Go coding/extension/events.go#SessionInfoChangedEvent.Name (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#SessionInfoChangedEvent.Name"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
         "call:coding/session.go#Session.dispatchSessionNameEvent"
       ],
       "evidence": [
         "test:coding/session_name_upstream_test.go#TestSessionNameNotificationReentrantPrefix",
-        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationsDoNotAwaitSuspendedHandlers"
+        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationsDoNotAwaitSuspendedHandlers",
+        "test:coding/session_name_upstream_test.go#TestUpstreamSessionNameEmitsSessionInfoChangedToExtensions"
       ]
     },
     {
@@ -201286,7 +201284,7 @@
       "evidence": [
         "test:coding/session_context_usage_replaced_log_test.go#TestContextUsageRecomputesAfterTheLogIsReplacedInPlace",
         "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges",
-        "test:internal/codingagent/session_name_scan_test.go#TestGetSessionNameEqualsTheBackwardScan"
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog"
       ]
     },
     {
@@ -201308,7 +201306,7 @@
       "evidence": [
         "test:coding/session_context_usage_replaced_log_test.go#TestContextUsageRecomputesAfterTheLogIsReplacedInPlace",
         "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges",
-        "test:internal/codingagent/session_name_scan_test.go#TestGetSessionNameEqualsTheBackwardScan"
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog"
       ]
     },
     {
@@ -202022,6 +202020,7 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.NewSession"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog",
         "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
       ]
     },
@@ -202042,6 +202041,7 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.NewSession"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog",
         "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
       ]
     },
@@ -202106,9 +202106,9 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.SetSessionFile"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog",
         "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileChangesTheRevision",
-        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerDoesNotPersist",
-        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerWritesNothing"
+        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerDoesNotPersist"
       ]
     },
     {
@@ -202128,9 +202128,9 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.SetSessionFile"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog",
         "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileChangesTheRevision",
-        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerDoesNotPersist",
-        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerWritesNothing"
+        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerDoesNotPersist"
       ]
     },
     {
@@ -217200,21 +217200,22 @@
       "id": "pkg:coding-agent/.#ToolExecutionEndEvent::property:isError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:632acaf381ae7478ee5fa4de616a80610d494af55c3f095b774831f999ae0319",
-      "rationale": "ToolExecutionEndEvent: Go ToolExecutionEndEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionEndEvent::property:isError is Go coding/extension/events.go#ToolExecutionEndEvent.IsError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#ToolExecutionEndEvent.IsError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
         "call:internal/codingagent/event_bridge.go#emitToolExecutionEnd"
       ],
       "evidence": [
-        "test:coding/extension/events_test.go#TestEvents_JSONTagsAreCamelCase",
-        "test:internal/codingagent/event_bridge_dispatch_test.go#TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents"
+        "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+        "test:test/extension-conformance/event_reference_test.go#TestConformance_ObservedEventPayloads"
       ]
     },
     {
@@ -217262,42 +217263,44 @@
       "id": "pkg:coding-agent/.#ToolExecutionEndEvent::property:toolCallId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2295215863e9d8762fd631231d08966bb77d6959b7c0c6beb0e1d63189cf3fde",
-      "rationale": "ToolExecutionEndEvent: Go ToolExecutionEndEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionEndEvent::property:toolCallId is Go coding/extension/events.go#ToolExecutionEndEvent.ToolCallID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#ToolExecutionEndEvent.ToolCallID"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
         "call:internal/codingagent/event_bridge.go#emitToolExecutionEnd"
       ],
       "evidence": [
-        "test:coding/extension/events_test.go#TestEvents_JSONTagsAreCamelCase",
-        "test:internal/codingagent/event_bridge_dispatch_test.go#TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents"
+        "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
+        "test:test/extension-conformance/event_coverage_test.go#TestConformance_ToolExecutionEndDurationMs",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
       "id": "pkg:coding-agent/.#ToolExecutionEndEvent::property:toolName",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:326dcc8251106e60a92bf97c362cf360be0d0c27b1592ac620446beba9d5c9a7",
-      "rationale": "ToolExecutionEndEvent: Go ToolExecutionEndEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionEndEvent::property:toolName is Go coding/extension/events.go#ToolExecutionEndEvent.ToolName (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#ToolExecutionEndEvent.ToolName"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
         "call:internal/codingagent/event_bridge.go#emitToolExecutionEnd"
       ],
       "evidence": [
-        "test:coding/extension/events_test.go#TestEvents_JSONTagsAreCamelCase",
-        "test:internal/codingagent/event_bridge_dispatch_test.go#TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents"
+        "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
+        "test:test/extension-conformance/event_coverage_test.go#TestConformance_ToolExecutionEndDurationMs",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -217495,40 +217498,44 @@
       "id": "pkg:coding-agent/.#ToolExecutionStartEvent::property:toolCallId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2295215863e9d8762fd631231d08966bb77d6959b7c0c6beb0e1d63189cf3fde",
-      "rationale": "ToolExecutionStartEvent: Go ToolExecutionStartEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionStartEvent::property:toolCallId is Go coding/extension/events.go#ToolExecutionStartEvent.ToolCallID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#ToolExecutionStartEvent.ToolCallID"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
         "call:internal/codingagent/event_bridge.go#emitToolExecutionStart"
       ],
       "evidence": [
-        "test:internal/codingagent/event_bridge_dispatch_test.go#TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents"
+        "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+        "test:test/extension-conformance/event_reference_test.go#TestConformance_ObservedEventPayloads"
       ]
     },
     {
       "id": "pkg:coding-agent/.#ToolExecutionStartEvent::property:toolName",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:326dcc8251106e60a92bf97c362cf360be0d0c27b1592ac620446beba9d5c9a7",
-      "rationale": "ToolExecutionStartEvent: Go ToolExecutionStartEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionStartEvent::property:toolName is Go coding/extension/events.go#ToolExecutionStartEvent.ToolName (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#ToolExecutionStartEvent.ToolName"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
         "call:internal/codingagent/event_bridge.go#emitToolExecutionStart"
       ],
       "evidence": [
-        "test:internal/codingagent/event_bridge_dispatch_test.go#TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents"
+        "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+        "test:test/extension-conformance/event_reference_test.go#TestConformance_ObservedEventPayloads"
       ]
     },
     {
@@ -217640,42 +217647,44 @@
       "id": "pkg:coding-agent/.#ToolExecutionUpdateEvent::property:toolCallId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2295215863e9d8762fd631231d08966bb77d6959b7c0c6beb0e1d63189cf3fde",
-      "rationale": "ToolExecutionUpdateEvent: Go ToolExecutionUpdateEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionUpdateEvent::property:toolCallId is Go coding/extension/events.go#ToolExecutionUpdateEvent.ToolCallID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#ToolExecutionUpdateEvent.ToolCallID"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/event_bridge.go#emitToolExecutionUpdate"
+        "call:coding/extension/host/subprocess/tool_update_delta.go#sparseToolUpdate"
       ],
       "evidence": [
-        "test:internal/codingagent/event_bridge_dispatch_test.go#TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents",
-        "test:internal/codingagent/event_bridge_wire_order_test.go#TestToolExecutionUpdatePartialResultIsTheObjectTheToolPassed"
+        "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+        "test:test/extension-conformance/event_reference_test.go#TestConformance_ObservedEventPayloads"
       ]
     },
     {
       "id": "pkg:coding-agent/.#ToolExecutionUpdateEvent::property:toolName",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:326dcc8251106e60a92bf97c362cf360be0d0c27b1592ac620446beba9d5c9a7",
-      "rationale": "ToolExecutionUpdateEvent: Go ToolExecutionUpdateEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionUpdateEvent::property:toolName is Go coding/extension/events.go#ToolExecutionUpdateEvent.ToolName (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#ToolExecutionUpdateEvent.ToolName"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/event_bridge.go#emitToolExecutionUpdate"
+        "call:coding/extension/host/subprocess/tool_update_delta.go#sparseToolUpdate"
       ],
       "evidence": [
-        "test:internal/codingagent/event_bridge_dispatch_test.go#TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents",
-        "test:internal/codingagent/event_bridge_wire_order_test.go#TestToolExecutionUpdatePartialResultIsTheObjectTheToolPassed"
+        "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+        "test:test/extension-conformance/event_reference_test.go#TestConformance_ObservedEventPayloads"
       ]
     },
     {
@@ -218991,7 +219000,7 @@
       "evidence": [
         "test:internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
         "test:tui/tree_input_contract_test.go#TestTreeInputBindingPriority",
-        "test:internal/codingagent/tree_selector_contract_test.go#TestTreeListHandleInputContractsMatchPi"
+        "test:internal/codingagent/tree_selector_contract_test.go#TestTreeContractReplayLeavesTheEmptyTreeSelfCancelOutOfTheTrace"
       ]
     },
     {
@@ -219710,30 +219719,31 @@
         "call:coding/extension/events.go#TurnEndEvent.MarshalJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
         "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
       "id": "pkg:coding-agent/.#TurnEndEvent::property:messageEntryId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f76b4c58cb3d47af1f7b26c249ab169c28a49f4de4a99dad8bf7dd429ff935ee",
-      "rationale": "TurnEndEvent: Go TurnEndEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: TurnEndEvent::property:messageEntryId is Go coding/extension/events.go#TurnEndEvent.MessageEntryID (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#TurnEndEvent.MessageEntryID"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/runner.go#boundaryBaseFields"
+        "call:coding/extension/events.go#TurnEndEvent.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting",
-        "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts"
+        "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
+        "test:coding/session_boundaries_recovery_upstream_test.go#TestUpstreamSessionBoundariesRecovery"
       ]
     },
     {
@@ -219795,30 +219805,31 @@
         "call:coding/extension/events.go#TurnEndEvent.MarshalJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
         "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
       "id": "pkg:coding-agent/.#TurnEndEvent::property:turnIndex",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8998aca360caeaffd489e4a9c0cd4d86d28c35d703452417ae778c51fc7535a7",
-      "rationale": "TurnEndEvent: Go TurnEndEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: TurnEndEvent::property:turnIndex is Go coding/extension/events.go#TurnEndEvent.TurnIndex (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#TurnEndEvent.TurnIndex"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/runner.go#boundaryBaseFields"
+        "call:coding/extension/events.go#TurnEndEvent.MarshalJSON"
       ],
       "evidence": [
-        "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting",
-        "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts"
+        "test:coding/session_extension_events_upstream_test.go#TestSessionEmitsTurnStartWithThePerRunTurnIndexAndATimestamp",
+        "test:test/extension-conformance/api_on_results_test.go#TestConformanceAPIOnSessionStartAndTurnEndReachTheTypedHandlers",
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
@@ -242668,8 +242679,8 @@
       ],
       "evidence": [
         "test:durable/env/node/env_members_test.go#TestShellExecutesInTheCwdOption",
-        "test:durable/env/node/filesystem_pi_test.go#TestWatchTargetExcludeAndShellCwdMirrorPi",
-        "test:durable/env/node/node_regressions_test.go#TestShellTimesOutATimeoutBelowOneMillisecond"
+        "test:durable/env/node/exec_session_leader_test.go#TestShellCommandRunsAsTheLeaderOfANewSession",
+        "test:durable/env/node/filesystem_pi_test.go#TestWatchTargetExcludeAndShellCwdMirrorPi"
       ]
     },
     {
@@ -242711,9 +242722,9 @@
         "call:durable/env/node/exec.go#shellRun.start"
       ],
       "evidence": [
+        "test:durable/env/node/exec_session_leader_test.go#TestShellCommandRunsAsTheLeaderOfANewSession",
         "test:durable/env/node/shell_test.go#TestShellAppliesStringShellEnvironmentOverrides",
-        "test:durable/env/node/shell_test.go#TestShellCanReplaceRatherThanInheritTheDefaultShellEnvironment",
-        "test:durable/env/node/shell_test.go#TestShellExecutesCommandsInCwdWithEnvOverrides"
+        "test:durable/env/node/shell_test.go#TestShellCanReplaceRatherThanInheritTheDefaultShellEnvironment"
       ]
     },
     {
@@ -308238,6 +308249,7 @@
         "call:coding/cli/args.go#parseArgs"
       ],
       "evidence": [
+        "test:coding/cli/args_listen_test.go#TestParseArgsListen",
         "test:coding/cli/args_test.go#TestParseFlags",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
         "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
@@ -308425,7 +308437,7 @@
       "evidence": [
         "test:coding/cli/args_diagnostics_test.go#TestHelpListsOnlyOptionsPiGParses",
         "test:coding/cli/args_diagnostics_test.go#TestParseFlagsDiagnosticsMatchPi",
-        "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
+        "test:coding/cli/args_listen_test.go#TestParseArgsListen",
         "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
         "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
@@ -308685,8 +308697,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_end_options_upstream_test.go#TestCLIEndOfOptionsUpstream",
+        "test:coding/cli/args_listen_test.go#TestParseArgsListen",
         "test:coding/cli/args_name_upstream_test.go#TestCLIRejectsEmptySessionNameUpstream",
-        "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
         "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
@@ -308920,9 +308932,9 @@
         "call:coding/cli/args.go#parseArgs"
       ],
       "evidence": [
+        "test:coding/cli/args_listen_test.go#TestParseArgsListen",
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
-        "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
         "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
         "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]

@@ -108,14 +108,16 @@ func recordSDKLiveness(t *testing.T, fixture livenessFixture) livenessRecording 
 		t.Fatal(err)
 	}
 	register := readSDKEnvelope(t, peer)
-	// A factory may call the host-parser helpers and build schemas with the type engine before the connection is ready (the lazy dial); the host answers them before it reads the register frame.
-	for register.Type == subprocess.MsgCall && register.Call != nil && (register.Call.Method == subprocess.CallParseFrontmatter || register.Call.Method == subprocess.CallParseDate || register.Call.Method == subprocess.CallTypeEngine) {
+	// A factory may call the host-parser helpers and build schemas with the type engine before the connection is ready (the lazy dial), and subscribe to the event bus; the host answers them before it reads the register frame.
+	for register.Type == subprocess.MsgCall && register.Call != nil && (register.Call.Method == subprocess.CallParseFrontmatter || register.Call.Method == subprocess.CallParseDate || register.Call.Method == subprocess.CallTypeEngine || register.Call.Method == "events.on") {
 		result := json.RawMessage(`{"frontmatter":{},"body":""}`)
 		switch register.Call.Method {
 		case subprocess.CallParseDate:
 			result = json.RawMessage(`{"ms":null}`)
 		case subprocess.CallTypeEngine:
 			result = json.RawMessage(engine.NewSession().Serve(register.Call.Args))
+		case "events.on":
+			result = json.RawMessage(`{}`)
 		}
 		writeSDKEnvelope(t, peer, subprocess.Envelope{Type: subprocess.MsgCallResult, ID: register.ID, CallResult: &subprocess.CallResultPayload{Result: result}})
 		register = readSDKEnvelope(t, peer)

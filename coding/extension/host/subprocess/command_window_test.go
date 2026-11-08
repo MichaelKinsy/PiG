@@ -80,3 +80,16 @@ func TestSettleTailCountsHandlersPiServesStdinDuring(t *testing.T) {
 		t.Fatalf("settle-tail counts = %v, want %v: a native handler after input end waits at once", counts, want)
 	}
 }
+
+// A handler of a runtime that cannot report its waits counts as waiting once the host took it to be (HandlerWaitQuantum), before input ends, and stops counting when it answers.
+func TestSettleTailCountsNativeHandlerSuspendedByTheQuantum(t *testing.T) {
+	h := NewHost(t.TempDir())
+	var counts []int
+	h.SetSettleTailHandler(func(n int) { counts = append(counts, n) })
+	native := h.beginTailFlight(&managedExt{})
+	h.setTailSuspended(native)
+	h.endTailFlight(native)
+	if want := []int{1, 0}; !slices.Equal(counts, want) {
+		t.Fatalf("settle-tail counts = %v, want %v: quantum, answer", counts, want)
+	}
+}

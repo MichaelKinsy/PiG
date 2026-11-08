@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/handleryield"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/boundarywire"
@@ -274,6 +275,9 @@ func extConfigOrigin(config ExtConfig) string {
 //
 // pig-specific: no upstream equivalent.
 type Host struct {
+	// cells is the registry of cell processes shared with other Hosts, and group this Host's ready.group in it; both are unset for a Host that shares no cells. pig additive (D232): Host.ShareCells.
+	cells *CellRegistry
+	group string
 	// slotCalls keeps UI replacements in the order the extensions sent them (runSlotCall).
 	slotCalls          pendingSlotCalls
 	toolRegistrationMu sync.Mutex
@@ -419,8 +423,10 @@ type Host struct {
 	recoveryContext context.Context
 	recoveryCancel  context.CancelFunc
 	nodeFaults      map[string]string
-	nodeGroups      map[string]string
-	nodeCrashes     map[string]int
+	// nativeFaults names the packed Go or Lisp members whose own code ended a shared process, with the reason: they run isolated from then on. transitionMu owns it.
+	nativeFaults map[string]string
+	nodeGroups   map[string]string
+	nodeCrashes  map[string]int
 
 	// quarantinedCells records packed cells that crashed; PlanCells fissions a
 	// quarantined key back to isolated subprocesses.
@@ -1598,7 +1604,7 @@ func (h *Host) sortExtensionsByLoadOrder(extensions []extension.Extension) {
 }
 
 func (h *Host) sortExtensionsByLoadOrderLocked(extensions []extension.Extension) {
-	slices.SortStableFunc(extensions, func(a, b extension.Extension) int {
+	sortx.Stable(extensions, func(a, b extension.Extension) int {
 		orderA, knownA := h.loadOrder[a.Name]
 		orderB, knownB := h.loadOrder[b.Name]
 		switch {
@@ -3107,7 +3113,11 @@ func (h *Host) startExtOnce(ctx context.Context, me *managedExt, isRestart bool)
 			return nil, newLoadError(me.config.Name, "spawn", "admit_failed", err)
 		}
 	}
-	extCtx, cancel := context.WithCancel(runtimeParent(ctx))
+	parent := runtimeParent(ctx)
+	if retainedFrom == nil {
+		parent = h.processParent(ctx)
+	}
+	extCtx, cancel := context.WithCancel(parent)
 	me.cancel = cancel
 	me.parentCtx = runtimeParent(ctx)
 	defer func() {
@@ -3156,6 +3166,15 @@ func (h *Host) ensureNodeRuntime(ctx context.Context) error {
 	}
 	h.nodeRuntimeReady = true
 	return nil
+}
+
+// factoryLauncherEnv is what the first generation of a Node factory launcher reads from its environment: the Host's configured cwd, which keys Pi's factory cache as every later admission does (the process's own cwd is the physical path), and, pig additive (D232), the Host's group when it shares cells, passed to the first generation as every later admission passes it, because the registry offers the process to the other Hosts. cli.mjs reads and deletes both.
+func (h *Host) factoryLauncherEnv() []string {
+	env := []string{"PIG_EXT_CWD=" + h.cwd}
+	if group := h.Group(); group != "" {
+		env = append(env, "PIG_EXT_GROUP="+group)
+	}
+	return env
 }
 
 // connectExt establishes the extension connection. For a fused in-process
@@ -3207,6 +3226,8 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 			return nil, newLoadError(me.config.Name, "spawn", "node_runtime_unsupported", err)
 		}
 	}
+	// pig additive (D19): the selection holds the verified executable open; every return releases it, whether or not a process was started.
+	defer releaseVerified(tsSelection)
 
 	// Create the socket path inside this Host's private runtime directory, so a
 	// parallel Pig instance running the same extension cannot collide on it.
@@ -3231,7 +3252,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	if me.procOwner != nil {
 		// pig additive (D20): the process that already holds this extension's modules re-invokes the factory, as Pi's loader does inside one runtime.
 		entry, _ := nodeLauncherEntry(binPath)
-		if err := me.share.send(factoryAdmission{Name: me.config.Name, Entry: entry, Socket: address, ReloadPass: reloadPass(ctx), Cwd: h.cwd}); err != nil {
+		if err := me.share.send(factoryAdmission{Name: me.config.Name, Entry: entry, Socket: address, ReloadPass: reloadPass(ctx), Cwd: h.cwd, Group: h.Group()}); err != nil {
 			return nil, newLoadError(me.config.Name, "spawn", "admit_failed", fmt.Errorf("admit %s to the running extension process: %w", me.config.Name, err))
 		}
 		return h.acceptExtConn(ctx, cancel, me, listener)
@@ -3284,7 +3305,9 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	entry, factoryLauncher := nodeLauncherEntry(binPath)
 	if factoryLauncher {
 		// The first generation keys Pi's factory cache by this Host's configured cwd, as every later admission does; the process's own cwd is the physical path.
-		cmd.Env = append(cmd.Env, "PIG_EXT_CWD="+h.cwd)
+		// pig additive (D232): a PIG_EXT_GROUP the user exported is not a group: only this Host's own group reaches the launcher.
+		cmd.Env = slices.DeleteFunc(cmd.Env, func(value string) bool { return envHasKey(value, "PIG_EXT_GROUP") })
+		cmd.Env = append(cmd.Env, h.factoryLauncherEnv()...)
 		if admissionWriter, err = cmd.StdinPipe(); err != nil {
 			cancel()
 			return nil, newLoadError(me.config.Name, "spawn", "spawn_failed", fmt.Errorf("spawn %s: %w", binPath, err))
@@ -3313,6 +3336,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	cmd.Env = withExtLog(cmd.Env, extLogPath)
 	cmd.Stdout, cmd.Stderr = h.extensionOutput(stderrSink)
 	processTree, err := startProcessTree(cmd)
+	releaseVerified(tsSelection)
 	if err != nil {
 		// No Cmd.Wait runs to close the writer the host-side copy owns.
 		me.stderrLog.closeWriter()
@@ -3361,6 +3385,10 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		me.share.node = true
 		me.share.tier = tierOf(tsSelection)
 		h.retention().register(me.share)
+		// pig additive (D232): a Host that joined a CellRegistry offers this process to the other Hosts of the registry.
+		if h.sharesCells(ctx) {
+			h.cells.register(h.cellRegistryKey(me.share.key), me.share)
+		}
 	}
 
 	return h.acceptExtConn(ctx, cancel, me, listener)
@@ -3499,6 +3527,7 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 
 	// Send ready. sendReady fills the geometry.
 	readyPayload := &ReadyPayload{
+		Group:      h.Group(),
 		Cwd:        h.cwd,
 		Mode:       h.mode,
 		SourceInfo: h.readySourceInfo(me),
@@ -4311,6 +4340,10 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 		flight := h.beginCommandFlight(me)
 		defer h.endCommandFlight(flight)
 		ctx = h.withCommandSuspension(ctx, flight)
+		if !flight.node {
+			// pig divergence (D86): a command of a runtime that cannot report its waits is suspended once it outlives the quantum, so Pi's next stdin line is admitted.
+			ctx = withRequestQuantum(ctx, nil)
+		}
 		resp, err := conn.Request(ctx, &Envelope{
 			Type: MsgRequest,
 			Request: &RequestPayload{
@@ -4524,6 +4557,13 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 					me.host.setTailSuspended(flight)
 				}
 			}, func() bool { return false })
+			if !flight.node {
+				// pig divergence (D86): a handler of a runtime that cannot report its waits is waiting once it outlives the quantum.
+				parent = withRequestQuantum(parent, func() { me.host.setTailSuspended(flight) })
+			}
+		} else if event == "input" && !me.hostsNodeRuntime() && invocation.Bound(parent) {
+			// pig divergence (D86): an input handler, whose caller waits for its first suspension (rpcAwaitHandler), is suspended once it outlives the quantum. No other event carries the option: the others' callers wait for the handler's completion in Pi too.
+			parent = withRequestQuantum(parent, nil)
 		}
 		// The state push and the request are one stretch of outstanding work, so the heartbeat sees one idle/busy transition per dispatch rather than one per frame.
 		conn.beginWork()
@@ -4924,6 +4964,11 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 
 	if me.packedCellKey != "" {
 		if me.packedProcess != nil {
+			// A native process that ends is its watcher's to report (watchPackedProcess): it blames the one member its trace names and restarts the others, or stops
+			// the whole cell, and says so once for each member. Detaching the member here first would tell a member that is about to restart to run /reload.
+			if h.sharedProcessEnded(me.packedProcess) {
+				return
+			}
 			// A closed connection proves only that this one member stopped
 			// talking to us. It does not prove the shared process is still
 			// running: if the process itself exited, watchPackedProcess
@@ -4991,6 +5036,29 @@ func (h *Host) awaitClosedProcess(me *managedExt) {
 			_ = proc.Kill()
 		}
 		<-exited
+	}
+}
+
+// sharedProcessEnded reports whether the native process a packed member shares ended within the heartbeat deadline that bounds how long a process may outlive a
+// closed connection (D56), after one of its members' connections closed. It never stops the process, which serves the other members: one that is still running
+// after the deadline closed this member's connection alone. A state that spawned no process of its own has nothing to wait for.
+func (h *Host) sharedProcessEnded(p *packedProcessState) bool {
+	if p.node || p.spawner().cmd == nil {
+		return false
+	}
+	exited := p.startWait()
+	select {
+	case <-exited:
+		return true
+	default:
+	}
+	timer := time.NewTimer(defaultHeartbeatTimeout)
+	defer timer.Stop()
+	select {
+	case <-exited:
+		return true
+	case <-timer.C:
+		return false
 	}
 }
 

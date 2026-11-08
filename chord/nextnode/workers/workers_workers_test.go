@@ -683,7 +683,7 @@ func TestGC100AddressesStartedAndStoppedLeaveNoStateNoRecordNoSuspension(t *test
 				id := fmt.Sprintf("R%d", batch*20+index)
 				notes, err := f.server.Get(background, fixtureNotes, delta.JsonObjectOf("id", id), host.GetOptions{})
 				if err != nil {
-					t.Error(err)
+					t.Errorf("%v; what the workers reported: %s", err, f.reportedErrors())
 					return
 				}
 				notes.Release()

@@ -4,6 +4,8 @@ import (
 	"slices"
 	"sync"
 	"unicode"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // pig divergence (D219): this table widens character sets by Canonicalize, but a backreference is compared by regexp2 (see emit.go).
@@ -87,7 +89,7 @@ func upperCaseClasses(candidates runeSet) [][]rune {
 			classes = append(classes, members)
 		}
 	}
-	slices.SortFunc(classes, func(a, b []rune) int { return int(a[0]) - int(b[0]) })
+	sortx.Func(classes, func(a, b []rune) int { return int(a[0]) - int(b[0]) })
 	return classes
 }
 

@@ -1,6 +1,10 @@
 package delta
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
+)
 
 // The array overlay of tracker.ts (Pi 1.2.0 :19-54, :768-1066, :1475-1539, :1886-1977, :2094-2144): a draft array is a
 // sequence of pieces, each a run of base elements or of one insertion's elements, held in a treap ordered by position
@@ -453,9 +457,9 @@ func (overlay *arrayOverlay) ensureLocations() {
 		logicalStart += p.length
 	}
 	byMinimum := func(left, right pieceLocation) int { return left.minimum - right.minimum }
-	slices.SortFunc(overlay.baseLocations, byMinimum)
+	sortx.Func(overlay.baseLocations, byMinimum)
 	for _, locations := range overlay.insertLocations {
-		slices.SortFunc(locations, byMinimum)
+		sortx.Func(locations, byMinimum)
 	}
 }
 

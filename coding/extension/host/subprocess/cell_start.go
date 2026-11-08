@@ -5,10 +5,10 @@ import (
 	"context"
 	"maps"
 	"runtime"
-	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 type startTurnKey struct{}
@@ -118,7 +118,7 @@ func (h *Host) stageCellsInOrder(ctx context.Context, cells []CellSpec, commit f
 			}
 		}
 	}
-	slices.SortStableFunc(units, func(a, b unit) int { return cmp.Compare(a.order, b.order) })
+	sortx.Stable(units, func(a, b unit) int { return cmp.Compare(a.order, b.order) })
 	if len(units) == 0 {
 		return
 	}

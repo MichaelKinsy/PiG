@@ -230,7 +230,7 @@ func TestPigletModulesCarryAnIdenticalCopy(t *testing.T) {
 	}
 	for module, user := range map[string]string{
 		"standard": filepath.Join("piglets", "standard", "extensions", "bunruntime", "extension.go"),
-		"aot":      filepath.Join("piglets", "aot", "extensions", "aotruntime", "worker.go"),
+		"pig-bolt": filepath.Join("piglets", "pig-bolt", "extensions", "boltruntime", "worker.go"),
 	} {
 		root := filepath.Join("..", "..")
 		got, err := os.ReadFile(filepath.Join(root, "piglets", module, "internal", "tlsdistrust", "tlsdistrust.go"))

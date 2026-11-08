@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -77,7 +78,7 @@ func discoverAuthContributionsFor(targetID string) (*authContributionRegistry, e
 	// ./src/index.ts is "src") need distinct keys, or a login launches the
 	// last extension of that name instead of the one that declared the provider.
 	configs = subprocess.DisambiguateIdentities(normalizeRuntimeExtensionConfigs(configs))
-	slices.SortStableFunc(configs, func(a, b subprocess.ExtConfig) int { return strings.Compare(a.Name, b.Name) })
+	sortx.Stable(configs, func(a, b subprocess.ExtConfig) int { return strings.Compare(a.Name, b.Name) })
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	if len(configs) > 0 {
@@ -291,7 +292,7 @@ func (r *authContributionRegistry) storeProjection(config subprocess.ExtConfig) 
 			providers = append(providers, provider)
 		}
 	}
-	slices.SortFunc(providers, func(a, b authContribution) int { return strings.Compare(a.ID, b.ID) })
+	sortx.Func(providers, func(a, b authContribution) int { return strings.Compare(a.ID, b.ID) })
 	data, err := json.Marshal(authRegistrationProjection{ConfigDigest: configDigest, ArtifactDigest: artifactDigest, Providers: providers})
 	if err != nil {
 		return err
@@ -314,7 +315,7 @@ func (r *authContributionRegistry) storeProjection(config subprocess.ExtConfig) 
 
 func (r *authContributionRegistry) inspectConfigs(configs []subprocess.ExtConfig) error {
 	configs = slices.Clone(configs)
-	slices.SortFunc(configs, func(a, b subprocess.ExtConfig) int { return strings.Compare(a.Name, b.Name) })
+	sortx.Func(configs, func(a, b subprocess.ExtConfig) int { return strings.Compare(a.Name, b.Name) })
 	for _, config := range configs {
 		host := subprocess.NewHostWithConfigRoot(r.cwd, codingagent.ConfigRoot())
 		host.SetMode("print")
@@ -533,7 +534,7 @@ func registeredAuthTargetItems(registry *authContributionRegistry) []authTargetI
 		}
 		contributed = append(contributed, authTargetItem{ID: target.ID, Name: target.Name, CallbackServer: target.CallbackServer})
 	}
-	slices.SortFunc(contributed, func(a, b authTargetItem) int {
+	sortx.Func(contributed, func(a, b authTargetItem) int {
 		if value := strings.Compare(a.Name, b.Name); value != 0 {
 			return value
 		}

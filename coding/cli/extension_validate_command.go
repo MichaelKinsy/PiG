@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // extensionValidationReport is the JSON contract emitted by `pig install
@@ -380,7 +381,7 @@ func toolDetailsFromExtension(ext *extension.Extension) []toolDetailReport {
 // deterministic name order for the same downstream injection scan.
 func commandDetailsFromExtension(ext *extension.Extension) []commandDetailReport {
 	commands := ext.RegisteredCommands()
-	slices.SortFunc(commands, func(a, b extension.RegisteredCommand) int { return strings.Compare(a.Name, b.Name) })
+	sortx.Func(commands, func(a, b extension.RegisteredCommand) int { return strings.Compare(a.Name, b.Name) })
 	out := make([]commandDetailReport, 0, len(commands))
 	for _, command := range commands {
 		out = append(out, commandDetailReport{
@@ -574,7 +575,7 @@ func linkDiagnostics(reports []extensionValidationReport) []extensionValidationD
 	check("flag", func(r extensionValidationReport) []string { return r.Flags })
 	check("shortcut", func(r extensionValidationReport) []string { return r.Shortcuts })
 	check("provider", func(r extensionValidationReport) []string { return r.Providers })
-	slices.SortFunc(diagnostics, func(a, b extensionValidationDiagnostic) int {
+	sortx.Func(diagnostics, func(a, b extensionValidationDiagnostic) int {
 		if a.Code != b.Code {
 			return strings.Compare(a.Code, b.Code)
 		}

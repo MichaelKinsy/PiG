@@ -16,6 +16,7 @@ var literalDeadlineAllowed = map[string]string{
 	"session_extension_actions_exec_test.go:buildGoSDKFixture":                                        "bounds one go build of the exec fixture",
 	"auth_embedded_packed_test.go:buildRustPackedAuthFixture":                                         "bounds a packed extension build",
 	"session_replaced_2860_sdk_test.go:replaced2860Fixtures":                                          "bounds one cargo release build of the Rust fixture",
+	"rpc_settle_wait_test.go:buildRustSettleWait":                                                     "bounds one cargo release build of the Rust fixture",
 	"interactive_signal_lifetime_test.go:TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain": "negative window: the process must stay alive for 1.5s after the second signal",
 }
 

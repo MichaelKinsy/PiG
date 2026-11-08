@@ -71,6 +71,7 @@ func (l *fusedExtLog) remove() {
 	if l.path == "" {
 		return
 	}
+	//perf:ok cold: once per extension log removal
 	if os.Getenv(extLogEnvName) == l.path {
 		_ = os.Unsetenv(extLogEnvName)
 	}

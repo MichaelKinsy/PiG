@@ -88,6 +88,8 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--fork <path\|id>` | Fork a session file or partial UUID into a new session. |
 | `--session-dir <dir>` | Directory for session storage and lookup. |
 | `--no-session` | Do not save the session. |
+| `--listen <path>` | Serve one RPC session per connection on the Unix socket at path; requires `--mode rpc` (D232). Every session has its own extension processes, so no extension process, and none of its module-level state, is shared between sessions (extensions compiled into the host program run in the server process; see the RPC page). |
+| `--listen-share-extensions` | With `--listen`, let the sessions share extension processes (D232). Warning: module-level state (Node module variables, `process.env`, `globalThis`; Go, Rust, Python and Lisp package variables) is then shared between sessions. |
 | `--name`, `-n <name>` | Set the session display name. |
 | `--no-mcp` | Turn off the built-in MCP support for this run: no servers connect, and there are no MCP tools or `/mcp`. It does not affect an extension that replaces the built-in MCP support. |
 | `--no-stdin` | Ignore piped stdin. Use it when the process that starts PiG leaves the stdin pipe open and never closes it. Without it, PiG waits for end of input, as Pi does. |

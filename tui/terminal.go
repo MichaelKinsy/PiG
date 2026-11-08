@@ -820,12 +820,29 @@ func encodesOwnWrites(out io.Writer) bool {
 
 // writeTerminalText writes data, already encoded, to out and hands a failed write to the OnTerminalWriteError handler.
 func writeTerminalText(out io.Writer, data string) {
-	if _, err := io.WriteString(out, data); err != nil {
+	if _, err := writeString(out, data); err != nil {
 		if handler := terminalWriteErrorHandler.Load(); handler != nil {
 			(*handler)(err)
 		}
 	}
 }
+
+// writeString is io.WriteString that copies data into a pooled buffer (which the garbage collector empties) for a writer with no WriteString, where io.WriteString allocates a new byte slice for every write: the cursor's
+// hide and show of each frame cost an allocation each (fmt.Fprint, which those writes were before they went through WriteToTerminal, copies into a pooled buffer as well).
+func writeString(out io.Writer, data string) (int, error) {
+	if sw, ok := out.(io.StringWriter); ok {
+		return sw.WriteString(data)
+	}
+	buf := terminalWriteBuffers.Get().(*[]byte)
+	*buf = append((*buf)[:0], data...)
+	n, err := out.Write(*buf)
+	//perf:ok the buffers hold single small writes (the cursor's hide and show, a frame's chunk) and the garbage collector empties the pool, so no cap is needed
+	terminalWriteBuffers.Put(buf)
+	return n, err
+}
+
+// terminalWriteBuffers holds the byte copies of strings written to a writer that takes no strings.
+var terminalWriteBuffers = sync.Pool{New: func() any { return new([]byte) }}
 
 // Columns returns the terminal width, falling back to COLUMNS or 80 when unavailable.
 func (t *ProcessTerminal) Columns() int {
