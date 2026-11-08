@@ -304,7 +304,7 @@ func latchesOf(t testing.TB, s started, placement string) *latches {
 	}
 	control, err := s.app.Host.Get(background, controlContract(placement), params, host.GetOptions{})
 	if err != nil {
-		t.Fatalf("%v (the app reported %v)", err, s.errors.all())
+		t.Fatalf("%v (the app reported %v)", err, reported(s.errors))
 	}
 	t.Cleanup(control.Release)
 	return &latches{t: t, control: control}
@@ -867,4 +867,11 @@ func (p *reloadPage) dump() string {
 		out = append(out, fmt.Sprintf("%s{states %v, label %v, count %v, frames %v}", name, view.states, jsonText(view.label), jsonText(view.count), view.frames))
 	}
 	return strings.Join(out, " ")
+}
+
+// reported is what the app reported so far.
+func reported(e *appErrors) []AppError {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return slices.Clone(e.list)
 }

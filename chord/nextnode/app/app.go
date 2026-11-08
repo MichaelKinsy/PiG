@@ -8,10 +8,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -35,7 +37,7 @@ import (
 // `ApplyChanges`, export and import per address.
 //
 // Forced Go differences (D460, D461, D462). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
-// facets are Go core facets on the server's Go host, the server's plugins' host is the NodeHost the server host accepts the link of,
+// facets are Go core facets on the server's Go host, the server's plugins' host is the NodeHost the server host delegates to (D605: the remote types placed on the server that no Go facet serves go over its link),
 // and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460). `Files` and
 // `FilesFolder` are not bridged: `Files` has a keyed member (`summary`) and the bridge refuses keyed members, so a TS plugin cannot
 // get a host's files; Go code gets them directly (D461). The server's host and the plugins' NodeHost are two hosts with a store each
@@ -392,7 +394,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
-		Api: &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
+		Api:     &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
 	workerHosts := &workerHosts{keys: map[string]string{}}
@@ -438,6 +440,26 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		}
 		a.Workers[kind.Kind.Kind] = created
 	}
+	// The server's plugins run in a Node subprocess behind this host (D462): the remote types placed on the server that the Go facets
+	// do not serve are the NodeHost's, so the server host delegates them to its link (D605), and serves the union as Pi's one host does.
+	// The link is attached by the first hold that goes over it, as a worker's is; the NodeHost loads after this host.
+	nodeReady := make(chan struct{})
+	var nodeHost atomic.Pointer[plugins.NodeHost]
+	if _, err := h.Delegate(Server, host.RouteOptions{
+		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
+		Resolve: func(_ contracts.Address, resolving context.Context) (host.ResolvedLink, error) {
+			// The host resolves in a section it lends to this function: waiting for the NodeHost parks first (as a worker's route does).
+			parking.Park(resolving)
+			select {
+			case <-nodeReady:
+			case <-resolving.Done():
+				return host.ResolvedLink{}, context.Cause(resolving)
+			}
+			return host.ResolvedLink{Link: nodeHost.Load().Link(), Principal: options.Principal.Server, Trusted: true}, nil
+		},
+	}, ctx); err != nil {
+		return err
+	}
 	report, err := h.Load(core, ctx)
 	if err != nil {
 		return err
@@ -479,9 +501,8 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := h.Accept(node.Link(), host.LinkOptions{Principal: options.Principal.Server, Trusted: true}, ctx); err != nil {
-		return err
-	}
+	nodeHost.Store(node)
+	close(nodeReady)
 	if _, err := OwnerTokenFile(opened.layout.OwnerToken, owner, h, ctx); err != nil {
 		return err
 	}
