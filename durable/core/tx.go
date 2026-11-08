@@ -555,6 +555,15 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 		h.txStorageRead(t, name, op, name, []any{numOf(op, "id")}, func() { t.mintDone = true })
 		return nil, errTxWaiting
 	}
+	// transaction.ts submission and submissionByRequest read the record from the Storage (storage.submission, submissionByRequest).
+	if name == "submission" && !t.mintDone && h.gated(name) {
+		h.txStorageRead(t, name, op, name, []any{numOf(op, "id")}, func() { t.mintDone = true })
+		return nil, errTxWaiting
+	}
+	if name == "submissionByRequest" && !t.mintDone && h.gated(name) {
+		h.txStorageRead(t, name, op, name, []any{numOf(op, "conversationId"), strOf(op, "requestId")}, func() { t.mintDone = true })
+		return nil, errTxWaiting
+	}
 	id := session.ID(numOf(op, "id"))
 	nilRec := func(o *jv.Object, err error) (any, error) {
 		if err != nil || o == nil {
