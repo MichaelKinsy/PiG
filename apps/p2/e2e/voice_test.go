@@ -23,6 +23,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	chatmodecontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat-mode/contract"
 	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
 	sessionscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	sharingcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing/contract"
@@ -35,6 +36,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/gorilla/websocket"
+
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat-mode"
 )
 
 // voices is the fake service's VOICES, as the plugin publishes it.
@@ -624,4 +627,75 @@ func TestVoiceRoutesAndModeFakeProvider(t *testing.T) {
 func voiceHTTP(t *testing.T, port int, path string, headers map[string]string, body string) p2test.HTTPResult {
 	t.Helper()
 	return httpGet(t, port, path, p2test.HTTPOptions{Method: http.MethodPost, Headers: headers, Body: strings.NewReader(body)})
+}
+
+// voiceChatEntries are the entries of kind in a conversation's view.
+func voiceChatEntries(view delta.JsonValue, kind string) []*delta.JsonObject {
+	var out []*delta.JsonObject
+	for _, each := range list(object(view).Value("entries")) {
+		if object(each).Value("kind") == kind {
+			out = append(out, object(each))
+		}
+	}
+	return out
+}
+
+// Ports test/p2/voice.test.ts "voice in chat mode": "places spoken chat as the speaker's chat entry, and a spoken address as a
+// mention that Pi answers" (the router is chat mode's: plugins/chat-mode; the transcripts are what `voiceMessage` makes of
+// them, which voice.web.test.ts runs: "lunch first?" and "Pie sounds good" stay as said, "Hey Pi, which place?" gets its
+// mention in front).
+func TestVoiceInChatModeFakeProvider(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	fixture, owner, session, chat := sessionFixture(t)
+	t.Run("places spoken chat as the speaker's chat entry, and a spoken address as a mention that Pi answers", func(t *testing.T) {
+		alice, _ := fixture.Client(voiceGuest(t, fixture, owner, session, "full", "Alice"))
+		ownerChat := chat(owner, "participant")
+		defer ownerChat.Release()
+		aliceChat := chat(alice, "participant")
+		defer aliceChat.Release()
+		where := delta.JsonObjectOf("session", session, "conversation", float64(1))
+		mode, err := p2test.HoldIn(owner, chatmodecontract.ChatMode, where, "owner")
+		voiceMust(t, err)
+		defer mode.Release()
+		_, err = mode.Call("set", delta.JsonObjectOf("enabled", true), p2test.Background)
+		voiceMust(t, err)
+		voiceUntil(t, mode.Member("enabled"), func(value delta.JsonValue) bool { return value == true })
+		answered := func(view delta.JsonValue) bool { return len(voiceChatEntries(view, "pi.assistant")) > 0 }
+		// What the voice engine sends: the transcript as `voiceMessage` makes it.
+		_, err = ownerChat.Call("send", delta.JsonObjectOf("text", "lunch first?", "requestId", "1"), p2test.Background)
+		voiceMust(t, err)
+		_, err = aliceChat.Call("send", delta.JsonObjectOf("text", "Pie sounds good", "requestId", "2"), p2test.Background)
+		voiceMust(t, err)
+		chatted := voiceUntil(t, ownerChat.Member("view"), func(view delta.JsonValue) bool { return len(voiceChatEntries(view, "chat.message")) == 2 })
+		messages := voiceChatEntries(chatted, "chat.message")
+		// The server gives a guest an ID of its own (Pi's bare host names it "alice").
+		aliceID, _ := object(object(messages[1].Value("data")).Value("author")).Value("id").(string)
+		if aliceID == "" {
+			t.Fatal("the guest's entry has no author ID")
+		}
+		wantMessages := []string{
+			`{"author":{"kind":"owner","id":"owner","name":"Owner"},"text":"lunch first?","attachments":[]}`,
+			fmt.Sprintf(`{"author":{"kind":"guest","id":%q,"name":"Alice"},"text":"Pie sounds good","attachments":[]}`, aliceID),
+		}
+		for index, want := range wantMessages {
+			if !sameJSONText(t, messages[index].Value("data"), want) {
+				t.Errorf("chat entry %d = %s, want %s", index, jsonText(messages[index].Value("data")), want)
+			}
+		}
+		if answered(chatted) {
+			t.Fatal("no run for chat")
+		}
+		_, err = aliceChat.Call("send", delta.JsonObjectOf("text", "@pi Hey Pi, which place?", "requestId", "3"), p2test.Background)
+		voiceMust(t, err)
+		view := voiceUntil(t, ownerChat.Member("view"), answered)
+		mentions := voiceChatEntries(view, "chat.mention")
+		if len(mentions) == 0 {
+			t.Fatal("no mention")
+		}
+		want := fmt.Sprintf(`{"author":{"kind":"guest","id":%q,"name":"Alice"},"text":"@pi Hey Pi, which place?","attachments":[],"included":[%v,%v]}`,
+			aliceID, messages[0].Value("id"), messages[1].Value("id"))
+		if !sameJSONText(t, mentions[0].Value("data"), want) {
+			t.Errorf("the mention = %s, want %s", jsonText(mentions[0].Value("data")), want)
+		}
+	})
 }
