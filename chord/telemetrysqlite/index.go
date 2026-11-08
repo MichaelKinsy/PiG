@@ -120,6 +120,7 @@ func CreateSqliteTelemetry(db chordsqlite.SqliteDatabase, options SqliteTelemetr
 		ticker := time.NewTicker(flushInterval)
 		channel, stop = ticker.C, ticker.Stop
 	}
+	store.recorder.Facade(store)
 	//portlint:allow golifetime owned by the recorder: stopped through stop (Close or a write failure) and joined through timerDone in Close
 	go store.runTimer(channel, stop)
 	return store, nil
