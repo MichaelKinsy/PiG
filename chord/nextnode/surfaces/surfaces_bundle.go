@@ -52,7 +52,7 @@ const (
 // BuildBase builds the base bundle of entry for platform, its files under prefix (`/_chord/web/`): the script
 // `base.<hash>.js`, the stylesheet `base.<hash>.css` when it imports CSS, assets under `assets/` by their own hashes.
 // Packages resolve with conditions, by default (nil) the server process's (ProcessConditions); an empty non-nil slice resolves
-// with none. It fails with esbuild's messages: the server does not start with a broken base.
+// with none. It fails with esbuild's messages.
 func BuildBase(entry string, platform BasePlatform, prefix string, conditions []string) (*BaseBundle, error) {
 	browser := platform == PlatformBrowser
 	recorder := plugins.NewRecorder()

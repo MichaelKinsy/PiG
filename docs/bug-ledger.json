@@ -12068,7 +12068,7 @@
       ],
       "tests": [
         "chord/nextnode/app/app_surfaces_test.go::TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
-        "chord/nextnode/app/app_surfaces_test.go::TestAppFailsToStartWhenASurfacesBaseBundleDoesNotBuildWithEverythingClosed",
+        "chord/nextnode/app/app_bases_test.go::TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
         "chord/nextnode/app/app_surfaces_test.go::TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
         "chord/nextnode/app/app_surfaces_test.go::TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession",
@@ -12105,7 +12105,7 @@
       ],
       "tests": [
         "chord/nextnode/app/app_surfaces_test.go::TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
-        "chord/nextnode/app/app_surfaces_test.go::TestAppFailsToStartWhenASurfacesBaseBundleDoesNotBuildWithEverythingClosed",
+        "chord/nextnode/app/app_bases_test.go::TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
         "chord/nextnode/app/app_surfaces_test.go::TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
         "chord/nextnode/app/app_surfaces_test.go::TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession",
@@ -32516,6 +32516,30 @@
       "tests": []
     },
     {
+      "id": "BF-D604",
+      "title": "A link's upgrade waits for the bases to be built (Pi's links connect at once)",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "the Go server listens before the plugins' Node host has loaded (about 0.5 s), and a page of a restarted server reconnects in that gap, before the bases have started. It then holds the empty set, its base differs from the page's, and the page reloads (`Outdated`): a seamless reconnect becomes a reload, and Pi's ported test of a failed plugin script tried again at a reconnect fails every time. Pi's build takes about 100 ms after a start of a few milliseconds, so the window is rarely open there.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D604",
+      "removeWhen": "the Go server's start no longer leaves a window (the plugins' host loads before the listen), or the scripts objects wait for the build themselves.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "7fe095c5d0",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_bases_linux_test.go::TestAppHoldsALinkUntilTheBasesAreBuilt",
+        "chord/nextnode/app/app_web_styles_test.go::TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsStylesheetNeverOneWithoutTheOther"
+      ]
+    },
+    {
       "id": "BF-D605",
       "title": "The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other",
       "symptom": "none.",
@@ -45870,7 +45894,7 @@
         }
       ],
       "tests": [
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheComponentWasCreatedWith"
+        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith"
       ]
     },
     {
@@ -52108,6 +52132,27 @@
       ]
     },
     {
+      "id": "BF-fcf8259",
+      "title": "fix(chord/nextnode/app): links wait for the bases, the stalled-build tests, summary restarted after the merge",
+      "symptom": "fix(chord/nextnode/app): links wait for the bases, the stalled-build tests, summary restarted after the merge",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "fcf8259b5d",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_examples_test.go::TestExample36PluginFailures"
+      ]
+    },
+    {
       "id": "BF-fd4be86",
       "title": "OpenAI-compatible Chat Completions keeps the `\"text\":\"\"` member of a user text part whose text is only a lone…",
       "symptom": "OpenAI-compatible Chat Completions keeps the `\"text\":\"\"` member of a user text part whose text is only a lone UTF-16 surrogate, as Pi writes it after sanitizing (a part that is empty to begin with is still dropped).",
@@ -53095,6 +53140,11 @@
       "id": "D600",
       "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
       "entry": "BF-D600"
+    },
+    {
+      "id": "D604",
+      "title": "A link's upgrade waits for the bases to be built (Pi's links connect at once)",
+      "entry": "BF-D604"
     },
     {
       "id": "D605",

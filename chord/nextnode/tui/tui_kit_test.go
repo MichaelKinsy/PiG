@@ -105,6 +105,8 @@ func tuiApp(t testing.TB, text string) started {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The bases are built after the listen: the launchers get the app as its first requests see it (Pi's test support does the same).
+	<-started.BasesBuilt()
 	// Registered first, so it runs after the launchers stopped and the app closed: none of their goroutines outlives the test.
 	t.Cleanup(func() {
 		noGoroutinesOf(t, "chord/nextnode/tui.", "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
