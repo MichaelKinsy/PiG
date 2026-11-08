@@ -16,5 +16,5 @@ func FuzzDecodeJSONObjectMatchesV1(f *testing.F) {
 }
 
 func BenchmarkDecodeJSONObject(b *testing.B) {
-	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { decodeJSONObjectV1(d) }, func(d []byte) { decodeJSONObject(d) })
+	jsonseed.Bench(b, jsonseed.Typical(), func(d []byte) { _, _ = decodeJSONObjectV1(d) }, func(d []byte) { _, _ = decodeJSONObject(d) })
 }
