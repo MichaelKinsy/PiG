@@ -1,0 +1,3 @@
+### Added
+
+- `mcp.PipeTransport`, the MCP stdio transport over a program the caller started (`env.RemoteProcess` is one as it is); `mcp/oauth` sign-in in two halves (`StartMcpSignIn`, `CompleteMcpSignIn`, `ListenForLoopbackSignIn`, `WaitForLoopbackSignIn`, `CreateMcpAuthProvider`) with a refresh that uses the application's redirect URI and a sign-in that can be cancelled while it waits for another process's refresh lock; and the shared `mcp.CreateMcpToolName`, `McpNamespace`, `NormalizeMcpInputSchema`, `LimitMcpContent` and `ValidateMcpServerConfig`. <!-- feat: 5cd76cc454 c407e0ca23 22934263b9 -->
