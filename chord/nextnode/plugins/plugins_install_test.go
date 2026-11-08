@@ -130,7 +130,7 @@ func TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPip
 			tools := tempRoot(t)
 			root := tempRoot(t)
 			writePlugin(t, root, "deps", "@test/deps", map[string]string{}, nil)
-			discovery, err := DiscoverPlugins([]string{root}, DiscoveryOptions{Kinds: kinds}, background)
+			discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
 			if err != nil {
 				t.Fatal(err)
 			}
