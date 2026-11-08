@@ -196,7 +196,11 @@ func TestTerminalHostTheAgentsCalls(t *testing.T) {
 	prompt := func(pattern string, timeoutMs int) *TerminalWait { return matchWait(pattern, timeoutMs) }
 
 	t.Run("opens once per key, types keys once per key, reads from the cursor", func(t *testing.T) {
+		// The viewer's list and the agent's open come over two connections, which the host reads in no fixed order: a list that
+		// reaches it after the open is answered with the terminal (a "list" event) and gets no "terminals" push. Pi's test sends
+		// the list first and relies on the order; here the push is awaited only once the host has taken the viewer's list.
 		viewer.send(TerminalRequest{Type: RequestList, SessionID: "s1"})
+		poll(t, func() bool { return viewer.seen(func(event TerminalEvent) bool { return event.Type == EventList }) })
 		terminal := open("s1", "open-1", "printf 'hi-%s\\n' there", "dev")
 		if terminal.Index != 1 || !terminal.Agent || terminal.Name != "dev" {
 			t.Fatalf("terminal = %+v", terminal)
