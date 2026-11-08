@@ -154,14 +154,14 @@ func TestReadingTheSandboxsHeaderChecksEachFieldAsPiDoes(t *testing.T) {
 		}
 	}
 	for header, want := range map[string]SandboxMessage{
-		`{"kind":"socket_open","socket":9007199254740991}`:                    {Kind: "socket_open", Socket: 9007199254740991},
+		`{"kind":"socket_open","socket":9007199254740991}`:                     {Kind: "socket_open", Socket: 9007199254740991},
 		`{"kind":"socket_close","socket":-3}`:                                  {Kind: "socket_close", Socket: -3},
 		`{"kind":"socket_open","socket":2.0}`:                                  {Kind: "socket_open", Socket: 2},
 		`{"kind":"socket_open","socket":2e0,"extra":1e999}`:                    {Kind: "socket_open", Socket: 2},
 		`{"kind":"socket_send","socket":4}`:                                    {Kind: "socket_send", Socket: 4, Bytes: []byte("body")},
 		`{"kind":"request","id":6,"request":{"kind":"base"}}`:                  {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "base"}},
-		`{"kind":"request","id":6,"request":{"kind":"fetch","path":"/p"}}`:    {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "fetch", Path: "/p"}},
-		`{"kind":"request","id":6,"request":{"kind":"attach","path":"/a"}}`:   {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "attach", Path: "/a"}},
+		`{"kind":"request","id":6,"request":{"kind":"fetch","path":"/p"}}`:     {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "fetch", Path: "/p"}},
+		`{"kind":"request","id":6,"request":{"kind":"attach","path":"/a"}}`:    {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "attach", Path: "/a"}},
 		`{"kind":"request","id":6,"request":{"kind":"copy","text":"t\u00e9"}}`: {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "copy", Text: "té"}},
 		`{"kind":"request","id":6,"request":{"kind":"open","url":"u"}}`:        {Kind: "request", ID: 6, Request: BridgeRequest{Kind: "open", URL: "u"}},
 		`{"kind":"outdated"}`:                                                  {Kind: "outdated"},
