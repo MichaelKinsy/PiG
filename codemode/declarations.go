@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"maps"
 	"math"
-	"net/url"
 	"slices"
 	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/schemaref"
 )
 
 const (
@@ -280,7 +278,7 @@ func schemaToType(schema any, maxChars *int) string {
 //
 // Ports packages/codemode/src/declarations.ts (resolveSchemaRef).
 func ResolveSchemaRef(ref string, root any) (any, bool) {
-	segments, ok := refSegments(ref)
+	segments, ok := schemaref.Segments(ref)
 	if !ok {
 		return nil, false
 	}
@@ -307,48 +305,7 @@ func ResolveSchemaRef(ref string, root any) (any, bool) {
 // ResolveSchemaRefJSON is [ResolveSchemaRef] on schema text: it returns the text of the subschema a local `$ref` names in root, with its members in the
 // order root has them.
 func ResolveSchemaRefJSON(ref string, root json.RawMessage) (json.RawMessage, bool) {
-	segments, ok := refSegments(ref)
-	if !ok {
-		return nil, false
-	}
-	current := root
-	for _, key := range segments {
-		members, err := orderedjson.Parse(current)
-		if err != nil {
-			return nil, false
-		}
-		if current, ok = members.Get(key); !ok {
-			return nil, false
-		}
-	}
-	switch trimmed := strings.TrimLeft(string(current), " \t\r\n"); {
-	case strings.HasPrefix(trimmed, "{"), strings.HasPrefix(trimmed, "true"), strings.HasPrefix(trimmed, "false"):
-		return current, true
-	}
-	return nil, false
-}
-
-// refSegments are the members a local `$ref` (`#`, `#/$defs/Item`) walks through, URI-decoded and JSON Pointer unescaped. It reports false for a
-// remote reference and for a segment with a malformed percent escape.
-func refSegments(ref string) ([]string, bool) {
-	if ref != "#" && !strings.HasPrefix(ref, "#/") {
-		return nil, false
-	}
-	if ref == "#" {
-		return nil, true
-	}
-	var segments []string
-	for segment := range strings.SplitSeq(ref[2:], "/") {
-		if segment == "" {
-			continue
-		}
-		decoded, err := url.PathUnescape(segment)
-		if err != nil || !utf8.ValidString(decoded) {
-			return nil, false
-		}
-		segments = append(segments, strings.ReplaceAll(strings.ReplaceAll(decoded, "~1", "/"), "~0", "~"))
-	}
-	return segments, true
+	return schemaref.ResolveJSON(ref, root)
 }
 
 func toType(schema any, ctx *schemaContext) string {
