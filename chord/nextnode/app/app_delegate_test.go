@@ -10,9 +10,10 @@ import (
 // Not upstream's (D605): the server host the kit gives the app is two hosts with the server's address, the Go host (the app's
 // own facets: the locale and theme choices, the telemetry ingest) and the Node host (the plugins). Pi's one server host serves
 // both, so a server plugin's object that holds a type the Go host serves binds. The Go host delegates the types it does not serve
-// to the Node host (reload_server_test.go's rows), and the Node host hands the types the Go host serves back over its link: these
-// tests are the second direction, the Node host's plugin holding the Go server's own remote types as the principal its object acts
-// as. Oracle: Pi's host, where `self.get(LocaleChoice, {})` in a server plugin's factory binds the one server host's object.
+// to the Node host (the server rows of the reload suite), and the Node host hands the types the Go host serves back over its link: this
+// test is the second direction, the Node host's plugin holding the Go server's own remote types. Oracle: Pi's host, where
+// `self.get(LocaleChoice, {})` in a server plugin's factory binds the one server host's object (as the object's own principal there;
+// over the link it is the link's, the server's: D605 records it and the test pins it).
 
 // languagePlugin is a server plugin serving `probe.lang`, whose object holds the Go server's LocaleChoice: its `pick` is the
 // choice's, its `choose` changes it; and `probe.theme`, which holds the ThemeChoice.
@@ -55,14 +56,14 @@ func memberText(page *reloadPage, name, member string) string {
 	return jsonText(value)
 }
 
-func TestAServerPluginsObjectHoldsTheTypesTheGoServerServesAsThePrincipalItActsAs(t *testing.T) {
+func TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer(t *testing.T) {
 	s := startReloadApp(t, map[string]map[string]string{"lang": {"server.ts": languagePlugin}})
 	page := signIn(t, s)
 	// The page holds the Go server's choice itself, as the owner.
 	page.hold("choice", surfaces.LocaleChoice, "", 0, "pick")
 	page.waitState("choice", "live")
 	page.until("the choice's first value", reloadWait, func() bool { return memberText(page, "choice", "pick") == "null" })
-	// The plugin's object, which acts as the owner, holds that same choice through the Node host's link to the Go host: it binds.
+	// The plugin's object holds the Go server's choice through the Node host's link to the Go host: it binds.
 	page.hold("lang", languageContract, "", 0, "pick")
 	page.waitState("lang", "live")
 	page.until("the plugin's view of the choice", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=null"` })
@@ -70,15 +71,14 @@ func TestAServerPluginsObjectHoldsTheTypesTheGoServerServesAsThePrincipalItActsA
 	page.until("the plugin's view of the theme choice", reloadWait, func() bool {
 		return memberText(page, "lang", "theme") == "\"{\\\"dark\\\":null,\\\"light\\\":null}\""
 	})
-	// The page's own call on the Go server's choice reaches the plugin's object, which holds the same object (the same principal)...
-	if got := page.result(page.call("choice", "choose", "fr")); got.Status != "ok" {
-		t.Fatalf("the page's choose = %+v, want ok", got)
-	}
-	page.until("the plugin's view follows the page's choice", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=fr"` })
-	// ... and a call of the plugin's object reaches the page's.
+	// A call of the plugin's object reaches the Go server's object it holds and its view follows.
 	if got := page.result(page.call("lang", "choose", "de")); got.Status != "ok" {
 		t.Fatalf("the plugin's choose = %+v, want ok", got)
 	}
 	page.until("the plugin's view follows its own call", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=de"` })
-	page.until("the page's own choice follows the plugin's call", reloadWait, func() bool { return memberText(page, "choice", "pick") == `"de"` })
+	// The difference from Pi's one host that D605 records: a hold over the Node host's link acts as the link's principal, the
+	// server's (a child cannot claim to be someone else, §4), where Pi's one host acts as the object's own principal. The plugin
+	// object's choice is the server principal's, so the owner's, which the page holds, is untouched.
+	page.waitState("choice", "live")
+	expectEqual(t, "the owner's choice", memberText(page, "choice", "pick"), "null")
 }
