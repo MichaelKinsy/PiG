@@ -20,9 +20,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	pitelemetry "github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next-node/http/http.ts. The HTTP component (slice 10 §2; decisions "The HTTP core is a fetch
+// Ports packages/chord/src/node/http/http.ts. The HTTP component (slice 10 §2; decisions "The HTTP core is a fetch
 // handler", "The HTTP server is a native object", "The HTTP component's security baseline", "Settings are arguments,
 // extensions are registries"): `CreateHttp` takes the app's settings (where to listen, the links endpoint, the close bound)
 // and builds one Web-standard handler, `Fetch`, from the registries its facet serves (`Http`, `Authenticators`), an upgrade
@@ -43,7 +45,10 @@ type HttpOptions struct {
 	Links *LinksOptions
 	// CloseTimeout is how long `Close` waits for running requests and closing sockets: 30 s by default (0).
 	CloseTimeout time.Duration
-	OnError      func(HttpError)
+	// Telemetry is the telemetry adapter (the host's): each routed request is a `chord.http` root span, its scope's ctx under
+	// it; a W3C `traceparent` is extracted only from a request a contributed relay verified. None: the no-op one.
+	Telemetry pitelemetry.TelemetryContext
+	OnError   func(HttpError)
 }
 
 // LinksOptions is the links endpoint's path and what it gives each socket (`maxPayload` 1 MiB by default).
@@ -185,6 +190,8 @@ type HttpComponent struct {
 	options HttpOptions
 	onError func(HttpError)
 	ctx     context.Context
+	// spanHost is the `chord.host` of its `chord.http` spans: its host's.
+	spanHost string
 	// base is the component's context without its cancellation: each request's scope adds its own signal.
 	base     context.Context
 	defaults *DefaultHeaders
@@ -219,6 +226,7 @@ func newComponent(h host.Host, options HttpOptions, ctx context.Context, after a
 		listening: &listeningPromise{done: make(chan struct{})},
 	}
 	c.upgrades.after = after
+	c.spanHost = chordtelemetry.HostAttribute(h.Address())
 	//portlint:allow ctxmapping the component's own `#closing` AbortController, aborted by close
 	c.closing, c.closingCancel = context.WithCancel(context.Background())
 	listen := options.Listen
@@ -328,7 +336,7 @@ func (c *HttpComponent) Close(ctx context.Context) {
 func (c *HttpComponent) isClosing() bool { return c.closing.Err() != nil }
 
 // Serve serves request: its answer, and what its consumer calls once the body is written or abandoned. It never fails:
-// whatever fails answers (503 before the publication or while closing, 403, 404, 500 reported).
+// whatever fails answers (503 before the host's `Load` or while closing, 403, 404, 500 reported).
 func (c *HttpComponent) Serve(request Incoming, connection Connection) Served {
 	//portlint:allow ctxbackground an AbortController: the request's own root, ended by its client or by close
 	controller, cancel := context.WithCancelCause(context.Background())
@@ -442,7 +450,11 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 	}
 	answered := make(chan Answer, 1)
 	scope := make(chan struct{})
+	span := c.span(request, match, admitted)
 	rootCtx := chordctx.WithAbortSignal(c.base, controller)
+	if span != nil {
+		rootCtx = chordctx.WithTelemetry(rootCtx, span.Span())
+	}
 	go func() {
 		defer close(scope)
 		_, err := c.host.Root(func(ctx host.Ctx) (any, error) {
@@ -464,7 +476,59 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 			}
 		}
 	}()
-	return served{answer: <-answered, scope: scope}
+	answer := <-answered
+	if span != nil {
+		span.Span().SetAttributes(pitelemetry.SpanAttributes{pitelemetry.Attr("status", answer.Status)})
+		if answer.Status >= 500 {
+			chordtelemetry.SpanFailed(span.Span(), "http_failed", fmt.Sprintf("status %d", answer.Status))
+		}
+		//portlint:allow golifetime ends with the request's scope, which `close` seals
+		go func() {
+			<-scope
+			span.End()
+		}()
+	}
+	return served{answer: answer, scope: scope}
+}
+
+// span is a routed request's `chord.http` span (its method and route pattern; its path never: it may carry ids or secrets): a
+// root of the adapter, or the child of a W3C `traceparent` (and its `tracestate`) of a request a contributed relay verified,
+// never a browser's; none without an adapter that records.
+func (c *HttpComponent) span(request Incoming, match *RouteMatch, admitted *Admitted) *chordtelemetry.OpenSpan {
+	adapter := c.options.Telemetry
+	if adapter == nil || chordtelemetry.Untraced(adapter) {
+		return nil
+	}
+	attributes := pitelemetry.SpanAttributes{pitelemetry.Attr("chord.host", c.spanHost), pitelemetry.Attr("method", request.Method()), pitelemetry.Attr("route", match.Pattern)}
+	traceparent := ""
+	if admitted.Provenance.Kind == ProvenanceRelayed {
+		traceparent = traceHeader(request, "traceparent", 256)
+	}
+	if traceparent == "" {
+		return chordtelemetry.NewOpenSpan(adapter, "chord.http", attributes)
+	}
+	carrier := pitelemetry.TelemetryCarrier{"traceparent": traceparent}
+	if tracestate := traceHeader(request, "tracestate", 512); tracestate != "" {
+		carrier["tracestate"] = tracestate
+	}
+	return chordtelemetry.NewOpenSpan(chordtelemetry.ParentOf(carrier, adapter), "chord.http", attributes)
+}
+
+// traceHeader is a W3C trace header of request, when present, within its bound (in UTF-16 units, as `length`) and printable
+// ASCII (as a link's carrier); otherwise none ("": ignored). The longest taken from a relayed request: `traceparent` is 55
+// characters, `tracestate` at most 512; the relay forwards what the browser sent unless it strips them, so they are bounded
+// (review L2).
+func traceHeader(request Incoming, name string, bound int) string {
+	value, ok := request.Header(name)
+	if !ok || len(value) > bound {
+		return ""
+	}
+	for i := 0; i < len(value); i++ {
+		if value[i] < 0x20 || value[i] > 0x7e {
+			return ""
+		}
+	}
+	return value
 }
 
 // run runs the wraps and the route in the request's scope ctx, and makes its answer (a failure: a reported 500).
@@ -533,7 +597,7 @@ func (c *HttpComponent) hookFailed(hook HookName, plugin string, err error) {
 	c.onError(HttpError{Kind: ErrHookFailed, Hook: hook, Plugin: plugin, Error: err})
 }
 
-// registriesNow is the registries: resolved once, waiting for the publication; a failed try is tried again later.
+// registriesNow is the registries: resolved once, after the host's `Load` (`not_ready` before it); a failed try is tried again later.
 func (c *HttpComponent) registriesNow() (*registrySet, error) {
 	c.mu.Lock()
 	if c.registries != nil {

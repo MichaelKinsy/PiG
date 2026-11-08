@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/router.ts
+// pi: packages/chord/src/node/http/router.ts
 
 import (
 	"fmt"
