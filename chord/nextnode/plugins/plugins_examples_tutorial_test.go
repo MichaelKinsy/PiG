@@ -113,7 +113,9 @@ func tutorialListOf(t *testing.T) *tutorialList {
 	return &tutorialList{tested: tested, server: server, todos: tutorialTodos(list)}
 }
 
-// root runs fn as principal, with the list's `Todos` of "groceries" taken as that principal sees it.
+// root runs fn as principal, with the list's `Todos` of "groceries" taken as that principal sees it. Root runs its callback on a
+// goroutine of the host, where a failed `t.Fatal` would end that goroutine and never answer Root: fn runs on a goroutine of its
+// own that the callback waits for, and a failure it recorded fails the test after Root returns.
 func (l *tutorialList) root(t *testing.T, principal data.Principal, fn func(todos *host.Reference, ctx host.Ctx)) {
 	t.Helper()
 	if _, err := l.server.Root(func(ctx host.Ctx) (any, error) {
@@ -121,10 +123,19 @@ func (l *tutorialList) root(t *testing.T, principal data.Principal, fn func(todo
 		if err != nil {
 			return nil, err
 		}
-		fn(todos, ctx)
+		done := make(chan struct{})
+		//portlint:allow golifetime ends with fn, which the callback waits for
+		go func() {
+			defer close(done)
+			fn(todos, ctx)
+		}()
+		<-done
 		return nil, nil
 	}, background, host.RootOptions{Principal: principal}); err != nil {
 		t.Fatal(err)
+	}
+	if t.Failed() {
+		t.FailNow()
 	}
 }
 
@@ -230,7 +241,8 @@ func TestTutorialListsPluginOnAListsWorker(t *testing.T) {
 }
 
 // Ports traces/clock.test.ts "clamped": the viewer's clock correction, a pure function of the example's browser code
-// (plugins/traces/clock.ts, unchanged), run on Node as the tutorial's web page runs it. Each case is Pi's, its expectation too.
+// (plugins/traces/clock.ts, unchanged), run on Node as the tutorial's web page runs it. One Node run answers every case's
+// result as JSON; each case is Pi's, its inputs and expectation too, checked under Pi's title.
 func TestTutorialTracesClockClamped(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -240,7 +252,7 @@ func TestTutorialTracesClockClamped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// span and times are the test's helpers; each case answers its own JSON (the times, or whether the same array came back).
+	// span and times are the test's helpers.
 	script := `
 import { clamped } from ` + pcJSON(t, fileURL(clock)) + `;
 function span(id, host, startedMs, endedMs, parentId) {
@@ -263,8 +275,27 @@ console.log(JSON.stringify({ late: times(late), early: times(early), fitting: cl
 	if err != nil {
 		t.Fatalf("node: %v\n%s", err, output)
 	}
-	want := `{"late":[["click",2001,2011],["call",2002,2010],["relay",2002,2008]],"early":[["call",1095,1105],["relay",1101,1105]],"fitting":true,"alone":true,"longer":["call",204,206]}`
-	if got := strings.TrimSpace(string(output)); got != want {
-		t.Fatalf("clamped:\n%s\nwant:\n%s", got, want)
+	var got map[string]json.RawMessage
+	if err := json.Unmarshal(output, &got); err != nil {
+		t.Fatalf("node answered %q: %v", output, err)
 	}
+	check := func(t *testing.T, key, want string) {
+		t.Helper()
+		if string(got[key]) != want {
+			t.Fatalf("%s = %s, want %s", key, got[key], want)
+		}
+	}
+	t.Run("moves a page that runs late back, so its call contains the server's relay", func(t *testing.T) {
+		check(t, "late", `[["click",2001,2011],["call",2002,2010],["relay",2002,2008]]`)
+	})
+	t.Run("moves a page that runs early forward by the least amount", func(t *testing.T) {
+		check(t, "early", `[["call",1095,1105],["relay",1101,1105]]`)
+	})
+	t.Run("moves nothing when the server's spans fit, or when no server span is under a page span", func(t *testing.T) {
+		check(t, "fitting", "true")
+		check(t, "alone", "true")
+	})
+	t.Run("centres a server child longer than its page parent", func(t *testing.T) {
+		check(t, "longer", `["call",204,206]`)
+	})
 }
