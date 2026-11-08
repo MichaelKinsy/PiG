@@ -86,7 +86,7 @@ emit(await Promise.all(input.map(async ({ file }) => ({
 	Save: await run(file, (store, server) => server.save({ serverUrl: input_url, tokens: { access_token: "t", token_type: "Bearer" }, codeVerifier: "v\u2028" })),
 }))));
 `, probes, &want)
-	run := func(file string, op func(*McpOAuthCredentialStore, McpOAuthServerStore) (any, error)) outcome {
+	run := func(file string, op func(*McpOAuthCredentialStore, oauth.McpOAuthServerStore) (any, error)) outcome {
 		backend := &InMemoryAuthStorageBackend{}
 		_ = backend.WithLock(func(string, bool) (*string, error) { return &file, nil })
 		store := NewMcpOAuthCredentialStoreWithBackend(backend, "")
@@ -114,21 +114,23 @@ emit(await Promise.all(input.map(async ({ file }) => ({
 	bad := 0
 	for i, file := range files {
 		got := result{
-			Load: run(file, func(_ *McpOAuthCredentialStore, s McpOAuthServerStore) (any, error) {
+			Load: run(file, func(_ *McpOAuthCredentialStore, s oauth.McpOAuthServerStore) (any, error) {
 				state, err := s.Load(context.Background())
 				if state == nil {
 					return nil, err
 				}
 				return state, err
 			}),
-			Tokens: run(file, func(c *McpOAuthCredentialStore, _ McpOAuthServerStore) (any, error) {
+			Tokens: run(file, func(c *McpOAuthCredentialStore, _ oauth.McpOAuthServerStore) (any, error) {
 				if tk := c.Tokens(name, serverURL); tk != nil {
 					return tk, nil
 				}
 				return nil, nil
 			}),
-			Remove: run(file, func(c *McpOAuthCredentialStore, _ McpOAuthServerStore) (any, error) { return c.Remove(name, serverURL) }),
-			Save: run(file, func(_ *McpOAuthCredentialStore, s McpOAuthServerStore) (any, error) {
+			Remove: run(file, func(c *McpOAuthCredentialStore, _ oauth.McpOAuthServerStore) (any, error) {
+				return c.Remove(name, serverURL)
+			}),
+			Save: run(file, func(_ *McpOAuthCredentialStore, s oauth.McpOAuthServerStore) (any, error) {
 				return nil, s.Save(context.Background(), oauth.McpOAuthState{ServerURL: serverURL, Tokens: &oauth.OAuthTokens{AccessToken: "t", TokenType: "Bearer"}, CodeVerifier: "v\u2028"})
 			}),
 		}
