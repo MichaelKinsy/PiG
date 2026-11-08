@@ -319,6 +319,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3804a5a](#bf-3804a5a) | The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-380ea0e](#bf-380ea0e) | fix(durable/core): a settled outcome without error detail is no cut-off (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-3840820](#bf-3840820) | MCP tool results whose content blocks carry members of another type than the protocol's (a numeric `text`, a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3868dd5](#bf-3868dd5) | MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a… | PiG's own defect | All platforms | Unreleased |
 | [BF-38b0f0c](#bf-38b0f0c) | Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-38e6506](#bf-38e6506) | The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character | PiG's own defect | All platforms | 0.7.0 |
 | [BF-390964d](#bf-390964d) | A program that embeds the alternate-screen renderer without a `CopySelection` function no longer copies a… | PiG's own defect | All platforms | Unreleased |
@@ -959,6 +960,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8cfd25f](#bf-8cfd25f) | A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8d008eb](#bf-8d008eb) | fix(interactive): paint the requested first frame before the color wait returns | PiG's own defect | All platforms | Unreleased |
 | [BF-8d23cfc](#bf-8d23cfc) | Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8d46bf8](#bf-8d46bf8) | A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state… | PiG's own defect | All platforms | Unreleased |
+| [BF-8d46bf8-2](#bf-8d46bf8-2) | `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential… | PiG's own defect | All platforms | Unreleased |
+| [BF-8d46bf8-3](#bf-8d46bf8-3) | Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per… | PiG's own defect | All platforms | Unreleased |
 | [BF-8d6fb83](#bf-8d6fb83) | A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-8e3613d](#bf-8e3613d) | Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-8e70eff](#bf-8e70eff) | fix(chord/nextnode/workers): the channel refuses a record over the limit | PiG's own defect | All platforms | Unreleased |
@@ -1158,7 +1162,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D351](#bf-d351) | Anthropic non-strict tool schemas keep root $defs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D352](#bf-d352) | Anthropic message threads | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D370](#bf-d370) | The OAuth callback server drops connections that have not sent a request when it closes | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D371](#bf-d371) | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D373](#bf-d373) | The stored PKCE verifier is dropped once its code exchange succeeded | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
@@ -5952,6 +5956,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a79de03e7f` (2026-10-07), `d0ad06fc18` (2026-10-07), `3840820cd6` (2026-10-08), `ab8ac8ecfc` (2026-10-08)
 - **Tests:** `coding/cli/package_update_cases_upstream_test.go::TestPackageUpdateLookupPrefixesOriginal`, `coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle`, `coding/mcpext/tools_test.go::TestMCPToolsShowsBlobsOfTextTypesWithBOMPaddedMimeTypesAsText`, `internal/packagemanager/package_capture_test.go::TestPackageCaptureChild`, `internal/packagemanager/package_capture_test.go::TestPackageCaptureOutputAndFailure`, `internal/packagemanager/package_capture_test.go::TestPackageCaptureStartFailure`, `internal/packagemanager/package_capture_test.go::TestPackageCaptureTimeoutWaitsForChild`, `internal/packagemanager/package_manager_test.go::TestPackageManagerPersistsInstallAndRemoval` and 6 more in docs/bug-ledger.json
 - **Release note:** MCP tool results whose content blocks carry members of another type than the protocol's (a numeric `text`, a `size` string, a missing `uri`, a `null` block, a `resource` that is not an object) now convert as Pi converts them: the model sees what Pi's would, and a block Pi cannot read ends the tool call with Pi's error instead of a placeholder.
+
+### BF-3868dd5
+
+**MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3868dd514e` (2026-11-08)
+- **Tests:** `mcp/deepjson_test.go::TestParseWireMessageKeepsACallResultNested12000LevelsDeep`, `mcp/deepjson_test.go::TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep`, `mcp/deepjson_test.go::TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep`
+- **Release note:** MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.
 
 ### BF-38b0f0c
 
@@ -14818,6 +14836,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder`, `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace`
 - **Release note:** Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched object, as Pi does. A replaced setting stays where it was and a new setting is added at the end; the file used to be rewritten with its top-level keys sorted.
 
+### BF-8d46bf8
+
+**A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.
+- **Root cause:** Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Release note:** A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.
+
+### BF-8d46bf8-2
+
+**`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.
+- **Root cause:** Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Release note:** `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.
+
+### BF-8d46bf8-3
+
+**Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.
+- **Root cause:** Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d46bf82b6` (2026-11-07)
+- **Tests:** `codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON`, `coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode`, `mcp/lines_fuzz_test.go::FuzzLineReaderFraming`, `mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`, `mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect`, `mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate`, `mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` and 4 more in docs/bug-ledger.json
+- **Release note:** Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.
+
 ### BF-8d6fb83
 
 **A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…**
@@ -17626,20 +17686,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d852965a33` (2026-11-07)
 - **Tests:** `mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`
 
-### BF-D371
+### BF-D373
 
-**Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`**
+**The stored PKCE verifier is dropped once its code exchange succeeded**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D371)
-- **Symptom:** 1.5.0 throws `URI malformed` out of every codemode run.
-- **Root cause:** One MCP tool with such a ref failed every codemode run.
+- **Source:** A Pi defect that PiG fixed first (divergence D373)
+- **Symptom:** none observable in behavior; additive hardening.
+- **Root cause:** a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 6d3e342b2.
-- **Fix commits:** `d852965a33` (2026-11-07)
-- **Tests:** `codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown`, `coding/extension/builtin/codemode/tool_refs_pi_test.go::TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`
+- **Removed when Pi fixes it:** Pi drops the verifier after the exchange, or the owner declines the hardening.
+- **Fix commits:** `474fc73fd8` (2026-11-07), `8d46bf82b6` (2026-11-07)
+- **Tests:** `mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange`
 
 ### BF-D430
 
@@ -26657,7 +26717,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D351 | Anthropic non-strict tool schemas keep root $defs | [BF-D351](#bf-d351) |
 | D352 | Anthropic message threads | [BF-D352](#bf-d352) |
 | D370 | The OAuth callback server drops connections that have not sent a request when it closes | [BF-D370](#bf-d370) |
-| D371 | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | [BF-D371](#bf-d371) |
+| D373 | The stored PKCE verifier is dropped once its code exchange succeeded | [BF-D373](#bf-d373) |
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
 
