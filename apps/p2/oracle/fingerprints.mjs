@@ -25,7 +25,7 @@ function importedNames(parent, specifier) {
 	const source = readFileSync(fileURLToPath(parent), "utf8");
 	const names = new Set();
 	const quoted = specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-	for (const match of source.matchAll(new RegExp(`import\\s+(type\\s+)?([^;]*?)\\s+from\\s+["']${quoted}["']`, "gs"))) {
+	for (const match of source.matchAll(new RegExp(`(?:import|export)\\s+(type\\s+)?([^;]*?)\\s+from\\s+["']${quoted}["']`, "gs"))) {
 		if (match[1]) continue;
 		const clause = match[2];
 		const braces = /\{([^}]*)\}/s.exec(clause);

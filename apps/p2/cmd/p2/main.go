@@ -18,12 +18,14 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/coding-tools"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/files"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/logs"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/proxy-marker"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/send-file"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing"
@@ -47,8 +49,16 @@ func main() {
 		hosts.RunWorker()
 	case "server":
 		os.Exit(runServer())
+	case "owner-link":
+		// A private invitation, emitted to the invoking user's terminal only.
+		link, err := p2runtime.OwnerLink(context.Background(), os.Args[2:], os.Getenv)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		fmt.Println(link)
 	default:
-		fmt.Fprintf(os.Stderr, "usage: p2 [server|worker]\n")
+		fmt.Fprintf(os.Stderr, "usage: p2 [server|worker|owner-link [base-url]]\n")
 		os.Exit(2)
 	}
 }
