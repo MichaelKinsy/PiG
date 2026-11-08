@@ -132,7 +132,7 @@ export class McpOAuthCredentialStore {
 }
 /** PiG's Client ID Metadata Documents on its own origin (D64), Pi's shape: `client.json` and `<callback ID>/client.json`. */
 const PI_CLIENT_METADATA_DOCUMENTS = {
-    baseUrl: "${identity.hostedOrigin}/oauth",
+    baseUrl: "https://pi-in-go.dev/oauth",
     listsRedirectUrl: isClientMetadataDocumentCallback,
 };
 /** pi's client identity for sign-in and refresh. */
