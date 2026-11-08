@@ -3,6 +3,7 @@ package workers
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -40,5 +41,37 @@ func TestNodeBaseInputsFailsForWhatCannotBeReadWhole(t *testing.T) {
 	}
 	if _, err := NodeBaseInputs(dir, nil); err == nil || !strings.Contains(err.Error(), "not a regular file") {
 		t.Fatalf("a directory: %v", err)
+	}
+}
+
+func TestNodeBaseInputsNamesTheEntryByItsAbsolutePath(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "server"), []byte("program"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	inputs, err := NodeBaseInputs("server", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := filepath.Abs("server")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inputs) != 1 || inputs[want] != plugins.ContentHash([]byte("program")) {
+		t.Fatalf("inputs = %v, want %s with the program's hash", inputs, want)
+	}
+}
+
+func TestNodeBaseInputsFailsForAFileItsBytesCannotBeReadFrom(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("the file's mode does not keep this user from reading it")
+	}
+	entry := filepath.Join(t.TempDir(), "server")
+	if err := os.WriteFile(entry, []byte("program"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	if inputs, err := NodeBaseInputs(entry, nil); err == nil || !strings.Contains(err.Error(), "cannot be read") {
+		t.Fatalf("an unreadable entry: %v, %v", inputs, err)
 	}
 }

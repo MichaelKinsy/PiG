@@ -120,31 +120,30 @@ func (a *App) watchBaseCode(compared *comparisons) {
 	if a.isClosing() {
 		return
 	}
-	exe, ok := a.serverExecutable()
+	inputs, ok := a.serverExecutable()
 	if a.isClosing() {
 		return
 	}
 	if ok {
-		compared.add(a.Plugins.WatchBase(a.editedSinceStart(exe)))
+		compared.add(a.Plugins.WatchBase(a.editedSinceStart(inputs)))
 	}
 	compared.wait()
 }
 
-// editedSinceStart is the record of the file at path: its hash, or one no bytes have when it changed since this process started (its
+// editedSinceStart is the record of the file inputs names (NodeBaseInputs'): its hash, or one no bytes have when it changed since this process started (its
 // mtime or ctime after the start): the process may run other bytes than the ones read now, so its first comparison marks `base`
 // (until a restart: the bytes the process runs are unknown). Conservative: a metadata-only change (ctime) marks too. Per timestamp:
 // one later than now (plus futureSlack) is no edit since the start (a file stamped in the future, by a skewed clock or an archive,
 // would mark every start until that time); a file neither of whose timestamps is in range keeps its hash, compared by content
 // alone.
-func (a *App) editedSinceStart(path string) plugins.BaseInputs {
+func (a *App) editedSinceStart(inputs plugins.BaseInputs) plugins.BaseInputs {
+	var path, hash string
+	for each, text := range inputs {
+		path, hash = each, text
+	}
 	started := processStart
 	if a.options.processStart != nil {
 		started = a.options.processStart()
-	}
-	hash, readable := plugins.HashFile(path)
-	if !readable {
-		// Gone since it was checked: its first comparison finds it so.
-		return plugins.BaseInputs{path: ""}
 	}
 	if info, err := os.Stat(path); err == nil {
 		latest := time.Now().Add(futureSlack) //portlint:allow clock Pi's `Date.now() + FUTURE_SLACK_MS` of editedSinceStart: a file's timestamps are wall-clock, and the tests set AppOptions.processStart instead

@@ -135990,8 +135990,9 @@
         "call:chord/nextnode/workers/workers_base.go#NodeBaseInputs"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsFailsForAFileItsBytesCannotBeReadFrom",
         "test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsFailsForWhatCannotBeReadWhole",
-        "test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsRecordsTheEntrysCodeWithItsBytesHash"
+        "test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsNamesTheEntryByItsAbsolutePath"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -136012,8 +136013,9 @@
         "call:chord/nextnode/workers/workers_base.go#NodeBaseInputs"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsFailsForAFileItsBytesCannotBeReadFrom",
         "test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsFailsForWhatCannotBeReadWhole",
-        "test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsRecordsTheEntrysCodeWithItsBytesHash"
+        "test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsNamesTheEntryByItsAbsolutePath"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

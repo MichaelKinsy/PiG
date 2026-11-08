@@ -398,7 +398,7 @@ func (a *App) report(kind AppErrorKind, err any) {
 // serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`, workers.NodeBaseInputs):
 // not one under the Go build cache (the analog of an entry under `node_modules`: a test runner, `go run`), and one that cannot be
 // read is reported as `server_scan` and left out.
-func (a *App) serverExecutable() (string, bool) {
+func (a *App) serverExecutable() (plugins.BaseInputs, bool) {
 	lookup := a.options.executable
 	if lookup == nil {
 		lookup = os.Executable
@@ -407,18 +407,25 @@ func (a *App) serverExecutable() (string, bool) {
 	if err == nil {
 		exe, err = filepath.Abs(exe)
 	}
+	// A program of the Go build cache is not compared (and not read): its bytes are no one's code.
+	if err == nil && inGoBuildCache(exe) {
+		if _, statErr := os.Stat(exe); statErr == nil {
+			return nil, false
+		}
+	}
+	var inputs plugins.BaseInputs
 	if err == nil {
-		// Readable now: the watcher hashes it, and its failure would come as a plugins error instead.
-		_, err = workers.NodeBaseInputs(exe, nil)
+		// Readable now; the record is handed on, the watcher does not hash it again.
+		inputs, err = workers.NodeBaseInputs(exe, nil)
 	}
 	if err != nil {
 		a.reportLate(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err), "")
-		return "", false
+		return nil, false
 	}
 	if inGoBuildCache(exe) {
-		return "", false
+		return nil, false
 	}
-	return exe, true
+	return inputs, true
 }
 
 // inGoBuildCache is whether path lies under a work directory `go run` and `go test` build their programs in: `go-build` and the
