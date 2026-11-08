@@ -37,6 +37,8 @@ libs  ./chord/next/documents
 libs  ./chord/next/host
 libs  ./chord/next/link
 libs  ./chord/next/store
+libs  ./chord/next/surfaces
+libs  ./chord/next/tui
 libs  ./chord/nextnode/http
 libs  ./chord/nextnode/plugins
 libs  ./chord/nextnode/workers
