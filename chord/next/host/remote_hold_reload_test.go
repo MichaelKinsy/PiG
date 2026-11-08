@@ -393,10 +393,13 @@ func TestHoldsAcrossAReload(t *testing.T) {
 			})},
 		}))
 		var declared Self
+		var declaredMu sync.Mutex
 		facet := func(n float64) func(FacetHost) error {
 			return func(h FacetHost) error {
 				return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+					declaredMu.Lock()
 					declared = self
+					declaredMu.Unlock()
 					return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"n": rhConst(n)},
 					}}, nil
@@ -410,8 +413,10 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		_, err := server.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return facet(2)(h) })}}, background, ReloadOptions{})
 		must(t, err)
 		peer.Next("bound")
+		declaredMu.Lock()
 		retired := weak.Make(declared.(*attempt))
 		declared = nil
+		declaredMu.Unlock()
 		_, err = server.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return facet(3)(h) })}}, background, ReloadOptions{})
 		must(t, err)
 		rhSync(t, peer)
@@ -420,7 +425,9 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		if got := countKind(peer, "bound"); got != 0 {
 			t.Fatalf("bound messages before the ack = %d, want 0", got)
 		}
+		declaredMu.Lock()
 		declared = nil
+		declaredMu.Unlock()
 		expectCollected(t, retired)
 		peer.Ack(link.Optional[int]{})
 		peer.Next("bound")
@@ -653,4 +660,128 @@ func TestAHoldAcrossASwapWhoseMappingFailsGetsTheMembersFailureInItsFreshBoundAn
 		t.Fatalf("calls = %v, want a failure then a value", nexttest.ValuesOf(items))
 	}
 	rhEqual(t, "healed", items[1].Value, 3)
+}
+
+// hold.test.ts: holds across a reload (slice 7b §6) › a hold waiting for a window slot whose slot frees between the old attempt's seal and its end binds safely
+func TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsEndBindsSafely(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		window := mustContract(contracts.Remote("app.window", contracts.RemoteDeclaration{
+			Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
+			Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
+				State: []contracts.Property{rhProp("n", contracts.Int())},
+				Methods: []contracts.MethodEntry{
+					contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
+					contracts.Meth("slow", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+					contracts.Meth("start", contracts.NewMethod()),
+				},
+			})},
+		}))
+		wait, err := DefineJob("app.window-wait", JobOptions{Version: 1, Args: contracts.Obj(), Result: contracts.Str()})
+		must(t, err)
+		gate, slowEntered := newSignal(), newSignal()
+		// atSeal is called once the old attempt's seal cut the job's run: the test frees the window's slots then.
+		var atSeal atomic.Pointer[func()]
+		serveWindow := func(code string) func(FacetHost) error {
+			return func(h FacetHost) error {
+				return h.Serve(window, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+					self.Open(func(context.Context) (any, error) { return code, nil },
+						func(any, NativeCloseReason, context.Context) error { return nil })
+					doc := stateOf(self, rhCounter)
+					job := self.Job(wait, JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
+						<-ctx.Done()
+						if fn := atSeal.Load(); fn != nil {
+							(*fn)()
+						}
+						return "cut", nil
+					}})
+					return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+						State: map[string]chord.Watchable[delta.JsonValue]{
+							"n": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
+								return values[0].(*delta.JsonObject).Value("n"), nil
+							}),
+						},
+						Methods: map[string]contracts.MethodFunction{
+							"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+								if err := doc.Change(func(draft *delta.Object) { _ = draft.Set("n", draft.Get("n").(float64)+1) }, ctx); err != nil {
+									return nil, err
+								}
+								return doc.Value().Value("n"), nil
+							},
+							"start": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+								_, err := job.Start(jsonObject(), ctx, StartOptions{})
+								return nil, err
+							},
+							"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+								if code == "v1" {
+									slowEntered.fire()
+								}
+								gate.await(t, ctx)
+								return code + " slow", nil
+							},
+						},
+					}}, nil
+				}, ServeOptions{})
+			}
+		}
+		errs := &hostErrors{}
+		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: errs.push})
+		mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveWindow("v1")(h) })}}, background))
+		a, b := link.MemoryLinkPair()
+		must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+		peer := newRawPeer(t, b, rawPeerOptions{NoAck: true})
+		names := wireNames(t, window, "main")
+		peer.Next("hello")
+		rhHold(peer, 0, window)
+		peer.Next("bound")
+		peer.Ack(link.Optional[int]{})
+		rhBumpCall(peer, 0, names.Methods["start"])
+		peer.Next("result")
+		// Two messages unacknowledged: the window (two) is full.
+		rhBumpCall(peer, 1, names.Methods["bump"])
+		peer.Next("state")
+		rhBumpCall(peer, 2, names.Methods["bump"])
+		peer.Next("result")
+		peer.Next("result")
+		settle(peer)
+		// A running call keeps the old attempt open; the acks come right at its seal (the job's run is cut there).
+		rhBumpCall(peer, 3, names.Methods["slow"])
+		slowEntered.wait(t)
+		release := func() {
+			peer.Ack(link.Optional[int]{})
+			peer.Ack(link.Optional[int]{})
+		}
+		atSeal.Store(&release)
+		rhReload(t, server, serveWindow("v2"))
+		// A second hold during the drain: it binds the old attempt shown live, but waits for a slot.
+		rhHold(peer, 1, window)
+		settle(peer)
+		gate.fire()
+		if got := rhResultNumber(t, peer.Next("result")); got != "v1 slow" {
+			t.Fatalf("slow = %q, want \"v1 slow\"", got)
+		}
+		settle(peer)
+		settle(peer)
+		for _, err := range errs.All() {
+			if err.Kind == ErrProtocolError {
+				t.Fatalf("a protocol error was reported: %v", err)
+			}
+		}
+		if peer.Closed() {
+			t.Fatalf("the link closed")
+		}
+		// Both holds end on the new code (an ack that crosses nothing is ignored, so acking again is safe).
+		bound := map[int]bool{}
+		scopeEventually(t, "both holds bound on the new code", func() bool {
+			peer.Ack(link.Optional[int]{})
+			settle(peer)
+			for _, message := range peer.Received() {
+				if m, ok := message.(*link.BoundMessage); ok {
+					for _, entry := range m.Holds {
+						bound[entry.Hold] = true
+					}
+				}
+			}
+			return bound[0] && bound[1]
+		})
+	})
 }

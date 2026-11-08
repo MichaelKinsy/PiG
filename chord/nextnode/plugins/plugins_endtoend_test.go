@@ -173,8 +173,8 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 		got = append(got, rolledStep{each.Name, report.Plugins.Changed, report.Objects})
 	}
 	want := []rolledStep{
-		{"server", []string{"@test/notes"}, []host.ReloadedObject{{Object: "test.index", Kind: host.ReloadSwapped}}},
-		{"worker", []string{"@test/notes"}, []host.ReloadedObject{{Object: "test.notes", Kind: host.ReloadSwapped}}},
+		{"server", []string{"@test/notes"}, []host.ReloadedObject{{Object: "test.index", Kind: host.ReloadedObjectKind("swapped")}}},
+		{"worker", []string{"@test/notes"}, []host.ReloadedObject{{Object: "test.notes", Kind: host.ReloadedObjectKind("swapped")}}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rolled = %+v, want %+v", got, want)
