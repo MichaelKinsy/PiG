@@ -745,11 +745,15 @@ func closeAsViewer(conn interface{ Write([]byte) (int, error) }, events *hostEve
 		return err
 	}
 	open := map[string]bool{}
+	var order []string
 	for _, terminal := range listed.Terminals {
+		if !open[terminal.ID] {
+			order = append(order, terminal.ID)
+		}
 		open[terminal.ID] = true
 	}
 	force := true
-	for id := range open {
+	for _, id := range order {
 		if err := write(TerminalRequest{Type: RequestAttach, TerminalID: id}); err != nil {
 			return err
 		}
