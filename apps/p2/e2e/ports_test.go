@@ -28,19 +28,6 @@ import (
 
 const portsOrigin = "https://0123456789abcdef0123456789abcdef.rdtun.com"
 
-// toolResults are the results of tool in a conversation view.
-func toolResults(view delta.JsonValue, tool string) []*delta.JsonObject {
-	var results []*delta.JsonObject
-	for _, entry := range list(object(view).Value("entries")) {
-		for _, each := range list(object(entry).Value("model")) {
-			if message := object(each); message.Value("role") == "toolResult" && message.Value("toolName") == tool {
-				results = append(results, message)
-			}
-		}
-	}
-	return results
-}
-
 func resultText(result *delta.JsonObject) string {
 	var out strings.Builder
 	for _, part := range list(result.Value("content")) {
