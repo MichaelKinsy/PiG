@@ -489,4 +489,4 @@ func TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant(t *testing.T) {
 var _ context.Context = background
 
 // incarnationOf is the host's incarnation (Pi's `host.incarnation`): a page's span ids carry it.
-func incarnationOf(h host.Host) string { return h.(interface{ Incarnation() string }).Incarnation() }
+func incarnationOf(h host.Host) string { return h.Incarnation() }
