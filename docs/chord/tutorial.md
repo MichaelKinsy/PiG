@@ -114,7 +114,7 @@ Step 1 of `run` starts the app, tries the page without signing in, then does wha
 		return err
 	}
 	origin := link.Scheme + "://" + link.Host
-	fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
+	_, _ = fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
 	entries, err := os.ReadDir(dataDir)
 	if err != nil {
 		return err
@@ -124,13 +124,13 @@ Step 1 of `run` starts the app, tries the page without signing in, then does wha
 		names = append(names, entry.Name())
 	}
 	slices.Sort(names)
-	fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
-	signedOut, err := http.Get(origin)
+	_, _ = fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
+	signedOut, err := http.Get(origin) //nolint:gosec // G107: origin is the loopback address of the server this program just started
 	if err != nil {
 		return err
 	}
 	_ = signedOut.Body.Close()
-	fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
 	signIn, err := http.Post(origin+app.OwnerPath, "application/json", strings.NewReader(`{"token":"`+link.Fragment+`"}`))
 	if err != nil {
 		return err

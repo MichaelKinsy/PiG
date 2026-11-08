@@ -17,8 +17,9 @@ import (
 	"sync/atomic"
 	"unicode/utf16"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/evanw/esbuild/pkg/api"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/next-node/plugins/build.ts (`buildFacet`, `ImportRules`, `freeGlobals`, `describe`) on esbuild's

@@ -12,8 +12,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/evanw/esbuild/pkg/api"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/node/plugins/css-modules.ts. CSS modules in plugin builds (slice 11 §4b, decision "Looks and

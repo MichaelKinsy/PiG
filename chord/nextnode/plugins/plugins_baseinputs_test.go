@@ -10,9 +10,10 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/evanw/esbuild/pkg/api"
+
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
-	"github.com/evanw/esbuild/pkg/api"
 )
 
 // Ports packages/chord/test/node/plugins/base-inputs.test.ts (p3 step 0a): the hash a record keeps, the one read that

@@ -91,7 +91,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		return err
 	}
 	origin := link.Scheme + "://" + link.Host
-	fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
+	_, _ = fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
 	entries, err := os.ReadDir(dataDir)
 	if err != nil {
 		return err
@@ -101,13 +101,13 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		names = append(names, entry.Name())
 	}
 	slices.Sort(names)
-	fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
-	signedOut, err := http.Get(origin)
+	_, _ = fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
+	signedOut, err := http.Get(origin) //nolint:gosec // G107: origin is the loopback address of the server this program just started
 	if err != nil {
 		return err
 	}
 	_ = signedOut.Body.Close()
-	fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
 	signIn, err := http.Post(origin+app.OwnerPath, "application/json", strings.NewReader(`{"token":"`+link.Fragment+`"}`))
 	if err != nil {
 		return err
@@ -141,14 +141,18 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 }
 
 func main() {
+	if err := runInTempDir(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "todo:", err)
+		os.Exit(1)
+	}
+}
+
+// runInTempDir runs the example in a data directory of its own, removed when it ends.
+func runInTempDir() error {
 	base, err := os.MkdirTemp("", "todo-")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "todo:", err)
-		os.Exit(1)
+		return err
 	}
 	defer func() { _ = os.RemoveAll(base) }()
-	if err := run(context.Background(), base, os.Stdout, len(os.Args) > 1 && os.Args[1] == "--serve"); err != nil {
-		fmt.Fprintln(os.Stderr, "todo:", err)
-		os.Exit(1)
-	}
+	return run(context.Background(), base, os.Stdout, len(os.Args) > 1 && os.Args[1] == "--serve")
 }
