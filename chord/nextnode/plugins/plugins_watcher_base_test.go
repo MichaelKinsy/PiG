@@ -5,6 +5,9 @@ package plugins
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -230,5 +233,43 @@ func TestTheBaseMarkKeepsAFileTwoBasesReadWithDifferentBytesMarkedWhateverItHold
 	f.settled()
 	if !f.marks().Base {
 		t.Fatal("base cleared though a record holds the other bytes")
+	}
+}
+
+// Not upstream's: PiG reads base files on goroutines, which are bounded and end with the watcher (a read's goroutine never
+// outlives close and join, the way upstream's promises settle).
+func TestTheBaseMarkReadsRecordedFilesOnBoundedGoroutinesThatEndWithTheWatcher(t *testing.T) {
+	base, f := based(t, nil)
+	files := map[string]string{}
+	inputs := BaseInputs{}
+	for i := range 200 {
+		name := "f" + strconv.Itoa(i) + ".ts"
+		files[name] = "export {};"
+		inputs[filepath.Join(base, name)] = hashOf("export {};")
+	}
+	writeFiles(t, base, files)
+	var started int
+	f.run(func() {
+		f.watcher.recordBase(inputs)
+		started = f.watcher.comparers
+	})
+	if started == 0 || started > maxComparers {
+		t.Fatalf("%d goroutines reading %d files, want 1 to %d", started, len(inputs), maxComparers)
+	}
+	f.joinComparisons()
+	if f.marks().Base {
+		t.Fatal("base set by files as they were recorded")
+	}
+	f.run(f.watcher.close)
+	f.watcher.join()
+	f.run(func() {
+		if f.watcher.comparers != 0 || len(f.watcher.comparing) != 0 {
+			t.Errorf("comparers = %d, comparing = %d after join", f.watcher.comparers, len(f.watcher.comparing))
+		}
+	})
+	buf := make([]byte, 1<<20)
+	buf = buf[:runtime.Stack(buf, true)]
+	if strings.Contains(string(buf), "(*pluginWatcher).compareQueued") || strings.Contains(string(buf), "(*pluginWatcher).readEvents") {
+		t.Fatalf("a watcher goroutine outlived join:\n%s", buf)
 	}
 }
