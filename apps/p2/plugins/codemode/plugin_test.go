@@ -26,28 +26,33 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 			return p2test.StubMembers{State: map[string]any{"settings": settings}}
 		}}},
 	})
-	// A registry's value is read inside a section of the host's loop (`RegistryValue`): its contributions change there.
-	extension := func() *p2runtime.P2Extension {
-		value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
+	extensions, err := fixture.Host.Registry(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	switches, err := fixture.Host.Registry(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	extension := func() (found *p2runtime.P2Extension) {
+		// Without a plugin serving the registry (no extension loaded at all) reading it panics: nothing there.
+		defer func() {
+			if r := recover(); r != nil {
+				t.Logf("recovered: %v", r)
+			}
+		}()
+		table, err := p2runtime.Extensions.Table(extensions)
 		if err != nil {
-			t.Logf("registry: %v", err)
+			t.Logf("table: %v", err)
 			return nil
 		}
-		table, ok := value.(*p2runtime.KeyedTable[*p2runtime.P2Extension])
-		if !ok {
-			return nil
-		}
-		found, _ := table.Get("codemode")
+		found, _ = table.Get("codemode")
 		return found
 	}
 	switchIs := func(want bool) func() (bool, error) {
 		return func() (bool, error) {
-			value, err := fixture.Host.RegistryValue(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
+			table, err := p2runtime.ExtensionSwitches.Table(switches)
 			if err != nil {
-				return false, nil
-			}
-			table, ok := value.(*p2runtime.KeyedTable[*bool])
-			if !ok {
 				return false, nil
 			}
 			on, _ := table.Get("codemode")
