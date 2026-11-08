@@ -171,6 +171,10 @@ type Options struct {
 	// OnCommitted observes every commit after the store applied it, in order. A trace that must hold exactly what the store
 	// holds writes here: a process killed in this callback has the commit in the store and in the trace.
 	OnCommitted func(c abi.Commit, sql []string)
+	// OnCommittedRun observes the commits of each store transaction after it applied, in order: a Storage call's batches (ABI section 4.4)
+	// are one run, any other commit a run of its own. A trace that records what Pi's SqliteStorage.commit transaction wrote (one line per
+	// transaction, labelled by the first batch's seq) writes here; OnCommitted sees the same commits one at a time. It runs after every OnCommitted of the run.
+	OnCommittedRun func(run []abi.Commit, sql []string)
 }
 
 // Host is one core session and its SQLite connection: the native Go host of one Session, which the SQLite engine drives through
@@ -801,6 +805,9 @@ func (h *Host) applyCommits(commits []abi.Commit) error {
 			if h.opts.OnCommitted != nil {
 				h.opts.OnCommitted(c, h.opts.SQL)
 			}
+		}
+		if h.opts.OnCommittedRun != nil {
+			h.opts.OnCommittedRun(run, h.opts.SQL)
 		}
 		i = j
 	}

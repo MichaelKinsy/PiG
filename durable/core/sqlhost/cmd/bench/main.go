@@ -305,21 +305,25 @@ func run(ctx context.Context, o options) (err error) {
 		rec.RowsChanged(uint64(now - changes))
 		changes = now
 	}
-	settle, onCommitted := synctest.Wait, func(c abi.Commit, sqlText []string) {
-		if rec != nil {
-			rowsChanged()
+	// One trace line is one store transaction, as Pi's capsql records SqliteStorage.commit: the batches of a Storage call are the statements of one
+	// line, labelled by the first batch's seq. The recording's row counts stay per commit.
+	settle, onCommitted, onRun := synctest.Wait, func(abi.Commit, []string) { rowsChanged() }, func(run []abi.Commit, sqlText []string) {
+		var stmts []contracttest.Stmt
+		for _, c := range run {
+			for _, s := range c.Stmts {
+				stmts = append(stmts, contracttest.Stmt{SQL: sqlText[s.SQL], Params: params(s.Params)})
+			}
 		}
-		stmts := make([]contracttest.Stmt, len(c.Stmts))
-		for i, s := range c.Stmts {
-			stmts[i] = contracttest.Stmt{SQL: sqlText[s.SQL], Params: params(s.Params)}
-		}
-		if err := w.Commit("s0", c.Seq, stmts); err != nil {
+		if err := w.Commit("s0", run[0].Seq, stmts); err != nil {
 			fmt.Fprintln(os.Stderr, "bench: trace:", err)
 			os.Exit(1)
 		}
 	}
+	if rec == nil {
+		onCommitted = nil
+	}
 	if timed {
-		settle, onCommitted = nil, nil
+		settle, onCommitted, onRun = nil, nil, nil
 	}
 	ids := &uuidv7Gen{rng: rng, nowMillis: func() int64 { return int64(math.Floor(virtualNow())) }}
 	uuid := ids.next
@@ -341,10 +345,11 @@ func run(ctx context.Context, o options) (err error) {
 			Settings: func() *harness.HarnessSettings { return &settings },
 			OnReport: func(report durable.Report) { fmt.Fprintln(os.Stderr, "report:", report.Error) },
 		},
-		Monotonic:   virtualNow,
-		TimerLead:   time.Nanosecond,
-		Settle:      settle,
-		OnCommitted: onCommitted,
+		Monotonic:      virtualNow,
+		TimerLead:      time.Nanosecond,
+		Settle:         settle,
+		OnCommitted:    onCommitted,
+		OnCommittedRun: onRun,
 	})
 	if err != nil {
 		return err
