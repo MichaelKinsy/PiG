@@ -457,6 +457,8 @@ func TestVoiceRoutesAndModeFakeProvider(t *testing.T) {
 		// Everyone's own pause before sending passes, within 0.5-2 s.
 		guestRoom.send(t, map[string]any{"type": "vad", "silence": 1.2})
 		guestRoom.send(t, map[string]any{"type": "vad", "silence": 3})
+		// Two sockets have no common order: the owner's pause is sent once the guest's has arrived.
+		voicePoll(t, func() bool { return len(speech.Commands()) == before+3 }, 5*time.Second, "the guest's pause passed")
 		ownerRoom.send(t, map[string]any{"type": "vad", "silence": 0.5})
 		ownerRoom.send(t, map[string]any{"type": "vad", "silence": 0.4})
 		// reset, the language and the two valid pauses passed.
