@@ -17,3 +17,4 @@ subagents
 terminals
 web-shell
 workspace
+mcp
