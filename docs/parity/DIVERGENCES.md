@@ -4068,6 +4068,28 @@ Evidence: `TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTh
 
 Parity allowance: Pi's `base.test.ts` and the worker-base tests of `workers.test.ts` that bundle a Node module, the `NODE_COMPILE_CACHE` and `cache/node` assertions of `layout.test.ts` and `app.test.ts`, and the `app.test.ts` tests that hold a worker kind's base build on a pipe have no counterpart.
 
+## D604 A link's upgrade waits for the bases to be built (Pi's links connect at once)
+
+What: with a web or terminal surface, Pi's server listens, then builds the bases; the scripts object shows an empty set (`base: ""`) until the first set is published, on the assumption that no client holds it then. PiG's `StartServer` returns when the server listens, and its links endpoint (`LinksOptions.OptionsFunc`) holds each upgrade until `BasesBuilt` (or the app's close, which refuses it) before the link is accepted. Plain HTTP requests (the owner page, the API) are answered meanwhile as in Pi; a page or surface file waits for its own base.
+
+Why: the Go server listens before the plugins' Node host has loaded (about 0.5 s), and a page of a restarted server reconnects in that gap, before the bases have started. It then holds the empty set, its base differs from the page's, and the page reloads (`Outdated`): a seamless reconnect becomes a reload, and Pi's ported test of a failed plugin script tried again at a reconnect fails every time. Pi's build takes about 100 ms after a start of a few milliseconds, so the window is rarely open there.
+
+Observable effect: a base build that hangs holds every link of the app (pages, terminal clients, objects that need no surface), where Pi's link connects at once.
+
+Pi bug: Not a Pi bug.
+
+Scope: `chord/nextnode/app` (`App.linksAfterTheBases`).
+
+Owner decision: owner sign-off pending (drafted by the ChordKit284 lane on 2026-11-08). A narrower form (the two scripts objects waiting for the build, through the host's dependency parking) is possible and would let the other links connect at once.
+
+Remove when: the Go server's start no longer leaves a window (the plugins' host loads before the listen), or the scripts objects wait for the build themselves.
+
+Call-site markers: `chord/nextnode/app/app_bases.go` (`linksAfterTheBases`).
+
+Evidence: `TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsStylesheetNeverOneWithoutTheOther` (red without the wait: the page reloaded), `TestAppHoldsALinkUntilTheBasesAreBuilt`.
+
+Parity allowance: none needed.
+
 ## D605 The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other
 
 What: Pi's server runs its plugins in its own host (`createHost({ address: Server() })` loads them), so the server serves the union of the kit's types and the plugins' from one place. The Go kit's plugins run in a Node subprocess behind the Go server host, which is also addressed `server` (it serves the kit's own remote types: the locale and theme choices, telemetry ingest, the app's Go facets). Both directions are kept so a hold binds on whichever of the two serves the type. Go to Node: `Host.Delegate(kind, RouteOptions, ctx)` is the route of the host's own address kind, consulted only for remote types placed on the host that its published table does not serve: those holds and references go over the delegate (a relayed hold, a remote object, parked while `Resolve` runs, resolved again once after a drop), everything the host serves stays here whatever the state of its object. A hold arriving on the delegate's own link for a type nobody serves is answered `unavailable` (not sent back). The app kit gives the NodeHost the address `server` and delegates to its link instead of accepting it. Node to Go: Pi's `Destination` places every remote type of the NodeHost's own address here, served or not, so a plugin's `self.get(LocaleChoice, {})` would wait `<type> is not served here` for ever. The Node host runs Pi's `Destination` through `node/destination.mjs` (host.ts's import of `./destination.ts` is answered by `resolve.mjs`; Pi's file is vendored as it is): for a remote type placed here that the Go host serves (`Host.Serves`, asked over a synchronous callback, `RuntimeLoad.ParentServes`, kept until the next load or reload) the reference goes over the parent link, where the Go host's own object, whatever its variants and members, binds. Residual difference: a hold over that link acts as the link's principal, the server's (a child cannot claim to be someone else, link §4: `callerOf`), where Pi's one host acts as the plugin object's own principal. So a plugin object's LocaleChoice or ThemeChoice is the server principal's, not the page owner's. Making it the object's principal needs the child's link to name whom a hold acts for, which Pi's protocol allows only from a parent to its child; it is not done here and the test pins today's behaviour.

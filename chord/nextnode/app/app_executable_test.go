@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
@@ -54,7 +55,13 @@ func (p *serverProgram) build(label string) []byte {
 func TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCleared(t *testing.T) {
 	program := newServerProgram(t)
 	v1 := program.build("v1")
-	s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return program.bin, nil } })
+	// The program was built after this test's process started: its start is later than the build, as the server's is.
+	began := time.Now()
+	s := startTestApp(t, nil, func(o *AppOptions) {
+		o.executable = func() (string, error) { return program.bin, nil }
+		o.processStart = func() time.Time { return began }
+	})
+	<-s.app.BaseWatched()
 	if s.app.Plugins.Marks().Base {
 		t.Fatal("base is marked at start")
 	}
@@ -74,6 +81,7 @@ func TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCl
 func TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "no-such-server")
 	s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return missing, nil } })
+	<-s.app.BaseWatched()
 	if got := s.errors.kinds(); len(got) != 1 || got[0] != AppErrorServerScan {
 		t.Fatalf("reported %v, want [server_scan]", got)
 	}
@@ -109,6 +117,7 @@ func TestAppDoesNotCompareAnExecutableUnderTheGoBuildCache(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, func(o *AppOptions) {
 		o.executable = func() (string, error) { return built, nil }
 	})
+	<-s.app.BaseWatched()
 	if err := os.WriteFile(built, []byte("v2"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -137,9 +146,50 @@ func TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened(t *testing.T)
 	for name, path := range cases {
 		t.Run(name, func(t *testing.T) {
 			s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return path, nil } })
+			<-s.app.BaseWatched()
 			if got := s.errors.kinds(); len(got) != 1 || got[0] != AppErrorServerScan {
 				t.Fatalf("reported %v, want [server_scan]", got)
 			}
 		})
+	}
+}
+
+// startWithExecutable starts an app whose server executable is a file with the given modification time, the process having started
+// at began.
+func startWithExecutable(t *testing.T, modified, began time.Time) started {
+	t.Helper()
+	exe := filepath.Join(t.TempDir(), "server")
+	if err := os.WriteFile(exe, []byte("v1"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(exe, modified, modified); err != nil {
+		t.Fatal(err)
+	}
+	s := startTestApp(t, nil, func(o *AppOptions) {
+		o.executable = func() (string, error) { return exe, nil }
+		o.processStart = func() time.Time { return began }
+	})
+	<-s.app.BaseWatched()
+	return s
+}
+
+// Pi's `marks a file of its own code edited right after the start, before the scan read it (Node loaded the old)`: the executable's
+// bytes read now may not be the running process's, as its timestamps are after the process started.
+func TestAppMarksAnExecutableEditedAfterTheProcessStartedBeforeItWasRead(t *testing.T) {
+	// The mtime is now (the file was just written), the process started an hour ago; the ctime is now too.
+	s := startWithExecutable(t, time.Now(), time.Now().Add(-time.Hour))
+	if !s.app.Plugins.Marks().Base {
+		t.Fatal("base is not marked for an executable edited since the process started")
+	}
+}
+
+// Pi's `does not mark a file of its own code stamped in the future: compared by its bytes (Astra)`: a timestamp later than now plus
+// the slack is no edit since the start (the ctime, which a rewrite sets, is the one of the file's creation here: now, but the
+// process started after it).
+func TestAppDoesNotMarkAnExecutableStampedInTheFutureComparedByItsBytes(t *testing.T) {
+	// mtime tomorrow, process started in an hour (so the ctime, now, is before the start too): neither timestamp is in range.
+	s := startWithExecutable(t, time.Now().Add(24*time.Hour), time.Now().Add(time.Hour))
+	if s.app.Plugins.Marks().Base {
+		t.Fatal("base is marked for an executable stamped in the future")
 	}
 }

@@ -1,7 +1,6 @@
 package surfaces
 
 import (
-	"context"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -14,8 +13,9 @@ import (
 )
 
 // Ports packages/chord/src/node/surfaces/web.ts. The web surface's server side (slice 11 §1, decisions "Slice 11's points" and
-// "P3" to "P5"): the base bundle built from the app's entry at start, the plugins' web scripts published as registered
-// scripts and one combined file, `WebScripts` showing the current set, and the page through the app's own template;
+// "P3" to "P5"): the base bundle built from the app's entry after the server's start (`build`; the page and the surface's files
+// wait for it, and answer 503 when it failed), the plugins' web scripts published as registered scripts and one combined file,
+// `WebScripts` showing the current set, and the page through the app's own template;
 // everything as `Http` contributions of the surface's facet, which the app puts among the server's core facets. The app keeps
 // its HTML, CSS, components and themes.
 
@@ -47,48 +47,39 @@ type PageAssets struct {
 	Styles    []string
 }
 
-// WebSurface is the web surface: its facet (for the server's core facets), its rollout step, its base bundle's hash.
+// WebSurface is the web surface: its facet (for the server's core facets), its rollout step, its build.
 type WebSurface struct {
 	// Facet contributes the surface's routes; Scripts serves its scripts objects (Pi's one `chord.web` facet does both: the Go
 	// facet is opaque, so the app loads the two).
 	Facet   host.Facet
 	Scripts host.Facet
-	// Base is its base bundle's hash.
-	Base string
-	// Inputs are the files its base bundle was built from, with their bytes' hashes: the app's base code for this surface.
-	Inputs plugins.BaseInputs
 
-	published *PublishedScripts
+	building *surfaceBuild
 }
 
-// Step is the rollout step publishing the web kind's current set (after the server's step).
-func (s *WebSurface) Step(name string) plugins.RolloutStep { return s.published.Step(name) }
+// Step is the rollout step publishing the web kind's current set (after the server's step; after the build).
+func (s *WebSurface) Step(name string) plugins.RolloutStep { return s.building.step(name) }
+
+// Build builds the base bundle and publishes the web kind's first set (its facets built on first use), once, after the server's
+// load (the page and the surface's files wait for it, and start it when nothing did). It returns how it ended (`Base`: the base
+// bundle's hash and the files it read, the app's base code for this surface; `Err` when it did not build).
+func (s *WebSurface) Build() SurfaceBuilt { return s.building.build() }
+
+// Built is how the build ended, once it did (nil before).
+func (s *WebSurface) Built() *SurfaceBuilt { return s.building.built() }
 
 // WebPrefix is where the web surface's files live (Pi's `WEB_PREFIX`).
 const WebPrefix = "/_chord/web/"
 
-// NewWebSurface builds the base bundle and takes the web kind's current set (its facets built on first use), then returns the
-// surface. It fails with esbuild's messages when the base bundle does not build.
-func NewWebSurface(server host.Host, options WebSurfaceOptions, ctx context.Context) (*WebSurface, error) {
-	base, err := BuildBase(options.Entry, PlatformBrowser, WebPrefix, options.Conditions)
-	if err != nil {
-		return nil, err
-	}
+// NewWebSurface is the web surface on server: its facet serves the page and the surface's files once Build built the base bundle
+// (503 when it failed). The build is not started here.
+func NewWebSurface(server host.Host, options WebSurfaceOptions) *WebSurface {
 	kind := options.Kind
 	if kind == "" {
 		kind = "web"
 	}
-	published := NewPublishedScripts(Web, kind, WebPrefix, base.Hash, options.Plugins, server)
-	if _, err := published.Start(ctx); err != nil {
-		return nil, err
-	}
-	file := func(path string) *ServedFile {
-		if found, ok := base.Files[path]; ok {
-			return &found
-		}
-		return published.File(path)
-	}
-	routes := webRoutes(options, base.Hash, file, func() PageAssets { return pageAssets(base, published) })
+	building := newSurfaceBuild(Web, PlatformBrowser, WebPrefix, surfaceBuildOptions{kind: kind, entry: options.Entry, conditions: options.Conditions, plugins: options.Plugins}, server)
+	routes := webRoutes(options, building)
 	facet := host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
 		return self.Contribute(registries.Registry[any, any](http.Http), http.HttpContribution{
 			Routes: routes,
@@ -101,13 +92,14 @@ func NewWebSurface(server host.Host, options WebSurfaceOptions, ctx context.Cont
 			Scripts: []string{WebPrefix},
 		})
 	})
-	return &WebSurface{Facet: facet, Scripts: ScriptsFacet(Web, published.Set), Base: base.Hash, Inputs: base.Inputs, published: published}, nil
+	return &WebSurface{Facet: facet, Scripts: ScriptsFacet(Web, building.set), building: building}
 }
 
-// webRoutes are the surface's routes: its files (served forever), its current base hash (public), and the page.
-func webRoutes(options WebSurfaceOptions, base string, file func(string) *ServedFile, assets func() PageAssets) []http.HttpRouteEntry {
-	serve := func(request http.HttpRequest, _ host.Ctx) (http.HttpResponse, error) {
-		return Served(file(request.Path())), nil
+// webRoutes are the surface's routes, each waiting for the build (503 when it failed): its files (served forever), its current
+// base hash (public), and the page.
+func webRoutes(options WebSurfaceOptions, building *surfaceBuild) []http.HttpRouteEntry {
+	serve := func(request http.HttpRequest, ctx host.Ctx) (http.HttpResponse, error) {
+		return building.file(request.Path(), ctx)
 	}
 	routes := []http.HttpRouteEntry{
 		{Key: "GET " + WebPrefix + ":file", Route: http.HttpRouteOptions{Public: options.Public, Handler: serve}},
@@ -115,8 +107,12 @@ func webRoutes(options WebSurfaceOptions, base string, file func(string) *Served
 		{Key: "GET " + WebPrefix + "assets/:file", Route: http.HttpRouteOptions{Public: options.Public, Handler: serve}},
 		// Asked by a page before it reconnects: another base means its code is outdated. Public: an outdated page whose session
 		// ended still learns it should reload.
-		{Key: "GET " + WebPrefix + "base", Route: http.HttpRouteOptions{Public: true, Handler: func(http.HttpRequest, host.Ctx) (http.HttpResponse, error) {
-			return http.HttpResponse{Kind: http.KindJSON, Value: base, Headers: []http.ResponseHeader{http.HeaderOf("Cache-Control", "no-store")}}, nil
+		{Key: "GET " + WebPrefix + "base", Route: http.HttpRouteOptions{Public: true, Handler: func(_ http.HttpRequest, ctx host.Ctx) (http.HttpResponse, error) {
+			parts, err := building.parts(ctx)
+			if parts == nil {
+				return unavailable(err)
+			}
+			return http.HttpResponse{Kind: http.KindJSON, Value: parts.base.Hash, Headers: []http.ResponseHeader{http.HeaderOf("Cache-Control", "no-store")}}, nil
 		}}},
 	}
 	paths := options.Paths
@@ -126,8 +122,12 @@ func webRoutes(options WebSurfaceOptions, base string, file func(string) *Served
 	for _, path := range paths {
 		routes = append(routes, http.HttpRouteEntry{Key: "GET " + path, Route: http.HttpRouteOptions{
 			Public: options.Public, Page: true,
-			Handler: func(request http.HttpRequest, _ host.Ctx) (http.HttpResponse, error) {
-				body, err := options.Page(request, assets())
+			Handler: func(request http.HttpRequest, ctx host.Ctx) (http.HttpResponse, error) {
+				parts, err := building.parts(ctx)
+				if parts == nil {
+					return unavailable(err)
+				}
+				body, err := options.Page(request, pageAssets(parts.base, parts.published))
 				if err != nil {
 					return http.HttpResponse{}, err
 				}
@@ -136,6 +136,14 @@ func webRoutes(options WebSurfaceOptions, base string, file func(string) *Served
 		}})
 	}
 	return routes
+}
+
+// unavailable is the response of a route whose surface did not build (503), or the error that ended the wait for it.
+func unavailable(err error) (http.HttpResponse, error) {
+	if err != nil {
+		return http.HttpResponse{}, err
+	}
+	return http.HttpResponse{Kind: http.KindError, Status: 503}, nil
 }
 
 // pageAssets is what the page includes now: the bootstrap, the base script, the current combined file, the stylesheets.

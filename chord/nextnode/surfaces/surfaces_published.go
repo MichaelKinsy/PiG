@@ -73,8 +73,8 @@ func (p *PublishedScripts) Set() next.ScriptSet {
 	return p.set
 }
 
-// Start takes the kind's current set as the first one (its plugins' facets of the kind built on first use), before the server's
-// load (the scripts object starts with it). It returns the plugins whose build failed.
+// Start takes the kind's current set as the first one (its plugins' facets of the kind built on first use), after the server's
+// load (the surface's build publishes it). It returns the plugins whose build failed.
 func (p *PublishedScripts) Start(ctx context.Context) ([]host.PluginFailure, error) {
 	scripts, err := p.plugins.Scripts(p.kind, ctx)
 	if err != nil {

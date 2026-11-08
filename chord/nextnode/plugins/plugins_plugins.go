@@ -599,9 +599,11 @@ func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 
 // WatchBase adds a running base artifact's record (a base bundle's inputs, beside Base; see Recorder): `base` is set while one
 // of its files differs from the bytes it read or is gone; each is compared once now. Files under `node_modules` are never
-// watched.
-func (c *Plugins) WatchBase(inputs BaseInputs) {
-	c.section(func() { c.watcher.recordBase(inputs) })
+// watched. The channel it returns closes once those comparisons ended (Pi's `watchBase` settles then).
+func (c *Plugins) WatchBase(inputs BaseInputs) <-chan struct{} {
+	var compared <-chan struct{}
+	c.section(func() { compared = c.watcher.recordBase(inputs) })
+	return compared
 }
 
 // InstallPlugin installs new plugins from git or npm into root, one of the roots (InstallPlugin), and marks `set`: the next
