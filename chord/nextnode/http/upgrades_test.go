@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/upgrades.ts
+// pi: packages/chord/src/node/http/upgrades.ts
 
 import (
 	"context"
@@ -32,7 +32,7 @@ import (
 // cap), plugin sockets (handed to their handler, an oversized frame closing only that socket, a throwing handler),
 // connections terminated at once when their socket handler or host leaves (a raw peer can act no more), an upgrade checked
 // again after authenticating, the heartbeat, close bounded for a peer that never answers, and nothing kept of a closed
-// socket. Ports packages/chord/test/next-node/http/upgrades.test.ts.
+// socket. Ports packages/chord/test/node/http/upgrades.test.ts.
 //
 // The revocation tests drive the router with `host.Reload` as Pi's do. A router change reaches the connections on a task of its own
 // (the router change is applied on the connection's own task), where Pi's watch listener runs before `reload` resolves: after a reload the tests wait for
