@@ -15,22 +15,42 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 
 	// The plugins this executable ships (every directory of plugins/ with a plugin.go: plugins_test.go checks the list).
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/agent"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat-mode"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/codemode"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/coding-tools"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/conversations"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/dev-tools"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/discord"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/file-index"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/files"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/history"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/locations"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/logs"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/mcp"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/ports"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/powershell"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/projects"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/prompt"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/proxy-marker"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/radius"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/search"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/send-file"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/terminals"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/tree"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/web-shell"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/workspace"
 )
 
 // closeDeadline is how long a signalled server may take to close before it exits anyway (below scripts/dev.mjs's 10 s
@@ -47,8 +67,16 @@ func main() {
 		hosts.RunWorker()
 	case "server":
 		os.Exit(runServer())
+	case "owner-link":
+		// A private invitation, emitted to the invoking user's terminal only.
+		link, err := p2runtime.OwnerLink(context.Background(), os.Args[2:], os.Getenv)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		fmt.Println(link)
 	default:
-		fmt.Fprintf(os.Stderr, "usage: p2 [server|worker]\n")
+		fmt.Fprintf(os.Stderr, "usage: p2 [server|worker|owner-link [base-url]]\n")
 		os.Exit(2)
 	}
 }
