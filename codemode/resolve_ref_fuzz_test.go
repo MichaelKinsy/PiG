@@ -44,6 +44,8 @@ func FuzzResolveSchemaRefJSON(f *testing.F) {
 	f.Add("#/a/b", `{"a":{"b":true},"a ":1}`)
 	f.Add("#/a", `{"a":1,"a":{"x":[1,{"a":2}]}}`)
 	f.Add("#/a%zz", `{"a":{}}`)
+	f.Add("#/$defs/A", `{"m":1e400,"$defs":{"A":{"type":"string"}}}`)
+	f.Add("#/a/b", `{"m":[1e400,-1e400],"a":{"b":1e999}}`)
 	f.Add("#", `{"a":{}}`)
 	f.Add("#/a/0", `{"a":[{}]}`)
 	f.Fuzz(func(t *testing.T, ref, root string) {

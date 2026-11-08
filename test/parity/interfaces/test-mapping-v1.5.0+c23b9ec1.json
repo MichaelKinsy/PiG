@@ -8674,7 +8674,7 @@
         "mcp/config_pi_test.go#TestValidateMcpServerConfigKeepsUnknownFieldsForTheCallerAfterTheSharedFieldsAreValid",
         "mcp/config_pi_test.go#TestIsMcpServerOverrideIsTrueForEntriesWithoutCommandURLOrType"
       ],
-      "rationale": "Pi main 76c040a2a config.ts validation, ported in internal/mcpshared/config.go (re-exported by mcp/config.go); the validator reports the shared fields before the exposure and auth checks (D372)."
+      "rationale": "Pi main 76c040a2a config.ts validation, ported in internal/mcpshared/config.go (re-exported by mcp/config.go); the validator reports the shared fields before the exposure and auth checks, as Pi does at the pin."
     },
     {
       "path": "packages/mcp/test/content.test.ts",

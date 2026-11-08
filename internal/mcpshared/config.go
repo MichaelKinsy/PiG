@@ -119,7 +119,6 @@ func validateBaseFields(fields map[string]json.RawMessage) string {
 	return ""
 }
 
-// pig divergence (D372): Pi main 76c040a2a validates the shared fields, then the url, headers and OAuth, and the exposure last; Pi 1.5.0 checked the exposure first.
 func validateHTTPFields(fields map[string]json.RawMessage, url string, options McpServerConfigOptions) (nodeurl.HTTPURL, string) {
 	parsed, err := nodeurl.ParseHTTPURL(url)
 	if err != nil {

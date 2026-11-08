@@ -220,9 +220,6 @@ emit(out);
 `, probes, &want, "NO_COLOR=1")
 	bad := 0
 	for i, p := range probes {
-		if exposureBeforeURL(p.Commands) {
-			continue
-		}
 		root := t.TempDir()
 		agentDir, cwd := filepath.Join(root, "agent"), filepath.Join(root, "proj")
 		_ = os.Mkdir(agentDir, 0o755)
@@ -294,27 +291,4 @@ func mcpEditDistance(a, b string) int {
 		previous = current
 	}
 	return previous[len(ub)]
-}
-
-// exposureBeforeURL reports a probe with a command that gives both an invalid exposure and a url that is not http(s): Pi 1.5.0 (the pin) reports the exposure first, PiG follows Pi main 76c040a2a and reports the url first (D372).
-func exposureBeforeURL(commands [][]string) bool {
-	for _, args := range commands {
-		badExposure, badURL := false, false
-		for i, a := range args {
-			if i+1 >= len(args) {
-				break
-			}
-			switch a {
-			case "--exposure":
-				v := args[i+1]
-				badExposure = badExposure || (v != "codemode" && v != "deferred" && v != "direct" && v != "hidden")
-			case "--url":
-				badURL = badURL || !strings.HasPrefix(args[i+1], "http://") && !strings.HasPrefix(args[i+1], "https://")
-			}
-		}
-		if badExposure && badURL {
-			return true
-		}
-	}
-	return false
 }
