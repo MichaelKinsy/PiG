@@ -150,3 +150,27 @@ func TestResponseCostsListsResponsesWithTheirCacheHit(t *testing.T) {
 		t.Errorf("second = %+v", costs[1])
 	}
 }
+
+// FuzzContextTallyAdvance: any window over any entries never panics, and a tally that accepted a window reports the
+// estimate of the messages it took (never negative).
+func FuzzContextTallyAdvance(f *testing.F) {
+	f.Add(uint8(3), uint8(1), uint8(0), 100)
+	f.Add(uint8(9), uint8(5), uint8(2), 0)
+	f.Fuzz(func(t *testing.T, count, before, shape uint8, total int) {
+		var entries []durable.EntryRecord
+		for i := 1; i <= int(count%16); i++ {
+			var message ai.Message = statsUser("x")
+			if (int(shape)+i)%3 == 0 {
+				message = statsAnswer("a", total%10000, ai.StopReasonStop)
+			}
+			entries = append(entries, statsEntry(i, message))
+		}
+		tally := NewContextTally()
+		tally.Reset(statsContext(nil))
+		id := int(before)
+		tally.Advance(statsWindow(entries, &id))
+		if tally.Stats().ContextTokens < 0 && total >= 0 {
+			t.Fatalf("negative context tokens %d", tally.Stats().ContextTokens)
+		}
+	})
+}
