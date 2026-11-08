@@ -32,9 +32,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/api/lazy.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/lazy_setup_error_order_test.go#TestLazySetupRejectionIsAbortedWhenTheRequestSignalIsAborted"]
+rationale = "Pi (#8635): lazyStream takes the request signal and reports a rejected setup as aborted when it is aborted, as an error otherwise; one test asserts both with the same rejection."
 
 [[files]]
 path = "packages/ai/src/api/openai-codex-responses.ts"
@@ -102,9 +102,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/models.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/lazy_setup_error_order_test.go#TestLazySetupRejectionIsAbortedWhenTheRequestSignalIsAborted", "test:coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled"]
+rationale = "Pi (#8635): the Models stream, streamSimple, fetchDeferred and dispatch setup failures pass the request signal to lazyStream, so an aborted request ends as aborted; asserted for the lazy setup and the model runtime preparation."
 
 [[files]]
 path = "packages/ai/src/providers/all.ts"
@@ -3490,9 +3490,9 @@ rationale = "The package index exports resolveSchemaRef; Go exports codemode.Res
 [[files]]
 path = "packages/coding-agent/src/cli/args.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/args_test.go#TestHelpTextDescribesAuthLoginLogoutAndStatus"]
+rationale = "Pi: the help line for the auth command reads 'Log in or out, print credentials, or check provider readiness'; the help text test asserts the line."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-command.ts"
@@ -3532,23 +3532,23 @@ rationale = "Pi b0c64f33c: selectConfig installs the user's keybindings before t
 [[files]]
 path = "packages/coding-agent/src/core/agent-session-runtime.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved", "test:coding/runtime_dispose_settlement_test.go#TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"]
+rationale = "Pi (#11692): disposing the runtime aborts the session and waits for credential writes in progress, so a rotated single-use refresh token is saved before exit; both orderings are asserted."
 
 [[files]]
 path = "packages/coding-agent/src/core/agent-session.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/session_queue_images_test.go#TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages", "test:coding/session_tree_prompt_overlap_test.go#TestThinkingLevelIsRecordedOnTheNewBranchBeforeTheNextPrompt", "test:coding/session_tree_prompt_overlap_test.go#TestNavigationIsRejectedDuringAnAwaitedInputHook", "test:coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream", "test:coding/session_reload_busy_test.go#TestSessionReloadRejectedWhileRunningOrCompacting"]
+rationale = "Pi: queued messages' images are resized at delivery (#11738), prompt preflight reserves the context so tree navigation cannot start meanwhile (#9154), the thinking level is recorded on the new branch (#11451), model cycling from outside the list picks the first/last/only entry (#11806), and reload is refused while streaming or compacting; each has a Go test."
 
 [[files]]
 path = "packages/coding-agent/src/core/auth-storage.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/pilock/symlink_alias_test.go#TestAuthLocksShareOneLockAcrossSymlinkedPaths"]
+rationale = "Pi (#11655): the auth.json lock is taken on the resolved file, so a symlinked alias waits for a lock held on the real file in both the cancellable and the synchronous loops."
 
 [[files]]
 path = "packages/coding-agent/src/core/bash-executor.ts"
@@ -3560,16 +3560,16 @@ rationale = "Pi 66c655677: a bash result whose head the output window dropped re
 [[files]]
 path = "packages/coding-agent/src/core/cache-warmer.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions", "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"]
+rationale = "Pi: the warm request sets disableContinuation so it does not replace thread state (asserted on the recorded warm options), and formatCacheWarmingUsage takes the total cost and note (asserted by the usage-format test)."
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/utils.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/compaction/serialization_oracle_test.go#TestSerializeConversationDropsASurrogatePairAtTheCut"]
+rationale = "Pi: truncateForSummary slices with sliceHead so a tool result cut inside a surrogate pair keeps the pair whole; the marker still counts the full units."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/index.ts"
@@ -3616,16 +3616,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/model-resolver.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/model_resolver_defaults_upstream_test.go"]
+rationale = "Pi: default models track current catalogs (minimax MiniMax-M3, vercel-ai-gateway zai/glm-5.3, anthropic claude-opus-5-5, qwen token plan qwen3.8-max); the Go defaults test asserts each provider default."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-runtime.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled", "test:coding/model_runtime_setup_abort_upstream_test.go#TestRequestCancelledBeforeItsProviderStartsIsAnAbortedPiSetupError", "test:coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved"]
+rationale = "Pi: every model-runtime lazyStream passes the request signal, so a setup rejected after abort ends as aborted (#8635), and settleCredentialWrites waits for credential writes in progress (#11692); both are asserted."
 
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
@@ -3644,16 +3644,16 @@ rationale = "Pi 96667f342 (#11873) keeps an apostrophe inside a word in prompt t
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/model_runtime_setup_abort_upstream_test.go#TestRequestCancelledBeforeItsProviderStartsIsAnAbortedPiSetupError"]
+rationale = "Pi: composed provider streams pass the request signal to lazyStream; a registered stream provider and a built-in provider both end an already-aborted request as aborted without running the provider."
 
 [[files]]
 path = "packages/coding-agent/src/core/provider-matching.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/provider_matching_test.go#TestProviderReferenceMatching"]
+rationale = "Pi: findMatchingProviders matches IDs and display names case-insensitively, keeps all matches in input order, never fuzzy-matches and never matches an empty reference."
 
 [[files]]
 path = "packages/coding-agent/src/core/radius-mcp.ts"
@@ -3854,9 +3854,9 @@ rationale = "Pi dca1f5552 (#9274) separates the whitespace both changed lines st
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/extension-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/extension_selector_test.go#TestExtensionSelectorWindowsLongOptionListsAroundTheSelection", "test:tui/extension_selector_test.go#TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator"]
+rationale = "Pi (#6688): the selector draws a window of 10 options centered on the selection with a muted '(n/total)' row; the tests assert the windows at 1, 8 and 15 of 15 options and no indicator for short and empty lists."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
@@ -3875,9 +3875,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/model_select_refresh_test.go#TestModelSelectorUpdateModels", "test:tui/model_select_refresh_test.go#TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive"]
+rationale = "Pi (#9109): a catalog refresh keeps the browsed model selected, follows it when rows shift, and falls back to the current model when it disappears, also under an active query."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts"
@@ -3889,9 +3889,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/tree_select_empty_state_test.go#TestTreeSelectSearchCursor"]
+rationale = "Pi: the search line draws the cursor marker plus a reverse-video cell only while the selector is focused, and focus moves to the label input and back; asserted for focus, label input and a 10-column width."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
@@ -3903,16 +3903,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/highlight_test.go#TestLanguageFromPath"]
+rationale = "Pi: dart, nix, groovy and gradle extensions map to their eagerly loaded languages; TestLanguageFromPath asserts dart, nix, groovy, gradle and kotlin paths."
 
 [[files]]
 path = "packages/coding-agent/src/modes/print-mode.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/print_final_disposal_signal_test.go#TestPrintModeSignalDuringFinalDisposalWaitsForIt"]
+rationale = "Pi (#11752): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal and a repeated one exits at once with 143."
 
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
