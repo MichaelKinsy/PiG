@@ -159,7 +159,9 @@ func TestCallsOverALinkWhileARestartWaitsACallArrivingWhileTheOldAttemptDrainsAn
 	reloadWantObjects(t, report, ReloadedObject{Object: "app.gate-provider", Kind: ReloadRestarted}, ReloadedObject{Object: "app.gated", Kind: ReloadRestarted})
 	// The old attempt still runs its call, so the hold stays bound: the client sees live and sends new work.
 	outcome := startReloadCall(gated, "bump", nil)
-	rhLinks(t, s)
+	// Not `rhLinks`: it waits for the teardowns the hosts still run, and the old attempt's drain waits for its running call.
+	transported(s.Links[0], s.Links[1])
+	deliveredOn(s.Server, s.Client)
 	if state := stateOfRef(gated); state.Kind != RefStateLive {
 		t.Fatalf("state = %+v, want live", state)
 	}

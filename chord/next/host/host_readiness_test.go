@@ -196,7 +196,7 @@ func TestReadinessWaitsUpToItsBoundForARequestAnotherHostRefusesForItsVersionTha
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{rhProp("text", contracts.Str())}})},
 	}))
 	shownV2 := mustContract(contracts.Evolve(shown, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-		return e.State("main", "n", contracts.Int())
+		return e.AddState("main", "n", contracts.Int())
 	}))
 	serve := func(h FacetHost, raised bool) error {
 		if raised {
