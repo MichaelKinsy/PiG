@@ -34,7 +34,7 @@ func hashFile(path string) (hash string, ok bool) {
 	if err != nil {
 		return "", false
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	buf := hashBuffers.Get().(*[]byte)
 	defer func() {
 		if cap(*buf) == hashBufferSize {
