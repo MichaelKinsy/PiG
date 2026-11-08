@@ -107,6 +107,7 @@ var workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) 
 func floatOf(object *delta.JsonObject, key string) float64 { f, _ := object.Value(key).(float64); return f }
 
 func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) (contracts.Implementation, error) {
+	println("DBG serveIngress")
 	if who, err := p2runtime.FromChord(principal); err != nil || !isServer(who) {
 		return contracts.Implementation{}, p2runtime.Forbidden("server only")
 	}
