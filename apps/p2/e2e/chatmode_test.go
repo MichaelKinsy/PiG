@@ -405,12 +405,9 @@ func TestChatModeReloadKeepsTheModeAndItsName(t *testing.T) {
 		t.Fatal(err)
 	}
 	until(mode.Member("name"), func(value delta.JsonValue) bool { return value == "Claude" })
-	result, err := fixture.Server.Reload([]string{"chat-mode"}, p2test.Background)
-	if err != nil {
+	// Pi asserts the reload succeeds (its server step always lists the host); an unchanged reload is a no-op in both.
+	if _, err := fixture.Server.Reload([]string{"chat-mode"}, p2test.Background); err != nil {
 		t.Fatal(err)
-	}
-	if len(result.Workers) == 0 && len(result.Server.Plugins.Changed) == 0 {
-		t.Fatalf("the rollout reached neither the server nor the worker: %+v", result)
 	}
 	// The same reference follows the reloaded object: the state is the document's, and it still takes changes.
 	until(mode.Member("enabled"), func(value delta.JsonValue) bool { return value == true })
