@@ -37,7 +37,7 @@ func TestTheRoutineReadsTheStateWhileTheServerCloses(t *testing.T) {
 				})
 			})
 			return contracts.Implementation{Members: contracts.VariantImplementation{}}, nil
-		}))
+		}), host.ServeOptions{})
 	})
 	store, err := p2runtime.OpenHostStore(p2test.Background, t.TempDir(), false)
 	if err != nil {
