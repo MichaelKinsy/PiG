@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Tests of base bundles' resolution (p3 step 0a): packages resolve with the given conditions (a source checkout's source,
@@ -37,9 +38,7 @@ func project(t *testing.T, files map[string]string, linked ...string) string {
 		t.Fatal(err)
 	}
 	for _, name := range linked {
-		if err := os.Symlink(filepath.Join(dir, "workspace", name), filepath.Join(dir, "node_modules", name)); err != nil {
-			t.Fatal(err)
-		}
+		testenv.Symlink(t, filepath.Join(dir, "workspace", name), filepath.Join(dir, "node_modules", name))
 	}
 	return dir
 }

@@ -317,7 +317,7 @@ func (l *Launcher) onInput(text string) {
 		return
 	}
 	if l.interrupted(text) {
-		go l.finish(130)
+		l.finishAsync(130)
 		return
 	}
 	switch {
@@ -326,7 +326,7 @@ func (l *Launcher) onInput(text string) {
 			l.sandbox.Post(LauncherMessage{Kind: "input", Data: text})
 		}
 	case strings.ContainsRune(text, interrupt):
-		go l.finish(130)
+		l.finishAsync(130)
 	case !time.Now().Before(l.prompt.ready):
 		l.answered(text == "y" || text == "Y")
 	}
@@ -360,6 +360,18 @@ func (l *Launcher) onResize() {
 }
 
 // finish ends the client with code: the terminal given back, the sockets closed, the sandbox ended.
+// finishAsync ends the client from the loop's own goroutine: finish waits for the loop, so it cannot run on it.
+func (l *Launcher) finishAsync(code int) {
+	//portlint:allow golifetime ends with finish, which closes loopDone and the sandbox; it runs once (the `finished` flag) and every post it makes is dropped once the loop ended
+	go l.finish(code)
+}
+
+// outdatedAsync restarts the sandbox for a newer base bundle off the loop (it downloads).
+func (l *Launcher) outdatedAsync() {
+	//portlint:allow golifetime ends with the launcher: its downloads take l.ctx, which finish cancels
+	go l.outdated()
+}
+
 func (l *Launcher) finish(code int) {
 	done := make(chan struct{})
 	var sandbox *Sandbox
@@ -479,7 +491,7 @@ func (l *Launcher) sandboxIs(sandbox *Sandbox) bool {
 // sandboxEnded is the sandbox's end (an exit, a crash, a malformed frame): the client ends with code 1.
 func (l *Launcher) sandboxEnded(generation int) {
 	if generation == l.generation && !l.finished {
-		go l.finish(1)
+		l.finishAsync(1)
 	}
 }
 
@@ -489,7 +501,7 @@ func (l *Launcher) message(generation int, message SandboxMessage) {
 		return
 	}
 	if err := l.handle(message); err != nil {
-		go l.finish(1)
+		l.finishAsync(1)
 	}
 }
 
@@ -508,12 +520,12 @@ func (l *Launcher) handle(message SandboxMessage) error {
 	case "request":
 		l.answer(message.ID, message.Request)
 	case "outdated":
-		go l.outdated()
+		l.outdatedAsync()
 	case "failed":
 		_, _ = io.WriteString(l.output, "terminal: the terminal client failed to start\n")
-		go l.finish(1)
+		l.finishAsync(1)
 	case "exit":
-		go l.finish(message.Code)
+		l.finishAsync(message.Code)
 	}
 	return nil
 }

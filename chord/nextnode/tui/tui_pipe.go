@@ -137,6 +137,7 @@ func safeInteger(value any) (int, bool) {
 	if !ok || number != math.Trunc(number) || math.Abs(number) > 1<<53-1 {
 		return 0, false
 	}
+	//portlint:allow numbers number is a JSON number already checked to be a finite integer within the frame limits above (the checks before this line), so the conversion cannot overflow
 	return int(number), true
 }
 
