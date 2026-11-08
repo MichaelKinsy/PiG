@@ -174,7 +174,7 @@ func (info *nodeInfo) baseOr(base string) string {
 	if info.indexed {
 		return info.base
 	}
-	// pig divergence (D302): Pi main 2bd2c2d0a resolves the base of an object the index never reached through baseFor, not the parent's base.
+	// Pi main 2bd2c2d0a resolves the base of an object the index never reached through baseFor, not the parent's base.
 	return info.r.baseFor(info.node, base)
 }
 
@@ -1064,7 +1064,7 @@ func matchesAnyType(value any, types []string) bool {
 func matchesType(value any, name string) bool {
 	switch name {
 	case "number":
-		// pig divergence (D303): a number is finite (Pi main 55a5c6914).
+		// a number is finite (Pi main 55a5c6914).
 		n, ok := asNumber(value)
 		return ok && isFinite(n)
 	case "integer":

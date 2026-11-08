@@ -9,11 +9,12 @@ pinned="$root/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent"
 node_bin=$(node -p 'process.execPath')
 work=$(mktemp -d "${TMPDIR:-/tmp}/pig.XXXXXXXX")
 output=""
-# cp -R preserves the pinned package's read-only modes; make the copy writable so rm -rf can remove it.
+# cp -R preserves the pinned package's read-only modes (a Pi build cache is read-only): the copy is patched below and removed here, so it must be writable.
 trap 'chmod -R u+w "$work" 2>/dev/null || true; rm -rf "$work"; if [ -n "$output" ]; then rm -f "$output"; fi' EXIT
 output=$(mktemp "$root/coding/cli/.help_upstream.XXXXXXXX")
 mkdir -p "$work/node_modules/@earendil-works"
 cp -R "$pinned" "$work/node_modules/@earendil-works/pi-coding-agent"
+chmod -R u+w "$work/node_modules/@earendil-works/pi-coding-agent"
 for dependency in "$pinned"/node_modules/*; do
   ln -s "$dependency" "$work/node_modules/$(basename "$dependency")" 2>/dev/null || true
 done
