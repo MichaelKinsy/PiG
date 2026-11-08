@@ -37,13 +37,15 @@ type PageOptions struct {
 	After *string
 }
 
-// TableOwner is who owns a table handle: its object (whose transactions alone write it), liveness check and live
-// failure.
+// TableOwner is who owns a table handle: its object (whose transactions alone write it), its live queries, liveness check
+// and live failure.
 type TableOwner interface {
 	// Label names the owner in messages.
 	Label() string
 	// Scope is the object's documents: a transaction of another object refuses the handle.
 	Scope() any
+	// Queries are the object's live queries, across its attempts: what a commit writing the table re-runs.
+	Queries() *LiveQueries
 	// AssertLive returns `released` once the object ended.
 	AssertLive() error
 	// Fail fails the owner `broken` with a row the code cannot read (a `json(...)` cell, slice 6a §9; §1.4).
