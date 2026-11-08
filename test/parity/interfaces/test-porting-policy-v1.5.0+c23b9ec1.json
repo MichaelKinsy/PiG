@@ -6855,6 +6855,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/durable/test/sqlite-commit.test.ts",
+      "upstreamTestHash": "sha256:9722217086fe556301114e5662dd2ce34307534f5341bcaecb0f64c970457897",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "CLI startup, selected execution mode, settings, or command routing."
+    },
+    {
       "path": "packages/durable/test/sqlite-migrations.test.ts",
       "upstreamTestHash": "sha256:a1a654e68924bf36e436b25cf02f3c3206b1c9a4d0c76449f5eea3cd6223c8fa",
       "area": "cli",

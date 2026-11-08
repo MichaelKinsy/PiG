@@ -1176,9 +1176,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/tool-search/tool-search.ts` | `durable/toolsearch/` | ✅ |
 | `packages/durable/src/harness/telemetry.ts` | `durable/harness/telemetry.go`; the Durable core's use of the vocabulary: `durable/core/telemetry.go` (notices), `durable/core/session/telemetry.go` (phase spans, metrics), `durable/core/host/cf/src/facade/telemetry.ts` (spans and metrics in the TypeScript host) | ✅ |
-| `packages/durable/src/storage/sqlite/commit.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/durable/src/storage/sqlite/rows.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/durable/src/storage/sqlite/statements.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 
 ## `packages/env/src/`
 
