@@ -1189,7 +1189,8 @@ pub fn slice_with_width(line: &str, start_col: i64, length: i64, strict: bool) -
                 result.push_str(&pending);
                 result.push_str(&code);
                 pending.clear();
-            } else if current < start_col {
+            } else if current < start_col && !code.starts_with("\x1b_") {
+                // An APC sequence (a cursor marker) is a one-shot command, not style state: it does not carry over (Pi 25490ea49).
                 pending.push_str(&code);
             }
             i += code_len;

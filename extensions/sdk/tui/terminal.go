@@ -78,7 +78,8 @@ func detectFromEnvironment(env func(string) string, goos string, tmuxForwardsHyp
 		return TerminalCapabilities{Images: ImageProtocolITerm2, TrueColor: true, Hyperlinks: true}
 	case env("WT_SESSION") != "":
 		return TerminalCapabilities{TrueColor: true, Hyperlinks: true}
-	case termProgram == "alacritty" || termProgram == "vscode" || termProgram == "zed":
+	// Alacritty does not set TERM_PROGRAM: it sets TERM=alacritty when its terminfo entry is installed and ALACRITTY_WINDOW_ID on Unix and macOS (Pi 2af8a42f5).
+	case termProgram == "alacritty" || strings.HasPrefix(term, "alacritty") || env("ALACRITTY_WINDOW_ID") != "" || termProgram == "vscode" || termProgram == "zed":
 		return TerminalCapabilities{TrueColor: true, Hyperlinks: true}
 	case terminalEmulator == "jetbrains-jediterm":
 		return TerminalCapabilities{TrueColor: true}

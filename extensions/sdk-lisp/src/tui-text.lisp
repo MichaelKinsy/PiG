@@ -424,7 +424,9 @@
                    (if (plusp code-len)
                        (let ((code (subseq line i (+ i code-len))))
                          (cond ((and (<= start-col current) (< current end-col)) (write-string pending out) (write-string code out) (setf pending ""))
-                               ((< current start-col) (setf pending (tui-cat pending code))))
+                               ;; An APC sequence (a cursor marker) is a one-shot command, not style state: it does not carry over (Pi 25490ea49).
+                               ((and (< current start-col) (not (and (>= (length code) 2) (char= (char code 1) #\_))))
+                                (setf pending (tui-cat pending code))))
                          (incf i code-len))
                        (let ((text-end (tui-text-end line i)))
                          (do-tui-graphemes (s e line i text-end)
