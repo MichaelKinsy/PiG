@@ -1,7 +1,10 @@
 artifacts
 chat
+chat-mode
 coding-tools
+conversations
 envs
+history
 login
 logs
 ports
