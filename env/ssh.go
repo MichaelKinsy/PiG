@@ -220,7 +220,7 @@ func SshArgumentsWith(target SshTarget, strictHostKeys bool, knownHostsFile stri
 		option("BatchMode=yes"), option("ClearAllForwardings=yes"), option("ForwardAgent=no"), option("ForwardX11=no"),
 		option("ControlMaster=no"), option("ControlPath=none"), option("RemoteCommand=none"), option("PermitLocalCommand=no"),
 		option("SendEnv=-*"),
-		// pig divergence (D304): a host that is down or rebooting fails a connection attempt within 15 s, instead of the system's TCP timeout (about two
+		// a host that is down or rebooting fails a connection attempt within 15 s, instead of the system's TCP timeout (about two
 		// minutes on Linux); keepalives end an established connection whose host stopped answering (Pi main c96e368e2).
 		option("ConnectTimeout=15"), option("ServerAliveInterval=15"), option("StrictHostKeyChecking="+strict),
 		option("UserKnownHostsFile="+knownHostsPath), option("GlobalKnownHostsFile=none"), option("HashKnownHosts=no"),
