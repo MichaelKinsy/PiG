@@ -10,8 +10,8 @@ package components
 // pi: apps/p2/src/tui/components/status.ts
 
 import (
+	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/render"
@@ -52,40 +52,45 @@ func NewWorkingStatusIndicator(ui tui.TUI, ctx render.RenderContext, message str
 }
 
 // NewRetryStatusIndicator counts down to a server-scheduled retry (`live.generation.retry.at`, milliseconds since the epoch); Esc stops the run.
-func NewRetryStatusIndicator(ui tui.TUI, ctx render.RenderContext, attempt int, at int64, errText string) *StatusIndicator {
+//
+// The countdown runs on one goroutine that ends when ctx is done, when the retry time has passed, or when Dispose is called; Dispose
+// returns only after it has exited, so a disposed indicator never touches ui again.
+func NewRetryStatusIndicator(ctx context.Context, ui tui.TUI, rc render.RenderContext, attempt int, at int64, errText string) *StatusIndicator {
+	return newRetryStatusIndicator(ctx, ui, rc, attempt, at, errText, time.Second, time.Now)
+}
+
+// newRetryStatusIndicator is NewRetryStatusIndicator with the tick period and the clock injected for tests.
+func newRetryStatusIndicator(ctx context.Context, ui tui.TUI, rc render.RenderContext, attempt int, at int64, errText string, period time.Duration, now func() time.Time) *StatusIndicator {
 	message := func() string {
-		seconds := (at - time.Now().UnixMilli() + 999) / 1000
-		if seconds < 0 {
-			seconds = 0
-		}
-		return fmt.Sprintf("Retrying (attempt %d) in %ds: %s (%s to cancel)", attempt+1, seconds, errText, ctx.KeyText("app.interrupt"))
+		seconds := max(0, (at-now().UnixMilli()+999)/1000)
+		return fmt.Sprintf("Retrying (attempt %d) in %ds: %s (%s to cancel)", attempt+1, seconds, errText, rc.KeyText("app.interrupt"))
 	}
 	indicator := newStatusIndicator("retry", ui,
-		func(spinner string) string { return ctx.Theme().Current().Fg("warning", spinner) },
-		func(text string) string { return ctx.Theme().Current().Fg("muted", text) }, message())
-	var mu sync.Mutex
-	stopped := make(chan struct{})
-	var once sync.Once
-	stop := func() { once.Do(func() { close(stopped) }) }
+		func(spinner string) string { return rc.Theme().Current().Fg("warning", spinner) },
+		func(text string) string { return rc.Theme().Current().Fg("muted", text) }, message())
+	ctx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
 	go func() {
-		ticker := time.NewTicker(time.Second)
+		defer close(done)
+		ticker := time.NewTicker(period)
 		defer ticker.Stop()
 		for {
 			select {
-			case <-stopped:
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				mu.Lock()
 				indicator.SetMessage(message())
-				mu.Unlock()
 				ui.RequestRender()
-				if time.Now().UnixMilli() >= at {
+				if now().UnixMilli() >= at {
 					return
 				}
 			}
 		}
 	}()
-	indicator.dispose = stop
+	indicator.dispose = func() {
+		cancel()
+		<-done
+	}
 	return indicator
 }
 
@@ -132,6 +137,8 @@ type customEditorAction struct {
 func NewCustomEditor(ui tui.TUI, ctx render.RenderContext, options tui.EditorOptions) *CustomEditor {
 	editor := tui.NewEditorWithTUI(ui, ctx.Theme().Editor, options)
 	editor.EmbedWorkingStatus = true
+	// p2's status.ts colors the indicators accent and muted itself; the editor must not recolor them with its border.
+	editor.KeepIndicatorColors = true
 	return &CustomEditor{Editor: editor}
 }
 

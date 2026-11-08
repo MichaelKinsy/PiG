@@ -112,6 +112,9 @@ func FormatToolCallWithArgs(title string, args any, t *theme.Theme, expanded boo
 		value any
 	}
 	var entries []entry
+	if object, ok := args.(*jsvalue.Object); ok && object == nil {
+		return header // a call without arguments (TypeScript's undefined)
+	}
 	if object, ok := args.(*jsvalue.Object); ok {
 		for _, key := range object.Keys {
 			entries = append(entries, entry{key, object.Values[key]})
