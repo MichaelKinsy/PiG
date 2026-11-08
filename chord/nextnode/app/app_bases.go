@@ -17,7 +17,7 @@ import (
 //
 // Forced Go differences. A Promise is a channel closed when it settles (`BasesBuilt`, `BaseWatched`). The server's own code is its
 // executable (D603), where Pi scans the static import graph of its start script; a worker kind's base is its executable too, which
-// holds its code already (workers' doc.go): its build is the check that the entry can be started, and it records no files. The one
+// holds its code already (workers' doc.go): its build copies the entry (the check that it can be started) and records its bytes. The one
 // goroutine that builds and records is the app's, joined by nothing: the close does not wait for it, and what it finishes after the
 // close is dropped.
 
@@ -28,7 +28,7 @@ const futureSlack = 5 * time.Second
 const editedSinceStartHash = "changed since the server started"
 
 // processStart is when this process started, as far as the program can tell (Pi's `performance.timeOrigin`).
-var processStart = time.Now()
+var processStart = time.Now() //portlint:allow clock Pi's `performance.timeOrigin`, the process's own start: the test seam is AppOptions.processStart
 
 // baseBuild is a base the kit builds after the listen: its name in reports and its build, which returns the files it was built from
 // or why it failed.
@@ -147,7 +147,7 @@ func (a *App) editedSinceStart(path string) plugins.BaseInputs {
 		return plugins.BaseInputs{path: ""}
 	}
 	if info, err := os.Stat(path); err == nil {
-		latest := time.Now().Add(futureSlack)
+		latest := time.Now().Add(futureSlack) //portlint:allow clock Pi's `Date.now() + FUTURE_SLACK_MS` of editedSinceStart: a file's timestamps are wall-clock, and the tests set AppOptions.processStart instead
 		for _, stamp := range []time.Time{info.ModTime(), ctimeOf(info)} {
 			if stamp.After(started) && !stamp.After(latest) {
 				hash = editedSinceStartHash
@@ -170,7 +170,8 @@ func (a *App) baseBuilds() []baseBuild {
 	for _, kind := range a.options.Workers {
 		name := kind.Kind.Kind
 		bases = append(bases, baseBuild{name: name, build: func() (plugins.BaseInputs, error) {
-			return nil, a.Workers[name].Build().Err
+			built := a.Workers[name].Build()
+			return built.Inputs, built.Err
 		}})
 	}
 	return bases

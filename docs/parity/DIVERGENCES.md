@@ -4046,3 +4046,45 @@ Call-site markers: `chord/nextnode/plugins/plugins_watcher_identity_other.go`.
 Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` states the identity on the systems tested; the build of the file is checked by `GOOS=dragonfly go vet ./chord/nextnode/plugins` (and netbsd, openbsd for the files that read a birth time).
 
 Parity allowance: none needed; no Pi test depends on an inode reused with no birth time.
+
+## D600 A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no `cache/node`, no `NODE_COMPILE_CACHE`, and the copy is made at the build
+
+What: Pi builds a worker kind's base by bundling the entry module with the base code it imports (`workers/base.ts`, esbuild) in memory, writes it at the first fork into a private directory its component owns (the kit's `cache/workers/<kind>/`, emptied first, removed at `close` after every worker exited, never touched by a component that closed), records every file the build read (`WorkersBuilt.inputs`) and forks its workers with `NODE_COMPILE_CACHE` set to the kit's `cache/node/`. PiG's worker is the program the app names (`Entry`, usually its own executable), which holds its code already. `Workers.Build` (run by the kit right after the server listens) checks that `Entry` can be started, copies it into `WorkersOptions.BaseDir` (the kit's `cache/workers/<kind>/`, emptied first; a new temporary directory without one) and records the entry with the hash of the bytes copied; every worker forks that copy; `Close` removes the directory once every worker exited (also when its context ends the wait first), and a component that closed before its build copies nothing and leaves a named directory as it is. A copy that is gone (a cleaner of temporary files) is made again from the entry when the entry still has the recorded bytes. An edit of the entry marks `base` (the kit watches the recorded file), and runs in no worker. The layout has `cache/` and `cache/workers/` (mode 0700), not `cache/node/`.
+
+Why: a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins ("a worker started after an edit of the entry's imported source runs the code the base was built with"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.
+
+Pi bug: Not a Pi bug.
+
+Scope: `chord/nextnode/workers` (`Workers.Build`, `WorkersBuilt`, `WorkersOptions.BaseDir`), `chord/nextnode/app` (`AppLayout.Cache`, `AppLayout.WorkerBases`, the worker kinds' base records).
+
+Owner decision: owner sign-off pending (drafted by the ChordKit284 lane on 2026-11-08).
+
+Remove when: PiG's worker is a Node entry again.
+
+Call-site markers: `chord/nextnode/workers/workers_workers.go` (`Build`), `chord/nextnode/workers/doc.go`.
+
+Evidence: `TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith`, `TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs`, `TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose`, `TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks` (`chord/nextnode/workers`), `TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes`, `TestAppReportsABaseThatFailsAfterTheListenAndRunsOn…` (`chord/nextnode/app`).
+
+Parity allowance: Pi's `base.test.ts` and the worker-base tests of `workers.test.ts` that bundle a Node module, the `NODE_COMPILE_CACHE` and `cache/node` assertions of `layout.test.ts` and `app.test.ts`, and the `app.test.ts` tests that hold a worker kind's base build on a pipe have no counterpart.
+
+## D604 A link's upgrade waits for the bases to be built (Pi's links connect at once)
+
+What: with a web or terminal surface, Pi's server listens, then builds the bases; the scripts object shows an empty set (`base: ""`) until the first set is published, on the assumption that no client holds it then. PiG's `StartServer` returns when the server listens, and its links endpoint (`LinksOptions.OptionsFunc`) holds each upgrade until `BasesBuilt` (or the app's close, which refuses it) before the link is accepted. Plain HTTP requests (the owner page, the API) are answered meanwhile as in Pi; a page or surface file waits for its own base.
+
+Why: the Go server listens before the plugins' Node host has loaded (about 0.5 s), and a page of a restarted server reconnects in that gap, before the bases have started. It then holds the empty set, its base differs from the page's, and the page reloads (`Outdated`): a seamless reconnect becomes a reload, and Pi's ported test of a failed plugin script tried again at a reconnect fails every time. Pi's build takes about 100 ms after a start of a few milliseconds, so the window is rarely open there.
+
+Observable effect: a base build that hangs holds every link of the app (pages, terminal clients, objects that need no surface), where Pi's link connects at once.
+
+Pi bug: Not a Pi bug.
+
+Scope: `chord/nextnode/app` (`App.linksAfterTheBases`).
+
+Owner decision: owner sign-off pending (drafted by the ChordKit284 lane on 2026-11-08). A narrower form (the two scripts objects waiting for the build, through the host's dependency parking) is possible and would let the other links connect at once.
+
+Remove when: the Go server's start no longer leaves a window (the plugins' host loads before the listen), or the scripts objects wait for the build themselves.
+
+Call-site markers: `chord/nextnode/app/app_bases.go` (`linksAfterTheBases`).
+
+Evidence: `TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsStylesheetNeverOneWithoutTheOther` (red without the wait: the page reloaded), `TestAppHoldsALinkUntilTheBasesAreBuilt`.
+
+Parity allowance: none needed.
