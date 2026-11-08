@@ -101,7 +101,7 @@ func (s *SecretInput) Render(width int) []string {
 	if s.focused {
 		cursor = widthx.CursorMarker + "\x1b[7m \x1b[27m"
 	}
-	return []string{widthx.TruncateToWidth("> "+dots+cursor, width, "…", false)}
+	return []string{widthx.TruncateToWidth("> "+dots+cursor, width, "...", false)}
 }
 
 // Invalidate has nothing to drop.

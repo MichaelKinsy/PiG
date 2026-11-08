@@ -70,7 +70,7 @@ func (l *userMessageList) Render(width int) []string {
 		if isSelected {
 			cursor = theme.Fg("accent", "› ")
 		}
-		truncated := widthx.TruncateToWidth(normalized, width-2, "…", false)
+		truncated := widthx.TruncateToWidth(normalized, width-2, "...", false)
 		if isSelected {
 			truncated = theme.Bold(truncated)
 		}

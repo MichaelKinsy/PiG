@@ -45,7 +45,7 @@ func plain(lines []string) string {
 }
 
 // newScreen is an alt-screen TUI over a virtual terminal, stopped with the test.
-func newScreen(t *testing.T, columns, rows int) (*pitui.TuiAltScreen, *vterm.Terminal) {
+func newScreen(t testing.TB, columns, rows int) (*pitui.TuiAltScreen, *vterm.Terminal) {
 	t.Helper()
 	terminal := vterm.New(columns, rows)
 	screen := pitui.NewTuiAltScreen(terminal, nil, t.TempDir())
