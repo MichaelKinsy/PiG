@@ -196,6 +196,8 @@ func modelRuntimeScript(ctx sdk.Context, args map[string]any) map[string]any {
 	r["login"] = map[string]any{"credential": plain(credential), "prompts": seen, "events": events2, "listed": listed(), "status": plain(ok(rt.GetProviderAuthStatus("openai")))}
 	check(rt.Logout("openai"))
 	r["login"].(map[string]any)["afterLogout"] = listed()
+	check(rt.SettleCredentialWrites())
+	r["settled"] = true
 	r["stored"] = ok(readJSONFile(auth))
 	return r
 }

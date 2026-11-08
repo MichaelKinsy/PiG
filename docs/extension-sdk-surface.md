@@ -45,10 +45,10 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 907 | 10 | 0 | 11 |
+| `pi-coding-agent` | 908 | 10 | 0 | 10 |
 | `pi-tui` | 368 | 1 | 0 | 1 |
 | `pi-ai` | 102 | 3 | 0 | 0 |
-| `pi-ai/compat` | 153 | 11 | 0 | 1 |
+| `pi-ai/compat` | 154 | 11 | 0 | 0 |
 | `pi-ai/models` | 16 | 0 | 0 | 0 |
 | `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
 | `pi-agent-core` | 45 | 0 | 0 | 0 |
@@ -1864,7 +1864,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ModelRuntime.removeRuntimeApiKey` | `ModelRuntime.removeRuntimeApiKey` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.resolveModel` | `ModelRuntime.resolveModel` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.setRuntimeApiKey` | `ModelRuntime.setRuntimeApiKey` | Pi's own code |
-| `pi-coding-agent: ModelRuntime.settleCredentialWrites` | `ModelRuntime.settleCredentialWrites` | missing |
+| `pi-coding-agent: ModelRuntime.settleCredentialWrites` | `ModelRuntime.settleCredentialWrites` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.stream` | `ModelRuntime.stream` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.streamDeferred` | `ModelRuntime.streamDeferred` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.streamSimple` | `ModelRuntime.streamSimple` | Pi's own code |
@@ -2983,7 +2983,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: resolveTranscriptTools` | `function resolveTranscriptTools` | Pi's own code |
 | `pi-ai/compat: retryAssistantCall` | `function retryAssistantCall` | Pi's own code |
 | `pi-ai/compat: retryDelayMs` | `function retryDelayMs` | Pi's own code |
-| `pi-ai/compat: setBedrockProviderLoader` | `function setBedrockProviderLoader` | missing |
+| `pi-ai/compat: setBedrockProviderLoader` | `function setBedrockProviderLoader` | Pi's own code |
 | `pi-ai/compat: setBedrockProviderModule` | `function setBedrockProviderModule` | Pi's own code |
 | `pi-ai/compat: stream` | `function stream` | Pi's own code |
 | `pi-ai/compat: streamAnthropic` | `variable streamAnthropic` | Pi's own code |
