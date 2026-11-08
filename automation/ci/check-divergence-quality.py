@@ -63,7 +63,7 @@ def validate(record: Record, version: str, root: Path, test_level: set[str] = fr
     location = f"{record.ledger}:{record.line}: {record.ident}"
     if record.ident in test_level and record.ledger.name == "DIVERGENCES.md":
         for label in INTENTION_LABELS:
-            if not re.search(rf"(?mi)^{re.escape(label)}:\s*\S", record.body):
+            if not re.search(rf"(?mi)^{re.escape(label)}:[ \t]*\S", record.body):
                 errors.append(f"{location}: test-level divergence missing non-empty '{label}:' (AGENTS.md Upstream test parity: property, PiG-shaped test considered, why impossible or worthless)")
     if "SCRUTINIZED:approved" not in record.body:
         errors.append(f"{location}: missing SCRUTINIZED:approved")
