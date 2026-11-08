@@ -1,9 +1,6 @@
 // Ports test/p2/files.test.ts (Pi main c23b9ec1): uploads (POST /upload into the session's files, attached to messages by ID
 // and materialized) and download snapshots (GET /download), owner and guests; the server's mirror of the session's file
 // summaries.
-//
-// Not ported: the artifact assertions of "answers at once for an archived or unknown session" (the `artifacts` plugin and its
-// `/artifact` route are not part of this module yet; the archived/unknown download, upload and snapshot assertions are).
 
 package e2e_test
 
@@ -28,6 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/files"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing"
 )
@@ -337,6 +335,18 @@ func TestFilesFakeProvider(t *testing.T) {
 
 	t.Run("answers at once for an archived or unknown session, never waiting for its worker", func(t *testing.T) {
 		archived := create("Archived")
+		archivedChat, err := p2test.HoldIn(owner, chatcontract.Chat, delta.JsonObjectOf("session", archived, "conversation", float64(1)), "participant")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := archivedChat.Call("send", delta.JsonObjectOf("text", "artifact", "requestId", "archived-artifact"), p2test.Background); err != nil {
+			t.Fatal(err)
+		}
+		artifact := "/artifact?" + url.Values{"session": {archived}, "name": {"demo"}, "version": {"1"}}.Encode()
+		if err := p2test.Poll(func() (bool, error) { return get(artifact, nil).Status == 200, nil }, 30*time.Second, "the artifact is saved"); err != nil {
+			t.Fatal(err)
+		}
+		archivedChat.Release()
 		source := filepath.Join(fixture.DataDir, "archived.txt")
 		if err := os.WriteFile(source, []byte("archived"), 0o600); err != nil {
 			t.Fatal(err)
@@ -360,6 +370,9 @@ func TestFilesFakeProvider(t *testing.T) {
 			t.Fatal(err)
 		}
 		started := time.Now()
+		if got := get(artifact, nil).Status; got != 404 {
+			t.Fatalf("archived artifact: %d", got)
+		}
 		if got := get(download, nil).Status; got != 404 {
 			t.Fatalf("archived download: %d", got)
 		}
@@ -371,6 +384,9 @@ func TestFilesFakeProvider(t *testing.T) {
 		}
 		if got := get("/download?session=00000000-0000-4000-8000-000000000000&id="+sent.Value("id").(string), nil).Status; got != 404 {
 			t.Fatalf("unknown session: %d", got)
+		}
+		if got := get("/artifact?"+url.Values{"session": {"00000000-0000-4000-8000-000000000000"}, "name": {"demo"}, "version": {"1"}}.Encode(), nil).Status; got != 404 {
+			t.Fatalf("unknown session's artifact: %d", got)
 		}
 		if _, err := snapshot(archived, source, ""); err == nil || !strings.Contains(err.Error(), "archived") {
 			t.Fatalf("snapshot of an archived session: %v", err)

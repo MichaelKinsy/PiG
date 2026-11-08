@@ -1,0 +1,4 @@
+package artifacts
+
+// toolDescription is the `artifact` tool's description, as upstream's tool.ts has it.
+const toolDescription = `Create or update a session artifact (HTML, SVG, Markdown or text; maximum 2 MiB UTF-8). Reuse its stable lowercase slug name to publish a new immutable numbered version. Versions persist across restarts. Viewers open an isolated preview from the card in the transcript. Set inline: true to also show this version right below the card, in the chat, for every viewer of the session: use it for diagrams (prefer SVG, e.g. sequence or architecture diagrams, over ASCII art), charts and other small visual results the reader should see without opening anything; keep inline content compact (it is shown at most about 70% of the screen high, then scrolls) and leave large documents and apps as plain artifacts. Do not publish secrets. HTML and SVG run in a sandbox with no app identity or parent privileges; HTML may use HTTPS CDN resources.`
