@@ -3,7 +3,9 @@ package documents
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -158,4 +160,45 @@ func commitEvents(meter *nexttest.Meter, name string) []telemetry.SpanAttributes
 		}
 	}
 	return events
+}
+
+// countNow counts the reads of the clock a timed commit uses (the seam `commitNow`, as Pi's tests fake Date).
+func countNow(t *testing.T) *atomic.Int64 {
+	t.Helper()
+	var calls atomic.Int64
+	previous := commitNow
+	commitNow = func() time.Time { calls.Add(1); return previous() }
+	t.Cleanup(func() { commitNow = previous })
+	return &calls
+}
+
+// TestCommitsInTelemetryTimesNothingWhenNothingRecords runs `it("times nothing when nothing records")`; the control is
+// a commit that something records, which reads the clock at its start and its end.
+func TestCommitsInTelemetryTimesNothingWhenNothingRecords(t *testing.T) {
+	listDefinition, _ := documentsDefinitions(t)
+	var list *Singleton
+	activated(t, objectOptions{}, func(a *attempt) { list = a.Singleton(listDefinition) })
+	calls := countNow(t)
+	if _, err := list.Change(background, slotPush("a")); err != nil {
+		t.Fatal(err)
+	}
+	if got := calls.Load(); got != 0 {
+		t.Fatalf("the clock was read %d times, want none", got)
+	}
+
+	meter := nexttest.Metered(t)
+	o := txObject(t, "app.owner(1)", objectOptions{}, meter, nil)
+	a := o.newAttempt()
+	metered := a.Singleton(listDefinition)
+	requireNoError(t, a.Activate())
+	calls.Store(0)
+	if _, err := metered.Change(background, func(draft *delta.Object) (any, error) {
+		_, err := draft.Array("items").Push("a")
+		return nil, err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("the clock was read %d times for a recorded commit, want 2 (start, end)", got)
+	}
 }
