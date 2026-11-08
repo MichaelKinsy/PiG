@@ -486,5 +486,17 @@
   "pkg:tui/.#StdinBuffer::property:removeListener::call:0": {
     "go": "tui/stdin_buffer_events.go#StdinBuffer.RemoveListener",
     "reason": "Pi StdinBuffer extends EventEmitter<StdinBufferEventMap> (stdin-buffer.ts) and its listener methods take (event, listener) where the listener receives the event's string payload. Go tui.StdinBuffer carries the listener surface in tui/stdin_buffer_events.go with the event as a typed StdinBufferEvent string and the listener as a *StdinBufferListener that gives a Go callback the identity a JavaScript function has (Off and ListenerCount find it by that identity). TestStdinBufferEventsMatchPi runs Pi's StdinBuffer and compares the events its listeners receive with PiG's. Lead ruling 2026-10-10: the rows are ported."
+  },
+  "pkg:chord/tui#TuiScope::property:hold::call:0": {
+    "go": "chord/next/tui/tui_scope.go#TuiScope.Hold",
+    "reason": "Pi packages/chord/src/tui/scope.ts hold<C extends Contract>(Type: C, params: ParamsOf<C>): Held<C> types params by a mapped type over the contract's params shape (ParamsOf, TypeScript's compile-time computation). Go has no such type, so Hold takes the contract and params as any and the host validates params against the contract at run time (host.Hold returns the invalid-params error); the result is the host's *Reference (Held). TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose holds with Notes and reads the state."
+  },
+  "pkg:chord/tui#TuiScope::property:messages::call:0": {
+    "go": "chord/next/tui/tui_scope.go#TuiScope.Messages",
+    "reason": "Pi scope.ts messages<M extends Messages>(messages): Translator<M> returns a call signature (key, ...args) typed by MessageArgs<M[K]>, which Go cannot declare; Go returns *BoundMessages whose T(key, args...) and Render(MessageData) are that translator and its render, rendering in the host's language at each call. The tests of tui_scope_test.go call it."
+  },
+  "pkg:chord/tui/launcher#terminalFile::call:0": {
+    "go": "chord/nextnode/tui/tui_launcher.go#TerminalFile",
+    "reason": "Pi launcher.ts terminalFile(path: unknown, server: URL) takes what the sandbox's request carried (unknown: anything) and throws unless it is a string naming a terminal file. Go's pipe has already checked that a fetch or attach request carries a string path (bridgeRequest), so TerminalFile takes a string and the server as its URL text, and returns the same pathname or the same error; the launcher's tests (TestTerminalFile in tui_launcher_test.go) cover the refusals."
   }
 }

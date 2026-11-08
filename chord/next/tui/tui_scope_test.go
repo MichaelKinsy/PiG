@@ -421,3 +421,19 @@ func TestOptimisticAddReturnsTheResultOfItsCall(t *testing.T) {
 		t.Fatalf("add = %v, %v; want 7, nil", got, err)
 	}
 }
+
+type noJSONValue struct{}
+
+func (noJSONValue) Value() string { panic(errors.New("not ready")) }
+func (noJSONValue) Watch(context.Context) (chord.WatchHandle[string], error) {
+	return nil, errors.New("not ready")
+}
+
+// Pi's TuiScope.watch takes a Watchable too: a JSON watchable that has no value reads as none.
+func TestScopeWatchReadsNothingFromAJSONWatchableWithoutAValue(t *testing.T) {
+	scope := scopeOn(newHost(t), func() {})
+	defer scope.Dispose()
+	if got, ok := WatchJSON[string](scope, noJSONValue{})(); ok || got != "" {
+		t.Errorf("read = %q, %v", got, ok)
+	}
+}

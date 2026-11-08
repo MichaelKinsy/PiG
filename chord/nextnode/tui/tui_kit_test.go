@@ -198,8 +198,9 @@ type launched struct {
 func launch(t testing.TB, port int, credentials TerminalCredentials) *launched {
 	t.Helper()
 	terminal := newPipeTerminal()
+	input, output := streamsOf(terminal)
 	options := TerminalOptions{
-		URL: "http://127.0.0.1:" + strconv.Itoa(port), Credentials: credentials, Terminal: terminal, Colors: "truecolor", Node: tuiNode(t),
+		URL: "http://127.0.0.1:" + strconv.Itoa(port), Credentials: credentials, Input: input, Output: output, Colors: "truecolor", Node: tuiNode(t),
 		Opener: func(target string) error {
 			_, _ = terminal.output.Write([]byte("(opener " + target + ")\r\n"))
 			return nil
