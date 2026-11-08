@@ -63,9 +63,16 @@ type Stub struct {
 	// Factory makes the members of the object for params; principal is the caller of a remote type (the host's own for a
 	// local one).
 	Factory func(params *delta.JsonObject, principal p2runtime.Principal, self StubSelf) StubMembers
+	// Refuse, when set, runs before Factory: a non-nil error refuses the hold (a server that forbids this principal).
+	Refuse func(params *delta.JsonObject, principal p2runtime.Principal) error
 }
 
 func (stub Stub) implementation(params *delta.JsonObject, principal p2runtime.Principal, self host.Self) (contracts.Implementation, error) {
+	if stub.Refuse != nil {
+		if err := stub.Refuse(params, principal); err != nil {
+			return contracts.Implementation{}, err
+		}
+	}
 	members := stub.Factory(params, principal, StubSelf{self})
 	implementation := contracts.Implementation{Variant: members.Variant}
 	implementation.Members.State = map[string]chord.Watchable[delta.JsonValue]{}

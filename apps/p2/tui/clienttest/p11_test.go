@@ -15,19 +15,19 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	artifactscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts/contract"
 	artifactstui "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts/tui"
-	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
-	chattui "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/tui"
 	chatmodecontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat-mode/contract"
 	chatmodetui "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat-mode/tui"
+	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
+	chattui "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/tui"
 	sendfilecontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/send-file/contract"
 	sendfiletui "github.com/MichaelKinsy/PiG/apps/p2/plugins/send-file/tui"
 	sessionstui "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/tui"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
 	statustui "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/tui"
-	workspacecontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/workspace/contract"
-	workspacetui "github.com/MichaelKinsy/PiG/apps/p2/plugins/workspace/tui"
 	subagentscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	subagentstui "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/tui"
+	workspacecontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/workspace/contract"
+	workspacetui "github.com/MichaelKinsy/PiG/apps/p2/plugins/workspace/tui"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui"
 	tuiruntime "github.com/MichaelKinsy/PiG/apps/p2/tui/runtime"
@@ -626,7 +626,9 @@ func TestFilesChangesAndGrepReadTheWorkspaceParticipantsGuestsAndReadersCannot(t
 	pollContains(t, s.Fixture, `Search "answer" (1)`)
 	mustMatch(t, `src/main\.ts:2`, s.Screen())
 	s.Send(enter)
-	pollScreen(t, s.Fixture, func(screen string) bool { return strings.Contains(screen, "src/main.ts") && strings.Contains(screen, "1-3 of 3") })
+	pollScreen(t, s.Fixture, func(screen string) bool {
+		return strings.Contains(screen, "src/main.ts") && strings.Contains(screen, "1-3 of 3")
+	})
 	s.Send(esc)
 	s.Send(esc)
 	// The panels' own queries (the footer asks only when files change).
@@ -818,7 +820,9 @@ func TestArtifactsTheCardPreviewsTextArtifactsShowsMarkdownInlineWhenNarrowOpens
 	// Too narrow for the side panel: Enter shows an artifact over the chat.
 	s.Terminal.Resize(80, 24)
 	s.Send(enter)
-	pollScreen(t, s.Fixture, func(screen string) bool { return strings.Contains(screen, "Notes · MARKDOWN · version 2") && strings.Contains(screen, "Heading") })
+	pollScreen(t, s.Fixture, func(screen string) bool {
+		return strings.Contains(screen, "Notes · MARKDOWN · version 2") && strings.Contains(screen, "Heading")
+	})
 	shown := s.Screen()
 	for _, absent := range []string{"# Heading", "**bold**", "52;c;evil"} {
 		if strings.Contains(shown, absent) {
@@ -923,7 +927,9 @@ func TestArtifactsEnterShowsOneInTheSidePanelWhichFollowsNewVersionsScrollsWhenF
 	pollContains(t, s.Fixture, "Artifacts (2)")
 	s.Send(down) // the second row: version 2 of the same artifact
 	s.Send(enter)
-	pollScreen(t, s.Fixture, func(screen string) bool { return strings.Contains(screen, "Notes · MARKDOWN · v2") && strings.Contains(screen, "Version two") })
+	pollScreen(t, s.Fixture, func(screen string) bool {
+		return strings.Contains(screen, "Notes · MARKDOWN · v2") && strings.Contains(screen, "Version two")
+	})
 	state := func() (current string, focused, contextPanel, contextFocused, captures bool) {
 		s.Do(func() {
 			current, focused = s.Runtime.Ctx.Panel().Current(), s.Runtime.Ctx.Panel().Focused()
@@ -998,7 +1004,9 @@ func TestSentFilesTheCardDownloadsPreviewsTextSavesAndOpensThroughTheLauncher(t 
 		t.Fatal("an invalid snapshot ID is offered")
 	}
 	s.Send(enter)
-	pollScreen(t, s.Fixture, func(screen string) bool { return strings.Contains(screen, "report.csv · 12B") && strings.Contains(screen, "1,2") })
+	pollScreen(t, s.Fixture, func(screen string) bool {
+		return strings.Contains(screen, "report.csv · 12B") && strings.Contains(screen, "1,2")
+	})
 	if got := c.get("preview"); len(got) != 1 || got[0] != fileID {
 		t.Fatalf("preview = %v", got)
 	}
