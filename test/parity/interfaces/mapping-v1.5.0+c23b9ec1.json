@@ -116172,8 +116172,25 @@
     },
     {
       "id": "pkg:chord/app/files#FolderEntry",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3a338793267d12724e6e3c771b8ffc4f635d675742c6fde95cde395bcc0e42bc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3a338793267d12724e6e3c771b8ffc4f635d675742c6fde95cde395bcc0e42bc",
+      "rationale": "Derived by the interface gap detector: FolderEntry is Go chord/nextnode/app/files_index.go#FolderEntry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/files_index.go#FolderEntry"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/files.go#filesObject"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/folder_views_test.go#TestFolderViewsAttachWithTheListingNowAChangeOfItsSpaceReadsEachWatchedFolderOnce",
+        "test:chord/nextnode/app/folder_views_test.go#TestFolderViewsKeepNothingOfAViewWhoseFirstReadFails",
+        "test:chord/nextnode/app/folder_views_test.go#TestFolderViewsNeverReadOrTellADetachedViewAgain"
+      ]
     },
     {
       "id": "pkg:chord/app/files#FolderInfo",
@@ -116305,8 +116322,23 @@
     },
     {
       "id": "pkg:chord/app/files#SpaceSummary",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4b7a6a1fdca9e69bcd03693ced40c3dbb782c95b85d53dad24553bae8bd2c2c8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4b7a6a1fdca9e69bcd03693ced40c3dbb782c95b85d53dad24553bae8bd2c2c8",
+      "rationale": "Derived by the interface gap detector: SpaceSummary is Go chord/nextnode/app/files_index.go#SpaceSummary (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/files_index.go#SpaceSummary"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/files_index.go#SpaceSummary"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/files_index_summary_test.go#TestSpaceSummaryOfAnEmptySpaceIsZero"
+      ]
     },
     {
       "id": "pkg:chord/app#App",
@@ -116695,8 +116727,25 @@
     },
     {
       "id": "pkg:chord/app#AppApi",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c8d7f3f010ee23ddd4b37f363b9978eee0107bb302a2661fd379c245379cd303"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c8d7f3f010ee23ddd4b37f363b9978eee0107bb302a2661fd379c245379cd303",
+      "rationale": "Derived by the interface gap detector: AppApi is Go chord/nextnode/plugins/plugins_build.go#AppApi (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_build.go#AppApi"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAppsAPIChordItselfAndBuiltinsInASingleFilePlugin",
+        "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject"
+      ]
     },
     {
       "id": "pkg:chord/app#AppError",
@@ -116765,8 +116814,25 @@
     },
     {
       "id": "pkg:chord/app#AppOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0509b694b900455aab5b0f4335eed8284f9dd326bdbe9d1756aa622740435826"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0509b694b900455aab5b0f4335eed8284f9dd326bdbe9d1756aa622740435826",
+      "rationale": "Derived by the interface gap detector: AppOptions is Go chord/nextnode/app/app.go#AppOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#AppOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/app.go#App.ApplyChanges"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes"
+      ]
     },
     {
       "id": "pkg:chord/app#AppPlugins",
@@ -116775,8 +116841,23 @@
     },
     {
       "id": "pkg:chord/app#AppTimeouts",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4a5070910c83191f79b62363390e19384a0929dfac65d640766ce5614182d0b7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4a5070910c83191f79b62363390e19384a0929dfac65d640766ce5614182d0b7",
+      "rationale": "Derived by the interface gap detector: AppTimeouts is Go chord/nextnode/app/app.go#AppTimeouts (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#AppTimeouts"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/app.go#App.start"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/reload_restart_test.go#TestAReloadRestartingAnObjectWithNativesCutsARunningCallOffAtTheReloadDrainBoundThenRunsTheWaitingCallOnTheNewCode"
+      ]
     },
     {
       "id": "pkg:chord/app#AppWorkerKind",
@@ -116805,8 +116886,25 @@
     },
     {
       "id": "pkg:chord/app#ArchiveManifest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8bac50005cea0c42da29bda0330869b61f91bbfba0097fa5486a15bdaf7ca8ac"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8bac50005cea0c42da29bda0330869b61f91bbfba0097fa5486a15bdaf7ca8ac",
+      "rationale": "Derived by the interface gap detector: ArchiveManifest is Go chord/nextnode/app/archive.go#ArchiveManifest (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/archive.go#ArchiveManifest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/app.go#App.ImportData"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/archive_upstream_test.go#TestTheManifestIsWrittenAsJSONStringifyWritesIt",
+        "test:chord/nextnode/app/archive_upstream_test.go#TestRefusesAnArchivePastItsLimitsUnpackedBytesAndEntriesCountedBeforeWriting",
+        "test:chord/nextnode/app/archive_upstream_test.go#TestRefusesAnExistingDirectory"
+      ]
     },
     {
       "id": "pkg:chord/app#copyFiles",
@@ -116906,8 +117004,23 @@
     },
     {
       "id": "pkg:chord/app#EphemeralUser",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c2db7de68512c7f0c03f88525df5e4d51d75dbf932d7a9ae558db9e836899629"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c2db7de68512c7f0c03f88525df5e4d51d75dbf932d7a9ae558db9e836899629",
+      "rationale": "Derived by the interface gap detector: EphemeralUser is Go chord/nextnode/app/ephemeral.go#EphemeralUser (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/ephemeral.go#EphemeralUser"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/ephemeral.go#EphemeralLoginFacet"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/files_index_summary_test.go#TestEphemeralUserIsAUserPrincipal"
+      ]
     },
     {
       "id": "pkg:chord/app#FileInfo",
@@ -117060,8 +117173,25 @@
     },
     {
       "id": "pkg:chord/app#FolderEntry",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3a338793267d12724e6e3c771b8ffc4f635d675742c6fde95cde395bcc0e42bc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3a338793267d12724e6e3c771b8ffc4f635d675742c6fde95cde395bcc0e42bc",
+      "rationale": "Derived by the interface gap detector: FolderEntry is Go chord/nextnode/app/files_index.go#FolderEntry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/files_index.go#FolderEntry"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/files.go#filesObject"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/folder_views_test.go#TestFolderViewsAttachWithTheListingNowAChangeOfItsSpaceReadsEachWatchedFolderOnce",
+        "test:chord/nextnode/app/folder_views_test.go#TestFolderViewsKeepNothingOfAViewWhoseFirstReadFails",
+        "test:chord/nextnode/app/folder_views_test.go#TestFolderViewsNeverReadOrTellADetachedViewAgain"
+      ]
     },
     {
       "id": "pkg:chord/app#FolderInfo",
@@ -117265,14 +117395,29 @@
     },
     {
       "id": "pkg:chord/app#SessionInfo",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0ea5158533b0b7a77734c591e78bda1f0d9e59bf460ea27f663a727896cb71ee"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0ea5158533b0b7a77734c591e78bda1f0d9e59bf460ea27f663a727896cb71ee",
+      "rationale": "Derived by the interface gap detector: SessionInfo is Go chord/nextnode/app/sessions.go#SessionInfo (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/sessions.go#SessionInfo"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/sessions.go#sessionsFacet"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/files_index_summary_test.go#TestSessionInfoShowsEveryMemberOfTheListEntry"
+      ]
     },
     {
       "id": "pkg:chord/app#SessionKind",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:381468f042c3f5218082926da65c0230054b38e65495db20236cdbeb0f6b2a1a",
-      "rationale": "Derived by the interface gap detector: SessionKind is Go chord/nextnode/app/sessions.go#SessionKind (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionKind is Go chord/nextnode/app/sessions.go#SessionKind (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/nextnode/app/sessions.go#SessionKind"
       ],
@@ -117285,7 +117430,7 @@
         "call:chord/nextnode/app/ephemeral.go#EphemeralLoginFacet"
       ],
       "evidence": [
-        "reach:chord/nextnode/app/ephemeral.go#EphemeralLoginFacet"
+        "test:chord/nextnode/app/files_index_summary_test.go#TestSessionInfoShowsEveryMemberOfTheListEntry"
       ]
     },
     {
@@ -117312,8 +117457,23 @@
     },
     {
       "id": "pkg:chord/app#SpaceSummary",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4b7a6a1fdca9e69bcd03693ced40c3dbb782c95b85d53dad24553bae8bd2c2c8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4b7a6a1fdca9e69bcd03693ced40c3dbb782c95b85d53dad24553bae8bd2c2c8",
+      "rationale": "Derived by the interface gap detector: SpaceSummary is Go chord/nextnode/app/files_index.go#SpaceSummary (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/files_index.go#SpaceSummary"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/files_index.go#SpaceSummary"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/files_index_summary_test.go#TestSpaceSummaryOfAnEmptySpaceIsZero"
+      ]
     },
     {
       "id": "pkg:chord/app#startServer",
@@ -121731,23 +121891,89 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#createPluginRuntime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a12c863978327f1b09bc41cef5d35ecd7a2785f7829b10b57510f3e480524e26"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a12c863978327f1b09bc41cef5d35ecd7a2785f7829b10b57510f3e480524e26",
+      "rationale": "Derived by the interface gap detector: createPluginRuntime is Go chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime (name rule NM6), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+      ]
     },
     {
       "id": "pkg:chord/plugins/runtime#createPluginRuntime::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0f8c7b8801a54679dc395872996e37042b8a61d73bff05670a030881ba191da2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0f8c7b8801a54679dc395872996e37042b8a61d73bff05670a030881ba191da2",
+      "rationale": "Derived by the interface gap detector: createPluginRuntime::call:0 is Go chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime (name rule NM6), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+      ]
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9c76643667bb03dc34c0a4294daab036c391769f4a0f1f13bd6d010fe6e0d4fd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9c76643667bb03dc34c0a4294daab036c391769f4a0f1f13bd6d010fe6e0d4fd",
+      "rationale": "Derived by the interface gap detector: PluginError is Go chord/nextnode/plugins/plugins_runtime.go#PluginError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
+        "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample50PluginImports"
+      ]
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginError::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f75f09bbc3c3c331417112b95fff5d383768a265c881f5b2cbfbe349a047ae30"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f75f09bbc3c3c331417112b95fff5d383768a265c881f5b2cbfbe349a047ae30",
+      "rationale": "Derived by the interface gap detector: PluginError::construct:0 is Go chord/nextnode/plugins/plugins_runtime.go#NewPluginError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#NewPluginError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginError"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems"
+      ]
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginError::property:cause",
@@ -121776,8 +122002,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample50PluginImports",
-        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject",
-        "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
+        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject"
       ]
     },
     {
@@ -121797,6 +122023,7 @@
         "call:chord/nextnode/plugins/plugins_runtime.go#PluginError.Error"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
         "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"
       ]
     },
@@ -121823,9 +122050,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
+        "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginError"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
         "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsRejectsLoadWhenARequiredRootIsMissingHoldsABrokenPackageOrLosesANameToAnEarlierRootOpusM3",
         "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"
       ]
@@ -121848,8 +122076,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample50PluginImports",
-        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject",
-        "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
+        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject"
       ]
     },
     {
@@ -121863,28 +122091,84 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9b9e12fcf22d73cf2b0715ae1e24b86bf2be3642494576e3621e564651f45de1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9b9e12fcf22d73cf2b0715ae1e24b86bf2be3642494576e3621e564651f45de1",
+      "rationale": "Derived by the interface gap detector: PluginRuntime is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:load",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678",
+      "rationale": "Derived by the interface gap detector: PluginRuntime::property:load is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer",
+        "test:chord/nextnode/plugins/plugins_node_callbacks_test.go#TestGoPackageAnAppModuleImportsItBySpecifier"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:load::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:reload",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433",
+      "rationale": "Derived by the interface gap detector: PluginRuntime::property:reload is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestSyncACallbackCannotCallItsNodeHost",
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:reload::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginScript",
@@ -121910,13 +122194,31 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#RuntimeLoad",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:eeb432ddebc2adb516c4c80d9abf3edc5ca4ab2ecbbb43290fa1623f614ea047"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:eeb432ddebc2adb516c4c80d9abf3edc5ca4ab2ecbbb43290fa1623f614ea047",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins#AppApi",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c8d7f3f010ee23ddd4b37f363b9978eee0107bb302a2661fd379c245379cd303"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c8d7f3f010ee23ddd4b37f363b9978eee0107bb302a2661fd379c245379cd303",
+      "rationale": "Derived by the interface gap detector: AppApi is Go chord/nextnode/plugins/plugins_build.go#AppApi (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_build.go#AppApi"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAppsAPIChordItselfAndBuiltinsInASingleFilePlugin",
+        "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject"
+      ]
     },
     {
       "id": "pkg:chord/plugins#BaseInputs",
@@ -122076,18 +122378,53 @@
     },
     {
       "id": "pkg:chord/plugins#BuiltScript",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d4afb7d8a2108bc991dced88e8f683446feba9a4b43bd1eade9ca4fff7cec215"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d4afb7d8a2108bc991dced88e8f683446feba9a4b43bd1eade9ca4fff7cec215",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process cannot run a JavaScript plugin, so evaluation (evaluateFacet, its options and the built script it takes) has no Go form: the Go side ships a BuiltFacet as data (PluginScript) and the subprocess evaluates it. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of evaluate.test.ts (plugins_evaluate_test.go) run through the subprocess."
     },
     {
       "id": "pkg:chord/plugins#createPluginRuntime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:76b1927054c0c3ac4cc514bdce59c5a1747ca8aefc078d99f2dedbc2dfdf948d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:76b1927054c0c3ac4cc514bdce59c5a1747ca8aefc078d99f2dedbc2dfdf948d",
+      "rationale": "Derived by the interface gap detector: createPluginRuntime is Go chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime (name rule NM6), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+      ]
     },
     {
       "id": "pkg:chord/plugins#createPluginRuntime::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0f8c7b8801a54679dc395872996e37042b8a61d73bff05670a030881ba191da2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0f8c7b8801a54679dc395872996e37042b8a61d73bff05670a030881ba191da2",
+      "rationale": "Derived by the interface gap detector: createPluginRuntime::call:0 is Go chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime (name rule NM6), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+      ]
     },
     {
       "id": "pkg:chord/plugins#createPlugins",
@@ -122247,23 +122584,27 @@
     },
     {
       "id": "pkg:chord/plugins#evaluateFacet",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6cc4f28a48453a13dbb988ebd63c9e93c9670870a4c59f448279d06f038fbf75"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6cc4f28a48453a13dbb988ebd63c9e93c9670870a4c59f448279d06f038fbf75",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process cannot run a JavaScript plugin, so evaluation (evaluateFacet, its options and the built script it takes) has no Go form: the Go side ships a BuiltFacet as data (PluginScript) and the subprocess evaluates it. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of evaluate.test.ts (plugins_evaluate_test.go) run through the subprocess."
     },
     {
       "id": "pkg:chord/plugins#evaluateFacet::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ed7edcaafb4f764f6d3fd12e9bc1a9f1b12a98c19007d8c19517cf594fed4d82"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ed7edcaafb4f764f6d3fd12e9bc1a9f1b12a98c19007d8c19517cf594fed4d82",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process cannot run a JavaScript plugin, so evaluation (evaluateFacet, its options and the built script it takes) has no Go form: the Go side ships a BuiltFacet as data (PluginScript) and the subprocess evaluates it. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of evaluate.test.ts (plugins_evaluate_test.go) run through the subprocess."
     },
     {
       "id": "pkg:chord/plugins#EvaluateOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:29aee64c3199ec3faa347cecf18dd2b4435fa0b3d63cab970f35b952e42e96c7"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:29aee64c3199ec3faa347cecf18dd2b4435fa0b3d63cab970f35b952e42e96c7",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/evaluate.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts); a Go process cannot run a JavaScript plugin, so evaluation (evaluateFacet, its options and the built script it takes) has no Go form: the Go side ships a BuiltFacet as data (PluginScript) and the subprocess evaluates it. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of evaluate.test.ts (plugins_evaluate_test.go) run through the subprocess."
     },
     {
       "id": "pkg:chord/plugins#HostPackages",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c8e3e728125766158fcd810ba9d88285bc7d93a26a8aa4ae5f82129b3329799a"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:c8e3e728125766158fcd810ba9d88285bc7d93a26a8aa4ae5f82129b3329799a",
+      "rationale": "Pi 1.5.0+c23b9ec1 evaluate.ts HostPackages is Readonly\u003cRecord\u003cstring, unknown\u003e\u003e: the live module values (a CommonJS package's exports, an ESM namespace) a script's require answers. A Go process holds no JavaScript values: PiG's HostPackages maps each specifier to the file of the module the Node subprocess imports once (plugins_runtime.go HostPackages). Designed out under D607 (docs/parity/divergences/D607.md); RuntimeLoad.Modules carries it."
     },
     {
       "id": "pkg:chord/plugins#installDependencies",
@@ -122425,13 +122766,15 @@
     },
     {
       "id": "pkg:chord/plugins#mapStack",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4faf4fe1b4816ad6e017290f4b3043570ac999025cff01ef55b91e9601034eab"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4faf4fe1b4816ad6e017290f4b3043570ac999025cff01ef55b91e9601034eab",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/stack.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts); a Go process cannot run a JavaScript plugin, so mapStack rewrites a stack through a registry of source maps that lives with the evaluated scripts in that process, so the mapping happens there. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of stack.test.ts (plugins_stack_test.go) run through the subprocess."
     },
     {
       "id": "pkg:chord/plugins#mapStack::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4edda1a5cd8b7715314585af8dabcb19f39ba07d3a25fc10cf40cb0bd813bbf7"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4edda1a5cd8b7715314585af8dabcb19f39ba07d3a25fc10cf40cb0bd813bbf7",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/stack.ts runs verbatim in the Node subprocess the plugins component starts (chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts); a Go process cannot run a JavaScript plugin, so mapStack rewrites a stack through a registry of source maps that lives with the evaluated scripts in that process, so the mapping happens there. Go sees the evaluation's failure as *NodeError with its Stack. Designed out under D607 (docs/parity/divergences/D607.md); the cases of stack.test.ts (plugins_stack_test.go) run through the subprocess."
     },
     {
       "id": "pkg:chord/plugins#Plugin",
@@ -122457,13 +122800,45 @@
     },
     {
       "id": "pkg:chord/plugins#PluginError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:708148483737744a58169068aa3c167c1f78cfa7814604a60a04c741642eccac"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:708148483737744a58169068aa3c167c1f78cfa7814604a60a04c741642eccac",
+      "rationale": "Derived by the interface gap detector: PluginError is Go chord/nextnode/plugins/plugins_runtime.go#PluginError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
+        "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample50PluginImports"
+      ]
     },
     {
       "id": "pkg:chord/plugins#PluginError::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f75f09bbc3c3c331417112b95fff5d383768a265c881f5b2cbfbe349a047ae30"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f75f09bbc3c3c331417112b95fff5d383768a265c881f5b2cbfbe349a047ae30",
+      "rationale": "Derived by the interface gap detector: PluginError::construct:0 is Go chord/nextnode/plugins/plugins_runtime.go#NewPluginError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#NewPluginError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginError"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems"
+      ]
     },
     {
       "id": "pkg:chord/plugins#PluginError::property:cause",
@@ -122492,8 +122867,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample50PluginImports",
-        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject",
-        "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
+        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject"
       ]
     },
     {
@@ -122513,6 +122888,7 @@
         "call:chord/nextnode/plugins/plugins_runtime.go#PluginError.Error"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
         "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"
       ]
     },
@@ -122539,9 +122915,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
+        "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginError"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
         "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsRejectsLoadWhenARequiredRootIsMissingHoldsABrokenPackageOrLosesANameToAnEarlierRootOpusM3",
         "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"
       ]
@@ -122564,8 +122941,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample50PluginImports",
-        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject",
-        "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestNewPluginErrorNamesRequiredPluginsThenProblems",
+        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject"
       ]
     },
     {
@@ -122579,48 +122956,169 @@
     },
     {
       "id": "pkg:chord/plugins#pluginFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c66bb906897701708bc49c2d3c918c8e68574e524eecd99cceccc3360485870f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c66bb906897701708bc49c2d3c918c8e68574e524eecd99cceccc3360485870f",
+      "rationale": "Derived by the interface gap detector: pluginFile is Go chord/nextnode/plugins/plugins_pluginfile.go#PluginFile (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_pluginfile.go#PluginFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_pluginfile.go#PluginFile"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestPluginFileOutsideAFacetScriptThrows"
+      ]
     },
     {
       "id": "pkg:chord/plugins#pluginFile::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6446c5ad11290bb29c14c9767ffffaaae0bfc6bccb21dd7a4d9c1b804fe8e187"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6446c5ad11290bb29c14c9767ffffaaae0bfc6bccb21dd7a4d9c1b804fe8e187",
+      "rationale": "Derived by the interface gap detector: pluginFile::call:0 is Go chord/nextnode/plugins/plugins_pluginfile.go#PluginFile (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_pluginfile.go#PluginFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_pluginfile.go#PluginFile"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_pluginfile_test.go#TestPluginFileOutsideAFacetScriptThrows"
+      ]
     },
     {
       "id": "pkg:chord/plugins#PluginRoot",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1cead0e990f3ceaca40381327d9bfaef388012ef46cb11c202b1003c4b0d7e52"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1cead0e990f3ceaca40381327d9bfaef388012ef46cb11c202b1003c4b0d7e52",
+      "rationale": "Derived by the interface gap detector: PluginRoot is Go chord/nextnode/plugins/plugins_discover.go#PluginRoot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_discover.go#PluginRoot"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_discover.go#DiscoverPlugins"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
+        "test:chord/nextnode/plugins/plugins_discover_test.go#TestDiscoveryMarksThePluginsOfARequiredRootAndRecordsEachPluginsRoot",
+        "test:chord/nextnode/plugins/plugins_discover_test.go#TestDiscoveryReportsARequiredRootThatDoesNotExistAndRecordsEachProblemsRoot"
+      ]
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e4ea6ba85df1ba74d00cb4876a78289f23725e48355ff3ec911a9a52cc3d3056"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e4ea6ba85df1ba74d00cb4876a78289f23725e48355ff3ec911a9a52cc3d3056",
+      "rationale": "Derived by the interface gap detector: PluginRuntime is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:load",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2e03556d4c4773d9126d9fb3c80cbcdf6f564b37ae8183ac11c84ea6b5146678",
+      "rationale": "Derived by the interface gap detector: PluginRuntime::property:load is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer",
+        "test:chord/nextnode/plugins/plugins_node_callbacks_test.go#TestGoPackageAnAppModuleImportsItBySpecifier"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:load::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:reload",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f92b88911a9a9e92fabe07bfe3b9614a423c2de9285d239b56dc26fb84cf8433",
+      "rationale": "Derived by the interface gap detector: PluginRuntime::property:reload is Go chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Reload"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestSyncACallbackCannotCallItsNodeHost",
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:reload::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins#Plugins",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:af87ba047cef36889685ba09806479f6072825418935da65a47a32a659dcee04"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:af87ba047cef36889685ba09806479f6072825418935da65a47a32a659dcee04",
+      "rationale": "Derived by the interface gap detector: Plugins is Go chord/nextnode/plugins/plugins_plugins.go#Plugins (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:build",
@@ -122864,23 +123362,61 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:load",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d752c855918c6c0f3ed6612c9f38a6a8ddc5d510f21511f6c8bf20807e2c237b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d752c855918c6c0f3ed6612c9f38a6a8ddc5d510f21511f6c8bf20807e2c237b",
+      "rationale": "Derived by the interface gap detector: Plugins::property:load is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.Load (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Load"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
+        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAGoCoreFacetNeedingAPluginsTypeKeepsItsOldCodeWhenThePluginFailsToBuild"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:load::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2921880d44f68eca3694c43d3cbef31ac7334a0ea256b41d0c03e6ead0bcefd5"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:2921880d44f68eca3694c43d3cbef31ac7334a0ea256b41d0c03e6ead0bcefd5",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:reload",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6a2865d5adc2cef1a4a4b9383a0265e099aae003a9a9562a1aa9f34691729813"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6a2865d5adc2cef1a4a4b9383a0265e099aae003a9a9562a1aa9f34691729813",
+      "rationale": "Derived by the interface gap detector: Plugins::property:reload is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Reload"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample36PluginFailures",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample37PluginImports",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample51SingleFilePlugin"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:reload::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c910862c11d67d2ac83e2dd1794d748ef1d39748e9eadb6a3cd61892321995f8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:c910862c11d67d2ac83e2dd1794d748ef1d39748e9eadb6a3cd61892321995f8",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:rollout",
@@ -122998,23 +123534,71 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:step",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:441f2e9794d6493e8e710bca6bc4d66937d0be892c44decf10472aa435596048"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:441f2e9794d6493e8e710bca6bc4d66937d0be892c44decf10472aa435596048",
+      "rationale": "Derived by the interface gap detector: Plugins::property:step is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.Step (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins.Step"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Step"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout"
+      ]
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:step::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b4a3fb09bfd459c2204a36fbd65bc0f12eca393546e572f2c6bbbdfd02daa6ec"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b4a3fb09bfd459c2204a36fbd65bc0f12eca393546e572f2c6bbbdfd02daa6ec",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:watchBase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5cb4746b71a95183ce0812a62bdbd7fbe9270309e395438cdb6f2a8ebf4d9b45"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5cb4746b71a95183ce0812a62bdbd7fbe9270309e395438cdb6f2a8ebf4d9b45",
+      "rationale": "Derived by the interface gap detector: Plugins::property:watchBase is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
+      ]
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:watchBase::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7353ca5a23f7ab3b76d1110665c354c9385562d8dd2b2929e50c8a5a82f779ab"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7353ca5a23f7ab3b76d1110665c354c9385562d8dd2b2929e50c8a5a82f779ab",
+      "rationale": "Derived by the interface gap detector: Plugins::property:watchBase::call:0 is Go chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/plugins/plugins_plugins.go#Plugins.WatchBase"
+      ]
     },
     {
       "id": "pkg:chord/plugins#PluginScript",
@@ -123111,8 +123695,25 @@
     },
     {
       "id": "pkg:chord/plugins#RolloutHost",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a5d6ddebf39f57e5142f8df9e638dddcac3fe79c185ead7bef3f0a085609313a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a5d6ddebf39f57e5142f8df9e638dddcac3fe79c185ead7bef3f0a085609313a",
+      "rationale": "Derived by the interface gap detector: RolloutHost is Go chord/nextnode/plugins/plugins_plugins.go#RolloutHost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_plugins.go#RolloutHost"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Rollout"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed",
+        "test:chord/nextnode/app/reload_rollout_test.go#TestARolloutAcrossHostsReloadsTheServerThenTheRunningWorkersThenTheClientsAWorkerNotRunningStartsOnTheNewCode"
+      ]
     },
     {
       "id": "pkg:chord/plugins#RolloutResult",
@@ -123138,18 +123739,38 @@
     },
     {
       "id": "pkg:chord/plugins#RolloutStep",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:686f8c81c2d841221cdcbe5d9f014784f5196e2397e735756239e43347beff93"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:686f8c81c2d841221cdcbe5d9f014784f5196e2397e735756239e43347beff93",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins#RuntimeLoad",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6a1b5be0ff3ca465bc981b2c092fbe9e5e489e9fb3c3d6692f137448de0d2aef"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6a1b5be0ff3ca465bc981b2c092fbe9e5e489e9fb3c3d6692f137448de0d2aef",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bbd501fca534aeb7e615281915b6010bfc402d1a922945a726f2c84647e5a46d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bbd501fca534aeb7e615281915b6010bfc402d1a922945a726f2c84647e5a46d",
+      "rationale": "Derived by the interface gap detector: TestedPlugin is Go chord/nextnode/plugins/plugins_testing.go#TestedPlugin (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_testing.go#TestedPlugin"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_testing.go#TestPlugin"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker",
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:close",
@@ -123199,23 +123820,43 @@
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:contributions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c5f63694a730aebe854874147f954839126f242d7a9a2b2278e2d9ed25a56808"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c5f63694a730aebe854874147f954839126f242d7a9a2b2278e2d9ed25a56808",
+      "rationale": "Derived by the interface gap detector: TestedPlugin::property:contributions is Go chord/nextnode/plugins/plugins_testing.go#TestedPlugin.Contributions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/plugins/plugins_testing.go#TestedPlugin.Contributions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/plugins/plugins_testing.go#TestedPlugin.Contributions"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor",
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginCollectsUntilNoNewRegistryAppearsAnObjectLiveAfterTheFirstCollectionContributesTooSol"
+      ]
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:contributions::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:43696c8684fe819d085076fda5606bad985a40bbe78bbcd1ace6300194df77e9"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:43696c8684fe819d085076fda5606bad985a40bbe78bbcd1ace6300194df77e9",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:errors",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:20f9d5a86ed8a29948e6860a28d6f21e72def85372e0e6da068e1aea5c838c27"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:20f9d5a86ed8a29948e6860a28d6f21e72def85372e0e6da068e1aea5c838c27",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:host",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0d8f1350fe23d25f2049a6758b9a1c8e23308007f0f288afd96df721df93262d"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0d8f1350fe23d25f2049a6758b9a1c8e23308007f0f288afd96df721df93262d",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:plugin",
@@ -123239,13 +123880,15 @@
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:root",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f4c7b9ab5522aea66e78fa60b9873ed8b8d07292eb11bd70a4ed221f6e02d5f0"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f4c7b9ab5522aea66e78fa60b9873ed8b8d07292eb11bd70a4ed221f6e02d5f0",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:root::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d83affa392f522312a59b2ab122c33097b87e1e32739dcb0aa3d171675498657"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d83affa392f522312a59b2ab122c33097b87e1e32739dcb0aa3d171675498657",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/testing.ts testPlugin returns one in-process Host with live JavaScript stubs; PiG's TestPlugin loads the plugin on the Node subprocess host (TestedPlugin.Host) and the stubs on a Go host (TestedPlugin.Stubs), reads the errors as NodeHostError, takes registries by name and runs as the host's principal through RootPrincipal. Designed out under D502 and D503 (docs/parity/divergences/D502.md, D503.md); the cases of testing.test.ts pass through these forms (plugins_testing_test.go)."
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin::property:unserved",
@@ -125195,18 +125838,21 @@
     },
     {
       "id": "pkg:chord/surfaces#tuiSurface",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9c9adb02c354c9dc66fe8782e5e2867d4e1332c11d1866f092ec912f7b3f372c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9c9adb02c354c9dc66fe8782e5e2867d4e1332c11d1866f092ec912f7b3f372c",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
     },
     {
       "id": "pkg:chord/surfaces#TuiSurface",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:35e9642ec330fdcfe34f164dd337e37bb49b35e73d8854a7fa845951eae8c3ea"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:35e9642ec330fdcfe34f164dd337e37bb49b35e73d8854a7fa845951eae8c3ea",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
     },
     {
       "id": "pkg:chord/surfaces#tuiSurface::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2520959d155e445346ec3118b0cd5c2d09cd4f15feb35be1d3a46cdc441fcd03"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:2520959d155e445346ec3118b0cd5c2d09cd4f15feb35be1d3a46cdc441fcd03",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
     },
     {
       "id": "pkg:chord/surfaces#TuiSurfaceOptions",
@@ -125252,18 +125898,21 @@
     },
     {
       "id": "pkg:chord/surfaces#webSurface",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e5bc49ee5d20c294dd8d7bdbd560e42c296218011405b68822cf0fbfdb86e112"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e5bc49ee5d20c294dd8d7bdbd560e42c296218011405b68822cf0fbfdb86e112",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
     },
     {
       "id": "pkg:chord/surfaces#WebSurface",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b60e98cfb3c03d2da4e1c8da6c6fa0f5f154bea680717f59ae267d07c8d7ba82"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b60e98cfb3c03d2da4e1c8da6c6fa0f5f154bea680717f59ae267d07c8d7ba82",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
     },
     {
       "id": "pkg:chord/surfaces#webSurface::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:df9b923ab5acd8a17e706e441ea2e39f924d062015fe973132f7b3bfe7afe008"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:df9b923ab5acd8a17e706e441ea2e39f924d062015fe973132f7b3bfe7afe008",
+      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build (and the kind's first set) before it resolves, and its result carries `base` and `inputs`. PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit: the server answers meanwhile, a request needing the base waits for it), because the first set is published to the loaded host's scripts object; base and inputs are read from Build's SurfaceBuilt. Designed out under D608 (docs/parity/divergences/D608.md); surfaces_build_test.go and app_web_browser_test.go run the build."
     },
     {
       "id": "pkg:chord/surfaces#WebSurfaceOptions",
