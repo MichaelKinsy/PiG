@@ -289,6 +289,8 @@ plugins/artifacts/activity.tsx
 plugins/artifacts/contract.ts
 plugins/artifacts/package.json
 plugins/artifacts/preview.tsx
+plugins/artifacts/store.ts
+plugins/artifacts/tool.ts
 plugins/artifacts/web.tsx
 plugins/chat-mode/contract.ts
 plugins/chat-mode/display.ts
@@ -367,8 +369,11 @@ plugins/prompt/web.tsx
 plugins/search/contract.ts
 plugins/search/package.json
 plugins/send-file/activity.tsx
+plugins/send-file/contract.ts
 plugins/send-file/package.json
+plugins/send-file/tool.ts
 plugins/send-file/web.tsx
+plugins/send-file/worker.ts
 plugins/sessions/BranchSheet.tsx
 plugins/sessions/SessionSheet.tsx
 plugins/sessions/contract.ts
