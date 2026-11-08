@@ -28,7 +28,6 @@ coding  ./coding
 coding  ./internal/codingagent/tools
 cli   ./coding/cli
 libs  ./chord
-libs  ./chord/host
 libs  ./chord/output
 libs  ./chord/telemetrysqlite
 libs  ./chord/internal/parking
@@ -37,6 +36,10 @@ libs  ./chord/next/documents
 libs  ./chord/next/host
 libs  ./chord/next/link
 libs  ./chord/next/store
+libs  ./chord/next/surfaces
+libs  ./chord/next/tui
+libs  ./chord/next/telemetry
+libs  ./chord/nextnode/app
 libs  ./chord/nextnode/http
 libs  ./chord/nextnode/plugins
 libs  ./chord/nextnode/workers

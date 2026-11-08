@@ -128,10 +128,10 @@ func TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten(t *
 	path := fileOf(t, "big.bin", 50*1024*1024)
 	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{
 		Routes: []HttpRouteEntry{
-			RouteFunc("GET /f", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			publicRoute("GET /f", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 				return FileResponse(path, FileResponseOptions{Ranges: true, Download: "big.bin"})
 			}),
-			RouteFunc("GET /wrapped", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			publicRoute("GET /wrapped", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 				return FileResponse(path, FileResponseOptions{})
 			}),
 		},

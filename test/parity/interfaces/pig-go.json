@@ -81280,9 +81280,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(name string, serverURL string) (github.com/MichaelKinsy/PiG/coding/mcpext.McpOAuthServerStore, error)"
+        "type": "func(name string, serverURL string) (github.com/MichaelKinsy/PiG/mcp/oauth.McpOAuthServerStore, error)"
       },
-      "shapeHash": "sha256:c9486c52ea4bc71c6f073752a1b1ec757162c9fcace52b2d436de03fd18c731d"
+      "shapeHash": "sha256:4e72c440fd069020b2b2486b02ad32d8652e158f40762a517cc8541e030bf7b3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#graphMcpCredentials.Remove",
@@ -107520,17 +107520,6 @@
       "shapeHash": "sha256:bdeebc0dd8c1a15ce46b8e77b75d03f0aaac126bdf4596b99a9cbac78e1bea06"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#IsLoopbackRedirectURI",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension",
-      "name": "IsLoopbackRedirectURI",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(value string) bool"
-      },
-      "shapeHash": "sha256:a850009ecea9bdb6c51f1629d26dc56f16a1a4c544ed10743cfe89f53333f790"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#IsLsToolResult",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "IsLsToolResult",
@@ -108079,17 +108068,6 @@
         "type": "McpExposure"
       },
       "shapeHash": "sha256:2c1a0afe1e605bba5432d4b775b7bbd048d6c867e6a70445364ee414c2d06a6a"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#McpNamespace",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension",
-      "name": "McpNamespace",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(server string) string"
-      },
-      "shapeHash": "sha256:642ba223513ff289a738c2a1737c6c1d770294f0571c82e0574af5a375b2a517"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#McpOAuthConfig",
@@ -113801,6 +113779,28 @@
       "shapeHash": "sha256:c26c51e14232ff3830c3dbe8e77f187d44598a8b8b020ce8e2bed7f981bb2dd5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#checkAuth",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "checkAuth",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fields map[string]encoding/json.RawMessage, url github.com/MichaelKinsy/PiG/internal/nodeurl.HTTPURL) string"
+      },
+      "shapeHash": "sha256:8171318faa1a47c10076953cac99b1b788d8cb838eea41b9fc839bc7491d6f05"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#checkExposures",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "checkExposures",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fields map[string]encoding/json.RawMessage) string"
+      },
+      "shapeHash": "sha256:ffeb178cf1204c5099847de343cb3aacc3d261d79051275f8d78d079f240a501"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#childGroupMayHoldOutput",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "childGroupMayHoldOutput",
@@ -114340,17 +114340,6 @@
       "shapeHash": "sha256:7c317b6069cc4b09d690e20035f91c5cb501fbb3b00d51bcdb9ff2587586f2e5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#mcpServerName",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension",
-      "name": "mcpServerName",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#modelStreamRequestKey",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "modelStreamRequestKey",
@@ -114360,6 +114349,17 @@
         "type": "modelStreamRequestKey"
       },
       "shapeHash": "sha256:4428ea9d68043a7d6de72ef6e0a73c7a97d757bb9c1ae83321f1da8738a26f0e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#mustObjectMap",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "mustObjectMap",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw encoding/json.RawMessage) map[string]encoding/json.RawMessage"
+      },
+      "shapeHash": "sha256:1d457719aaa480099011075bb87f0a862dec4ada5b52a2cc5096f8cfd4ae6113"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#noCopy",
@@ -115363,17 +115363,6 @@
       "shapeHash": "sha256:670f43ceb998d43ffa5711132b76f48871cca51b450873d95e4c7907604d9b6e"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#validateOAuth",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension",
-      "name": "validateOAuth",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(fields map[string]encoding/json.RawMessage, name string) string"
-      },
-      "shapeHash": "sha256:5dca1b1753f1afda5461b28789bbb1134f431e9a726875b90749386a7cde3d81"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#validateSpriteID",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "validateSpriteID",
@@ -115644,9 +115633,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(tools []github.com/MichaelKinsy/PiG/coding/extension.AgentTool, options DescriptionOptions) (string, error)"
+        "type": "func(tools []github.com/MichaelKinsy/PiG/coding/extension.AgentTool, options DescriptionOptions) string"
       },
-      "shapeHash": "sha256:5305851dd70a77459a0ba7df31cceeb9c996f98499d2d6d50baac2d7a98bfd2c"
+      "shapeHash": "sha256:96fff55bf676b6e381ccbad4a1a649e185e39086095b3694067e45808ba9becf"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#DefaultInlineBudget",
@@ -116073,9 +116062,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(schema encoding/json.RawMessage, depth int) (string, bool)"
+        "type": "func(schema encoding/json.RawMessage, root encoding/json.RawMessage, depth int) (string, bool)"
       },
-      "shapeHash": "sha256:2e126c5d5ceb6fd9921a306ac8de0eea5b60cb67ef0d6d1c3c1296c1d7cbce49"
+      "shapeHash": "sha256:297ccf28ee9f9075a0a8d2e7e0ae8a1f6fd9ddfd630cec43a8050ecb4f33b89f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#describeGlobals",
@@ -116117,9 +116106,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(schema encoding/json.RawMessage) (string, bool)"
+        "type": "func(schema encoding/json.RawMessage, root encoding/json.RawMessage) (string, bool)"
       },
-      "shapeHash": "sha256:e66ff37239c26e6244dba0caabd371f443b0af6eb71da73e52ff1253851a2948"
+      "shapeHash": "sha256:3ccae0df39d8f4ef62ef5c8a98793ef6459acc33c58cb9bce0f7baf488ea541e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#describeValue",
@@ -116197,6 +116186,17 @@
         "type": "func(raw encoding/json.RawMessage, key string) encoding/json.RawMessage"
       },
       "shapeHash": "sha256:aa4829c1e4f2bc12c7b2be5dea0189072847097caba8c849bb8453e7d6949b55"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#followRef",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode",
+      "name": "followRef",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(schema encoding/json.RawMessage, root encoding/json.RawMessage) encoding/json.RawMessage"
+      },
+      "shapeHash": "sha256:946e21818e637946277ac550b3533798cca4d9c2c0b3ea2aa0f5becf3d00847a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#formatCallSummary",
@@ -116557,9 +116557,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(declaration github.com/MichaelKinsy/PiG/codemode.Tool) (string, error)"
+        "type": "func(declaration github.com/MichaelKinsy/PiG/codemode.Tool) string"
       },
-      "shapeHash": "sha256:2eb273df99c7c071ae782d2ae9a8af0896b64b02f2c7ce78fc3b76e40471e85b"
+      "shapeHash": "sha256:a806e09570ae42077ddd68982a5c62bd9b7c361d682d5a0e1b80c566906f5d39"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#resultOf",
@@ -117668,9 +117668,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(schema any, parts *[]string)"
+        "type": "func(schema any, root any, parts *[]string, seen map[uintptr]bool)"
       },
-      "shapeHash": "sha256:5275563f25fc65b8bead803c08a87bb61ddbc327d4f39d799313f703daac7be3"
+      "shapeHash": "sha256:b3722804381901ada1e5355dd425dfd3ac14413d1c3059f17eea46348baeae5e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#searchAndLoad",
@@ -162669,9 +162669,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func() (McpOAuthSettings, error)"
+        "type": "func() (github.com/MichaelKinsy/PiG/mcp/oauth.McpOAuthSettings, error)"
       },
-      "shapeHash": "sha256:11e8dad53dcbbca06bdb427c0fc8707237b61a36f67e079d217ab3a72c22a472"
+      "shapeHash": "sha256:2c7dfe53038cfa0ddc37d7c6eae09684ffbdda423942abc85d7b02b5c1fb888f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Connection.OAuthURL",
@@ -163002,17 +163002,6 @@
         "type": "func(options McpToolOptions) github.com/MichaelKinsy/PiG/coding/extension.ToolDefinition"
       },
       "shapeHash": "sha256:389510999a127810dc5ecb8688b3263f700aef6fee970cddc083bf5ce8c1578c"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#CreateMcpToolName",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "CreateMcpToolName",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(server string, tool string, isTaken func(string) bool) string"
-      },
-      "shapeHash": "sha256:8eb5666d12b703684808660018e0c95657e6853c317c3968765c24d715cfee77"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#EventContext",
@@ -163972,17 +163961,6 @@
       "shapeHash": "sha256:0b624022daecffc8858854169bfc9b2ccf2ad12070015c91aa6222c7a87c408f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#LimitMcpContent",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "LimitMcpContent",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(content []github.com/MichaelKinsy/PiG/ai.ToolResultMessageContent, saveOutput McpOutputSaver) ([]github.com/MichaelKinsy/PiG/ai.ToolResultMessageContent, string)"
-      },
-      "shapeHash": "sha256:80101354d62dc83b8c0127400e0487e11b590ee3d33383257bbe4534f109fc85"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#ListMcpResourceTemplatesTool",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "ListMcpResourceTemplatesTool",
@@ -164049,17 +164027,6 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpAuthProvider",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpAuthProvider",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "McpAuthProvider"
-      },
-      "shapeHash": "sha256:e37df1f6011616e69d8e5542fafe46a17f49c744daf4ca1ff6f24fdacf87ba02"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpAuthProviderOptions",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "McpAuthProviderOptions",
@@ -164121,9 +164088,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(name string, serverURL string) (McpOAuthServerStore, error)"
+        "type": "func(name string, serverURL string) (github.com/MichaelKinsy/PiG/mcp/oauth.McpOAuthServerStore, error)"
       },
-      "shapeHash": "sha256:f1f52a1a6369deed0f18198c346a2dbbd901b34c1af9d6e651e6a17794ee0c25"
+      "shapeHash": "sha256:4e72c440fd069020b2b2486b02ad32d8652e158f40762a517cc8541e030bf7b3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOAuthCredentialStore.Remove",
@@ -164190,50 +164157,6 @@
         "type": "McpOAuthCredentials"
       },
       "shapeHash": "sha256:1b5254ac4614136d4153dc6e1ec5a8f2c09bca8563f76af484e40dd49c90ad02"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOAuthServerStore",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpOAuthServerStore",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "McpOAuthServerStore"
-      },
-      "shapeHash": "sha256:f351618635e901c6c8b069400ab70128e0f06895079892fb513ecf4b0ae5f514"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOAuthSettings",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpOAuthSettings",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "McpOAuthSettings"
-      },
-      "shapeHash": "sha256:0a3a5c07ffe3773078adf85a70e0ec55658d4dc7315f464e3a21dd37da505225"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOutputMaxBytes",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpOutputMaxBytes",
-      "kind": "constant",
-      "exported": true,
-      "shape": {
-        "type": "untyped int"
-      },
-      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOutputSaver",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpOutputSaver",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "McpOutputSaver"
-      },
-      "shapeHash": "sha256:c86935fe5535b3fbfda50997e62ff8361dc10053c8ce741f67db7ed5bd813408"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpResourceServer",
@@ -164311,28 +164234,6 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpSignInCancelledError",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpSignInCancelledError",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "McpSignInCancelledError"
-      },
-      "shapeHash": "sha256:801ef9bc03014edef11d5b9a358c3a4ada84779b565e147c04bd7b5d97f538c0"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpSignInCancelledError.Error",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpSignInCancelledError.Error",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() string"
-      },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpSignInPrompt",
@@ -164451,9 +164352,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(options McpAuthProviderOptions) McpAuthProvider"
+        "type": "func(options McpAuthProviderOptions) github.com/MichaelKinsy/PiG/mcp/oauth.McpAuthProvider"
       },
-      "shapeHash": "sha256:71a7e10e4b4228dcc82bf7b24400eb64fea3dfc639ddf3d73addb1518ab94f5d"
+      "shapeHash": "sha256:6020a3c6a2f12cb757f4b024b887c7795954bb991727fbb914e3a35641a947f4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#NewMcpOAuthCredentialStore",
@@ -164605,9 +164506,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(ctx context.Context, options SignInOptions) (err error)"
+        "type": "func(ctx context.Context, options SignInOptions) error"
       },
-      "shapeHash": "sha256:6aeaa4544e24fe3e3c457d2725d4deaf7f9e8b7f41574eeda3d49adfd1946541"
+      "shapeHash": "sha256:382a46c07d15ba102ca07b5519a298bf752341011912c08f0ad3394e71302d09"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#SignInOptions",
@@ -164863,83 +164764,6 @@
       "shapeHash": "sha256:ce1e1031946aa8e2411c85503443c3f9a29c591d98f1fc2e77a77062a4141be5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProvider",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "authProvider",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "authProvider"
-      },
-      "shapeHash": "sha256:785d3c507b9f3d023ff1359627cee6b0ae8114c4035595a95b9bcfca23bbb286"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProvider.OnUnauthorized",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "authProvider.OnUnauthorized",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context, unauthorized github.com/MichaelKinsy/PiG/mcp.UnauthorizedContext) error"
-      },
-      "shapeHash": "sha256:a0c1068bef1a7f67d3b67d2ea177de1c7a3084c9422d9b94d8d253b0e7c47673"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProvider.Settled",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "authProvider.Settled",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context)"
-      },
-      "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProvider.Token",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "authProvider.Token",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context) (string, error)"
-      },
-      "shapeHash": "sha256:5758203aa4eeed6f2a3c2b82a0460f0133363846ec4b5ed980f1764d4c5ecf02"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProvider.refresh",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "authProvider.refresh",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, staleToken string, fetch github.com/MichaelKinsy/PiG/mcp.McpFetch, challenge *github.com/MichaelKinsy/PiG/mcp/oauth.OAuthChallenge) error"
-      },
-      "shapeHash": "sha256:437529b5b6ab0fd86d7771f0c7b47f4315fc9c3c9ae68cb330b72ee042bb8ce6"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProvider.refreshLocked",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "authProvider.refreshLocked",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, staleToken string, fetch github.com/MichaelKinsy/PiG/mcp.McpFetch, challenge *github.com/MichaelKinsy/PiG/mcp/oauth.OAuthChallenge) error"
-      },
-      "shapeHash": "sha256:437529b5b6ab0fd86d7771f0c7b47f4315fc9c3c9ae68cb330b72ee042bb8ce6"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProvider.running",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "authProvider.running",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() *refreshFlight"
-      },
-      "shapeHash": "sha256:84b593cf01ecbf3bb11830a23d5448770f4693ff19ff074ed941b1753ae48aa4"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#authProviderOf",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "authProviderOf",
@@ -164949,17 +164773,6 @@
         "type": "func(entry McpServerEntry) string"
       },
       "shapeHash": "sha256:54ea965de765eae14f6bcb7c4f63c68acb1248209e2f31f780c42933aa3ec3ae"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#authorizationResponse",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "authorizationResponse",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "authorizationResponse"
-      },
-      "shapeHash": "sha256:5b1e91b552dba9af91800d9d1c54e8f7de478711d923e71bd9e70683835c5cb4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#backgroundTasks",
@@ -165028,50 +164841,6 @@
       "shapeHash": "sha256:c471d1ca353269f5f384c1942af4ae604a1ea81cc3fbae41ea0625d6506cabaa"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#callbackHost",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "callbackHost",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#callbackID",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "callbackID",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(serverURL string) (string, error)"
-      },
-      "shapeHash": "sha256:2d6821e2ed7330b34ea8d8667b6719a9bed4dd71a2bf8a0ccf93bea6fc461c16"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#callbackPath",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "callbackPath",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#callbackSettings",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "callbackSettings",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "callbackSettings"
-      },
-      "shapeHash": "sha256:c45dc42569d4fe80d66483d2653e2fc6eff01fda17566115a73d1270cb3c7d76"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#clientMetadataBaseURL",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "clientMetadataBaseURL",
@@ -165081,50 +164850,6 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#clientMetadataDocument",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "clientMetadataDocument",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(serverURL string, redirectURL string, metadata *github.com/MichaelKinsy/PiG/mcp/oauth.AuthorizationServerMetadata) (*github.com/MichaelKinsy/PiG/mcp/oauth.OAuthClientMetadataDocument, error)"
-      },
-      "shapeHash": "sha256:8d5bcca88067430b7af0dab96fc3ca710d1c8ae51fa8813ee4b3ffa03b44c120"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#closeBody",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "closeBody",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "closeBody"
-      },
-      "shapeHash": "sha256:34ee17c463616a565dc0bdc92ff59a5dcf7466ca75e65eb480f254e35c7aa2cf"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#closeBody.Close",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "closeBody.Close",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() error"
-      },
-      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#closeBody.Read",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "closeBody.Read",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(p []byte) (n int, err error)"
-      },
-      "shapeHash": "sha256:a53011a1ff068fa64f19d96a5c186623578e9655c76d7bc1d8d8f2b97a53173f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#commandContext",
@@ -165246,17 +164971,6 @@
         "type": "func(contents github.com/MichaelKinsy/PiG/mcp.ResourceContents) (encoding/json.RawMessage, error)"
       },
       "shapeHash": "sha256:033fea4f2475b2af02b9f7c6eb8a95ecafba229c9d2f90903c094ee7b1924415"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#createProvider",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "createProvider",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(serverURL string, store github.com/MichaelKinsy/PiG/mcp/oauth.McpOAuthStateStore, settings McpOAuthSettings, redirectURL string, appName string, onRedirect func(github.com/MichaelKinsy/PiG/mcp/oauth.URL)) (*github.com/MichaelKinsy/PiG/mcp/oauth.McpOAuthProvider, error)"
-      },
-      "shapeHash": "sha256:1c7e4e662fda27480b62660b3e2a6305a534023b854f416621394e560febf49d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#cursorDescription",
@@ -165424,17 +165138,6 @@
       "shapeHash": "sha256:f7b6547e4f5f16e636a17770c3b7ca70e0edbc86376598c54cf1c1d8c727291f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#fallbackRedirectURL",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "fallbackRedirectURL",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#fileExists",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "fileExists",
@@ -165556,17 +165259,6 @@
       "shapeHash": "sha256:a8140eee5092d04db5071e81c5c858da9cb860a2155f473a9536405f78f7bb48"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#isOverride",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "isOverride",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(value *github.com/MichaelKinsy/PiG/internal/orderedjson.Object) bool"
-      },
-      "shapeHash": "sha256:c4d7eb3c58f0e7445d268fef01925223edb16b1e583acfbbb37a39309c91eb30"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#isSchemaDataKeyword",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "isSchemaDataKeyword",
@@ -165655,6 +165347,17 @@
       "shapeHash": "sha256:ab1fe1e6164d3893f50d25c742d0795b2bcc4b8d39e2c2ad8935d8652e6afc44"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#limitMcpContent",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "limitMcpContent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(content []github.com/MichaelKinsy/PiG/ai.ToolResultMessageContent, saveOutput github.com/MichaelKinsy/PiG/mcp.McpOutputSaver) ([]github.com/MichaelKinsy/PiG/ai.ToolResultMessageContent, string)"
+      },
+      "shapeHash": "sha256:f7d723182702ebca1b9d209cb7dcd852e5549fae8bbf97bdbe85c2cee68b07ad"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#lineBreak",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "lineBreak",
@@ -165719,17 +165422,6 @@
         "type": "func(server string, item any) (encoding/json.RawMessage, error)"
       },
       "shapeHash": "sha256:4c87759d966f1343bd6e61c2346215a345f991cdc5981e6f3634768b0b3e4254"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#listenForCallback",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "listenForCallback",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(settings callbackSettings, extraPaths []string, port *int, required bool) (*github.com/MichaelKinsy/PiG/mcp/oauth.OAuthCallbackServer, error)"
-      },
-      "shapeHash": "sha256:5f19c172c82889abcba32aef9f5489ee49dd3392bef8f7971e9b5236ba8e657c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#listingErrors",
@@ -165823,17 +165515,6 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#maxTimerDelay",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "maxTimerDelay",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped int"
-      },
-      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#maxToolNameLength",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "maxToolNameLength",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -166018,17 +165699,6 @@
       "shapeHash": "sha256:00fdcd25b941b5f5e547528a6b8eb75403791718a26830ef25e2b1fdc04ba5e7"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#mergeScopes",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "mergeScopes",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(scopes ...string) string"
-      },
-      "shapeHash": "sha256:478416d48d856bef5cbc88c53181a3c30477b6323c003e7a08d170dd31c29acf"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#mustMarshal",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "mustMarshal",
@@ -166038,17 +165708,6 @@
         "type": "func(object *github.com/MichaelKinsy/PiG/internal/orderedjson.Object) encoding/json.RawMessage"
       },
       "shapeHash": "sha256:6c9ee0aef4c9e7980190a76cd831cd56d89018f53f2c04624b70450e3270528b"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#newCallbackSettings",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "newCallbackSettings",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(settings McpOAuthSettings) (callbackSettings, error)"
-      },
-      "shapeHash": "sha256:22e9ad8aeea88163646e01b9885b7e0f593c2a3406674c43e6acc92c329413aa"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#newPiAdapter",
@@ -166106,138 +165765,6 @@
       "shapeHash": "sha256:c768369cba12d8485d3afb054038f7bbc625788277266c20cbb5ef024a86da37"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "time.Duration"
-      },
-      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.Abs",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.Abs",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() time.Duration"
-      },
-      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.Hours",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.Hours",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() float64"
-      },
-      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.Microseconds",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.Microseconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() int64"
-      },
-      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.Milliseconds",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.Milliseconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() int64"
-      },
-      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.Minutes",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.Minutes",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() float64"
-      },
-      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.Nanoseconds",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.Nanoseconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() int64"
-      },
-      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.Round",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.Round",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(m time.Duration) time.Duration"
-      },
-      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.Seconds",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.Seconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() float64"
-      },
-      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.String",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.String",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() string"
-      },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.Truncate",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.Truncate",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(m time.Duration) time.Duration"
-      },
-      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#oauthRequestTimeout.format",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "oauthRequestTimeout.format",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(buf *[32]byte) int"
-      },
-      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#objectPrototypeNames",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "objectPrototypeNames",
@@ -166247,17 +165774,6 @@
         "type": "map[string]bool"
       },
       "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#offersClientMetadataDocument",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "offersClientMetadataDocument",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(settings McpOAuthSettings, appName string) bool"
-      },
-      "shapeHash": "sha256:28f8ef6db64b982fc3bfb0f2cf04ec2762de2681f843296f3f8ee64609f40e80"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#openFlight",
@@ -166326,17 +165842,6 @@
       "shapeHash": "sha256:f1d9d2fdd75572762c9c6617d1b17c6490c4b4b75d19c6e9b5508e01528dc79c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#orDefaultFetch",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "orDefaultFetch",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(fetch github.com/MichaelKinsy/PiG/mcp.McpFetch) github.com/MichaelKinsy/PiG/mcp.McpFetch"
-      },
-      "shapeHash": "sha256:099d998dac5e8880f3ef172c55b9bd3fbe71e932c3be4d17f2dc9d86a59786ce"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#overrideKeys",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "overrideKeys",
@@ -166379,17 +165884,6 @@
         "type": "func(name string) bool"
       },
       "shapeHash": "sha256:99b2f0daea2fa02fc914a648e106daded5256ebd450a525affbca76e1bb1f7d3"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#pathOrSlash",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "pathOrSlash",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(p string) string"
-      },
-      "shapeHash": "sha256:185ba5e2d89eb6c2ac50a44c98487a773f023e0e797471863e434e923f7484fc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#pathToFileURL",
@@ -166601,6 +166095,28 @@
       "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#piClientMetadataDocuments",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "piClientMetadataDocuments",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/mcp/oauth.McpClientMetadataDocuments"
+      },
+      "shapeHash": "sha256:36466494cc0ce711bebb28c129a1d29c4d9ddb3a388ebf6cf43a19b50b51944f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#piSettings",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "piSettings",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(settings github.com/MichaelKinsy/PiG/mcp/oauth.McpOAuthSettings, appName string) github.com/MichaelKinsy/PiG/mcp/oauth.McpOAuthSettings"
+      },
+      "shapeHash": "sha256:3f92166e90febedc20daee4d821f961918d8d02ee2d60fc6022151c44c29dfbb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#pick",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "pick",
@@ -166753,17 +166269,6 @@
         "type": "func(authorizationURL github.com/MichaelKinsy/PiG/mcp/oauth.URL)"
       },
       "shapeHash": "sha256:24033b2fb469db2010d1178e9ecc8819d5b985c9f8e21c58e1f07e86cc03a635"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshFlight",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshFlight",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "refreshFlight"
-      },
-      "shapeHash": "sha256:8dc8a66f3afc8d95462a0a9da1d776b794c6dd2668cbce70ea6fd294cbb52193"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshLockRetry",
@@ -167162,149 +166667,6 @@
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "time.Duration"
-      },
-      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.Abs",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.Abs",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() time.Duration"
-      },
-      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.Hours",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.Hours",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() float64"
-      },
-      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.Microseconds",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.Microseconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() int64"
-      },
-      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.Milliseconds",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.Milliseconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() int64"
-      },
-      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.Minutes",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.Minutes",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() float64"
-      },
-      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.Nanoseconds",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.Nanoseconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() int64"
-      },
-      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.Round",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.Round",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(m time.Duration) time.Duration"
-      },
-      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.Seconds",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.Seconds",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() float64"
-      },
-      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.String",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.String",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() string"
-      },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.Truncate",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.Truncate",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(m time.Duration) time.Duration"
-      },
-      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#refreshSkew.format",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "refreshSkew.format",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(buf *[32]byte) int"
-      },
-      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#registeredRedirectURLs",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "registeredRedirectURLs",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(client *github.com/MichaelKinsy/PiG/mcp/oauth.OAuthClientInformationMixed) []string"
-      },
-      "shapeHash": "sha256:9c7e70475ca8bc8c26863f4caa6bb2b8e2137f69755300a50e425c43780362ac"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#relocateSchema",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "relocateSchema",
@@ -167347,39 +166709,6 @@
         "type": "map[string]bool"
       },
       "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#responseFromRedirectURL",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "responseFromRedirectURL",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(input string, state string, redirectURL *net/url.URL) (authorizationResponse, error)"
-      },
-      "shapeHash": "sha256:40887806aacd0268eadd5b853588fcd711fce3464a3b67c72a2c0cf6bce93f66"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#responseResult",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "responseResult",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "responseResult"
-      },
-      "shapeHash": "sha256:0b28a317571401b7c569976286be893f96a29362b2782d717dd73050e34d3407"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#sanitizeToolName",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "sanitizeToolName",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(name string) string"
-      },
-      "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#scriptResultOf",
@@ -167624,50 +166953,6 @@
       "shapeHash": "sha256:06bc79407d6398767536a8022a352007ba35f9a7c9ad5d29da916f93869066c4"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#timedFetch",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "timedFetch",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(fetch github.com/MichaelKinsy/PiG/mcp.McpFetch) github.com/MichaelKinsy/PiG/mcp.McpFetch"
-      },
-      "shapeHash": "sha256:099d998dac5e8880f3ef172c55b9bd3fbe71e932c3be4d17f2dc9d86a59786ce"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#timeoutFetch",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "timeoutFetch",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "timeoutFetch"
-      },
-      "shapeHash": "sha256:e34d00c367e691203bf9856fc3a71e591366f42fd91f5b9690ac4525c1e4305f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#timeoutFetch.Do",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "timeoutFetch.Do",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(request *net/http.Request) (*net/http.Response, error)"
-      },
-      "shapeHash": "sha256:e25da296e3caf26f8aa7f54ec7484b6f23f37909d1b4bf71a987dba1838775a5"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#toParameters",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "toParameters",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(schema encoding/json.RawMessage) encoding/json.RawMessage"
-      },
-      "shapeHash": "sha256:21e870b04ce60465a1f68b92f77873cd01c7c5781716b184d8c72e83b57cbd4a"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#toToolAnnotations",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "toToolAnnotations",
@@ -167688,17 +166973,6 @@
         "type": "toolBatchRegistrar"
       },
       "shapeHash": "sha256:82080937a5035c8a06d79ee4cd1cf88d2341b81ce4dc1f6cc0f7978955b56351"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#toolNameUnsafe",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "toolNameUnsafe",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#toolSet",
@@ -167776,17 +167050,6 @@
         "type": "func(entry McpServerEntry) bool"
       },
       "shapeHash": "sha256:5251fde5308d70f702a18fd49836193f7c906296ad6a04f5367f8d9fd1063688"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#waitForAuthorizationResponse",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "waitForAuthorizationResponse",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, callback *github.com/MichaelKinsy/PiG/mcp/oauth.OAuthCallbackServer, authorizationURL github.com/MichaelKinsy/PiG/mcp/oauth.URL, redirectURL *net/url.URL, state string, prompt McpSignInPrompt) (authorizationResponse, error)"
-      },
-      "shapeHash": "sha256:3f50f3694ddbe05343373fbbcd27a1ec9258210abe3ceec3d6ecf247af4a678d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#withClient",
@@ -312769,17 +312032,6 @@
       "shapeHash": "sha256:be11c10f366143170535f1489cf3077f5d93d5c971ad692141ab72645ac5767f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#MiddleTruncationResult",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "MiddleTruncationResult",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "MiddleTruncationResult"
-      },
-      "shapeHash": "sha256:1e4be642601d2317168c4144d557dd263db3bca79c6780c3e8b9e04082015090"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#MutationTicket",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "MutationTicket",
@@ -313735,17 +312987,6 @@
         "type": "TruncateLineResult"
       },
       "shapeHash": "sha256:ae8f3ed71b9a1a27d4a46dbcdfc4e07051aa0dd71c47ca9d897268af3e56a842"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#TruncateMiddle",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "TruncateMiddle",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(content string, maxBytes int) MiddleTruncationResult"
-      },
-      "shapeHash": "sha256:1c12a2c43ecd80aa16749220d441ebd2c11d57cbca623a66de104d148a244d2f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#TruncateTail",

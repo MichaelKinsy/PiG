@@ -128,11 +128,54 @@ func (executor *gatedExecutor) All(sql string, params ...sqlite.SqliteValue) ([]
 // `BEGIN IMMEDIATE` fails before the callback runs, a failed `COMMIT` fails after it succeeded (the facade rolls
 // back), a failed `ROLLBACK` replaces the error the facade rolled back with by one that does not unwrap to it (the
 // real facade's AggregateError).
+//
+// Its transactions run one at a time in the order they were called (the Node facade's lock is no queue), and it counts
+// them: Pi's facade is async, so a transaction called earlier always runs earlier.
 type testDatabase struct {
 	sqlite.SqliteDatabase
 	mu      sync.Mutex
 	failing map[string]bool
 	gate    *transactionGate
+	// entries is the transactions called so far; entered wakes waitEntered.
+	entries int
+	entered *sync.Cond
+	// tail is the last transaction called: the next one runs after it ended.
+	tail chan struct{}
+}
+
+// enter takes the next place in the order of transactions: the transaction runs once previous is closed, and closes
+// mine when it ended.
+func (db *testDatabase) enter() (previous <-chan struct{}, mine chan struct{}) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	db.entries++
+	if db.entered == nil {
+		db.entered = sync.NewCond(&db.mu)
+	}
+	db.entered.Broadcast()
+	previous = db.tail
+	mine = make(chan struct{})
+	db.tail = mine
+	return previous, mine
+}
+
+// transactions is the number of transactions called so far.
+func (db *testDatabase) transactions() int {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	return db.entries
+}
+
+// waitEntered blocks until n transactions were called (one of them may still wait for the one before it).
+func (db *testDatabase) waitEntered(n int) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	if db.entered == nil {
+		db.entered = sync.NewCond(&db.mu)
+	}
+	for db.entries < n {
+		db.entered.Wait()
+	}
 }
 
 // take reports whether statement was set to fail, and clears it (one failure per fail call).
@@ -166,6 +209,11 @@ func (db *testDatabase) takeGate() *transactionGate {
 
 // Transaction is the facade's, with the injected failures and the hold.
 func (db *testDatabase) Transaction(callback func(transaction sqlite.SqliteExecutor) error) error {
+	previous, mine := db.enter()
+	if previous != nil {
+		<-previous
+	}
+	defer close(mine)
 	if db.take(failBegin) {
 		return errors.New("injected: BEGIN IMMEDIATE failed")
 	}
@@ -216,6 +264,38 @@ func gatedStore(t testing.TB, outbox ...bool) (*ChordStore, func() *transactionG
 		return gate
 	}
 }
+
+// controlled is a store over a testDatabase a test can make fail (fail), hold (arm) and count (transactions, those after
+// the store opened).
+type controlled struct {
+	store  *ChordStore
+	db     *testDatabase
+	opened int
+}
+
+func controlledStore(t testing.TB, outbox ...bool) *controlled {
+	t.Helper()
+	c := &controlled{}
+	c.store = openMemory(t, func(inner sqlite.SqliteDatabase) sqlite.SqliteDatabase {
+		c.db = &testDatabase{SqliteDatabase: inner, failing: map[string]bool{}}
+		return c.db
+	}, outbox)
+	c.opened = c.db.transactions()
+	return c
+}
+
+// fail makes the next transaction's statement fail, once.
+func (c *controlled) fail(statement string) { c.db.fail(statement) }
+
+// arm holds the next transaction at its first statement until the gate is released.
+func (c *controlled) arm() *transactionGate {
+	gate := newTransactionGate()
+	c.db.hold(gate)
+	return gate
+}
+
+// transactions is the number of backend transactions since the store opened.
+func (c *controlled) transactions() int { return c.db.transactions() - c.opened }
 
 // stagedWrite is a StagedWrite from its order and its apply (Pi's `{ order, apply }` literal).
 type stagedWrite struct {
@@ -321,18 +401,21 @@ func exported(t testing.TB, store Store, ctx context.Context) []ArchivePart {
 type testOwner struct {
 	failures []*data.ChordError
 	scope    *struct{}
+	queries  *LiveQueries
 }
 
 func (owner *testOwner) Label() string { return "app.store" }
 
 func (owner *testOwner) Scope() any { return owner.scope }
 
+func (owner *testOwner) Queries() *LiveQueries { return owner.queries }
+
 func (owner *testOwner) AssertLive() error { return nil }
 
 func (owner *testOwner) Fail(err *data.ChordError) { owner.failures = append(owner.failures, err) }
 
 // tableOwner is a fresh owner for table handles; its failures are the ones its handles reported.
-func tableOwner() *testOwner { return &testOwner{scope: new(struct{})} }
+func tableOwner() *testOwner { return &testOwner{scope: new(struct{}), queries: NewLiveQueries()} }
 
 // tableIn creates definition (and its indexes) in store as `app.store:<name>` and returns a handle to it; owner is
 // the handle's owner (a fresh one by default).

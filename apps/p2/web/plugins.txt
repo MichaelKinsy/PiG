@@ -1,6 +1,8 @@
 chat
 envs
 login
+logs
 sessions
+sharing
 subagents
 web-shell

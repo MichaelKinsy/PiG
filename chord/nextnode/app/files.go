@@ -196,6 +196,7 @@ func optString(object *delta.JsonObject, key string) string {
 
 func optInt(object *delta.JsonObject, key string) int64 {
 	number, _ := object.Value(key).(float64)
+	//portlint:allow numbers decoded JSON numbers are finite, so only fractions and values past 2^63 differ from JS; callers compare the value with the piece and file limits
 	return int64(number)
 }
 
@@ -235,6 +236,8 @@ func maybeFileJSON(file *FileInfo) delta.JsonValue {
 // caps and at most uploads uploads under way (64 for 0). Blobs live in `dir/blobs/`, uploads under way in
 // `dir/.uploads/<run>/` (`Uploads`), ending with the object (an unfinished one is dropped when the next one goes live). For
 // apps that host their own hosts; `startServer` and `startWorker` load it on theirs.
+//
+// pig divergence (D430): the facet starts the appends of a chunked upload with Reference.Start and awaits them apart.
 func FilesFacet(dir string, caps FilesCaps, uploads int) host.Facet {
 	maxFile := caps.MaxFile
 	if maxFile == 0 {
@@ -329,6 +332,7 @@ func filesObject(
 		if err != nil {
 			return 0, err
 		}
+		//portlint:allow numbers the usage document holds a byte count this package wrote as an integer
 		return int64(value.(float64)), nil
 	}
 	// Uploads under way count against the total too: two of them cannot pass it together.
@@ -451,6 +455,7 @@ func filesObject(
 				// Accepted in this section, in the order the calls came: the usage is the document's value, read here.
 				used := int64(0)
 				if value, err := index.Usage.Value(); err == nil {
+					//portlint:allow numbers the usage document holds a byte count this package wrote as an integer
 					used = int64(value.Value("bytes").(float64))
 				}
 				accepted, err := underway.accept(optString(object, "upload"), optInt(object, "offset"), bytes, func(adding, fileSize, underwaySize int64) error {

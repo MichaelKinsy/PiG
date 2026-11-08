@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,7 +16,7 @@ import (
 // data, found and given back.
 
 func chordCode(err error) (data.ChordErrorCode, data.ChordErrorReason) {
-	if chordErr, ok := err.(*data.ChordError); ok {
+	if chordErr, ok := errors.AsType[*data.ChordError](err); ok {
 		return chordErr.Code, chordErr.Reason
 	}
 	return "", ""

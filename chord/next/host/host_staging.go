@@ -231,8 +231,6 @@ func stageEntry(plugin string, entry servedEntry, types *namedMap[*served], regi
 
 // Recorded is what a recorded factory declared: what a reload's fate and checks need, nothing activated.
 type Recorded struct {
-	// natives is how many natives it opens (`self.open`).
-	natives       int
 	documents     []documents.AnyDefinition
 	tables        []*store.TableDefinition
 	jobs          []*JobDefinition
@@ -303,7 +301,6 @@ type recordingSelf struct {
 	object        *chordObject
 	served        *served
 	ctx           context.Context
-	natives       int
 	documents     *namedMap[documents.AnyDefinition]
 	tables        *namedMap[*store.TableDefinition]
 	jobs          *namedMap[*JobDefinition]
@@ -317,7 +314,7 @@ type recordingSelf struct {
 var _ StoreSelf = (*recordingSelf)(nil)
 
 func (r *recordingSelf) recorded() Recorded {
-	out := Recorded{natives: r.natives, requests: r.requests}
+	out := Recorded{requests: r.requests}
 	for _, name := range r.documents.keys() {
 		definition, _ := r.documents.get(name)
 		out.documents = append(out.documents, definition)
@@ -396,10 +393,11 @@ func (*recordingDocuments) Fail(*data.ChordError) {}
 // inertTableOwner is the owner of a recording's table handles: never live, so every read and query returns errInert.
 type inertTableOwner struct{ label string }
 
-func (o inertTableOwner) Label() string         { return o.label }
-func (o inertTableOwner) Scope() any            { return nil }
-func (o inertTableOwner) AssertLive() error     { return errInert }
-func (o inertTableOwner) Fail(*data.ChordError) {}
+func (o inertTableOwner) Label() string               { return o.label }
+func (o inertTableOwner) Scope() any                  { return nil }
+func (o inertTableOwner) Queries() *store.LiveQueries { return nil }
+func (o inertTableOwner) AssertLive() error           { return errInert }
+func (o inertTableOwner) Fail(*data.ChordError)       {}
 
 // Table implements StoreSelf.
 func (r *recordingSelf) Table(definition *store.TableDefinition) *store.TableHandle {
@@ -418,6 +416,21 @@ func (r *recordingSelf) Table(definition *store.TableDefinition) *store.TableHan
 	return store.NewTableHandle(definition, sqlName, chordStore, inertTableOwner{label: object.text})
 }
 
+// Query implements StoreSelf: a live query over a table this factory declared (its handle is inert: the query names the
+// table), limited.
+func (r *recordingSelf) Query(_ *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
+	r.assertDeclaring("query")
+	label := r.object.text
+	table, declared := r.tables.get(q.Table.Name)
+	if !declared || table != q.Table {
+		panic(declarationError("%s: self.query: the table is not one this factory declared", label))
+	}
+	if err := store.CheckLiveQuery(table, q, limit, label); err != nil {
+		panic(err)
+	}
+	return state.ConstantOf[delta.JsonValue](nil)
+}
+
 // Derive implements Self.
 func (r *recordingSelf) Derive([]any, func(values []any) (delta.JsonValue, error)) chord.Watchable[delta.JsonValue] {
 	r.assertDeclaring("derive")
@@ -432,9 +445,9 @@ func (r *recordingSelf) Get(typ *contracts.Contract, params *delta.JsonObject) *
 		panic(err)
 	}
 	r.requests = append(r.requests, request{kind: requestType, contract: typ, params: checked.params})
-	// A reference nothing binds and nothing indexes: inert, whatever its members are asked.
+	// A reference nothing binds and nothing indexes: inert, whatever its members are asked (its `at(key)` too: Pi's INERT takes any call).
 	host := r.object.host
-	inert, err := host.reference(typ, nil, host.own(), GetOptions{})
+	inert, err := host.reference(typ, r.object, host.own(), GetOptions{})
 	if err != nil {
 		panic(err)
 	}
@@ -486,7 +499,6 @@ func (r *recordingSelf) Open(
 	...NativeOptions,
 ) Native[any] {
 	r.assertDeclaring("open")
-	r.natives++
 	return inertNative{}
 }
 
@@ -557,22 +569,6 @@ func (r *recordingSelf) assertDeclaring(declaration string) {
 	if !r.declaring {
 		panic(declarationError("%s: self.%s is valid only in the factory", r.object.text, declaration))
 	}
-}
-
-// migratesTables reports whether recorded's tables are at a version newer than object's store has them: their eager
-// migration runs at an activation, so the object restarts instead of swapping (§4).
-func migratesTables(object *chordObject, recorded Recorded) bool {
-	chordStore := object.host.store
-	if chordStore == nil {
-		return false
-	}
-	owner := object.served.contract.Name
-	for _, table := range recorded.tables {
-		if version, ok := chordStore.TableVersion(store.TableSqlName(owner, table.Name)); ok && version < table.Version {
-			return true
-		}
-	}
-	return false
 }
 
 // errInert is what an inert handle's operations return: nothing runs while a factory is recorded.

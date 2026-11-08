@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/chord/src/node/app/files-index.ts
@@ -73,9 +74,9 @@ func (file FileInfo) JSON() *delta.JsonObject {
 func fileInfoOf(object *delta.JsonObject) FileInfo {
 	file := FileInfo{
 		ID: object.Value("id").(string), Space: object.Value("space").(string), Path: object.Value("path").(string),
-		Version: int64(object.Value("version").(float64)), Size: int64(object.Value("size").(float64)),
+		Version: int64(object.Value("version").(float64)), Size: int64(object.Value("size").(float64)), //portlint:allow numbers a summary this package wrote: integers
 		Mime: object.Value("mime").(string), Source: object.Value("source").(string),
-		Created: int64(object.Value("created").(float64)),
+		Created: int64(object.Value("created").(float64)), //portlint:allow numbers a summary this package wrote: an integer
 	}
 	file.Ref, _ = object.Value("ref").(string)
 	file.Key, _ = object.Value("key").(string)
@@ -436,7 +437,7 @@ func (index *FilesIndex) List(space, folder string, limit int64, after *string, 
 }
 
 func cursorText(value map[string]any) *string {
-	encoded, _ := json.Marshal(value)
+	encoded, _ := jsstring.MarshalJSON(value)
 	text := string(encoded)
 	return &text
 }
@@ -1037,18 +1038,18 @@ func listCursor(after *string) (listCursorState, error) {
 	if after == nil {
 		return listCursorState{part: "folders"}, nil
 	}
-	var parsed any
-	if err := json.Unmarshal([]byte(*after), &parsed); err != nil {
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(*after), &members); err != nil {
 		return listCursorState{}, data.Invalid(data.ReasonArgs, "files: not a listing cursor")
 	}
-	object, _ := parsed.(map[string]any)
-	if text, ok := object["folders"].(string); ok {
-		return listCursorState{part: "folders", after: &text}, nil
+	// A member counts when it is a string; `"files": null` is the cursor that starts the files after the folders.
+	for _, part := range []string{"folders", "files"} {
+		var text string
+		if raw := members[part]; len(raw) > 0 && raw[0] == '"' && json.Unmarshal(raw, &text) == nil {
+			return listCursorState{part: part, after: &text}, nil
+		}
 	}
-	if text, ok := object["files"].(string); ok {
-		return listCursorState{part: "files", after: &text}, nil
-	}
-	if value, present := object["files"]; present && value == nil {
+	if string(members["files"]) == "null" {
 		return listCursorState{part: "files"}, nil
 	}
 	return listCursorState{}, data.Invalid(data.ReasonArgs, "files: not a listing cursor")
@@ -1085,7 +1086,7 @@ func CheckPath(path string, kind PathKind) error {
 	}
 	bad := len(utf16.Encode([]rune(path))) > maxPath || strings.Contains(path, "\x00")
 	if !bad {
-		for _, segment := range strings.Split(path, "/") {
+		for segment := range strings.SplitSeq(path, "/") {
 			if segment == "" || segment == "." || segment == ".." {
 				bad = true
 				break
