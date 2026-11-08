@@ -94,6 +94,10 @@ type graphWatch struct {
 func (observer graphWatch) End(end chord.WatchEnd) { observer.EndWith(end) }
 
 type taskGraphMount struct {
+	// turn is one synchronous turn of Pi's event loop over the mount: a publication's advance, a blocked refresh on the line and an
+	// observer's attachment each run from deriving through telling the observers while holding it, so none sees a revision half made
+	// and the observers get the revisions in the order the mount took them. It is taken before the view's mu.
+	turn      sync.Mutex
 	value     TaskGraph
 	observers []taskGraphObserver
 	// records is what the blocked reason reads of each live task, so a registry change can derive it again without
@@ -132,13 +136,11 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, blocking TaskGraphBlocki
 		}
 		view.mu.Lock()
 		mount := view.mount
-		var observers []taskGraphObserver
-		if mount != nil {
-			observers = slices.Clone(mount.observers)
-		}
 		view.mu.Unlock()
 		if mount != nil {
-			advanceTaskGraph(ctx, mount, observers, publication, blocking.Blocked, view.session.Report)
+			mount.turn.Lock()
+			defer mount.turn.Unlock()
+			advanceTaskGraph(ctx, mount, view.observersOf(mount), publication, blocking.Blocked, view.session.Report)
 		}
 	})
 	blocking.SubscribeBlocked(view.refreshBlocked)
@@ -224,6 +226,8 @@ func (view *TaskGraphView) attach(ctx context.Context, create func(value TaskGra
 				view.mount = nil
 			}
 		}
+		mount.turn.Lock()
+		defer mount.turn.Unlock()
 		observer = create(mount.value, detach)
 		view.mu.Lock()
 		defer view.mu.Unlock()
@@ -256,14 +260,13 @@ func (view *TaskGraphView) refreshBlocked() {
 	_, _ = view.session.ReadOnLine(func(durable.Storage) (any, error) {
 		view.mu.Lock()
 		mount := view.mount
-		var observers []taskGraphObserver
-		if mount != nil {
-			observers = slices.Clone(mount.observers)
-		}
 		view.mu.Unlock()
 		if mount == nil {
 			return nil, nil
 		}
+		mount.turn.Lock()
+		defer mount.turn.Unlock()
+		observers := view.observersOf(mount)
 		var ops []durable.Op
 		changed := map[string]TaskGraphNode{}
 		for _, key := range slices.Sorted(maps.Keys(mount.records)) {
@@ -284,6 +287,14 @@ func (view *TaskGraphView) refreshBlocked() {
 		publishTaskGraph(context.Background(), mount, observers, changed, ops, view.session.Report)
 		return nil, nil
 	})
+}
+
+// observersOf is the observers the mount has now; its caller holds the mount's turn, so none attaches before the call that it
+// tells them about.
+func (view *TaskGraphView) observersOf(mount *taskGraphMount) []taskGraphObserver {
+	view.mu.Lock()
+	defer view.mu.Unlock()
+	return slices.Clone(mount.observers)
 }
 
 // build reads the graph on the line, through the line's storage.
