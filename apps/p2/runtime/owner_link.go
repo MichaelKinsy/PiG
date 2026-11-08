@@ -7,63 +7,52 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"regexp"
 	"strconv"
-	"strings"
 	"time"
+	"regexp"
+	"slices"
+	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
-// Ports apps/p2/src/runtime/owner-link.ts and apps/p2/scripts/owner-link.ts: owner links (`/owner#<token>`) and the origins
-// they are for, checked by the owner-link command and the TUI launcher.
+// Ports apps/p2/src/runtime/owner-link.ts and apps/p2/scripts/owner-link.ts: owner links (`/owner#<token>`) and the origins they are for, checked by the
+// owner-link CLI and the TUI launcher. URLs parse as WHATWG's `new URL` does (internal/nodeurl).
 
-// OwnerOrigin parses an origin an owner link is for. Never allow credentials or an invitation in a path or query.
-func OwnerOrigin(value string) (*url.URL, error) {
-	parsed, err := url.Parse(value)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" && parsed.Opaque == "" && parsed.Path == "" {
-		return nil, errors.New("Invalid URL; use an http(s) origin")
+// OwnerOrigin parses value as the http(s) origin an owner link is for: no credentials, path, query or fragment, and plain
+// http only for loopback. Shared by the shell CLI and the TUI; an invitation never goes in a path or query.
+func OwnerOrigin(value string) (nodeurl.URL, error) {
+	url, err := nodeurl.ParseURL(value)
+	if err != nil {
+		return nodeurl.URL{}, errors.New("Invalid URL; use an http(s) origin")
 	}
-	if (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.User != nil ||
-		(parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.Fragment != "" {
-		return nil, errors.New("Use an http(s) origin URL without credentials, path or query")
+	if !slices.Contains([]string{"http:", "https:"}, url.Protocol) || url.Username != "" || url.Password != "" ||
+		url.Pathname != "/" || url.Query != "" || url.Hash != "" {
+		return nodeurl.URL{}, errors.New("Use an http(s) origin URL without credentials, path or query")
 	}
-	if parsed.Scheme != "https" {
-		switch parsed.Hostname() {
-		case "127.0.0.1", "localhost", "::1":
-		default:
-			return nil, errors.New("Remote connections require HTTPS")
-		}
+	if url.Protocol != "https:" && !slices.Contains([]string{"127.0.0.1", "localhost", "[::1]"}, url.Hostname) {
+		return nodeurl.URL{}, errors.New("Remote connections require HTTPS")
 	}
-	return parsed, nil
+	return url, nil
 }
 
-var ownerFragment = regexp.MustCompile(`^[a-f0-9]{64}$`)
+var ownerFragment = regexp.MustCompile(`^#[a-f0-9]{64}$`)
 
-func originText(link *url.URL) string {
-	port := link.Port()
-	if (link.Scheme == "http" && port == "80") || (link.Scheme == "https" && port == "443") {
-		port = ""
-	}
-	host := strings.ToLower(link.Hostname())
-	if strings.Contains(host, ":") {
-		host = "[" + host + "]"
-	}
-	if port != "" {
-		host += ":" + port
-	}
-	return link.Scheme + "://" + host
-}
+var tokenPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
-// OwnerLinkToken is the invitation in value, an owner link for origin (its token in the fragment).
-func OwnerLinkToken(value string, origin *url.URL) (string, error) {
-	link, err := url.Parse(strings.TrimSpace(value))
-	if err != nil || link.Scheme == "" || link.Host == "" {
+// OwnerLinkToken is the token of the owner link value for origin: the fragment of `<origin>/owner#<64 hex digits>`.
+func OwnerLinkToken(value string, origin nodeurl.URL) (string, error) {
+	link, err := nodeurl.ParseURL(strings.TrimSpace(value))
+	if err != nil {
 		return "", errors.New("Invalid owner link")
 	}
-	if originText(link) != originText(origin) || link.User != nil || link.Path != "/owner" || link.RawQuery != "" || link.ForceQuery || !ownerFragment.MatchString(link.Fragment) {
+	// A query, even an empty one, is refused as Pi's `link.search` is: only an empty one is "" there too, so the parsed
+	// query decides.
+	if link.Origin() != origin.Origin() || link.Username != "" || link.Password != "" || link.Pathname != "/owner" ||
+		link.Query != "" || !ownerFragment.MatchString(link.Hash) {
 		return "", errors.New("Use an owner link for this origin with its token in the fragment")
 	}
-	return link.Fragment, nil
+	return link.Hash[1:], nil
 }
 
 // OwnerLink is `p2 owner-link [base-url]`: it asks the running server on loopback (`PORT`, 8788) for an invitation and
@@ -115,10 +104,8 @@ func OwnerLink(ctx context.Context, args []string, env func(string) string) (str
 		return "", errors.New("Invalid owner-token response")
 	}
 	token, _ := value.Token.(string)
-	if !ownerFragment.MatchString(token) {
+	if !tokenPattern.MatchString(token) {
 		return "", errors.New("Invalid owner-token response")
 	}
-	link := *origin
-	link.Path, link.Fragment = "/owner", token
-	return link.String(), nil
+	return origin.Origin() + "/owner#" + token, nil
 }

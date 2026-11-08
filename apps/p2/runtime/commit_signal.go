@@ -38,8 +38,10 @@ func (o commitSignalObserver) Advance(_ context.Context, publication durable.Com
 // End is the Session's close or failure: the signal's owner (the worker's Harness) ends with it.
 func (commitSignalObserver) End(chord.WatchEnd) {}
 
-// NewCommitSignal observes session's commits; accepts picks the ones that count.
-func NewCommitSignal(session durable.Session, accepts func(durable.CommitPublication) bool) *CommitSignal {
+// NewCommitSignal observes session's commits (a Session or a Harness); accepts picks the ones that count.
+func NewCommitSignal(session interface {
+	ObserveCommits(durable.CommitObserver) durable.CommitObservation
+}, accepts func(durable.CommitPublication) bool) *CommitSignal {
 	signal := &CommitSignal{waiters: map[chan struct{}]struct{}{}}
 	signal.observation = session.ObserveCommits(commitSignalObserver{signal: signal, accepts: accepts})
 	return signal
@@ -52,8 +54,12 @@ func (s *CommitSignal) Version() int {
 	return s.version
 }
 
-// Next returns once an accepted commit happened after the version seen, or with ctx's error when it ends first.
+// Next returns once an accepted commit happened after the version seen, or with ctx's cause (an abort's reason) when it ends
+// first; a ctx that ended already is refused before the version is looked at.
 func (s *CommitSignal) Next(ctx context.Context, seen int) error {
+	if err := context.Cause(ctx); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	if s.version != seen {
 		s.mu.Unlock()
@@ -69,7 +75,7 @@ func (s *CommitSignal) Next(ctx context.Context, seen int) error {
 		s.mu.Lock()
 		delete(s.waiters, wake)
 		s.mu.Unlock()
-		return ctx.Err()
+		return context.Cause(ctx)
 	}
 }
 
