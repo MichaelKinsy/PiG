@@ -1,6 +1,6 @@
 {
-	"version": "30ab85343d7d15beff4cc44b3d1c91d0076d9b25ff687eb28accd487db92002d",
-	"script": "app-V642X3K6.js",
+	"version": "00e273a97499303ebd3bd456af6dd2e4e52860e47f4039c0e1bd6783313cf3c2",
+	"script": "app-PUNM6QUZ.js",
 	"style": "app-MMH4KMJY.css",
 	"plugins": [
 		"chat",
@@ -53,16 +53,16 @@
 			"sha256": "29a4c269e50bda0d11aaf86f831f24693ec25dfed9ff79d3fae0e64be58aaa10"
 		},
 		{
-			"name": "app-V642X3K6.js",
+			"name": "app-PUNM6QUZ.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1098124,
-			"sha256": "e287c3595d3060d8525c6390a013c7113157a693f0036024f194fd8a3e734597"
+			"size": 1098411,
+			"sha256": "b4c326fe9820e13c2308ad4af93903864e58ac6f04c7c35ec3cc6222b5107584"
 		},
 		{
-			"name": "app-V642X3K6.js.map",
+			"name": "app-PUNM6QUZ.js.map",
 			"type": "application/json",
-			"size": 5324118,
-			"sha256": "f2d59986b7ef7eefd1a91f57a64b31a9082a6112e1ac64950e7d69d61e74c218"
+			"size": 5325290,
+			"sha256": "296be0695bf3496de303736a9e5ab78943e31551184bb576ef6b0c599775e56e"
 		}
 	],
 	"brand": {
