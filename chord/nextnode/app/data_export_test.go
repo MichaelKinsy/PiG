@@ -38,7 +38,7 @@ func (tickOwner) Queries() *store.LiveQueries { return store.NewLiveQueries() }
 func (tickOwner) AssertLive() error           { return nil }
 func (tickOwner) Fail(*data.ChordError)       {}
 
-var openFence = store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+var openFence = store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 
 // ticker is a writer of the ticks table of opened.
 type ticker struct {
