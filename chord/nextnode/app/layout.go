@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
@@ -68,8 +67,8 @@ func OpenDataDir(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if stat, ok := info.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Getuid() {
-		return "", fmt.Errorf("startServer: the data directory %s belongs to another user (uid %d)", dataDir, stat.Uid)
+	if err := checkDirectoryOwner(dataDir, info); err != nil {
+		return "", err
 	}
 	return dataDir, nil
 }
