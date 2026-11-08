@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.5.0's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.5.0`.
+Every extension-facing surface of Pi 1.5.0+c23b9ec1's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.5.0+c23b9ec1`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items, the Python SDK's classes, members and parameters and the Lisp SDK's exported symbols and the keyword and optional parameters of its exported functions, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.5.0.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.5.0+c23b9ec1.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -41,14 +41,14 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Python | 31 | 0 | 0 |
 | Lisp | 31 | 0 | 0 |
 
-1639 package exports and class members, Node runtime:
+1641 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 907 | 10 | 0 | 10 |
+| `pi-coding-agent` | 907 | 10 | 0 | 11 |
 | `pi-tui` | 368 | 1 | 0 | 1 |
 | `pi-ai` | 102 | 3 | 0 | 0 |
-| `pi-ai/compat` | 153 | 11 | 0 | 0 |
+| `pi-ai/compat` | 153 | 11 | 0 | 1 |
 | `pi-ai/models` | 16 | 0 | 0 | 0 |
 | `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
 | `pi-agent-core` | 45 | 0 | 0 | 0 |
@@ -1864,6 +1864,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ModelRuntime.removeRuntimeApiKey` | `ModelRuntime.removeRuntimeApiKey` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.resolveModel` | `ModelRuntime.resolveModel` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.setRuntimeApiKey` | `ModelRuntime.setRuntimeApiKey` | Pi's own code |
+| `pi-coding-agent: ModelRuntime.settleCredentialWrites` | `ModelRuntime.settleCredentialWrites` | missing |
 | `pi-coding-agent: ModelRuntime.stream` | `ModelRuntime.stream` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.streamDeferred` | `ModelRuntime.streamDeferred` | Pi's own code |
 | `pi-coding-agent: ModelRuntime.streamSimple` | `ModelRuntime.streamSimple` | Pi's own code |
@@ -2982,6 +2983,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: resolveTranscriptTools` | `function resolveTranscriptTools` | Pi's own code |
 | `pi-ai/compat: retryAssistantCall` | `function retryAssistantCall` | Pi's own code |
 | `pi-ai/compat: retryDelayMs` | `function retryDelayMs` | Pi's own code |
+| `pi-ai/compat: setBedrockProviderLoader` | `function setBedrockProviderLoader` | missing |
 | `pi-ai/compat: setBedrockProviderModule` | `function setBedrockProviderModule` | Pi's own code |
 | `pi-ai/compat: stream` | `function stream` | Pi's own code |
 | `pi-ai/compat: streamAnthropic` | `variable streamAnthropic` | Pi's own code |
