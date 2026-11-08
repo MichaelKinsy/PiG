@@ -1,4 +1,4 @@
-# Pi c23b9ec1 apps/p2, verbatim. sha256  path (relative to apps/p2)
+# Pi c23b9ec1ef12a63573d739d4c294f81a377b7d57 apps/p2, verbatim. sha256  path (relative to apps/p2)
 e2fd3323e4d00968757d5cc6d2e8fc3fc764bd899c76428953d8b932d088963e  src/api/v1/index.ts
 fdb6e2fc6a80b60a9ae355a0bcfb1922ebcbecdc6b0fcc8154f68f1606543467  src/runtime/access.ts
 f016015a958bf43a5dab143e39eae54ecbd305574d5a145e7b6b27ea8904e0d7  src/runtime/chord.ts
@@ -30,3 +30,7 @@ ef9f341fd6f99e0f04306a78ea15e52361554b3dbe0483e91e022c8140fd4be0  plugins/sessio
 71d15228cd54b18c7d51c667b04f5221e762e66ce0c7495072128686d47e5a8d  plugins/envs/contract.ts
 03c79f7cafc7373ed8ef212f80844b42e2bd6efd5d97b2a9e37534335c955218  plugins/envs/schema.ts
 d1ffc037588464e07dcac103d83422896147ed41791c7e837357e4e61e8f7e35  plugins/subagents/contract.ts
+7ef9f85cffaa05d0c488466925f8c6b63d62912cb35fd356a046e5f7c03b18a5  plugins/sharing/contract.ts
+3c36c46e4d3d9e906e6125603bc3e1beb529e6b7ad44084a0a148c3a66a191aa  src/runtime/worker.ts
+6fc86b7feb58ce8f6dcf64139612a5b24d6dc995e8ea3131b7472a0bcdd1ddc6  plugins/chat/shell.ts
+f3135b4d9645321879c1f69ebe997362808380e901a0324f1c3bef027fc8edb4  plugins/sessions/lock-worker.ts

@@ -29,3 +29,7 @@ src/runtime/server.ts
 plugins/envs/contract.ts
 plugins/envs/schema.ts
 plugins/subagents/contract.ts
+plugins/sharing/contract.ts
+src/runtime/worker.ts
+plugins/chat/shell.ts
+plugins/sessions/lock-worker.ts
