@@ -82,8 +82,6 @@ pkg:chord/.#Host::property:get::call:0	chord	undecidable	chord/next/host/host_ho
 pkg:chord/.#Host::property:hold	chord	child-gap	chord/next/host/host_host.go#Host.Hold
 pkg:chord/.#Host::property:hold::call:0	chord	undecidable	chord/next/host/host_host.go#Host.Hold
 pkg:chord/.#Host::property:incarnation	chord	not-exercised	chord/next/host/host_host.go#Host.Incarnation
-pkg:chord/.#Host::property:principalAttributes	chord	member-missing	chord/next/host/host_host.go#Host
-pkg:chord/.#Host::property:principalAttributes::call:0	chord	member-missing	chord/next/host/host_host.go#Host
 pkg:chord/.#Host::property:references	chord	not-exercised	chord/next/host/host_host.go#Host.References
 pkg:chord/.#Host::property:references::call:0	chord	undecidable	chord/next/host/host_host.go#Host.References
 pkg:chord/.#Host::property:registry	chord	child-gap	chord/next/host/host_host.go#Host.Registry
@@ -506,10 +504,8 @@ pkg:chord/sync#pullSession::call:0	chord	signature-mismatch	chord/sync/client.go
 pkg:chord/sync#uploadSession	chord	child-gap	chord/sync/client.go#UploadSession
 pkg:chord/sync#uploadSession::call:0	chord	signature-mismatch	chord/sync/client.go#UploadSession
 pkg:chord/telemetry-sqlite#TelemetryBatch	chord	no-go-symbol	
-pkg:chord/tui#AttachedFile	chord	no-go-symbol	
 pkg:chord/tui#Bridge	chord	no-go-symbol	
-pkg:chord/tui#BridgeRequest	chord	no-go-symbol	
-pkg:chord/tui#BridgeStart	chord	no-go-symbol	
+pkg:chord/tui#BridgeRequest	chord	type-mismatch	chord/nextnode/tui/tui_bridge.go#BridgeRequest
 pkg:chord/tui#BridgeTerminal	chord	no-go-symbol	
 pkg:chord/tui#BridgeTerminal::construct:0	chord	child-gap	
 pkg:chord/tui#BridgeTerminal::property:columns	chord	child-gap	
@@ -520,10 +516,10 @@ pkg:chord/tui#BridgeTerminal::property:onResize::call:0	chord	child-gap
 pkg:chord/tui#BridgeTerminal::property:rows	chord	child-gap	
 pkg:chord/tui#BridgeTerminal::property:write	chord	child-gap	
 pkg:chord/tui#BridgeTerminal::property:write::call:0	chord	child-gap	
-pkg:chord/tui#LauncherMessage	chord	no-go-symbol	
+pkg:chord/tui#LauncherMessage	chord	type-mismatch	chord/nextnode/tui/tui_bridge.go#LauncherMessage
 pkg:chord/tui#OptimisticAdd	chord	not-exercised	chord/next/tui/tui_scope.go#OptimisticAdd
 pkg:chord/tui#OptimisticAdd::call:0	chord	signature-mismatch	chord/next/tui/tui_scope.go#OptimisticAdd
-pkg:chord/tui#SandboxMessage	chord	no-go-symbol	
+pkg:chord/tui#SandboxMessage	chord	type-mismatch	chord/nextnode/tui/tui_bridge.go#SandboxMessage
 pkg:chord/tui#TerminalRuntime	chord	no-go-symbol	
 pkg:chord/tui#TerminalRuntimeOptions	chord	no-go-symbol	
 pkg:chord/tui#TerminalTheme	chord	no-go-symbol	
@@ -546,18 +542,9 @@ pkg:chord/tui#TuiScope::property:watch	chord	member-missing	chord/next/tui/tui_s
 pkg:chord/tui#TuiScope::property:watch::call:0	chord	member-missing	chord/next/tui/tui_scope.go#TuiScope
 pkg:chord/tui#startTerminalRuntime	chord	no-go-symbol	
 pkg:chord/tui#startTerminalRuntime::call:0	chord	child-gap	
-pkg:chord/tui/launcher#PromptTerminal	chord	no-go-symbol	
-pkg:chord/tui/launcher#RunningTerminal	chord	no-go-symbol	
-pkg:chord/tui/launcher#TerminalCredentials	chord	no-go-symbol	
-pkg:chord/tui/launcher#TerminalOptions	chord	no-go-symbol	
-pkg:chord/tui/launcher#filterOutput	chord	no-go-symbol	
-pkg:chord/tui/launcher#filterOutput::call:0	chord	child-gap	
-pkg:chord/tui/launcher#requireSandboxNode	chord	no-go-symbol	
-pkg:chord/tui/launcher#requireSandboxNode::call:0	chord	child-gap	
-pkg:chord/tui/launcher#startTerminal	chord	no-go-symbol	
-pkg:chord/tui/launcher#startTerminal::call:0	chord	child-gap	
-pkg:chord/tui/launcher#terminalFile	chord	no-go-symbol	
-pkg:chord/tui/launcher#terminalFile::call:0	chord	child-gap	
+pkg:chord/tui/launcher#TerminalOptions	chord	type-mismatch	chord/nextnode/tui/tui_launcher.go#TerminalOptions
+pkg:chord/tui/launcher#terminalFile	chord	child-gap	chord/nextnode/tui/tui_launcher.go#TerminalFile
+pkg:chord/tui/launcher#terminalFile::call:0	chord	undecidable	chord/nextnode/tui/tui_launcher.go#TerminalFile
 pkg:chord/watch#NativeWatch	chord	child-gap	chord/watch_impl.go#NativeWatch
 pkg:chord/watch#NativeWatch::property:end	chord	child-gap	chord/watch_impl.go#watchLifecycle.End
 pkg:chord/watch#NativeWatch::property:end::call:0	chord	signature-mismatch	chord/watch_impl.go#watchLifecycle.End

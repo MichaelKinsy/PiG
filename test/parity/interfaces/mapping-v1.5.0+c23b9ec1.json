@@ -103451,9 +103451,9 @@
         "call:chord/next/surfaces/surfaces_messages.go#DefineMessages"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNestedOneFailsOrPanics",
         "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesListsItsCatalogsAsContributionsByCanonicalLocale",
-        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesANamespaceThatIsNoNameAndACatalogKeyThatIsNoLanguageTag",
-        "test:chord/next/surfaces/surfaces_messages_test.go#TestPrefersTheHostsContributedCatalogFallingBackKeyByKeyDownTheChainReported"
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesANamespaceThatIsNoNameAndACatalogKeyThatIsNoLanguageTag"
       ]
     },
     {
@@ -106750,13 +106750,43 @@
     },
     {
       "id": "pkg:chord/.#Host::property:principalAttributes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7de2bd34d242af8fa17c5e25b3fcbcf8b959e8109da0631c5f94827c44b1cffc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7de2bd34d242af8fa17c5e25b3fcbcf8b959e8109da0631c5f94827c44b1cffc",
+      "rationale": "Derived by the interface gap detector: Host::property:principalAttributes is Go chord/next/host/host_host.go#Host.PrincipalAttributes (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_host.go#Host.PrincipalAttributes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/app.go#App.start"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/app/app.go#App.start"
+      ]
     },
     {
       "id": "pkg:chord/.#Host::property:principalAttributes::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9a5d41fab36c261f2b43bac74bb7f90b2f4464896bf6b579848bfabe7225c6f5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9a5d41fab36c261f2b43bac74bb7f90b2f4464896bf6b579848bfabe7225c6f5",
+      "rationale": "Derived by the interface gap detector: Host::property:principalAttributes::call:0 is Go chord/next/host/host_host.go#Host.PrincipalAttributes (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_host.go#Host.PrincipalAttributes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/app.go#App.start"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/app/app.go#App.start"
+      ]
     },
     {
       "id": "pkg:chord/.#Host::property:references",
@@ -107545,7 +107575,8 @@
         "call:chord/next/host/jobs_definition.go#DefineJob"
       ],
       "evidence": [
-        "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency"
+        "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency",
+        "test:chord/next/host/jobs_definition_test.go#TestJobDefinitionKeepsItsAcceptsConcurrencyAndPersistOptionsAfterDefineJob"
       ]
     },
     {
@@ -107585,7 +107616,8 @@
         "call:chord/next/host/jobs_definition.go#DefineJob"
       ],
       "evidence": [
-        "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency"
+        "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency",
+        "test:chord/next/host/jobs_definition_test.go#TestJobDefinitionKeepsItsAcceptsConcurrencyAndPersistOptionsAfterDefineJob"
       ]
     },
     {
@@ -107647,7 +107679,8 @@
         "call:chord/next/host/host_attempt.go#attempt.Job"
       ],
       "evidence": [
-        "test:chord/next/host/jobs_definition_test.go#TestDefineJobTakesPersistWithAResumeRuleAPersistedStateAndAJSONOnlyResult"
+        "test:chord/next/host/jobs_definition_test.go#TestDefineJobTakesPersistWithAResumeRuleAPersistedStateAndAJSONOnlyResult",
+        "test:chord/next/host/jobs_definition_test.go#TestJobDefinitionKeepsItsAcceptsConcurrencyAndPersistOptionsAfterDefineJob"
       ]
     },
     {
@@ -112820,14 +112853,15 @@
         "call:chord/next/documents/definition.go#newStateDefinition"
       ],
       "evidence": [
-        "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed"
+        "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed",
+        "test:chord/next/documents/definition_test.go#TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions"
       ]
     },
     {
       "id": "pkg:chord/.#StateDefinition::property:~persist",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:847d349e36030b67f92cd7287f4153470ef24c89ef109c3da54757d6ced62dae",
-      "rationale": "Derived by the interface gap detector: StateDefinition::property:~persist is Go chord/next/documents/definition.go#StateDefinition.Persist (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:~persist is Go chord/next/documents/definition.go#StateDefinition.Persist (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/documents/definition.go#StateDefinition.Persist"
       ],
@@ -112840,14 +112874,14 @@
         "call:chord/next/documents/definition.go#newStateDefinition"
       ],
       "evidence": [
-        "reach:chord/next/documents/definition.go#newStateDefinition"
+        "test:chord/next/documents/definition_test.go#TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions"
       ]
     },
     {
       "id": "pkg:chord/.#StateDefinition::property:checkpointWhen",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:142671ab9c8cd97e457ec95f3847e758254943fe20f38e501efb9b6471996b48",
-      "rationale": "Derived by the interface gap detector: StateDefinition::property:checkpointWhen is Go chord/next/documents/definition.go#StateDefinition.CheckpointWhen (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:checkpointWhen is Go chord/next/documents/definition.go#StateDefinition.CheckpointWhen (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
       ],
@@ -112860,14 +112894,14 @@
         "call:chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
       ],
       "evidence": [
-        "reach:chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
+        "test:chord/next/documents/definition_test.go#TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions"
       ]
     },
     {
       "id": "pkg:chord/.#StateDefinition::property:checkpointWhen::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:941d9d8a74214b4dcb6294a770413d5704fbec927d6e5c0655f76114e6f28e4a",
-      "rationale": "Derived by the interface gap detector: StateDefinition::property:checkpointWhen::call:0 is Go chord/next/documents/definition.go#StateDefinition.CheckpointWhen (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:checkpointWhen::call:0 is Go chord/next/documents/definition.go#StateDefinition.CheckpointWhen (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
       ],
@@ -112880,7 +112914,7 @@
         "call:chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
       ],
       "evidence": [
-        "reach:chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
+        "test:chord/next/documents/definition_test.go#TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions"
       ]
     },
     {
@@ -112965,7 +112999,8 @@
         "call:chord/next/documents/definition.go#newStateDefinition"
       ],
       "evidence": [
-        "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed"
+        "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed",
+        "test:chord/next/documents/definition_test.go#TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions"
       ]
     },
     {
@@ -112986,7 +113021,8 @@
       ],
       "evidence": [
         "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne",
-        "test:chord/next/documents/definition_test.go#TestMigrateRefusesAnOlderValueWithoutAMigrate"
+        "test:chord/next/documents/definition_test.go#TestMigrateRefusesAnOlderValueWithoutAMigrate",
+        "test:chord/next/documents/definition_test.go#TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions"
       ]
     },
     {
@@ -113007,7 +113043,8 @@
       ],
       "evidence": [
         "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne",
-        "test:chord/next/documents/definition_test.go#TestMigrateRefusesAnOlderValueWithoutAMigrate"
+        "test:chord/next/documents/definition_test.go#TestMigrateRefusesAnOlderValueWithoutAMigrate",
+        "test:chord/next/documents/definition_test.go#TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions"
       ]
     },
     {
@@ -113036,7 +113073,7 @@
       "id": "pkg:chord/.#StateDefinition::property:persist",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:c3d2c0592018b80a5dcbcbac08468a79bac2966be3769ebfbd10cee0f34a8713",
-      "rationale": "Derived by the interface gap detector: StateDefinition::property:persist is Go chord/next/documents/definition.go#StateDefinition.Persist (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:persist is Go chord/next/documents/definition.go#StateDefinition.Persist (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/documents/definition.go#StateDefinition.Persist"
       ],
@@ -113049,7 +113086,7 @@
         "call:chord/next/documents/definition.go#newStateDefinition"
       ],
       "evidence": [
-        "reach:chord/next/documents/definition.go#newStateDefinition"
+        "test:chord/next/documents/definition_test.go#TestStateDefinitionKeepsItsKeyedPersistInitialMigrateAndCheckpointWhenOptions"
       ]
     },
     {
@@ -114251,7 +114288,7 @@
       "id": "pkg:chord/.#TableDefinition::construct:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:32f2651b2b978ac30c065348dd33579a6e5b6d0add3b547463cd696dd221e77b",
-      "rationale": "Derived by the interface gap detector: TableDefinition::construct:0 is Go chord/next/store/table.go#NewTableDefinition (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TableDefinition::construct:0 is Go chord/next/store/table.go#NewTableDefinition (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/table.go#NewTableDefinition"
       ],
@@ -114264,7 +114301,7 @@
         "call:chord/next/store/table.go#NewTableDefinition"
       ],
       "evidence": [
-        "reach:chord/next/store/table.go#NewTableDefinition"
+        "test:chord/next/store/table_test.go#TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition"
       ]
     },
     {
@@ -114327,14 +114364,15 @@
       ],
       "evidence": [
         "test:chord/next/store/table_evolve_test.go#TestEvolveChecks",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits"
+        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits",
+        "test:chord/next/store/table_test.go#TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition"
       ]
     },
     {
       "id": "pkg:chord/.#TableDefinition::property:column",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4dc3a416ed23f953a48c7b20a182501dbce39f4bd160173f07465d937bf4f4c8",
-      "rationale": "Derived by the interface gap detector: TableDefinition::property:column is Go chord/next/store/table.go#TableDefinition.Column (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TableDefinition::property:column is Go chord/next/store/table.go#TableDefinition.Column (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/table.go#TableDefinition.Column"
       ],
@@ -114347,14 +114385,14 @@
         "call:chord/next/store/table.go#TableDefinition.Column"
       ],
       "evidence": [
-        "reach:chord/next/store/table.go#TableDefinition.Column"
+        "test:chord/next/store/table_test.go#TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition"
       ]
     },
     {
       "id": "pkg:chord/.#TableDefinition::property:column::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7c01c8c590d8b10fc25ef2e72a67488a74d086b1dc0d1bdf0b5518c69a85a0bc",
-      "rationale": "Derived by the interface gap detector: TableDefinition::property:column::call:0 is Go chord/next/store/table.go#TableDefinition.Column (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TableDefinition::property:column::call:0 is Go chord/next/store/table.go#TableDefinition.Column (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/table.go#TableDefinition.Column"
       ],
@@ -114367,7 +114405,7 @@
         "call:chord/next/store/table.go#TableDefinition.Column"
       ],
       "evidence": [
-        "reach:chord/next/store/table.go#TableDefinition.Column"
+        "test:chord/next/store/table_test.go#TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition"
       ]
     },
     {
@@ -114408,7 +114446,8 @@
       ],
       "evidence": [
         "test:chord/next/store/table_evolve_test.go#TestEvolveEdits",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveVersions"
+        "test:chord/next/store/table_evolve_test.go#TestEvolveVersions",
+        "test:chord/next/store/table_test.go#TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition"
       ]
     },
     {
@@ -120585,9 +120624,9 @@
         "call:chord/nextnode/http/cookies.go#ReadSignedCookie"
       ],
       "evidence": [
+        "test:chord/nextnode/http/node_test.go#TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBodyOrNeither",
         "test:chord/nextnode/http/request_test.go#TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce",
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointRefusesASocketWithoutAPrincipalFromAnotherOriginOrHostForeignOrWhoseLinksOptionsFails403",
-        "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten"
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointRefusesASocketWithoutAPrincipalFromAnotherOriginOrHostForeignOrWhoseLinksOptionsFails403"
       ]
     },
     {
@@ -120608,8 +120647,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/http/http_test.go#TestCancellationABodyThatErrorsAfterValidJSONFailsTheRequest400TheRoutesSideEffectNeverRuns",
-        "test:chord/nextnode/http/review_test.go#TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests",
-        "test:chord/nextnode/http/request_test.go#TestBodiesAnswer413BeforeAChunkedUploadPastTheLimitHasEnded"
+        "test:chord/nextnode/http/node_test.go#TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBodyOrNeither",
+        "test:chord/nextnode/http/review_test.go#TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120631,8 +120670,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/http/http_test.go#TestCancellationABodyThatErrorsAfterValidJSONFailsTheRequest400TheRoutesSideEffectNeverRuns",
-        "test:chord/nextnode/http/review_test.go#TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests",
-        "test:chord/nextnode/http/request_test.go#TestBodiesAnswer413BeforeAChunkedUploadPastTheLimitHasEnded"
+        "test:chord/nextnode/http/node_test.go#TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBodyOrNeither",
+        "test:chord/nextnode/http/review_test.go#TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120705,9 +120744,9 @@
         "call:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
       ],
       "evidence": [
+        "test:chord/nextnode/http/node_test.go#TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBodyOrNeither",
         "test:chord/nextnode/http/request_test.go#TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce",
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket",
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSocketCloses"
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket"
       ]
     },
     {
@@ -122305,9 +122344,9 @@
         "call:chord/nextnode/plugins/plugins_build.go#importRules.inputs"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildBundlesAFacetAndItsImportsOnceAnEditAfterTheBuildChangesNothingInputsNameBothFiles",
         "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildHashesEachInputAsEsbuildReadItTheDigestIsTheSourcesHash",
-        "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildInlinesADependencyKeepsExternalPackagesAndNodeBuiltinsExternalOnNode",
-        "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildInlinesOwnFilesAndAnotherPluginsFileKeepsHostPackagesExternal"
+        "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildInlinesADependencyKeepsExternalPackagesAndNodeBuiltinsExternalOnNode"
       ]
     },
     {
@@ -126000,7 +126039,7 @@
       "id": "pkg:chord/sync#checkSessionId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5777f00dd2647eb1ba15d84da87af310117e8f9fe16a3cc652e2fe06536df4de",
-      "rationale": "Derived by the interface gap detector: checkSessionId is Go chord/sync/filesystem.go#CheckSessionID (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: checkSessionId is Go chord/sync/filesystem.go#CheckSessionID (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#CheckSessionID"
       ],
@@ -126013,14 +126052,14 @@
         "call:chord/sync/filesystem.go#CheckSessionID"
       ],
       "evidence": [
-        "reach:chord/sync/filesystem.go#CheckSessionID"
+        "test:chord/sync/remote_maintenance_test.go#TestCheckSessionIDKeepsASessionIDInsideTheRemotesRootAndStoreHeadIsTheStoresLastSeq"
       ]
     },
     {
       "id": "pkg:chord/sync#checkSessionId::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:71e32d1214d549984198214ff03d46d8e9cd9d0b01852762226a8020a7a5d9ce",
-      "rationale": "Derived by the interface gap detector: checkSessionId::call:0 is Go chord/sync/filesystem.go#CheckSessionID (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: checkSessionId::call:0 is Go chord/sync/filesystem.go#CheckSessionID (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#CheckSessionID"
       ],
@@ -126033,7 +126072,7 @@
         "call:chord/sync/filesystem.go#CheckSessionID"
       ],
       "evidence": [
-        "reach:chord/sync/filesystem.go#CheckSessionID"
+        "test:chord/sync/remote_maintenance_test.go#TestCheckSessionIDKeepsASessionIDInsideTheRemotesRootAndStoreHeadIsTheStoresLastSeq"
       ]
     },
     {
@@ -127272,6 +127311,7 @@
         "call:chord/sync/client.go#UploadSession"
       ],
       "evidence": [
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ]
     },
@@ -127514,7 +127554,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:deleteSnapshots",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:21034989f58c17731f5969b169402d572ac0c1424477827ce15ef03cb24102d1",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:deleteSnapshots is Go chord/sync/remote.go#SessionSyncMaintenance.DeleteSnapshots (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:deleteSnapshots is Go chord/sync/remote.go#SessionSyncMaintenance.DeleteSnapshots (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncMaintenance.DeleteSnapshots"
       ],
@@ -127527,7 +127567,7 @@
         "call:chord/sync/client.go#FoldSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#FoldSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127535,7 +127575,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:deleteSnapshots::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2076b37c6f7510fb98ef02116964a791bf793928100278ecd1708fa361db3b89",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:deleteSnapshots::call:0 is Go chord/sync/remote.go#SessionSyncMaintenance.DeleteSnapshots (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:deleteSnapshots::call:0 is Go chord/sync/remote.go#SessionSyncMaintenance.DeleteSnapshots (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncMaintenance.DeleteSnapshots"
       ],
@@ -127548,7 +127588,7 @@
         "call:chord/sync/client.go#FoldSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#FoldSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127556,7 +127596,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:foldBatches",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1c1763ff2cc3497c07278cedfd5e7729f42fce9d38d961000cd846815bbad846",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:foldBatches is Go chord/sync/remote.go#SessionSyncMaintenance.FoldBatches (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:foldBatches is Go chord/sync/remote.go#SessionSyncMaintenance.FoldBatches (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncMaintenance.FoldBatches"
       ],
@@ -127569,7 +127609,7 @@
         "call:chord/sync/client.go#FoldSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#FoldSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127577,7 +127617,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:foldBatches::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:902541c4d5fb14d6c49196156c897a8017602515a73c4ad8ddca12383236d9b4",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:foldBatches::call:0 is Go chord/sync/remote.go#SessionSyncMaintenance.FoldBatches (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:foldBatches::call:0 is Go chord/sync/remote.go#SessionSyncMaintenance.FoldBatches (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncMaintenance.FoldBatches"
       ],
@@ -127590,7 +127630,7 @@
         "call:chord/sync/client.go#FoldSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#FoldSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127598,7 +127638,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:getBatch",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e81a14393e5ddbb4d721cd3eab604273a0a2b6cbadbb03c21d90af188ec1a1b4",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getBatch is Go chord/sync/remote.go#SessionSyncStore.GetBatch (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getBatch is Go chord/sync/remote.go#SessionSyncStore.GetBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.GetBatch"
       ],
@@ -127611,7 +127651,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#PullSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127619,7 +127659,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:getBatch::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:10e29a4a552c3e54f3822d6dc07ad119ac1dcdc1b94ddf538375f006c9b56e6d",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getBatch::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetBatch (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getBatch::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.GetBatch"
       ],
@@ -127632,7 +127672,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#PullSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127650,7 +127690,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:getSnapshot",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b398799bf865f3a7eea73b38defda39836c461b0544b66ee0932625e71cf1888",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getSnapshot is Go chord/sync/remote.go#SessionSyncStore.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getSnapshot is Go chord/sync/remote.go#SessionSyncStore.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.GetSnapshot"
       ],
@@ -127663,7 +127703,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#PullSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127671,7 +127711,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:getSnapshot::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3e16e21682ec747266b1748570a01c50a2cc862c068e1989fdcce830477cb9c0",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getSnapshot::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getSnapshot::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.GetSnapshot"
       ],
@@ -127684,7 +127724,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#PullSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127738,7 +127778,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:putBatch",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9f213f65e9edf3785e4c8824671a4ae8344180525bd3f00907073240ebe0bd1b",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putBatch is Go chord/sync/remote.go#SessionSyncStore.PutBatch (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putBatch is Go chord/sync/remote.go#SessionSyncStore.PutBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.PutBatch"
       ],
@@ -127751,7 +127791,7 @@
         "call:chord/sync/client.go#UploadSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#UploadSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127759,7 +127799,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:putBatch::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2d0bb83999c9ad7467d5ab4481586262088d70d9d161b4c5951e4226ab4bc28a",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putBatch::call:0 is Go chord/sync/remote.go#SessionSyncStore.PutBatch (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putBatch::call:0 is Go chord/sync/remote.go#SessionSyncStore.PutBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.PutBatch"
       ],
@@ -127772,7 +127812,7 @@
         "call:chord/sync/client.go#UploadSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#UploadSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127790,7 +127830,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:putSnapshot",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:519792f4573137896bb64c49d568015bfd325b5181d818ba8717805e90b1f4f9",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putSnapshot is Go chord/sync/remote.go#SessionSyncMaintenance.PutSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putSnapshot is Go chord/sync/remote.go#SessionSyncMaintenance.PutSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncMaintenance.PutSnapshot"
       ],
@@ -127803,7 +127843,7 @@
         "call:chord/sync/client.go#FoldSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#FoldSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127811,7 +127851,7 @@
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:putSnapshot::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:71296fa3f770ec1104a95ba19b48d0e0f6e780607d858139878ec4a53b8acacd",
-      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putSnapshot::call:0 is Go chord/sync/remote.go#SessionSyncMaintenance.PutSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putSnapshot::call:0 is Go chord/sync/remote.go#SessionSyncMaintenance.PutSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncMaintenance.PutSnapshot"
       ],
@@ -127824,7 +127864,7 @@
         "call:chord/sync/client.go#FoldSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#FoldSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127847,7 +127887,7 @@
       "id": "pkg:chord/sync#SessionSyncStore::property:getBatch",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e81a14393e5ddbb4d721cd3eab604273a0a2b6cbadbb03c21d90af188ec1a1b4",
-      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getBatch is Go chord/sync/remote.go#SessionSyncStore.GetBatch (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getBatch is Go chord/sync/remote.go#SessionSyncStore.GetBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.GetBatch"
       ],
@@ -127860,7 +127900,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#PullSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127868,7 +127908,7 @@
       "id": "pkg:chord/sync#SessionSyncStore::property:getBatch::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:10e29a4a552c3e54f3822d6dc07ad119ac1dcdc1b94ddf538375f006c9b56e6d",
-      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getBatch::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetBatch (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getBatch::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.GetBatch"
       ],
@@ -127881,7 +127921,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#PullSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127899,7 +127939,7 @@
       "id": "pkg:chord/sync#SessionSyncStore::property:getSnapshot",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b398799bf865f3a7eea73b38defda39836c461b0544b66ee0932625e71cf1888",
-      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getSnapshot is Go chord/sync/remote.go#SessionSyncStore.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getSnapshot is Go chord/sync/remote.go#SessionSyncStore.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.GetSnapshot"
       ],
@@ -127912,7 +127952,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#PullSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127920,7 +127960,7 @@
       "id": "pkg:chord/sync#SessionSyncStore::property:getSnapshot::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3e16e21682ec747266b1748570a01c50a2cc862c068e1989fdcce830477cb9c0",
-      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getSnapshot::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getSnapshot::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.GetSnapshot"
       ],
@@ -127933,7 +127973,7 @@
         "call:chord/sync/client.go#PullSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#PullSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127987,7 +128027,7 @@
       "id": "pkg:chord/sync#SessionSyncStore::property:putBatch",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9f213f65e9edf3785e4c8824671a4ae8344180525bd3f00907073240ebe0bd1b",
-      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:putBatch is Go chord/sync/remote.go#SessionSyncStore.PutBatch (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:putBatch is Go chord/sync/remote.go#SessionSyncStore.PutBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.PutBatch"
       ],
@@ -128000,7 +128040,7 @@
         "call:chord/sync/client.go#UploadSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#UploadSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128008,7 +128048,7 @@
       "id": "pkg:chord/sync#SessionSyncStore::property:putBatch::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2d0bb83999c9ad7467d5ab4481586262088d70d9d161b4c5951e4226ab4bc28a",
-      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:putBatch::call:0 is Go chord/sync/remote.go#SessionSyncStore.PutBatch (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:putBatch::call:0 is Go chord/sync/remote.go#SessionSyncStore.PutBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/remote.go#SessionSyncStore.PutBatch"
       ],
@@ -128021,7 +128061,7 @@
         "call:chord/sync/client.go#UploadSession"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#UploadSession"
+        "test:chord/sync/remote_maintenance_test.go#TestFileSystemSyncRemoteKeepsSnapshotsFoldsBatchesKeepingTheirSlotsAndDeletesSnapshots"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128049,7 +128089,7 @@
       "id": "pkg:chord/sync#storeHead",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:c1a9f0349ff004eab2f29398e56650607da2cce48c7e22bd714c3c576bd6aefe",
-      "rationale": "Derived by the interface gap detector: storeHead is Go chord/sync/client.go#StoreHead (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: storeHead is Go chord/sync/client.go#StoreHead (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/client.go#StoreHead"
       ],
@@ -128062,14 +128102,14 @@
         "call:chord/sync/client.go#StoreHead"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#StoreHead"
+        "test:chord/sync/remote_maintenance_test.go#TestCheckSessionIDKeepsASessionIDInsideTheRemotesRootAndStoreHeadIsTheStoresLastSeq"
       ]
     },
     {
       "id": "pkg:chord/sync#storeHead::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d56afc8370222e8f0ef31ff9f410cfd7fad92f5f28a4adbac57636ceb5de3c97",
-      "rationale": "Derived by the interface gap detector: storeHead::call:0 is Go chord/sync/client.go#StoreHead (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: storeHead::call:0 is Go chord/sync/client.go#StoreHead (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/client.go#StoreHead"
       ],
@@ -128082,7 +128122,7 @@
         "call:chord/sync/client.go#StoreHead"
       ],
       "evidence": [
-        "reach:chord/sync/client.go#StoreHead"
+        "test:chord/sync/remote_maintenance_test.go#TestCheckSessionIDKeepsASessionIDInsideTheRemotesRootAndStoreHeadIsTheStoresLastSeq"
       ]
     },
     {
@@ -128580,7 +128620,8 @@
       ],
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
-        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128602,7 +128643,8 @@
       ],
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
-        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128624,7 +128666,8 @@
       ],
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
-        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128771,9 +128814,9 @@
         "call:chord/telemetrysqlite/index.go#CreateSqliteTelemetry"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestDurableObjectSqliteTelemetryStoreConformance",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestSqliteTelemetryStoreConformance",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestReusesMigrationsPreservesIdentitiesAcrossReopenAndMergesAggregates"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestSqliteTelemetryStoreConformance"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128794,9 +128837,9 @@
         "call:chord/telemetrysqlite/index.go#CreateSqliteTelemetry"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestDurableObjectSqliteTelemetryStoreConformance",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestSqliteTelemetryStoreConformance",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestReusesMigrationsPreservesIdentitiesAcrossReopenAndMergesAggregates"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestSqliteTelemetryStoreConformance"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128817,9 +128860,9 @@
         "call:chord/telemetrysqlite/index.go#CreateSqliteTelemetry"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128840,9 +128883,9 @@
         "call:chord/telemetrysqlite/index.go#SqliteTelemetry.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestAggregatesCanonicalSeriesByIntervalAndWritesPartialIntervalsOnlyOnClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128863,9 +128906,9 @@
         "call:chord/telemetrysqlite/index.go#SqliteTelemetry.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestAggregatesCanonicalSeriesByIntervalAndWritesPartialIntervalsOnlyOnClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128973,9 +129016,9 @@
         "call:chord/telemetrysqlite/index.go#SqliteTelemetry.FindTraces"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128996,9 +129039,9 @@
         "call:chord/telemetrysqlite/index.go#SqliteTelemetry.FindTraces"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129019,9 +129062,9 @@
         "call:chord/telemetrysqlite/index.go#SqliteTelemetry.Flush"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestRemembersABackgroundWriteFailureAndStopsItsTimer",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestStopsPermanentlyAfterAWriteFailureAndReportsTheIdenticalError",
-        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
+        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestStopsPermanentlyAfterAWriteFailureAndReportsTheIdenticalError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129042,9 +129085,9 @@
         "call:chord/telemetrysqlite/index.go#SqliteTelemetry.Flush"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestRemembersABackgroundWriteFailureAndStopsItsTimer",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestStopsPermanentlyAfterAWriteFailureAndReportsTheIdenticalError",
-        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
+        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestStopsPermanentlyAfterAWriteFailureAndReportsTheIdenticalError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129237,9 +129280,9 @@
         "call:chord/telemetrysqlite/index.go#CreateSqliteTelemetry"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestDurableObjectSqliteTelemetryStoreConformance",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestDurableObjectSqliteTelemetryStoreConformance"
       ]
     },
     {
@@ -129290,48 +129333,197 @@
     },
     {
       "id": "pkg:chord/tui/launcher#filterOutput",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8f3a3dbd01cef1a31bd441a63ae19367b6ce87775c639224ce86e8bf5dcb9de1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8f3a3dbd01cef1a31bd441a63ae19367b6ce87775c639224ce86e8bf5dcb9de1",
+      "rationale": "Derived by the interface gap detector: filterOutput is Go chord/nextnode/tui/tui_filter.go#FilterOutput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_filter.go#FilterOutput"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_filter.go#FilterOutput"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_filter_test.go#TestTheFrameLimitCountsBytesAndUnitsAsPisFilterDoes",
+        "test:chord/nextnode/tui/tui_filter_test.go#TestWhatIsDroppedRefusesAFrameOver64KiB",
+        "test:chord/nextnode/tui/tui_frames_test.go#TestSplittingFramesCutsALargeTrueColourPaintBetweenSequencesEachFrameUnder64KiBAndPassingTheFilterWhole"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#filterOutput::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2b8f65fb2b69a4b280845d684d668b59795aed76e7a659200c05382b8dcc8a75"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2b8f65fb2b69a4b280845d684d668b59795aed76e7a659200c05382b8dcc8a75",
+      "rationale": "Derived by the interface gap detector: filterOutput::call:0 is Go chord/nextnode/tui/tui_filter.go#FilterOutput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_filter.go#FilterOutput"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_filter.go#FilterOutput"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_filter_test.go#TestTheFrameLimitCountsBytesAndUnitsAsPisFilterDoes",
+        "test:chord/nextnode/tui/tui_filter_test.go#TestWhatIsDroppedRefusesAFrameOver64KiB",
+        "test:chord/nextnode/tui/tui_frames_test.go#TestSplittingFramesCutsALargeTrueColourPaintBetweenSequencesEachFrameUnder64KiBAndPassingTheFilterWhole"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#PromptTerminal",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8418a4acddac324ec6c95848e490fddced0d0a0732f18f887d35975e0a01189b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8418a4acddac324ec6c95848e490fddced0d0a0732f18f887d35975e0a01189b",
+      "rationale": "Derived by the interface gap detector: PromptTerminal is Go chord/nextnode/tui/tui_actions.go#PromptTerminal (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_actions.go#PromptTerminal"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_actions.go#Act"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/tui/tui_actions.go#Act"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#requireSandboxNode",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4a27120b041f3ad8ebbac7c197927a3a9a92841ed95840a7373cc1f36c6d7278"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4a27120b041f3ad8ebbac7c197927a3a9a92841ed95840a7373cc1f36c6d7278",
+      "rationale": "Derived by the interface gap detector: requireSandboxNode is Go chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_test.go#TestTheNodeItNeedsRefusesANodeOlderThan2651WithAClearError"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#requireSandboxNode::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1db7a4236068d93629c81505ce993d7717c34eb9d87c548be54a12273083f84a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1db7a4236068d93629c81505ce993d7717c34eb9d87c548be54a12273083f84a",
+      "rationale": "Derived by the interface gap detector: requireSandboxNode::call:0 is Go chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_sandbox.go#RequireSandboxNode"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_test.go#TestTheNodeItNeedsRefusesANodeOlderThan2651WithAClearError"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#RunningTerminal",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a80889fe67ca526c13d93554df4fb6a2f1facecad4ce75a9d9dc8fa1d5db1465"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a80889fe67ca526c13d93554df4fb6a2f1facecad4ce75a9d9dc8fa1d5db1465",
+      "rationale": "Derived by the interface gap detector: RunningTerminal is Go chord/nextnode/tui/tui_launcher.go#RunningTerminal (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_launcher.go#RunningTerminal"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#startTerminal",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:52c63171b908b7855821cd3df2198c7e29a282b37387a3f874cac6c5fbe837ff"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:52c63171b908b7855821cd3df2198c7e29a282b37387a3f874cac6c5fbe837ff",
+      "rationale": "Derived by the interface gap detector: startTerminal is Go chord/nextnode/tui/tui_launcher.go#StartTerminal (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/tui/launcher#startTerminal::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0d14b6ee1313e053d94de70687d4c6ad6b0191880e9c59217593c269f1521627"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0d14b6ee1313e053d94de70687d4c6ad6b0191880e9c59217593c269f1521627",
+      "rationale": "Derived by the interface gap detector: startTerminal::call:0 is Go chord/nextnode/tui/tui_launcher.go#StartTerminal (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#StartTerminal"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/tui/launcher#TerminalCredentials",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d691216380d168154a9490120f4247ab6626cae12c088136edd7548413bc2a20"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d691216380d168154a9490120f4247ab6626cae12c088136edd7548413bc2a20",
+      "rationale": "Derived by the interface gap detector: TerminalCredentials is Go chord/nextnode/tui/tui_credentials.go#TerminalCredentials (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_credentials.go#TerminalCredentials"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_credentials.go#TokenOf"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns",
+        "test:chord/nextnode/tui/tui_credentials_test.go#TestPairingRefusesACodeThatIsNoPlainCodeShowingNothing",
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#terminalFile",
@@ -129350,8 +129542,23 @@
     },
     {
       "id": "pkg:chord/tui#AttachedFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cc80e6d9fef274f159aaf5d9e8cc111ba38b399227b73994a1cb3ba714b1add3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cc80e6d9fef274f159aaf5d9e8cc111ba38b399227b73994a1cb3ba714b1add3",
+      "rationale": "Derived by the interface gap detector: AttachedFile is Go chord/nextnode/tui/tui_actions.go#AttachedFile (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_actions.go#AttachedFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_actions.go#Attach"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_actions_test.go#TestAttachingAFileShowsThePathByItsTextBeforeTheYesRefusesADirectoryAMissingFileAndOneOver16MiBAlikeOpusL2E5E9"
+      ]
     },
     {
       "id": "pkg:chord/tui#Bridge",
@@ -129365,8 +129572,23 @@
     },
     {
       "id": "pkg:chord/tui#BridgeStart",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:978492214dfff7df486fb23f4e0331fcafae14316c9f5b0229716a13813bd81a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:978492214dfff7df486fb23f4e0331fcafae14316c9f5b0229716a13813bd81a",
+      "rationale": "Derived by the interface gap detector: BridgeStart is Go chord/nextnode/tui/tui_bridge.go#BridgeStart (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/tui/tui_bridge.go#BridgeStart"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/tui/tui_launcher.go#Launcher.startSandbox"
+      ],
+      "evidence": [
+        "test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxGivesRawDownloadedCodeNoBuiltinAndNoImportWhateverItPutsOnObjectPrototype"
+      ]
     },
     {
       "id": "pkg:chord/tui#BridgeTerminal",
@@ -279137,8 +279359,8 @@
       ],
       "evidence": [
         "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved"
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
       ]
     },
     {
@@ -279159,8 +279381,8 @@
       ],
       "evidence": [
         "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved"
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
       ]
     },
     {
@@ -280858,8 +281080,8 @@
       ],
       "evidence": [
         "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved"
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
       ]
     },
     {
@@ -280960,8 +281182,8 @@
       ],
       "evidence": [
         "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestOrdersSpansStartedInTheSameMillisecondAsTheyStarted"
+        "test:chord/nextnode/app/app_web_browser_test.go#TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
       ]
     },
     {
