@@ -607,7 +607,6 @@ func (p *providerSide) nextOwn() int { return p.ownSent + 1 }
 
 // acknowledged is whether its consumer acknowledged this host's own message number own, so applied it: a call it sent after
 // that arrives after the `ack` (one direction keeps its order).
-// pig divergence (D394): a call by an unacknowledged binding's indexes is decoded by that binding's names (Pi edc9c6989, not in Pi 1.5.0).
 func (p *providerSide) acknowledged(own int) bool { return p.ownAcked >= own }
 
 // flush is the end of a batch: while a slot is free and nothing waits, one `state` message with an entry per touched

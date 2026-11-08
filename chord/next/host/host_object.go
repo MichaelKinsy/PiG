@@ -504,7 +504,6 @@ func (o *chordObject) call(method string, args any, ctx context.Context, from ca
 // with `unavailable/park_timeout` after `readyTimeout`, as a call parked on a reference. A hold over a link stays bound while
 // the old instance still changes (a swap, a restart's drain), so its consumer sees `live` and sends calls that arrive here:
 // they wait for the new attempt, never `not_ready` (decision "Swaps: dependents first"). Pi's `#gate` loop is a continuation.
-// pig divergence (D392): a call arriving while an attempt activates waits for its outcome (Pi 0c2b568fd, not in Pi 1.5.0).
 func (o *chordObject) gated(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
 	result := newParkedCallResult()
 	loop := o.host.loop()

@@ -164,7 +164,6 @@ func (h *hold) callable() bool { return h.names() != nil }
 
 // refusal is what a call it does not take is refused with: the failure its consumer was told (refused, or failed while
 // pending: the call crossed that `failed` on the wire, and its consumer shows that cause), else `not_ready` (not bound yet).
-// pig divergence (D394): a call crossing a `failed` gets the cause its consumer was told (Pi edc9c6989, not in Pi 1.5.0).
 func (h *hold) refusal() *data.ChordError {
 	switch {
 	case h.state.kind == holdRefused:
@@ -348,7 +347,6 @@ func (h *hold) memberHealed(index int) {
 // names it was bound with keep arriving (sent before its consumer learnt of the `loading`): each gets exactly one answer from
 // what it waits on, the instance it already runs on (its result, or `released` at the seal) or its object's gate (the new
 // instance's result, its failure, `park_timeout`, its end), design §22.
-// pig divergence (D393): a `loading` unbind keeps the calls in flight (Pi 6515a7977, not in Pi 1.5.0).
 func (h *hold) unbind(err *data.ChordError) {
 	previous := h.names()
 	if h.state.kind == holdBound {

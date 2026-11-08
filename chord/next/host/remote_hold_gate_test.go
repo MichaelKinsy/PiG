@@ -99,6 +99,9 @@ func gateServeProvider(h FacetHost, name string, slow, persisted bool) error {
 
 // gateServeGated serves `Gated` as code: its label over the provider's name (or its key `k` when pin), `bump` first
 // awaiting gate (when not nil); needing `Slow` too when slow.
+// Pi parks a call by awaiting a promise it resolves from the test; Go tests hold the call with a signal channel (`gate`) that
+// the test fires, and learn that it arrived from a second one (`entered`), so no test waits on time.Sleep and a call's
+// position (at the gate, in flight, answered) is a received event rather than a poll of timing.
 func gateServeGated(t testing.TB, h FacetHost, code int, gate, entered signal, pin, slow bool) error {
 	return h.Serve(gateGated, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
 		provider := self.Get(gateProvider, jsonObject())

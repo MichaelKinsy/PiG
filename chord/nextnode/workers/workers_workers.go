@@ -116,7 +116,6 @@ type WorkerExitedError struct {
 	Signal  *string
 }
 
-// pig divergence (D391): a running worker's lost link is a stop, not a failure (Pi 9f7d909f8, not in Pi 1.5.0).
 // WorkerLinkLostError (`worker_link_lost`): a running worker's link was lost (the heartbeat, a protocol error): it was stopped,
 // its holders start anew.
 type WorkerLinkLostError struct {
