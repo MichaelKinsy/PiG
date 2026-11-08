@@ -381,7 +381,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		}
 	}
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots: []string{root, opened.layout.Plugins}, Kinds: kinds, Install: options.Install, Base: base,
+		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
 		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
 	workerHosts := &workerHosts{keys: map[string]string{}}
@@ -463,10 +463,11 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},
 		},
 	}, ctx)
+	// A required root's failure returns the loaded host with the error: it is the app's to stop (Close).
+	a.Node = node
 	if err != nil {
 		return err
 	}
-	a.Node = node
 	if err := failedPlugins(nodeReport); err != nil {
 		return err
 	}

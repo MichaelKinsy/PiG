@@ -216,7 +216,9 @@ func TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt(t *test
 		t.Fatal(err)
 	}
 	url := gitRepository(t, "echo", map[string]string{"package.json": `{"name":"@bob/echo"}`, "server.ts": echoServer}, "v1")
-	s := startTestApp(t, nil, func(o *AppOptions) { o.Install = plugins.InstallOptions{NpmCommand: []string{node, filepath.Join(tools, "npm.mjs")}} })
+	s := startTestApp(t, nil, func(o *AppOptions) {
+		o.Install = plugins.InstallOptions{NpmCommand: []string{node, filepath.Join(tools, "npm.mjs")}}
+	})
 	names, err := s.app.Plugins.InstallPlugin(plugins.PluginSource{Git: url, Ref: "v1"}, filepath.Join(s.dataDir, "plugins"), background)
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/echo"}) {
 		t.Fatalf("InstallPlugin = %v, %v", names, err)
