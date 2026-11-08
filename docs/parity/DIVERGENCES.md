@@ -3850,7 +3850,7 @@ Scope: `ExtensionRunner` of the Go, Rust and Python SDKs (`sessionGraph.new` kin
 
 Owner decision: pending owner confirmation of the narrowed form; proposed by PaseoIdentity and narrowed after the review in `reviews/paseo-identity-f4.md` (the per-emit numbering and `pi.events` resolution the first draft listed here are ported).
 
-SCRUTINIZED:approved
+SCRUTINIZED:pending
 
 Remove when: Node extensions share one process or realm (the isolated placement goes), the Go, Python and Rust SDKs pass messages by reference to an object the host holds (a handle API), or a `message_end` handler's in-place edit goes back to the host of a graph emit and a message edited outside `message_end` is sent back and saved. Then the call-site markers and this record go.
 
