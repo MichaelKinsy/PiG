@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/surfacehost"
 	"github.com/MichaelKinsy/PiG/chord/next/tui"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/markdown"
 )
 
 //go:embed logo.png
@@ -55,6 +56,19 @@ type App struct {
 	newTitle   string
 	shownErr   string
 	announced  bool
+
+	// The chat screen: the open conversation and its scope, its list, the prompt's text, thinking blocks opened, the markdown
+	// options, and the first message of a session started from the empty state (sent once its chat opens).
+	chat         *screens.Chat
+	chatScope    *tui.TuiScope
+	chatErr      error
+	chatList     ui.ListState
+	draftText    string
+	thinking     map[string]bool
+	md           markdown.Options
+	firstText    string
+	firstFor     string
+	shownChatErr string
 }
 
 // New is an App with no host yet: nothing is drawn but the connecting page until Start.
@@ -111,11 +125,15 @@ func (a *App) Start(h *surfacehost.Host) error {
 
 func (a *App) stop() {
 	a.mu.Lock()
-	scope, stopSprite := a.scope, a.stopSprite
+	scope, stopSprite, chatScope := a.scope, a.stopSprite, a.chatScope
 	a.scope, a.sessions, a.host, a.stopSprite = nil, nil, nil, nil
+	a.chat, a.chatScope = nil, nil
 	a.mu.Unlock()
 	if stopSprite != nil {
 		stopSprite()
+	}
+	if chatScope != nil {
+		chatScope.Dispose()
 	}
 	if scope != nil {
 		scope.Dispose()

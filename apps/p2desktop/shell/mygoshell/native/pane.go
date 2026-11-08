@@ -46,43 +46,64 @@ func (a *App) pane(c *ui.Context, h *surfacehost.Host, sessions *screens.Session
 		case a.creating:
 			ui.Column(c).Padding(24).Gap(16).MaxWidth(560).Children(func() { a.newSession(c, sessions) })
 		case row != nil:
-			ui.Column(c).Padding(24).Gap(16).MaxWidth(720).Children(func() { a.sheet(c, row, sessions) })
+			a.chatPane(c, h, row)
 		default:
-			a.emptyState(c, sessions)
+			a.emptyState(c, h, sessions)
 		}
 	})
 }
 
 // emptyState is the web's and the terminal's startup: the sprite's banner (the pig beside its "PiG." wordmark) at 6x of its
 // 54x18 grid (5x under 560 px wide, as the web's), the tagline, "What should PiG do?", the folder, and the way to begin.
-func (a *App) emptyState(c *ui.Context, sessions *screens.Sessions) {
-	t := c.Theme()
+func (a *App) emptyState(c *ui.Context, h *surfacehost.Host, sessions *screens.Sessions) {
 	v := sprite.Active()
 	scale := 6
 	if width, _ := c.Size(); width < 560 {
 		scale = 5
 	}
-	ui.Column(c).Grow(1).Center().Gap(14).Children(func() {
-		ui.Image(c, marks.banner(v, scale)).Size(float32(sprite.BannerWidth*scale), float32(sprite.BannerHeight*scale)).Fit(ui.Contain)
-		if v.Tagline != "" {
-			ui.Text(c, v.Tagline).FontSize(14).TextColor(t.TextMuted)
-		}
-		ui.Text(c, "What should PiG do?").Bold().FontSize(22)
-		if cwd := sessions.DefaultCwd(); cwd != "" {
-			// The web's cwd-pick: the folder, where the session will work, and a chevron; it opens the new session's form.
-			chip := ui.Row(c).AlignItems(ui.Center).Gap(8).Padding(6, 10).Radius(6).Focusable().Label("Choose the folder").Children(func() {
-				ui.Icon(c, iconFolder).Size(15, 15).TextColor(t.TextMuted)
-				ui.Text(c, screens.ShortPath(cwd)).FontSize(12).Font("monospace").TextColor(t.TextMuted).DottedUnderline()
-				ui.Icon(c, iconChevronR).Size(14, 14).TextColor(t.TextMuted)
-			})
-			if chip.Hovered() {
-				chip.Background(t.SurfaceHover)
-			}
-			if chip.Clicked() {
-				a.startNew(sessions)
-			}
-		}
+	ui.Column(c).Grow(1).Children(func() {
+		ui.Column(c).Grow(1).Center().Gap(14).Children(func() { a.hero(c, sessions, v, scale) })
+		a.promptBar(c, promptBar{
+			Model: "",
+			Send: func(text string) {
+				cwd := sessions.DefaultCwd()
+				go func() {
+					id, err := sessions.Create(cwd, "")
+					if err != nil || id == "" {
+						return
+					}
+					a.mu.Lock()
+					a.firstText, a.firstFor = text, id
+					a.mu.Unlock()
+					a.selectAfter(id)
+				}()
+			},
+		})
 	})
+}
+
+// hero is the empty state's head: the banner, tagline, question and folder.
+func (a *App) hero(c *ui.Context, sessions *screens.Sessions, v sprite.Variant, scale int) {
+	t := c.Theme()
+	ui.Image(c, marks.banner(v, scale)).Size(float32(sprite.BannerWidth*scale), float32(sprite.BannerHeight*scale)).Fit(ui.Contain)
+	if v.Tagline != "" {
+		ui.Text(c, v.Tagline).FontSize(14).TextColor(t.TextMuted)
+	}
+	ui.Text(c, "What should PiG do?").Bold().FontSize(22)
+	if cwd := sessions.DefaultCwd(); cwd != "" {
+		// The web's cwd-pick: the folder, where the session will work, and a chevron; it opens the new session's form.
+		chip := ui.Row(c).AlignItems(ui.Center).Gap(8).Padding(6, 10).Radius(6).Focusable().Label("Choose the folder").Children(func() {
+			ui.Icon(c, iconFolder).Size(15, 15).TextColor(t.TextMuted)
+			ui.Text(c, screens.ShortPath(cwd)).FontSize(12).Font("monospace").TextColor(t.TextMuted).DottedUnderline()
+			ui.Icon(c, iconChevronR).Size(14, 14).TextColor(t.TextMuted)
+		})
+		if chip.Hovered() {
+			chip.Background(t.SurfaceHover)
+		}
+		if chip.Clicked() {
+			a.startNew(sessions)
+		}
+	}
 }
 
 // sessionMenu is the top bar's "…": the session's actions, one menu in place of a row of buttons.
