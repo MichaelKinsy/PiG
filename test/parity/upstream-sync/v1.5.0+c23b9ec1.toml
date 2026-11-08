@@ -32,9 +32,9 @@ rationale = "da95cd79c and 5c6ce2b32 change the lazy Bedrock loader for code-spl
 [[files]]
 path = "packages/ai/src/api/lazy.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/anthropic_missing_key_abort_pi_test.go#TestAnthropicMessagesAPIMissingKeyIsAbortAwareForStreamAndASetupFailureForStreamSimple", "test:ai/api_streams_aliases_pi_test.go#TestLegacyAPIAliasesKeepTheAuthenticationTimingOfTheirMethodUpstream", "test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal"]
+rationale = "f3a64af07 (#8635) gives lazyStream a signal parameter: a setup that rejects ends as \"aborted\" when the signal is aborted, whatever the cause, and as \"error\" otherwise (lazy.ts:83). ai.LazyStream takes the request context and pushModelsSetupError (ai/models_runtime_stream.go) reads its cancellation for the reason; lazyApi passes options.signal, which the API streams in ai/api_streams.go pass as the call context. Dynamic module loading stays designed out (static linking)."
 
 [[files]]
 path = "packages/ai/src/api/openai-codex-responses.ts"
@@ -102,9 +102,9 @@ rationale = "The generated catalog follows the pin (make model-catalogs; Qwen To
 [[files]]
 path = "packages/ai/src/models.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal", "test:coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled", "test:coding/model_runtime_typed_review_test.go#TestModelRuntimeNonChatRejectionIsAbortedUnderCancellation"]
+rationale = "f3a64af07 (#8635) passes options.signal to lazyStream at all five sites of models.ts (stream :907, streamSimple :932, streamDeferred :957, the provider dispatch without an API implementation :1118, fetchDeferred :1176). The Go Models runtime and ai.CreateProvider pass the request context to the same setup-error path, and the three tests cover stream/streamSimple rejection through the model runtime and the two provider-level rejections (no API implementation, no deferred support) with a cancelled and a live context."
 
 [[files]]
 path = "packages/ai/src/providers/all.ts"
