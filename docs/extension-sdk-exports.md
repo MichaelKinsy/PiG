@@ -10,10 +10,10 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |
 |---|---|---|---|---|---|---|---|
-| `pi-coding-agent` | 928 | 310 | 917 | 325 | 325 | 325 | 325 |
+| `pi-coding-agent` | 928 | 310 | 918 | 325 | 325 | 325 | 325 |
 | `pi-tui` | 370 | 85 | 369 | 102 | 102 | 102 | 102 |
 | `pi-ai` | 105 | 197 | 105 | 73 | 73 | 73 | 73 |
-| `pi-ai/compat` | 165 | 204 | 164 | 129 | 129 | 129 | 129 |
+| `pi-ai/compat` | 165 | 204 | 165 | 130 | 130 | 130 | 130 |
 | `pi-agent-core` | 45 | 35 | 45 | 45 | 45 | 45 | 45 |
 
 ## Lanes that own gaps
@@ -21,7 +21,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
 | C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 468 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
-| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1572 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
+| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1576 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 256 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 252 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 148 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
@@ -479,7 +479,7 @@ None.
 | `ModelRuntime.removeRuntimeApiKey` | 0 | served | native:ModelRuntime.RemoveRuntimeAPIKey | native:ModelRuntime::remove_runtime_api_key | native:ModelRuntime.remove_runtime_api_key | native:pig:runtime-remove-runtime-api-key |
 | `ModelRuntime.resolveModel` | 0 | served | native:ModelRuntime.ResolveModel | native:ModelRuntime::resolve_model | native:ModelRuntime.resolve_model | native:pig:runtime-resolve-model |
 | `ModelRuntime.setRuntimeApiKey` | 0 | served | native:ModelRuntime.SetRuntimeAPIKey | native:ModelRuntime::set_runtime_api_key | native:ModelRuntime.set_runtime_api_key | native:pig:runtime-set-runtime-api-key |
-| `ModelRuntime.settleCredentialWrites` | 0 | unclassified | unclassified | unclassified | unclassified | unclassified |
+| `ModelRuntime.settleCredentialWrites` | 0 | served | native:ModelRuntime.SettleCredentialWrites | native:ModelRuntime::settle_credential_writes | native:ModelRuntime.settle_credential_writes | native:pig:runtime-settle-credential-writes |
 | `ModelRuntime.stream` | 0 | served | native:ModelRuntime.Stream | native:ModelRuntime::stream | native:ModelRuntime.stream | native:pig:runtime-stream |
 | `ModelRuntime.streamDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelRuntime.streamSimple` | 0 | served | native:ModelRuntime.StreamSimple | native:ModelRuntime::stream_simple | native:ModelRuntime.stream_simple | native:pig:runtime-stream-simple |
@@ -1598,7 +1598,7 @@ None.
 | `resolveTranscriptTools` | 1 | served | native:ResolveTranscriptTools | native:resolve_transcript_tools | native:resolve_transcript_tools | native:pig:resolve-transcript-tools |
 | `retryAssistantCall` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `retryDelayMs` | 1 | served | native:RetryDelayMs | native:retry_delay_ms | native:retry_delay_ms | native:pig:retry-delay-ms |
-| `setBedrockProviderLoader` | 0 | unclassified | unclassified | unclassified | unclassified | unclassified |
+| `setBedrockProviderLoader` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `setBedrockProviderModule` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `stream` | 2 | served | host:ModelRegistry.Stream | host:ModelRegistry::stream | host:ModelRegistry.stream | host:pig:registry-stream |
 | `streamAnthropic` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |

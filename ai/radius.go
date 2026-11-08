@@ -53,9 +53,16 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 	}
 	gateway = NormalizeRadiusGatewayURL(gateway)
 	oauth := CreateRadiusOAuth(RadiusOAuthOptions{ID: id, Name: name, Gateway: gateway})
+	// The published catalog is bound to id on the first GetModels, not at registration: startup registers the provider without listing its models.
 	var baseline []*Model
-	if gateway == NormalizeRadiusGatewayURL(DefaultRadiusGateway) {
-		baseline = publishedRadiusModels(id)
+	var baselineOnce sync.Once
+	publishedBaseline := func() []*Model {
+		baselineOnce.Do(func() {
+			if gateway == NormalizeRadiusGatewayURL(DefaultRadiusGateway) {
+				baseline = publishedRadiusModels(id)
+			}
+		})
+		return baseline
 	}
 	var mu sync.RWMutex
 	// dynamic is the account's catalog; nil until one is known, and empty when the organization disabled every model.
@@ -85,7 +92,7 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 		GetModels: func() ([]*Model, error) {
 			mu.RLock()
 			defer mu.RUnlock()
-			source := baseline
+			source := publishedBaseline()
 			if dynamic != nil {
 				source = dynamic
 			}

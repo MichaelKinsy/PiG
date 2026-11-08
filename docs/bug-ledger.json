@@ -6653,15 +6653,15 @@
     },
     {
       "id": "BF-2d3121b",
-      "title": "A connection failure with no status or body keeps its cause in the error message, for example `fetch failed…",
-      "symptom": "A connection failure with no status or body keeps its cause in the error message, for example `fetch failed: connect ECONNREFUSED 127.0.0.1:8080`, instead of only the generic text.",
+      "title": "A connection failure with no status or body keeps its cause in the error message, for example `Connection…",
+      "symptom": "A connection failure with no status or body keeps its cause in the error message, for example `Connection error.: connect ECONNREFUSED 127.0.0.1:8080` on `openai-completions`, `openai-responses` and `anthropic-messages` (`fetch failed: connect ECONNREFUSED ...` elsewhere), instead of only the generic text.",
       "rootCause": "Ports earendil-works/pi (#11783) and 56634404 (#11885). A connection failure with no status or body appends the deepest cause (for a failed fetch, Node's connect ECONNREFUSED text) to its message; Anthropic errors do the same. The gateway wording \"cut short after the reply had begun\" is retryable.",
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A connection failure with no status or body keeps its cause in the error message, for example `fetch failed: connect ECONNREFUSED 127.0.0.1:8080`, instead of only the generic text.",
+      "releaseNote": "A connection failure with no status or body keeps its cause in the error message, for example `Connection error.: connect ECONNREFUSED 127.0.0.1:8080` on `openai-completions`, `openai-responses` and `anthropic-messages` (`fetch failed: connect ECONNREFUSED ...` elsewhere), instead of only the generic text.",
       "origin": "release note",
       "commits": [
         {
@@ -6685,6 +6685,29 @@
       "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "A gateway's `cut short after the reply had begun` stream error is retried like other dropped streams.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2d3121b71c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/error_body_cause_upstream_test.go::TestConnectionErrorCauseDetailUpstream"
+      ]
+    },
+    {
+      "id": "BF-2d3121b-3",
+      "title": "Requests through the built-in HTTP client refuse the ports the Fetch standard blocks (for example 1, 25…",
+      "symptom": "Requests through the built-in HTTP client refuse the ports the Fetch standard blocks (for example 1, 25, 6000) with `fetch failed: bad port`, as Node's fetch does.",
+      "rootCause": "Ports earendil-works/pi (#11783) and 56634404 (#11885). A connection failure with no status or body appends the deepest cause (for a failed fetch, Node's connect ECONNREFUSED text) to its message; Anthropic errors do the same. The gateway wording \"cut short after the reply had begun\" is retryable.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Requests through the built-in HTTP client refuse the ports the Fetch standard blocks (for example 1, 25, 6000) with `fetch failed: bad port`, as Node's fetch does.",
       "origin": "release note",
       "commits": [
         {
@@ -7121,6 +7144,26 @@
         {
           "hash": "30e47f4408",
           "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-30e4a98",
+      "title": "The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's…",
+      "symptom": "The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's `setBedrockProviderLoader`, and the Go, Rust, Python and Lisp SDKs gain `SettleCredentialWrites`/`settle_credential_writes`/`runtime-settle-credential-writes`, so an extension can wait for a started OAuth refresh to be saved before it exits.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's `setBedrockProviderLoader`, and the Go, Rust, Python and Lisp SDKs gain `SettleCredentialWrites`/`settle_credential_writes`/`runtime-settle-credential-writes`, so an extension can wait for a started OAuth refresh to be saved before it exits.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "30e4a9808d",
+          "date": "2026-11-08"
         }
       ],
       "tests": []
@@ -8806,6 +8849,30 @@
       ]
     },
     {
+      "id": "BF-3868dd5",
+      "title": "MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a…",
+      "symptom": "MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3868dd514e",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "mcp/deepjson_test.go::TestParseWireMessageKeepsACallResultNested12000LevelsDeep",
+        "mcp/deepjson_test.go::TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",
+        "mcp/deepjson_test.go::TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep"
+      ]
+    },
+    {
       "id": "BF-38b0f0c",
       "title": "Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code…",
       "symptom": "Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code blocks.",
@@ -9771,6 +9838,25 @@
         "test/parity/scenarios/rpc/62-rpc-parallel-tool-dialog-order.toml",
         "tui/render_scheduler_test.go::TestTUIRequestRender_RendersAtOnceAfterMinInterval"
       ]
+    },
+    {
+      "id": "BF-3f0d3ae",
+      "title": "fix(configschema): the OpenAI Responses session-affinity description names session-id (Pi)",
+      "symptom": "fix(configschema): the OpenAI Responses session-affinity description names session-id (Pi)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3f0d3ae73f",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-3f82770",
@@ -22975,6 +23061,25 @@
       ]
     },
     {
+      "id": "BF-75dd64c",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "75dd64c840",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-760ab0d",
       "title": "Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls…",
       "symptom": "Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls (a write and an append of one note) could register in the other order in a Go, Rust, Python or Lisp extension, where Pi registers them in call order.",
@@ -26873,6 +26978,105 @@
       ]
     },
     {
+      "id": "BF-8d46bf8",
+      "title": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state…",
+      "symptom": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
+      "id": "BF-8d46bf8-2",
+      "title": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential…",
+      "symptom": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
+      "id": "BF-8d46bf8-3",
+      "title": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per…",
+      "symptom": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
       "id": "BF-8d6fb83",
       "title": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…",
       "symptom": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text.",
@@ -26998,6 +27202,30 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-8f241ca",
+      "title": "A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on…",
+      "symptom": "A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on `openai-completions`, `openai-responses`, `google` and `anthropic-messages`, as Pi does, instead of `terminated (cause: ...)`.",
+      "rootCause": "Probing the pinned pi-ai (1.5.0+) with Node-hosted servers, undici's cause reaches the message by when the peer acts: - a reset after the request was read: `Connection error.: read ECONNRESET` on all three APIs and the SDK, 6/6; - a close (FIN), before or after the request: `Connection error.: other side closed (UND_ERR_SOCKET)`, 12/12; - a reset on accept: `connect ECONNRESET \u003caddr\u003e`, `write ECONNRESET` or both, by timing (a Go-hosted server gives mostly `write`). Go's dial returns before a reset on accept lands, so the reset arrived at the request's write or read and lost its detail, and a close before the headers (EOF) had none. nodeConnectionFailure now names a write or read reset…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on `openai-completions`, `openai-responses`, `google` and `anthropic-messages`, as Pi does, instead of `terminated (cause: ...)`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8f241ca2fd",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi",
+        "ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset",
+        "ai/transport_diagnostic_test.go::TestProviderTransportResetRecordsDiagnosticAndKeepsMessage"
       ]
     },
     {
@@ -31671,36 +31899,6 @@
       ]
     },
     {
-      "id": "BF-D246",
-      "title": "OpenAI Responses sends session-id, not session_id",
-      "symptom": "1.5.0 sends `session_id` on Responses (#11639).",
-      "rootCause": "Proxies such as nginx with `underscores_in_headers off` drop an underscored header silently and Envoy can be configured to reject it, so cache affinity was lost.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D246",
-      "removeWhen": "the pinned Pi release contains c5d397835. Then the call-site marker and this record go, and the schema description follows the pin.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "bf094afb3e",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "bfe1b032a7",
-          "date": "2026-11-05"
-        }
-      ],
-      "tests": [
-        "ai/cache_affinity_e2e_upstream_test.go::TestOpenAIResponsesCacheAffinityE2EUpstream",
-        "ai/openai_completions_session_affinity_upstream_test.go::TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat",
-        "ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatHeadersUpstream",
-        "ai/xai_responses_upstream_test.go::TestXAIResponsesRequestUpstream"
-      ]
-    },
-    {
       "id": "BF-D249",
       "title": "Images in queued steering and follow-up messages are resized when the message is delivered",
       "symptom": "A steering or follow-up message with images, queued while the agent is busy, is sent to the model and saved in the session file at its original size, so a 1200x9000 PNG is replayed on every later request.",
@@ -32100,77 +32298,6 @@
       "tests": []
     },
     {
-      "id": "BF-D350",
-      "title": "OpenCode Zen and Go Claude models send per-message effort",
-      "symptom": "1.5.0 omits both for OpenCode Claude models.",
-      "rootCause": "OpenCode serves these Claude models over an Anthropic-messages endpoint that needs the per-message effort and the drop_block binding to keep thinking blocks coherent across turns.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D350",
-      "removeWhen": "the pinned Pi release contains 9ee7586a9. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c21b1370e5",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "cmd/gen-models/catalog_matches_pi_test.go::TestCatalogGenerationMatchesPi",
-        "cmd/gen-models/opencode_model_generation_test.go::TestOpencodeModelGeneration"
-      ]
-    },
-    {
-      "id": "BF-D351",
-      "title": "Anthropic non-strict tool schemas keep root $defs",
-      "symptom": "1.5.0 drops root `$defs` in non-strict mode.",
-      "rootCause": "A `$ref` into a removed `$defs` makes Anthropic reject the tool definition.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D351",
-      "removeWhen": "the pinned Pi release contains 4a6a58eb. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c21b1370e5",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema",
-        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas"
-      ]
-    },
-    {
-      "id": "BF-D352",
-      "title": "Anthropic message threads",
-      "symptom": "Not a Pi bug: a feature ahead of the pin.",
-      "rootCause": "Smaller requests and cache continuity on long Anthropic sessions.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D352",
-      "removeWhen": "the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c21b1370e5",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "ai/anthropic_message_threads_test.go::TestAnthropicMessageThreadsCreateThenContinue"
-      ]
-    },
-    {
       "id": "BF-D370",
       "title": "The OAuth callback server drops connections that have not sent a request when it closes",
       "symptom": "1.5.0 waits for the browser to drop the socket, for minutes.",
@@ -32194,27 +32321,30 @@
       ]
     },
     {
-      "id": "BF-D371",
-      "title": "Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`",
-      "symptom": "1.5.0 throws `URI malformed` out of every codemode run.",
-      "rootCause": "One MCP tool with such a ref failed every codemode run.",
+      "id": "BF-D373",
+      "title": "The stored PKCE verifier is dropped once its code exchange succeeded",
+      "symptom": "none observable in behavior; additive hardening.",
+      "rootCause": "a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.",
       "rootCauseSource": "divergence record",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "ahead-of-pi",
-      "divergence": "D371",
-      "removeWhen": "the pinned Pi release contains 6d3e342b2.",
+      "divergence": "D373",
+      "removeWhen": "Pi drops the verifier after the exchange, or the owner declines the hardening.",
       "fixedIn": "Unreleased",
       "origin": "divergence",
       "commits": [
         {
-          "hash": "d852965a33",
+          "hash": "474fc73fd8",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "8d46bf82b6",
           "date": "2026-11-07"
         }
       ],
       "tests": [
-        "codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown",
-        "coding/extension/builtin/codemode/tool_refs_pi_test.go::TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences"
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
       ]
     },
     {
@@ -32270,6 +32400,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-D520",
+      "title": "A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect",
+      "symptom": "none.",
+      "rootCause": "Go's dial returns before the peer's reset arrives and the request write goes into the socket buffer, so the reset surfaces on the response read. PiG cannot tell the two apart without guessing from timing, and the reset after the request is the failure a real server produces, so it keeps Node's text for that case.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D520",
+      "removeWhen": "PiG can tell a reset on accept from a reset after the request (for example by recording whether the request body was written before the reset reached the connection), or Pi stops reporting the connect.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "403a475ba7",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi",
+        "ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset"
+      ]
     },
     {
       "id": "BF-a076a50",
@@ -32840,6 +32994,28 @@
         "ai/openai_empty_tool_call_test.go::TestOpenAICompletionsEmptyToolCallDoesNotWedgeReplay",
         "ai/unreplayable_tool_call_test.go::TestReplayOmitsUnreplayableToolCallsOnEveryProviderPath",
         "ai/unreplayable_tool_call_test.go::TestStreamedToolCallsWithoutIDGetDistinctIDsAcrossTurns"
+      ]
+    },
+    {
+      "id": "BF-a397ee9",
+      "title": "Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer…",
+      "symptom": "Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer ends the prompt with `interrupted system call` on macOS: the prompt enters and leaves raw mode through the same retrying calls as the main screen, as Node's `setRawMode` retries the call.",
+      "rootCause": "A stop and continue (Ctrl+Z, fg) during the API key prompt resumes inside the termios ioctl, which macOS reports as EINTR; readSecret called x/term directly, so the prompt ended with 'interrupted system call' where Node's setRawMode retries. coding/cli/auth_terminal.go reached the repository after the per-call-site EINTR audit (TestTerminalSyscallsThatCanSleepRetryEINTR), which flagged both calls.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer ends the prompt with `interrupted system call` on macOS: the prompt enters and leaves raw mode through the same retrying calls as the main screen, as Node's `setRawMode` retries the call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a397ee91ed",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/terminal_syscall_eintr_audit_test.go::TestTerminalSyscallsThatCanSleepRetryEINTR"
       ]
     },
     {
@@ -45508,6 +45684,29 @@
       ]
     },
     {
+      "id": "BF-e38ea7c",
+      "title": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its…",
+      "symptom": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its last lines changed or a second fence that repeats the start of the first, is highlighted as a whole run highlights it, in every language.",
+      "rootCause": "hlFindResume matched a stored state on the text up to the resume point alone. The run's decisions before that point read past it, up to the end of the code of that run, so a block that began with the same text and then differed (a file rewritten with its last lines changed, an edit, a truncation, another fence with the same beginning) resumed with decisions the new text does not make. Streaming only appends, and every resume of an append is kept.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its last lines changed or a second fence that repeats the start of the first, is highlighted as a whole run highlights it, in every language. The highlighter restarted from a state of the earlier block that only matched the text before its resume point, and highlight.js reads past that point, so the new block could take a state it does not hold: python, bash, SQL, Kotlin and about 70 other languages showed it, and JavaScript and TypeScript would have with the resumable highlighting of the same release.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e38ea7c9db",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/highlight_resume_blocks_test.go::TestResumeStateDoesNotServeCodeThatOnlySharesItsPrefix",
+        "tui/highlight_resume_blocks_test.go::TestStreamedHighlightIsAWholeRunAcrossBlocksAndEdits"
+      ]
+    },
+    {
       "id": "BF-e3f39b7",
       "title": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\"",
       "symptom": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\".",
@@ -47756,10 +47955,7 @@
       "rootCauseSource": "divergence record",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D144",
-      "piIssue": "https://github.com/earendil-works/pi/issues/10697",
-      "removeWhen": "Pi includes `error.cause` in the message of a transport failure.",
+      "class": "own",
       "fixedIn": "0.5.0",
       "releaseNote": "A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144, Pi #10697).",
       "origin": "release note",
@@ -52278,11 +52474,6 @@
       "entry": "BF-0225a43"
     },
     {
-      "id": "D144",
-      "title": "A dropped response stream keeps its cause in the error message (Pi #10697)",
-      "entry": "BF-f07d033"
-    },
-    {
       "id": "D145",
       "title": "Nested Errors keep their name and message in codemode output (Pi #10650)",
       "entry": "BF-35e46b1"
@@ -52549,11 +52740,6 @@
       "entry": "BF-3b696c8"
     },
     {
-      "id": "D246",
-      "title": "OpenAI Responses sends session-id, not session_id",
-      "entry": "BF-D246"
-    },
-    {
       "id": "D248",
       "title": "The /tree search line draws a cursor while the selector is focused",
       "entry": "BF-01a63b9"
@@ -52669,29 +52855,14 @@
       "entry": "BF-D312"
     },
     {
-      "id": "D350",
-      "title": "OpenCode Zen and Go Claude models send per-message effort",
-      "entry": "BF-D350"
-    },
-    {
-      "id": "D351",
-      "title": "Anthropic non-strict tool schemas keep root $defs",
-      "entry": "BF-D351"
-    },
-    {
-      "id": "D352",
-      "title": "Anthropic message threads",
-      "entry": "BF-D352"
-    },
-    {
       "id": "D370",
       "title": "The OAuth callback server drops connections that have not sent a request when it closes",
       "entry": "BF-D370"
     },
     {
-      "id": "D371",
-      "title": "Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`",
-      "entry": "BF-D371"
+      "id": "D373",
+      "title": "The stored PKCE verifier is dropped once its code exchange succeeded",
+      "entry": "BF-D373"
     },
     {
       "id": "D430",
@@ -52702,6 +52873,11 @@
       "id": "D431",
       "title": "PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)",
       "entry": "BF-D431"
+    },
+    {
+      "id": "D520",
+      "title": "A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect",
+      "entry": "BF-D520"
     }
   ],
   "exemptCommits": {

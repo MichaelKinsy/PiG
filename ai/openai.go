@@ -1783,6 +1783,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	applyProviderHeaders(httpReq, opts.Headers)
 
 	builder := newObservedProviderBuilder(ctx, outputAPI(p.cfg.ModelMetadata, APIOpenAICompletions), p.cfg.ProviderID, p.cfg.Model)
+	builder.transportCauseDetail = true
 	builder.modelCost = opts.ModelCost
 	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, APIOpenAICompletions, p.cfg.ProviderID, p.cfg.Model))
 	requestContext, abort := context.WithCancel(httpReq.Context())
@@ -1891,7 +1892,7 @@ func applyOpenAISessionAffinityHeaders(headers http.Header, sessionID string, fo
 		if completions {
 			headers.Set("session_id", sessionID)
 		} else {
-			// pig divergence (D246): Pi c5d397835 sends session-id on Responses; nginx drops an underscored header by default and Envoy can reject it. Pi 1.5.0 sends session_id.
+			// upstream: Pi c5d397835 sends session-id on Responses; nginx drops an underscored header by default and Envoy can reject it.
 			headers.Set("session-id", sessionID)
 		}
 	}

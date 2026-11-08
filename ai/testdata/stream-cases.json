@@ -2170,8 +2170,69 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1311",
-    "line": 1311,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1317",
+    "line": 1317,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, CN region)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "qwen-token-plan-individual-cn",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1321",
+    "line": 1321,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, CN region)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "qwen-token-plan-individual-cn",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1325",
+    "line": 1325,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, CN region)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "qwen-token-plan-individual-cn",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1329",
+    "line": 1329,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, CN region)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "qwen-token-plan-individual-cn",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1333",
+    "line": 1333,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, CN region)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "qwen-token-plan-individual-cn",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1342",
+    "line": 1342,
     "name": "Generate E2E Tests/Ant Ling Provider (Ling 2.6 Flash via OpenAI Completions)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "ant-ling",
@@ -2181,8 +2242,8 @@
     "options": {}
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1315",
-    "line": 1315,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1346",
+    "line": 1346,
     "name": "Generate E2E Tests/Ant Ling Provider (Ling 2.6 Flash via OpenAI Completions)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "ant-ling",
@@ -2192,8 +2253,8 @@
     "options": {}
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1319",
-    "line": 1319,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1350",
+    "line": 1350,
     "name": "Generate E2E Tests/Ant Ling Provider (Ling 2.6 Flash via OpenAI Completions)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "ant-ling",
@@ -2203,8 +2264,8 @@
     "options": {}
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1323",
-    "line": 1323,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1354",
+    "line": 1354,
     "name": "Generate E2E Tests/Ant Ling Provider (Ling 2.6 Flash via OpenAI Completions)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "ant-ling",
@@ -2216,8 +2277,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1337",
-    "line": 1337,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1368",
+    "line": 1368,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "anthropic",
@@ -2229,8 +2290,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1341",
-    "line": 1341,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1372",
+    "line": 1372,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "anthropic",
@@ -2242,8 +2303,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1345",
-    "line": 1345,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1376",
+    "line": 1376,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "anthropic",
@@ -2255,8 +2316,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1349",
-    "line": 1349,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1380",
+    "line": 1380,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle thinking",
     "kind": "handleThinking",
     "provider": "anthropic",
@@ -2269,8 +2330,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1353",
-    "line": 1353,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1384",
+    "line": 1384,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "anthropic",
@@ -2283,8 +2344,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1357",
-    "line": 1357,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1388",
+    "line": 1388,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle image input",
     "kind": "handleImage",
     "provider": "anthropic",
@@ -2296,8 +2357,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1365",
-    "line": 1365,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1396",
+    "line": 1396,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "anthropic",
@@ -2309,8 +2370,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1369",
-    "line": 1369,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1400",
+    "line": 1400,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "anthropic",
@@ -2322,8 +2383,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1373",
-    "line": 1373,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1404",
+    "line": 1404,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "anthropic",
@@ -2335,8 +2396,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1377",
-    "line": 1377,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1408",
+    "line": 1408,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle adaptive thinking with effort high",
     "kind": "handleThinking",
     "provider": "anthropic",
@@ -2350,8 +2411,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1381",
-    "line": 1381,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1412",
+    "line": 1412,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle adaptive thinking with effort medium",
     "kind": "handleThinking",
     "provider": "anthropic",
@@ -2365,8 +2426,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1385",
-    "line": 1385,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1416",
+    "line": 1416,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle multi-turn with adaptive thinking and tools",
     "kind": "multiTurn",
     "provider": "anthropic",
@@ -2380,8 +2441,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1393",
-    "line": 1393,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1424",
+    "line": 1424,
     "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle image input",
     "kind": "handleImage",
     "provider": "anthropic",
@@ -2393,8 +2454,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1401",
-    "line": 1401,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1432",
+    "line": 1432,
     "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-6-luna via OpenAI Responses)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "github-copilot",
@@ -2406,8 +2467,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1405",
-    "line": 1405,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1436",
+    "line": 1436,
     "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-6-luna via OpenAI Responses)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "github-copilot",
@@ -2419,8 +2480,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1409",
-    "line": 1409,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1440",
+    "line": 1440,
     "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-6-luna via OpenAI Responses)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "github-copilot",
@@ -2432,8 +2493,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1413",
-    "line": 1413,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1444",
+    "line": 1444,
     "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-6-luna via OpenAI Responses)/should handle thinking",
     "kind": "handleThinking",
     "provider": "github-copilot",
@@ -2446,8 +2507,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1417",
-    "line": 1417,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1448",
+    "line": 1448,
     "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-6-luna via OpenAI Responses)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "github-copilot",
@@ -2460,8 +2521,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1421",
-    "line": 1421,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1452",
+    "line": 1452,
     "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-6-luna via OpenAI Responses)/should handle image input",
     "kind": "handleImage",
     "provider": "github-copilot",
@@ -2473,8 +2534,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1429",
-    "line": 1429,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1460",
+    "line": 1460,
     "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "github-copilot",
@@ -2486,8 +2547,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1433",
-    "line": 1433,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1464",
+    "line": 1464,
     "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "github-copilot",
@@ -2499,8 +2560,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1437",
-    "line": 1437,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1468",
+    "line": 1468,
     "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "github-copilot",
@@ -2512,8 +2573,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1441",
-    "line": 1441,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1472",
+    "line": 1472,
     "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle thinking",
     "kind": "handleThinking",
     "provider": "github-copilot",
@@ -2526,8 +2587,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1445",
-    "line": 1445,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1476",
+    "line": 1476,
     "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "github-copilot",
@@ -2540,8 +2601,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1449",
-    "line": 1449,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1480",
+    "line": 1480,
     "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle image input",
     "kind": "handleImage",
     "provider": "github-copilot",
@@ -2553,8 +2614,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1457",
-    "line": 1457,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1488",
+    "line": 1488,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "openai-codex",
@@ -2566,8 +2627,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1461",
-    "line": 1461,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1492",
+    "line": 1492,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "openai-codex",
@@ -2579,8 +2640,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1465",
-    "line": 1465,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1496",
+    "line": 1496,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "openai-codex",
@@ -2592,8 +2653,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1469",
-    "line": 1469,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1500",
+    "line": 1500,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol)/should handle thinking with reasoningEffort xhigh",
     "kind": "handleThinking",
     "provider": "openai-codex",
@@ -2606,8 +2667,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1473",
-    "line": 1473,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1504",
+    "line": 1504,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "openai-codex",
@@ -2620,8 +2681,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1477",
-    "line": 1477,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1508",
+    "line": 1508,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol)/should handle image input",
     "kind": "handleImage",
     "provider": "openai-codex",
@@ -2633,8 +2694,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1486",
-    "line": 1486,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1517",
+    "line": 1517,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol via WebSocket)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "openai-codex",
@@ -2647,8 +2708,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1490",
-    "line": 1490,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1521",
+    "line": 1521,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol via WebSocket)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "openai-codex",
@@ -2661,8 +2722,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1494",
-    "line": 1494,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1525",
+    "line": 1525,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol via WebSocket)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "openai-codex",
@@ -2675,8 +2736,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1498",
-    "line": 1498,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1529",
+    "line": 1529,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol via WebSocket)/should handle thinking with reasoningEffort xhigh",
     "kind": "handleThinking",
     "provider": "openai-codex",
@@ -2690,8 +2751,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1502",
-    "line": 1502,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1533",
+    "line": 1533,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol via WebSocket)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "openai-codex",
@@ -2705,8 +2766,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1506",
-    "line": 1506,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1537",
+    "line": 1537,
     "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-6.1-sol via WebSocket)/should handle image input",
     "kind": "handleImage",
     "provider": "openai-codex",
@@ -2719,8 +2780,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1514",
-    "line": 1514,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1545",
+    "line": 1545,
     "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "amazon-bedrock",
@@ -2730,8 +2791,8 @@
     "options": {}
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1518",
-    "line": 1518,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1549",
+    "line": 1549,
     "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "amazon-bedrock",
@@ -2741,8 +2802,8 @@
     "options": {}
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1522",
-    "line": 1522,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1553",
+    "line": 1553,
     "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "amazon-bedrock",
@@ -2752,8 +2813,8 @@
     "options": {}
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1526",
-    "line": 1526,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1557",
+    "line": 1557,
     "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle thinking",
     "kind": "handleThinking",
     "provider": "amazon-bedrock",
@@ -2765,8 +2826,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1530",
-    "line": 1530,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1561",
+    "line": 1561,
     "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "amazon-bedrock",
@@ -2778,8 +2839,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1534",
-    "line": 1534,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1565",
+    "line": 1565,
     "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle image input",
     "kind": "handleImage",
     "provider": "amazon-bedrock",
@@ -2789,8 +2850,8 @@
     "options": {}
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1542",
-    "line": 1542,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1573",
+    "line": 1573,
     "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-opus-4-6 interleaved thinking)/should use adaptive thinking without anthropic_beta",
     "kind": "bedrockSpecial",
     "provider": "amazon-bedrock",
@@ -2847,8 +2908,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1585",
-    "line": 1585,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1616",
+    "line": 1616,
     "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-opus-4-6 interleaved thinking)/should pass requestMetadata to the SDK payload",
     "kind": "bedrockSpecial",
     "provider": "amazon-bedrock",
@@ -2872,8 +2933,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1613",
-    "line": 1613,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1644",
+    "line": 1644,
     "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-opus-4-6 interleaved thinking)/should omit requestMetadata from payload when not provided",
     "kind": "bedrockSpecial",
     "provider": "amazon-bedrock",
@@ -2892,8 +2953,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1719",
-    "line": 1719,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1750",
+    "line": 1750,
     "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "ollama",
@@ -2924,8 +2985,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1723",
-    "line": 1723,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1754",
+    "line": 1754,
     "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "ollama",
@@ -2956,8 +3017,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1727",
-    "line": 1727,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1758",
+    "line": 1758,
     "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "ollama",
@@ -2988,8 +3049,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1731",
-    "line": 1731,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1762",
+    "line": 1762,
     "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "ollama",
@@ -3021,8 +3082,8 @@
     }
   },
   {
-    "source": ".upstream/current/packages/ai/test/stream.test.ts:1735",
-    "line": 1735,
+    "source": ".upstream/current/packages/ai/test/stream.test.ts:1766",
+    "line": 1766,
     "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "ollama",

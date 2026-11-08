@@ -24,8 +24,8 @@ func TestTheQuotedStringCacheFindsARepeatedStringWithoutHashingIt(t *testing.T) 
 	}
 }
 
-// quoteValid finds a repeated string the same way, and an equal copy is found by its hash once and then by its own identity.
-func TestTheQuotedStringCacheIndexesTheLatestCopyOfAString(t *testing.T) {
+// quoteValid finds a repeated string the same way, and an equal copy is found by its hash once and then by its own identity, as the string it equals still is.
+func TestTheQuotedStringCacheIndexesEachCopyOfAString(t *testing.T) {
 	cache := newQuotedStringCache(1 << 30)
 	text := strings.Repeat("line with \"quotes\" and <tags>\n", 1000)
 	first := cache.quote(text)
@@ -36,11 +36,11 @@ func TestTheQuotedStringCacheIndexesTheLatestCopyOfAString(t *testing.T) {
 	cache2 := newQuotedStringCache(1 << 30)
 	cache2.quote(text)
 	cache2.quote(copied)
-	if element, ok := cache2.bySource[identityOf(copied)]; !ok || identityOf(element.Value.(*quotedString).source) != identityOf(copied) {
-		t.Fatal("a copy found by its hash did not become the entry's source")
+	if _, ok := cache2.bySource[identityOf(copied)]; !ok {
+		t.Fatal("a copy found by its hash was not indexed by its identity")
 	}
-	if _, ok := cache2.bySource[identityOf(text)]; ok {
-		t.Fatal("the replaced source is still indexed")
+	if _, ok := cache2.bySource[identityOf(text)]; !ok {
+		t.Fatal("the source stopped being indexed when a copy was")
 	}
 }
 
