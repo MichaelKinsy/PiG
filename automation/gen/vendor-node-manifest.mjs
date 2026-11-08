@@ -83,7 +83,7 @@ function dependency(pkg, output) {
     dependency(dirname(path), join(output, "node_modules", name));
   }
 }
-for (const name of ["chalk", "undici", "semver", "minimatch", "hosted-git-info", "grok-mermaid", "proper-lockfile", "quickjs-wasi", "cross-spawn", "get-east-asian-width", "partial-json", "marked", "marked-cjk-friendly", "highlight.js", "ignore", "diff", "jiti"]) dependency(join(agent, "node_modules", name), join(shims, name));
+for (const name of ["chalk", "undici", "semver", "minimatch", "hosted-git-info", "lovely-mermaid", "proper-lockfile", "quickjs-wasi", "cross-spawn", "get-east-asian-width", "partial-json", "marked", "marked-cjk-friendly", "highlight.js", "ignore", "diff", "jiti"]) dependency(join(agent, "node_modules", name), join(shims, name));
 const yaml = join(agent, "node_modules/yaml");
 for (const output of files(join(shims, "yaml"))) {
   const rel = relative(join(shims, "yaml"), output);

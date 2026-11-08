@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import dataclasses
+import io
 import json
 import pathlib
 import re
@@ -864,6 +865,18 @@ def new_extension() -> pig_sdk.Extension:
                 def access(path):
                     log.append("access:" + path)
                 ops = pig_sdk.ReadOperations(read_file=read_file, access=access)
+            if case.get("ops") == "stream":
+                def read_file(path):
+                    log.append("readFile:" + path)
+                    return ("OPS:" + path).encode()
+
+                def access(path):
+                    log.append("access:" + path)
+
+                def create_read_stream(path):
+                    log.append("createReadStream:" + path)
+                    return io.BytesIO(("STREAM:" + path + "\n").encode())
+                ops = pig_sdk.ReadOperations(read_file=read_file, access=access, create_read_stream=create_read_stream)
             return pig_sdk.ReadToolOptions(auto_resize_images=case.get("autoResizeImages"), operations=ops)
         if tool == "write":
             ops = None
@@ -901,6 +914,11 @@ def new_extension() -> pig_sdk.Extension:
                     log.append("isDirectory:" + path)
                     raise RuntimeError("no such path for the probe")
                 ops = pig_sdk.GrepOperations(is_directory=is_directory)
+            if case.get("ops") == "grepdir":
+                def listed_directory(path):
+                    log.append("isDirectory:" + path)
+                    return True
+                ops = pig_sdk.GrepOperations(is_directory=listed_directory)
             return pig_sdk.GrepToolOptions(operations=ops)
         if tool == "find":
             ops = None

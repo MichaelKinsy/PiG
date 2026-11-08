@@ -4,7 +4,7 @@
  */
 import { CodemodeSandbox, loadQuickJSWasm, parseCodemodeSource, renderToolSample, toCodemodeIdentifier, } from "../../../pi-codemode/index.js";
 import { getCodemodeWorkerSpecifier, getQuickJSWasmPath } from "../../config.js";
-import { formatSize } from "../../core/tools/truncate.js";
+import { formatSize, sliceHead, sliceTail } from "../../core/tools/truncate.js";
 import { combineUsage } from "../../core/usage-totals.js";
 import { writeOutputFile } from "../../utils/output-files.js";
 import { Bm25Ranker, createToolSearchDocument, DEFAULT_TOOL_SEARCH_LIMIT } from "../tool-search/tool.js";
@@ -71,7 +71,7 @@ function releaseCodemodeWorker() {
 }
 const MODEL_TYPES = new Set(["chat", "image", "classifier"]);
 function truncateText(text, maxChars) {
-    return text.length > maxChars ? `${text.slice(0, maxChars - 3)}...` : text;
+    return text.length > maxChars ? `${sliceHead(text, maxChars - 3)}...` : text;
 }
 function previewArgs(args) {
     if (args === undefined)
@@ -395,8 +395,8 @@ async function truncateOutput(items, maxTokens) {
     const headChars = Math.floor(budget / 2);
     const tailChars = budget - headChars;
     const removed = combined.length - headChars - tailChars;
-    const head = combined.slice(0, headChars);
-    const tail = tailChars > 0 ? combined.slice(-tailChars) : "";
+    const head = sliceHead(combined, headChars);
+    const tail = sliceTail(combined, tailChars);
     let text = `Warning: truncated output (original token count: ${Math.ceil(combined.length / CHARS_PER_TOKEN)})\nTotal output lines: ${combined.split("\n").length}\n\n${head}…${Math.ceil(removed / CHARS_PER_TOKEN)} tokens truncated…${tail}`;
     const spilled = await spillOutput(combined);
     text +=
