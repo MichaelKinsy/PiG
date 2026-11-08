@@ -105,6 +105,13 @@ func New(t testing.TB, options Options) *Fixture {
 	f.Host = p2test.NewTestHost(t, hostOptions)
 	f.Terminal = vterm.New(columns, rows)
 	f.TUI = pitui.NewTuiAltScreen(f.Terminal, nil, t.TempDir())
+	f.start(f.Host.Host, nil)
+	return f
+}
+
+// start runs the owner loop and the runtime on h; prepare sets the runtime's state before it starts.
+func (f *Fixture) start(h host.Host, prepare func(*tuiruntime.TuiRuntime)) {
+	t := f.T
 	f.TUI.SetOwnerDispatcher(func(ctx context.Context, fn func()) error {
 		select {
 		case f.queue <- fn:
@@ -116,7 +123,10 @@ func New(t testing.TB, options Options) *Fixture {
 	f.wg.Add(1)
 	go f.loop()
 	f.Do(func() {
-		f.Runtime = tuiruntime.NewTuiRuntime(f.Host.Host, f.TUI, nil)
+		f.Runtime = tuiruntime.NewTuiRuntime(h, f.TUI, nil)
+		if prepare != nil {
+			prepare(f.Runtime)
+		}
 		f.Runtime.Start()
 		f.TUI.SetLayoutRoot(f.Runtime.Root)
 		f.TUI.SetFocus(f.Runtime)
@@ -130,5 +140,4 @@ func New(t testing.TB, options Options) *Fixture {
 		close(f.stop)
 		f.wg.Wait()
 	})
-	return f
 }
