@@ -15,7 +15,7 @@ func TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog(t *testing.T) 
 		KnownProviderZai, KnownProviderZaiCodingCn, KnownProviderMistral, KnownProviderMinimax, KnownProviderMinimaxCn, KnownProviderMoonshotai,
 		KnownProviderMoonshotaiCn, KnownProviderHuggingface, KnownProviderFireworks, KnownProviderTogether, KnownProviderBaseten, KnownProviderOpencode,
 		KnownProviderOpencodeGo, KnownProviderKimiCoding, KnownProviderMeta, KnownProviderCloudflareWorkersAi, KnownProviderCloudflareAiGateway,
-		KnownProviderQwenTokenPlan, KnownProviderQwenTokenPlanCn, KnownProviderQwenTokenPlanIndividual, KnownProviderXiaomi,
+		KnownProviderQwenTokenPlan, KnownProviderQwenTokenPlanCn, KnownProviderQwenTokenPlanIndividual, KnownProviderQwenTokenPlanIndividualCn, KnownProviderXiaomi,
 		KnownProviderXiaomiTokenPlanCn, KnownProviderXiaomiTokenPlanAms, KnownProviderXiaomiTokenPlanSgp,
 	}
 	got := make([]string, len(goValues))

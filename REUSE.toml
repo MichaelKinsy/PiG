@@ -401,7 +401,7 @@ SPDX-FileCopyrightText = "lru-cache contributors"
 SPDX-License-Identifier = "BlueOak-1.0.0"
 
 [[annotations]]
-path = "coding/extension/host/subprocess/runtime-node/shims/grok-mermaid/**"
+path = "coding/extension/host/subprocess/runtime-node/shims/lovely-mermaid/**"
 precedence = "override"
 SPDX-FileCopyrightText = ["Copyright 2023-2026 SpaceXAI", "Copyright 2026 Alexey Zaytsev"]
 SPDX-License-Identifier = "Apache-2.0"

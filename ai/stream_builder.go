@@ -3,6 +3,7 @@ package ai
 import (
 	"cmp"
 	"context"
+	"errors"
 	"slices"
 	"strconv"
 	"sync/atomic"
@@ -40,6 +41,8 @@ type assistantStreamBuilder struct {
 	errorMessage func(string) string
 	// causeDetail appends the deepest cause of a failure to its message (anthropic-messages.ts withCauseDetail).
 	causeDetail bool
+	// transportCauseDetail does the same for a failure that crossed the Node fetch boundary only (formatProviderError(normalizeProviderError(error)) of the OpenAI APIs); an error with a status keeps its own message.
+	transportCauseDetail bool
 	// providerEvent is the bound OnProviderStreamEvent observer, or nil.
 	providerEvent func(data any) error
 	// providerEventOption and providerEventModel are the request's OnProviderStreamEvent option and the model it receives, for an adapter that
@@ -502,6 +505,8 @@ func (builder *assistantStreamBuilder) recordTransportFailure(err error) {
 func (builder *assistantStreamBuilder) failureMessage(err error) string {
 	message := err.Error()
 	if builder.causeDetail {
+		message = WithCauseDetail(err)
+	} else if _, transport := errors.AsType[*nodeTransportError](err); transport && builder.transportCauseDetail {
 		message = WithCauseDetail(err)
 	}
 	if builder.errorMessage != nil {

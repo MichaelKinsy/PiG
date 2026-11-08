@@ -265,7 +265,6 @@ func (t anthTool) wire() (anthToolWire, error) {
 // anthLegacyInputSchemaOrder is the member order of the literal { type, properties, required } (anthropic-messages.ts:1589-1593, :207).
 var anthLegacyInputSchemaOrder = []string{"type", "properties", "required"}
 
-// pig divergence (D351): Pi main 4a6a58eb (not in Pi 1.5.0) keeps the root $defs and definitions of a non-strict tool schema.
 // anthLegacyDefinitionKeys are the root members the legacy literal appends after required, in order, when present (anthropic-messages.ts convertTools).
 var anthLegacyDefinitionKeys = []string{"$defs", "definitions"}
 
@@ -1872,7 +1871,7 @@ func (p *anthropicProvider) do(ctx context.Context, httpReq *http.Request, opts 
 				}
 			}
 			if _, ok := errors.AsType[*nodeTransportError](err); ok {
-				return nil, errors.New("Connection error.")
+				return nil, &nodeTransportError{message: "Connection error.", cause: err}
 			}
 		}
 	}

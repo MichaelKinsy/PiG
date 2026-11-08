@@ -61,6 +61,10 @@ import (
 // record is composed once per registration (it was once per read: 1,569 -> 746 allocs for a registration and six reads, BenchmarkRegisterExtensionProviderAndRead). Byte budgets and
 // production (no PIG_TEST_FAUX) budgets are unchanged. Profiles: xd670 ~/tern-v5/trees/faux-reg/tmp/prof1 against ~/tern-v5/trees/faux-main/tmp/prof0.
 //
+// Ratchet down on Linux after 8c9125d214 (the Radius baseline is built on the first GetModels, not at start): warm first prompt 17,700 -> 17,050 (measured 17,019, min of 3, two runs 17,019-17,021) and with models.json 21,800 -> 21,260
+// (measured 21,217-21,228), on tern-ci:v7 on xd6702. The Pi c23b9ec1 catch-up before it had raised both: the four ai/*_generated.go files add about 240 objects, and 7dd0dc1be1 (the promptCacheKeyMode and
+// requiresToolsWithToolHistory schema properties, built once per process) about 97 objects on the models.json path. The darwin and windows budgets are not lowered: they were not measured on those hosts.
+//
 // Platform siblings of that raise (the same owner approval, 2026-10-25): darwin models.json 18,950 -> 21,850, windows warm first prompt 18,950 -> 21,100 and windows models.json
 // 22,370 -> 25,200, each about 0.5% over the measured value, as the Linux raises are. Measured on the hosted runners, min of 3, main f2f028f845 against the batch 4a384df786 (diag runs 40304098670
 // and 40305356345; the 0.6.0 CI run 40287205705 read 21,756 on macOS and 20,980 / 25,098 on Windows): warm first prompt Windows 18,363 -> 21,001, macOS 15,236 -> 17,658 (the darwin budget of 20,200 already
@@ -84,7 +88,7 @@ func startupAllocBudgetFor(goos string) startupAllocBudget {
 	if goos == "darwin" {
 		return startupAllocBudget{versionBytes: 760_000, versionObjects: 4_240, promptBytes: 2_970_000, promptObjects: 20_200}
 	}
-	return startupAllocBudget{versionBytes: 738_000, versionObjects: 3_880, promptBytes: 2_589_000, promptObjects: 17_700}
+	return startupAllocBudget{versionBytes: 738_000, versionObjects: 3_880, promptBytes: 2_589_000, promptObjects: 17_050}
 }
 
 func TestStartupAllocationBudget(t *testing.T) {
@@ -143,7 +147,7 @@ func startupModelsAllocBudgetFor(goos string) (bytes, objects uint64) {
 	if goos == "darwin" {
 		return 2_934_000, 21_850
 	}
-	return 2_940_000, 21_800
+	return 2_940_000, 21_260
 }
 
 func TestStartupAllocationBudgetWithModelsJSON(t *testing.T) {

@@ -49,8 +49,16 @@ func TestOpenAISDKTransportErrorConnectionReset(t *testing.T) {
 			provider := newMatrixProvider(t, &GeneratedModel{ID: "fixture", Provider: "fixture", API: api}, "http://"+listener.Addr().String(), false)
 			defer func() { _ = provider.Close() }()
 			err = openAISDKStreamError(t, provider, StreamOptions{MaxRetries: new(0)})
-			if err == nil || err.Error() != "Connection error." {
-				t.Fatalf("error=%v, want Connection error.", err)
+			// A peer that resets on accept reaches the dial (`connect ECONNRESET <addr>`), the request write or the response read. The pinned pi-ai
+			// mostly says `connect` (56 of 60 runs against this server); PiG says `read` in most runs because Go's dial returns before the reset (D520).
+			message := ""
+			if err != nil {
+				message = err.Error()
+			}
+			switch message {
+			case "Connection error.: connect ECONNRESET " + listener.Addr().String(), "Connection error.: write ECONNRESET", "Connection error.: write EPIPE", "Connection error.: read ECONNRESET":
+			default:
+				t.Fatalf("error=%v, want Connection error. with the reset on the connect, the write or the read", err)
 			}
 		})
 	}
@@ -68,8 +76,8 @@ func TestOpenAISDKTransportErrorConnectionRefused(t *testing.T) {
 			provider := newMatrixProvider(t, &GeneratedModel{ID: "fixture", Provider: "fixture", API: api}, "http://"+address, false)
 			defer func() { _ = provider.Close() }()
 			err = openAISDKStreamError(t, provider, StreamOptions{MaxRetries: new(0)})
-			if err == nil || err.Error() != "Connection error." {
-				t.Fatalf("error=%v, want Connection error.", err)
+			if want := "Connection error.: connect ECONNREFUSED " + address; err == nil || err.Error() != want {
+				t.Fatalf("error=%v, want %q", err, want)
 			}
 		})
 	}

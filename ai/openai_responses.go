@@ -1751,6 +1751,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		api = outputAPI(p.cfg.ModelMetadata, api)
 	}
 	builder := newObservedProviderBuilder(ctx, api, p.cfg.ProviderID, p.cfg.Model)
+	builder.transportCauseDetail = true
 	builder.modelCost = opts.ModelCost
 	builder.requestServiceTier = requestServiceTierOf(opts)
 	builder.setResponseMetadata("", "", "", configurationUpdateEffort, nil)

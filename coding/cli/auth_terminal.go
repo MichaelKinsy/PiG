@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/terminalquestion"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // AuthOutput is the output shared by the terminal authentication commands.
@@ -48,7 +49,7 @@ func (processLoginTerminal) Interactive() bool {
 	return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 }
 func (t processLoginTerminal) Write(line string) { fmt.Fprintln(t.output, line) }
-func (processLoginTerminal) Error(line string) { fmt.Fprintln(os.Stderr, line) }
+func (processLoginTerminal) Error(line string)   { fmt.Fprintln(os.Stderr, line) }
 func (t processLoginTerminal) Question(ctx context.Context, message string) (string, error) {
 	return t.reader.Question(ctx, message, t.output, t.onInterrupt)
 }
@@ -66,7 +67,7 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 	if _, err := io.WriteString(output, message); err != nil {
 		return "", err
 	}
-	state, err := term.MakeRaw(fd)
+	state, err := tui.MakeRaw(fd)
 	if err != nil {
 		return "", err
 	}
@@ -77,7 +78,7 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 	done := make(chan result, 1)
 	stop := make(chan struct{})
 	finish := func() {
-		_ = term.Restore(fd, state)
+		_ = tui.RestoreCooked(fd, state)
 		_, _ = io.WriteString(output, "\n")
 	}
 	go func() {
