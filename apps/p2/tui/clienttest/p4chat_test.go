@@ -33,6 +33,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/transcript"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/tuitest"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/schema"
@@ -181,6 +182,12 @@ func newP4Chat(t *testing.T, options p4ChatOptions) *p4Chat {
 	return s
 }
 
+// pollCalls waits for at least n calls of name, showing the screen when they never come.
+func (s *p4Chat) pollCalls(t *testing.T, name string, n int) {
+	t.Helper()
+	pollScreen(t, s.Fixture, func(string) bool { return s.calls.count(name) >= n })
+}
+
 func (s *p4Chat) configured(n int) func() bool {
 	return func() bool { return s.calls.count("configure") == n }
 }
@@ -224,7 +231,7 @@ func TestModelSelectorConfiguresTheConversationCtrlSSavesTheDefaultModelProvider
 	}
 	typed(s.Fixture, "/model faux/faux-1")
 	s.Send(enter)
-	tuitest.Poll(t, func() bool { return s.calls.count("configure") >= 3 })
+	s.pollCalls(t, "configure", 3)
 	configures := s.calls.get("configure")
 	if got := asJSON(t, configures[len(configures)-1]); got != `{"model":{"provider":"faux","modelId":"faux-1"}}` {
 		t.Fatalf("last configure = %s", got)
@@ -449,9 +456,9 @@ func TestARefusedHoldIsReportedOnceAndNotRetriedInALoop(t *testing.T) {
 		t.Fatal(err)
 	}
 	tuitest.Poll(t, anyNotice(s.Fixture, "refused for this principal"))
-	// Forbidden is permanent: the reference ended, no automatic retry follows.
-	if kind := held.State().Value().Kind; kind != host.RefStateEnded {
-		t.Fatalf("the refused reference is %s", kind)
+	// Forbidden is permanent: the reference is broken, with no retry time.
+	if state := held.State().Value(); state.Kind != host.RefStateFailed || state.Cause.Kind != data.FailureBroken || state.RetryAt != nil {
+		t.Fatalf("the refused reference is %+v: no automatic retry follows", state)
 	}
 	if attempts.count("attempt") != 1 {
 		t.Fatalf("attempts = %d", attempts.count("attempt"))
