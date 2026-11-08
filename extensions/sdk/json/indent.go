@@ -218,7 +218,7 @@ func jsUnescape(escape []byte) string {
 		return "\u2029"
 	}
 	// pig (LW-JSON-1): U+FFFD, in any hex case, is written raw as JSON.stringify writes it; a nested encoder writes it for ill-formed UTF-8.
-	if bytes.EqualFold(escape[2:], []byte("fffd")) {
+	if escape[1] == 'u' && bytes.EqualFold(escape[2:], []byte("fffd")) {
 		return "\ufffd"
 	}
 	return ""

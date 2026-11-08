@@ -41,6 +41,7 @@ func marshalJSONToMessages() map[string]AgentMessage {
 		// Negative zero and invalid UTF-8 are written as JSON.stringify writes them: 0, and the replacement character itself.
 		"assistant negative zero and invalid UTF-8": {Assistant: zeroAssistant},
 		"user invalid UTF-8":                        {User: &UserMessage{Role: RoleUser, Content: ai.UserText("bad \xff byte"), Timestamp: 6}},
+		"user escape before fffd":                   {User: &UserMessage{Role: RoleUser, Content: ai.UserText("say \"fffd\"\nFFFD \\fffd"), Timestamp: 8}},
 		"tool result negative zero":                 {ToolResult: &ToolResultMessage{Role: RoleToolResult, ToolCallID: "c\xff", ToolName: "read", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "x\xfe"}}, Details: map[string]any{"z": negZero, "s": "\xff"}, Timestamp: 7}},
 		"custom negative zero":                      {Custom: map[string]any{"role": "custom", "customType": "x", "content": "\xff", "timestamp": negZero}},
 		"assistant":                                 {Assistant: assistant("considering <b>&amp; é \u2029", call)},

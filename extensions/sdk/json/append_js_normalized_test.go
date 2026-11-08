@@ -9,6 +9,7 @@ func TestAppendJSNormalized(t *testing.T) {
 		{`"\ufffd\uFFFD\uFfFd"`, "\"\ufffd\ufffd\ufffd\""},
 		{`"\u003c\u003e\u0026\u2028\u2029\u007f\ud800 \u00e9\n"`, `"\u003c\u003e\u0026\u2028\u2029\u007f\ud800 \u00e9\n"`},
 		{`"-0 \\ufffd \\u003c"`, `"-0 \\ufffd \\u003c"`},
+		{"\"\\\"fffd \\nFFFD \\\\fffd \\bfffd\"", "\"\\\"fffd \\nFFFD \\\\fffd \\bfffd\""},
 		{" {\n\t\"k\" : [ -0 , \"\\ufffd\" ]\n} ", "{\"k\":[0,\"\ufffd\"]}"},
 		{`{"s":"<&>\u2028"}`, `{"s":"<&>\u2028"}`},
 	} {
@@ -25,5 +26,14 @@ func TestAppendJSNormalized(t *testing.T) {
 	}
 	if got, err := AppendJSNormalized(nil, []byte(`{"a":`)); err == nil {
 		t.Errorf("truncated text: %q, no error", got)
+	}
+}
+
+// A two-character escape before the letters of "fffd" is that escape and four letters, not U+FFFD.
+func TestMarshalStringifyKeepsEscapeBeforeFffd(t *testing.T) {
+	const text = "\"say \\\"fffd\\\" \\nFFFD \\\\fffd\""
+	got, err := MarshalStringify(RawMessage(text))
+	if err != nil || string(got) != text {
+		t.Errorf("got %q (%v), want %q", got, err, text)
 	}
 }
