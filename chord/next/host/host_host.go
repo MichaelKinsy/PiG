@@ -250,6 +250,9 @@ type Host interface {
 	Registry(ctx context.Context, r registries.Registry[any, any], options GetOptions) (*registries.RegistryValueSource, error)
 	// Address is this host's address (Pi's `host.address`); nil for a client.
 	Address() *contracts.Address
+	// PrincipalAttributes are the attributes this host's spans record for principal (Pi's `host.principalAttributes`): its
+	// PrincipalAttributes hook's, else `chord.principal`, its principal key; none without a principal.
+	PrincipalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes
 	// Root runs fn with a call context for code outside objects (a Durable tool, a CLI): the host's principal (or
 	// options.Principal), this host's incarnation, ctx's telemetry and signal, `ctx.Get`. When fn settles or ctx aborts, the
 	// context is sealed: its signal aborted, `ctx.Get` refused `released`, every reference it took released; an abort returns
@@ -1610,9 +1613,9 @@ func (h *chordHost) newBindingFor(typ *contracts.Contract, dependent *chordObjec
 // own is this host as the maker of its own references: its principal and incarnation.
 func (h *chordHost) own() caller { return caller{principal: h.principal, incarnation: h.incarnation} }
 
-// principalAttributes are the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
+// PrincipalAttributes are the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
 // `chord.principal`, its principal key; none without a principal.
-func (h *chordHost) principalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes {
+func (h *chordHost) PrincipalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes {
 	if principal == nil {
 		return nil
 	}

@@ -530,10 +530,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 				return workerHosts.get(data.PrincipalKey(principal, chordctx.Background(), nil))
 			},
 			PrincipalAttributes: func(principal data.Principal) telemetry.SpanAttributes {
-				if options.PrincipalAttributes == nil {
-					return nil
-				}
-				return options.PrincipalAttributes(principal)
+				return a.Host.PrincipalAttributes(principal, chordctx.Background())
 			},
 		})})
 	}

@@ -292,8 +292,9 @@ func TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStore
 	if !clickSpanID.MatchString(click.ID) {
 		t.Fatalf("the click's span id = %q, want browser:<uuid>:<n>", click.ID)
 	}
-	// Not asserted: Pi's click span carries chord.principal {"kind":"owner"}. The Go app's ingest facet is given a PrincipalAttributes
-	// hook that returns nothing (app.go), so a page's spans record no principal: the page.test.ts case stays partial for it.
+	if principal, _ := click.Attributes.Get("chord.principal"); principal != `{"kind":"owner"}` {
+		t.Fatalf("the click's chord.principal = %q, want {\"kind\":\"owner\"}", principal)
+	}
 	for _, span := range spans {
 		if span.TraceID != click.ID {
 			t.Fatalf("span %s %q is in trace %q, want the click's %q", span.ID, span.Name, span.TraceID, click.ID)
