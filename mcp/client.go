@@ -211,7 +211,7 @@ func objectFields(raw json.RawMessage) (map[string]json.RawMessage, bool) {
 
 func isJSONString(raw json.RawMessage) bool {
 	var s string
-	return raw != nil && deepFallback(json.Unmarshal(raw, &s), raw, &s) == nil && len(raw) > 0 && raw[0] == '"'
+	return raw != nil && json.Unmarshal(raw, &s) == nil && len(raw) > 0 && raw[0] == '"'
 }
 
 func validateInitializeResult(raw json.RawMessage) (*InitializeResult, error) {
@@ -265,7 +265,7 @@ func validateListPage(method, key string, value json.RawMessage, isItem func(map
 		if !isJSONString(cursor) {
 			return nil, invalidError("Invalid MCP " + method + " cursor")
 		}
-		_ = deepFallback(json.Unmarshal(cursor, &page.nextCursor), cursor, &page.nextCursor)
+		_ = json.Unmarshal(cursor, &page.nextCursor)
 		page.hasNext = page.nextCursor != ""
 	}
 	return page, nil
@@ -1046,7 +1046,7 @@ func (c *Client) handleProgress(params json.RawMessage) {
 	}
 	var token JSONRPCID
 	var progress float64
-	if token.UnmarshalJSON(fields["progressToken"]) != nil || deepFallback(json.Unmarshal(fields["progress"], &progress), fields["progress"], &progress) != nil || !isNumber(fields["progress"]) {
+	if token.UnmarshalJSON(fields["progressToken"]) != nil || json.Unmarshal(fields["progress"], &progress) != nil || !isNumber(fields["progress"]) {
 		return
 	}
 	c.mu.Lock()
@@ -1074,7 +1074,7 @@ func (c *Client) handleProgress(params json.RawMessage) {
 // isNumber is `typeof value === "number"` for a decoded JSON value: a string and null are not numbers, though Go decodes null into a float64.
 func isNumber(raw json.RawMessage) bool {
 	var f float64
-	return len(raw) > 0 && raw[0] != '"' && !bytes.Equal(bytes.TrimSpace(raw), []byte("null")) && deepFallback(json.Unmarshal(raw, &f), raw, &f) == nil && !math.IsNaN(f)
+	return len(raw) > 0 && raw[0] != '"' && !bytes.Equal(bytes.TrimSpace(raw), []byte("null")) && json.Unmarshal(raw, &f) == nil && !math.IsNaN(f)
 }
 
 func (c *Client) handleCancelled(params json.RawMessage) {
@@ -1089,7 +1089,7 @@ func (c *Client) handleCancelled(params json.RawMessage) {
 	var reason string
 	if raw, present := fields["reason"]; present {
 		if isJSONString(raw) {
-			_ = deepFallback(json.Unmarshal(raw, &reason), raw, &reason)
+			_ = json.Unmarshal(raw, &reason)
 		} else {
 			reason = string(raw)
 		}

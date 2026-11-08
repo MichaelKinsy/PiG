@@ -99,7 +99,7 @@ func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 	str := func(name string) (string, bool) {
 		var v string
 		raw, ok := members[name]
-		if !ok || deepFallback(json.Unmarshal(raw, &v), raw, &v) != nil || len(raw) == 0 || raw[0] != '"' {
+		if !ok || json.Unmarshal(raw, &v) != nil || len(raw) == 0 || raw[0] != '"' {
 			return "", false
 		}
 		return v, true
@@ -116,7 +116,7 @@ func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 	b.Description, _ = str("description")
 	if raw, ok := members["size"]; ok && len(raw) > 0 && raw[0] != '"' {
 		var n float64
-		if deepFallback(json.Unmarshal(raw, &n), raw, &n) == nil {
+		if json.Unmarshal(raw, &n) == nil {
 			b.Size = &n
 		}
 	}
@@ -142,7 +142,7 @@ func lenientResource(raw json.RawMessage) *ResourceContents {
 	str := func(name string) *string {
 		var v string
 		m, ok := members[name]
-		if !ok || len(m) == 0 || m[0] != '"' || deepFallback(json.Unmarshal(m, &v), m, &v) != nil {
+		if !ok || len(m) == 0 || m[0] != '"' || json.Unmarshal(m, &v) != nil {
 			return nil
 		}
 		return &v
@@ -218,7 +218,7 @@ func (r *CallToolResult) UnmarshalJSON(data []byte) error {
 // jsTruthy is JavaScript's truthiness of a JSON value: false, null, 0, -0 and "" are falsy.
 func jsTruthy(raw json.RawMessage) bool {
 	var v any
-	if err := deepFallback(json.Unmarshal(raw, &v), raw, &v); err != nil {
+	if err := json.Unmarshal(raw, &v); err != nil {
 		return true
 	}
 	switch v := v.(type) {
