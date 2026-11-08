@@ -2229,15 +2229,14 @@
     },
     {
       "path": "packages/chord/test/delta-op-text-retention.test.ts",
-      "disposition": "designed-out",
-      "protects": "Append ops from a growing string do not keep every revision of the text alive (no unbounded memory growth).",
-      "pigTest": "A Go test that tracks, diffs and applies a long growing string for many revisions, then forces GC and compares runtime.MemStats HeapAlloc (or a finalizer on each revision) with a bound. Go substrings share their source array, so the hazard is real in Go too. TestAppendTextOwnsTheTextItKeeps covers only AppendText.",
-      "whyNot": "FLIP to planned. It is possible: tracker, diffRevisions and applyImmutable are Go and a heap bound is deterministic after runtime.GC. Owner proposal: ChordDelta3, delta evidence batch. No longer designed out.",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:262f4f728505051753a57de57f0a279cd31f958c0452e5662f57415ae354666e",
       "evidence": [
+        "chord/delta/op_text_retention_norace_test.go#TestAppendOpsDoNotRetainTheirSourceText",
+        "chord/delta/op_text_retention_norace_test.go#TestAppliedReplicaRetainsTheTextOnce",
         "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps"
       ],
-      "rationale": "The test measures V8 heap use after the tracker, diffRevisions and applyImmutable produce append ops from a long, growing string: V8 represents a long slice as a view of its source, so the ops kept every revision of the text alive until ownedSlice copied them. Go ops hold the substring they were cut from (the same text) and the strings the tracker keeps are whole copies; AppendText clones the text it is given (TestAppendTextOwnsTheTextItKeeps), and no Go behavior depends on how a slice is represented. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/delta-op-text-retention.test.ts, identical modulo import paths."
+      "rationale": "All 3 upstream cases run as Go heap-bound tests (Pi f715a15c, #9265: V8 sliced strings kept every revision of the text alive; a Go substring shares its parent array too, so the emit sites clone). TestAppendOpsDoNotRetainTheirSourceText runs the tracker and diffRevisions cases (10,000 appends, heap bound after GC with the ops still held), and TestAppliedReplicaRetainsTheTextOnce runs the replica case (a 100,000-byte text, 300 appends applied by ApplyImmutable, heap bound 2,000,000 bytes after GC, the replica compared with the tracker's value after measuring). TestAppendTextOwnsTheTextItKeeps covers AppendText. The tests carry the !race build tag because the race detector inflates allocation, as the upstream test measures V8 heap use directly."
     },
     {
       "path": "packages/chord/test/delta-pending.test.ts",
@@ -4036,8 +4035,8 @@
       "path": "packages/chord/test/store/store.test.ts",
       "disposition": "ported",
       "protects": "A metrics adapter that throws after COMMIT stops the store: memory keeps the committed group, no seq repeats, later commits reject storage_failed.",
-      "pigTest": "A Go test with a panicking telemetry counter, for the group and the lone commit.",
-      "whyNot": "FLIP to ported: ChordDelta3 ports both cases on fix/chord-delta-close (the Go store recovers a panicking counter as a failing adoption). This row is superseded when that branch lands. No longer designed out.",
+      "pigTest": "Landed in group_commit_test.go: 'stops the store when a metrics adapter panics after a group's COMMIT: memory takes the whole group, no seq repeats' and '... after a lone commit's COMMIT too' drive a panicking telemetry counter (panickingMetrics) and assert the same property: memory keeps the committed group, no seq repeats, later commits reject.",
+      "whyNot": "Go callbacks do not throw, so the two upstream cases cannot run as written: a panic stops the store and goes on in the caller that ran the turn, where Pi rejects that commit's promise. The two panic cases above are the Go form of the same property. The two upstream cases stay in designedOutCases, drafted for owner review as the rationale says.",
       "upstreamTestHash": "sha256:65a12ac4b523b6c94be83390ef602104946e059715d4c43ed548ed373e6d6124",
       "evidence": [
         "chord/next/store/store_test.go",
@@ -5434,7 +5433,7 @@
       "path": "packages/coding-agent/test/first-time-setup.test.ts",
       "disposition": "ported",
       "protects": "shouldRunFirstTimeSetup gates the setup dialog on Pi's official distribution, the default agent directory and a missing settings.json.",
-      "pigTest": "Go tests of PiG's own gate: TestShouldRunFirstTimeSetupGate and TestFirstTimeSetupOriginalCasesAsFork run the four upstream inputs with PiG's identity, and TestForkedDistributionDoesNotBlockOnOfficialFirstTime. A test with a fake official identity was considered and rejected by review.",
+      "pigTest": "Go tests of PiG's own gate: TestShouldRunFirstTimeSetupGate and TestFirstTimeSetupOriginalCasesAsFork run the four upstream inputs with PiG's identity, and TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup. A test with a fake official identity was considered and rejected by review.",
       "whyNot": "Upstream's property is that only the official distribution runs the setup. PiG is never that distribution (D2, D88), so the cases cannot run as written. The PiG-shaped tests exist and carry the gate property for PiG.",
       "upstreamTestHash": "sha256:4d76184e78fba400d2bd7ba2d593d0fde6bc20a87c28d29cc11fec6fb338e035",
       "evidence": [
