@@ -409,27 +409,6 @@ pkg:chord/app#ephemeralLoginFacet	chord	child-gap	chord/nextnode/app/ephemeral.g
 pkg:chord/app#ephemeralLoginFacet::call:0	chord	signature-mismatch	chord/nextnode/app/ephemeral.go#EphemeralLoginFacet
 pkg:chord/app/files#FolderEntry	chord	type-mismatch	chord/nextnode/app/files_index.go#FolderEntry
 pkg:chord/app/files#SpaceSummary	chord	no-go-symbol	
-pkg:chord/http#Authenticator	chord	child-gap	chord/nextnode/http/authenticate.go#Authenticator
-pkg:chord/http#Authenticator::call:0	chord	signature-mismatch	chord/nextnode/http/authenticate.go#Authenticator
-pkg:chord/http#CookieOptions	chord	type-mismatch	chord/nextnode/http/cookies.go#CookieOptions
-pkg:chord/http#HttpComponent	chord	child-gap	chord/nextnode/http/http.go#HttpComponent
-pkg:chord/http#HttpComponent::property:upgrade	chord	child-gap	chord/nextnode/http/http.go#HttpComponent.Upgrade
-pkg:chord/http#HttpComponent::property:upgrade::call:0	chord	signature-mismatch	chord/nextnode/http/http.go#HttpComponent.Upgrade
-pkg:chord/http#HttpContribution	chord	type-mismatch	chord/nextnode/http/router.go#HttpContribution
-pkg:chord/http#HttpRequest	chord	child-gap	chord/nextnode/http/request.go#HttpRequest
-pkg:chord/http#HttpRequest::property:body	chord	not-exercised	chord/nextnode/http/request.go#HttpRequest.Body
-pkg:chord/http#HttpRequest::property:body::call:0	chord	undecidable	chord/nextnode/http/request.go#HttpRequest.Body
-pkg:chord/http#HttpRequest::property:method	chord	not-exercised	chord/nextnode/http/request.go#HttpRequest.Method
-pkg:chord/http#HttpRequest::property:origin	chord	not-exercised	chord/nextnode/http/request.go#HttpRequest.Origin
-pkg:chord/http#HttpRequest::property:query	chord	not-exercised	chord/nextnode/http/request.go#HttpRequest.Query
-pkg:chord/http#HttpSocket	chord	type-mismatch	chord/nextnode/http/router.go#HttpSocket
-pkg:chord/http#HttpSocket::call:0	chord	child-gap	chord/nextnode/http/router.go#HttpSocket
-pkg:chord/http#LinkOptions	chord	undecidable	chord/next/host/host_host.go#LinkOptions
-pkg:chord/http#LinksOptions	chord	type-mismatch	chord/nextnode/http/http.go#LinksOptions
-pkg:chord/http#NodeRequest	chord	type-mismatch	chord/nextnode/http/node.go#NodeRequest
-pkg:chord/http#Router	chord	type-mismatch	chord/nextnode/http/router.go#Router
-pkg:chord/http#nodeRequest	chord	no-go-symbol	
-pkg:chord/http#nodeRequest::call:0	chord	child-gap	
 pkg:chord/json#CopyJsonOptions	chord	no-go-symbol	
 pkg:chord/json#JsonRepresentation	chord	no-go-symbol	
 pkg:chord/json#copyJson	chord	child-gap	durable/json.go#CopyJson
@@ -582,7 +561,6 @@ pkg:chord/sync#pullSession	chord	child-gap	chord/sync/client.go#PullSession
 pkg:chord/sync#pullSession::call:0	chord	signature-mismatch	chord/sync/client.go#PullSession
 pkg:chord/sync#uploadSession	chord	child-gap	chord/sync/client.go#UploadSession
 pkg:chord/sync#uploadSession::call:0	chord	signature-mismatch	chord/sync/client.go#UploadSession
-pkg:chord/telemetry-sqlite#TelemetryBatch	chord	no-go-symbol	
 pkg:chord/tui#AttachedFile	chord	no-go-symbol	
 pkg:chord/tui#Bridge	chord	no-go-symbol	
 pkg:chord/tui#BridgeRequest	chord	no-go-symbol	
@@ -650,21 +628,6 @@ pkg:chord/web#pageEnvironment	chord	no-go-symbol
 pkg:chord/web#pageEnvironment::call:0	chord	child-gap	
 pkg:chord/web#startPage	chord	no-go-symbol	
 pkg:chord/web#startPage::call:0	chord	child-gap	
-pkg:chord/workers#ProcessLock	chord	no-go-symbol	
-pkg:chord/workers#WorkerPlugins	chord	child-gap	chord/nextnode/workers/workers_main.go#WorkerPlugins
-pkg:chord/workers#WorkerPlugins::property:load	chord	child-gap	chord/nextnode/workers/workers_main.go#WorkerPlugins.Load
-pkg:chord/workers#WorkerPlugins::property:load::call:0	chord	signature-mismatch	chord/nextnode/workers/workers_main.go#WorkerPlugins.Load
-pkg:chord/workers#WorkerResult	chord	undecidable	chord/nextnode/workers/workers_main.go#WorkerResult
-pkg:chord/workers#Workers	chord	child-gap	chord/nextnode/workers/workers_workers.go#Workers
-pkg:chord/workers#Workers::property:inputs	chord	member-missing	chord/nextnode/workers/workers_workers.go#Workers
-pkg:chord/workers#Workers::property:state	chord	undecidable	chord/nextnode/workers/workers_workers.go#Workers.State
-pkg:chord/workers#nodeBaseInputs	chord	no-go-symbol	
-pkg:chord/workers#nodeBaseInputs::call:0	chord	child-gap	
-pkg:chord/workers/child#ProcessLock	chord	no-go-symbol	
-pkg:chord/workers/child#WorkerPlugins	chord	child-gap	chord/nextnode/workers/workers_main.go#WorkerPlugins
-pkg:chord/workers/child#WorkerPlugins::property:load	chord	child-gap	chord/nextnode/workers/workers_main.go#WorkerPlugins.Load
-pkg:chord/workers/child#WorkerPlugins::property:load::call:0	chord	signature-mismatch	chord/nextnode/workers/workers_main.go#WorkerPlugins.Load
-pkg:chord/workers/child#WorkerResult	chord	undecidable	chord/nextnode/workers/workers_main.go#WorkerResult
 pkg:coding-agent/.#BranchSummaryMessageComponent	coding-agent	child-gap	tui/branch_summary.go#BranchSummaryMessageComponent
 pkg:coding-agent/.#BranchSummaryMessageComponent::construct:0	coding-agent	signature-mismatch	tui/branch_summary.go#NewBranchSummaryMessageComponent
 pkg:coding-agent/.#CompactionSummaryMessageComponent	coding-agent	child-gap	tui/compaction_summary.go#CompactionSummaryMessageComponent

@@ -115564,14 +115564,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/watch.go#Watchable.Value"
+        "call:chord/nextnode/app/app.go#running"
       ],
       "evidence": [
-        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext"
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
+        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
       ]
     },
     {
@@ -115584,14 +115586,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/watch.go#Watchable.Watch"
+        "call:chord/nextnode/workers/workers_main.go#worker.follow"
       ],
       "evidence": [
-        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext"
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
+        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -115605,14 +115609,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/watch.go#Watchable.Watch"
+        "call:chord/nextnode/workers/workers_main.go#worker.follow"
       ],
       "evidence": [
-        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext"
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
+        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119760,13 +119766,49 @@
     },
     {
       "id": "pkg:chord/http#Authenticator",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8f0d66e1d295878d4453173bc0a8eadd997d3f0533666811b6d6af88aa3b303c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8f0d66e1d295878d4453173bc0a8eadd997d3f0533666811b6d6af88aa3b303c",
+      "rationale": "Derived by the interface gap detector: Authenticator is Go chord/nextnode/http/authenticate.go#Authenticator (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/authenticate.go#Authenticator"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/authenticate.go#composeAuthenticators"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/authenticate_test.go#TestAuthenticatorsAreAskedInContributorOrderTheFirstPrincipalWinsAThrowingOneIsReportedAndSkipped",
+        "test:chord/nextnode/http/authenticate_test.go#TestAuthenticatorsStartNoAuthenticatorOnceTheContextIsAborted",
+        "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/http#Authenticator::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5de0b0cce80212008a8808d48c5fb4452a13c55cb1a12c5af553015e4fde4d33"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5de0b0cce80212008a8808d48c5fb4452a13c55cb1a12c5af553015e4fde4d33",
+      "rationale": "Derived by the interface gap detector: Authenticator::call:0 is Go chord/nextnode/http/authenticate.go#Authenticator (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/authenticate.go#Authenticator"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/authenticate.go#composeAuthenticators"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/authenticate_test.go#TestAuthenticatorsAreAskedInContributorOrderTheFirstPrincipalWinsAThrowingOneIsReportedAndSkipped",
+        "test:chord/nextnode/http/authenticate_test.go#TestAuthenticatorsStartNoAuthenticatorOnceTheContextIsAborted",
+        "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/http#Authenticators",
@@ -119858,8 +119900,25 @@
     },
     {
       "id": "pkg:chord/http#CookieOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2e636702b8691e66a7046ed1f7393695067f9fdb819397526e5ab088ecd5138c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2e636702b8691e66a7046ed1f7393695067f9fdb819397526e5ab088ecd5138c",
+      "rationale": "Derived by the interface gap detector: CookieOptions is Go chord/nextnode/http/cookies.go#CookieOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/cookies.go#CookieOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/cookies.go#Cookie"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/cookies_test.go#TestCookiesAreHttpOnlyPathSameSiteStrictByDefaultSecureOnARemoteOriginLaxAndMaxAgeWhenAsked",
+        "test:chord/nextnode/http/cookies_test.go#TestCookiesReadBackOnlyWithTheirSignatureNameAndSecret",
+        "test:chord/nextnode/http/cookies_test.go#TestCookiesRefuseACookiePastItsSignedExpiryAndOneWhoseExpiryWasChanged"
+      ]
     },
     {
       "id": "pkg:chord/http#createHttp",
@@ -120019,8 +120078,26 @@
     },
     {
       "id": "pkg:chord/http#HttpComponent",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:343741fd1588347186c1856779f4d2555ed7b30204142f28ac55906074c2100b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:343741fd1588347186c1856779f4d2555ed7b30204142f28ac55906074c2100b",
+      "rationale": "Derived by the interface gap detector: HttpComponent is Go chord/nextnode/http/http.go#HttpComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#HttpComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/http.go#CreateHttp"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/http_test.go#TestAnswersSendsSeveralSetCookieHeaders",
+        "test:chord/nextnode/http/http_test.go#TestMountingWithoutAConnectionARequestIsNeverLocal",
+        "test:chord/nextnode/http/http_test.go#TestStartupListensOncePublishedWhereItsListenSettingSaysWithoutItNoListener"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/http#HttpComponent::property:close",
@@ -120184,18 +120261,43 @@
     },
     {
       "id": "pkg:chord/http#HttpComponent::property:upgrade",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:03f2d0161514aa53f864c22d781ff09ecda419d791752bb51fccb0093187bb9a"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:03f2d0161514aa53f864c22d781ff09ecda419d791752bb51fccb0093187bb9a",
+      "rationale": "Pi packages/chord/src/node/http/http.ts:97 `upgrade: (message: IncomingMessage, socket: Duplex, head: Buffer) => void` is the argument triple of Node's `server.on(\"upgrade\", ...)` event: the request, the raw socket and the bytes read past the request head. Go's net/http has no upgrade event: a handler is given the (ResponseWriter, *Request) pair, and the connection and the bytes already read past the head are what the ResponseWriter's http.Hijacker hands out (the net.Conn and its buffered reader), which the websocket upgrader takes itself. HttpComponent.Upgrade(w, request) (chord/nextnode/http/http.go) is that adapter: an app's handler calls it for a request asking for an upgrade and it runs the same steps (refused 503 while closing, admitted, authenticated, checked again at hand-out, then the links endpoint or the plugin socket). The Node event triple has no Go form; the behavior is asserted by TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket and TestPluginSocketsHandTheSocketAndItsRequestToTheHandlerInAScopeWithItsPrincipalNoPrincipalIsRefused (chord/nextnode/http/upgrades_test.go).",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#HttpComponent.Upgrade"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpComponent::property:upgrade::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d2a350df0a6d3797ac3ea16c5ad06fa5ef0779da82086834f5a29721079fa8a7"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d2a350df0a6d3797ac3ea16c5ad06fa5ef0779da82086834f5a29721079fa8a7",
+      "rationale": "Pi packages/chord/src/node/http/http.ts:97 `upgrade: (message: IncomingMessage, socket: Duplex, head: Buffer) => void` is the argument triple of Node's `server.on(\"upgrade\", ...)` event: the request, the raw socket and the bytes read past the request head. Go's net/http has no upgrade event: a handler is given the (ResponseWriter, *Request) pair, and the connection and the bytes already read past the head are what the ResponseWriter's http.Hijacker hands out (the net.Conn and its buffered reader), which the websocket upgrader takes itself. HttpComponent.Upgrade(w, request) (chord/nextnode/http/http.go) is that adapter: an app's handler calls it for a request asking for an upgrade and it runs the same steps (refused 503 while closing, admitted, authenticated, checked again at hand-out, then the links endpoint or the plugin socket). The Node event triple has no Go form; the behavior is asserted by TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket and TestPluginSocketsHandTheSocketAndItsRequestToTheHandlerInAScopeWithItsPrincipalNoPrincipalIsRefused (chord/nextnode/http/upgrades_test.go).",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#HttpComponent.Upgrade"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpContribution",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2cc7bf6c9ce3319263962006d5d245efd760aa0d0c6a2a313e44315e4d413d0c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2cc7bf6c9ce3319263962006d5d245efd760aa0d0c6a2a313e44315e4d413d0c",
+      "rationale": "Derived by the interface gap detector: HttpContribution is Go chord/nextnode/http/router.go#HttpContribution (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/router.go#HttpContribution"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/http.go#newComponent"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
+        "test:chord/nextnode/http/headers_test.go#TestDefaultHeaders",
+        "test:chord/nextnode/http/http_test.go#TestAnswersAForbiddenEscapingARoute403Unreported"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpError",
@@ -120395,18 +120497,66 @@
     },
     {
       "id": "pkg:chord/http#HttpRequest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:322a22b8f8a98507f1537ba4de899a53bf429bd0da74ee68940bc2cb34da1650"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:322a22b8f8a98507f1537ba4de899a53bf429bd0da74ee68940bc2cb34da1650",
+      "rationale": "Derived by the interface gap detector: HttpRequest is Go chord/nextnode/http/request.go#HttpRequest (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/request.go#HttpRequest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/authenticate.go#authenticate"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/http_test.go#TestCancellationABodyThatErrorsAfterValidJSONFailsTheRequest400TheRoutesSideEffectNeverRuns",
+        "test:chord/nextnode/http/http_test.go#TestDefaultHeadersSendsTheBaselineOnEveryAnswerACSPWithTheResponsesOwnNonceAndTheContributedFramersAndSources",
+        "test:chord/nextnode/http/request_test.go#TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/http#HttpRequest::property:body",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bc6132d55848d97b0d13d637d74e7c97f83d853115b5725abba4b0d7055f3e4b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bc6132d55848d97b0d13d637d74e7c97f83d853115b5725abba4b0d7055f3e4b",
+      "rationale": "Derived by the interface gap detector: HttpRequest::property:body is Go chord/nextnode/http/request.go#HttpRequest.Body (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/request.go#HttpRequest.Body"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/request.go#HttpRequest.Body"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/request_test.go#TestBodiesParseJSONWithinItsLimitMalformedIs400LargerIs413"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpRequest::property:body::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0f5c2ce357929f801d1dcdc5740fbec6c6a2b512d208d0869a72be177efefd0e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0f5c2ce357929f801d1dcdc5740fbec6c6a2b512d208d0869a72be177efefd0e",
+      "rationale": "Derived by the interface gap detector: HttpRequest::property:body::call:0 is Go chord/nextnode/http/request.go#HttpRequest.Body (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/request.go#HttpRequest.Body"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/request.go#HttpRequest.Body"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/request_test.go#TestBodiesParseJSONWithinItsLimitMalformedIs400LargerIs413"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpRequest::property:headers",
@@ -120478,8 +120628,23 @@
     },
     {
       "id": "pkg:chord/http#HttpRequest::property:method",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fdd88a9a494cf16dedf93a2979191e9839cba243adec958fa955dd40bf0e266e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fdd88a9a494cf16dedf93a2979191e9839cba243adec958fa955dd40bf0e266e",
+      "rationale": "Derived by the interface gap detector: HttpRequest::property:method is Go chord/nextnode/http/request.go#HttpRequest.Method (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/request.go#HttpRequest.Method"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/request.go#HttpRequest.Method"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/request_test.go#TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpRequest::property:nonce",
@@ -120505,8 +120670,23 @@
     },
     {
       "id": "pkg:chord/http#HttpRequest::property:origin",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e1a74a352618b742131996236292336d1fec2d1262e94528de31851c3c2dff01"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e1a74a352618b742131996236292336d1fec2d1262e94528de31851c3c2dff01",
+      "rationale": "Derived by the interface gap detector: HttpRequest::property:origin is Go chord/nextnode/http/request.go#HttpRequest.Origin (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/request.go#HttpRequest.Origin"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/request.go#HttpRequest.Origin"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/request_test.go#TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpRequest::property:params",
@@ -120572,8 +120752,23 @@
     },
     {
       "id": "pkg:chord/http#HttpRequest::property:query",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e8049ad638b0e616ae1b2004ee5b49a68d08e7c08e85116cb2b63d04ecb32cef"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e8049ad638b0e616ae1b2004ee5b49a68d08e7c08e85116cb2b63d04ecb32cef",
+      "rationale": "Derived by the interface gap detector: HttpRequest::property:query is Go chord/nextnode/http/request.go#HttpRequest.Query (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/request.go#HttpRequest.Query"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/request.go#HttpRequest.Query"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/request_test.go#TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpRequest::property:remoteAddress",
@@ -120687,13 +120882,21 @@
     },
     {
       "id": "pkg:chord/http#HttpSocket",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4229b41c78bab82039ae5fee87166001179d5ee93af560b573eec083df289433"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4229b41c78bab82039ae5fee87166001179d5ee93af560b573eec083df289433",
+      "rationale": "Pi packages/chord/src/node/http/router.ts:49 `HttpSocket = (socket: WebSocketHandle, request: HttpRequest, ctx: Ctx) => void | Promise<void>` is a function type whose identity the router uses: `socketHandlers: ReadonlySet<HttpSocket>` (router.ts:108, 159, 209) and the upgrade's `handler` decide that a socket handed out by a handler no longer in the router is closed. A Go func value has no identity (func values are not comparable), so a Go function type could not carry that behavior. HttpSocket is the struct { Handle func(socket *WebSocketHandle, request HttpRequest, ctx host.Ctx) error } (chord/nextnode/http/router.go), contributed as a *HttpSocket and compared by pointer in Router.SocketHandlers; Handle is Pi's function with the error return of an awaited Promise. TestRevocationTerminatesAPluginsSocketsAtOnceWhenAReloadRemovesItsContributionSealingTheirScopesOthersStayQ6 (chord/nextnode/http/upgrades_test.go) asserts the identity behavior.",
+      "pigTargets": [
+        "chord/nextnode/http/router.go#HttpSocket"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpSocket::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c217d40ad5cc7b5014ddd9a6904f018036de70a97476d2bb6f3d9aff0d6d3bb5"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:c217d40ad5cc7b5014ddd9a6904f018036de70a97476d2bb6f3d9aff0d6d3bb5",
+      "rationale": "Pi packages/chord/src/node/http/router.ts:49 `HttpSocket = (socket: WebSocketHandle, request: HttpRequest, ctx: Ctx) => void | Promise<void>` is a function type whose identity the router uses: `socketHandlers: ReadonlySet<HttpSocket>` (router.ts:108, 159, 209) and the upgrade's `handler` decide that a socket handed out by a handler no longer in the router is closed. A Go func value has no identity (func values are not comparable), so a Go function type could not carry that behavior. HttpSocket is the struct { Handle func(socket *WebSocketHandle, request HttpRequest, ctx host.Ctx) error } (chord/nextnode/http/router.go), contributed as a *HttpSocket and compared by pointer in Router.SocketHandlers; Handle is Pi's function with the error return of an awaited Promise. TestRevocationTerminatesAPluginsSocketsAtOnceWhenAReloadRemovesItsContributionSealingTheirScopesOthersStayQ6 (chord/nextnode/http/upgrades_test.go) asserts the identity behavior.",
+      "pigTargets": [
+        "chord/nextnode/http/router.go#HttpSocket"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpWrap",
@@ -120719,13 +120922,47 @@
     },
     {
       "id": "pkg:chord/http#LinkOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:23bb0fbcf41e3255b5705f00ba0b6e8190cb4189db71b6eaff360d0e7191f692"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:23bb0fbcf41e3255b5705f00ba0b6e8190cb4189db71b6eaff360d0e7191f692",
+      "rationale": "Derived by the interface gap detector: LinkOptions is Go chord/nextnode/http/upgrades.go#LinkOptions (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/upgrades.go#LinkOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/http.go#tryLinkOptions"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/review_test.go#TestReviewAHostRemovedAndRestoredBetweenAnUpgradesCheckAndItsKeepEndsTheConnection",
+        "test:chord/nextnode/http/review_test.go#TestReviewARouterChangeBetweenAnUpgradesCheckAndItsKeepStillEndsTheConnection",
+        "test:chord/nextnode/http/review_test.go#TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits"
+      ]
     },
     {
       "id": "pkg:chord/http#LinksOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:461e2f9e0d7b121ac88929de3766878e00b0651d33958d84ca8924131ab6873a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:461e2f9e0d7b121ac88929de3766878e00b0651d33958d84ca8924131ab6873a",
+      "rationale": "Derived by the interface gap detector: LinksOptions is Go chord/nextnode/http/http.go#LinksOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#LinksOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/http.go#HttpComponent.upgradeSteps"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/review_test.go#TestReviewAHostRemovedAndRestoredBetweenAnUpgradesCheckAndItsKeepEndsTheConnection",
+        "test:chord/nextnode/http/review_test.go#TestReviewARouterChangeBetweenAnUpgradesCheckAndItsKeepStillEndsTheConnection",
+        "test:chord/nextnode/http/review_test.go#TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits"
+      ]
     },
     {
       "id": "pkg:chord/http#ListenAddress",
@@ -120751,18 +120988,43 @@
     },
     {
       "id": "pkg:chord/http#nodeRequest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:32bcb96fe646087320a116018c039377a8c62d29c2ab880bf725915dd90c8b65"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:32bcb96fe646087320a116018c039377a8c62d29c2ab880bf725915dd90c8b65",
+      "rationale": "Pi packages/chord/src/node/http/node.ts:157 nodeRequest(message: IncomingMessage, res: ServerResponse): NodeRequest converts the pair Node's `request` handler gets, so that an app mounting `fetch` on its own server hands a Web `Request` (and the connection) to the component; `res` is there only so the request's abort signal is not raised once `res` finished (NodeIncoming.cancelled, node.ts:119-140). Go's net/http gives the handler a *http.Request alone with its ResponseWriter beside it, and the request's context is cancelled when the client goes or the handler returns, which is the same \"not after the response finished\" without a second argument: NodeRequestOf(r) (chord/nextnode/http/node.go; the Go function cannot share the type's name NodeRequest) takes the one request and answers a NodeRequest tagged Kind request or refused with the listener's own refusals (an absolute-form target 403, a target or `Host` that does not parse 400, userinfo in `Host` 403, CONNECT/TRACE/TRACK 501). A ResponseWriter parameter nothing reads would be a stand-in. TestMountingConvertsWithTheListenersChecksNeverPanickingBadTargetsUserinfoTRACERefused and TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests (chord/nextnode/http/node_test.go, review_test.go) assert the conversion.",
+      "pigTargets": [
+        "chord/nextnode/http/node.go#NodeRequestOf"
+      ]
     },
     {
       "id": "pkg:chord/http#NodeRequest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cedf4760f20b16f0b73b7e3a921322a3f8d50dc69ce37375ff32a24c076b5473"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cedf4760f20b16f0b73b7e3a921322a3f8d50dc69ce37375ff32a24c076b5473",
+      "rationale": "Derived by the interface gap detector: NodeRequest is Go chord/nextnode/http/node.go#NodeRequest (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/node.go#NodeRequest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/node.go#NodeRequestOf"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/node_test.go#TestMountingConvertsWithTheListenersChecksNeverPanickingBadTargetsUserinfoTRACERefused",
+        "test:chord/nextnode/http/node_test.go#TestNodeRequestRefusesWhatTheListenerRefuses",
+        "test:chord/nextnode/http/review_test.go#TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests"
+      ]
     },
     {
       "id": "pkg:chord/http#nodeRequest::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7b440091e5cb3a51b88fe062ab9a70704601e3d0facef2d188b803d408d5fec0"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:7b440091e5cb3a51b88fe062ab9a70704601e3d0facef2d188b803d408d5fec0",
+      "rationale": "Pi packages/chord/src/node/http/node.ts:157 nodeRequest(message: IncomingMessage, res: ServerResponse): NodeRequest converts the pair Node's `request` handler gets, so that an app mounting `fetch` on its own server hands a Web `Request` (and the connection) to the component; `res` is there only so the request's abort signal is not raised once `res` finished (NodeIncoming.cancelled, node.ts:119-140). Go's net/http gives the handler a *http.Request alone with its ResponseWriter beside it, and the request's context is cancelled when the client goes or the handler returns, which is the same \"not after the response finished\" without a second argument: NodeRequestOf(r) (chord/nextnode/http/node.go; the Go function cannot share the type's name NodeRequest) takes the one request and answers a NodeRequest tagged Kind request or refused with the listener's own refusals (an absolute-form target 403, a target or `Host` that does not parse 400, userinfo in `Host` 403, CONNECT/TRACE/TRACK 501). A ResponseWriter parameter nothing reads would be a stand-in. TestMountingConvertsWithTheListenersChecksNeverPanickingBadTargetsUserinfoTRACERefused and TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests (chord/nextnode/http/node_test.go, review_test.go) assert the conversion.",
+      "pigTargets": [
+        "chord/nextnode/http/node.go#NodeRequestOf"
+      ]
     },
     {
       "id": "pkg:chord/http#Provenance",
@@ -120870,8 +121132,25 @@
     },
     {
       "id": "pkg:chord/http#Router",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2ce4f152cf681381c59171559d39c4a6d5c7be0c6e402835dc7a4be6f0a5e022"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2ce4f152cf681381c59171559d39c4a6d5c7be0c6e402835dc7a4be6f0a5e022",
+      "rationale": "Derived by the interface gap detector: Router is Go chord/nextnode/http/router.go#Router (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/router.go#Router"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/headers.go#DefaultHeaders.Of"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/router_test.go#TestRouterConflicts",
+        "test:chord/nextnode/http/router_test.go#TestRouterHostsAndSockets",
+        "test:chord/nextnode/http/router_test.go#TestRouterPatternsAndPrecedence"
+      ]
     },
     {
       "id": "pkg:chord/http#WebSocketHandle",
@@ -128444,8 +128723,25 @@
     },
     {
       "id": "pkg:chord/telemetry-sqlite#TelemetryBatch",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6a637b7599a23fd196de51d446a4e0e32a082cf6a8b9d37c129262182ca3ffc8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6a637b7599a23fd196de51d446a4e0e32a082cf6a8b9d37c129262182ca3ffc8",
+      "rationale": "Derived by the interface gap detector: TelemetryBatch is Go chord/telemetrysqlite/index.go#TelemetryBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/index.go#TelemetryBatch"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/index.go#SqliteTelemetry.Ingest"
+      ],
+      "evidence": [
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchNeverKeepsAPrincipalThePageClaims"
+      ]
     },
     {
       "id": "pkg:chord/tui/launcher#filterOutput",
@@ -130027,14 +130323,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/watch.go#Watchable.Value"
+        "call:chord/nextnode/app/app.go#running"
       ],
       "evidence": [
-        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext"
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
+        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
       ]
     },
     {
@@ -130047,14 +130345,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/watch.go#Watchable.Watch"
+        "call:chord/nextnode/workers/workers_main.go#worker.follow"
       ],
       "evidence": [
-        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext"
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
+        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -130068,14 +130368,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/watch.go#Watchable.Watch"
+        "call:chord/nextnode/workers/workers_main.go#worker.follow"
       ],
       "evidence": [
-        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext"
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
+        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -130375,8 +130677,25 @@
     },
     {
       "id": "pkg:chord/workers/child#ProcessLock",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dd29c5533bbe409285c36fdfa4a2832535ac4d13ed2bc2f77610431ff48f4976"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dd29c5533bbe409285c36fdfa4a2832535ac4d13ed2bc2f77610431ff48f4976",
+      "rationale": "Derived by the interface gap detector: ProcessLock is Go chord/nextnode/workers/workers_lock.go#ProcessLockHandle (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_lock.go#ProcessLockHandle"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_lock.go#ProcessLock"
+      ],
+      "evidence": [
+        "test:chord/nextnode/workers/workers_lock_test.go#TestClearStaleLockAtKeepsAHeldLocksFileAndDoesNothingWithoutAFileOrForAbstractSocketsAndPipes",
+        "test:chord/nextnode/workers/workers_lock_test.go#TestClearStaleLockAtRemovesASocketFileNobodyAcceptsOnAndTheLockCanBeTakenAgain",
+        "test:chord/nextnode/workers/workers_lock_test.go#TestProcessLockForgetsAWaiterWhoseConnectionClosedBeforeItsOwnRelease"
+      ]
     },
     {
       "id": "pkg:chord/workers/child#processLock::call:0",
@@ -130465,23 +130784,86 @@
     },
     {
       "id": "pkg:chord/workers/child#WorkerPlugins",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e9df96aeebd8bea91940cfc200f1df95390ea8f14b5771e274f084bbd081ea6c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e9df96aeebd8bea91940cfc200f1df95390ea8f14b5771e274f084bbd081ea6c",
+      "rationale": "Derived by the interface gap detector: WorkerPlugins is Go chord/nextnode/workers/workers_main.go#WorkerPlugins (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_main.go#WorkerPlugins"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_main.go#worker.runStart"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/workers/workers_main.go#worker.runStart"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/workers/child#WorkerPlugins::property:load",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:44705feba3aac0fdb9716f2a678d5d6738c267a9dd7eba15cfc694620b94eef2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:44705feba3aac0fdb9716f2a678d5d6738c267a9dd7eba15cfc694620b94eef2",
+      "rationale": "Derived by the interface gap detector: WorkerPlugins::property:load is Go chord/nextnode/workers/workers_main.go#WorkerPlugins.Load (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/workers/child#WorkerPlugins::property:load::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:be66fa6dc8d0b57d0b3f701c91b40db6993378db160e5b5707f0b3440358ebed"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:be66fa6dc8d0b57d0b3f701c91b40db6993378db160e5b5707f0b3440358ebed",
+      "rationale": "Derived by the interface gap detector: WorkerPlugins::property:load::call:0 is Go chord/nextnode/workers/workers_main.go#WorkerPlugins.Load (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/workers/child#WorkerResult",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c174c1f415e035667eed8c2939168ecb76195c90e0953923688e74da589f83d4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c174c1f415e035667eed8c2939168ecb76195c90e0953923688e74da589f83d4",
+      "rationale": "Derived by the interface gap detector: WorkerResult is Go chord/nextnode/workers/workers_main.go#WorkerResult (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_main.go#WorkerResult"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_main.go#WorkerMain"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/workers/workers_main.go#WorkerMain"
+      ]
     },
     {
       "id": "pkg:chord/workers/child#WorkerStart",
@@ -130573,13 +130955,21 @@
     },
     {
       "id": "pkg:chord/workers#nodeBaseInputs",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:591b777a65d1d0106e3c0afc275aa4a9d849766bf537bd4030d2e7f4e87fadb3"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:591b777a65d1d0106e3c0afc275aa4a9d849766bf537bd4030d2e7f4e87fadb3",
+      "rationale": "Pi packages/chord/src/node/workers/base.ts:107 nodeBaseInputs(entry, conditions) runs esbuild over a Node entry module with a static-graph plugin and returns every file its import graph reaches with the hash of the bytes read, which app.ts:365-371 hands to plugins.watchBase so an edit of the server's own code outdates its base. A Go server's code is its executable: it has no module graph, no resolution conditions and no esbuild. App.serverExecutable and App.editedSinceStart (chord/nextnode/app/app.go, app_bases.go) record that one file with its content hash (not one under the Go build cache, the analog of an entry under node_modules) and hand it to Plugins.WatchBase; a file that cannot be read is reported as server_scan, as Pi reports a failed scan. Designed out as D603 (the server's own code is its executable, compared at start) and D600 (no esbuild bundle, no module graph). TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCleared, TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared and TestAppDoesNotCompareAnExecutableUnderTheGoBuildCache (chord/nextnode/app/app_executable_test.go) assert the record.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#App.serverExecutable"
+      ]
     },
     {
       "id": "pkg:chord/workers#nodeBaseInputs::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4628d1695c4efd5f3bc08cfa3d30f6a403305d7cabefbe1c78f8f94b6b0d7e55"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4628d1695c4efd5f3bc08cfa3d30f6a403305d7cabefbe1c78f8f94b6b0d7e55",
+      "rationale": "Pi packages/chord/src/node/workers/base.ts:107 nodeBaseInputs(entry, conditions) runs esbuild over a Node entry module with a static-graph plugin and returns every file its import graph reaches with the hash of the bytes read, which app.ts:365-371 hands to plugins.watchBase so an edit of the server's own code outdates its base. A Go server's code is its executable: it has no module graph, no resolution conditions and no esbuild. App.serverExecutable and App.editedSinceStart (chord/nextnode/app/app.go, app_bases.go) record that one file with its content hash (not one under the Go build cache, the analog of an entry under node_modules) and hand it to Plugins.WatchBase; a file that cannot be read is reported as server_scan, as Pi reports a failed scan. Designed out as D603 (the server's own code is its executable, compared at start) and D600 (no esbuild bundle, no module graph). TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCleared, TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared and TestAppDoesNotCompareAnExecutableUnderTheGoBuildCache (chord/nextnode/app/app_executable_test.go) assert the record.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#App.serverExecutable"
+      ]
     },
     {
       "id": "pkg:chord/workers#processLock",
@@ -130606,8 +130996,25 @@
     },
     {
       "id": "pkg:chord/workers#ProcessLock",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dd29c5533bbe409285c36fdfa4a2832535ac4d13ed2bc2f77610431ff48f4976"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dd29c5533bbe409285c36fdfa4a2832535ac4d13ed2bc2f77610431ff48f4976",
+      "rationale": "Derived by the interface gap detector: ProcessLock is Go chord/nextnode/workers/workers_lock.go#ProcessLockHandle (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_lock.go#ProcessLockHandle"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_lock.go#ProcessLock"
+      ],
+      "evidence": [
+        "test:chord/nextnode/workers/workers_lock_test.go#TestClearStaleLockAtKeepsAHeldLocksFileAndDoesNothingWithoutAFileOrForAbstractSocketsAndPipes",
+        "test:chord/nextnode/workers/workers_lock_test.go#TestClearStaleLockAtRemovesASocketFileNobodyAcceptsOnAndTheLockCanBeTakenAgain",
+        "test:chord/nextnode/workers/workers_lock_test.go#TestProcessLockForgetsAWaiterWhoseConnectionClosedBeforeItsOwnRelease"
+      ]
     },
     {
       "id": "pkg:chord/workers#processLock::call:0",
@@ -130696,28 +131103,109 @@
     },
     {
       "id": "pkg:chord/workers#WorkerPlugins",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e9df96aeebd8bea91940cfc200f1df95390ea8f14b5771e274f084bbd081ea6c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e9df96aeebd8bea91940cfc200f1df95390ea8f14b5771e274f084bbd081ea6c",
+      "rationale": "Derived by the interface gap detector: WorkerPlugins is Go chord/nextnode/workers/workers_main.go#WorkerPlugins (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_main.go#WorkerPlugins"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_main.go#worker.runStart"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/workers/workers_main.go#worker.runStart"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/workers#WorkerPlugins::property:load",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:44705feba3aac0fdb9716f2a678d5d6738c267a9dd7eba15cfc694620b94eef2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:44705feba3aac0fdb9716f2a678d5d6738c267a9dd7eba15cfc694620b94eef2",
+      "rationale": "Derived by the interface gap detector: WorkerPlugins::property:load is Go chord/nextnode/workers/workers_main.go#WorkerPlugins.Load (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/workers#WorkerPlugins::property:load::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:be66fa6dc8d0b57d0b3f701c91b40db6993378db160e5b5707f0b3440358ebed"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:be66fa6dc8d0b57d0b3f701c91b40db6993378db160e5b5707f0b3440358ebed",
+      "rationale": "Derived by the interface gap detector: WorkerPlugins::property:load::call:0 is Go chord/nextnode/workers/workers_main.go#WorkerPlugins.Load (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/workers/workers_main.go#WorkerPlugins.Load"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/workers#WorkerResult",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c174c1f415e035667eed8c2939168ecb76195c90e0953923688e74da589f83d4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c174c1f415e035667eed8c2939168ecb76195c90e0953923688e74da589f83d4",
+      "rationale": "Derived by the interface gap detector: WorkerResult is Go chord/nextnode/workers/workers_main.go#WorkerResult (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_main.go#WorkerResult"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_main.go#WorkerMain"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/workers/workers_main.go#WorkerMain"
+      ]
     },
     {
       "id": "pkg:chord/workers#Workers",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:994d1f0f90bbe8c48f2f6b2dc6fcb7507a1d234812c371ca7be61042f81be923"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:994d1f0f90bbe8c48f2f6b2dc6fcb7507a1d234812c371ca7be61042f81be923",
+      "rationale": "Derived by the interface gap detector: Workers is Go chord/nextnode/workers/workers_workers.go#Workers (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_workers.go#Workers"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_workers.go#CreateWorkers"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore",
+        "test:chord/nextnode/app/app_export_test.go#TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWorkerAfterIt",
+        "test:chord/nextnode/app/app_export_test.go#TestAppLeavesAFailedAddressFailedAfterAnExport"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/workers#Workers::property:close",
@@ -130767,8 +131255,23 @@
     },
     {
       "id": "pkg:chord/workers#Workers::property:inputs",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:057594581bc5bc984ff9fcaae5a1ae2b17491626a08c649ee5631517fbd4914e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:057594581bc5bc984ff9fcaae5a1ae2b17491626a08c649ee5631517fbd4914e",
+      "rationale": "Derived by the interface gap detector: Workers::property:inputs is Go chord/nextnode/workers/workers_workers.go#Workers.Inputs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_workers.go#Workers.Inputs"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_workers.go#Workers.Inputs"
+      ],
+      "evidence": [
+        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith"
+      ]
     },
     {
       "id": "pkg:chord/workers#Workers::property:retry",
@@ -130818,8 +131321,25 @@
     },
     {
       "id": "pkg:chord/workers#Workers::property:state",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e60911eb5f54d7b19efe3d14aad7131d4ac13049fce4a9223eb7ad44e1666941"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e60911eb5f54d7b19efe3d14aad7131d4ac13049fce4a9223eb7ad44e1666941",
+      "rationale": "Derived by the interface gap detector: Workers::property:state is Go chord/nextnode/workers/workers_workers.go#Workers.State (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_workers.go#Workers.State"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_workers.go#Workers.State"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore",
+        "test:chord/nextnode/app/app_export_test.go#TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWorkerAfterIt",
+        "test:chord/nextnode/app/app_export_test.go#TestAppLeavesAFailedAddressFailedAfterAnExport"
+      ]
     },
     {
       "id": "pkg:chord/workers#Workers::property:step",
