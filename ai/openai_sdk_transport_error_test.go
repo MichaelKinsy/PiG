@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -49,8 +50,9 @@ func TestOpenAISDKTransportErrorConnectionReset(t *testing.T) {
 			provider := newMatrixProvider(t, &GeneratedModel{ID: "fixture", Provider: "fixture", API: api}, "http://"+listener.Addr().String(), false)
 			defer func() { _ = provider.Close() }()
 			err = openAISDKStreamError(t, provider, StreamOptions{MaxRetries: new(0)})
-			if err == nil || err.Error() != "Connection error." {
-				t.Fatalf("error=%v, want Connection error.", err)
+			// The reset lands on the dial (`connect ECONNRESET addr`, as Node reports it) or after it (no detail), by timing.
+			if err == nil || (err.Error() != "Connection error." && !strings.HasPrefix(err.Error(), "Connection error.: connect ECONNRESET ")) {
+				t.Fatalf("error=%v, want Connection error. with at most the reset detail", err)
 			}
 		})
 	}
