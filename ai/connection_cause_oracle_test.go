@@ -13,17 +13,45 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
-// error-body.test.ts "surfaces the reason from a real openai SDK connection failure" against the pinned pi-ai, then the same closed local port
-// through the three stream APIs (openai-completions, openai-responses, anthropic-messages): each keeps `Connection error.: connect ECONNREFUSED <addr>`.
+// error-body.test.ts "surfaces the reason from a real openai SDK connection failure" against the pinned pi-ai, then the same local port
+// through the three stream APIs (openai-completions, openai-responses, anthropic-messages): a closed port keeps
+// `Connection error.: connect ECONNREFUSED <addr>`, and a server that resets every connection keeps `Connection error.: connect ECONNRESET <addr>`
+// (Node reports the reset on the connect; Go's dial returns first, so the reset on a fresh connection reads as the connect failure).
 func TestConnectionErrorKeepsCauseThroughSDKsMatchesPi(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	address := listener.Addr().String()
-	if err := listener.Close(); err != nil {
-		t.Fatal(err)
-	}
+	t.Run("refused", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		address := listener.Addr().String()
+		if err := listener.Close(); err != nil {
+			t.Fatal(err)
+		}
+		connectionCauseMatchesPi(t, address)
+	})
+	t.Run("reset", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = listener.Close() }()
+		go func() {
+			for {
+				conn, err := listener.Accept()
+				if err != nil {
+					return
+				}
+				_ = conn.(*net.TCPConn).SetLinger(0)
+				_ = conn.Close()
+			}
+		}()
+		connectionCauseMatchesPi(t, listener.Addr().String())
+	})
+}
+
+// connectionCauseMatchesPi runs the oracle and the Go providers against one local address and compares what each reports.
+func connectionCauseMatchesPi(t *testing.T, address string) {
+	t.Helper()
 	port := address[len("127.0.0.1:"):]
 	if _, err := strconv.Atoi(port); err != nil {
 		t.Fatal(err)
@@ -69,7 +97,10 @@ func TestConnectionErrorKeepsCauseThroughSDKsMatchesPi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, fetchErr := (&nodeFetchTransport{base: http.DefaultTransport}).RoundTrip(request)
+	response, fetchErr := (&nodeFetchTransport{base: http.DefaultTransport, connectionIdle: true}).RoundTrip(request)
+	if response != nil {
+		_ = response.Body.Close()
+	}
 	sdkErr := openAISDKTransportError(t.Context(), fetchErr)
 	if sdkErr == nil {
 		t.Fatalf("no SDK error for %v", fetchErr)
@@ -105,7 +136,10 @@ func TestFetchRefusesBadPortsLikeNode(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = (&nodeFetchTransport{base: http.DefaultTransport, connectionIdle: true}).RoundTrip(request)
+		response, err := (&nodeFetchTransport{base: http.DefaultTransport, connectionIdle: true}).RoundTrip(request)
+		if response != nil {
+			_ = response.Body.Close()
+		}
 		if err == nil || FormatProviderError(NormalizeProviderError(err)) != "fetch failed: bad port" {
 			t.Errorf("port %d: %v", port, err)
 		}
