@@ -34,8 +34,8 @@ type manualRenderTimer struct {
 }
 
 func (t *manualRenderTimer) Stop() bool {
-	wasActive := !t.stopped.Load()
-	t.stopped.Store(true)
+	wasActive := !t.stopped
+	t.stopped = true
 	return wasActive
 }
 
