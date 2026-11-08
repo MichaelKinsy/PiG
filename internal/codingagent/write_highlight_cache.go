@@ -176,6 +176,36 @@ func updateWriteHighlightCacheIncremental(cache *writeHighlightCache, rawPath, f
 	return cache
 }
 
+// A warm-up highlights the text the content gained since the last one, and costs the same again for what it reads of the text before
+// (about a millisecond a 100 KB), so the steps are a sixteenth of the content, between writeWarmMinStep and writeWarmMaxStep: the
+// frame a warm-up falls in absorbs it (TypeScript: about 10 ms for the smallest step, 30 ms for the largest), and a file of 400 KB
+// warms in a few dozen steps.
+const (
+	writeWarmMinStep = 8 << 10
+	writeWarmMaxStep = 32 << 10
+)
+
+// writeWarmStep is how many bytes a streaming write call's content of length n grows before its next warm-up.
+func writeWarmStep(n int) int { return min(max(n/16, writeWarmMinStep), writeWarmMaxStep) }
+
+// warmWholeHighlight keeps the highlighting of the whole file of a streaming write call continuing from the text so far. The
+// call's last frame draws the highlighter's lines of the complete file (upstream formatWriteCall: highlighter.highlight(fileContent)),
+// which highlight.js computes from the first line unless a run over a prefix left a state to resume from; one run over a file of
+// 400 KB stalled the frame that completes the call for 300 ms. Each warm-up leaves such a state, so the last frame highlights only
+// what the last step left. The lines it draws are those of a run over the whole file; only when they are computed moves. A language
+// that cannot resume stops the warm-ups after the first.
+// pig additive (D112): upstream highlights the complete file once, when the call completes.
+func (state *builtInRenderState) warmWholeHighlight(content, lang string) {
+	if state.writeWarmOff || len(content) < state.writeWarmed+writeWarmStep(len(content)) {
+		return
+	}
+	if !tui.WarmHighlight(normalizeWriteText(content), lang) {
+		state.writeWarmOff = true
+		return
+	}
+	state.writeWarmed = len(content)
+}
+
 // normalizeWriteText is replaceTabs(normalizeDisplayText(text)) for the content of a write call. A lone surrogate, which
 // the streaming parser keeps as one UTF-16 unit in WTF-8 (ED A0-BF 80-BF), reads U+FFFD, as it does once the arguments'
 // JSON text is decoded and as Pi's terminal writes it.
