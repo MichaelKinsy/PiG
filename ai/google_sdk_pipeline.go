@@ -8,6 +8,8 @@ import (
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 )
 
 // This file models the promise chain between a Google Generative AI response's headers and the chunks Pi's `for await (const chunk of googleStream)` receives, at the granularity of promise reactions. Pi runs `client.models.generateContentStream(params)` from @google/genai 2.21.0, whose async functions, `.then` chains and tslib generators (google_sdk_generator.go) each add reactions; the order in which they run relative to the consumer of the event stream decides which partial message that consumer observes. Line numbers refer to packages/ai/src/api/google-generative-ai.ts (Pi) and dist/node/index.mjs (SDK).
@@ -49,7 +51,7 @@ func (response *googleHTTPResponse) json(executor *continuationExecutor, rounds 
 	afterReactions(executor, rounds, func() {
 		var chunk geminiStreamChunk
 		// generateContentResponseFromMldev reads members by path, so a number, string, boolean or array becomes an empty GenerateContentResponse.
-		if top := response.text; top != "" && top[0] != '{' && top[0] != 'n' && json.Valid([]byte(top)) {
+		if top := response.text; top != "" && top[0] != '{' && top[0] != 'n' && jsonwire.Valid(top) {
 			chunk.raw = json.RawMessage(`{}`)
 			promise.resolve(&chunk)
 			return

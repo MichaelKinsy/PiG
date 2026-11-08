@@ -23,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
@@ -578,7 +579,7 @@ func parseAnthropicTokenResponse(status int, text string) (anthropicAccessToken,
 // and plain text is truncated.
 // upstream: node_modules/@anthropic-ai/sdk@0.129.0/lib/credentials/types.mjs:66-101
 func redactAnthropicTokenBody(body string) string {
-	if json.Valid([]byte(body)) {
+	if jsonwire.Valid(body) {
 		return redactAnthropicTokenJSON(json.RawMessage(body))
 	}
 	return truncateAnthropicTokenText(body, utf16Length(body))

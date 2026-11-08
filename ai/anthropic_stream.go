@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 )
 
 // The chunk source is the body's ReadableStream reader: ReadChunk is `await reader.read()`, including the reactions Node spends before the read settles.
@@ -429,7 +430,7 @@ func (err *anthropicSSEParseError) Unwrap() error { return err.cause }
 
 // anthropicParseJSON is parseJsonWithRepair (packages/ai/src/utils/json-parse.ts:85-95): it returns the text that parses, repaired when the original does not, or V8's JSON.parse message for the text that was last tried. valid reports that encoding/json also accepts the returned text (json.Valid); JSON.parse accepts text it rejects, such as nesting deeper than its limit.
 func anthropicParseJSON(data string) (text string, valid bool, err error) {
-	if json.Valid([]byte(data)) {
+	if jsonwire.Valid(data) {
 		return data, true, nil
 	}
 	err = jsonparse.Validate([]byte(data))
@@ -440,7 +441,7 @@ func anthropicParseJSON(data string) (text string, valid bool, err error) {
 	if repaired == data {
 		return "", false, err
 	}
-	if json.Valid([]byte(repaired)) {
+	if jsonwire.Valid(repaired) {
 		return repaired, true, nil
 	}
 	if err := jsonparse.Validate([]byte(repaired)); err != nil {

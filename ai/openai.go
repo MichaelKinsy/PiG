@@ -22,6 +22,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -1148,7 +1149,7 @@ func parseOpenAIReasoningDetails(signature string) []json.RawMessage {
 }
 
 func parseLegacyOpenAIReasoningDetail(signature string) json.RawMessage {
-	if signature == "" || !json.Valid([]byte(signature)) {
+	if signature == "" || !jsonwire.Valid(signature) {
 		return nil
 	}
 	detail, ok := decodeOpenAIReasoningDetail(json.RawMessage(signature))
