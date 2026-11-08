@@ -103657,9 +103657,9 @@
         "call:chord/next/store/store.go#ChordStore.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsAThrowingRowsFailsTheObjectBrokenTheTableMigratingARetryResumesAfterTheCommittedChunks",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsATimerFiringDuringALongMigrationAnotherActivationsDeadlineKeepsItsBound",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsPauseTheReadyTimeoutDeadlineAndResumeItWithTheBudgetLeft"
+        "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsATimerFiringDuringALongMigrationAnotherActivationsDeadlineKeepsItsBound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -103680,9 +103680,9 @@
         "call:chord/next/store/store.go#ChordStore.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsAThrowingRowsFailsTheObjectBrokenTheTableMigratingARetryResumesAfterTheCommittedChunks",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsATimerFiringDuringALongMigrationAnotherActivationsDeadlineKeepsItsBound",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsPauseTheReadyTimeoutDeadlineAndResumeItWithTheBudgetLeft"
+        "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsATimerFiringDuringALongMigrationAnotherActivationsDeadlineKeepsItsBound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106392,7 +106392,9 @@
         "call:chord/next/contracts/host_kind.go#HostKind.Address"
       ],
       "evidence": [
-        "test:chord/next/contracts/host_kind_test.go#TestHostKinds"
+        "test:chord/next/contracts/host_kind_test.go#TestHostKinds",
+        "test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore",
+        "test:chord/nextnode/app/app_export_test.go#TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWorkerAfterIt"
       ]
     },
     {
@@ -110220,8 +110222,8 @@
       ],
       "evidence": [
         "test:chord/next/registries/entries_test.go#TestKeyedEntries",
-        "test:chord/nextnode/http/review_test.go#TestReviewConflictMessagesQuoteKeysAsWritten",
-        "test:chord/nextnode/http/router_test.go#TestRouterConflicts"
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestComposeKeepsTheFirstByPluginNameReportingTheOther",
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestComposeKeysCatalogsByCanonicalLocaleLeavesInvalidOnesOutAndListsTheLocalesOffered"
       ]
     },
     {
@@ -110243,7 +110245,7 @@
       "evidence": [
         "test:chord/next/host/host_example_29_test.go#TestExample29Registries",
         "test:chord/next/host/host_host_test.go#TestHostReloadRegistriesOlderReadersAReaderOfAnOlderVersionFollowsTheNewProvidersAcceptsOldValueOneItNoLongerServesWaits",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadGCCollectsARemovedTypesObjectsItsProviderItsRegistryEntriesAndTheOldFacetsCode"
+        "test:chord/next/host/host_object_dependents_first_test.go#TestReloadFatesStartDependentsFirstAPureDependentAndItsProviderInOnePluginBothSwapNoParkingItsContributionReplacedInOneBatch"
       ]
     },
     {
@@ -113394,7 +113396,7 @@
       "evidence": [
         "test:chord/next/contracts/schema_test.go#TestSchemaHelpers",
         "test:chord/next/host/jobs_definition_test.go#TestDefineJobRequiresClosedJSONArgs",
-        "test:chord/nextnode/plugins/plugins_node_contracts_test.go#TestContractDataIsTheNormalFormTheFingerprintHashes"
+        "test:chord/nextnode/app/app_workers_test.go#TestAppStartsAWorkerPerAddressWithTheKitsStartDataAndItsOwnDirectoryTwoKindsSideBySide"
       ]
     },
     {
@@ -113416,7 +113418,7 @@
       "evidence": [
         "test:chord/next/contracts/schema_test.go#TestSchemaHelpers",
         "test:chord/next/host/jobs_definition_test.go#TestDefineJobRequiresClosedJSONArgs",
-        "test:chord/nextnode/plugins/plugins_node_contracts_test.go#TestContractDataIsTheNormalFormTheFingerprintHashes"
+        "test:chord/nextnode/app/app_workers_test.go#TestAppStartsAWorkerPerAddressWithTheKitsStartDataAndItsOwnDirectoryTwoKindsSideBySide"
       ]
     },
     {
@@ -114174,18 +114176,68 @@
     },
     {
       "id": "pkg:chord/app#AppError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:70abb63ff8639354fcee1fb2527849549f657a52ec8a5cdf76b3891976bfc6c0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:70abb63ff8639354fcee1fb2527849549f657a52ec8a5cdf76b3891976bfc6c0",
+      "rationale": "Derived by the interface gap detector: AppError is Go chord/nextnode/app/app.go#AppError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#AppError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/app.go#AppError"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfBasesFilesAndDirectories"
+      ]
     },
     {
       "id": "pkg:chord/app#AppInfo",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9c4a70c0567c042746bd76d0ac0d2af883c1f55b12af01c150c30260c328afd2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9c4a70c0567c042746bd76d0ac0d2af883c1f55b12af01c150c30260c328afd2",
+      "rationale": "Derived by the interface gap detector: AppInfo is Go chord/nextnode/app/info.go#AppInfo (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/info.go#AppInfo"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/info.go#AppInfo"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner",
+        "test:chord/nextnode/app/app_test.go#TestAppLaysOutTheDataDirectoryServesAppInfoAndTheServersPluginsAndClosesEverything"
+      ]
     },
     {
       "id": "pkg:chord/app#AppKind",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:968bf59c128a3feadf4d5bfb9241d0efa22b1c27d9ed61259af1bc37634dd52a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:968bf59c128a3feadf4d5bfb9241d0efa22b1c27d9ed61259af1bc37634dd52a",
+      "rationale": "Derived by the interface gap detector: AppKind is Go chord/nextnode/app/app.go#AppKind (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#AppKind"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/app.go#AppKind"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfBasesFilesAndDirectories"
+      ]
     },
     {
       "id": "pkg:chord/app#AppOptions",
@@ -114280,13 +114332,43 @@
     },
     {
       "id": "pkg:chord/app#defineUsers",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3eab9459a9bffe27a5d70ea89c999994b523e83ea526e1d0f238261e6ee07412"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3eab9459a9bffe27a5d70ea89c999994b523e83ea526e1d0f238261e6ee07412",
+      "rationale": "Derived by the interface gap detector: defineUsers is Go chord/nextnode/app/users.go#DefineUsers (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/users.go#DefineUsers"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/users.go#DefineUsers"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/users_upstream_test.go#TestUsersKeepAccountsByIDWithTheAppsProfileListedUpdatedRemovedAndKeptAcrossStarts"
+      ]
     },
     {
       "id": "pkg:chord/app#defineUsers::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4517aac3be091779a0d9582a51c58d309c579cd5a1062259de724d1e016600ff"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4517aac3be091779a0d9582a51c58d309c579cd5a1062259de724d1e016600ff",
+      "rationale": "Derived by the interface gap detector: defineUsers::call:0 is Go chord/nextnode/app/users.go#DefineUsers (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/users.go#DefineUsers"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/users.go#DefineUsers"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/users_upstream_test.go#TestUsersKeepAccountsByIDWithTheAppsProfileListedUpdatedRemovedAndKeptAcrossStarts"
+      ]
     },
     {
       "id": "pkg:chord/app#ephemeralLoginFacet",
@@ -114473,13 +114555,45 @@
     },
     {
       "id": "pkg:chord/app#inviteFacet",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e90483b31e0f64b608077e359b8f30ef8756901b7c52f2dc055b09e4a80996b4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e90483b31e0f64b608077e359b8f30ef8756901b7c52f2dc055b09e4a80996b4",
+      "rationale": "Derived by the interface gap detector: inviteFacet is Go chord/nextnode/app/invite.go#InviteFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/invite.go#InviteFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/invite.go#InviteFacet"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites"
+      ]
     },
     {
       "id": "pkg:chord/app#inviteFacet::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33",
+      "rationale": "Derived by the interface gap detector: inviteFacet::call:0 is Go chord/nextnode/app/invite.go#InviteFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/invite.go#InviteFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/invite.go#InviteFacet"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites"
+      ]
     },
     {
       "id": "pkg:chord/app#privateDirectory",
@@ -114528,8 +114642,25 @@
     },
     {
       "id": "pkg:chord/app#Sessions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:94296333db1b38715b9b4cdad49a026bcbf537e49c895d5e51e4c0458eb41a10"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:94296333db1b38715b9b4cdad49a026bcbf537e49c895d5e51e4c0458eb41a10",
+      "rationale": "Derived by the interface gap detector: Sessions is Go chord/nextnode/app/sessions.go#Sessions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/sessions.go#Sessions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/sessions.go#Sessions"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/owner_upstream_test.go#TestOwnerLinkServesAPageReadingTheFragmentSignsTheOwnerInOnceAndRefusesTheTokenASecondTime",
+        "test:chord/nextnode/app/sessions_upstream_test.go#TestEphemeralSessionsLiveAtMostTheLimitPastItTheOldestEndsAnIssueCostsTheSameWhateverCameBefore",
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser"
+      ]
     },
     {
       "id": "pkg:chord/app#SpaceSummary",
@@ -114538,13 +114669,49 @@
     },
     {
       "id": "pkg:chord/app#startServer",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4407071d2a26ec0786602811a0bdb2e8ce59666db6d7e30cdc8497880882f8a5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4407071d2a26ec0786602811a0bdb2e8ce59666db6d7e30cdc8497880882f8a5",
+      "rationale": "Derived by the interface gap detector: startServer is Go chord/nextnode/app/app.go#StartServer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#StartServer"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/app.go#StartServer"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
+        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
+        "test:chord/nextnode/app/app_test.go#TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThroughALink"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/app#startServer::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:99ef389b2947e4dcd54974f55942d5bb25f17606af318d26b2705fe57eaaa779"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:99ef389b2947e4dcd54974f55942d5bb25f17606af318d26b2705fe57eaaa779",
+      "rationale": "Derived by the interface gap detector: startServer::call:0 is Go chord/nextnode/app/app.go#StartServer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#StartServer"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/app.go#StartServer"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
+        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
+        "test:chord/nextnode/app/app_test.go#TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThroughALink"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/app#startWorker",
@@ -114558,8 +114725,23 @@
     },
     {
       "id": "pkg:chord/app#WorkerInfo",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:186ef5bf9d1c831c7784415efcf94f190d8b95b38528d044af5341a1bd83efc8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:186ef5bf9d1c831c7784415efcf94f190d8b95b38528d044af5341a1bd83efc8",
+      "rationale": "Derived by the interface gap detector: WorkerInfo is Go chord/nextnode/app/info.go#WorkerInfo (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/info.go#WorkerInfo"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/info.go#WorkerInfo"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/info_upstream_test.go#TestWorkerInfoServesItsAddressAndItsStartData"
+      ]
     },
     {
       "id": "pkg:chord/app#WorkerOptions",
@@ -115887,7 +116069,7 @@
       "evidence": [
         "test:chord/delta/apply_pi_oracle_test.go#TestTruncateInsideASurrogatePairKeepsTheLowHalf",
         "test:chord/delta/delta_upstream_test.go#TestDeltaPathAndPrototypeSafety",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptCallsCheckArgumentsWithL1AndPassArgumentsAndResultsByReference"
+        "test:chord/nextnode/app/users_upstream_test.go#TestUsersKeepAccountsByIDWithTheAppsProfileListedUpdatedRemovedAndKeptAcrossStarts"
       ]
     },
     {
@@ -117001,13 +117183,47 @@
     },
     {
       "id": "pkg:chord/http#createHttp",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0c5be9890012228c168b46f99900f89dd39f6894bbe5e08c04414dbafb69ae5e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0c5be9890012228c168b46f99900f89dd39f6894bbe5e08c04414dbafb69ae5e",
+      "rationale": "Derived by the interface gap detector: createHttp is Go chord/nextnode/http/http.go#CreateHttp (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#CreateHttp"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/http.go#CreateHttp"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites",
+        "test:chord/nextnode/app/owner_upstream_test.go#TestAUserOwnersTokenFileIsKeptAcrossStartsAlsoWithTheOwnersFieldsInAnotherOrder"
+      ]
     },
     {
       "id": "pkg:chord/http#createHttp::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c33aafe2b603952b2c688cde2e47845a1d22193587379556fe05aed71f70d7b3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c33aafe2b603952b2c688cde2e47845a1d22193587379556fe05aed71f70d7b3",
+      "rationale": "Derived by the interface gap detector: createHttp::call:0 is Go chord/nextnode/http/http.go#CreateHttp (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#CreateHttp"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/http.go#CreateHttp"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites",
+        "test:chord/nextnode/app/owner_upstream_test.go#TestAUserOwnersTokenFileIsKeptAcrossStartsAlsoWithTheOwnersFieldsInAnotherOrder"
+      ]
     },
     {
       "id": "pkg:chord/http#fileResponse",
@@ -117079,8 +117295,25 @@
     },
     {
       "id": "pkg:chord/http#HookName",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:65da3f3a890b6c3b87c16c7d73f2d4d5108ec4c9068e53b95afdd8596d46f5be"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:65da3f3a890b6c3b87c16c7d73f2d4d5108ec4c9068e53b95afdd8596d46f5be",
+      "rationale": "Derived by the interface gap detector: HookName is Go chord/nextnode/http/http.go#HookName (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#HookName"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/http.go#HookName"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/http_test.go#TestHostAndPrincipalsRunsARequestWithoutAPrincipalAnonymousAsksTheAuthenticatorsInOrderSkippingAThrowingOne",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointRefusesASocketWithoutAPrincipalFromAnotherOriginOrHostForeignOrWhoseLinksOptionsFails403",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointReportsAFailingOpenedAsHookFailedAndKeepsTheLink"
+      ]
     },
     {
       "id": "pkg:chord/http#Http",
@@ -117100,8 +117333,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/http/http_test.go#TestHostAndPrincipalsAdmitsHostsAWritableContributionAddsAndRemovesAtRuntime",
-        "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
-        "test:chord/nextnode/http/http_test.go#TestAnswersAForbiddenEscapingARoute403Unreported"
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites"
       ]
     },
     {
@@ -117111,13 +117344,45 @@
     },
     {
       "id": "pkg:chord/http#HttpComponent::property:close",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:857c6cc04d7f06b229c637f4364eada529cc15dfff1940d45931a4c8aa5f19b9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:857c6cc04d7f06b229c637f4364eada529cc15dfff1940d45931a4c8aa5f19b9",
+      "rationale": "Derived by the interface gap detector: HttpComponent::property:close is Go chord/nextnode/http/http.go#HttpComponent.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#HttpComponent.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/http.go#HttpComponent.Close"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/owner_upstream_test.go#TestAnOwnerTheAppChoosesSignsTheOwnerLinkAndTheOwnerTokenFileInAsThatPrincipal"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/http#HttpComponent::property:close::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e",
+      "rationale": "Derived by the interface gap detector: HttpComponent::property:close::call:0 is Go chord/nextnode/http/http.go#HttpComponent.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#HttpComponent.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/http.go#HttpComponent.Close"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/owner_upstream_test.go#TestAnOwnerTheAppChoosesSignsTheOwnerLinkAndTheOwnerTokenFileInAsThatPrincipal"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/http#HttpComponent::property:facet",
@@ -117384,9 +117649,9 @@
         "public-api:chord/nextnode/http/router.go#HttpRoute"
       ],
       "evidence": [
-        "test:chord/nextnode/http/router_test.go#TestRouterConflicts",
-        "test:chord/nextnode/http/router_test.go#TestRouterPatternsAndPrecedence",
-        "test:chord/nextnode/http/router_test.go#TestRouterWraps"
+        "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
+        "test:chord/nextnode/http/http_test.go#TestAnswersAForbiddenEscapingARoute403Unreported",
+        "test:chord/nextnode/http/http_test.go#TestAnswersAnswersWithoutABody"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117407,16 +117672,33 @@
         "public-api:chord/nextnode/http/router.go#HttpRoute"
       ],
       "evidence": [
-        "test:chord/nextnode/http/router_test.go#TestRouterConflicts",
-        "test:chord/nextnode/http/router_test.go#TestRouterPatternsAndPrecedence",
-        "test:chord/nextnode/http/router_test.go#TestRouterWraps"
+        "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
+        "test:chord/nextnode/http/http_test.go#TestAnswersAForbiddenEscapingARoute403Unreported",
+        "test:chord/nextnode/http/http_test.go#TestAnswersAnswersWithoutABody"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/http#HttpRouteOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:eacfb45e155711cf9842118129b34c1e1577343e3cdaab3975ba6f1e582c93ac"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:eacfb45e155711cf9842118129b34c1e1577343e3cdaab3975ba6f1e582c93ac",
+      "rationale": "Derived by the interface gap detector: HttpRouteOptions is Go chord/nextnode/http/router.go#HttpRouteOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/router.go#HttpRouteOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/router.go#HttpRouteOptions"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/http_test.go#TestHostAndPrincipalsAnswers401ToARequestNobodyAuthenticatesBeforeARouteNotMarkedPublicRunsServesAPublicOne",
+        "test:chord/nextnode/http/http_test.go#TestHostAndPrincipalsAuthenticatesATopLevelNavigationToAPageFromAnotherSiteACrossSiteRouteRunsAnonymous",
+        "test:chord/nextnode/http/router_test.go#TestRouterPatternsAndPrecedence"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpSocket",
@@ -117477,9 +117759,9 @@
         "public-api:chord/nextnode/http/node.go#ListenAddress"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
         "test:chord/nextnode/http/review_test.go#TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses",
-        "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
-        "test:chord/nextnode/http/http_test.go#TestAnswersAForbiddenEscapingARoute403Unreported"
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser"
       ]
     },
     {
@@ -117563,13 +117845,43 @@
     },
     {
       "id": "pkg:chord/http#readSignedCookie",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d62a076b789be63ed8b838757878759a8c152cd0610194c259ab36d766da13e3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d62a076b789be63ed8b838757878759a8c152cd0610194c259ab36d766da13e3",
+      "rationale": "Derived by the interface gap detector: readSignedCookie is Go chord/nextnode/http/cookies.go#ReadSignedCookie (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/cookies.go#ReadSignedCookie"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/cookies.go#ReadSignedCookie"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/cookies_test.go#TestReadSignedCookieGivesTheSignedExpiry"
+      ]
     },
     {
       "id": "pkg:chord/http#readSignedCookie::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1ba7e18d27b78e56c1b5810f29c12ca747fa978f015dd6e83290cf7dfb25c3d3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1ba7e18d27b78e56c1b5810f29c12ca747fa978f015dd6e83290cf7dfb25c3d3",
+      "rationale": "Derived by the interface gap detector: readSignedCookie::call:0 is Go chord/nextnode/http/cookies.go#ReadSignedCookie (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/cookies.go#ReadSignedCookie"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/http/cookies.go#ReadSignedCookie"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/cookies_test.go#TestReadSignedCookieGivesTheSignedExpiry"
+      ]
     },
     {
       "id": "pkg:chord/http#Router",
@@ -117699,7 +118011,7 @@
       "evidence": [
         "test:chord/delta/apply_pi_oracle_test.go#TestTruncateInsideASurrogatePairKeepsTheLowHalf",
         "test:chord/delta/delta_upstream_test.go#TestDeltaPathAndPrototypeSafety",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptCallsCheckArgumentsWithL1AndPassArgumentsAndResultsByReference"
+        "test:chord/nextnode/app/users_upstream_test.go#TestUsersKeepAccountsByIDWithTheAppsProfileListedUpdatedRemovedAndKeptAcrossStarts"
       ]
     },
     {
@@ -119246,9 +119558,9 @@
         "public-api:chord/nextnode/plugins/plugins_watcher.go#PluginsState"
       ],
       "evidence": [
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample36PluginFailures"
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfBasesFilesAndDirectories"
       ]
     },
     {
@@ -119273,9 +119585,9 @@
         "public-api:chord/nextnode/plugins/plugins_plugins.go#RolloutResult"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
         "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout"
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
       ]
     },
     {
@@ -119868,9 +120180,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.All"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:chord/next/store/import_test.go#TestImportRefusals",
-        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver"
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119891,9 +120203,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.All"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:chord/next/store/import_test.go#TestImportRefusals",
-        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver"
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119914,9 +120226,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119937,9 +120249,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119960,9 +120272,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/schema_test.go#TestStoreSchemaMigratesAnOlderVersionToTheNewest"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119983,9 +120295,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/schema_test.go#TestStoreSchemaMigratesAnOlderVersionToTheNewest"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120052,9 +120364,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/outbox_test.go#TestOutbox",
-        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
+        "test:chord/next/store/outbox_test.go#TestOutbox"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120075,9 +120387,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/outbox_test.go#TestOutbox",
-        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
+        "test:chord/next/store/outbox_test.go#TestOutbox"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120140,9 +120452,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120163,9 +120475,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120196,9 +120508,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/catalog_test.go#TestCatalog",
-        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
+        "test:chord/next/store/catalog_test.go#TestCatalog"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120219,9 +120531,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/catalog_test.go#TestCatalog",
-        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
+        "test:chord/next/store/catalog_test.go#TestCatalog"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120284,9 +120596,9 @@
         "call:chord/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120307,9 +120619,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.Select"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120330,9 +120642,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.Select"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120625,9 +120937,9 @@
         "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.Transaction"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120648,9 +120960,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.Select"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120671,9 +120983,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.Select"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120897,9 +121209,9 @@
         "call:chord/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase.All"
       ],
       "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion",
         "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableEncodeIsTheTrustBoundary",
-        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTablePutStampsTheStepsSeqAndReadsDecode"
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableEncodeIsTheTrustBoundary"
       ]
     },
     {
@@ -122820,58 +123132,239 @@
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#openTelemetryStore",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b8d014fdfc7e0a1a84b4ed130617d1b23f615c2f24463ec43a3f53f941dcd1b5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b8d014fdfc7e0a1a84b4ed130617d1b23f615c2f24463ec43a3f53f941dcd1b5",
+      "rationale": "Derived by the interface gap detector: openTelemetryStore is Go chord/telemetrysqlite/node.go#OpenTelemetryStore (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#OpenTelemetryStore"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#OpenTelemetryStore"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#openTelemetryStore::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:80f482ba7faed953fa25f18f483281b69fcef624c33b43699a1f05a5ed931a8d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:80f482ba7faed953fa25f18f483281b69fcef624c33b43699a1f05a5ed931a8d",
+      "rationale": "Derived by the interface gap detector: openTelemetryStore::call:0 is Go chord/telemetrysqlite/node.go#OpenTelemetryStore (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#OpenTelemetryStore"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#OpenTelemetryStore"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:379382d7a595b7046853da0088dc6cdc26f97038adf0bedd8b190624d3e159d7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:379382d7a595b7046853da0088dc6cdc26f97038adf0bedd8b190624d3e159d7",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetryStore is Go chord/telemetrysqlite/node.go#SqliteTelemetryStore (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#SqliteTelemetryStore"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#OpenTelemetryStore"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:close",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetryStore::property:close is Go chord/telemetrysqlite/node.go#SqliteTelemetryStore.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#SqliteTelemetryStore.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#SqliteTelemetryStore.Close"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:close::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetryStore::property:close::call:0 is Go chord/telemetrysqlite/node.go#SqliteTelemetryStore.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#SqliteTelemetryStore.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#SqliteTelemetryStore.Close"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:findMetrics",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e752fadcf7bca5f1d8de8cecc560a4a4777a83da17f0fddae68d19ecdc4eaf23"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e752fadcf7bca5f1d8de8cecc560a4a4777a83da17f0fddae68d19ecdc4eaf23",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetryStore::property:findMetrics is Go chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindMetrics (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindMetrics"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindMetrics"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:findMetrics::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4270b6182eccc54dbef0d8bd9ed2bd8807ff8ff7979705aac76dc2e6c1a16a3e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4270b6182eccc54dbef0d8bd9ed2bd8807ff8ff7979705aac76dc2e6c1a16a3e",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetryStore::property:findMetrics::call:0 is Go chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindMetrics (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindMetrics"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindMetrics"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:findTraces",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f35cd47b727eba1e1da5c06c4893c0433b69ee060a95adb19d62c1c9b19f1daa"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f35cd47b727eba1e1da5c06c4893c0433b69ee060a95adb19d62c1c9b19f1daa",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetryStore::property:findTraces is Go chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindTraces (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindTraces"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindTraces"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:findTraces::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:df809686d82dd017cd25efa84a34270911b2518b9de34631e61762b458130cf1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:df809686d82dd017cd25efa84a34270911b2518b9de34631e61762b458130cf1",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetryStore::property:findTraces::call:0 is Go chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindTraces (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindTraces"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#SqliteTelemetryStore.FindTraces"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:getTrace",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3de4948973d181eeee41697fd092b649032b3ab26dc98142762b14340a8ac1cc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3de4948973d181eeee41697fd092b649032b3ab26dc98142762b14340a8ac1cc",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetryStore::property:getTrace is Go chord/telemetrysqlite/node.go#SqliteTelemetryStore.GetTrace (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#SqliteTelemetryStore.GetTrace"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#SqliteTelemetryStore.GetTrace"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:getTrace::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:89703931e07f4193d17dbc63f9f9e7df7020b28a45b5a9fa98cec983b35a5e6f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:89703931e07f4193d17dbc63f9f9e7df7020b28a45b5a9fa98cec983b35a5e6f",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetryStore::property:getTrace::call:0 is Go chord/telemetrysqlite/node.go#SqliteTelemetryStore.GetTrace (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/node.go#SqliteTelemetryStore.GetTrace"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/node.go#SqliteTelemetryStore.GetTrace"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite#createSqliteTelemetry",
@@ -122921,8 +123414,26 @@
     },
     {
       "id": "pkg:chord/telemetry-sqlite#SqliteTelemetry",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4c6c9172f334e59f879b395550a7b6065efab31ad3346517cf1d189638c2d0bf"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4c6c9172f334e59f879b395550a7b6065efab31ad3346517cf1d189638c2d0bf",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetry is Go chord/telemetrysqlite/index.go#SqliteTelemetry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/index.go#SqliteTelemetry"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/index.go#CreateSqliteTelemetry"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite#SqliteTelemetry::property:close",
@@ -123029,7 +123540,8 @@
       ],
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123051,7 +123563,8 @@
       ],
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123120,7 +123633,7 @@
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestRemembersABackgroundWriteFailureAndStopsItsTimer",
         "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestStopsPermanentlyAfterAWriteFailureAndReportsTheIdenticalError",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestCountsInFlightMetricIntervalsAgainstCapacityUntilCommit"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123143,7 +123656,7 @@
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestRemembersABackgroundWriteFailureAndStopsItsTimer",
         "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestStopsPermanentlyAfterAWriteFailureAndReportsTheIdenticalError",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestCountsInFlightMetricIntervalsAgainstCapacityUntilCommit"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123165,7 +123678,8 @@
       ],
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123187,25 +123701,56 @@
       ],
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite#SqliteTelemetry::property:ingest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2a717548b174eb660301ebdfb258ecf19d8a48998d28fde0dfade9f81a1e1276"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2a717548b174eb660301ebdfb258ecf19d8a48998d28fde0dfade9f81a1e1276",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetry::property:ingest is Go chord/telemetrysqlite/index.go#SqliteTelemetry.Ingest (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/index.go#SqliteTelemetry.Ingest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/index.go#SqliteTelemetry.Ingest"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan"
+      ]
     },
     {
       "id": "pkg:chord/telemetry-sqlite#SqliteTelemetry::property:ingest::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8f35b0ddcab7887b388c9c34e66c62c99cb22456e2593420b67e7e90ef69630f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8f35b0ddcab7887b388c9c34e66c62c99cb22456e2593420b67e7e90ef69630f",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetry::property:ingest::call:0 is Go chord/telemetrysqlite/index.go#SqliteTelemetry.Ingest (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/telemetrysqlite/index.go#SqliteTelemetry.Ingest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/telemetrysqlite/index.go#SqliteTelemetry.Ingest"
+      ],
+      "evidence": [
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan"
+      ]
     },
     {
       "id": "pkg:chord/telemetry-sqlite#SqliteTelemetry::property:metrics",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3c3f541c90117dc35618ded514e0e66be15b3e22e8e4032e1b254039f1f3bf27",
-      "rationale": "Derived by the interface gap detector: SqliteTelemetry::property:metrics is Go chord/telemetrysqlite/index.go#SqliteTelemetry.Metrics (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SqliteTelemetry::property:metrics is Go chord/telemetrysqlite/index.go#SqliteTelemetry.Metrics (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/telemetrysqlite/index.go#SqliteTelemetry.Metrics"
       ],
@@ -123218,7 +123763,7 @@
         "call:chord/telemetrysqlite/index.go#SqliteTelemetry.Metrics"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/index.go#SqliteTelemetry.Metrics"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
       ]
     },
     {
@@ -125074,9 +125619,9 @@
         "public-api:chord/nextnode/workers/workers_control.go#CrossedError"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed",
-        "test:chord/nextnode/workers/workers_control_test.go#TestErrorsCrossAReportsFailuresAndParkedCausesAndBack"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
+        "test:chord/nextnode/workers/workers_control_test.go#TestErrorsCrossAReportsFailuresAndParkedCausesAndBack",
+        "test:chord/nextnode/workers/workers_control_test.go#TestErrorsCrossAsMessageCodeAndReasonNeverAStackOrCauseComeBackAsChordErrorsWhenTheyHadACode"
       ]
     },
     {
@@ -125187,8 +125732,8 @@
         "public-api:chord/nextnode/workers/workers_workers.go#CreateWorkers"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
         "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -125210,8 +125755,8 @@
         "public-api:chord/nextnode/workers/workers_workers.go#CreateWorkers"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
         "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -125233,9 +125778,9 @@
         "public-api:chord/nextnode/workers/workers_control.go#CrossedError"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed",
-        "test:chord/nextnode/workers/workers_control_test.go#TestErrorsCrossAReportsFailuresAndParkedCausesAndBack"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
+        "test:chord/nextnode/workers/workers_control_test.go#TestErrorsCrossAReportsFailuresAndParkedCausesAndBack",
+        "test:chord/nextnode/workers/workers_control_test.go#TestErrorsCrossAsMessageCodeAndReasonNeverAStackOrCauseComeBackAsChordErrorsWhenTheyHadACode"
       ]
     },
     {
@@ -125406,8 +125951,8 @@
         "public-api:chord/nextnode/workers/workers_workers.go#WorkersError"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
         "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
       ]
     },
@@ -125428,8 +125973,8 @@
         "public-api:chord/nextnode/workers/workers_workers.go#WorkersOptions"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
         "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
       ]
     },
@@ -125455,8 +126000,8 @@
         "public-api:chord/nextnode/workers/workers_workers.go#WorkerState"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
         "test:chord/nextnode/workers/workers_rollout_test.go#TestARolloutCallsTheRouteOutsideTheComponentLoopSoAServerSectionClosingAWorkersLinkCannotDeadlockIt"
       ]
     },
@@ -241692,9 +242237,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.All"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:chord/next/store/import_test.go#TestImportRefusals",
-        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver"
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241715,9 +242260,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.All"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:chord/next/store/import_test.go#TestImportRefusals",
-        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver"
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241738,9 +242283,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241761,9 +242306,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241784,9 +242329,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/schema_test.go#TestStoreSchemaMigratesAnOlderVersionToTheNewest"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241807,9 +242352,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/schema_test.go#TestStoreSchemaMigratesAnOlderVersionToTheNewest"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241876,9 +242421,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/outbox_test.go#TestOutbox",
-        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
+        "test:chord/next/store/outbox_test.go#TestOutbox"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241899,9 +242444,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/outbox_test.go#TestOutbox",
-        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
+        "test:chord/next/store/outbox_test.go#TestOutbox"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241964,9 +242509,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -241987,9 +242532,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Transaction"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+        "test:chord/next/store/refusal_check_code_test.go#TestCheckFailureCode"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242201,9 +242746,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242224,9 +242769,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.Select"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242247,9 +242792,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.Select"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242542,9 +243087,9 @@
         "call:durable/storage/sqlite/storage.go#SqliteStorage.Commit"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242565,9 +243110,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.Select"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242588,9 +243133,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.Select"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
-        "test:chord/next/host/host_keyed_slot_host_test.go#TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -271260,9 +271805,9 @@
         "call:telemetry/context.go#noopTelemetryMetrics.Counter"
       ],
       "evidence": [
-        "test:telemetry/conformance_capability_cases_test.go#TestConformanceCapabilityCasesCheckTheirRules",
-        "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant"
       ]
     },
     {
@@ -271430,8 +271975,8 @@
       ],
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextProvidesDistinctEmptyRootContexts",
-        "test:telemetry/conformance_factory_test.go#TestTelemetryAdapterFixtureFactoryOfARecordingFreeAdapterFailsTheCases",
-        "test:telemetry/conformance_fixture_test.go#TestConformanceFixtureDisposesAfterAFailingCaseAndJoinsTheDisposeError"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestUntracedTreatsTheNoopContextAsUntraced",
+        "test:telemetry/conformance_factory_test.go#TestTelemetryAdapterFixtureFactoryOfARecordingFreeAdapterFailsTheCases"
       ]
     },
     {
@@ -271451,9 +271996,9 @@
         "call:telemetry/context.go#noopTelemetrySpan.Metrics"
       ],
       "evidence": [
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
-        "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities",
-        "test:durable/harness/harness_telemetry_test.go#TestDurableTelemetryDropsAReportsOwnMetricThatThrowsAfterOnReportGotTheReport"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestUntracedTreatsTheNoopContextAsUntraced",
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
       ]
     },
     {
@@ -272068,7 +272613,7 @@
       "evidence": [
         "test:ai/telemetry_upstream_test.go#TestAITelemetryIncludesSetupFailuresAndOmitsNonScalarReasoningUpstream",
         "test:ai/telemetry_upstream_test.go#TestAITelemetryReportsErrorAndAbortedStatusUpstream",
-        "test:telemetry/conformance_upstream_test.go#TestConformanceUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop"
       ]
     },
     {
@@ -272107,7 +272652,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/index.go#copyLink"
+        "call:chord/next/telemetryingest/recorder.go#copyLink"
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -272129,7 +272674,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/index.go#copyLink"
+        "call:chord/next/telemetryingest/recorder.go#copyLink"
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -272156,7 +272701,7 @@
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation",
         "test:chord/context/chordctx_upstream_test.go#TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors",
-        "test:telemetry/adapter_conformance_status_test.go#TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing"
       ]
     },
     {
@@ -272195,7 +272740,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/index.go#SqliteTelemetry.start"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.start"
       ],
       "evidence": [
         "test:telemetry/memory_pi_oracle_test.go#TestInMemoryTelemetryMatchesPiOnRandomPrograms",
@@ -272222,7 +272767,7 @@
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation",
         "test:chord/context/chordctx_upstream_test.go#TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors",
-        "test:telemetry/adapter_conformance_status_test.go#TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing"
       ]
     },
     {
@@ -272261,12 +272806,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/index.go#SqliteTelemetry.FindMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.Pending"
       ],
       "evidence": [
-        "test:telemetry/store_upstream_test.go#TestInMemoryMetricRowsKeepAttributeInsertionOrder",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderAggregatesMetricsPerSeriesAndTenSecondsTakingOnlyIntervalsThatAreOverUnlessPartial"
       ]
     },
     {
@@ -272283,9 +272828,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.measurement"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderAggregatesMetricsPerSeriesAndTenSecondsTakingOnlyIntervalsThatAreOverUnlessPartial",
         "test:telemetry/store_upstream_test.go#TestInMemoryMetricRowsKeepAttributeInsertionOrder",
         "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
       ]
@@ -272304,11 +272850,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.measurement"
       ],
       "evidence": [
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderAggregatesMetricsPerSeriesAndTenSecondsTakingOnlyIntervalsThatAreOverUnlessPartial",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds"
       ]
     },
     {
@@ -272325,17 +272872,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.Pending"
       ],
       "evidence": [
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots"
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderAggregatesMetricsPerSeriesAndTenSecondsTakingOnlyIntervalsThatAreOverUnlessPartial",
+        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan"
       ]
     },
     {
       "id": "pkg:telemetry/.#StoredMetric::property:kind",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0605cad63bd6189759b501ed3b7ba5026054e9ab93b7ae8075687bd16886321d",
-      "rationale": "Derived by the interface gap detector: StoredMetric::property:kind is Go telemetry/store.go#StoredMetric.Kind (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StoredMetric::property:kind is Go telemetry/store.go#StoredMetric.Kind (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#StoredMetric.Kind"
       ],
@@ -272345,17 +272894,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.measurement"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderAggregatesMetricsPerSeriesAndTenSecondsTakingOnlyIntervalsThatAreOverUnlessPartial",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan"
       ]
     },
     {
       "id": "pkg:telemetry/.#StoredMetric::property:max",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:04e68c194c740ba69d2cfbca9366e14b8db7caafe227766b79eca4fcb979d808",
-      "rationale": "Derived by the interface gap detector: StoredMetric::property:max is Go telemetry/store.go#StoredMetric.Max (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StoredMetric::property:max is Go telemetry/store.go#StoredMetric.Max (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#StoredMetric.Max"
       ],
@@ -272365,17 +272916,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.measurement"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderAggregatesMetricsPerSeriesAndTenSecondsTakingOnlyIntervalsThatAreOverUnlessPartial",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan"
       ]
     },
     {
       "id": "pkg:telemetry/.#StoredMetric::property:min",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dc45a942a696474b4166c9dfa8b2033188ba05bda83c3bb7cd75d482c4722c11",
-      "rationale": "Derived by the interface gap detector: StoredMetric::property:min is Go telemetry/store.go#StoredMetric.Min (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StoredMetric::property:min is Go telemetry/store.go#StoredMetric.Min (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#StoredMetric.Min"
       ],
@@ -272385,17 +272938,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.measurement"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderAggregatesMetricsPerSeriesAndTenSecondsTakingOnlyIntervalsThatAreOverUnlessPartial",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan"
       ]
     },
     {
       "id": "pkg:telemetry/.#StoredMetric::property:name",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2e90b2656ea0c887525328582c78a1512ccdc80c48f9de26047d9bb31fda9cb9",
-      "rationale": "Derived by the interface gap detector: StoredMetric::property:name is Go telemetry/store.go#StoredMetric.Name (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StoredMetric::property:name is Go telemetry/store.go#StoredMetric.Name (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#StoredMetric.Name"
       ],
@@ -272405,10 +272960,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.measurement"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderAggregatesMetricsPerSeriesAndTenSecondsTakingOnlyIntervalsThatAreOverUnlessPartial",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds"
       ]
     },
     {
@@ -272425,11 +272982,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.measurement"
       ],
       "evidence": [
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderAggregatesMetricsPerSeriesAndTenSecondsTakingOnlyIntervalsThatAreOverUnlessPartial"
       ]
     },
     {
@@ -272446,10 +273004,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findMetrics"
+        "call:chord/next/telemetryingest/recorder.go#Recorder.measurement"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "reach:chord/next/telemetryingest/recorder.go#Recorder.measurement"
       ]
     },
     {
@@ -272466,12 +273024,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#findTraces"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
-        "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/render_upstream_test.go#TestRenderTraceWritesJSONStringifyValues",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchNeverKeepsAPrincipalThePageClaims",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding"
       ]
     },
     {
@@ -272488,12 +273046,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
-        "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/render_upstream_test.go#TestRenderTraceWritesJSONStringifyValues",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchNeverKeepsAPrincipalThePageClaims",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall"
       ]
     },
     {
@@ -272510,12 +273068,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds",
         "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:telemetry/render_upstream_test.go#TestRenderTraceWritesJSONStringifyValues"
+        "test:telemetry/render_upstream_test.go#TestRenderTraceRendersLengthsOfTimeToTheMicrosecond"
       ]
     },
     {
@@ -272532,12 +273090,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
         "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
+        "test:telemetry/render_upstream_test.go#TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessages",
+        "test:telemetry/render_upstream_test.go#TestRenderTraceRendersLengthsOfTimeToTheMicrosecond"
       ]
     },
     {
@@ -272554,12 +273112,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
-        "test:telemetry/render_upstream_test.go#TestRenderTrace"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds"
       ]
     },
     {
@@ -272576,12 +273134,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
         "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
+        "test:telemetry/render_upstream_test.go#TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessages",
+        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots"
       ]
     },
     {
@@ -272598,12 +273156,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
-        "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan"
       ]
     },
     {
@@ -272620,12 +273178,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan",
         "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
-        "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestSqliteTelemetryConformance"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved"
       ]
     },
     {
@@ -272642,12 +273200,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds",
         "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:telemetry/render_upstream_test.go#TestRenderTraceWritesJSONStringifyValues"
+        "test:telemetry/render_upstream_test.go#TestRenderTraceRendersLengthsOfTimeToTheMicrosecond"
       ]
     },
     {
@@ -272664,12 +273222,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds",
         "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:telemetry/render_upstream_test.go#TestRenderTraceWritesJSONStringifyValues"
+        "test:telemetry/render_upstream_test.go#TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessages"
       ]
     },
     {
@@ -272686,12 +273244,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/telemetrysqlite/store.go#storedSpan"
+        "call:chord/next/telemetryingest/recorder.go#recorderSpan.settle"
       ],
       "evidence": [
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds",
         "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:telemetry/render_upstream_test.go#TestRenderTraceWritesJSONStringifyValues"
+        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots"
       ]
     },
     {
@@ -272906,9 +273464,9 @@
         "call:telemetry/context.go#noopTelemetryPropagation.Extract"
       ],
       "evidence": [
-        "test:telemetry/conformance_capability_cases_test.go#TestConformanceCapabilityCasesCheckTheirRules",
-        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi",
-        "test:telemetry/propagation_upstream_test.go#TestExtractAcceptsCompleteMemoryCarriers"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestUntracedTreatsTheNoopContextAsUntraced",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan"
       ]
     },
     {
@@ -272928,9 +273486,9 @@
         "call:telemetry/context.go#noopTelemetryHistogram.Record"
       ],
       "evidence": [
-        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi",
-        "test:telemetry/propagation_upstream_test.go#TestExtractAcceptsCompleteMemoryCarriers",
-        "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestUntracedTreatsTheNoopContextAsUntraced"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -272951,9 +273509,9 @@
         "call:ai/telemetry.go#observeModelRequest"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities",
-        "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability",
-        "test:chord/next/registries/record_test.go#TestAReloadsNewContributionAdapter"
+        "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability"
       ]
     },
     {
@@ -272994,9 +273552,9 @@
         "call:telemetry/schema.go#bindTypedSpanStarter"
       ],
       "evidence": [
-        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi",
-        "test:telemetry/propagation_upstream_test.go#TestExtractAcceptsCompleteMemoryCarriers",
-        "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan",
+        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -273017,9 +273575,9 @@
         "call:telemetry/schema.go#bindTypedSpanStarter"
       ],
       "evidence": [
-        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi",
-        "test:telemetry/propagation_upstream_test.go#TestExtractAcceptsCompleteMemoryCarriers",
-        "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan",
+        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -273040,9 +273598,9 @@
         "call:telemetry/context.go#noopTelemetryMetrics.Counter"
       ],
       "evidence": [
-        "test:telemetry/conformance_capability_cases_test.go#TestConformanceCapabilityCasesCheckTheirRules",
-        "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
       ]
     },
     {
@@ -273062,9 +273620,9 @@
         "call:ai/telemetry.go#modelRequestObservation.onResult"
       ],
       "evidence": [
-        "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
       ]
     },
     {
@@ -273084,9 +273642,9 @@
         "call:ai/telemetry.go#modelRequestObservation.onResult"
       ],
       "evidence": [
-        "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
       ]
     },
     {
@@ -273280,6 +273838,7 @@
         "call:telemetry/metrics.go#CreateTypedMetrics"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestSchemaDeclaresEverySpanChordStartsAndKeepsIdsOffMetrics",
         "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
         "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
       ]
@@ -273301,9 +273860,9 @@
         "call:telemetry/context.go#noopTelemetrySpan.Metrics"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
-        "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability",
-        "test:chord/next/state/batch_own_test.go#TestBatchCount"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
       ]
     },
     {
@@ -273323,8 +273882,9 @@
         "call:telemetry/metrics.go#TypedTelemetryMetrics.Counter"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
-        "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
       ]
     },
     {
@@ -273344,8 +273904,9 @@
         "call:telemetry/metrics.go#TypedTelemetryMetrics.Counter"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
-        "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile"
       ]
     },
     {
@@ -273430,13 +273991,45 @@
     },
     {
       "id": "pkg:telemetry/.#telemetryNow",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5635198fbb28b7330021c997a1c48f9dd3be2c28822484ed0889179e8d84b13a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5635198fbb28b7330021c997a1c48f9dd3be2c28822484ed0889179e8d84b13a",
+      "rationale": "Derived by the interface gap detector: telemetryNow is Go telemetry/memory_now.go#TelemetryNow (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "telemetry/memory_now.go#TelemetryNow"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:telemetry/memory_now.go#TelemetryNow"
+      ],
+      "evidence": [
+        "test:telemetry/telemetry_now_test.go#TestTelemetryNowCountsSubMillisecondStepsOfTheMonotonicClockWhileTheWallClockStaysInItsMillisecond",
+        "test:telemetry/telemetry_now_test.go#TestTelemetryNowFollowsAStepOfTheWallClockPast10ms"
+      ]
     },
     {
       "id": "pkg:telemetry/.#telemetryNow::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3e0b081ebbd71e514bd05601ea038c0c56bc24b739bed58495893591b5062cba"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3e0b081ebbd71e514bd05601ea038c0c56bc24b739bed58495893591b5062cba",
+      "rationale": "Derived by the interface gap detector: telemetryNow::call:0 is Go telemetry/memory_now.go#TelemetryNow (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "telemetry/memory_now.go#TelemetryNow"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:telemetry/memory_now.go#TelemetryNow"
+      ],
+      "evidence": [
+        "test:telemetry/telemetry_now_test.go#TestTelemetryNowCountsSubMillisecondStepsOfTheMonotonicClockWhileTheWallClockStaysInItsMillisecond",
+        "test:telemetry/telemetry_now_test.go#TestTelemetryNowFollowsAStepOfTheWallClockPast10ms"
+      ]
     },
     {
       "id": "pkg:telemetry/.#TelemetryParentDefinition",
@@ -273583,8 +274176,8 @@
       ],
       "evidence": [
         "test:ai/telemetry_upstream_test.go#TestAITelemetryDefaultsToNoopUpstream",
-        "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestSchemaDeclaresEverySpanChordStartsAndKeepsIdsOffMetrics",
+        "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly"
       ]
     },
     {
@@ -273604,6 +274197,7 @@
         "call:telemetry/metrics.go#CreateTypedMetrics"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestSchemaDeclaresEverySpanChordStartsAndKeepsIdsOffMetrics",
         "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
         "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
       ]
@@ -273625,7 +274219,7 @@
         "public-api:telemetry/schema.go#TelemetrySchemaDefinition.Spans"
       ],
       "evidence": [
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestSchemaDeclaresEverySpanChordStartsAndKeepsIdsOffMetrics"
       ]
     },
     {
@@ -273719,9 +274313,9 @@
         "call:telemetry/context.go#noopTelemetrySpan.StartSpan"
       ],
       "evidence": [
-        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi",
-        "test:telemetry/propagation_upstream_test.go#TestExtractAcceptsCompleteMemoryCarriers",
-        "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -273830,9 +274424,9 @@
         "call:ai/telemetry.go#observeModelRequest"
       ],
       "evidence": [
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
         "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities",
-        "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability",
-        "test:chord/next/registries/record_test.go#TestAReloadsNewContributionAdapter"
+        "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability"
       ]
     },
     {
@@ -273961,9 +274555,9 @@
         "call:telemetry/schema.go#bindTypedSpanStarter"
       ],
       "evidence": [
-        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi",
-        "test:telemetry/propagation_upstream_test.go#TestExtractAcceptsCompleteMemoryCarriers",
-        "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan",
+        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -273984,9 +274578,9 @@
         "call:telemetry/schema.go#bindTypedSpanStarter"
       ],
       "evidence": [
-        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi",
-        "test:telemetry/propagation_upstream_test.go#TestExtractAcceptsCompleteMemoryCarriers",
-        "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing",
+        "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan",
+        "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -274330,9 +274924,9 @@
         "call:telemetry/context.go#noopTelemetryMetrics.UpDownCounter"
       ],
       "evidence": [
-        "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
       ]
     },
     {
@@ -274352,9 +274946,9 @@
         "call:ai/telemetry.go#modelRequestObservation.onResult"
       ],
       "evidence": [
-        "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
       ]
     },
     {
@@ -274374,9 +274968,9 @@
         "call:ai/telemetry.go#modelRequestObservation.onResult"
       ],
       "evidence": [
-        "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms",
-        "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
+        "test:chord/next/telemetry/telemetry_upstream_test.go#TestMetricsMakeEachInstrumentOncePerAdapterAndNoneForNoop",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"
       ]
     },
     {
@@ -274499,14 +275093,15 @@
       ],
       "evidence": [
         "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestOrdersSpansStartedInTheSameMillisecondAsTheyStarted"
       ]
     },
     {
       "id": "pkg:telemetry/.#TraceQuery::property:startMax",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9b7dbaff680541b8823bf1a47fbc05c0542ee7791086e04f885d5d0898f0e701",
-      "rationale": "Derived by the interface gap detector: TraceQuery::property:startMax is Go telemetry/store.go#TraceQuery.StartMax (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TraceQuery::property:startMax is Go telemetry/store.go#TraceQuery.StartMax (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#TraceQuery.StartMax"
       ],
@@ -274519,14 +275114,14 @@
         "call:chord/telemetrysqlite/store.go#findTraces"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findTraces"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestStoresSpanTimesInWholeMicrosecondsReadBackAsMilliseconds"
       ]
     },
     {
       "id": "pkg:telemetry/.#TraceQuery::property:startMin",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fe57f45f9c51de2c0fd5e89adef2b0e0b71cdc497d8f8bdaef3d706e9a1efc9d",
-      "rationale": "Derived by the interface gap detector: TraceQuery::property:startMin is Go telemetry/store.go#TraceQuery.StartMin (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TraceQuery::property:startMin is Go telemetry/store.go#TraceQuery.StartMin (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#TraceQuery.StartMin"
       ],
@@ -274539,7 +275134,7 @@
         "call:chord/telemetrysqlite/store.go#findTraces"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findTraces"
+        "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestStoresSpanTimesInWholeMicrosecondsReadBackAsMilliseconds"
       ]
     },
     {
@@ -274724,7 +275319,8 @@
       ],
       "evidence": [
         "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/render_upstream_test.go#TestRenderTraceWritesJSONStringifyValues"
+        "test:telemetry/render_upstream_test.go#TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessages",
+        "test:telemetry/render_upstream_test.go#TestRenderTraceKeepsALoneSurrogateBesideAnEscapedControlCharacter"
       ]
     },
     {
@@ -274745,7 +275341,8 @@
       ],
       "evidence": [
         "test:telemetry/render_upstream_test.go#TestRenderTrace",
-        "test:telemetry/render_upstream_test.go#TestRenderTraceWritesJSONStringifyValues"
+        "test:telemetry/render_upstream_test.go#TestRenderTraceEscapesControlCharactersInIDsNamesAttributeKeysAndErrorMessages",
+        "test:telemetry/render_upstream_test.go#TestRenderTraceKeepsALoneSurrogateBesideAnEscapedControlCharacter"
       ]
     },
     {
