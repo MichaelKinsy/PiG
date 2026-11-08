@@ -638,8 +638,9 @@ func TestSessionRelocationFakeProvider(t *testing.T) {
 		s := r.idleSession("fallback-fails")
 		// The new location's environment is not configured: the restart is refused (as any start would be).
 		err := r.relocateWith(s.session, s.next, nil, func(real p2runtime.RelocationSteps) p2runtime.RelocationSteps {
+			update := real.Update
 			real.Update = func(ctx context.Context) error {
-				if err := real.Update(ctx); err != nil {
+				if err := update(ctx); err != nil {
 					return err
 				}
 				_, err := r.fixture.Server.Host.Root(func(rootCtx host.Ctx) (any, error) {
