@@ -20,8 +20,9 @@ ui.addChild(editorContainer);
 const palette = record('PALETTE');
 ui.addChild(palette);
 ui.setFocus(palette);
+// The pin tracks each overlay's remover in the extensionOverlays map (interactive-mode.ts showExtensionCustom), a field initializer Object.create skips.
 // Pi bdd9f039 mounts a non-overlay custom component on the extension dialog stack, which reads extensionDialogs and programStatus.
-const mode = Object.assign(Object.create(InteractiveMode.prototype), { editor, editorContainer, keybindings: {}, ui, disposeActiveSelector() {}, extensionDialogs: [], programStatus: { setBlocked() {} } });
+const mode = Object.assign(Object.create(InteractiveMode.prototype), { editor, editorContainer, keybindings: {}, ui, disposeActiveSelector() {}, extensionDialogs: [], extensionOverlays: new Map(), programStatus: { setBlocked() {} } });
 const mount = async (overlay, label) => {
  let close;
  const component = record(label);

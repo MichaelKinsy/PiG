@@ -10,13 +10,15 @@
 #
 # Upstream evidence: probed against the pinned Pi oracle. The unfiltered list
 # opens on the same alphabetical prefix with the same provider labels and the
-# same (1/41) count. OPENAI_API_KEY only makes a model selectable, so startup
+# same (1/42) count. OPENAI_API_KEY only makes a model selectable, so startup
 # does not stall on the no-model picker; it does not change the first page.
 #
 # Pi 1.0.0 (oauth-selector.ts:37 formatAuthSelectorProviderStatus) labels an
 # option without credentials " • not configured" instead of " • unconfigured".
 # Re-probed against Pi 1.0.0: the first page reads "Amazon Bedrock • not
-# configured", "Ant Ling • not configured", ... with the same (1/41) count.
+# configured", "Ant Ling • not configured", ... with the same (1/42) count.
+#
+# Pi 1.5.0+c23b9ec1 (the pin) lists 42 API-key providers, one more than Pi 1.0.0's 41, in both binaries (probed 2026-11-08), so the counter reads (1/42).
 #
 # Pi 1.0.3 names the Azure provider "Azure" instead of "Azure OpenAI"
 # (packages/ai/src/providers/azure.ts:47); both binaries print
@@ -39,7 +41,7 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 25
 capture_start = "Select provider to configure"
-capture_end = "(1/41)"
+capture_end = "(1/42)"
 settle_seconds = 1
 
 [[tmux.steps]]
@@ -69,6 +71,6 @@ both_contain = [
   "Anthropic • not configured",
   "Azure • not configured",
   "Cloudflare Workers AI • not configured",
-  "(1/41)",
+  "(1/42)",
 ]
 runs = 3
