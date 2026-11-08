@@ -225,7 +225,7 @@ func serveDiscord(_ *delta.JsonObject, principal data.Principal, self host.Self)
 		State: map[string]chord.Watchable[delta.JsonValue]{
 			"bots": host.Expose(store.Member("bots")), "bindings": host.Expose(store.Member("bindings")),
 		},
-		Methods: suspending(map[string]contracts.MethodFunction{
+		Methods: map[string]contracts.MethodFunction{
 			"addBot": forward("addBot"), "setBotToken": forward("setBotToken"), "removeBot": forward("removeBot"),
 			"server": forward("server"), "mcpServers": forward("mcpServers"), "link": forward("link"),
 			"unlink": forward("unlink"), "updateLink": forward("updateLink"),
@@ -448,7 +448,7 @@ func serveStore(_ *delta.JsonObject, raw host.Self) (contracts.Implementation, e
 		func() (delta.JsonValue, error) { return viewsJSON(fleet().Views()), nil })
 	return contracts.Implementation{Members: contracts.VariantImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{"bots": bots, "bindings": bindings},
-		Methods: map[string]contracts.MethodFunction{
+		Methods: suspending(map[string]contracts.MethodFunction{
 			"addBot": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 				id, err := fleet().Add(str(argsOf(args), "token"))
 				if err != nil {
