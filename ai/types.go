@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"io"
 	"maps"
@@ -14,6 +15,7 @@ import (
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/allocsize"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsparity"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -429,28 +431,26 @@ func (s OrderedSections) MarshalJSON() ([]byte, error) {
 }
 
 func (s *OrderedSections) UnmarshalJSON(data []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return err
 	}
-	if token != json.Delim('{') {
+	if token.Kind() != '{' {
 		return fmt.Errorf("system message sections must be an object")
 	}
 	sections := OrderedSections{}
-	for decoder.More() {
-		nameToken, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		nameToken, err := decoder.ReadToken()
 		if err != nil {
 			return err
 		}
-		name, ok := nameToken.(string)
-		if !ok {
-			return fmt.Errorf("system message section name must be a string")
-		}
-		var raw json.RawMessage
-		if err := decoder.Decode(&raw); err != nil {
+		name := nameToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		rawValue, err := decoder.ReadValue()
+		if err != nil {
 			return err
 		}
+		raw := json.RawMessage(rawValue) // json.Unmarshal below reads it before the decoder moves on
 		var value *string
 		if string(raw) != "null" {
 			var text string
@@ -465,7 +465,7 @@ func (s *OrderedSections) UnmarshalJSON(data []byte) error {
 			sections = append(sections, PromptSection{Name: name, Value: value})
 		}
 	}
-	if _, err := decoder.Token(); err != nil {
+	if _, err := decoder.ReadToken(); err != nil {
 		return err
 	}
 	// JSON.parse yields an object whose integer-like keys enumerate first.

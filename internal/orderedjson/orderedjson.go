@@ -8,9 +8,11 @@ import (
 	"bytes"
 	"cmp"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
-	"fmt"
 	"slices"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // Object is a JSON object with its keys in JavaScript enumeration order: the array-index keys ("0", "7", "42") in ascending order, then the other keys in insertion order.
@@ -44,31 +46,28 @@ func IsObject(data []byte) bool {
 // UnmarshalJSON reads an object and keeps its key order. A repeated key keeps
 // its first position and its last value, as JSON.parse does.
 func (o *Object) UnmarshalJSON(data []byte) error {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	token, err := dec.Token()
+	dec := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := dec.ReadToken()
 	if err != nil {
 		return err
 	}
-	if delim, ok := token.(json.Delim); !ok || delim != '{' {
+	if token.Kind() != '{' {
 		return errors.New("orderedjson: value is not an object")
 	}
 	o.keys, o.indexKeys, o.values = nil, 0, map[string]json.RawMessage{}
-	for dec.More() {
-		keyToken, err := dec.Token()
+	for dec.PeekKind() != '}' {
+		keyToken, err := dec.ReadToken()
 		if err != nil {
 			return err
 		}
-		key, ok := keyToken.(string)
-		if !ok {
-			return fmt.Errorf("orderedjson: unexpected key %v", keyToken)
-		}
-		var raw json.RawMessage
-		if err := dec.Decode(&raw); err != nil {
+		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		value, err := dec.ReadValue()
+		if err != nil {
 			return err
 		}
-		o.Set(key, raw)
+		o.Set(key, json.RawMessage(bytes.Clone(value)))
 	}
-	if _, err := dec.Token(); err != nil {
+	if _, err := dec.ReadToken(); err != nil {
 		return err
 	}
 	return nil

@@ -3,8 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // object is a JSON object that keeps its key order, so a workload's result line passes through with its fields in
@@ -73,34 +76,32 @@ func (o *object) MarshalJSON() ([]byte, error) {
 }
 
 func (o *object) UnmarshalJSON(data []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return err
 	}
-	if delim, ok := token.(json.Delim); !ok || delim != '{' {
+	if token.Kind() != '{' {
 		return errors.New("not a JSON object")
 	}
 	o.keys, o.values = nil, map[string]json.RawMessage{}
-	for decoder.More() {
-		token, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		token, err := decoder.ReadToken()
 		if err != nil {
 			return err
 		}
-		key, ok := token.(string)
-		if !ok {
-			return errors.New("object key is not a string")
-		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
+		key := token.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		valueBytes, err := decoder.ReadValue()
+		if err != nil {
 			return err
 		}
+		value := json.RawMessage(bytes.Clone(valueBytes))
 		if _, dup := o.values[key]; !dup {
 			o.keys = append(o.keys, key)
 		}
 		o.values[key] = value
 	}
-	_, err = decoder.Token()
+	_, err = decoder.ReadToken()
 	return err
 }
 
