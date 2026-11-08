@@ -1092,7 +1092,7 @@ func (t *TreeSelectorComponent) renderHelp(width int) []string {
 }
 
 // renderSearchLine draws "Type to search:" in muted, mirroring tree-selector.ts SearchLine; the active query renders in accent after it.
-// pig divergence (D248): Pi main 2cfab7c26 (#9157) draws the line with a trailing space when the query is empty and, while the selector is
+// Pi main 2cfab7c26 (#9157), in the pin, draws the line with a trailing space when the query is empty and, while the selector is
 // focused and no label is being edited, a CURSOR_MARKER plus a reverse-video cell in the last column, as Resume Session's search does.
 func (t *TreeSelectorComponent) renderSearchLine(width int) []string {
 	if width <= 0 {
