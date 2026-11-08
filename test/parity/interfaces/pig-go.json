@@ -17287,6 +17287,17 @@
       "shapeHash": "sha256:2c5b6348d181f524a9b563c7245da9f1c83f9e10f9391e8c27638d68080fb2b0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ModelAuthFunc",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ModelAuthFunc",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ModelAuthFunc"
+      },
+      "shapeHash": "sha256:618dfa750eecdbc5298cdad2c9c45e78fa00c67e468d2606ae935e204c11f0a6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ModelCapabilities",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ModelCapabilities",
@@ -17892,6 +17903,17 @@
       "shapeHash": "sha256:704e8d81ea417727cbd43fbaa1a5129c2f34f710db29d0d565823738cd5cb3e0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Models.WrapModelAuth",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Models.WrapModelAuth",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(wrap func(previous ModelAuthFunc) ModelAuthFunc)"
+      },
+      "shapeHash": "sha256:1f9ca4c4305175a9c6d2224e8d3beecebf6b80091b5ce70ef60cf8da32173375"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.applyAuth",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "Models.applyAuth",
@@ -17967,6 +17989,17 @@
         "type": "func(ctx context.Context, model *Model, setup func() (*AssistantMessageEventStream, error), observer *LazyStreamObserver) *AssistantMessageEventStream"
       },
       "shapeHash": "sha256:08a43e81114e0f02f5f8ed5504a6807f93007a6978d7756366954ca58d28cb62"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Models.providerModelAuth",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Models.providerModelAuth",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, anyModel AnyModel, overrides ...AuthResolutionOverrides) (*AuthResult, error)"
+      },
+      "shapeHash": "sha256:446d003e5d8f3bdac8ee1eaa32763b074958b8af64a036089909f83911edcae9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.publishProviderModels",

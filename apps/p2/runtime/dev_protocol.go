@@ -19,9 +19,10 @@ type DevCommand struct {
 
 // DevResult is the outcome of a dev command.
 type DevResult struct {
-	OK      bool     `json:"ok"`
-	Message string   `json:"message"`
-	Plugins []string `json:"plugins,omitempty"`
+	OK      bool   `json:"ok"`
+	Message string `json:"message"`
+	// Plugins is a pointer so that an explicit empty list is sent, as Pi sends it; nil omits the member.
+	Plugins *[]string `json:"plugins,omitempty"`
 }
 
 // DevStatus is the dev supervisor's status (`DevStatus`).

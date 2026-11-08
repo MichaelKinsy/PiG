@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"testing"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
@@ -12,48 +11,28 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
-	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
-	"github.com/MichaelKinsy/PiG/schema"
 )
 
-// cells counts the cells made, for their documents' names.
-var cells atomic.Int64
-
 // Cell is a stub's in-memory state member (v1's `self.state`): the member itself plus Replace and Change for the test to
-// drive it. The value lives in a document of the stub's object ({value}), so a write enters the host's loop through a
-// transaction whichever goroutine makes it: a Writable set from a goroutine in no section (a root's, after it parked)
-// races with the jobs and deliveries the loop runs.
+// drive it, as Pi's test helper `state` is a Writable (`self.writable` and its `set`). Set enters a section of the host's
+// loop whichever goroutine calls it.
 type Cell struct {
-	document *documents.Singleton
+	writable state.Writable[any]
 	member   chord.Watchable[delta.JsonValue]
 }
 
 // Value is the cell's current value.
-func (c *Cell) Value() any {
-	current, err := c.document.Value()
-	if err != nil {
-		panic(err)
-	}
-	return current.Value("value")
-}
+func (c *Cell) Value() any { return c.writable.Value() }
 
 // Replace sets the value.
-func (c *Cell) Replace(value any) error {
-	_, err := c.document.Change(Background, func(draft *delta.Object) (any, error) { return nil, draft.Set("value", value) })
-	return err
-}
+func (c *Cell) Replace(value any) error { return c.writable.Set(value) }
 
 // Change sets the value fn makes of the current one (fn must not mutate it).
-func (c *Cell) Change(fn func(current any) any) error {
-	_, err := c.document.Change(Background, func(draft *delta.Object) (any, error) {
-		return nil, draft.Set("value", fn(draft.Snapshot().Value("value")))
-	})
-	return err
-}
+func (c *Cell) Change(fn func(current any) any) error { return c.writable.Set(fn(c.writable.Value())) }
 
 // StubSelf is what a stub factory gets: its object's Self, plus Cell for in-memory state members.
 type StubSelf struct {
@@ -62,19 +41,9 @@ type StubSelf struct {
 
 // Cell is an in-memory state member holding initial (state members must be JSON watchables).
 func (s StubSelf) Cell(initial any) *Cell {
-	definition, err := documents.DefineState(fmt.Sprintf("p2test.cell-%d", cells.Add(1)), documents.StateOptions{
-		Schema:  p2runtime.Contract(schema.Obj(schema.Properties{schema.Prop("value", schema.Unknown())})),
-		Version: 1,
-		Initial: func() *delta.JsonObject { return delta.JsonObjectOf("value", initial) },
-	})
-	if err != nil {
-		panic(err)
-	}
-	document := s.Self.State(definition).(*documents.Singleton)
-	member := s.Self.Derive([]any{document}, func(values []any) (delta.JsonValue, error) {
-		return values[0].(*delta.JsonObject).Value("value"), nil
-	})
-	return &Cell{document: document, member: member}
+	writable := s.Self.Writable(initial)
+	member := s.Self.Derive([]any{writable}, func(values []any) (delta.JsonValue, error) { return values[0], nil })
+	return &Cell{writable: writable, member: member}
 }
 
 // StubMethod is a stub's method: it may return nil for nothing.
@@ -386,7 +355,7 @@ func (h *TestHost) WorkerHost(session string, generation int, facets ...host.Fac
 	return worker
 }
 
-// SetCell sets cell to value from the test: the cell's write is a transaction of its object's, so it enters the host's loop.
+// SetCell sets cell to value from the test (the write enters a section of the host's loop).
 func (h *TestHost) SetCell(cell *Cell, value any) error { return cell.Replace(value) }
 
 // Close closes the clients and the host (once).

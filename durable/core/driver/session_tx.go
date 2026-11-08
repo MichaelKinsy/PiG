@@ -188,6 +188,10 @@ func (p *txProxy) ScanTasks(query durable.TaskQuery, limit int, cursor durable.C
 	return decodePage[durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]](p.op("scanTasks", map[string]any{"query": wireTaskQuery(query), "limit": limit, "cursor": cursor}))
 }
 
+func (p *txProxy) Submission(id durable.SubmissionId) (*durable.SubmissionRecord, error) {
+	return decodeOptional[durable.SubmissionRecord](p.op("submission", map[string]any{"id": id}))
+}
+
 func (p *txProxy) SubmissionByRequest(conversationId durable.ConversationId, requestId string) (*durable.SubmissionRecord, error) {
 	return decodeOptional[durable.SubmissionRecord](p.op("submissionByRequest", map[string]any{"conversationId": conversationId, "requestId": requestId}))
 }

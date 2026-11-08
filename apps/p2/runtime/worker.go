@@ -652,6 +652,18 @@ func (e *execution) At(ctx context.Context, location Location) (durableenv.Execu
 			entry = &machineEntry{ready: make(chan struct{}), envs: map[string]durableenv.ExecutionEnv{}}
 			e.machines[key] = entry
 			go func() {
+				// A panic of the open is its failure, as a rejected promise is.
+				defer func() {
+					if recovered := recover(); recovered != nil {
+						entry.err = fmt.Errorf("opening the environment: %v", recovered)
+						e.mu.Lock()
+						if e.machines[key] == entry {
+							delete(e.machines, key)
+						}
+						e.mu.Unlock()
+						close(entry.ready)
+					}
+				}()
 				entry.machine, entry.err = e.open(e.closing, location.Env)
 				// A failed open is not kept: the next use tries again.
 				if entry.err != nil {
@@ -953,7 +965,7 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 			executions := executionValue.(*execution)
 			h, err := harness.OpenHarness(ctx, storage, harness.HarnessOptions{
 				ModelsFunc: models,
-				Registry:   DurableRegistry(extensions, switches, func() durable.Storage { return storage }),
+				Registry:   DurableRegistry(extensions, switches),
 				Settings:   settings,
 				// The conversation's location, not its agent cwd alone: a subagent's own may be on another machine.
 				Env: func(ctx context.Context, target harness.EnvTarget) (durableenv.ExecutionEnv, error) {

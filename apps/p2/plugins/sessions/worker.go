@@ -75,7 +75,8 @@ func renameTool(worker func() (*p2runtime.WorkerParts, error)) (*durable.ToolReg
 		return nil, err
 	}
 	var tool ai.ToolSchema
-	if err := json.Unmarshal(encoded, &tool); err != nil {
+	//perf:ok the tool schema is built once per worker start (cold)
+	if err := json.Unmarshal(encoded, &tool); err != nil { //portlint:allow jsonclone a typed value converted from its stored JSON form, cold (see the perf:ok above)
 		return nil, err
 	}
 	return harness.DefineTool(durable.ToolRegistration{
@@ -134,8 +135,8 @@ func serveSessionTools(facet host.FacetHost) error {
 		}
 		const name = "p2-session-title"
 		extension := &p2runtime.P2Extension{
-			Extension: &durable.Extension{Name: name, Tools: []*durable.ToolRegistration{tool}},
-			Access:    map[string]p2runtime.ToolAccess{"rename_session": {Scope: "main"}},
+			Extension: &durable.Extension{Name: name},
+			Tools:     []p2runtime.P2Tool{{ToolRegistration: tool, ToolAccess: p2runtime.ToolAccess{Scope: "main"}}},
 		}
 		p2runtime.ContributeKeyed(self, p2runtime.Extensions, p2runtime.Entry(name, extension))
 		return nil
@@ -184,6 +185,7 @@ func history(ctx context.Context, session harness.Harness, conversation durable.
 	for i, entry := range view.Entries {
 		draft := durable.EntryDraft{Kind: entry.Kind, Data: entry.Data}
 		if i < len(view.Contributions) && len(view.Contributions[i]) > 0 {
+			//perf:ok the fork copies one history per user action (cold)
 			draft.Model = append([]ai.Message(nil), view.Contributions[i]...)
 		}
 		draft.HeadSelf = i == 0 && view.Head != nil

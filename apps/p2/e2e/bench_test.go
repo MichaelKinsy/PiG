@@ -1,6 +1,9 @@
 package e2e_test
 
 import (
+	"os"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
@@ -20,5 +23,15 @@ func BenchmarkStartFixture(b *testing.B) {
 			b.Fatal(err)
 		}
 		fixture.Close()
+	}
+	// The process's peak resident set (Linux's VmHWM, KiB): the startup's memory, measured with the rest of the run.
+	if status, err := os.ReadFile("/proc/self/status"); err == nil {
+		for line := range strings.Lines(string(status)) {
+			if rest, ok := strings.CutPrefix(line, "VmHWM:"); ok {
+				if kib, err := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(rest), " kB"), 64); err == nil {
+					b.ReportMetric(kib/1024, "peakRSS-MiB")
+				}
+			}
+		}
 	}
 }
