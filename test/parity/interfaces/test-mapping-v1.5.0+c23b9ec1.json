@@ -2286,7 +2286,8 @@
       "evidence": [
         "chord/next/documents/documents_test.go",
         "chord/next/documents/documents_telemetry_test.go",
-        "chord/next/host/host_documents_cancel_test.go"
+        "chord/next/host/host_documents_cancel_test.go",
+        "chord/next/documents/documents_cost_test.go"
       ],
       "rationale": "All 10 upstream cases have a Go test on this branch. The two cases earlier designed out as having no Go form are ported by fix/chord-gap-b: \"cost nothing on the committed path\" = chord/next/documents/documents_cost_test.go TestTransactionsTheirContextsEndCancelledCostNothingOnTheCommittedPath…, \"times nothing when nothing records\" = chord/next/documents/documents_telemetry_test.go TestCommitsInTelemetryTimesNothingWhenNothingRecords. \"counts the table rows a commit's writes changed\" = documents_telemetry_test.go TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged."
     },
@@ -2364,17 +2365,21 @@
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/plugins/lists/worker.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:22afbe9db3be1818842f466e76b8dc06c5d5213e0dd31ceaa65777d6ae9bca51",
-      "evidence": [],
-      "rationale": "Designed out by D604 (draft, owner sign-off pending; rows/chord-t11.md): Pi's tutorial is a TypeScript program on Pi's TS app kit (main.ts calls the TS startServer, worker.ts is a Node entry) plus a book whose blocks the test quotes, so the Go kit has no TS server to run it under."
+      "evidence": [
+        "chord/nextnode/plugins/plugins_examples_tutorial_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in plugins_examples_tutorial_test.go (TestTutorialListsPluginOnAListsWorker)."
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/plugins/traces/clock.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:bb8c1305e4727dd134487975daeaa72cb0eef45306b6cbbb24ce5d48a5cf6098",
-      "evidence": [],
-      "rationale": "Designed out by D604 (draft, owner sign-off pending; rows/chord-t11.md): Pi's tutorial is a TypeScript program on Pi's TS app kit (main.ts calls the TS startServer, worker.ts is a Node entry) plus a book whose blocks the test quotes, so the Go kit has no TS server to run it under."
+      "evidence": [
+        "chord/nextnode/plugins/plugins_examples_tutorial_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in plugins_examples_tutorial_test.go (TestTutorialTracesClockClamped)."
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/tutorial.test.ts",
@@ -2498,7 +2503,8 @@
       "upstreamTestHash": "sha256:2848ff91df2df1bc91905f7bcca52473015ac3015c43eeeec7ac7305969357e3",
       "evidence": [
         "chord/next/host/host_native_test.go",
-        "chord/next/host/host_facet_test.go"
+        "chord/next/host/host_facet_test.go",
+        "chord/next/host/host_spans_test.go"
       ],
       "rationale": "All 12 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"spans (slice 9) › opens each native in a `chord.open` span of its attempt's, and closes it in a `chord.close` root\" -> next/host/host_spans_test.go:TestNativeSpansOpenEachNativeInAChordOpenSpanOfItsAttemptsAndCloseItInAChordCloseRoot; \"spans (slice 9) › keeps an open its attempt abandoned (cancelled) ok (review L3)\" -> next/host/host_spans_test.go:TestNativeSpansKeepAnOpenItsAttemptAbandonedCancelledOk; \"spans (slice 9) › marks a close that threw failed\" -> chord/next/host/host_spans_test.go:TestNativeSpansMarkACloseThatFailedFailed."
     },
@@ -2583,7 +2589,7 @@
       "evidence": [
         "chord/next/host/host_reference_test.go"
       ],
-      "rationale": "All 29 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 29 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the case the host-tests lane added is TestGCAHoldReleasedWhileItWaitsUnboundKeepsNothing… (host_reference_test.go))."
     },
     {
       "path": "packages/chord/test/host/reload-cycle.test.ts",
@@ -2617,7 +2623,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:584a833b6d3b7f639164cf9938e8d7e677094ea338c729c2cc50f0d68d3c2395",
       "evidence": [
-        "chord/next/host/host_root_test.go"
+        "chord/next/host/host_root_test.go",
+        "chord/next/host/host_spans_test.go"
       ],
       "rationale": "All 14 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"host.root's trace › runs fn in a new root span of the host's adapter, with its host and attributes; a throw fails it\" -> next/host/host_spans_test.go:TestHostRootRunsItsScopeInANewRootSpanOfItsAdapterWithItsHostAndAttributesAFailureMarksItFailed; \"host.root's trace › starts nothing without an adapter that records\" -> next/host/host_spans_test.go:TestHostRootStartsNothingWithoutAnAdapterThatRecords."
     },
@@ -2628,7 +2635,7 @@
       "evidence": [
         "chord/next/host/host_route_test.go"
       ],
-      "rationale": "All 24 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 24 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the case the t6 lane added is TestResolveSpansMarkAResolveThatRejectedFailedResolveFailed… (host_route_test.go))."
     },
     {
       "path": "packages/chord/test/host/routines.test.ts",
@@ -2636,7 +2643,8 @@
       "upstreamTestHash": "sha256:c5281925707cf88d03603c967a29847279dab7d059f2c228f0ed569c35945cee",
       "evidence": [
         "chord/next/host/host_routines_test.go",
-        "chord/next/host/remote_host_link_test.go"
+        "chord/next/host/remote_host_link_test.go",
+        "chord/next/host/host_spans_test.go"
       ],
       "rationale": "All 43 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"routines and the end › act as a remote object's principal\" -> chord/next/host/host_routines_test.go:TestRoutinesActAsTheOwnersCallerPrincipal."
     },
@@ -2675,7 +2683,7 @@
       "evidence": [
         "chord/next/host/host_unbound_test.go"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the case the host-tests lane added is TestHostReferencesWaitingInTheIndexAfterThePublication… (host_unbound_test.go))."
     },
     {
       "path": "packages/chord/test/jobs/definition.test.ts",
@@ -2695,7 +2703,7 @@
         "chord/next/host/jobs_job_test.go",
         "chord/next/host/jobs_job_end_test.go"
       ],
-      "rationale": "All 57 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 57 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the cases the t6 lane added are TestPhaseSpansTraceTheIntentUnderTheStarter…, TestPhaseSpansKeepARunsCtxAJobsUnderCtxTrace… (review L5), TestPhaseSpansMarkARunThatThrewFailed… (jobs_job_runs_test.go))."
     },
     {
       "path": "packages/chord/test/jobs/persisted.test.ts",
@@ -2704,7 +2712,7 @@
       "evidence": [
         "chord/next/host/jobs_persisted_test.go"
       ],
-      "rationale": "All 34 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 34 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the case the t6 lane added is TestPersistedTraceRunsResumedAfterACrashInANewAttemptAndHost… (jobs_persisted_test.go))."
     },
     {
       "path": "packages/chord/test/jobs/records.test.ts",
@@ -3617,7 +3625,7 @@
       "evidence": [
         "chord/next/host/remote_provider_test.go"
       ],
-      "rationale": "All 55 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 55 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the cases the t6 lane added are TestProviderTelemetryRunsACallsMethodUnderItsCarrier…, TestProviderTelemetryCountsHoldsPlacedHere…, TestProviderTelemetryRecordsHowLongStateWaitedForASlotOfTheWindow (remote_provider_test.go))."
     },
     {
       "path": "packages/chord/test/remote/relay.test.ts",
@@ -3635,7 +3643,7 @@
       "evidence": [
         "chord/next/host/remote_remote_object_test.go"
       ],
-      "rationale": "All 33 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 33 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the cases the t6 lane added are TestConsumerSpansHoldInAChordHoldSpanUntilBound…, TestConsumerSpansKeepACallItsCallerCancelledOk…, TestConsumerSpansEndAHoldsSpanFailedWhenItsFirstAnswerIsAFailure (remote_remote_object_test.go))."
     },
     {
       "path": "packages/chord/test/remote/replica.test.ts",
