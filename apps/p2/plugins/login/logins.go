@@ -89,6 +89,9 @@ type Logins struct {
 	mu        sync.Mutex
 	listeners map[int]func()
 	nextID    int
+	// version counts the changes told; a listener that reads the state and publishes it outside the lock may be overtaken by a
+	// newer change's publication, so it runs again until no change happened meanwhile (the last published state is the latest).
+	version uint64
 	active    *attempt
 	current   loginsState
 	device    sync.Mutex
@@ -123,13 +126,25 @@ func (l *Logins) Subscribe(listener func()) func() {
 
 func (l *Logins) changed() {
 	l.mu.Lock()
+	l.version++
 	listeners := make([]func(), 0, len(l.listeners))
 	for _, listener := range l.listeners {
 		listeners = append(listeners, listener)
 	}
 	l.mu.Unlock()
 	for _, listener := range listeners {
-		listener()
+		for {
+			l.mu.Lock()
+			seen := l.version
+			l.mu.Unlock()
+			listener()
+			l.mu.Lock()
+			current := l.version
+			l.mu.Unlock()
+			if current == seen {
+				break
+			}
+		}
 	}
 }
 
