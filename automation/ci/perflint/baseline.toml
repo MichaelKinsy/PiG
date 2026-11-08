@@ -4852,14 +4852,6 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "internal/codingagent/tools/grep.go"
-func = "grepFormatter.emitMatch"
-pattern = "loop-format"
-detail = "fmt.Sprintf"
-count = 2
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "internal/codingagent/tools/ls.go"
 func = "LsTool.Execute"
 pattern = "loop-format"

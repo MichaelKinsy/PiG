@@ -5,18 +5,18 @@ import {
   hasTrustRequiringProjectResources,
   loadMcpConfig,
   openBrowser,
+  questionTerminal,
   updateMcpServerConfig
-} from "./chunk-AMP26ZF4.js";
+} from "./chunk-KBAOTQS2.js";
 import {
   ArminComponent
-} from "./chunk-DJM4CGTU.js";
+} from "./chunk-3MYHF4IX.js";
 import {
   AgentSession,
   BUG_REPORT_CUSTOM_ENTRY_TYPE,
   BUILTIN_PATH_PREFIX,
   CACHE_WARMING_MODES,
   CURRENT_SESSION_VERSION,
-  CredentialSynchronizationError,
   DEFAULT_COMPACTION_SETTINGS,
   DEFAULT_THINKING_LEVEL,
   DefaultPackageManager,
@@ -24,15 +24,12 @@ import {
   ExtensionRunner,
   FooterDataProvider,
   HTTP_IDLE_TIMEOUT_CHOICES,
-  InMemoryCodingAgentModelsStore,
   MissingSessionCwdError,
   ModelRegistry,
-  ModelRuntime,
   SessionImportFileNotFoundError,
   SessionManager,
   SettingsManager,
   THINKING_LEVEL_OPTIONS,
-  VIRTUAL_MODEL_STATE_ENTRY,
   applyHttpProxySettings,
   assertValidSessionId,
   bugReportArchiveFileName,
@@ -88,6 +85,7 @@ import {
   isGrepToolResult,
   isInstallTelemetryEnabled,
   isLsToolResult,
+  isOfflineModeEnabled,
   isPowerShellToolResult,
   isReadToolResult,
   isSyntheticPath,
@@ -125,7 +123,13 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-WC4H2KLE.js";
+} from "./chunk-AE3LWF4M.js";
+import {
+  CredentialSynchronizationError,
+  InMemoryCodingAgentModelsStore,
+  ModelRuntime,
+  VIRTUAL_MODEL_STATE_ENTRY
+} from "./chunk-H2BMMKZ4.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -144,12 +148,10 @@ import {
   editRenderers,
   ensurePngTranscoder,
   ensureTool,
-  fetchWithRetry,
   findRenderers,
   formatDimensionNote,
   generateDiffString,
   generateUnifiedPatch,
-  getPiUserAgent,
   grepRenderers,
   loadPhoton,
   lsRenderers,
@@ -160,13 +162,17 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-HOGQJAZD.js";
+} from "./chunk-GAYOJ7LQ.js";
+import {
+  fetchWithRetry,
+  getPiUserAgent
+} from "./chunk-PNTN457B.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-T2257LV5.js";
+} from "./chunk-L57ECBVI.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -174,22 +180,15 @@ import {
   getUsageCostBreakdown
 } from "./chunk-IJFG4BUL.js";
 import {
-  DEFAULT_MAX_BYTES,
-  DEFAULT_MAX_LINES,
   VisualLinePreview,
   formatReadLineRange,
-  formatSize,
   formatToolCallWithArgs,
   getTextOutput,
   replaceTabs,
   stripAnsi,
-  truncateHead,
-  truncateLine,
-  truncateMiddle,
-  truncateTail,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-HAAXE2S5.js";
+} from "./chunk-PZKKWCBI.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -223,7 +222,7 @@ import {
   setThemeJsonValidator,
   stopThemeWatcher,
   theme
-} from "./chunk-2W3FEVNE.js";
+} from "./chunk-XGLA5YHQ.js";
 import {
   AuthStorage,
   LIST_MCP_RESOURCES_TOOL,
@@ -231,15 +230,21 @@ import {
   READ_MCP_RESOURCE_TOOL,
   ReadOnlyAuthStorage,
   getMcpToolExposure,
-  mcpNamespace,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-QWVFFAFF.js";
+} from "./chunk-H3JRSATQ.js";
 import {
+  DEFAULT_MAX_BYTES,
+  DEFAULT_MAX_LINES,
+  formatSize,
   getPowerShellConfig,
   getShellConfig,
-  killTrackedDetachedChildren
-} from "./chunk-F2BIFG4N.js";
+  killTrackedDetachedChildren,
+  sliceHead,
+  truncateHead,
+  truncateLine,
+  truncateTail
+} from "./chunk-BXLOEZ7M.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -332,30 +337,23 @@ var codemode_default = createCodemodeExtension();
 
 // pi-dist/pi-coding-agent/extensions/mcp/index.js
 import { join as join2, resolve } from "node:path";
+import { createMcpToolName, mcpNamespace } from "../../pi-mcp/index.js";
+
+// pi-dist/pi-coding-agent/extensions/mcp/resources.js
+import { limitMcpContent as limitMcpContent2 } from "../../pi-mcp/index.js";
 
 // pi-dist/pi-coding-agent/extensions/mcp/tools.js
-import { createHash } from "node:crypto";
-import { toLlmContent } from "../../pi-mcp/index.js";
+import { limitMcpContent, normalizeMcpInputSchema, toLlmContent } from "../../pi-mcp/index.js";
 import { Container, Spacer, Text } from "../../../pi-tui.mjs";
 function toToolExposure(exposure) {
   return exposure === "codemode" ? "deferred" : exposure;
 }
 __name(toToolExposure, "toToolExposure");
-var MAX_TOOL_NAME_LENGTH = 64;
-var MCP_OUTPUT_MAX_BYTES = 20 * 1024;
 var OUTPUT_PREVIEW_LINES = 5;
 function saveToTempFile(data, extension) {
   return writeOutputFile("pi-mcp", extension, data);
 }
 __name(saveToTempFile, "saveToTempFile");
-function createMcpToolName(server, tool, isTaken = () => false) {
-  const name = `mcp__${server}__${tool}`.replace(/[^A-Za-z0-9_]/g, "_");
-  if (name.length <= MAX_TOOL_NAME_LENGTH && !isTaken(name))
-    return name;
-  const hash = createHash("sha256").update(`${server}\0${tool}`).digest("hex").slice(0, 8);
-  return `${name.slice(0, MAX_TOOL_NAME_LENGTH - hash.length - 1)}_${hash}`;
-}
-__name(createMcpToolName, "createMcpToolName");
 function textOf(content) {
   return content.filter((block) => block.type === "text").map((block) => block.text).join("\n");
 }
@@ -415,35 +413,9 @@ function createMcpResultSchema(structuredContentSchema) {
   };
 }
 __name(createMcpResultSchema, "createMcpResultSchema");
-async function limitMcpContent(content, saveOutput = saveToTempFile) {
-  const combined = textOf(content);
-  const truncation = truncateMiddle(combined, MCP_OUTPUT_MAX_BYTES);
-  if (!truncation.truncated)
-    return { content };
-  let fullOutputPath;
-  let where;
-  try {
-    fullOutputPath = await saveOutput(combined, ".txt");
-    where = `[Full output: ${fullOutputPath} (read it with offset/limit)]`;
-  } catch (error) {
-    where = `[Could not save the full output: ${error instanceof Error ? error.message : String(error)}]`;
-  }
-  const tokens = Math.ceil(truncation.totalBytes / 4);
-  const text = `Warning: truncated output (original token count: ${tokens})
-Total output lines: ${truncation.totalLines}
-
-${truncation.content}
-
-${where}`;
-  return {
-    content: [{ type: "text", text }, ...content.filter((block) => block.type === "image")],
-    ...fullOutputPath ? { fullOutputPath } : {}
-  };
-}
-__name(limitMcpContent, "limitMcpContent");
 function extensionOf(uri) {
-  const path5 = URL.canParse(uri) ? new URL(uri).pathname : uri;
-  return /\.[A-Za-z0-9]{1,8}$/.exec(path5)?.[0] ?? ".bin";
+  const path6 = URL.canParse(uri) ? new URL(uri).pathname : uri;
+  return /\.[A-Za-z0-9]{1,8}$/.exec(path6)?.[0] ?? ".bin";
 }
 __name(extensionOf, "extensionOf");
 function isTextMimeType(mimeType) {
@@ -472,8 +444,8 @@ async function blockToContent(server, block, options) {
       return [{ type: "text", text: data.toString("utf8") }];
     const kind = `${mimeType ?? "unknown type"}, ${formatSize(data.length)}`;
     try {
-      const path5 = await (options.saveOutput ?? saveToTempFile)(data, extensionOf(uri));
-      return [{ type: "text", text: `[Binary resource ${uri} (${kind}) saved to ${path5}]` }];
+      const path6 = await (options.saveOutput ?? saveToTempFile)(data, extensionOf(uri));
+      return [{ type: "text", text: `[Binary resource ${uri} (${kind}) saved to ${path6}]` }];
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       return [{ type: "text", text: `[Binary resource ${uri} (${kind}) could not be saved: ${reason}]` }];
@@ -491,7 +463,7 @@ async function convertMcpResult(server, tool, result, options = {}) {
   if (result.isError && textOf(converted) === "") {
     converted.push({ type: "text", text: `MCP tool ${server}/${tool} returned an error` });
   }
-  const { content, fullOutputPath } = await limitMcpContent(converted, options.saveOutput);
+  const { content, fullOutputPath } = await limitMcpContent(converted, options.saveOutput ?? saveToTempFile);
   const { _meta: _ignored, ...scriptResult } = result;
   return {
     content,
@@ -501,14 +473,6 @@ async function convertMcpResult(server, tool, result, options = {}) {
   };
 }
 __name(convertMcpResult, "convertMcpResult");
-function toParameters(schema) {
-  return {
-    ...schema,
-    type: schema.type ?? "object",
-    ...schema.properties === void 0 ? { properties: {} } : {}
-  };
-}
-__name(toParameters, "toParameters");
 var ANNOTATION_HINTS = ["readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"];
 function toToolAnnotations(tool) {
   const annotations = {};
@@ -529,7 +493,8 @@ function createMcpToolDefinition(options) {
     name: options.name,
     label,
     description: tool.description?.trim() || title || `MCP tool ${tool.name} from server ${server}`,
-    parameters: toParameters(tool.inputSchema),
+    // An object schema, which is what TypeBox schemas are at runtime.
+    parameters: normalizeMcpInputSchema(tool.inputSchema),
     outputSchema: createMcpResultSchema(tool.outputSchema),
     exposure: toToolExposure(options.exposure),
     namespace: options.namespace,
@@ -716,7 +681,7 @@ function errorMessage(error) {
 }
 __name(errorMessage, "errorMessage");
 async function jsonResult(tool, server, payload) {
-  const { content, fullOutputPath } = await limitMcpContent([{ type: "text", text: JSON.stringify(payload) }]);
+  const { content, fullOutputPath } = await limitMcpContent2([{ type: "text", text: JSON.stringify(payload) }], saveToTempFile);
   return {
     content,
     details: { server: server ?? "", tool, ...fullOutputPath ? { fullOutputPath } : {} },
@@ -816,7 +781,7 @@ function createMcpResourceToolDefinitions(options) {
         { type: "resource", resource: contents2 }
       ]);
       const converted = await toModelContent(server.name, blocks);
-      const { content, fullOutputPath } = await limitMcpContent(converted.length > 0 ? converted : [{ type: "text", text: `Resource ${uri} is empty.` }]);
+      const { content, fullOutputPath } = await limitMcpContent2(converted.length > 0 ? converted : [{ type: "text", text: `Resource ${uri} is empty.` }], saveToTempFile);
       const contents = result.contents.map(({ _meta: _ignored, ...rest }) => rest);
       return {
         content,
@@ -834,7 +799,7 @@ function createMcpResourceToolDefinitions(options) {
 __name(createMcpResourceToolDefinitions, "createMcpResourceToolDefinitions");
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-F5WWHNNS.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-UQHOVDJL.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container3, Input, SelectList, Spacer as Spacer2, Text as Text3, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -1339,7 +1304,7 @@ __name(serversSectionIntro, "serversSectionIntro");
 function truncate(text, max) {
   if (text.length <= max)
     return text;
-  return max <= 1 ? "" : `${text.slice(0, max - 1).trimEnd()}\u2026`;
+  return max <= 1 ? "" : `${sliceHead(text, max - 1).trimEnd()}\u2026`;
 }
 __name(truncate, "truncate");
 function serverSummary(server) {
@@ -2334,11 +2299,35 @@ function isAuthCommandHelp(args) {
 __name(isAuthCommandHelp, "isAuthCommandHelp");
 function printAuthCommandHelp() {
   console.log(`Usage:
+  pi auth login <provider> [--api-key] [--no-browser]
+  pi auth logout <provider>
   pi auth print-api-key [--provider <provider>] [--model <model>]
   pi auth print-bearer-token [--provider <provider>] [--model <model>] [--min-expiry <duration>]
   pi auth check [--provider <provider>] [--model <model>] [--json] [--credentials] [--no-refresh]
 
-Auth commands require at least one of --provider or --model. Checks refresh expired OAuth credentials by default; --no-refresh prevents this. --credentials emits the credential, or includes it in JSON output.`);
+Log in to and out of model providers, print their credentials for external clients, or check that they are ready.
+Credentials are stored in ~/.pi/agent/auth.json.
+
+Commands:
+  login <provider>        Sign in with an account in the browser, or save an API key, then exit
+  logout <provider>       Remove the stored credentials; environment variables and models.json stay
+  print-api-key           Print the resolved API key
+  print-bearer-token      Print a resolved OAuth bearer token (refreshes if expired)
+  check                   Print ready, not_ready, or invalid; exit with 0, 1, or 2
+
+Options for print-api-key, print-bearer-token, and check (at least one is required):
+  --provider <provider>   Resolve credentials for a provider
+  --model <model>         Resolve credentials from a model
+
+Options for login:
+  --api-key               Save an API key instead of signing in with an account
+  --no-browser            Do not open a browser; use another sign-in method, e.g. device code
+
+Other options:
+  --min-expiry <duration> Minimum remaining token lifetime for print-bearer-token, e.g. 30m or 1h
+  --json                  Print the check result as JSON
+  --credentials           Emit the credential from check, or include it in JSON output
+  --no-refresh            Do not refresh expired OAuth credentials during check`);
 }
 __name(printAuthCommandHelp, "printAuthCommandHelp");
 function parseAuthCommand(args) {
@@ -2346,7 +2335,7 @@ function parseAuthCommand(args) {
     return void 0;
   const kind = args[1] === "check" ? "check" : args[1] === "print-api-key" ? "api_key" : args[1] === "print-bearer-token" ? "bearer_token" : void 0;
   if (!kind) {
-    throw new AuthCommandError(`Unknown auth command "${args[1] ?? ""}". Use "${APP_NAME} auth print-api-key", "${APP_NAME} auth print-bearer-token", or "${APP_NAME} auth check".`);
+    throw new AuthCommandError(`Unknown auth command "${args[1] ?? ""}". Use "${APP_NAME} auth login", "${APP_NAME} auth logout", "${APP_NAME} auth print-api-key", "${APP_NAME} auth print-bearer-token", or "${APP_NAME} auth check".`);
   }
   const commandArgs = [];
   let json2 = false;
@@ -2461,6 +2450,374 @@ async function createAuthCheckModelRuntime(credentials) {
   });
 }
 __name(createAuthCheckModelRuntime, "createAuthCheckModelRuntime");
+
+// pi-dist/pi-coding-agent/cli/auth-login.js
+import { replaceControlCharacters as replaceControlCharacters2 } from "../../../pi-tui.mjs";
+
+// pi-dist/pi-coding-agent/core/provider-matching.js
+function findMatchingProviders(providers, providerRef) {
+  const normalized = providerRef.trim().toLowerCase();
+  if (!normalized)
+    return [];
+  return providers.filter((provider) => provider.id.toLowerCase() === normalized || provider.name.toLowerCase() === normalized);
+}
+__name(findMatchingProviders, "findMatchingProviders");
+
+// pi-dist/pi-coding-agent/core/radius.js
+import { DEFAULT_RADIUS_GATEWAY, normalizeRadiusGatewayUrl } from "../../pi-ai/providers/radius-config.js";
+var RADIUS_PROVIDER_ID = "radius";
+var ENV_RADIUS_GATEWAY = "PI_RADIUS_GATEWAY";
+var RADIUS_MCP_URL = `${normalizeRadiusGatewayUrl(DEFAULT_RADIUS_GATEWAY)}/mcp`;
+function getRadiusGatewayUrl() {
+  return normalizeRadiusGatewayUrl(process.env[ENV_RADIUS_GATEWAY] ?? DEFAULT_RADIUS_GATEWAY);
+}
+__name(getRadiusGatewayUrl, "getRadiusGatewayUrl");
+
+// pi-dist/pi-coding-agent/core/radius-mcp.js
+import path from "node:path";
+import { mcpNamespace as mcpNamespace2 } from "../../pi-mcp/index.js";
+function planRadiusMcpServer(providerId, agentDir, cwd) {
+  const normalizeUrl = /* @__PURE__ */ __name((url) => url.replace(/\/+$/u, ""), "normalizeUrl");
+  const { servers } = loadMcpConfig({ agentDir, cwd, projectTrusted: false });
+  const existing = servers.find((server) => "url" in server.config && normalizeUrl(server.config.url) === normalizeUrl(RADIUS_MCP_URL));
+  if (existing && "url" in existing.config && existing.config.auth?.provider === providerId)
+    return void 0;
+  let name = existing?.name ?? "radius";
+  if (!existing) {
+    const namespaces = new Set(servers.map((server) => mcpNamespace2(server.name)));
+    for (let suffix = 1; namespaces.has(mcpNamespace2(name)); suffix++) {
+      name = suffix === 1 ? "radius-mcp" : `radius-mcp-${suffix}`;
+    }
+  }
+  const config = existing && "url" in existing.config ? { ...existing.config, auth: { provider: providerId } } : { url: RADIUS_MCP_URL, auth: { provider: providerId } };
+  delete config.oauth;
+  return { mcpPath: path.join(agentDir, "mcp.json"), name, config };
+}
+__name(planRadiusMcpServer, "planRadiusMcpServer");
+
+// pi-dist/pi-coding-agent/utils/web-url.js
+import { replaceControlCharacters } from "../../../pi-tui.mjs";
+function webUrl(value) {
+  if (!URL.canParse(value))
+    return void 0;
+  const url = new URL(value);
+  return url.protocol === "https:" || url.protocol === "http:" ? url.href : void 0;
+}
+__name(webUrl, "webUrl");
+function displayUrl(value) {
+  return webUrl(value) ?? replaceControlCharacters(value);
+}
+__name(displayUrl, "displayUrl");
+
+// pi-dist/pi-coding-agent/cli/auth-login.js
+var AUTH_LOGIN_USAGE = `${APP_NAME} auth login <provider> [--api-key] [--no-browser]`;
+async function runAuthLogin(args, options) {
+  const { modelRuntime, terminal, signal } = options;
+  const parsed = parseLoginRequest(args);
+  if (parsed.type === "invalid") {
+    terminal.error(parsed.message);
+    return 1;
+  }
+  const { request } = parsed;
+  const { providerRef } = request;
+  const provider = findMatchingProviders(modelRuntime.getProviders(), providerRef)[0];
+  if (!provider) {
+    const loginProviders = modelRuntime.getProviders().filter((candidate) => candidate.auth.oauth || candidate.auth.apiKey?.login).map((candidate) => candidate.id).sort();
+    terminal.error(`Unknown provider "${replaceControlCharacters2(providerRef)}".`);
+    terminal.error(`Providers: ${loginProviders.join(", ")}`);
+    return 1;
+  }
+  if (!terminal.interactive) {
+    terminal.error(`"${AUTH_LOGIN_USAGE}" requires an interactive terminal`);
+    return 1;
+  }
+  const authType = selectAuthType(provider, request.apiKey);
+  if (authType.type === "unavailable") {
+    terminal.error(authType.message);
+    return 1;
+  }
+  try {
+    await modelRuntime.login(provider.id, authType.type, createLoginInteraction(provider.id, authType.type, request, terminal, signal), { getDeviceId: options.getDeviceId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof CredentialSynchronizationError) {
+      terminal.error(`Logged in to ${provider.name}, but local model state could not be synchronized: ${message}`);
+    } else if (signal.aborted || message === "Login cancelled") {
+      terminal.error("Login cancelled.");
+    } else {
+      terminal.error(`Failed to log in to ${provider.name}: ${message}`);
+    }
+    return 1;
+  }
+  terminal.write(`${authType.type === "oauth" ? `Logged in to ${provider.name}` : `Saved API key for ${provider.name}`}. Credentials saved to ${getAuthPath()}`);
+  await refreshProviderCatalog(provider, modelRuntime, terminal, signal);
+  if (provider.id === RADIUS_PROVIDER_ID)
+    configureRadiusMcpServer(provider, options);
+  return 0;
+}
+__name(runAuthLogin, "runAuthLogin");
+function parseLoginRequest(args) {
+  const usage = { type: "invalid", message: `Usage: ${AUTH_LOGIN_USAGE}` };
+  const request = { providerRef: "", apiKey: false, browser: true };
+  for (const arg of args) {
+    if (arg === "--api-key")
+      request.apiKey = true;
+    else if (arg === "--no-browser")
+      request.browser = false;
+    else if (arg.startsWith("-") || request.providerRef)
+      return usage;
+    else
+      request.providerRef = arg;
+  }
+  if (!request.providerRef)
+    return usage;
+  if (request.apiKey && !request.browser) {
+    return { type: "invalid", message: "--no-browser only applies to account sign-in; omit it with --api-key." };
+  }
+  return { type: "valid", request };
+}
+__name(parseLoginRequest, "parseLoginRequest");
+function selectAuthType(provider, apiKey) {
+  const hasApiKeyLogin = provider.auth.apiKey?.login !== void 0;
+  if (!apiKey && provider.auth.oauth)
+    return { type: "oauth" };
+  if (hasApiKeyLogin)
+    return { type: "api_key" };
+  if (apiKey && provider.auth.oauth) {
+    return { type: "unavailable", message: `${provider.name} has no API key login. Omit --api-key to sign in.` };
+  }
+  const method = provider.auth.apiKey?.name ?? "ambient credentials";
+  return { type: "unavailable", message: `${provider.name} is configured outside ${APP_NAME} (${method}).` };
+}
+__name(selectAuthType, "selectAuthType");
+function createLoginInteraction(providerId, authType, request, terminal, signal) {
+  const methodChoice = authType === "api_key" ? "ask" : request.browser ? "browser" : "other";
+  let skippedMethods = [];
+  async function selectMethod(prompt, promptSignal) {
+    const [first, ...others] = prompt.options;
+    if (methodChoice === "ask" || !first) {
+      return selectInTerminal(prompt.message, prompt.options, terminal, promptSignal);
+    }
+    if (methodChoice === "browser") {
+      skippedMethods = others.map((option) => option.label);
+      return first.id;
+    }
+    const [onlyOther, ...moreOthers] = others;
+    if (!onlyOther)
+      return first.id;
+    if (moreOthers.length > 0)
+      return selectInTerminal(prompt.message, others, terminal, promptSignal);
+    terminal.write(`${prompt.message} ${onlyOther.label}`);
+    return onlyOther.id;
+  }
+  __name(selectMethod, "selectMethod");
+  return {
+    signal,
+    prompt(prompt) {
+      const promptSignal = prompt.signal ? AbortSignal.any([signal, prompt.signal]) : signal;
+      if (prompt.type === "select")
+        return selectMethod(prompt, promptSignal);
+      const placeholder = prompt.placeholder ? ` (${prompt.placeholder})` : "";
+      const message = `${prompt.message}${placeholder}: `;
+      return prompt.type === "secret" ? terminal.secret(message, promptSignal) : terminal.question(message, promptSignal);
+    },
+    notify(event) {
+      if (event.type === "auth_url") {
+        terminal.write(`Open this URL to sign in:
+  ${displayUrl(event.url)}`);
+        if (event.instructions)
+          terminal.write(event.instructions);
+        const target = webUrl(event.url);
+        if (target !== void 0 && request.browser)
+          terminal.openUrl(target);
+        const rerun = `"${APP_NAME} auth login ${providerId} --no-browser"`;
+        const [onlyMethod, ...moreMethods] = skippedMethods;
+        if (onlyMethod !== void 0 && moreMethods.length === 0) {
+          terminal.write(`To use "${onlyMethod}" instead, run ${rerun}`);
+        } else if (onlyMethod !== void 0) {
+          const labels = skippedMethods.map((label) => `"${label}"`).join(", ");
+          terminal.write(`Other sign-in methods: ${labels}. Run ${rerun} to choose one.`);
+        }
+      } else if (event.type === "device_code") {
+        terminal.write(`Open ${displayUrl(event.verificationUri)} and enter code: ${event.userCode}`);
+        const target = webUrl(event.verificationUri);
+        if (target !== void 0 && request.browser && event.openBrowserOnConfirm !== false) {
+          terminal.openUrl(target);
+        }
+        terminal.write("Waiting for authentication...");
+      } else if (event.type === "info") {
+        terminal.write(event.message);
+        for (const link of event.links ?? []) {
+          terminal.write(`  ${link.label ? `${link.label}: ` : ""}${displayUrl(link.url)}`);
+        }
+      } else {
+        terminal.write(event.message);
+      }
+    }
+  };
+}
+__name(createLoginInteraction, "createLoginInteraction");
+async function selectInTerminal(message, options, terminal, signal) {
+  terminal.write(message);
+  options.forEach((option, index) => {
+    terminal.write(`  ${index + 1}. ${option.label}${option.description ? ` - ${option.description}` : ""}`);
+  });
+  while (true) {
+    const answer = (await terminal.question(`Select 1-${options.length}: `, signal)).trim();
+    const option = /^\d+$/u.test(answer) ? options[Number(answer) - 1] : void 0;
+    if (option)
+      return option.id;
+    terminal.write(`Enter a number from 1 to ${options.length}.`);
+  }
+}
+__name(selectInTerminal, "selectInTerminal");
+async function refreshProviderCatalog(provider, modelRuntime, terminal, signal) {
+  const cancelled = /* @__PURE__ */ __name(() => {
+    terminal.write(`Skipped the ${provider.name} model catalog refresh; ${APP_NAME} refreshes it on next start.`);
+  }, "cancelled");
+  try {
+    const result = await modelRuntime.refresh({
+      providers: [provider.id],
+      signal: AbortSignal.any([signal, AbortSignal.timeout(15e3)])
+    });
+    if (signal.aborted) {
+      cancelled();
+    } else if (result.aborted) {
+      terminal.write(`The ${provider.name} model catalog refresh timed out; ${APP_NAME} refreshes it on next start.`);
+    } else if (result.errors.size > 0) {
+      terminal.write(`The ${provider.name} model catalog could not be refreshed; ${APP_NAME} retries on next start.`);
+    }
+  } catch (error) {
+    if (signal.aborted) {
+      cancelled();
+      return;
+    }
+    terminal.write(`The ${provider.name} model catalog could not be refreshed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+__name(refreshProviderCatalog, "refreshProviderCatalog");
+function configureRadiusMcpServer(provider, options) {
+  const { terminal } = options;
+  const plan = planRadiusMcpServer(provider.id, options.agentDir, options.cwd);
+  if (!plan)
+    return;
+  try {
+    const replaced = addMcpServerConfig(plan.mcpPath, plan.name, plan.config);
+    terminal.write(`${replaced ? "Updated" : "Added"} MCP server "${plan.name}" in ${plan.mcpPath} to use the ${provider.name} login.`);
+  } catch (error) {
+    terminal.error(`Could not update ${plan.mcpPath}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+__name(configureRadiusMcpServer, "configureRadiusMcpServer");
+
+// pi-dist/pi-coding-agent/cli/auth-logout.js
+import { replaceControlCharacters as replaceControlCharacters3 } from "../../../pi-tui.mjs";
+var AUTH_LOGOUT_USAGE = `${APP_NAME} auth logout <provider>`;
+async function runAuthLogout(args, options) {
+  const { modelRuntime, terminal, signal } = options;
+  const [providerRef, ...rest] = args;
+  if (providerRef === void 0 || providerRef.startsWith("-") || rest.length > 0) {
+    terminal.error(`Usage: ${AUTH_LOGOUT_USAGE}`);
+    return 1;
+  }
+  let stored;
+  try {
+    stored = await modelRuntime.listCredentials({ signal });
+  } catch (error) {
+    terminal.error(`Could not read stored credentials: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+  const provider = findMatchingProviders(modelRuntime.getProviders(), providerRef)[0];
+  const credential = stored.find((candidate) => candidate.providerId === (provider?.id ?? providerRef));
+  if (!provider && !credential) {
+    terminal.error(`Unknown provider "${replaceControlCharacters3(providerRef)}".`);
+    const storedIds = stored.map((credential2) => credential2.providerId).sort();
+    terminal.error(`Stored credentials: ${storedIds.join(", ") || "none"}`);
+    return 1;
+  }
+  const providerName = provider?.name ?? providerRef;
+  if (!credential) {
+    terminal.write(`No stored credentials for ${providerName}. Environment variables and models.json config are unchanged.`);
+    return 0;
+  }
+  try {
+    await modelRuntime.logout(credential.providerId, { signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof CredentialSynchronizationError) {
+      terminal.error(`Credentials removed for ${providerName}, but local model state could not be synchronized: ${message}`);
+    } else {
+      terminal.error(`Logout failed: ${message}`);
+    }
+    return 1;
+  }
+  terminal.write(credential.type === "oauth" ? `Logged out of ${providerName}.` : `Removed stored API key for ${providerName}. Environment variables and models.json config are unchanged.`);
+  return 0;
+}
+__name(runAuthLogout, "runAuthLogout");
+
+// pi-dist/pi-coding-agent/cli/auth-terminal.js
+function createProcessLoginTerminal(onInterrupt) {
+  return {
+    interactive: process.stdin.isTTY === true && process.stdout.isTTY === true,
+    write: /* @__PURE__ */ __name((line) => process.stdout.write(`${line}
+`), "write"),
+    error: /* @__PURE__ */ __name((line) => process.stderr.write(`${line}
+`), "error"),
+    question: /* @__PURE__ */ __name((message, signal) => questionTerminal(message, { signal, output: process.stdout, onInterrupt }), "question"),
+    secret: /* @__PURE__ */ __name((message, signal) => readSecret(message, signal, onInterrupt), "secret"),
+    openUrl: openBrowser
+  };
+}
+__name(createProcessLoginTerminal, "createProcessLoginTerminal");
+function readSecret(message, signal, onInterrupt) {
+  const stdin = process.stdin;
+  return new Promise((resolve7, reject) => {
+    if (signal.aborted) {
+      reject(new Error("Login cancelled"));
+      return;
+    }
+    let value = "";
+    const finish = /* @__PURE__ */ __name(() => {
+      stdin.off("data", onData);
+      signal.removeEventListener("abort", onAbort);
+      stdin.setRawMode(false);
+      stdin.pause();
+      process.stdout.write("\n");
+    }, "finish");
+    const onAbort = /* @__PURE__ */ __name(() => {
+      finish();
+      reject(new Error("Login cancelled"));
+    }, "onAbort");
+    const onData = /* @__PURE__ */ __name((data) => {
+      const chunk = data.toString("utf8");
+      if (chunk.startsWith("\x1B"))
+        return;
+      for (const char of chunk) {
+        if (char === "\r" || char === "\n") {
+          finish();
+          resolve7(value);
+          return;
+        }
+        if (char === "") {
+          onInterrupt();
+          return;
+        }
+        if (char === "\x7F" || char === "\b") {
+          value = Array.from(value).slice(0, -1).join("");
+        } else if (char >= " ") {
+          value += char;
+        }
+      }
+    }, "onData");
+    process.stdout.write(message);
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.on("data", onData);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+__name(readSecret, "readSecret");
 
 // pi-dist/pi-coding-agent/cli/credential-print.js
 var DEFAULT_BEARER_TOKEN_MIN_EXPIRY_MS = 30 * 6e4;
@@ -2787,7 +3144,7 @@ var APP_KEYBINDINGS = {
     description: "Restore queued messages"
   },
   "app.clipboard.pasteImage": {
-    defaultKeys: windowsKeybindings ? "alt+v" : "ctrl+v",
+    defaultKeys: windowsKeybindings ? ["alt+v", "ctrl+v"] : "ctrl+v",
     description: "Paste files on macOS, images, or text from clipboard"
   },
   "app.session.new": { defaultKeys: [], description: "Start a new session" },
@@ -3011,11 +3368,11 @@ function orderKeybindingsConfig(config) {
   return ordered;
 }
 __name(orderKeybindingsConfig, "orderKeybindingsConfig");
-function loadRawConfig(path5) {
-  if (!existsSync(path5))
+function loadRawConfig(path6) {
+  if (!existsSync(path6))
     return void 0;
   try {
-    const parsed = JSON.parse(stripBom(readFileSync2(path5, "utf-8")));
+    const parsed = JSON.parse(stripBom(readFileSync2(path6, "utf-8")));
     if (typeof parsed !== "object" || parsed === null)
       return void 0;
     return parsed;
@@ -3046,8 +3403,8 @@ var KeybindingsManager = class _KeybindingsManager extends TuiKeybindingsManager
   getEffectiveConfig() {
     return this.getResolvedBindings();
   }
-  static loadFromFile(path5) {
-    const rawConfig = loadRawConfig(path5);
+  static loadFromFile(path6) {
+    const rawConfig = loadRawConfig(path6);
     if (!rawConfig)
       return {};
     return toKeybindingsConfig(migrateKeybindingsConfig(rawConfig).config);
@@ -3196,10 +3553,17 @@ var ExtensionSelectorComponent = class extends Container5 {
   }
   updateList() {
     this.listContainer.clear();
-    for (let i = 0; i < this.options.length; i++) {
+    const maxVisible = 10;
+    const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.options.length - maxVisible));
+    const endIndex = Math.min(startIndex + maxVisible, this.options.length);
+    for (let i = startIndex; i < endIndex; i++) {
       const isSelected = i === this.selectedIndex;
       const text = isSelected ? theme.fg("accent", "\u2192 ") + theme.fg("accent", this.options[i]) : `  ${theme.fg("text", this.options[i])}`;
       this.listContainer.addChild(new Text5(text, 1, 0));
+    }
+    if (startIndex > 0 || endIndex < this.options.length) {
+      const scrollInfo = theme.fg("muted", `  (${this.selectedIndex + 1}/${this.options.length})`);
+      this.listContainer.addChild(new Text5(scrollInfo, 0, 0));
     }
   }
   handleInput(keyData) {
@@ -3981,8 +4345,8 @@ function formatSessionDate(date) {
   return `${Math.floor(diffDays / 365)}y`;
 }
 __name(formatSessionDate, "formatSessionDate");
-function getSessionPathKey(path5) {
-  return getPathComparisonKey(canonicalizePath(path5));
+function getSessionPathKey(path6) {
+  return getPathComparisonKey(canonicalizePath(path6));
 }
 __name(getSessionPathKey, "getSessionPathKey");
 var SessionSelectorHeader = class {
@@ -4028,8 +4392,8 @@ var SessionSelectorHeader = class {
   setShowRenameHint(show) {
     this.showRenameHint = show;
   }
-  setConfirmingDeletePath(path5) {
-    this.confirmingDeletePath = path5;
+  setConfirmingDeletePath(path6) {
+    this.confirmingDeletePath = path6;
   }
   clearStatusTimeout() {
     if (!this.statusTimeout)
@@ -4254,9 +4618,9 @@ var SessionList = class {
     }
     this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredSessions.length - 1));
   }
-  setConfirmingDeletePath(path5) {
-    this.confirmingDeletePath = path5;
-    this.onDeleteConfirmationChange?.(path5);
+  setConfirmingDeletePath(path6) {
+    this.confirmingDeletePath = path6;
+    this.onDeleteConfirmationChange?.(path6);
   }
   startDeleteConfirmationForSelectedSession() {
     const selected = this.filteredSessions[this.selectedIndex];
@@ -4268,10 +4632,10 @@ var SessionList = class {
     }
     this.setConfirmingDeletePath(selected.session.path);
   }
-  isCurrentSessionPath(path5) {
+  isCurrentSessionPath(path6) {
     if (!this.currentSessionPathKey)
       return false;
-    return getSessionPathKey(path5) === this.currentSessionPathKey;
+    return getSessionPathKey(path6) === this.currentSessionPathKey;
   }
   invalidate() {
   }
@@ -4578,8 +4942,8 @@ var SessionSelectorComponent = class extends Container7 {
       this.header.setShowPath(showPath);
       this.requestRender();
     };
-    this.sessionList.onDeleteConfirmationChange = (path5) => {
-      this.header.setConfirmingDeletePath(path5);
+    this.sessionList.onDeleteConfirmationChange = (path6) => {
+      this.header.setConfirmingDeletePath(path6);
       this.requestRender();
     };
     this.sessionList.onError = (msg) => {
@@ -4770,11 +5134,11 @@ async function selectSession(currentSessionsLoader, allSessionsLoader, settingsM
     const keybindings = KeybindingsManager.create();
     setKeybindings2(keybindings);
     let resolved = false;
-    const selector = new SessionSelectorComponent(currentSessionsLoader, allSessionsLoader, (path5) => {
+    const selector = new SessionSelectorComponent(currentSessionsLoader, allSessionsLoader, (path6) => {
       if (!resolved) {
         resolved = true;
         ui.stop();
-        resolve7(path5);
+        resolve7(path6);
       }
     }, () => {
       if (!resolved) {
@@ -4859,9 +5223,9 @@ __name(resolveProjectTrusted, "resolveProjectTrusted");
 
 // pi-dist/pi-coding-agent/core/settings-diagnostics.js
 function collectSettingsDiagnostics(settingsManager) {
-  return settingsManager.drainErrors().map(({ scope, path: path5, error }) => ({
+  return settingsManager.drainErrors().map(({ scope, path: path6, error }) => ({
     type: "warning",
-    message: path5 ? `Invalid settings file ${path5}: ${error.message}` : `Invalid ${scope} settings: ${error.message}`
+    message: path6 ? `Invalid settings file ${path6}: ${error.message}` : `Invalid ${scope} settings: ${error.message}`
   }));
 }
 __name(collectSettingsDiagnostics, "collectSettingsDiagnostics");
@@ -5002,6 +5366,15 @@ function llamaInferenceUrl(serverUrl) {
   return `${normalizeLlamaServerUrl(serverUrl)}/v1`;
 }
 __name(llamaInferenceUrl, "llamaInferenceUrl");
+function connectionErrorDetail(error) {
+  const cause = error instanceof Error ? error.cause : void 0;
+  if (cause instanceof Error && cause.message)
+    return cause.message;
+  if (cause && typeof cause === "object" && "code" in cause && typeof cause.code === "string")
+    return cause.code;
+  return error instanceof Error ? error.message : String(error);
+}
+__name(connectionErrorDetail, "connectionErrorDetail");
 var LlamaClient = class {
   static {
     __name(this, "LlamaClient");
@@ -5012,7 +5385,19 @@ var LlamaClient = class {
     this.serverUrl = normalizeLlamaServerUrl(serverUrl);
     this.apiKey = apiKey;
   }
-  async request(path5, init = {}) {
+  /** Fetches from the server, naming the server and the network-level cause when the connection fails. */
+  async fetchServer(path6, init) {
+    try {
+      return await fetch(`${this.serverUrl}${path6}`, init);
+    } catch (error) {
+      if (init.signal?.aborted)
+        throw error;
+      throw new Error(`Could not reach llama.cpp server at ${this.serverUrl}: ${connectionErrorDetail(error)}`, {
+        cause: error
+      });
+    }
+  }
+  async request(path6, init = {}) {
     const headers = new Headers(init.headers);
     if (init.body !== void 0)
       headers.set("Content-Type", "application/json");
@@ -5020,7 +5405,7 @@ var LlamaClient = class {
       headers.set("Authorization", `Bearer ${this.apiKey}`);
     const timeout = AbortSignal.timeout(15e3);
     const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
-    const response = await fetch(`${this.serverUrl}${path5}`, { ...init, headers, signal });
+    const response = await this.fetchServer(path6, { ...init, headers, signal });
     let payload;
     try {
       payload = await response.json();
@@ -5074,7 +5459,7 @@ var LlamaClient = class {
     const headers = new Headers();
     if (this.apiKey)
       headers.set("Authorization", `Bearer ${this.apiKey}`);
-    const response = await fetch(`${this.serverUrl}/models/sse`, { headers, signal });
+    const response = await this.fetchServer("/models/sse", { headers, signal });
     if (!response.ok || !response.body)
       throw new Error(`llama.cpp SSE returned HTTP ${response.status}`);
     const reader = response.body.getReader();
@@ -5212,9 +5597,9 @@ function parseRateLimitDelay(value) {
   return match ? Number(match[1]) : void 0;
 }
 __name(parseRateLimitDelay, "parseRateLimitDelay");
-async function readToken(path5) {
+async function readToken(path6) {
   try {
-    const token = (await readFile2(path5, "utf8")).trim();
+    const token = (await readFile2(path6, "utf8")).trim();
     return token || void 0;
   } catch {
     return void 0;
@@ -5230,9 +5615,9 @@ async function findHuggingFaceToken(env = process.env) {
     env.HF_HOME ? join4(env.HF_HOME, "token") : void 0,
     env.XDG_CACHE_HOME ? join4(env.XDG_CACHE_HOME, "huggingface", "token") : void 0,
     join4(homedir(), ".cache", "huggingface", "token")
-  ].filter((path5) => Boolean(path5));
-  for (const path5 of new Set(paths)) {
-    const token = await readToken(path5);
+  ].filter((path6) => Boolean(path6));
+  for (const path6 of new Set(paths)) {
+    const token = await readToken(path6);
     if (token)
       return token;
   }
@@ -5249,12 +5634,12 @@ var HuggingFaceClient = class {
     this.token = token;
     this.baseUrl = baseUrl.replace(/\/+$/u, "");
   }
-  async request(path5, signal) {
+  async request(path6, signal) {
     const headers = new Headers();
     if (this.token)
       headers.set("Authorization", `Bearer ${this.token}`);
     const timeout = AbortSignal.timeout(15e3);
-    const response = await fetch(`${this.baseUrl}${path5}`, {
+    const response = await fetch(`${this.baseUrl}${path6}`, {
       headers,
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout
     });
@@ -5645,6 +6030,8 @@ var HuggingFaceSearch = class extends Container8 {
   results = [];
   filteredResults = [];
   selectedIndex = 0;
+  // Whether the user moved the selection since the query last changed.
+  selectionTouched = false;
   query = "";
   status = "Type at least 2 characters";
   debounce;
@@ -5694,14 +6081,18 @@ var HuggingFaceSearch = class extends Container8 {
     }
     this.tui.requestRender();
   }
-  filterResults() {
+  filterResults(preferredId) {
     if (this.query) {
       const matches = new Set(fuzzyFilter2(this.results, this.query, (model) => model.id).map((model) => model.id));
       this.filteredResults = this.results.filter((model) => matches.has(model.id));
     } else {
       this.filteredResults = this.results;
     }
-    this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredResults.length - 1));
+    const preferredIndex = preferredId ? this.filteredResults.findIndex((model) => model.id === preferredId) : -1;
+    if (preferredIndex >= 0)
+      this.selectedIndex = preferredIndex;
+    else
+      this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredResults.length - 1));
     this.updateResults();
   }
   scheduleSearch() {
@@ -5733,10 +6124,11 @@ var HuggingFaceSearch = class extends Container8 {
       this.cache.set(query.toLowerCase(), results);
       if (this.closed || request.signal.aborted || this.query !== query)
         return;
+      const selectedId = this.selectionTouched ? this.filteredResults[this.selectedIndex]?.id : void 0;
       this.results = results;
       this.selectedIndex = 0;
       this.status = results.length === 0 ? "No GGUF models found" : "";
-      this.filterResults();
+      this.filterResults(selectedId);
     } catch (error) {
       if (this.closed || request.signal.aborted || this.query !== query)
         return;
@@ -5761,6 +6153,7 @@ var HuggingFaceSearch = class extends Container8 {
     if (this.keybindings.matches(data, "tui.select.up")) {
       if (this.filteredResults.length > 0) {
         this.selectedIndex = this.selectedIndex === 0 ? this.filteredResults.length - 1 : this.selectedIndex - 1;
+        this.selectionTouched = true;
         this.updateResults();
       }
       return;
@@ -5768,6 +6161,7 @@ var HuggingFaceSearch = class extends Container8 {
     if (this.keybindings.matches(data, "tui.select.down")) {
       if (this.filteredResults.length > 0) {
         this.selectedIndex = this.selectedIndex === this.filteredResults.length - 1 ? 0 : this.selectedIndex + 1;
+        this.selectionTouched = true;
         this.updateResults();
       }
       return;
@@ -5776,6 +6170,7 @@ var HuggingFaceSearch = class extends Container8 {
     if (pageIndex !== void 0) {
       if (this.filteredResults.length > 0) {
         this.selectedIndex = pageIndex;
+        this.selectionTouched = true;
         this.updateResults();
       }
       return;
@@ -5796,6 +6191,7 @@ var HuggingFaceSearch = class extends Container8 {
     if (query === this.query)
       return;
     this.query = query;
+    this.selectionTouched = false;
     this.scheduleSearch();
   }
 };
@@ -6230,7 +6626,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-3M37CNA2.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-YBJ6FXYM.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -6457,10 +6853,10 @@ __name(runMigrations, "runMigrations");
 import * as crypto2 from "node:crypto";
 import * as fs3 from "node:fs";
 import * as os2 from "node:os";
-import * as path4 from "node:path";
+import * as path5 from "node:path";
 import { isRetryableAssistantError } from "../../pi-ai/sdk-bundle/compat.js";
 import * as TuiLayouts from "../../../pi-tui.mjs";
-import { CombinedAutocompleteProvider, Container as Container31, fuzzyFilter as fuzzyFilter8, getCapabilities as getCapabilities3, hyperlink as hyperlink4, Markdown as Markdown7, matchesKey as matchesKey2, Spacer as Spacer28, setCapabilityOverrides as setCapabilityOverrides2, setKeybindings as setKeybindings3, Text as Text31, TruncatedText as TruncatedText3, TuiAltScreen as TuiAltScreen3, TuiMainScreen as TuiMainScreen3, visibleWidth as visibleWidth7 } from "../../../pi-tui.mjs";
+import { CombinedAutocompleteProvider, Container as Container31, fuzzyFilter as fuzzyFilter8, getCapabilities as getCapabilities4, hyperlink as hyperlink4, Markdown as Markdown7, matchesKey as matchesKey2, Spacer as Spacer28, setCapabilityOverrides as setCapabilityOverrides2, setKeybindings as setKeybindings3, Text as Text31, TruncatedText as TruncatedText3, TuiAltScreen as TuiAltScreen3, TuiMainScreen as TuiMainScreen3, visibleWidth as visibleWidth7 } from "../../../pi-tui.mjs";
 import chalk5 from "../../../chalk/source/index.js";
 import { spawn as spawn4 } from "child_process";
 
@@ -6555,18 +6951,18 @@ function crashLogPath(agentDir = getAgentDir()) {
   return join6(agentDir, "crashes.json");
 }
 __name(crashLogPath, "crashLogPath");
-function readCrashLog(path5 = crashLogPath()) {
+function readCrashLog(path6 = crashLogPath()) {
   try {
-    const records = JSON.parse(readFileSync4(path5, "utf8"));
+    const records = JSON.parse(readFileSync4(path6, "utf8"));
     return Array.isArray(records) ? records.filter((record) => typeof record === "object" && record !== null && typeof record.timestamp === "string" && typeof record.message === "string") : [];
   } catch {
     return [];
   }
 }
 __name(readCrashLog, "readCrashLog");
-function writeCrashLog(records, path5) {
-  mkdirSync2(dirname2(path5), { recursive: true });
-  writeFileSync3(path5, `${JSON.stringify(records, null, 2)}
+function writeCrashLog(records, path6) {
+  mkdirSync2(dirname2(path6), { recursive: true });
+  writeFileSync3(path6, `${JSON.stringify(records, null, 2)}
 `);
 }
 __name(writeCrashLog, "writeCrashLog");
@@ -6623,7 +7019,7 @@ function findExtensionStackMatches(stack, extensions) {
   return matches;
 }
 __name(findExtensionStackMatches, "findExtensionStackMatches");
-function recordCrash(crash, path5 = crashLogPath()) {
+function recordCrash(crash, path6 = crashLogPath()) {
   try {
     const { error } = crash;
     const record = {
@@ -6635,42 +7031,32 @@ function recordCrash(crash, path5 = crashLogPath()) {
       sessionFile: crash.sessionFile ?? null,
       cwd: crash.cwd
     };
-    writeCrashLog([...readCrashLog(path5), record].slice(-MAX_CRASH_RECORDS), path5);
+    writeCrashLog([...readCrashLog(path6), record].slice(-MAX_CRASH_RECORDS), path6);
     return record;
   } catch {
     return void 0;
   }
 }
 __name(recordCrash, "recordCrash");
-function takeUnnotifiedCrash(path5 = crashLogPath(), now = Date.now()) {
-  const records = readCrashLog(path5);
+function takeUnnotifiedCrash(path6 = crashLogPath(), now = Date.now()) {
+  const records = readCrashLog(path6);
   const crash = [...records].reverse().find((record) => !record.notified && now - Date.parse(record.timestamp) <= MAX_AGE);
   if (!crash)
     return void 0;
   try {
-    writeCrashLog(records.map((record) => record.notified ? record : { ...record, notified: true }), path5);
+    writeCrashLog(records.map((record) => record.notified ? record : { ...record, notified: true }), path6);
   } catch {
   }
   return crash;
 }
 __name(takeUnnotifiedCrash, "takeUnnotifiedCrash");
-function clearCrashLog(path5 = crashLogPath()) {
+function clearCrashLog(path6 = crashLogPath()) {
   try {
-    rmSync2(path5, { force: true });
+    rmSync2(path6, { force: true });
   } catch {
   }
 }
 __name(clearCrashLog, "clearCrashLog");
-
-// pi-dist/pi-coding-agent/core/radius.js
-import { DEFAULT_RADIUS_GATEWAY, normalizeRadiusGatewayUrl } from "../../pi-ai/providers/radius-config.js";
-var RADIUS_PROVIDER_ID = "radius";
-var ENV_RADIUS_GATEWAY = "PI_RADIUS_GATEWAY";
-var RADIUS_MCP_URL = `${normalizeRadiusGatewayUrl(DEFAULT_RADIUS_GATEWAY)}/mcp`;
-function getRadiusGatewayUrl() {
-  return normalizeRadiusGatewayUrl(process.env[ENV_RADIUS_GATEWAY] ?? DEFAULT_RADIUS_GATEWAY);
-}
-__name(getRadiusGatewayUrl, "getRadiusGatewayUrl");
 
 // pi-dist/pi-coding-agent/core/slash-commands.js
 var BUILTIN_SLASH_COMMANDS = [
@@ -6729,7 +7115,7 @@ function withBuiltInRenderers(toolName, definition) {
 __name(withBuiltInRenderers, "withBuiltInRenderers");
 
 // pi-dist/pi-coding-agent/utils/changelog.js
-import path from "node:path";
+import path2 from "node:path";
 import { existsSync as existsSync5, readFileSync as readFileSync5 } from "fs";
 var GITHUB_REPO = "earendil-works/pi";
 var CHANGELOG_LINK_BASE_PATH = "packages/coding-agent";
@@ -6766,7 +7152,7 @@ function normalizePathPart(value) {
 __name(normalizePathPart, "normalizePathPart");
 function resolveRepositoryPath(targetPath) {
   const normalizedTarget = normalizePathPart(targetPath);
-  const joined = normalizedTarget.startsWith("/") ? path.posix.normalize(normalizedTarget.replace(/^\/+/, "")) : path.posix.normalize(path.posix.join(CHANGELOG_LINK_BASE_PATH, normalizedTarget));
+  const joined = normalizedTarget.startsWith("/") ? path2.posix.normalize(normalizedTarget.replace(/^\/+/, "")) : path2.posix.normalize(path2.posix.join(CHANGELOG_LINK_BASE_PATH, normalizedTarget));
   if (joined === "." || joined.startsWith("../") || joined === "..") {
     return void 0;
   }
@@ -6777,7 +7163,7 @@ function isDirectoryTarget(originalPath, repositoryPath) {
   if (originalPath.endsWith("/")) {
     return true;
   }
-  const basename4 = path.posix.basename(repositoryPath);
+  const basename4 = path2.posix.basename(repositoryPath);
   return !basename4.includes(".");
 }
 __name(isDirectoryTarget, "isDirectoryTarget");
@@ -6870,11 +7256,13 @@ function compareVersions(v1, v2) {
 }
 __name(compareVersions, "compareVersions");
 function getNewEntries(entries, lastVersion) {
-  const parts = lastVersion.split(".").map(Number);
+  const parts = lastVersion.trim().match(/^v?(\d+)\.(\d+)\.(\d+)/);
+  if (!parts)
+    return void 0;
   const last = {
-    major: parts[0] || 0,
-    minor: parts[1] || 0,
-    patch: parts[2] || 0,
+    major: Number(parts[1]),
+    minor: Number(parts[2]),
+    patch: Number(parts[3]),
     content: ""
   };
   return entries.filter((entry) => compareVersions(entry, last) > 0);
@@ -7211,7 +7599,7 @@ async function checkForNewPiVersion(currentVersion) {
 __name(checkForNewPiVersion, "checkForNewPiVersion");
 
 // pi-dist/pi-coding-agent/modes/interactive/bug-report.js
-import * as path3 from "node:path";
+import * as path4 from "node:path";
 
 // pi-dist/pi-coding-agent/core/bug-report-upload.js
 async function uploadBugReport(bundle, options = {}) {
@@ -7420,7 +7808,7 @@ import { spawn as spawn3, spawnSync as spawnSync2 } from "node:child_process";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
-import * as path2 from "node:path";
+import * as path3 from "node:path";
 import { DEFAULT_RADIUS_GATEWAY as DEFAULT_RADIUS_GATEWAY2 } from "../../pi-ai/providers/radius-config.js";
 import { hyperlink as hyperlink2 } from "../../../pi-tui.mjs";
 function createShareTrailingEntries(session, parentId, timestamp) {
@@ -7448,9 +7836,9 @@ function exportSessionForShare(filePath, session) {
 }
 __name(exportSessionForShare, "exportSessionForShare");
 async function shareSession(context) {
-  const tempDir = fs.mkdtempSync(path2.join(os.tmpdir(), "pi-share-"));
-  const jsonlFile = path2.join(tempDir, "session.jsonl");
-  const htmlFile = path2.join(tempDir, "session.html");
+  const tempDir = fs.mkdtempSync(path3.join(os.tmpdir(), "pi-share-"));
+  const jsonlFile = path3.join(tempDir, "session.jsonl");
+  const htmlFile = path3.join(tempDir, "session.html");
   try {
     try {
       exportSessionForShare(jsonlFile, context.session);
@@ -7736,7 +8124,7 @@ async function upload(context, bundle) {
 }
 __name(upload, "upload");
 async function exportZip(context, bundle) {
-  const archivePath = path3.join(process.cwd(), bugReportArchiveFileName(bundle.metadata.id));
+  const archivePath = path4.join(process.cwd(), bugReportArchiveFileName(bundle.metadata.id));
   try {
     await writeBugReportArchive(bundle, archivePath);
   } catch (error) {
@@ -8179,10 +8567,16 @@ var BranchSummaryMessageComponent = class extends Box {
   expanded = false;
   message;
   markdownTheme;
-  constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+  markdownTransformers;
+  messageId;
+  timestamp;
+  constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super(outputPad, 1, (t) => theme.bg("customMessageBg", t));
     this.message = message;
     this.markdownTheme = markdownTheme;
+    this.markdownTransformers = markdownTransformers;
+    this.messageId = messageId;
+    this.timestamp = timestamp;
     this.updateDisplay();
   }
   setExpanded(expanded) {
@@ -8204,9 +8598,16 @@ var BranchSummaryMessageComponent = class extends Box {
     content.addChild(new Spacer12(1));
     if (this.expanded) {
       const header = "**Branch Summary**\n\n";
-      content.addChild(new Markdown2(header + this.message.summary, 0, 0, this.markdownTheme, {
-        color: /* @__PURE__ */ __name((text) => theme.fg("customMessageText", text), "color")
-      }));
+      const transform = createMarkdownTransform("summary", () => false, this.markdownTransformers, this.messageId, this.timestamp);
+      content.addChild(new Markdown2(
+        this.message.summary,
+        0,
+        0,
+        this.markdownTheme,
+        { color: /* @__PURE__ */ __name((text) => theme.fg("customMessageText", text), "color") },
+        // Transformers see only the summary content, not Pi's header.
+        { transform: /* @__PURE__ */ __name((markdown, width) => header + transform(markdown, width), "transform") }
+      ));
     } else {
       content.addChild(new Text13(theme.fg("customMessageText", "Branch summary (") + theme.fg("dim", keyText("app.tools.expand")) + theme.fg("customMessageText", " to expand)"), 0, 0));
     }
@@ -8228,10 +8629,16 @@ var CompactionSummaryMessageComponent = class extends Box2 {
   expanded = false;
   message;
   markdownTheme;
-  constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+  markdownTransformers;
+  messageId;
+  timestamp;
+  constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super(outputPad, 1, (t) => theme.bg("customMessageBg", t));
     this.message = message;
     this.markdownTheme = markdownTheme;
+    this.markdownTransformers = markdownTransformers;
+    this.messageId = messageId;
+    this.timestamp = timestamp;
     this.updateDisplay();
   }
   setExpanded(expanded) {
@@ -8256,9 +8663,16 @@ var CompactionSummaryMessageComponent = class extends Box2 {
       const header = `**Compacted from ${tokenStr} tokens**
 
 `;
-      content.addChild(new Markdown3(header + this.message.summary, 0, 0, this.markdownTheme, {
-        color: /* @__PURE__ */ __name((text) => theme.fg("customMessageText", text), "color")
-      }));
+      const transform = createMarkdownTransform("summary", () => false, this.markdownTransformers, this.messageId, this.timestamp);
+      content.addChild(new Markdown3(
+        this.message.summary,
+        0,
+        0,
+        this.markdownTheme,
+        { color: /* @__PURE__ */ __name((text) => theme.fg("customMessageText", text), "color") },
+        // Transformers see only the summary content, not Pi's header.
+        { transform: /* @__PURE__ */ __name((markdown, width) => header + transform(markdown, width), "transform") }
+      ));
     } else {
       content.addChild(new Text14(theme.fg("customMessageText", `Compacted from ${tokenStr} tokens (`) + theme.fg("dim", keyText("app.tools.expand")) + theme.fg("customMessageText", " to expand)"), 0, 0));
     }
@@ -8443,12 +8857,18 @@ var CustomMessageComponent = class extends Container16 {
   markdownTheme;
   _expanded = false;
   outputPad;
-  constructor(message, customRenderer, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+  markdownTransformers;
+  messageId;
+  timestamp;
+  constructor(message, customRenderer, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super();
     this.message = message;
     this.customRenderer = customRenderer;
     this.markdownTheme = markdownTheme;
     this.outputPad = outputPad;
+    this.markdownTransformers = markdownTransformers;
+    this.messageId = messageId;
+    this.timestamp = timestamp;
     this.addChild(new Spacer15(1));
     this.box = new Box4(1, 1, (t) => theme.bg("customMessageBg", t));
     this.rebuild();
@@ -8498,8 +8918,8 @@ var CustomMessageComponent = class extends Container16 {
     } else {
       text = this.message.content.filter((c2) => c2.type === "text").map((c2) => c2.text).join("\n");
     }
-    this.box.addChild(new Markdown4(text, 0, 0, this.markdownTheme, {
-      color: /* @__PURE__ */ __name((text2) => theme.fg("customMessageText", text2), "color")
+    this.box.addChild(new Markdown4(text, 0, 0, this.markdownTheme, { color: /* @__PURE__ */ __name((text2) => theme.fg("customMessageText", text2), "color") }, {
+      transform: createMarkdownTransform("custom", () => false, this.markdownTransformers, this.messageId, this.timestamp)
     }));
   }
 };
@@ -8553,7 +8973,7 @@ function playEasterEgg3d(tui, egg) {
   if (tui.hasOverlay())
     return true;
   const screen = tui.getScreenLines();
-  import("./chunk-VFDVIQFD.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
+  import("./chunk-MITNCHVF.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
   });
   return true;
 }
@@ -8775,18 +9195,7 @@ var FooterComponent = class {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/login-dialog.js
-import { Container as Container18, getKeybindings as getKeybindings6, hyperlink as hyperlink3, Input as Input5, replaceControlCharacters, Spacer as Spacer17, Text as Text18, TruncatedText } from "../../../pi-tui.mjs";
-function webUrl(value) {
-  if (!URL.canParse(value))
-    return void 0;
-  const url = new URL(value);
-  return url.protocol === "https:" || url.protocol === "http:" ? url.href : void 0;
-}
-__name(webUrl, "webUrl");
-function displayUrl(value) {
-  return webUrl(value) ?? replaceControlCharacters(value);
-}
-__name(displayUrl, "displayUrl");
+import { Container as Container18, getKeybindings as getKeybindings6, hyperlink as hyperlink3, Input as Input5, replaceControlCharacters as replaceControlCharacters4, Spacer as Spacer17, Text as Text18, TruncatedText } from "../../../pi-tui.mjs";
 function webLink(text, url) {
   const target = webUrl(url);
   return target === void 0 ? text : hyperlink3(text, target);
@@ -8872,7 +9281,7 @@ var LoginDialogComponent = class extends Container18 {
     this.contentContainer.clear();
     this.contentContainer.addChild(new Spacer17(1));
     const target = webUrl(url);
-    this.authUrl = new AuthUrlComponent(this.tui, target ?? replaceControlCharacters(url));
+    this.authUrl = new AuthUrlComponent(this.tui, target ?? replaceControlCharacters4(url));
     this.contentContainer.addChild(this.authUrl);
     if (instructions) {
       this.contentContainer.addChild(new Spacer17(1));
@@ -9031,8 +9440,8 @@ var LoginDialogComponent = class extends Container18 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/mermaid.js
-import { Marked } from "../../../pi-tui.mjs";
-import { render } from "../../../grok-mermaid/dist/index.js";
+import { getCapabilities, Marked } from "../../../pi-tui.mjs";
+import { render, toAnsi } from "../../../lovely-mermaid/dist/index.js";
 var markdownParser = new Marked();
 function isMermaid(token) {
   return token.type === "code" && token.lang?.trim().split(/\s+/, 1)[0]?.toLowerCase() === "mermaid";
@@ -9046,31 +9455,34 @@ function codeSpan(line) {
   return `${fence}${padding}${content}${padding}${fence}`;
 }
 __name(codeSpan, "codeSpan");
-function styleSpan(span, theme2) {
-  switch (span.cls) {
-    case "border":
-      return theme2.fg("borderMuted", span.text);
-    case "text":
-      return theme2.fg("text", span.text);
-    case "edge":
-      return theme2.fg("accent", span.text);
-    case "edgeLabel":
-      return theme2.fg("muted", span.text);
-    case "title":
-      return theme2.fg("accent", theme2.bold(span.text));
-    case "none":
-      return span.text;
-  }
-}
-__name(styleSpan, "styleSpan");
 function themedLines(art, theme2) {
-  return art.styled.map((row) => row.map((span) => styleSpan(span, theme2)).join(""));
+  const foreground = /* @__PURE__ */ __name((color) => theme2.getFgAnsi(color).slice(2, -1), "foreground");
+  const ansiTheme = {
+    border: foreground("borderMuted"),
+    text: foreground("text"),
+    edge: foreground("accent"),
+    edgeLabel: foreground("text"),
+    title: `1;${foreground("accent")}`
+  };
+  const linkLabels = getCapabilities().hyperlinks;
+  const displayArt = {
+    ...art,
+    // Only osc 8 the text, not the whole box.
+    styled: art.styled.map((row) => row.map((span) => {
+      if (span.href === void 0 || linkLabels && span.role === "text")
+        return span;
+      const unlinked = { ...span };
+      delete unlinked.href;
+      return unlinked;
+    }))
+  };
+  return toAnsi(displayArt, ansiTheme);
 }
 __name(themedLines, "themedLines");
 function createMermaidMarkdownTransformer(options) {
   return (markdown, context) => {
     const mode = options.getMode();
-    if (mode === "off" || context.messageType === "assistant-thinking" || context.isStreaming && mode !== "streaming") {
+    if (mode === "off" || context.messageType !== "user" && context.messageType !== "assistant" && context.messageType !== "summary" || context.isStreaming && mode !== "streaming") {
       return markdown;
     }
     return markdownParser.lexer(markdown).map((token) => {
@@ -9297,8 +9709,9 @@ var ModelSelectorComponent = class extends Container19 {
           this.refreshStatusSuccess = true;
         }
       }
+      const selectedModel = this.filteredModels[this.selectedIndex]?.model;
       this.loadModelsFromSnapshot();
-      this.filterModels(this.searchInput.getValue());
+      this.filterModels(this.searchInput.getValue(), selectedModel);
       this.tui.requestRender();
     } catch (error) {
       if (this.closed)
@@ -9366,7 +9779,7 @@ var ModelSelectorComponent = class extends Container19 {
       this.scopeText.setText(this.getScopeText());
     }
   }
-  filterModels(query) {
+  filterModels(query, preferredModel) {
     if (query) {
       const filtered = fuzzyFilter3(this.activeModels, query, (item) => {
         const defaultText = this.isDefaultModel(item.model) ? " default" : "";
@@ -9385,7 +9798,11 @@ var ModelSelectorComponent = class extends Container19 {
     } else {
       this.filteredModels = this.activeModels;
     }
-    this.selectedIndex = query ? 0 : Math.min(this.selectedIndex, Math.max(0, this.filteredModels.length - 1));
+    const preferredIndex = preferredModel ? this.filteredModels.findIndex((item) => modelsAreEqual(preferredModel, item.model)) : -1;
+    if (preferredIndex >= 0)
+      this.selectedIndex = preferredIndex;
+    else
+      this.selectedIndex = query ? 0 : Math.min(this.selectedIndex, Math.max(0, this.filteredModels.length - 1));
     this.updateList();
   }
   updateList() {
@@ -10045,7 +10462,7 @@ var ScopedModelsSelectorComponent = class extends Container21 {
 
 // pi-dist/pi-coding-agent/modes/interactive/components/settings-selector.js
 import { getSupportedThinkingLevels } from "../../pi-ai/sdk-bundle/index.js";
-import { Container as Container23, getCapabilities, SettingsList, Spacer as Spacer22, Text as Text23 } from "../../../pi-tui.mjs";
+import { Container as Container23, getCapabilities as getCapabilities2, SettingsList, Spacer as Spacer22, Text as Text23 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/settings-submenu.js
 import { Container as Container22, fuzzyFilter as fuzzyFilter6, getKeybindings as getKeybindings10, Input as Input9, SelectList as SelectList3, Spacer as Spacer21, Text as Text22 } from "../../../pi-tui.mjs";
@@ -10447,7 +10864,7 @@ var SettingsSelectorComponent = class extends Container23 {
   settingsList;
   constructor(config, callbacks) {
     super();
-    const supportsImages = getCapabilities().images;
+    const supportsImages = getCapabilities2().images;
     const followUpKey = keyDisplayText("app.message.followUp");
     const cycleThinkingKey = keyDisplayText("app.thinking.cycle");
     let currentWarnings = { ...config.warnings };
@@ -10934,10 +11351,16 @@ var SkillInvocationMessageComponent = class extends Box5 {
   expanded = false;
   skillBlock;
   markdownTheme;
-  constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+  markdownTransformers;
+  messageId;
+  timestamp;
+  constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super(outputPad, 1, (t) => theme.bg("customMessageBg", t));
     this.skillBlock = skillBlock;
     this.markdownTheme = markdownTheme;
+    this.markdownTransformers = markdownTransformers;
+    this.messageId = messageId;
+    this.timestamp = timestamp;
     this.updateDisplay();
   }
   setExpanded(expanded) {
@@ -10960,9 +11383,16 @@ var SkillInvocationMessageComponent = class extends Box5 {
       const header = `**${this.skillBlock.name}**
 
 `;
-      content.addChild(new Markdown5(header + this.skillBlock.content, 0, 0, this.markdownTheme, {
-        color: /* @__PURE__ */ __name((text) => theme.fg("customMessageText", text), "color")
-      }));
+      const transform = createMarkdownTransform("custom", () => false, this.markdownTransformers, this.messageId, this.timestamp);
+      content.addChild(new Markdown5(
+        this.skillBlock.content,
+        0,
+        0,
+        this.markdownTheme,
+        { color: /* @__PURE__ */ __name((text) => theme.fg("customMessageText", text), "color") },
+        // Transformers see only the skill content, not Pi's header.
+        { transform: /* @__PURE__ */ __name((markdown, width) => header + transform(markdown, width), "transform") }
+      ));
     } else {
       const line = theme.fg("customMessageLabel", `\x1B[1m[skill]\x1B[22m `) + theme.fg("customMessageText", this.skillBlock.name) + theme.fg("dim", ` (${keyText("app.tools.expand")} to expand)`);
       content.addChild(new Text24(line, 0, 0));
@@ -11181,7 +11611,7 @@ var ThinkingSelectorComponent = class extends Container25 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/tool-execution.js
-import { Box as Box6, Container as Container26, getCapabilities as getCapabilities2, Image as Image2, MouseRegion as MouseRegion5, Spacer as Spacer24, Text as Text27 } from "../../../pi-tui.mjs";
+import { Box as Box6, Container as Container26, getCapabilities as getCapabilities3, Image as Image2, MouseRegion as MouseRegion5, Spacer as Spacer24, Text as Text27 } from "../../../pi-tui.mjs";
 var FALLBACK_PREVIEW_LINES = 10;
 var ToolExecutionComponent = class extends Container26 {
   static {
@@ -11457,7 +11887,7 @@ var ToolExecutionComponent = class extends Container26 {
     this.imageSpacers = [];
     if (this.result) {
       const imageBlocks = this.result.content.filter((c2) => c2.type === "image");
-      const caps = getCapabilities2();
+      const caps = getCapabilities3();
       for (const img of imageBlocks) {
         if (caps.images && this.showImages && img.data && img.mimeType) {
           const spacer = new Spacer24(1);
@@ -11504,7 +11934,7 @@ ${output}`;
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/tree-selector.js
-import { Container as Container27, getKeybindings as getKeybindings12, Input as Input11, Spacer as Spacer25, sliceByColumn, Text as Text28, truncateToWidth as truncateToWidth6, visibleWidth as visibleWidth6, wrapTextWithAnsi } from "../../../pi-tui.mjs";
+import { Container as Container27, CURSOR_MARKER, getKeybindings as getKeybindings12, Input as Input11, Spacer as Spacer25, sliceByColumn, Text as Text28, truncateToWidth as truncateToWidth6, visibleWidth as visibleWidth6, wrapTextWithAnsi } from "../../../pi-tui.mjs";
 var TREE_GUTTER_WIDTH = 2;
 var MIN_VISIBLE_ANCHOR_CONTENT_WIDTH = 4;
 var MAX_VISIBLE_ANCHOR_CONTENT_WIDTH = 20;
@@ -12176,16 +12606,16 @@ var TreeList = class {
     const shortenPath = /* @__PURE__ */ __name((p) => shortenHomePath(p, process.env.HOME || process.env.USERPROFILE || ""), "shortenPath");
     switch (name) {
       case "read": {
-        const path5 = shortenPath(String(args.path || args.file_path || ""));
-        return `[read: ${path5}${formatReadLineRange(args.offset, args.limit)}]`;
+        const path6 = shortenPath(String(args.path || args.file_path || ""));
+        return `[read: ${path6}${formatReadLineRange(args.offset, args.limit)}]`;
       }
       case "write": {
-        const path5 = shortenPath(String(args.path || args.file_path || ""));
-        return `[write: ${path5}]`;
+        const path6 = shortenPath(String(args.path || args.file_path || ""));
+        return `[write: ${path6}]`;
       }
       case "edit": {
-        const path5 = shortenPath(String(args.path || args.file_path || ""));
-        return `[edit: ${path5}]`;
+        const path6 = shortenPath(String(args.path || args.file_path || ""));
+        return `[edit: ${path6}]`;
       }
       case "bash": {
         const rawCmd = String(args.command || "");
@@ -12194,17 +12624,17 @@ var TreeList = class {
       }
       case "grep": {
         const pattern = String(args.pattern || "");
-        const path5 = shortenPath(String(args.path || "."));
-        return `[grep: /${pattern}/ in ${path5}]`;
+        const path6 = shortenPath(String(args.path || "."));
+        return `[grep: /${pattern}/ in ${path6}]`;
       }
       case "find": {
         const pattern = String(args.pattern || "");
-        const path5 = shortenPath(String(args.path || "."));
-        return `[find: ${pattern} in ${path5}]`;
+        const path6 = shortenPath(String(args.path || "."));
+        return `[find: ${pattern} in ${path6}]`;
       }
       case "ls": {
-        const path5 = shortenPath(String(args.path || "."));
-        return `[ls: ${path5}]`;
+        const path6 = shortenPath(String(args.path || "."));
+        return `[ls: ${path6}]`;
       }
       default: {
         const argsStr = JSON.stringify(args).slice(0, 40);
@@ -12367,6 +12797,7 @@ var SearchLine = class {
   static {
     __name(this, "SearchLine");
   }
+  focused = false;
   treeList;
   constructor(treeList) {
     this.treeList = treeList;
@@ -12374,11 +12805,14 @@ var SearchLine = class {
   invalidate() {
   }
   render(width) {
+    if (width <= 0)
+      return [""];
     const query = this.treeList.getSearchQuery();
-    if (query) {
-      return [truncateToWidth6(`  ${theme.fg("muted", "Type to search:")} ${theme.fg("accent", query)}`, width)];
-    }
-    return [truncateToWidth6(`  ${theme.fg("muted", "Type to search:")}`, width)];
+    const line = query ? `  ${theme.fg("muted", "Type to search:")} ${theme.fg("accent", query)}` : `  ${theme.fg("muted", "Type to search:")} `;
+    if (!this.focused)
+      return [truncateToWidth6(line, width)];
+    const content = truncateToWidth6(line, Math.max(0, width - 1));
+    return [`${content}${CURSOR_MARKER}\x1B[7m \x1B[27m`];
   }
   handleInput(_keyData) {
   }
@@ -12511,18 +12945,20 @@ var TreeSelectorComponent = class extends Container27 {
     __name(this, "TreeSelectorComponent");
   }
   treeList;
+  searchLine;
   labelInput = null;
   labelInputContainer;
   treeContainer;
   onLabelChangeCallback;
   onCopy;
-  // Focusable implementation - propagate to labelInput when active for IME cursor positioning
+  // Focusable implementation - propagate to the active input for IME cursor positioning
   _focused = false;
   get focused() {
     return this._focused;
   }
   set focused(value) {
     this._focused = value;
+    this.searchLine.focused = value && this.labelInput === null;
     if (this.labelInput) {
       this.labelInput.focused = value;
     }
@@ -12536,6 +12972,7 @@ var TreeSelectorComponent = class extends Container27 {
     this.treeList.onCancel = onCancel;
     this.treeList.onCopy = (text) => this.onCopy?.(text);
     this.treeList.onLabelEdit = (entryId, currentLabel) => this.showLabelInput(entryId, currentLabel);
+    this.searchLine = new SearchLine(this.treeList);
     this.treeContainer = new Container27();
     this.treeContainer.addChild(this.treeList);
     this.labelInputContainer = new Container27();
@@ -12543,7 +12980,7 @@ var TreeSelectorComponent = class extends Container27 {
     this.addChild(new DynamicBorder());
     this.addChild(new Text28(theme.bold("  Session Tree"), 1, 0));
     this.addChild(new TreeHelp());
-    this.addChild(new SearchLine(this.treeList));
+    this.addChild(this.searchLine);
     this.addChild(new DynamicBorder());
     this.addChild(new Spacer25(1));
     this.addChild(this.treeContainer);
@@ -12562,13 +12999,14 @@ var TreeSelectorComponent = class extends Container27 {
       this.hideLabelInput();
     };
     this.labelInput.onCancel = () => this.hideLabelInput();
-    this.labelInput.focused = this._focused;
+    this.focused = this._focused;
     this.treeContainer.clear();
     this.labelInputContainer.clear();
     this.labelInputContainer.addChild(this.labelInput);
   }
   hideLabelInput() {
     this.labelInput = null;
+    this.focused = this._focused;
     this.labelInputContainer.clear();
     this.treeContainer.clear();
     this.treeContainer.addChild(this.treeList);
@@ -13179,6 +13617,8 @@ var InteractiveMode = class _InteractiveMode {
   changelogMarkdown = void 0;
   extensionChangelogUpdates = [];
   startupNoticesShown = false;
+  /** Last cache-warming notice, extended in place while it is the last chat line. */
+  cacheWarmingNotice;
   anthropicSubscriptionWarningShown = false;
   // Status line tracking (for mutating immediately-sequential status updates)
   lastStatusSpacer = void 0;
@@ -13228,6 +13668,13 @@ var InteractiveMode = class _InteractiveMode {
   // Extension dialogs shown in the editor slot (select, confirm, input, editor, inline custom).
   // The last entry is visible; see pushExtensionDialog().
   extensionDialogs = [];
+  /** Numbers the program status sources of blocking overlays, so closing one keeps the others. */
+  nextBlockingOverlayId = 0;
+  /**
+   * Open extension overlays (custom with overlay: true) and the function that removes each, in opening
+   * order. Reset removes only these, not pi's own overlays.
+   */
+  extensionOverlays = /* @__PURE__ */ new Map();
   extensionTerminalInputSubscriptions = /* @__PURE__ */ new Set();
   // Extension widgets (components rendered above/below the editor)
   extensionWidgetsAbove = /* @__PURE__ */ new Map();
@@ -13465,7 +13912,7 @@ var InteractiveMode = class _InteractiveMode {
       } else {
         this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
         this.chatContainer.addChild(new Spacer28(1));
-        this.chatContainer.addChild(new Markdown7(this.changelogMarkdown.trim(), 1, 0, this.getMarkdownThemeWithSettings()));
+        this.chatContainer.addChild(this.createChangelogMarkdown(this.changelogMarkdown.trim(), 1, 0));
         this.chatContainer.addChild(new Spacer28(1));
       }
     }
@@ -13480,7 +13927,7 @@ var InteractiveMode = class _InteractiveMode {
         this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "Extension Updates")), 1, 0));
         this.chatContainer.addChild(new Spacer28(1));
         const markdown = this.extensionChangelogUpdates.map((update) => update.markdown).join("\n\n");
-        this.chatContainer.addChild(new Markdown7(markdown, 1, 0, this.getMarkdownThemeWithSettings()));
+        this.chatContainer.addChild(this.createChangelogMarkdown(markdown, 1, 0));
         this.chatContainer.addChild(new Spacer28(1));
       }
     }
@@ -13690,7 +14137,7 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
    * Update terminal title with session name and cwd.
    */
   updateTerminalTitle() {
-    const cwdBasename = path4.basename(this.sessionManager.getCwd());
+    const cwdBasename = path5.basename(this.sessionManager.getCwd());
     const sessionName = this.sessionManager.getSessionName();
     if (sessionName) {
       this.ui.terminal.setTitle(`${APP_TITLE} - ${sessionName} - ${cwdBasename}`);
@@ -13856,6 +14303,10 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
       return void 0;
     }
     const newEntries = getNewEntries(entries, lastVersion);
+    if (!newEntries) {
+      this.settingsManager.setLastChangelogVersion(VERSION);
+      return void 0;
+    }
     if (newEntries.length > 0) {
       this.settingsManager.setLastChangelogVersion(VERSION);
       this.reportInstallTelemetry(VERSION);
@@ -13888,6 +14339,10 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
         continue;
       }
       const newEntries = getNewEntries(parseChangelog(sourceInfo.changelogPath), lastVersion);
+      if (!newEntries) {
+        this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
+        continue;
+      }
       if (newEntries.length > 0) {
         this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
         const name = pkg.name || sourceInfo.source;
@@ -13899,7 +14354,7 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
   }
   readPackageJson(packageRoot) {
     try {
-      const pkg = JSON.parse(stripBom(fs3.readFileSync(path4.join(packageRoot, "package.json"), "utf-8")));
+      const pkg = JSON.parse(stripBom(fs3.readFileSync(path5.join(packageRoot, "package.json"), "utf-8")));
       return {
         name: typeof pkg.name === "string" ? pkg.name : void 0,
         version: typeof pkg.version === "string" ? pkg.version : void 0
@@ -13934,14 +14389,14 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
   formatDisplayPath(p) {
     return shortenHomePath(p);
   }
-  formatExtensionDisplayPath(path5) {
-    let result = this.formatDisplayPath(path5);
+  formatExtensionDisplayPath(path6) {
+    let result = this.formatDisplayPath(path6);
     result = result.replace(/\/index\.ts$/, "").replace(/\/index\.js$/, "");
     return result;
   }
   formatContextPath(p) {
-    const cwd = path4.resolve(this.sessionManager.getCwd());
-    const absolutePath = path4.isAbsolute(p) ? path4.resolve(p) : path4.resolve(cwd, p);
+    const cwd = path5.resolve(this.sessionManager.getCwd());
+    const absolutePath = path5.isAbsolute(p) ? path5.resolve(p) : path5.resolve(cwd, p);
     const relativePath = getCwdRelativePath(absolutePath, cwd);
     if (relativePath !== void 0) {
       return relativePath;
@@ -13986,10 +14441,10 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
       const normalizedBaseDir = baseDir.replace(/\\/g, "/");
       const npmRootMatch = normalizedBaseDir.match(/^(.*\/node_modules)\/(@?[^/]+(?:\/[^/]+)?)$/);
       if (npmRootMatch?.[1] && normalizedFullPath.startsWith(`${npmRootMatch[1]}/`)) {
-        return path4.posix.relative(normalizedBaseDir, normalizedFullPath);
+        return path5.posix.relative(normalizedBaseDir, normalizedFullPath);
       }
-      const relativePath = path4.relative(path4.resolve(baseDir), path4.resolve(fullPath));
-      if (relativePath && relativePath !== "." && !relativePath.startsWith("..") && !relativePath.startsWith(`..${path4.sep}`) && !path4.isAbsolute(relativePath)) {
+      const relativePath = path5.relative(path5.resolve(baseDir), path5.resolve(fullPath));
+      if (relativePath && relativePath !== "." && !relativePath.startsWith("..") && !relativePath.startsWith(`..${path5.sep}`) && !path5.isAbsolute(relativePath)) {
         return relativePath.replace(/\\/g, "/");
       }
     }
@@ -14034,7 +14489,7 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     }
     const shortPath = this.getShortPath(resourcePath, sourceInfo).replace(/\\/g, "/");
     const packagePath = shortPath.startsWith("extensions/") ? shortPath.slice("extensions/".length) : shortPath;
-    const parsedPath = path4.posix.parse(packagePath);
+    const parsedPath = path5.posix.parse(packagePath);
     if (parsedPath.name === "index") {
       return !parsedPath.dir || parsedPath.dir === "." ? sourceLabel : `${sourceLabel}:${parsedPath.dir}`;
     }
@@ -14576,6 +15031,7 @@ ${warningLines()}`, 0, 0));
     this.loadedResourcesContainer.clear();
     this.chatContainer.clear();
     this.pendingMessagesContainer.clear();
+    this.pendingBashComponents = [];
     this.compactionQueuedMessages = [];
     this.streamingComponent = void 0;
     this.streamingMessage = void 0;
@@ -14594,6 +15050,12 @@ ${warningLines()}`, 0, 0));
   }
   getMarkdownTransformers() {
     return [this.mermaidMarkdownTransformer, ...this.session.extensionRunner.getMarkdownTransformers()];
+  }
+  /** Markdown of a changelog or release note that runs the Markdown transformers of the `changelog` type. */
+  createChangelogMarkdown(markdown, paddingX, paddingY, defaultTextStyle) {
+    return new Markdown7(markdown, paddingX, paddingY, this.getMarkdownThemeWithSettings(), defaultTextStyle, {
+      transform: createMarkdownTransform("changelog", () => false, this.getMarkdownTransformers())
+    });
   }
   /**
    * Set up keyboard shortcuts registered by extensions.
@@ -14777,7 +15239,8 @@ ${warningLines()}`, 0, 0));
       this.extensionDialogs = [];
       this.showTopExtensionDialog();
     }
-    this.ui.hideOverlay();
+    for (const removeOverlay of [...this.extensionOverlays.values()].reverse())
+      removeOverlay();
     this.clearExtensionTerminalInputListeners();
     this.setExtensionFooter(void 0);
     this.setExtensionHeader(void 0);
@@ -15068,7 +15531,7 @@ ${message}`, ["Yes", "No"], opts, {
    */
   setCustomEditorComponent(factory) {
     this.editorComponentFactory = factory;
-    const currentText = this.editor.getText();
+    const currentText = this.editor.getExpandedText?.() ?? this.editor.getText();
     const dialogOpen = this.extensionDialogs.length > 0;
     if (!dialogOpen) {
       this.disposeActiveSelector();
@@ -15141,11 +15604,12 @@ ${message}`, ["Yes", "No"], opts, {
   }
   /** Show a custom component with keyboard focus. Overlay mode renders on top of existing content. */
   async showExtensionCustom(factory, options) {
-    const savedText = this.editor.getText();
+    const savedText = this.editor.getExpandedText?.() ?? this.editor.getText();
     const isOverlay = options?.overlay ?? false;
     return new Promise((resolve7, reject) => {
       let component;
       let overlayHandle;
+      const overlayStatusSource = isOverlay && options?.blocked ? `extension-overlay:${this.nextBlockingOverlayId++}` : void 0;
       let closed = false;
       const restoreEditor3 = /* @__PURE__ */ __name(() => {
         if (component)
@@ -15153,18 +15617,31 @@ ${message}`, ["Yes", "No"], opts, {
         this.editor.setText(savedText);
         this.ui.requestRender();
       }, "restoreEditor");
+      const disposeComponent = /* @__PURE__ */ __name(() => {
+        try {
+          component?.dispose?.();
+        } catch {
+        }
+      }, "disposeComponent");
+      const removeOverlay = /* @__PURE__ */ __name(() => {
+        if (!overlayHandle || !this.extensionOverlays.delete(overlayHandle))
+          return;
+        overlayHandle.hide();
+        if (overlayStatusSource)
+          this.programStatus.setBlocked(overlayStatusSource, void 0);
+        disposeComponent();
+      }, "removeOverlay");
       const close = /* @__PURE__ */ __name((result) => {
         if (closed)
           return;
         closed = true;
-        if (isOverlay)
-          overlayHandle?.hide();
-        else
+        if (isOverlay) {
+          removeOverlay();
+          resolve7(result);
+        } else {
           restoreEditor3();
-        resolve7(result);
-        try {
-          component?.dispose?.();
-        } catch {
+          resolve7(result);
+          disposeComponent();
         }
       }, "close");
       Promise.resolve(factory(this.ui, theme, this.keybindings, close)).then((c2) => {
@@ -15181,6 +15658,9 @@ ${message}`, ["Yes", "No"], opts, {
             return w ? { width: w } : void 0;
           }, "resolveOptions");
           overlayHandle = this.ui.showOverlay(c2, resolveOptions());
+          this.extensionOverlays.set(overlayHandle, removeOverlay);
+          if (overlayStatusSource)
+            this.programStatus.setBlocked(overlayStatusSource, options?.blocked);
           options?.onHandle?.(overlayHandle);
         } else {
           this.pushExtensionDialog(c2, options?.blocked);
@@ -15306,7 +15786,7 @@ ${message}`, ["Yes", "No"], opts, {
         const tmpDir = os2.tmpdir();
         const ext = extensionForImageMimeType(image.mimeType) ?? "png";
         const fileName = `pi-clipboard-${crypto2.randomUUID()}.${ext}`;
-        const filePath = path4.join(tmpDir, fileName);
+        const filePath = path5.join(tmpDir, fileName);
         fs3.writeFileSync(filePath, Buffer.from(image.bytes));
         this.editor.insertTextAtCursor?.(filePath);
         this.ui.requestRender();
@@ -15727,6 +16207,8 @@ ${message}`, ["Yes", "No"], opts, {
         this.ui.requestRender();
         break;
       case "agent_settled":
+        this.flushPendingBashComponents();
+        this.ui.requestRender();
         await this.checkShutdownRequested();
         break;
       case "compaction_start": {
@@ -15909,7 +16391,7 @@ ${message}`, ["Yes", "No"], opts, {
       case "custom": {
         if (message.display) {
           const renderer = this.session.extensionRunner.getMessageRenderer(message.customType);
-          const component = new CustomMessageComponent(message, renderer, this.getMarkdownThemeWithSettings(), this.outputPad);
+          const component = new CustomMessageComponent(message, renderer, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
           component.setExpanded(this.toolOutputExpanded);
           this.chatContainer.addChild(component);
         }
@@ -15917,14 +16399,14 @@ ${message}`, ["Yes", "No"], opts, {
       }
       case "compactionSummary": {
         this.chatContainer.addChild(new Spacer28(1));
-        const component = new CompactionSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad);
+        const component = new CompactionSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
         component.setExpanded(this.toolOutputExpanded);
         this.chatContainer.addChild(component);
         break;
       }
       case "branchSummary": {
         this.chatContainer.addChild(new Spacer28(1));
-        const component = new BranchSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad);
+        const component = new BranchSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
         component.setExpanded(this.toolOutputExpanded);
         this.chatContainer.addChild(component);
         break;
@@ -15939,7 +16421,7 @@ ${message}`, ["Yes", "No"], opts, {
           }
           const skillBlock = parseSkillBlock(textContent);
           if (skillBlock) {
-            const component = new SkillInvocationMessageComponent(skillBlock, this.getMarkdownThemeWithSettings(), this.outputPad);
+            const component = new SkillInvocationMessageComponent(skillBlock, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
             component.setExpanded(this.toolOutputExpanded);
             this.chatContainer.addChild(component);
             if (skillBlock.userMessage) {
@@ -16074,9 +16556,17 @@ ${message}`, ["Yes", "No"], opts, {
   addCacheWarmingUsage(entry) {
     if (!this.settingsManager.getShowCacheMissNotices())
       return;
+    const previous = this.cacheWarmingNotice;
+    if (previous && this.chatContainer.children.at(-1) === previous.component && previous.note === entry.note) {
+      previous.total.cost += entry.usage.cost.total;
+      previous.component.invalidate();
+      return;
+    }
+    const total = { cost: entry.usage.cost.total };
+    const component = new ThemedText(() => theme.fg("dim", formatCacheWarmingUsage(total.cost, entry.note)), 1, 0);
+    this.cacheWarmingNotice = { component, total, note: entry.note };
     this.chatContainer.addChild(new Spacer28(1));
-    const usage = formatCacheWarmingUsage(entry);
-    this.chatContainer.addChild(new ThemedText(() => theme.fg("dim", usage), 1, 0));
+    this.chatContainer.addChild(component);
   }
   /**
    * Render billing usage for a compaction or branch summary. The notice is derived
@@ -16430,7 +16920,7 @@ ${this.crashReportInstructions()}`);
     if (isExpandable(activeHeader)) {
       activeHeader.setExpanded(expanded);
     }
-    for (const container of [this.loadedResourcesContainer, this.chatContainer]) {
+    for (const container of [this.loadedResourcesContainer, this.chatContainer, this.pendingMessagesContainer]) {
       for (const child of container.children) {
         if (isExpandable(child)) {
           child.setExpanded(expanded);
@@ -16494,7 +16984,7 @@ ${this.crashReportInstructions()}`);
     const updateInstruction = /* @__PURE__ */ __name(() => theme.fg("muted", `New version ${release.version} is available. Run `) + theme.fg("accent", `${APP_NAME} update`), "updateInstruction");
     const changelogUrl = "https://pi.dev/changelog";
     const changelogLine = /* @__PURE__ */ __name(() => {
-      const changelogLink = getCapabilities3().hyperlinks ? hyperlink4(theme.fg("accent", changelogUrl), changelogUrl) : theme.fg("accent", changelogUrl);
+      const changelogLink = getCapabilities4().hyperlinks ? hyperlink4(theme.fg("accent", changelogUrl), changelogUrl) : theme.fg("accent", changelogUrl);
       return theme.fg("muted", "Changelog: ") + changelogLink;
     }, "changelogLine");
     const note = release.note?.trim();
@@ -16504,9 +16994,7 @@ ${this.crashReportInstructions()}`);
 ${updateInstruction()}`, 1, 0));
     if (note) {
       this.chatContainer.addChild(new Spacer28(1));
-      this.chatContainer.addChild(new Markdown7(note, 1, 0, this.getMarkdownThemeWithSettings(), {
-        color: /* @__PURE__ */ __name((text) => theme.fg("muted", text), "color")
-      }));
+      this.chatContainer.addChild(this.createChangelogMarkdown(note, 1, 0, { color: /* @__PURE__ */ __name((text) => theme.fg("muted", text), "color") }));
       this.chatContainer.addChild(new Spacer28(1));
     }
     this.chatContainer.addChild(new ThemedText(changelogLine, 1, 0));
@@ -16557,6 +17045,9 @@ ${packageLines}`, 1, 0));
   }
   updatePendingMessagesDisplay() {
     this.pendingMessagesContainer.clear();
+    for (const component of this.pendingBashComponents) {
+      this.pendingMessagesContainer.addChild(component);
+    }
     const { steering: steeringMessages, followUp: followUpMessages } = this.getAllQueuedMessages();
     if (steeringMessages.length > 0 || followUpMessages.length > 0) {
       this.pendingMessagesContainer.addChild(new Spacer28(1));
@@ -16584,7 +17075,7 @@ ${packageLines}`, 1, 0));
       return 0;
     }
     const queuedText = allQueued.join("\n\n");
-    const currentText = options?.currentText ?? this.editor.getText();
+    const currentText = options?.currentText ?? this.editor.getExpandedText?.() ?? this.editor.getText();
     const combinedText = [queuedText, currentText].filter((t) => t.trim()).join("\n\n");
     this.editor.setText(combinedText);
     this.updatePendingMessagesDisplay();
@@ -17486,19 +17977,12 @@ ${packageLines}`, 1, 0));
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
   }
-  findLoginProviderOptions(providerRef) {
-    const normalizedProviderRef = providerRef.trim().toLowerCase();
-    if (!normalizedProviderRef) {
-      return [];
-    }
-    return this.getLoginProviderOptions().filter((provider) => provider.id.toLowerCase() === normalizedProviderRef || provider.name.toLowerCase() === normalizedProviderRef);
-  }
   async handleLoginCommand(providerRef) {
     if (!providerRef) {
       this.showLoginAuthTypeSelector();
       return;
     }
-    const providerOptions = this.findLoginProviderOptions(providerRef);
+    const providerOptions = findMatchingProviders(this.getLoginProviderOptions(), providerRef);
     if (providerOptions.length === 1) {
       await this.startProviderLogin(providerOptions[0]);
       return;
@@ -17739,7 +18223,7 @@ ${packageLines}`, 1, 0));
       dialog.showDetails([
         theme.fg("text", "You can also use an AWS profile, IAM keys, or role-based credentials."),
         theme.fg("muted", "See:"),
-        theme.fg("accent", `  ${path4.join(getDocsPath(), "providers.md")}`)
+        theme.fg("accent", `  ${path5.join(getDocsPath(), "providers.md")}`)
       ]);
     }
     this.editorContainer.clear();
@@ -17881,21 +18365,10 @@ ${packageLines}`, 1, 0));
    * when missing. Nothing is asked when a global server already uses this login.
    */
   offerRadiusMcpServer(providerId, providerName) {
-    const mcpPath = path4.join(getAgentDir(), "mcp.json");
-    const normalizeUrl = /* @__PURE__ */ __name((url) => url.replace(/\/+$/u, ""), "normalizeUrl");
-    const { servers } = loadMcpConfig({
-      agentDir: getAgentDir(),
-      cwd: this.sessionManager.getCwd(),
-      projectTrusted: false
-    });
-    const existing = servers.find((server) => "url" in server.config && normalizeUrl(server.config.url) === normalizeUrl(RADIUS_MCP_URL));
-    if (existing && "url" in existing.config && existing.config.auth?.provider === providerId)
+    const plan = planRadiusMcpServer(providerId, getAgentDir(), this.sessionManager.getCwd());
+    if (!plan)
       return;
-    let name = existing?.name ?? "radius";
-    if (!existing && servers.some((server) => server.name === name))
-      name = "radius-mcp";
-    const config = existing && "url" in existing.config ? { ...existing.config, auth: { provider: providerId } } : { url: RADIUS_MCP_URL, auth: { provider: providerId } };
-    delete config.oauth;
+    const { mcpPath, name, config } = plan;
     this.showSelector((done) => {
       const selector = new ExtensionSelectorComponent(`Configure ${providerName} MCP in ${mcpPath}?`, ["Yes", "No"], (option) => {
         done();
@@ -18237,7 +18710,7 @@ ${theme.fg("dim", "Cache Re-billed:")} ${detail}`;
     this.chatContainer.addChild(new DynamicBorder());
     this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
     this.chatContainer.addChild(new Spacer28(1));
-    this.chatContainer.addChild(new Markdown7(changelogMarkdown, 1, 1, this.getMarkdownThemeWithSettings()));
+    this.chatContainer.addChild(this.createChangelogMarkdown(changelogMarkdown, 1, 1));
     this.chatContainer.addChild(new DynamicBorder());
     this.ui.requestRender();
   }
@@ -18396,7 +18869,7 @@ ${theme.fg("dim", "Cache Re-billed:")} ${detail}`;
       ...this.session.messages.map((msg) => JSON.stringify(msg)),
       ""
     ].join("\n");
-    fs3.mkdirSync(path4.dirname(debugLogPath), { recursive: true });
+    fs3.mkdirSync(path5.dirname(debugLogPath), { recursive: true });
     fs3.writeFileSync(debugLogPath, debugData);
     this.chatContainer.addChild(new Spacer28(1));
     this.chatContainer.addChild(new ThemedText(() => `${theme.fg("accent", "\u2713 Debug log written")}
@@ -18431,6 +18904,7 @@ ${theme.fg("muted", debugLogPath)}`, 1, 1));
     if (eventResult?.result) {
       const result = eventResult.result;
       this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext, this.outputPad);
+      this.bashComponent.setExpanded(this.toolOutputExpanded);
       if (this.session.isStreaming) {
         this.pendingMessagesContainer.addChild(this.bashComponent);
         this.pendingBashComponents.push(this.bashComponent);
@@ -18448,6 +18922,7 @@ ${theme.fg("muted", debugLogPath)}`, 1, 1));
     }
     const isDeferred = this.session.isStreaming;
     this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext, this.outputPad);
+    this.bashComponent.setExpanded(this.toolOutputExpanded);
     if (isDeferred) {
       this.pendingMessagesContainer.addChild(this.bashComponent);
       this.pendingBashComponents.push(this.bashComponent);
@@ -18541,15 +19016,16 @@ async function runPrintMode(runtimeHost, options) {
   let session = runtimeHost.session;
   let unsubscribe;
   let unsubscribeBackpressure;
-  let disposed = false;
+  let disposing;
+  let signalCount = 0;
   const signalCleanupHandlers = [];
-  const disposeRuntime = /* @__PURE__ */ __name(async () => {
-    if (disposed)
-      return;
-    disposed = true;
-    unsubscribe?.();
-    unsubscribeBackpressure?.();
-    await runtimeHost.dispose();
+  const disposeRuntime = /* @__PURE__ */ __name(() => {
+    disposing ??= (async () => {
+      unsubscribe?.();
+      unsubscribeBackpressure?.();
+      await runtimeHost.dispose();
+    })();
+    return disposing;
   }, "disposeRuntime");
   const registerSignalHandlers = /* @__PURE__ */ __name(() => {
     const signals = ["SIGTERM"];
@@ -18557,10 +19033,14 @@ async function runPrintMode(runtimeHost, options) {
       signals.push("SIGHUP");
     }
     for (const signal of signals) {
+      const exitCode2 = signal === "SIGHUP" ? 129 : 143;
       const handler = /* @__PURE__ */ __name(() => {
+        signalCount++;
         killTrackedDetachedChildren();
+        if (signalCount > 1)
+          process.exit(exitCode2);
         void disposeRuntime().finally(() => {
-          process.exit(signal === "SIGHUP" ? 129 : 143);
+          process.exit(exitCode2);
         });
       }, "handler");
       process.on(signal, handler);
@@ -18656,10 +19136,10 @@ async function runPrintMode(runtimeHost, options) {
     console.error(error instanceof Error ? error.message : String(error));
     return 1;
   } finally {
+    await disposeRuntime();
     for (const cleanup of signalCleanupHandlers) {
       cleanup();
     }
-    await disposeRuntime();
     await flushRawStdout();
   }
 }
@@ -19211,7 +19691,9 @@ async function runRpcMode(runtimeHost) {
   const pendingExtensionRequests = /* @__PURE__ */ new Map();
   let shutdownRequested = false;
   let shuttingDown = false;
-  const signalCleanupHandlers = [];
+  let inputReady = false;
+  let activeCommands = 0;
+  let signalCount = 0;
   function createDialogPromise(opts, defaultValue, request, parseResponse) {
     if (opts?.signal?.aborted)
       return Promise.resolve(defaultValue);
@@ -19397,6 +19879,7 @@ async function runRpcMode(runtimeHost) {
       },
       shutdownHandler: /* @__PURE__ */ __name(() => {
         shutdownRequested = true;
+        setImmediate(checkShutdownRequested);
       }, "shutdownHandler"),
       onError: /* @__PURE__ */ __name((err) => {
         output({ type: "extension_error", extensionPath: err.extensionPath, event: err.event, error: err.error });
@@ -19407,7 +19890,7 @@ async function runRpcMode(runtimeHost) {
     unsubscribe = session.subscribe((event) => {
       output(toJsonEvent(event));
       if (event.type === "agent_settled") {
-        void checkShutdownRequested();
+        checkShutdownRequested();
       }
     });
     unsubscribeBackpressure = session.agent.subscribe(async () => {
@@ -19420,12 +19903,16 @@ async function runRpcMode(runtimeHost) {
       signals.push("SIGHUP");
     }
     for (const signal of signals) {
-      const handler = /* @__PURE__ */ __name(() => {
+      const exitCode = signal === "SIGHUP" ? 129 : 143;
+      process.on(signal, () => {
+        signalCount++;
         killTrackedDetachedChildren();
-        void shutdown(signal === "SIGHUP" ? 129 : 143, signal);
-      }, "handler");
-      process.on(signal, handler);
-      signalCleanupHandlers.push(() => process.off(signal, handler));
+        if (!shuttingDown) {
+          void shutdown(exitCode, signal);
+        } else if (signalCount > 1) {
+          process.exit(exitCode);
+        }
+      });
     }
   }, "registerSignalHandlers");
   await rebindSession();
@@ -19438,6 +19925,7 @@ async function runRpcMode(runtimeHost) {
       // =================================================================
       case "prompt": {
         let preflightSucceeded = false;
+        activeCommands++;
         void session.prompt(command.message, {
           images: command.images,
           streamingBehavior: command.streamingBehavior,
@@ -19450,6 +19938,9 @@ async function runRpcMode(runtimeHost) {
           if (!preflightSucceeded) {
             output(error(id, "prompt", e.message));
           }
+        }).finally(() => {
+          activeCommands--;
+          checkShutdownRequested();
         });
         return void 0;
       }
@@ -19605,8 +20096,8 @@ async function runRpcMode(runtimeHost) {
         return success(id, "get_session_stats", stats);
       }
       case "export_html": {
-        const path5 = await session.exportToHtml(command.outputPath);
-        return success(id, "export_html", { path: path5 });
+        const path6 = await session.exportToHtml(command.outputPath);
+        return success(id, "export_html", { path: path6 });
       }
       case "switch_session": {
         const result = await runtimeHost.switchSession(command.sessionPath);
@@ -19711,13 +20202,9 @@ async function runRpcMode(runtimeHost) {
   let detachInput = /* @__PURE__ */ __name(() => {
   }, "detachInput");
   async function shutdown(exitCode = 0, signal) {
-    if (shuttingDown) {
-      process.exit(exitCode);
-    }
+    if (shuttingDown)
+      return;
     shuttingDown = true;
-    for (const cleanup of signalCleanupHandlers) {
-      cleanup();
-    }
     unsubscribe?.();
     unsubscribeBackpressure?.();
     await runtimeHost.dispose();
@@ -19729,10 +20216,10 @@ async function runRpcMode(runtimeHost) {
     process.exit(exitCode);
   }
   __name(shutdown, "shutdown");
-  async function checkShutdownRequested() {
-    if (!shutdownRequested)
+  function checkShutdownRequested() {
+    if (!shutdownRequested || shuttingDown || !inputReady || activeCommands > 0 || !session.isIdle)
       return;
-    await shutdown();
+    void shutdown();
   }
   __name(checkShutdownRequested, "checkShutdownRequested");
   const handleInputLine = /* @__PURE__ */ __name(async (line) => {
@@ -19754,13 +20241,19 @@ async function runRpcMode(runtimeHost) {
       return;
     }
     const command = parsed;
+    activeCommands++;
     try {
-      const response = await handleCommand(command);
+      let response;
+      try {
+        response = await handleCommand(command);
+      } finally {
+        activeCommands--;
+      }
       if (response) {
         output(response);
         await waitForRawStdoutBackpressure();
       }
-      await checkShutdownRequested();
+      checkShutdownRequested();
     } catch (commandError) {
       output(error(command.id, command.type, commandError instanceof Error ? commandError.message : String(commandError)));
       await waitForRawStdoutBackpressure();
@@ -19779,6 +20272,8 @@ async function runRpcMode(runtimeHost) {
       process.stdin.off("end", onInputEnd);
     };
   })();
+  inputReady = true;
+  checkShutdownRequested();
   return new Promise(() => {
   });
 }
@@ -19857,8 +20352,8 @@ function validateThemeJson(label, json2) {
         }
         continue;
       }
-      const path5 = error.instancePath || "/";
-      otherErrors.push(`  - ${path5}: ${error.message}`);
+      const path6 = error.instancePath || "/";
+      otherErrors.push(`  - ${path6}: ${error.message}`);
     }
     let errorMessage5 = `Invalid theme "${label}":
 `;
@@ -19890,7 +20385,7 @@ import chalk6 from "../../../chalk/source/index.js";
 import lockfile from "../../../proper-lockfile.mjs";
 
 // pi-dist/pi-coding-agent/cli/config-selector.js
-import { ProcessTerminal as ProcessTerminal3, TuiMainScreen as TuiMainScreen4 } from "../../../pi-tui.mjs";
+import { ProcessTerminal as ProcessTerminal3, setKeybindings as setKeybindings4, TuiMainScreen as TuiMainScreen4 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/config-selector.js
 import { basename as basename2, dirname as dirname4, join as join12, relative as relative3 } from "node:path";
@@ -19927,7 +20422,7 @@ function buildGroups(resolved, agentDir) {
   const groupMap = /* @__PURE__ */ new Map();
   const addToGroup = /* @__PURE__ */ __name((resources, resourceType) => {
     for (const res of resources) {
-      const { path: path5, enabled, metadata } = res;
+      const { path: path6, enabled, metadata } = res;
       const groupKey = `${metadata.origin}:${metadata.scope}:${metadata.source}:${metadata.baseDir ?? ""}`;
       if (!groupMap.has(groupKey)) {
         groupMap.set(groupKey, {
@@ -19950,11 +20445,11 @@ function buildGroups(resolved, agentDir) {
         };
         group.subgroups.push(subgroup);
       }
-      const fileName = basename2(path5);
-      const parentFolder = basename2(dirname4(path5));
+      const fileName = basename2(path6);
+      const parentFolder = basename2(dirname4(path6));
       let displayName;
       if (metadata.source === "builtin") {
-        displayName = path5.slice(BUILTIN_PATH_PREFIX.length);
+        displayName = path6.slice(BUILTIN_PATH_PREFIX.length);
       } else if (resourceType === "extensions" && parentFolder !== "extensions") {
         displayName = `${parentFolder}/${fileName}`;
       } else if (resourceType === "skills" && fileName === "SKILL.md") {
@@ -19963,7 +20458,7 @@ function buildGroups(resolved, agentDir) {
         displayName = fileName;
       }
       subgroup.items.push({
-        path: path5,
+        path: path6,
         enabled,
         metadata,
         resourceType,
@@ -20601,6 +21096,7 @@ var ConfigSelectorComponent = class extends Container32 {
 // pi-dist/pi-coding-agent/cli/config-selector.js
 async function selectConfig(options) {
   initTheme(options.settingsManager.getTheme(), true);
+  setKeybindings4(KeybindingsManager.create(options.agentDir));
   return new Promise((resolve7) => {
     const ui = new TuiMainScreen4(new ProcessTerminal3(), options.settingsManager.getShowHardwareCursor(), options.agentDir);
     ui.setClearOnShrink(options.settingsManager.getClearOnShrink());
@@ -20629,8 +21125,8 @@ import { randomUUID as randomUUID6 } from "node:crypto";
 import { copyFileSync, existsSync as existsSync7, mkdirSync as mkdirSync4, renameSync as renameSync2, rmSync as rmSync5 } from "node:fs";
 import { basename as basename3, dirname as dirname5, join as join13, relative as relative4, resolve as resolve5, toNamespacedPath } from "node:path";
 var QUARANTINE_DIR_NAME = ".pi-native-quarantine";
-function normalizePath2(path5) {
-  return toNamespacedPath(resolve5(path5));
+function normalizePath2(path6) {
+  return toNamespacedPath(resolve5(path6));
 }
 __name(normalizePath2, "normalizePath");
 function getQuarantineRoot(packageDir) {
@@ -21537,11 +22033,16 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
   reportSettingsErrors(settingsManager, "package command");
   const selfUpdateNpmCommand = settingsManager.getGlobalSettings().npmCommand;
   const packageManager = new DefaultPackageManager({ cwd, agentDir, settingsManager });
+  const updatedPackages = [];
+  let warningCount = 0;
   packageManager.setProgressCallback((event) => {
-    if (event.type === "start") {
+    if (event.type === "result" && event.action === "update" && event.message) {
+      updatedPackages.push(event.message);
+    } else if (event.type === "start") {
       process.stdout.write(chalk6.dim(`${event.message}
 `));
     } else if (event.type === "progress" && event.message) {
+      warningCount++;
       process.stdout.write(chalk6.yellow(`${event.message}
 `));
     }
@@ -21601,10 +22102,18 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
         if (updateTargetIncludesExtensions(target)) {
           const updateSource = target.type === "extensions" ? target.source : void 0;
           await packageManager.update(updateSource);
-          if (updateSource) {
-            console.log(chalk6.green(`Updated ${updateSource}`));
+          if (isOfflineModeEnabled()) {
+            console.log(chalk6.yellow("Skipped package updates (offline mode)"));
+          } else if (updatedPackages.length === 0 && warningCount > 0) {
+            console.log(chalk6.yellow(updateSource ? `${updateSource} was not updated, see the warnings above` : "No packages were updated, see the warnings above"));
+          } else if (updatedPackages.length === 0) {
+            console.log(chalk6.green(updateSource ? `${updateSource} is already up to date` : "Packages are already up to date"));
           } else {
-            console.log(chalk6.green("Updated packages"));
+            const count = updatedPackages.length;
+            console.log(chalk6.green(`Updated ${count} package${count === 1 ? "" : "s"}:`));
+            for (const message of updatedPackages) {
+              console.log(`  ${message}`);
+            }
           }
         }
         if (updateTargetIncludesSelf(target)) {
@@ -21750,9 +22259,51 @@ function isPlainRuntimeMetadataCommand(parsed) {
   return !parsed.print && parsed.mode === void 0 && (parsed.help === true || parsed.listModels !== void 0);
 }
 __name(isPlainRuntimeMetadataCommand, "isPlainRuntimeMetadataCommand");
+async function runAuthLoginCommand(args) {
+  const cwd = process.cwd();
+  const agentDir = getAgentDir();
+  const settingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: false });
+  applyHttpProxySettings(settingsManager.getGlobalSettings().httpProxy);
+  configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
+  const modelRuntime = await ModelRuntime.create({ allowModelNetwork: false, signal: AbortSignal.timeout(15e3) });
+  const controller = new AbortController();
+  const interrupt = /* @__PURE__ */ __name(() => controller.abort(), "interrupt");
+  process.on("SIGINT", interrupt);
+  try {
+    return await runAuthLogin(args, {
+      modelRuntime,
+      terminal: createProcessLoginTerminal(interrupt),
+      agentDir,
+      cwd,
+      getDeviceId: /* @__PURE__ */ __name(() => settingsManager.getOrCreateDeviceId(), "getDeviceId"),
+      signal: controller.signal
+    });
+  } finally {
+    process.off("SIGINT", interrupt);
+  }
+}
+__name(runAuthLoginCommand, "runAuthLoginCommand");
+async function runAuthLogoutCommand(args) {
+  const signal = AbortSignal.timeout(15e3);
+  const modelRuntime = await ModelRuntime.create({ allowModelNetwork: false, signal });
+  return runAuthLogout(args, {
+    modelRuntime,
+    terminal: { write: /* @__PURE__ */ __name((line) => console.log(line), "write"), error: /* @__PURE__ */ __name((line) => console.error(line), "error") },
+    signal
+  });
+}
+__name(runAuthLogoutCommand, "runAuthLogoutCommand");
 async function runAuthCommand(args) {
   if (isAuthCommandHelp(args)) {
     printAuthCommandHelp();
+    return true;
+  }
+  if (args[0] === "auth" && args[1] === "login") {
+    process.exitCode = await runAuthLoginCommand(args.slice(2).filter((arg) => arg !== "--offline"));
+    return true;
+  }
+  if (args[0] === "auth" && args[1] === "logout") {
+    process.exitCode = await runAuthLogoutCommand(args.slice(2).filter((arg) => arg !== "--offline"));
     return true;
   }
   let command;
@@ -21834,8 +22385,8 @@ async function prepareInitialMessage(parsed, stdinContent) {
 }
 __name(prepareInitialMessage, "prepareInitialMessage");
 function findLocalSessionByExactId(sessionId, cwd, sessionDir) {
-  const path5 = SessionManager.findById(cwd, sessionId, sessionDir);
-  return path5 ? { type: "local", path: path5 } : void 0;
+  const path6 = SessionManager.findById(cwd, sessionId, sessionDir);
+  return path6 ? { type: "local", path: path6 } : void 0;
 }
 __name(findLocalSessionByExactId, "findLocalSessionByExactId");
 async function resolveSessionPath(sessionArg, cwd, sessionDir) {
@@ -21908,9 +22459,9 @@ function validateSessionIdFlags(parsed) {
   }
 }
 __name(validateSessionIdFlags, "validateSessionIdFlags");
-function openSessionOrExit(path5, sessionDir) {
+function openSessionOrExit(path6, sessionDir) {
   try {
-    return SessionManager.open(path5, sessionDir);
+    return SessionManager.open(path6, sessionDir);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(chalk7.red(`Error: ${message}`));
@@ -22263,13 +22814,13 @@ async function main(args, options) {
       ...projectTrustDiagnostics,
       ...services2.diagnostics,
       ...collectSettingsDiagnostics(settingsManager2),
-      ...resourceLoader2.getExtensions().errors.map(({ path: path5, error }) => ({
+      ...resourceLoader2.getExtensions().errors.map(({ path: path6, error }) => ({
         type: "error",
-        message: `Failed to load extension "${path5}": ${error}`
+        message: `Failed to load extension "${path6}": ${error}`
       })),
-      ...(resourceLoader2.getExtensions().warnings ?? []).map(({ path: path5, warning }) => ({
+      ...(resourceLoader2.getExtensions().warnings ?? []).map(({ path: path6, warning }) => ({
         type: "warning",
-        message: `Extension package "${path5}": ${warning}`
+        message: `Extension package "${path6}": ${warning}`
       }))
     ];
     const modelPatterns = parsed.models ?? settingsManager2.getEnabledModels();
@@ -22396,6 +22947,7 @@ async function main(args, options) {
       time("interactiveMode.init");
       await new Promise((resolve7) => setTimeout(resolve7, 150));
       interactiveMode.stop();
+      await runtime.dispose();
       stopThemeWatcher();
       printTimings();
       if (process.stdout.writableLength > 0) {

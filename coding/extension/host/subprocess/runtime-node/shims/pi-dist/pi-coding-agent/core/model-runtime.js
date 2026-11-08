@@ -496,7 +496,7 @@ export class ModelRuntime {
             assertChatModel(model);
             const prepared = await this.prepareRequest(model, options);
             return prepared.provider.stream(prepared.model, transcript, prepared.options);
-        });
+        }, undefined, options?.signal);
     }
     complete(model, context, options) {
         return this.stream(model, context, options).result();
@@ -520,13 +520,13 @@ export class ModelRuntime {
                 const { apiKey, headers, env, ...rest } = options ?? {};
                 const auth = route.model.provider === model.provider ? { apiKey, headers, env } : {};
                 return this.streamSimple(route.model, context, { ...rest, ...auth, maxTokens, reasoning });
-            });
+            }, undefined, options?.signal);
         }
         return lazyStream(model, async () => {
             assertChatModel(model);
             const prepared = await this.prepareRequest(model, options);
             return prepared.provider.streamSimple(prepared.model, transcript, prepared.options);
-        });
+        }, undefined, options?.signal);
     }
     completeSimple(model, context, options) {
         return this.streamSimple(model, context, options).result();
@@ -539,7 +539,7 @@ export class ModelRuntime {
                 throw new ModelsError("provider", `Provider ${model.provider} does not support deferred responses`);
             }
             return prepared.provider.fetchDeferred(prepared.model, handle, prepared.options);
-        });
+        }, undefined, options?.signal);
     }
     async fetchDeferred(model, handle, options) {
         return this.streamDeferred(model, handle, options).result();

@@ -9,7 +9,7 @@ use std::path::{Component, Path, PathBuf};
 
 use serde_json::{Value, json};
 
-use crate::host_helpers::{helper_call, helper_call_each_running};
+use crate::host_helpers::{finish, helper_call, helper_call_each_running};
 
 const CALL_FILE_MUTATION_ENTER: &str = "fileMutation.enter";
 const CALL_FILE_MUTATION_EXIT: &str = "fileMutation.exit";
@@ -51,7 +51,62 @@ pub fn with_file_mutation_queue<T>(
     file_path: impl AsRef<Path>,
     f: impl FnOnce() -> T,
 ) -> io::Result<T> {
-    run_queued(&queue_call, file_path.as_ref(), f)
+    run_queued(&queue_call, None, file_path.as_ref(), f)
+}
+
+/// [`with_file_mutation_queue`] for a handler that has its [`crate::Context`]: it runs `f` in the host's file mutation queue for `file_path`, in the place Pi
+/// gives a tool call of a parallel batch (D187).
+///
+/// A tool that takes the queue through its context registers in the order Pi's one thread runs the batch's tools. Pi starts every call of a batch in source
+/// order and each runs to its first await, and `withFileMutationQueue` registers in the order it is called (`file-mutation-queue.ts`: `registrationQueue`), so two
+/// tools that reach the queue after the same number of awaits register in call order. A native handler runs on a thread of its own, so the free function
+/// registers in the order the calls reach the host. The context form names its tool call, and the host registers it only after the start windows of the extension
+/// tools before it in the batch closed: a tool's window is open until its first host call that returns a Promise in Pi (an exec, a dialog, a model call, this
+/// one), its answer or its end, so a tool that makes only getter calls before it takes the queue registers before the tool behind it, however many round trips its
+/// getters took. The price is the one `docs/extension-api-parity.md` names for the edit and write calls behind a native tool: a tool that does work of its own,
+/// with no host call, before it takes the queue holds the registrations of the tools behind it.
+///
+/// A context that serves no tool call registers as the free function does. Like the free function it waits for the file with no regard for the request's
+/// cancellation, as Pi's queue does.
+pub(crate) fn with_context<T>(
+    ctx: &crate::Context,
+    file_path: &Path,
+    f: impl FnOnce() -> T,
+) -> io::Result<T> {
+    let request = ctx
+        .tool_call_id
+        .is_some()
+        .then_some(ctx.request_id.as_str());
+    let reports = !ctx.request_id.is_empty();
+    let call = |method: &str, args: Value| -> io::Result<Option<Value>> {
+        if method != CALL_FILE_MUTATION_ENTER {
+            return queue_call(method, args);
+        }
+        if reports {
+            let _ = ctx.conn.request_state_for(
+                ctx.request_parent.as_deref(),
+                &ctx.request_id,
+                "blocked",
+                Some("host_call"),
+            );
+        }
+        // The call is detached from the request: an aborted request does not end the wait for the file or the release of its turn.
+        let reply = ctx
+            .conn
+            .begin_call_for(None, method, Some(args))
+            .and_then(|pending| ctx.conn.wait_call(pending))
+            .and_then(finish);
+        if reports {
+            let _ = ctx.conn.request_state_for(
+                ctx.request_parent.as_deref(),
+                &ctx.request_id,
+                "progress",
+                None,
+            );
+        }
+        reply
+    };
+    run_queued(&call, request, file_path, f)
 }
 
 /// A queue call over the running extension's connection. The turn belongs to the host's process registry, not to the connection it was taken on: an exit whose
@@ -67,13 +122,20 @@ fn queue_call(method: &str, args: Value) -> io::Result<Option<Value>> {
 /// The host call a queue turn is made with: the method and its args, answered with the call's result.
 type HostCall<'a> = &'a dyn Fn(&str, Value) -> io::Result<Option<Value>>;
 
-fn run_queued<T>(call: HostCall<'_>, file_path: &Path, f: impl FnOnce() -> T) -> io::Result<T> {
+fn run_queued<T>(
+    call: HostCall<'_>,
+    request: Option<&str>,
+    file_path: &Path,
+    f: impl FnOnce() -> T,
+) -> io::Result<T> {
     // Pi resolves the path against the process's working directory; the host resolves nothing relative, so the SDK sends it absolute.
     let resolved = resolve(file_path)?;
-    let entered = call(
-        CALL_FILE_MUTATION_ENTER,
-        json!({"path": resolved.to_string_lossy()}),
-    )?;
+    let mut args = json!({"path": resolved.to_string_lossy()});
+    if let Some(request) = request {
+        // The tool call the enter serves: the host registers it after the extension tools before it in the batch.
+        args["request"] = json!(request);
+    }
+    let entered = call(CALL_FILE_MUTATION_ENTER, args)?;
     let ticket = entered
         .as_ref()
         .and_then(|result| result.get("ticket"))
@@ -135,6 +197,7 @@ mod tests {
         let ran = RefCell::new(Vec::new());
         run_queued(
             &|method, args| host.call(method, args),
+            None,
             Path::new("some/../a.txt"),
             || {
                 // Inside the task only the enter has been made.
@@ -170,6 +233,7 @@ mod tests {
         let mut ran = false;
         let err = run_queued(
             &|method, args| host.call(method, args),
+            None,
             Path::new("a.txt"),
             || ran = true,
         )
@@ -196,6 +260,7 @@ mod tests {
         let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             run_queued(
                 &|method, args| host.call(method, args),
+                None,
                 Path::new("a.txt"),
                 || panic!("boom"),
             )
@@ -209,10 +274,32 @@ mod tests {
     }
 
     #[test]
+    fn the_enter_names_the_tool_call_it_serves_only_when_it_has_one() {
+        for (request, want) in [
+            (Some("r7"), json!({"path": "/x/a.txt", "request": "r7"})),
+            (None, json!({"path": "/x/a.txt"})),
+        ] {
+            let host = ScriptedHost::new(vec![
+                Ok(Some(json!({"ticket": "fm-1"}))),
+                Ok(Some(json!({}))),
+            ]);
+            run_queued(
+                &|method, args| host.call(method, args),
+                request,
+                Path::new("/x/a.txt"),
+                || (),
+            )
+            .unwrap();
+            assert_eq!(host.calls.borrow()[0].1, want);
+        }
+    }
+
+    #[test]
     fn an_enter_without_a_ticket_is_an_error() {
         let host = ScriptedHost::new(vec![Ok(Some(json!({})))]);
         let err = run_queued(
             &|method, args| host.call(method, args),
+            None,
             Path::new("a.txt"),
             || (),
         )

@@ -130,6 +130,7 @@ func (p *packedProcessState) adopt(from *packedProcessState) {
 	p.processTree = origin.processTree
 	p.cancel = origin.cancel
 	p.stderrLog = origin.stderrLog
+	p.console = origin.console
 }
 
 // stopAndReap stops p and waits for its process to exit when p's stop ended it. A process another state still holds keeps running.
