@@ -60,8 +60,8 @@ pkg:chord/.#Ctx::property:toString	chord	member-missing	chord/next/host/host_ctx
 pkg:chord/.#Ctx::property:toString::call:0	chord	member-missing	chord/next/host/host_ctx.go#Ctx
 pkg:chord/.#Ctx::property:trace	chord	member-missing	chord/next/host/host_ctx.go#Ctx
 pkg:chord/.#Ctx::property:trace::call:0	chord	member-missing	chord/next/host/host_ctx.go#Ctx
-pkg:chord/.#Ctx::property:value	chord	child-gap	../.local/share/mise/installs/go/1.27.3/src/context/context.go#Context.Value
-pkg:chord/.#Ctx::property:value::call:0	chord	undecidable	../.local/share/mise/installs/go/1.27.3/src/context/context.go#Context.Value
+pkg:chord/.#Ctx::property:value	chord	child-gap	../../../usr/local/go/src/context/context.go#Context.Value
+pkg:chord/.#Ctx::property:value::call:0	chord	undecidable	../../../usr/local/go/src/context/context.go#Context.Value
 pkg:chord/.#DataKeys	chord	no-go-symbol	
 pkg:chord/.#Defaulted	chord	no-go-symbol	
 pkg:chord/.#EncodedRow	chord	type-mismatch	chord/next/store/rows.go#EncodedRow
@@ -91,7 +91,7 @@ pkg:chord/.#Host::property:get	chord	child-gap	chord/next/host/host_host.go#Host
 pkg:chord/.#Host::property:get::call:0	chord	undecidable	chord/next/host/host_host.go#Host.Get
 pkg:chord/.#Host::property:hold	chord	not-exercised	chord/next/host/host_host.go#Host.Hold
 pkg:chord/.#Host::property:hold::call:0	chord	undecidable	chord/next/host/host_host.go#Host.Hold
-pkg:chord/.#Host::property:incarnation	chord	member-missing	chord/next/host/host_host.go#Host
+pkg:chord/.#Host::property:incarnation	chord	not-exercised	chord/next/host/host_host.go#Host.Incarnation
 pkg:chord/.#Host::property:principalAttributes	chord	member-missing	chord/next/host/host_host.go#Host
 pkg:chord/.#Host::property:principalAttributes::call:0	chord	member-missing	chord/next/host/host_host.go#Host
 pkg:chord/.#Host::property:references	chord	not-exercised	chord/next/host/host_host.go#Host.References
