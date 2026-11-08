@@ -104769,8 +104769,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere"
       ]
     },
     {
@@ -114158,8 +114158,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere"
       ]
     },
     {

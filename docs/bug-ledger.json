@@ -42567,6 +42567,26 @@
       ]
     },
     {
+      "id": "BF-d6464d3",
+      "title": "Chord: a plugin update's retry that a newer set replaced is cancelled even when the newer set arrives while…",
+      "symptom": "Chord: a plugin update's retry that a newer set replaced is cancelled even when the newer set arrives while the retry's timer is being set; the client kept the replaced set's timer pending.",
+      "rootCause": "retryLater listed the timer with the environment and only then stored the handle that cancels it, a gap a newer set's watch call could land in: it found no handle, so the replaced set's retry stayed pending. The handle now exists first and cancels the timer the moment it exists, as Pi's one-step #retry = { cancel: after(…) } does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a plugin update's retry that a newer set replaced is cancelled even when the newer set arrives while the retry's timer is being set; the client kept the replaced set's timer pending.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d6464d301b",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-d64f8ed",
       "title": "`durable.StorageRequestError` and `durable.SessionFailed` are Pi's error classes of the same names…",
       "symptom": "`durable.StorageRequestError` and `durable.SessionFailed` are Pi's error classes of the same names (`errors.ts`).",
