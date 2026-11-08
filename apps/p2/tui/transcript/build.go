@@ -389,7 +389,7 @@ func BuildTranscript(view harness.TranscriptView, display EntryDisplayOf, fillin
 			// Live slots belong to the current tool round; an unfinished older call is interrupted.
 			slot, hasSlot := slots[part.ID]
 			callList := nestedCalls(part.ID, nested[part.ID], hasResult || !current || !busy)
-			args := jsvalue.ObjectFromDelta(part.Arguments)
+			args := CallArguments(part)
 			if hasResult {
 				tool := resultTool(result, part.Name)
 				tool.Args = args
@@ -623,4 +623,20 @@ func artifactsOf(docs harness.ViewDocs) []runtime.ArtifactInfo {
 		}
 	}
 	return infos
+}
+
+// CallArguments are a tool call's arguments as the cards read them: an object in the member order the model sent (an empty one when the call has none).
+func CallArguments(call ai.ToolCall) *jsvalue.Object {
+	text, err := call.ArgumentsJSON()
+	if err != nil {
+		return jsvalue.NewObject()
+	}
+	value, err := jsvalue.Parse([]byte(text))
+	if err != nil {
+		return jsvalue.NewObject()
+	}
+	if object, ok := value.(*jsvalue.Object); ok {
+		return object
+	}
+	return jsvalue.NewObject()
 }
