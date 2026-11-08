@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next-node/http/request.ts. Requests (slice 10 §2, D4): what a route, a wrap, a socket handler and
+// Ports packages/chord/src/node/http/request.ts. Requests (slice 10 §2, D4): what a route, a wrap, a socket handler and
 // an authenticator see of an HTTP request (once admitted), and its body, read only when asked: `JSON(limit)` (1 MiB by
 // default, malformed 400, too large 413) and `Body(limit)`, a sequence of chunks.
 //

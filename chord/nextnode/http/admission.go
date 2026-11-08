@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Ports packages/chord/src/next-node/http/admission.ts. Admission (slice 10 §2, R4; decision "The HTTP component's security
+// Ports packages/chord/src/node/http/admission.ts. Admission (slice 10 §2, R4; decision "The HTTP component's security
 // baseline" (1)-(3), "Relays"): where a request comes from, decided before anything else. Local only when the connection
 // arrived on a loopback address, its `Host` is a loopback name with the listening port, and it carries no forwarded
 // header; a forwarded request on loopback only when a contributed relay verifies it; otherwise only through an allowed

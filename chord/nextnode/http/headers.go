@@ -11,7 +11,7 @@ import (
 	"weak"
 )
 
-// Ports packages/chord/src/next-node/http/headers.ts. The default headers (decision "The HTTP component's security
+// Ports packages/chord/src/node/http/headers.ts. The default headers (decision "The HTTP component's security
 // baseline" (4), "A CSP nonce per response"): on every response, the component's own included: no caching, no sniffing, no
 // referrer, no framing but by the contributed framers, and a CSP with the response's own script nonce. A response's own
 // headers replace same-named ones (a route widens its own CSP); they are validated as they are set, so a CR or LF never

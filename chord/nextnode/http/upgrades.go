@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/src/next-node/http/upgrades.ts. Upgraded connections (slice 10 §2, D6, Q6): the links endpoint
+// Ports packages/chord/src/node/http/upgrades.ts. Upgraded connections (slice 10 §2, D6, Q6): the links endpoint
 // (`host.accept` over a WebSocket with a per-socket output cap) and plugin sockets (a WebSocket handed to the contribution's
 // handler for its own protocol, in a scope lasting until it closes, kept alive by a heartbeat). Each connection is kept with
 // what admitted it: when that leaves (its allowed host, its relay, its socket handler) it is terminated at once and its

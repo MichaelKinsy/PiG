@@ -1,7 +1,7 @@
 package http
 
-// pi: packages/chord/src/next-node/http/http.ts
-// pi: packages/chord/src/next-node/http/incoming.ts
+// pi: packages/chord/src/node/http/http.ts
+// pi: packages/chord/src/node/http/incoming.ts
 
 import (
 	"context"
@@ -32,7 +32,7 @@ import (
 // once, the listener opening after the publication (none without `listen`, a later change reported), allowed hosts from
 // contributions, authenticators, foreign requests and `Origin`, pages and cross-site routes, the default headers on the
 // component's own answers, throwing routes and wraps, `close` (also while authenticating), a mounted handler, and
-// requests' scopes collected. Ports packages/chord/test/next-node/http/http.test.ts.
+// requests' scopes collected. Ports packages/chord/test/node/http/http.test.ts.
 //
 // Forced differences. A route that never answers blocks on its scope's Done and returns a 503 description. The GC
 // tests take a `weak.Pointer` of the scope and of the request through reflect (`host.Ctx` and `HttpRequest` are
@@ -141,13 +141,14 @@ func httpExpectCollected(t *testing.T, refs []weak.Pointer[byte]) {
 	t.Fatalf("%d of %d objects were not collected", remaining, len(refs))
 }
 
-func TestStartupFetchWaitsForThePublicationThenServesTheRegistriesAreResolvedOnce(t *testing.T) {
+func TestStartupFetchAnswers503BeforeLoadAtOnceThenServesTheRegistriesAreResolvedOnce(t *testing.T) {
 	server := serving(t, []plugin{{"@app/who", httpWhoami}}, servedOptions{noLoad: true})
-	early := httpAsync(func() *nethttp.Response { return httpFetch(server, "/whoami") })
-	time.Sleep(50 * time.Millisecond)
+	if got := httpStatus(server, "/whoami"); got != 503 {
+		t.Fatalf("status before load = %d, want 503", got)
+	}
 	server.load()
-	if got := fetchText(t, receive(t, early, "the early answer")); got != "null" { //nolint:bodyclose // fetchText closes the body
-		t.Fatalf("early answer = %q, want null", got)
+	if got := fetchText(t, httpFetch(server, "/whoami")); got != "null" { //nolint:bodyclose // fetchText closes the body
+		t.Fatalf("answer = %q, want null", got)
 	}
 	calls := server.registryCalls.count()
 	for range 3 {
@@ -155,18 +156,6 @@ func TestStartupFetchWaitsForThePublicationThenServesTheRegistriesAreResolvedOnc
 	}
 	if got := server.registryCalls.count(); got != calls {
 		t.Fatalf("registry calls = %d, want %d", got, calls)
-	}
-	server.close()
-}
-
-func TestStartupAnswers503ToARequestWaitingPastTheHostsReadyTimeout(t *testing.T) {
-	server := serving(t, nil, servedOptions{noLoad: true, readyTimeout: 50 * time.Millisecond})
-	if got := httpStatus(server, "/x"); got != 503 {
-		t.Fatalf("status = %d, want 503", got)
-	}
-	server.load()
-	if got := httpStatus(server, "/x"); got != 404 {
-		t.Fatalf("status = %d, want 404", got)
 	}
 	server.close()
 }
@@ -780,15 +769,14 @@ func TestCancellationEndsARequestWhoseBytesResponseWasAbortedAndDroppedWithoutAn
 }
 
 // Astra's recheck R4, Sol's N1: a close before the first resolution started a stopped watch; its throw ended the process.
-func TestCancellationACloseBeforeThePublicationLeavesNothingRunningTheWaitingRequestAnswers503(t *testing.T) {
+func TestCancellationACloseBeforeLoadLeavesNothingRunningTheEarlyRequestAnswers503(t *testing.T) {
 	server := serving(t, nil, servedOptions{noLoad: true, noListen: true})
 	waiting := httpAsync(func() int { return httpStatus(server, "/x") })
 	server.http.Close(httpAborted())
 	server.load()
-	if got := receive(t, waiting, "the waiting request"); got != 503 {
+	if got := receive(t, waiting, "the early request"); got != 503 {
 		t.Fatalf("status = %d, want 503", got)
 	}
-	time.Sleep(50 * time.Millisecond)
 	server.close()
 }
 

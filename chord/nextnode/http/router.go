@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
-// Ports packages/chord/src/next-node/http/router.ts. The router (slice 10 §2, D1, D2, D8): the registry `Http` that plugins
+// Ports packages/chord/src/node/http/router.ts. The router (slice 10 §2, D1, D2, D8): the registry `Http` that plugins
 // contribute routes, wraps, sockets, allowed hosts, framers, relays and CSP sources to, and its `compose`, which builds the
 // router every request reads: patterns matched segment by segment (exact before `:name` before a trailing `*`), each
 // route's wraps resolved in phase and contributor order, conflicts reported with the first by plugin name winning.
