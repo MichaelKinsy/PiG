@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	stdsync "sync"
 	"testing"
@@ -857,3 +858,83 @@ func TestFlushScheduler(t *testing.T) {
 }
 
 var _ = delta.NewJsonObject
+
+// Pi's close() clears its timer on the one thread, so the callback never runs after close. A time.AfterFunc callback that
+// has started cannot be stopped: Close must still win, and wait for a flush underway.
+func TestFlushSchedulerCloseAgainstAFiredTimer(t *testing.T) {
+	newScheduler := func(flush func() error) (*FlushScheduler, func()) {
+		var fired func()
+		scheduler := NewFlushScheduler(FlushSchedulerOptions{
+			Now:     time.Now,
+			OnError: func(err error) { t.Errorf("unexpected flush error: %v", err) },
+			Flush:   flush,
+			// The timer fired already: stopping it does nothing.
+			SetTimer: func(callback func(), _ time.Duration) func() {
+				fired = callback
+				return func() {}
+			},
+		})
+		return scheduler, func() { fired() }
+	}
+
+	t.Run("a callback that starts after Close does not flush", func(t *testing.T) {
+		var flushes int
+		scheduler, fire := newScheduler(func() error { flushes++; return nil })
+		scheduler.Notify(false)
+		noError(t, scheduler.Close(background))
+		fire()
+		if flushes != 1 {
+			t.Fatalf("flushes = %d, want 1 (Close's own)", flushes)
+		}
+	})
+
+	t.Run("Close waits for a flush underway", func(t *testing.T) {
+		var mu stdsync.Mutex
+		var inFlight, most, flushes int
+		entered, release := make(chan struct{}, 2), make(chan struct{})
+		scheduler, fire := newScheduler(func() error {
+			mu.Lock()
+			inFlight++
+			most = max(most, inFlight)
+			flushes++
+			first := flushes == 1
+			mu.Unlock()
+			if first {
+				entered <- struct{}{}
+				<-release
+			}
+			mu.Lock()
+			inFlight--
+			mu.Unlock()
+			return nil
+		})
+		scheduler.Notify(false)
+		callbackDone := make(chan struct{})
+		go func() { defer close(callbackDone); fire() }()
+		<-entered
+		closed := make(chan error, 1)
+		go func() { closed <- scheduler.Close(background) }()
+		for {
+			scheduler.mu.Lock()
+			shut := scheduler.closed
+			scheduler.mu.Unlock()
+			if shut {
+				break
+			}
+			runtime.Gosched()
+		}
+		select {
+		case err := <-closed:
+			t.Fatalf("Close returned (%v) while a flush was underway", err)
+		case <-time.After(100 * time.Millisecond):
+		}
+		close(release)
+		noError(t, <-closed)
+		<-callbackDone
+		mu.Lock()
+		defer mu.Unlock()
+		if most != 1 || flushes != 2 {
+			t.Fatalf("most in flight = %d, flushes = %d, want 1 and 2", most, flushes)
+		}
+	})
+}
