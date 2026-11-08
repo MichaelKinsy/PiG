@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"slices"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 )
@@ -90,13 +91,7 @@ func chainAttempts(ctx context.Context) []oldWorkSource {
 			continue
 		}
 		source := node.on()
-		seen := false
-		for _, each := range attempts {
-			if each == source {
-				seen = true
-				break
-			}
-		}
+		seen := slices.Contains(attempts, source)
 		if !seen {
 			attempts = append(attempts, source)
 		}

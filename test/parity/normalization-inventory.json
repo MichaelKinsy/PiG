@@ -92,7 +92,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "60ee89b311cc0b0b3d5f036e60ce01f0429fcb0ac083e4ac781eb03a1036b9c7",
+      "sha256": "9f542ec08a60642b0ea56ad439080c7c4b531d9c42185fd8162ac79d8c8c4afd",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],

@@ -211,9 +211,7 @@ func (l *loop) closed(at *attempt) {
 	}
 	l.deciding = true
 	l.wokeWhileDeciding = false
-	l.asking.Add(1)
-	go func() {
-		defer l.asking.Done()
+	l.asking.Go(func() {
 		retry, err := l.options.CanRetry(l.ctx)
 		if err != nil {
 			retry = true
@@ -224,7 +222,7 @@ func (l *loop) closed(at *attempt) {
 				l.schedule(l.wokeWhileDeciding)
 			}
 		})
-	}()
+	})
 }
 
 // schedule schedules the next attempt: at once (now), else after the backoff (offline: the longest pause).

@@ -12,7 +12,7 @@ import (
 // long session does; frame-bytes is the size of the rendered frame.
 func BenchmarkLongTranscriptSurfaceRender(b *testing.B) {
 	m := &InteractiveMode{chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 100, 30), outputPad: 1, toolsExpanded: true}
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		m.appendCustomMessage(CustomMessageEntry{CustomType: "note", Content: "custom message **body** with `code` and some words to wrap across the row", Display: true}, messageMeta{})
 		m.addCompactionSummary("summary of earlier work: "+strings.Repeat("kept the plan, ", 6), 1000+i, nil, messageMeta{})
 	}

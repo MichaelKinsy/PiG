@@ -12,9 +12,7 @@ func TestRegistryValueReadsRaceFreeWhileAContributionChanges(t *testing.T) {
 	var readers sync.WaitGroup
 	stop := make(chan struct{})
 	for range 4 {
-		readers.Add(1)
-		go func() {
-			defer readers.Done()
+		readers.Go(func() {
 			for {
 				select {
 				case <-stop:
@@ -31,7 +29,7 @@ func TestRegistryValueReadsRaceFreeWhileAContributionChanges(t *testing.T) {
 					return
 				}
 			}
-		}()
+		})
 	}
 	for i := range 500 {
 		// A change is made inside a section of the host's loop, as an object's code makes it.
