@@ -31318,33 +31318,6 @@
       "tests": []
     },
     {
-      "id": "BF-D432",
-      "title": "Sync decodes no log line longer than 32 MiB",
-      "symptom": "a body line has no bound but the string limit of the runtime; a remote's body can make a sync hold about 0.5 GiB for one line before it fails with a bare `RangeError`.",
-      "rootCause": "the sync client's contract is bounded memory (an upload ends a batch at 8 MiB, a pull applies about 4 MiB at a time), and a remote's body is untrusted input: without a bound a single line grows the buffer until the body ends. A line this long cannot come from `EncodeLogLine` of a store that fits its documents in memory; the largest commit Pi writes is a batch of its own (8 MiB), so the bound is four times that.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D432",
-      "removeWhen": "Pi bounds a log line or the owner prefers the unbounded form.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "767a756f61",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "930ef101d0",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "chord/sync/lines_test.go::TestBatchBodies"
-      ]
-    },
-    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -51360,11 +51333,6 @@
       "id": "D431",
       "title": "PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)",
       "entry": "BF-D431"
-    },
-    {
-      "id": "D432",
-      "title": "Sync decodes no log line longer than 32 MiB",
-      "entry": "BF-D432"
     }
   ],
   "exemptCommits": {
