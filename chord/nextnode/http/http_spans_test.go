@@ -94,9 +94,14 @@ func itemsFacet() host.Facet {
 func TestRequestSpansTracesARoutedRequestItsMethodRoutePatternAndStatusNeverItsPathItsHandlersCtxUnderIt(t *testing.T) {
 	telemetry := newW3cTelemetry()
 	server := serving(t, []plugin{{"@app/items", itemsFacet()}}, servedOptions{telemetry: telemetry})
-	for path, want := range map[string]int{"/items/secret-id": 200, "/broken": 500, "/nowhere": 404} {
-		if got := mustSend(t, server.port, "GET", path, sendOptions{}).status; got != want {
-			t.Fatalf("GET %s = %d, want %d", path, got, want)
+	// Pi sends these in this order, one after the other; a span is recorded in start order (telemetry.getSpans), so the
+	// order of the requests is the order of the spans.
+	for _, request := range []struct {
+		path   string
+		status int
+	}{{"/items/secret-id", 200}, {"/broken", 500}, {"/nowhere", 404}} {
+		if got := mustSend(t, server.port, "GET", request.path, sendOptions{}).status; got != request.status {
+			t.Fatalf("GET %s = %d, want %d", request.path, got, request.status)
 		}
 	}
 	server.close()
