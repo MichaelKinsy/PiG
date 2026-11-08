@@ -26,30 +26,10 @@ var modes = map[string]bool{"25": true, "2004": true, "2026": true, "1049": true
 // ErrFrameTooLarge is a frame over MaxFrame.
 var ErrFrameTooLarge = errors.New("terminal: a frame over 64 KiB")
 
-// exceedsUnits is whether s is longer than limit UTF-16 code units (JavaScript's `length`, which Pi's limits count). A string of
-// at most limit bytes has at most limit units (a unit is never more than a byte of its UTF-8 form, as an astral character's two
-// units are four bytes), so only a longer one is counted.
-func exceedsUnits(s string, limit int) bool {
-	//portlint:allow utf16units a string of at most limit bytes has at most limit UTF-16 units (a unit is never more than a byte of its UTF-8 form), so only a longer one is counted; Pi compares output.length
-	if len(s) <= limit {
-		return false
-	}
-	units := 0
-	for _, r := range s {
-		units++
-		if r >= 0x10000 {
-			units++
-		}
-		if units > limit {
-			return true
-		}
-	}
-	return false
-}
-
 // FilterOutput is output with only the allowed sequences; it fails for a frame over MaxFrame.
 func FilterOutput(output string) (string, error) {
-	if exceedsUnits(output, MaxFrame) {
+	//portlint:allow utf16units Pi rejects output.length > MAX_FRAME || Buffer.byteLength(output) > MAX_FRAME; bytes are never fewer than UTF-16 units, so the byte test is both
+	if len(output) > MaxFrame {
 		return "", ErrFrameTooLarge
 	}
 	units := utf16.Encode([]rune(output))
