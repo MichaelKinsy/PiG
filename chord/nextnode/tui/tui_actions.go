@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf16"
@@ -263,12 +264,7 @@ func attachable(filePath, platform string) bool {
 	if len(filePath) >= 2 && (filePath[0] == '\\' || filePath[0] == '/') && (filePath[1] == '\\' || filePath[1] == '/') {
 		return false
 	}
-	for _, segment := range strings.FieldsFunc(filePath, func(r rune) bool { return r == '\\' || r == '/' }) {
-		if reservedDevice(segment) {
-			return false
-		}
-	}
-	return true
+	return !slices.ContainsFunc(strings.FieldsFunc(filePath, func(r rune) bool { return r == '\\' || r == '/' }), reservedDevice)
 }
 
 // isJSSpace is JavaScript's `\s`.

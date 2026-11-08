@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -143,12 +144,7 @@ func urlsOf(html string) []string {
 func untilDirty(t testing.TB, app *App, plugin string) {
 	t.Helper()
 	untilMarks(t, app, plugin+" dirty", func(m plugins.PluginsState) bool {
-		for _, name := range m.Dirty {
-			if name == plugin {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(m.Dirty, plugin)
 	})
 }
 

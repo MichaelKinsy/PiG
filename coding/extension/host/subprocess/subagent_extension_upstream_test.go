@@ -9,9 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -193,9 +195,7 @@ func (r *subagentRig) mustExecute(params map[string]any) agent.AgentToolResult {
 
 func singleTask(task string, overrides map[string]any) map[string]any {
 	params := map[string]any{"agent": "worker", "task": task, "agentScope": "project", "confirmProjectAgents": false}
-	for k, v := range overrides {
-		params[k] = v
-	}
+	maps.Copy(params, overrides)
 	return params
 }
 
@@ -225,12 +225,12 @@ func subagentText(result agent.AgentToolResult) string {
 }
 
 func finalAssistantText(child subagentChild) string {
-	for i := len(child.Messages) - 1; i >= 0; i-- {
-		if child.Messages[i].Role != "assistant" {
+	for _, v := range slices.Backward(child.Messages) {
+		if v.Role != "assistant" {
 			continue
 		}
 		var parts []string
-		for _, part := range child.Messages[i].Content {
+		for _, part := range v.Content {
 			if part.Type == "text" {
 				parts = append(parts, part.Text)
 			}

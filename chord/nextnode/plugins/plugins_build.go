@@ -616,8 +616,7 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 func (rules *importRules) cssModule(file, contents string) (api.OnLoadResult, error) {
 	scoped, err := scopeCSSModule(rules.own.Name, rules.own.Dir, file, contents, rules.mappings, rules.ctx)
 	if err != nil {
-		var failure *cssModuleError
-		if errors.As(err, &failure) {
+		if failure, ok := errors.AsType[*cssModuleError](err); ok {
 			return api.OnLoadResult{Errors: failure.messages}, nil
 		}
 		if rules.ctx.Err() != nil {

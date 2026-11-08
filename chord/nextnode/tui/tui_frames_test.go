@@ -76,7 +76,7 @@ func TestSplittingFramesKeepsASmallWriteWhole(t *testing.T) {
 
 func TestSplittingFramesCutsALargeTrueColourPaintBetweenSequencesEachFrameUnder64KiBAndPassingTheFilterWhole(t *testing.T) {
 	var paint strings.Builder
-	for cell := 0; cell < 20_000; cell++ {
+	for cell := range 20_000 {
 		paint.WriteString("\x1b[38;2;" + strconv.Itoa(cell%256) + ";12;200m")
 		if cell%7 == 0 {
 			paint.WriteString("😀")

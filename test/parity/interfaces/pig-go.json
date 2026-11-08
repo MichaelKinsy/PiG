@@ -169836,6 +169836,17 @@
       "shapeHash": "sha256:93eaf9463332dc9ded8bac5e48a7c485044d56ba0479f3beef9ecdaf7cfd86ab"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#syncDirectory",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "syncDirectory",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) bool"
+      },
+      "shapeHash": "sha256:3669eb7349cb8bcae461655862e7429d36ba1b77f74bc7b6eea72428d185bbe8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#textOf",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "textOf",
