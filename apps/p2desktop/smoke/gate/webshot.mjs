@@ -23,6 +23,7 @@ if (process.env.P2_WEB_CLICK) {
 	await page.locator(process.env.P2_WEB_CLICK).last().click();
 	await page.waitForTimeout(600);
 }
+if (process.env.P2_WEB_AFTER) await page.getByText(process.env.P2_WEB_AFTER).first().waitFor({ timeout: 30000 });
 await page.evaluate(() => document.fonts.ready);
 await page.waitForTimeout(800);
 await page.screenshot({ path: out });
