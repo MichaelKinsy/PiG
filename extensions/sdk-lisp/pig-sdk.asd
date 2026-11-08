@@ -10,6 +10,7 @@
   :pathname "src/"
   :components ((:file "package")
                (:file "errors")
+               (:file "diagnostic")
                (:file "json")
                (:file "wire")
                (:file "extension")

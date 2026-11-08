@@ -238,6 +238,7 @@ func forwardLazySetup(ctx context.Context, turn *continuationTurn, executor *con
 	observation.onEvent(event)
 	observation.onResult(message)
 }
+
 // lazySetupStopReason is lazy.ts:83's `signal?.aborted ? "aborted" : "error"` for a setup that rejected.
 func lazySetupStopReason(ctx context.Context) StopReason {
 	if ctx != nil && ctx.Err() != nil {

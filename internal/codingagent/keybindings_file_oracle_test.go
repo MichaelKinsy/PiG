@@ -148,10 +148,6 @@ for (const [name, path] of Object.entries(files)) {
 					t.Errorf("GetKeys(%s) = %v, want %v", action, got, wantKeys)
 				}
 			}
-			// pig divergence (D241): Windows and WSL hosts default app.clipboard.pasteImage to alt+v and ctrl+v, Pi 1.5.0 to alt+v.
-			if _, bound := expected.User[pasteImageAction]; d241Applies() && !bound {
-				expected.Effective[pasteImageAction] = d241PasteKeys(t, expected.Effective[pasteImageAction])
-			}
 			effective := map[string][]string{}
 			for action, keys := range kb.GetEffectiveConfig() {
 				if keys.Keys != nil {

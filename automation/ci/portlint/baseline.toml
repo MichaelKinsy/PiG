@@ -7084,13 +7084,13 @@ snippet = "if err := json.Unmarshal(encoded, &wire); err != nil {"
 [[hit]]
 check = "hotpathjson"
 file = "coding/extension/host/subprocess/host.go"
-func = "Host.pushStateTo"
+func = "Host.pushState"
 snippet = "leanBody, err := json.Marshal(stateUpdateBody{State: &lean})"
 
 [[hit]]
 check = "hotpathjson"
 file = "coding/extension/host/subprocess/host.go"
-func = "Host.pushStateTo"
+func = "Host.pushState"
 snippet = "if out, err = json.Marshal(stateUpdateBody{State: &partial}); err != nil {"
 
 [[hit]]
