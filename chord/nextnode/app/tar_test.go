@@ -157,3 +157,27 @@ func TestTarRefusesAnEntryWhoseDataIsNotItsSize(t *testing.T) {
 		t.Fatal("a size error is no EOF")
 	}
 }
+
+// FuzzReadTar feeds the reader (a trust boundary: an archive may come from anywhere) arbitrary bytes: it never panics, never
+// yields a path ReadTar's checks would refuse, and a file's data is never longer than its size.
+func FuzzReadTar(f *testing.F) {
+	var seed bytes.Buffer
+	_ = WriteTar(&seed, slices.Values([]TarEntry{tarEntryOf("files/a", "x"), tarEntryOf("manifest.json", "{}")}))
+	f.Add(seed.Bytes())
+	f.Add(make([]byte, 1024))
+	f.Add([]byte("not a tar"))
+	f.Fuzz(func(t *testing.T, archive []byte) {
+		_ = ReadTar(bytes.NewReader(archive), func(entry TarRead) error {
+			if err := checkTarPath(entry.Path); err != nil {
+				t.Fatalf("yielded refused path %q", entry.Path)
+			}
+			if entry.Kind == TarFile {
+				n, _ := io.Copy(io.Discard, entry.Data)
+				if n > entry.Size {
+					t.Fatalf("%s: read %d bytes of %d", entry.Path, n, entry.Size)
+				}
+			}
+			return nil
+		})
+	})
+}
