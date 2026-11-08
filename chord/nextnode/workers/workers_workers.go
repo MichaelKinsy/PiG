@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 	"slices"
 	"strings"
 	"time"
@@ -132,8 +133,13 @@ func (WorkerExitedError) workersError()    {}
 func (WorkerLinkLostError) workersError()  {}
 func (BatchWorkersError) workersError()    {}
 
-// CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`).
+// CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`). It fails when
+// options.Entry is no program that can be started (Pi's rejection when the worker base does not build: the server does not
+// start with it).
 func CreateWorkers(h host.Host, kind *contracts.HostKind, options WorkersOptions, ctx context.Context) (*Workers, error) {
+	if _, err := exec.LookPath(options.Entry); err != nil {
+		return nil, fmt.Errorf("workers: the worker entry cannot be started: %w", err)
+	}
 	component := newWorkers(options, ctx)
 	route, err := h.Route(kind, host.RouteOptions{
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
