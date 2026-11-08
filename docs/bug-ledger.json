@@ -1101,15 +1101,15 @@
     },
     {
       "id": "BF-083db0c",
-      "title": "A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a…",
-      "symptom": "A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a custom message renderer is called once, not twice, when a message is drawn.",
+      "title": "A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search",
+      "symptom": "A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search.",
       "rootCause": "The mcp helpers coding/extension uses (naming, server config validation) move to internal/mcpshared, which package mcp re-exports; the local $ref resolver tool search uses moves to internal/schemaref, which codemode wraps. A pig_strip_mcp build no longer links mcp and a pig_strip_codemode build no longer links codemode or wazero (,).",
       "rootCauseSource": "commit",
-      "userImpact": "Wrong display",
+      "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search, and a custom message renderer is called once, not twice, when a message is drawn.",
+      "releaseNote": "A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search.",
       "origin": "release note",
       "commits": [
         {
@@ -14008,15 +14008,16 @@
     },
     {
       "id": "BF-54660cf",
-      "title": "fix(tui): installing a Markdown transform on a custom message does not call its renderer again",
-      "symptom": "fix(tui): installing a Markdown transform on a custom message does not call its renderer again",
+      "title": "A custom message renderer is called once, not twice, when a message is drawn",
+      "symptom": "A custom message renderer is called once, not twice, when a message is drawn.",
       "rootCause": "SetMarkdownTransform rebuilt the whole component, so a custom renderer ran twice at construction; Pi's constructor renders once. Only the default body reads the transform.",
       "rootCauseSource": "commit",
       "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "A custom message renderer is called once, not twice, when a message is drawn.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "54660cf133",
