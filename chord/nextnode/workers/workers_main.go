@@ -79,6 +79,8 @@ type WorkerLoad struct {
 	Store        *plugins.StoreOptions
 	CloseTimeout *time.Duration
 	ReadyTimeout *time.Duration
+	// ReloadDrainTimeout is the NodeHost's `reloadDrainTimeout` (RuntimeLoad's). Nil: the host's default.
+	ReloadDrainTimeout *time.Duration
 }
 
 // BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
@@ -377,7 +379,7 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 	node, report, err := p.runtime.Load(plugins.RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
-		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout,
+		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout,
 	}, ctx)
 	if err != nil {
 		// A *plugins.PluginError comes with the loaded host (Pi's `host` is the caller's to stop): the worker ends instead.

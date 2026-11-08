@@ -71,6 +71,9 @@ type RuntimeLoad struct {
 	// attempt and a `get` may take until the object is live (60 s). Nil: the host's defaults.
 	CloseTimeout *time.Duration
 	ReadyTimeout *time.Duration
+	// ReloadDrainTimeout is the subprocess host's `reloadDrainTimeout` (host.HostOptions'): how long a reload's restart keeps an
+	// object's old attempt open for old work, at most CloseTimeout (5 s by default). Nil: the host's default.
+	ReloadDrainTimeout *time.Duration
 	// Compression makes the subprocess host compress as Pi's Node hosts do (`createHost({ compression: nodeCompression })`):
 	// the JSON parts above 16 KiB it originates are deflated, and the deflated parts it owns inflated in place. The Go
 	// host the link is attached to compresses its own parts when it is created with host.HostOptions.Compression
@@ -158,10 +161,12 @@ type loadRequest struct {
 	Peer      data.Principal    `json:"peer"`
 	Heartbeat *heartbeatWire    `json:"heartbeat,omitempty"`
 	// CloseTimeout and ReadyTimeout are milliseconds.
-	CloseTimeout *int64     `json:"closeTimeout,omitempty"`
-	ReadyTimeout *int64     `json:"readyTimeout,omitempty"`
-	Compression  bool       `json:"compression,omitempty"`
-	Store        *storeWire `json:"store,omitempty"`
+	CloseTimeout *int64 `json:"closeTimeout,omitempty"`
+	ReadyTimeout *int64 `json:"readyTimeout,omitempty"`
+	// ReloadDrainTimeout is milliseconds.
+	ReloadDrainTimeout *int64     `json:"reloadDrainTimeout,omitempty"`
+	Compression        bool       `json:"compression,omitempty"`
+	Store              *storeWire `json:"store,omitempty"`
 	callbacksWire
 }
 
@@ -307,6 +312,10 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 	if options.ReadyTimeout != nil {
 		ready := options.ReadyTimeout.Milliseconds()
 		request.ReadyTimeout = &ready
+	}
+	if options.ReloadDrainTimeout != nil {
+		drain := options.ReloadDrainTimeout.Milliseconds()
+		request.ReloadDrainTimeout = &drain
 	}
 	store, err := storeToWire(options.Store)
 	if err != nil {

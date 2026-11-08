@@ -44,7 +44,7 @@ import (
 //
 // Not ported yet (pending, no divergence): the web and terminal surfaces (`web`, `tui`: T11, nextnode/surfaces and nextnode/tui; until
 // they land AppOptions has no such field); `plugins.install` (Pi's `installPlugin`: T9, the plugins component has none, so App.Plugins
-// has no Install); the `principalAttributes` hook (T6 host spans: the Go host has none); `reloadDrainTimeout` (not a Go host option).
+// has no Install); the `principalAttributes` hook (T6 host spans: the Go host has none).
 
 // Server is the server's host kind: the kit's server host is Server().
 var Server = mustHostKind("server")
@@ -131,14 +131,18 @@ type AppLimits struct {
 	ImportEntries      int
 }
 
-// AppTimeouts are the hosts' timeouts (`HostOptions.closeTimeout`, `HostOptions.readyTimeout`): zero is the host's default.
+// AppTimeouts are the hosts' timeouts (`HostOptions.closeTimeout`, `HostOptions.readyTimeout`, `HostOptions.reloadDrainTimeout`):
+// zero is the host's default.
 type AppTimeouts struct {
 	Close time.Duration
 	Ready time.Duration
+	// ReloadDrain bounds how long a reload's restart keeps an object's old attempt open for old work.
+	ReloadDrain time.Duration
 }
 
-func (t AppTimeouts) close() *time.Duration { return optionalDuration(t.Close) }
-func (t AppTimeouts) ready() *time.Duration { return optionalDuration(t.Ready) }
+func (t AppTimeouts) close() *time.Duration       { return optionalDuration(t.Close) }
+func (t AppTimeouts) ready() *time.Duration       { return optionalDuration(t.Ready) }
+func (t AppTimeouts) reloadDrain() *time.Duration { return optionalDuration(t.ReloadDrain) }
 
 func optionalDuration(d time.Duration) *time.Duration {
 	if d == 0 {
@@ -180,7 +184,7 @@ type AppOptions struct {
 	Telemetry AppTelemetry
 	// Base is the app's base code beside what the kit knows (files or directories: its API modules, its start script), hashed at start.
 	Base []string
-	// Timeouts are the `closeTimeout` and `readyTimeout` of every host (the server's and each worker's).
+	// Timeouts are the `closeTimeout`, `readyTimeout` and `reloadDrainTimeout` of every host (the server's and each worker's).
 	Timeouts AppTimeouts
 	// Node is how the Node subprocesses that host the plugins are started.
 	Node    plugins.NodeOptions
@@ -216,6 +220,9 @@ func (k KitStart) json() *delta.JsonObject {
 	}
 	if k.Timeouts.Ready != 0 {
 		timeouts.Set("readyTimeout", float64(k.Timeouts.Ready/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	}
+	if k.Timeouts.ReloadDrain != 0 {
+		timeouts.Set("reloadDrainTimeout", float64(k.Timeouts.ReloadDrain/time.Millisecond))
 	}
 	object := delta.JsonObjectOf("dir", k.Dir, "facet", k.Facet, "principal", k.Principal, "server", k.Server, "files", files, "telemetry", k.Telemetry)
 	if k.Uploads != 0 {
@@ -254,6 +261,9 @@ func decodeKitStart(value delta.JsonValue) (KitStart, error) {
 		}
 		if n, ok := timeouts.Value("readyTimeout").(float64); ok {
 			kit.Timeouts.Ready = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+		}
+		if n, ok := timeouts.Value("reloadDrainTimeout").(float64); ok {
+			kit.Timeouts.ReloadDrain = time.Duration(n) * time.Millisecond
 		}
 	}
 	if kit.Dir == "" || kit.Facet == "" {
@@ -338,7 +348,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	sessions := CreateSessions(opened.cookieSecret, SessionLimits{MaxEphemeral: limits.EphemeralSessions})
 	hostOptions := host.HostOptions{
 		Address: nil, Principal: options.Principal.Server, Store: opened.store,
-		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(),
+		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(),
 		OnError: func(err host.HostError) { a.report(AppErrorHost, err) },
 	}
 	server := Server.Address(nil)
@@ -456,8 +466,8 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		return err
 	}
 	node, _, err := a.Plugins.Load(plugins.PluginsLoad{
-		Kind: "server", Modules: modules, Principal: options.Principal.Server, Peer: options.Principal.Server,
-		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), Telemetry: options.Telemetry,
+		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
+		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
 		Store: &plugins.StoreOptions{Path: pluginsStore},
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.info", Host: h, Contracts: []*contracts.Contract{AppInfo}},
