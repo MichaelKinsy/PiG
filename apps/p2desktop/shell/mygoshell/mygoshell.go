@@ -136,7 +136,7 @@ func (p *Platform) NewTray(spec shell.TraySpec) error {
 	opts := mygo.TrayOptions{
 		ID:             "main",
 		Icon:           spec.Icon,
-		IconIsTemplate: true,
+		IconIsTemplate: spec.Template,
 		ToolTip:        spec.ToolTip,
 	}
 	if len(spec.Menu) > 0 {
@@ -215,6 +215,8 @@ func (p *Platform) NewWindow(spec shell.WindowSpec) (shell.Window, error) {
 	origin.Store(spec.Origin)
 	allowed := func() string { return origin.Load().(string) }
 	sameOrigin := func(raw string) bool { return allowed() != "" && originOf(raw) == allowed() }
+	// The window says "PiG", not the page's title (the web UI's own title is for browser tabs).
+	page.OnPageTitleUpdated(func(e *mygo.TitleEvent) { e.PreventDefault() })
 	page.OnWillNavigate(func(e *mygo.NavigateEvent) {
 		if e.URL == "about:blank" || sameOrigin(e.URL) {
 			return

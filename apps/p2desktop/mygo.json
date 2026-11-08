@@ -1,6 +1,6 @@
 {
-  "name": "p2",
-  "slug": "p2",
+  "name": "PiG",
+  "slug": "pig-desktop",
   "identifier": "io.github.michaelkinsy.p2desktop",
   "version": "0.0.1",
   "copyright": "© Michael Kinsy",
@@ -11,9 +11,10 @@
   "icon": "resources/icon.png",
   "urlSchemes": ["pig"],
   "macos": {
+    "icon": "icons/AppIcon.icns",
     "minimumSystemVersion": "12.0",
     "infoPlist": {
-      "NSMicrophoneUsageDescription": "p2's voice mode uses the microphone."
+      "NSMicrophoneUsageDescription": "PiG voice mode uses the microphone."
     }
   },
   "linux": {

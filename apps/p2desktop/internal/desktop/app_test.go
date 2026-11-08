@@ -28,6 +28,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/status"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/web-shell"
 )
 
 func TestMain(m *testing.M) { p2test.Main(m) }
@@ -115,6 +116,16 @@ func TestLaunchShowsTheServerAndQuitsCleanly(t *testing.T) {
 	_ = resp.Body.Close()
 	if resp.StatusCode != 200 || !strings.Contains(string(body), `"name":"p2"`) {
 		t.Fatalf("/health: %d %s", resp.StatusCode, body)
+	}
+	// And serves p2's UI at the page the window shows.
+	page, err := http.Get(win.CurrentURL())
+	if err != nil {
+		t.Fatal(err)
+	}
+	html, _ := io.ReadAll(page.Body)
+	_ = page.Body.Close()
+	if page.StatusCode != 200 || !strings.Contains(string(html), "<title>") {
+		t.Fatalf("GET %s: %d %.200s", win.CurrentURL(), page.StatusCode, html)
 	}
 	// Binds the loopback interface only.
 	if conn, err := net.DialTimeout("tcp", net.JoinHostPort(outboundIP(), strconv.Itoa(r.port)), 300*time.Millisecond); err == nil {
