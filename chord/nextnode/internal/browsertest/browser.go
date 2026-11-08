@@ -457,6 +457,13 @@ func (b *Browser) Close() {
 	}
 	b.closed = true
 	b.mu.Unlock()
+	if b.socket == nil {
+		// Start failed before the connection was made: nothing to ask, and no reader to wait for.
+		_ = b.command.Process.Kill()
+		<-b.exited
+		_ = os.RemoveAll(b.profile)
+		return
+	}
 	ctx, cancel := context.WithTimeout(b.base, 10*time.Second)
 	_, _ = b.Call(ctx, "Browser.close", nil)
 	cancel()
