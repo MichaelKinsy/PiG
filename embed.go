@@ -38,6 +38,15 @@ func inflateChangelog() string {
 	return string(text)
 }
 
+// ChangelogReader streams the embedded changelog's inflated text, for a caller that needs only its head: it decodes no further than it is read.
+func ChangelogReader() io.Reader {
+	reader, err := gzip.NewReader(bytes.NewReader(changelogGzip))
+	if err != nil {
+		panic("pig: embedded CHANGELOG.md.gz: " + err.Error())
+	}
+	return reader
+}
+
 // Changelog returns the bundled CHANGELOG.md, inflated on each call and not cached. Read by internal/codingagent's
 // `/changelog` slash handler and the startup What's New.
 func Changelog() string { return inflateChangelog() }
