@@ -3,6 +3,7 @@ package app
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
@@ -131,7 +132,11 @@ func TestARolloutAcrossHostsKeepsTheViewOfAServerConsumerBoundWhileItsWorkerProv
 		settled := len(page.states("alpha"))
 		result := s.editAndApply(t, "counter", counterPlugin(t, counterCode{Code: "v2", Placement: "worker", Contract: "v2"}))
 		expectEqual(t, "failures", rolloutFailures(result), []string{})
-		page.waitState("alpha", "live")
+		// Pi's page reads the view after the rollout settled; here the summary's restart (its new request meets the old worker serving v1)
+		// shows a moment after the rollout returns, so the view is given that moment to leave `live` and then to come back to it.
+		// A view that never leaves live is a closed gap: the scenario then passes, which `expectFailure` reports.
+		_ = page.within(3*time.Second, func() bool { return page.stateKind("alpha") != "live" })
+		page.waitStateWithin("alpha", "live", 3*time.Second)
 		expectEqual(t, "code", page.result(page.call("alpha", "code", nil)), okResult("s1"))
 		expectEqual(t, "states", page.states("alpha")[settled:], []string{})
 	})
