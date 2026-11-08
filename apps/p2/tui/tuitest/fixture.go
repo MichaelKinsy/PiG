@@ -26,6 +26,8 @@ type Options struct {
 	Columns, Rows int
 	// Host adds to the test host options (Stubs, Worker, ...); Facets is ignored.
 	Host p2test.TestHostOptions
+	// Prepare sets the runtime's state before it starts (`runtime.connected = true`).
+	Prepare func(*tuiruntime.TuiRuntime)
 }
 
 // Fixture is the test host, terminal and runtime.
@@ -116,7 +118,7 @@ func New(t testing.TB, options Options) *Fixture {
 	f.Host = p2test.NewTestHost(t, hostOptions)
 	f.Terminal = vterm.New(columns, rows)
 	f.TUI = pitui.NewTuiAltScreen(f.Terminal, nil, t.TempDir())
-	f.start(f.Host.Host, nil)
+	f.start(f.Host.Host, options.Prepare)
 	return f
 }
 

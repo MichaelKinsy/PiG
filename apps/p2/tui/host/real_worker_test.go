@@ -34,7 +34,13 @@ var realPlugins = []string{"chat", "chat-mode", "conversations", "drafts", "envs
 // startReal is a launcher with the real surfaces on a real server that has one session (Pi's `startFixture` + `sessions.create`).
 func startReal(t *testing.T, options launcherOptions, server ...func(*hosts.ServerOptions)) *launcher {
 	t.Helper()
-	serverOptions := hosts.ServerOptions{Plugins: realPlugins}
+	return startRealWith(t, realPlugins, options, server...)
+}
+
+// startRealWith is startReal with the plugins the server and the client load.
+func startRealWith(t *testing.T, plugins []string, options launcherOptions, server ...func(*hosts.ServerOptions)) *launcher {
+	t.Helper()
+	serverOptions := hosts.ServerOptions{Plugins: plugins}
 	for _, adjust := range server {
 		adjust(&serverOptions)
 	}
@@ -46,7 +52,7 @@ func startReal(t *testing.T, options launcherOptions, server ...func(*hosts.Serv
 	if _, err := sessions.Call("create", delta.JsonObjectOf("cwd", fixture.Workspace), p2test.Background); err != nil {
 		t.Fatal(err)
 	}
-	selection, err := hosts.SelectPlugins(realPlugins)
+	selection, err := hosts.SelectPlugins(plugins)
 	if err != nil {
 		t.Fatal(err)
 	}
