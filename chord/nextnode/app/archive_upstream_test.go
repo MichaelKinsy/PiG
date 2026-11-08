@@ -210,3 +210,26 @@ func TestTheManifestIsWrittenAsJSONStringifyWritesIt(t *testing.T) {
 		t.Fatalf("manifest = %s, want %s", got, want)
 	}
 }
+
+// A host directory with a kit store (kit.sqlite: the Go kit's Files, beside the plugins' store.sqlite) round-trips both stores; Pi has
+// one store per host, so this is the Go kit's own addition.
+func TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore(t *testing.T) {
+	base := t.TempDir()
+	dir := hostDirectory(t, base)
+	if err := openStoreAt(t, filepath.Join(dir, "kit.sqlite")).Close(background); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(base, "out.tar")
+	if err := PackData(background, dir, archiveManifest, out); err != nil {
+		t.Fatal(err)
+	}
+	if err := UnpackData(background, out, filepath.Join(base, "copy"), func(ArchiveManifest) error { return nil }, ImportLimits{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := dirNames(t, filepath.Join(base, "copy")); !slices.Equal(got, []string{"files", "kit.sqlite", "store.sqlite"}) {
+		t.Fatalf("copy = %v", got)
+	}
+	if exportedStore(t, filepath.Join(base, "copy")) != exportedStore(t, dir) {
+		t.Fatal("the copied plugin store differs")
+	}
+}

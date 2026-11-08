@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -123,6 +124,12 @@ func (s *kitServer) close() {
 // scope, a socket or a timer left running. It polls for a few seconds (goroutines wind down after their close returns).
 func noKitGoroutines(t *testing.T) {
 	t.Helper()
+	noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.")
+}
+
+// noGoroutinesOf is noKitGoroutines for the packages whose stacks name any of markers.
+func noGoroutinesOf(t testing.TB, markers ...string) {
+	t.Helper()
 	deadline := time.NewTimer(10 * time.Second)
 	defer deadline.Stop()
 	tick := time.NewTicker(10 * time.Millisecond)
@@ -132,7 +139,7 @@ func noKitGoroutines(t *testing.T) {
 		buf = buf[:runtime.Stack(buf, true)]
 		var leaked []string
 		for _, stack := range strings.Split(string(buf), "\n\n") {
-			if (strings.Contains(stack, "chord/nextnode/app.") || strings.Contains(stack, "chord/nextnode/http.")) &&
+			if slices.ContainsFunc(markers, func(marker string) bool { return strings.Contains(stack, marker) }) &&
 				!strings.Contains(stack, "testing.tRunner") && !strings.Contains(stack, "runtime.Stack") {
 				leaked = append(leaked, stack)
 			}
