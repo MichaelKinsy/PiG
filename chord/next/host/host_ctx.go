@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -50,6 +51,20 @@ type Ctx interface {
 	// (`trace_failed`; a cancel keeps it ok) and is returned; with nothing recorded fn gets this ctx itself. A panic of fn
 	// is its error.
 	Trace(name string, attributes telemetry.SpanAttributes, fn func(ctx Ctx) (any, error)) (any, error)
+}
+
+// InSection runs work as one synchronous section of the host's loop, on the goroutine of a method handler that suspended:
+// the awaits of Pi's handler resume inside the loop, so code that reads the host's state after a wait (a transaction, a
+// blocking call) reads it here. ctx is the handler's ctx. Inline when the handler still runs in its admitting section.
+//
+// pig divergence (D430): the awaits of a handler's async remainder run from outside the host package.
+func InSection(ctx context.Context, work func()) error {
+	call, ok := ctx.(*callContext)
+	if !ok {
+		return errors.New("host.InSection: ctx is not a handler's ctx")
+	}
+	call.host.loop().Run(work)
+	return nil
 }
 
 // caller is who makes a call: the principal it acts as and its host's incarnation.

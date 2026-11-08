@@ -9,6 +9,7 @@ envs
 history
 login
 logs
+mcp
 ports
 powershell
 prompt

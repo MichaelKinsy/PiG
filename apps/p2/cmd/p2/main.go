@@ -31,6 +31,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/locations"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/logs"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/mcp"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/ports"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/powershell"
