@@ -1,0 +1,3 @@
+# Web facets in the embedded bundle whose Pi plugin has no Go plugin yet (never registered, so the server does not look ported):
+# name, then why. cmd/p2's TestBundleHoldsTheLinkedPluginsWebFacets reads this file; web/plugins.txt lists them with the linked ones.
+coding-tools worker facet pending (lane B worker.go: Durable read/write/edit/bash tools, preamble and cwd prompt sections); D610
