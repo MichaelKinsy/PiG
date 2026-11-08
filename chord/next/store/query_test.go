@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/test/next/store/query.test.ts: queries (slice 6a §7): `where`, `orderBy` and limits over a
+// Ports packages/chord/test/store/query.test.ts: queries (slice 6a §7): `where`, `orderBy` and limits over a
 // table, and cursors paging through them.
 //
 // Go forms: `NewQuery` is Pi's `query`; Where and OrderBy keep their first error in the query (`Err`), where Pi

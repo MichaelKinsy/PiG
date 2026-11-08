@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/bench/calls.ts: the paths slice 8 touched under every object (no registries involved): a
+// Ports packages/chord/test/bench/calls.ts: the paths slice 8 touched under every object (no registries involved): a
 // local method call (its ctx), a commit through a watched derive (the batch, a derive's compute) and activation churn (an
 // object with params made, live and ended per get: its attempt's declarations). Pi reports the median µs per operation
 // over bursts and the heap allocated per operation; the Go form is `testing.B`: ns/op and allocs/op (`b.ReportAllocs`)

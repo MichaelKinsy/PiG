@@ -12,7 +12,7 @@ import (
 )
 
 // pi: packages/chord/src/next/link/values.ts
-// Ports packages/chord/test/next/link/values.test.ts.
+// Ports packages/chord/test/link/values.test.ts.
 
 func TestPartsAreJSONText(t *testing.T) {
 	t.Run("are JSON text at their origin, parsed from text or from UTF-8 bytes where they are owned", func(t *testing.T) {

@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next/host/ctx.test.ts. The cases that build a host (`loaded`, `linked`) run on a real host: a
+// Ports packages/chord/test/host/ctx.test.ts. The cases that build a host (`loaded`, `linked`) run on a real host: a
 // handler gets its `ctx` as the *callContext the host made for the call (every method's context.Context is a Ctx). The
 // `linked abort signals` cases need no host.
 

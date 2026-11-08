@@ -26,7 +26,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Ports packages/chord/test/next-node/plugins/watcher.test.ts. Tests of the watcher (slice 7c §5, slice 12 §4): dirty marks
+// Ports packages/chord/test/node/plugins/watcher.test.ts. Tests of the watcher (slice 7c §5, slice 12 §4): dirty marks
 // from the files facets used and from plugin directories, `install`, `set`, `base`, a change during a build keeping its mark,
 // `node_modules` and `.git` ignored, real file events, the marks as a JSON watchable, and single-file plugins' files.
 

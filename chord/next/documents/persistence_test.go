@@ -1,6 +1,6 @@
 package documents
 
-// Ports packages/chord/test/next/documents/persistence.test.ts
+// Ports packages/chord/test/documents/persistence.test.ts
 // pi: packages/chord/src/next/documents/persistence.ts
 //
 // Persisted documents' store side (slice 6a §8, §10): loads with the version and fingerprint checks and `migrate`,

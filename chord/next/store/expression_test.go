@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Ports packages/chord/test/next/store/expression.test.ts: the table expression language: the builders and their
+// Ports packages/chord/test/store/expression.test.ts: the table expression language: the builders and their
 // compilation into the data vocabulary.
 //
 // Go forms: a JavaScript `undefined` operand or value is `Undefined`, `null` is nil; a set is a SetOf; a compiled

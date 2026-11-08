@@ -16,7 +16,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/unbound.ts
-// Ports packages/chord/test/next/host/unbound.test.ts: the index (`describe("the index")`). The cases of "references waiting
+// Ports packages/chord/test/host/unbound.test.ts: the index (`describe("the index")`). The cases of "references waiting
 // in the index" and "holds waiting in the index" build a whole host (createHost, host.hold, memoryLinkPair, a RawPeer) and
 // belong to the host core and the remote lane.
 

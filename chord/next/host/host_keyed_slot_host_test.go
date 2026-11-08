@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Host halves of packages/chord/test/next/documents/keyed-slot.test.ts (D4 rows): the cases whose assertions are the host's
+// Host halves of packages/chord/test/documents/keyed-slot.test.ts (D4 rows): the cases whose assertions are the host's
 // (`self.state(...).at` outside the factory, the `object_failed` reports and the failed state of the reference that a
 // failing keyed document causes). The documents halves are in chord/next/documents/keyed_slot_test.go. They run on a real
 // host through restartable and storeRestartable, as Pi's `restartable` and `storeRestartable`.

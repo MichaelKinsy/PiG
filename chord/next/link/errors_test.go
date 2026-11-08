@@ -11,7 +11,7 @@ import (
 )
 
 // pi: packages/chord/src/next/link/errors.ts
-// Ports packages/chord/test/next/link/errors.test.ts. `wireError("plain")` (a thrown non-Error) has no Go form: Go
+// Ports packages/chord/test/link/errors.test.ts. `wireError("plain")` (a thrown non-Error) has no Go form: Go
 // errors are error values; the plugin code `internal` case is covered by a plain error.
 
 func TestErrorsOnTheWire(t *testing.T) {

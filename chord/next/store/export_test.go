@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/store/export.test.ts: tests of `store.Export(ctx)` (slice 6a §13, rule 26): the
+// Ports packages/chord/test/store/export.test.ts: tests of `store.Export(ctx)` (slice 6a §13, rule 26): the
 // parts in archive order, lossless; the commit queue held from the first `Next` until the export ends, is closed or
 // aborts (also while the consumer is suspended); GC of closed and aborted iterators.
 //

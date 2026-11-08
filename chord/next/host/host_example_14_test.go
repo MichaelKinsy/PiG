@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/14-flow-control.ts
+// pi: packages/chord/test/examples/14-flow-control.ts
 
 import (
 	"context"

@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/host/native.test.ts for the part that needs no host. Every case of upstream's file runs a
+// Ports packages/chord/test/host/native.test.ts for the part that needs no host. Every case of upstream's file runs a
 // host (loaded, host.get/hold/close, `self.open` in a served factory); the natives of an attempt, its closing in reverse
 // order, the host's close collecting throws, and the object's context belong to the attempt (attempt.ts) and the host core.
 // These are own tests of nativeHandle, within and drained on a fake loop, with the behavior each upstream case asserts of
@@ -527,7 +527,7 @@ func (r *seenList[T]) len() int { return len(r.all()) }
 
 // Mirrors native.test.ts "opening › opens one after another in declaration order; a later opener reads an earlier handle".
 //
-// Pi: packages/chord/test/next/host/native.test.ts:12 (opens one after another in declaration order; a later opener reads an earlier handle)
+// Pi: packages/chord/test/host/native.test.ts:12 (opens one after another in declaration order; a later opener reads an earlier handle)
 func TestHostNativesOpenOneAfterAnotherInDeclarationOrderALaterOpenerReadsAnEarlierHandle(t *testing.T) {
 	var events seenList[string]
 	first := make(chan string)
@@ -585,7 +585,7 @@ func TestHostNativesOpenNothingForAnObjectEndedBeforeItsFirstOpenStarted(t *test
 
 // Mirrors "opening › throws not_ready before its open resolved and released once its close started".
 //
-// Pi: packages/chord/test/next/host/native.test.ts:55 (throws not_ready before its open resolved and released once its close started)
+// Pi: packages/chord/test/host/native.test.ts:55 (throws not_ready before its open resolved and released once its close started)
 func TestHostNativesThrowNotReadyBeforeTheirOpenResolvedAndReleasedOnceTheirCloseStarted(t *testing.T) {
 	var reads seenList[any]
 	read := func(native Native[any]) {

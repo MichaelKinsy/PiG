@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/test/next/host/activity.test.ts for the part that needs no host. Every case of upstream's file runs
+// Ports packages/chord/test/host/activity.test.ts for the part that needs no host. Every case of upstream's file runs
 // on a host (createHost, linked server and client hosts, serveNotes, defineFacet, host.get/hold): they belong to the host
 // core and the remote lane. These are own tests of `activity` on a batch and a fake loop with the behavior the cases that
 // are about the source itself assert, each naming its case: the one publication per microtask turn, the newest counts for a

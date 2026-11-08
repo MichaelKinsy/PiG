@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/13-relay.ts
+// pi: packages/chord/test/examples/13-relay.ts
 
 import (
 	"context"

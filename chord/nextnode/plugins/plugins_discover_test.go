@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Ports packages/chord/test/next-node/plugins/discover.test.ts. Tests of discovery (slice 7c §1, slice 12 §1, §2, §4): names
+// Ports packages/chord/test/node/plugins/discover.test.ts. Tests of discovery (slice 7c §1, slice 12 §1, §2, §4): names
 // from package.json, the first root winning a duplicate, directories reported (no or an invalid package.json, an invalid
 // name, two files of one kind), contracts-only plugins, symlinks, required roots, checkouts of several plugins, packages'
 // chord.plugins manifests, single-file plugins.

@@ -1746,63 +1746,63 @@
    "new": "ORDER BY started_ms DESC, id\", string(encoded))"
   }
  ],
- "packages/chord/test/next/examples/01-objects.ts": [
+ "packages/chord/test/examples/01-objects.ts": [
   {
    "file": "chord/next/data/args.go",
    "old": "if err := Check(validator, raw, ReasonArgs, ctx); err != nil {",
    "new": "if err := Check(validator, raw, ReasonParams, ctx); err != nil {"
   }
  ],
- "packages/chord/test/next/examples/02-documents.ts": [
+ "packages/chord/test/examples/02-documents.ts": [
   {
    "file": "chord/next/documents/transaction.go",
    "old": "\te.draft = nil\n\te.retire = true",
    "new": "\te.draft = nil\n\te.retire = false"
   }
  ],
- "packages/chord/test/next/examples/03-derives.ts": [
+ "packages/chord/test/examples/03-derives.ts": [
   {
    "file": "chord/next/state/derive.go",
    "old": "if pointer == nil {",
    "new": "if pointer != nil {"
   }
  ],
- "packages/chord/test/next/examples/04-watches.ts": [
+ "packages/chord/test/examples/04-watches.ts": [
   {
    "file": "chord/next/state/derive.go",
    "old": "if beforeKind != framedNoValue {",
    "new": "if beforeKind == framedNoValue {"
   }
  ],
- "packages/chord/test/next/examples/05-errors.ts": [
+ "packages/chord/test/examples/05-errors.ts": [
   {
    "file": "chord/next/host/host_dependencies.go",
    "old": "return (err.Code == data.CodeInvalid && err.Reason == data.ReasonCycle) || err.Code == data.CodeForbidden",
    "new": "return err.Code == data.CodeForbidden"
   }
  ],
- "packages/chord/test/next/examples/06-natives.ts": [
+ "packages/chord/test/examples/06-natives.ts": [
   {
    "file": "chord/next/host/host_native.go",
    "old": "if state.kind == nativeUnopened || state.kind == nativeOpening {",
    "new": "if state.kind != nativeUnopened || state.kind == nativeOpening {"
   }
  ],
- "packages/chord/test/next/examples/07-failures.ts": [
+ "packages/chord/test/examples/07-failures.ts": [
   {
    "file": "chord/next/host/host_backoff.go",
    "old": "const firstDelay = time.Second",
    "new": "const firstDelay = 6 * time.Second"
   }
  ],
- "packages/chord/test/next/examples/08-remote.ts": [
+ "packages/chord/test/examples/08-remote.ts": [
   {
    "file": "chord/next/host/remote_replica.go",
    "old": "\tr.state = replicaState{kind: replicaValue, value: value}\n\tr.ops = ops",
    "new": "\tr.state = replicaState{kind: replicaValue, value: r.state.value}\n\tr.ops = ops"
   }
  ],
- "packages/chord/test/next/examples/09-calls.ts": [
+ "packages/chord/test/examples/09-calls.ts": [
   {
    "file": "chord/next/link/errors.go",
    "old": "if kind != \"plugin\" {",
@@ -1814,21 +1814,21 @@
    "new": "if node.Len() == 1 || !isNumber || index < 0 || index != math.Trunc(index) || index >= float64(len(segments)) {"
   }
  ],
- "packages/chord/test/next/examples/10-drops.ts": [
+ "packages/chord/test/examples/10-drops.ts": [
   {
    "file": "chord/next/host/host_reference.go",
    "old": "b.parked.flush(b.send, func() bool { return b.refState().Kind == RefStateLive })",
    "new": "b.parked.flush(b.send, func() bool { return b.refState().Kind != RefStateLive })"
   }
  ],
- "packages/chord/test/next/examples/11-linger-and-retry.ts": [
+ "packages/chord/test/examples/11-linger-and-retry.ts": [
   {
    "file": "chord/next/host/host_object.go",
    "old": "if kind != objectLive || o.served.linger == 0 {",
    "new": "if kind != objectLive || true {"
   }
  ],
- "packages/chord/test/next/examples/12-routes.ts": [
+ "packages/chord/test/examples/12-routes.ts": [
   {
    "file": "chord/next/host/host_ctx.go",
    "old": "if c.settling == nil {",
@@ -1840,7 +1840,7 @@
    "new": "if acquireErr == nil {"
   }
  ],
- "packages/chord/test/next/examples/13-relay.ts": [
+ "packages/chord/test/examples/13-relay.ts": [
   {
    "file": "chord/next/link/websocket.go",
    "old": "if socket.ReadyState() == socketConnecting {",
@@ -1852,14 +1852,14 @@
    "new": "if err == nil {"
   }
  ],
- "packages/chord/test/next/examples/14-flow-control.ts": [
+ "packages/chord/test/examples/14-flow-control.ts": [
   {
    "file": "chord/next/host/remote_hold.go",
    "old": "if member.pending.Size() == 0 {",
    "new": "if member.pending.Size() != 0 {"
   }
  ],
- "packages/chord/test/next/examples/15-revocation.ts": [
+ "packages/chord/test/examples/15-revocation.ts": [
   {
    "file": "chord/next/host/host_host.go",
    "old": "if each.role == linkRoleRoute {",
@@ -1871,28 +1871,28 @@
    "new": "if l.role != linkRoleParent {"
   }
  ],
- "packages/chord/test/next/examples/16-presence-and-activity.ts": [
+ "packages/chord/test/examples/16-presence-and-activity.ts": [
   {
    "file": "chord/next/host/host_activity.go",
    "old": "a.counts.Calls += by",
    "new": "a.counts.Calls -= by"
   }
  ],
- "packages/chord/test/next/examples/17-limits-and-compression.ts": [
+ "packages/chord/test/examples/17-limits-and-compression.ts": [
   {
    "file": "chord/next/link/part.go",
    "old": "if inflated == nil {",
    "new": "if inflated != nil {"
   }
  ],
- "packages/chord/test/next/examples/18-routines.ts": [
+ "packages/chord/test/examples/18-routines.ts": [
   {
    "file": "chord/next/host/host_routines.go",
    "old": "if start.Kind == state.StartValue {",
    "new": "if start.Kind != state.StartValue {"
   }
  ],
- "packages/chord/test/next/examples/19-jobs.ts": [
+ "packages/chord/test/examples/19-jobs.ts": [
   {
    "file": "chord/next/host/jobs_job.go",
    "old": "if refused = current.state != invocationRunning; refused {",
@@ -1904,77 +1904,77 @@
    "new": "if stored == nil {"
   }
  ],
- "packages/chord/test/next/examples/20-tables.ts": [
+ "packages/chord/test/examples/20-tables.ts": [
   {
    "file": "chord/next/store/query.go",
    "old": "if query.direction != \"\" && query.direction != direction {",
    "new": "if query.direction == \"\" && query.direction != direction {"
   }
  ],
- "packages/chord/test/next/examples/21-persisted-documents.ts": [
+ "packages/chord/test/examples/21-persisted-documents.ts": [
   {
    "file": "chord/next/store/engine.go",
    "old": "if changed != 1 {",
    "new": "if changed == 1 {"
   }
  ],
- "packages/chord/test/next/examples/22-migrations.ts": [
+ "packages/chord/test/examples/22-migrations.ts": [
   {
    "file": "chord/next/store/table_evolve.go",
    "old": "if err := e.assertBefore(\"rename\"); err != nil {",
    "new": "if err := e.assertBefore(\"rename\"); err == nil {"
   }
  ],
- "packages/chord/test/next/examples/23-keyed-watches.ts": [
+ "packages/chord/test/examples/23-keyed-watches.ts": [
   {
    "file": "chord/next/documents/address_source.go",
    "old": "source.retired = true",
    "new": "source.retired = false"
   }
  ],
- "packages/chord/test/next/examples/24-keyed-members.ts": [
+ "packages/chord/test/examples/24-keyed-members.ts": [
   {
    "file": "chord/next/host/host_reference_keys.go",
    "old": "for first := true; wait != nil; first = false {",
    "new": "for first := true; wait != nil && !first; first = false {"
   }
  ],
- "packages/chord/test/next/examples/25-export-import.ts": [
+ "packages/chord/test/examples/25-export-import.ts": [
   {
    "file": "chord/next/store/import.go",
    "old": "if content.Kind == \"base\" {",
    "new": "if content.Kind != \"base\" {"
   }
  ],
- "packages/chord/test/next/examples/28-persisted-jobs.ts": [
+ "packages/chord/test/examples/28-persisted-jobs.ts": [
   {
    "file": "chord/next/host/jobs_run_states.go",
    "old": "if each == nil || !found || tracker == nil {",
    "new": "if each != nil || !found || tracker == nil {"
   }
  ],
- "packages/chord/test/next/examples/29-registries.ts": [
+ "packages/chord/test/examples/29-registries.ts": [
   {
    "file": "chord/next/registries/registry.go",
    "old": "if provider.Compose != nil {",
    "new": "if provider.Compose == nil {"
   }
  ],
- "packages/chord/test/next/examples/30-host-root.ts": [
+ "packages/chord/test/examples/30-host-root.ts": [
   {
    "file": "chord/next/host/host_root.go",
    "old": "if ctx.Err() != nil {",
    "new": "if ctx.Err() == nil {"
   }
  ],
- "packages/chord/test/next/examples/31-parked-dependencies.ts": [
+ "packages/chord/test/examples/31-parked-dependencies.ts": [
   {
    "file": "chord/next/host/host_dependencies.go",
    "old": "shown = firstFailed",
    "new": "shown = refLoading"
   }
  ],
- "packages/chord/test/next/examples/32-startup.ts": [
+ "packages/chord/test/examples/32-startup.ts": [
   {
    "file": "chord/next/host/remote_remote_object.go",
    "old": "func (*remoteObject) blocksFirstPass() bool { return false }",

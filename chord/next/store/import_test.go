@@ -19,7 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/store/import.test.ts: tests of `ImportStore` (slice 6a §13, rules 12, 24, 25): round
+// Ports packages/chord/test/store/import.test.ts: tests of `ImportStore` (slice 6a §13, rules 12, 24, 25): round
 // trips (old row versions, a migrating table, uncheckpointed deltas), the store it returns, every refusal of the
 // archive's order and content, the rollback, and an input that stalls cancelled by `ctx`.
 

@@ -10,7 +10,7 @@ import (
 )
 
 // pi: packages/chord/src/next/contracts/snapshot.ts
-// Ports packages/chord/test/next/contracts/snapshot.test.ts.
+// Ports packages/chord/test/contracts/snapshot.test.ts.
 //
 // Designed out (no Go input): the refusal of a non-enumerable key ("non-enumerable key (a TypeBox refinement)": Go has no
 // non-enumerable property, a Schema holds its keys as data and its `Optional` flag is no key); symbol keys and

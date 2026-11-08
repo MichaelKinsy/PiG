@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/test/next/bench/plugins.ts: the benchmark of the plugins component (slice 7c section 7, slice 12): a
+// Ports packages/chord/test/bench/plugins.ts: the benchmark of the plugins component (slice 7c section 7, slice 12): a
 // cold build of a 20-plugin set (one worker facet each, its own files, a copied contract, the app's API and kinds checked), a
 // rebuild of one facet after an edit, the evaluation of a facet, and the heap after 100 reloads of one plugin on a host (old
 // facets collected). Upstream reports medians over 7 runs by hand; Go's `testing.B` repeats and reports ns/op, and the other

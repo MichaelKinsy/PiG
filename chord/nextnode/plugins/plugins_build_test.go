@@ -29,7 +29,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Ports packages/chord/test/next-node/plugins/build.test.ts, which runs the real esbuild build, against BuildFacet on
+// Ports packages/chord/test/node/plugins/build.test.ts, which runs the real esbuild build, against BuildFacet on
 // esbuild's Go API: every row of the import table, failures as results, source maps relative to the plugin and digests
 // stable across two checkout paths, inputs hashed as esbuild read them.
 

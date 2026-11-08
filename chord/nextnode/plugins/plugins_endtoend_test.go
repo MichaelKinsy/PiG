@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next-node/plugins/plugins.test.ts › "end to end: a server and a worker": plugin directories
+// Ports packages/chord/test/node/plugins/plugins.test.ts › "end to end: a server and a worker": plugin directories
 // (the fixtures `contracts` and `notes`, Pi's own) loaded on a server and a worker, an edit rolled out (server, then worker),
 // and a broken edit kept old on both.
 //

@@ -15,7 +15,7 @@ import (
 
 // A keyed state member is a contracts.KeyedWatchable: what a factory puts in Implementation.Keyed (ExposeKeyed of a keyed
 // document handle). In Pi the keyed handle is a KeyedWatchable by shape, and the cases of
-// packages/chord/test/next/documents/keyed-slot.test.ts call `get`, `watch` and `at` on it; each test below runs one of
+// packages/chord/test/documents/keyed-slot.test.ts call `get`, `watch` and `at` on it; each test below runs one of
 // those cases with those calls made through a contracts.KeyedWatchable value (its changes and retirements through the
 // handle, as Pi does), so they exercise the interface's methods of the host that implements it.
 
@@ -41,7 +41,7 @@ func watchFrame(value any, ops []any, retired bool) any {
 }
 
 // TestKeyedWatchableGetIsTheDocumentAtKeyNotFoundWhenAbsent runs the get of `it("get and keys take a context; keys come in
-// code point order")` of packages/chord/test/next/documents/keyed-slot.test.ts:100 (`memos.get("a", context)` at
+// code point order")` of packages/chord/test/documents/keyed-slot.test.ts:100 (`memos.get("a", context)` at
 // keyed-slot.test.ts:113 and `memos.get("z", context)` at keyed-slot.test.ts:114) through KeyedWatchable.Get; the keys
 // come from the handle.
 func TestKeyedWatchableGetIsTheDocumentAtKeyNotFoundWhenAbsent(t *testing.T) {
@@ -81,7 +81,7 @@ func TestKeyedWatchableGetIsTheDocumentAtKeyNotFoundWhenAbsent(t *testing.T) {
 
 // TestKeyedWatchableWatchIsNilWhenAbsentItFollowsTheAddressThroughARetirementAndARecreation runs `it("watch(key) is
 // undefined when absent; it follows the address through a retirement and a recreation")` of
-// packages/chord/test/next/documents/keyed-slot.test.ts:235 (`memos.watch("a", context)` at keyed-slot.test.ts:240 and
+// packages/chord/test/documents/keyed-slot.test.ts:235 (`memos.watch("a", context)` at keyed-slot.test.ts:240 and
 // :248) through KeyedWatchable.Watch.
 func TestKeyedWatchableWatchIsNilWhenAbsentItFollowsTheAddressThroughARetirementAndARecreation(t *testing.T) {
 	memo := keyedDefinition(t, "notes.memo", 1, false, keyedTitleSchema, nil)
@@ -140,7 +140,7 @@ func TestKeyedWatchableWatchIsNilWhenAbsentItFollowsTheAddressThroughARetirement
 
 // TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag runs `it("is initial()
 // while absent, a state member, derive and on source; retirement arrives with the flag")` of
-// packages/chord/test/next/documents/keyed-slot.test.ts:309 (`memos.at("a")` at keyed-slot.test.ts:316, in the factory)
+// packages/chord/test/documents/keyed-slot.test.ts:309 (`memos.at("a")` at keyed-slot.test.ts:316, in the factory)
 // through KeyedWatchable.At.
 func TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag(t *testing.T) {
 	memo := keyedDefinition(t, "notes.memo", 1, false, keyedTitleSchema, nil)

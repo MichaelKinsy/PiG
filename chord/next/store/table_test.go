@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/test/next/store/table.test.ts: `defineTable` (slice 6a §5): what a declaration materializes,
+// Ports packages/chord/test/store/table.test.ts: `defineTable` (slice 6a §5): what a declaration materializes,
 // the checks it makes, and its fingerprint.
 //
 // Also the helpers of the query lane's tests (table, expression, evaluate, query, history, evolve and migration
