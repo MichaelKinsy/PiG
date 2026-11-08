@@ -10,11 +10,14 @@ var __rewriteRelativeImportExtension = (this && this.__rewriteRelativeImportExte
  * Loads an OAuth flow module through a variable specifier so bundlers cannot
  * follow the import into Node-only flow code (`node:http` callback servers,
  * `node:crypto` PKCE). The `.ts`/`.js` rewrite keeps the trick working from
- * both source and built output.
+ * both source and built output. The specifier is resolved against this
+ * module's URL, not left relative: a bundler inlining this file (Chord's
+ * worker base) keeps the variable import, which would otherwise resolve
+ * against the bundle's location.
  */
 const importOAuthModule = (specifier) => {
     const runtimeSpecifier = import.meta.url.endsWith(".js") ? specifier.replace(/\.ts$/, ".js") : specifier;
-    return import(__rewriteRelativeImportExtension(runtimeSpecifier));
+    return import(__rewriteRelativeImportExtension(new URL(runtimeSpecifier, import.meta.url).href));
 };
 let bundledLoaders;
 /** Registers statically bundled OAuth flows for standalone Bun binaries. */
