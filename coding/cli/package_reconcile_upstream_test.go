@@ -124,7 +124,8 @@ func TestNpmUpdateVersionReconciliationUpstream(t *testing.T) {
 			script := filepath.Join(t.TempDir(), "npm.mjs")
 			t.Setenv("PIG_TEST_NPM_LOG", log)
 			t.Setenv("PIG_TEST_NPM_VIEW", tc.response)
-			body := `import fs from 'node:fs'; const args=process.argv.slice(2); fs.appendFileSync(process.env.PIG_TEST_NPM_LOG,JSON.stringify(args)+'\n'); if(args[0]==='view')console.log(process.env.PIG_TEST_NPM_VIEW); else if(args[0]!=='install')throw new Error('unexpected command');`
+			// Like Pi's mocked install of this case, an install leaves version 1.2.0 behind (PIG_TEST_NPM_INSTALLED_MANIFEST).
+			body := `import fs from 'node:fs'; const args=process.argv.slice(2); fs.appendFileSync(process.env.PIG_TEST_NPM_LOG,JSON.stringify(args)+'\n'); if(args[0]==='view')console.log(process.env.PIG_TEST_NPM_VIEW); else if(args[0]==='install')fs.writeFileSync(process.env.PIG_TEST_NPM_INSTALLED_MANIFEST,JSON.stringify({name:'example',version:'1.2.0'})); else throw new Error('unexpected command');`
 			if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -143,8 +144,36 @@ func TestNpmUpdateVersionReconciliationUpstream(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(installed, "package.json"), content, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := packageManagerFor(cwd, sm, nil).Update("npm:example"); err != nil {
+			t.Setenv("PIG_TEST_NPM_INSTALLED_MANIFEST", filepath.Join(installed, "package.json"))
+			var events []packagemanager.ProgressEvent
+			if err := packageManagerFor(cwd, sm, func(event packagemanager.ProgressEvent) { events = append(events, event) }).Update("npm:example"); err != nil {
 				t.Fatal(err)
+			}
+			// Pi 342514bdf (#11707): a changed package is a separate result event, so each start still has exactly one complete; a package that did not change reports none.
+			type progressRow struct{ kind, source, message string }
+			var gotEvents []progressRow
+			for _, event := range events {
+				row := progressRow{event.Type, event.Source, ""}
+				if event.Message != nil {
+					row.message = *event.Message
+				}
+				gotEvents = append(gotEvents, row)
+			}
+			if tc.install {
+				wantEvents := []progressRow{
+					{"start", tc.source, "Updating " + tc.source + "..."},
+					{"complete", tc.source, ""},
+					{"result", tc.source, tc.source + " (project) 1.0.0 -> 1.2.0"},
+				}
+				if !reflect.DeepEqual(gotEvents, wantEvents) {
+					t.Fatalf("progress events=%+v, want %+v", gotEvents, wantEvents)
+				}
+			} else {
+				for _, row := range gotEvents {
+					if row.kind == "result" {
+						t.Fatalf("an unchanged package reported a result: %+v", gotEvents)
+					}
+				}
 			}
 			data, err := os.ReadFile(log)
 			if err != nil {
