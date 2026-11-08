@@ -642,7 +642,7 @@ func compactionSettings(settings durable.CompactionSettings) (durable.Compaction
 	stored.ModelOverrides = durable.NewCompactionOverrides()
 	for key, override := range settings.ModelOverrides.All() {
 		var fields durable.CompactionPolicyOverride
-		if fields.Enabled, fields.ReserveTokens, fields.KeepRecentTokens, fields.BackgroundTokens, err = compactionFields("compaction.modelOverrides", override.Enabled, override.ReserveTokens, override.KeepRecentTokens, override.BackgroundTokens); err != nil {
+		if fields.Enabled, fields.ReserveTokens, fields.KeepRecentTokens, fields.BackgroundTokens, err = compactionFields("compaction", override.Enabled, override.ReserveTokens, override.KeepRecentTokens, override.BackgroundTokens); err != nil {
 			return stored, err
 		}
 		stored.ModelOverrides.Set(key, fields)
@@ -651,7 +651,7 @@ func compactionSettings(settings durable.CompactionSettings) (durable.Compaction
 }
 
 // compactionFields is agent.ts compactionFields: the set fields of one policy; it fails for a token count that is not an integer 0
-// or more.
+// or more. A model override's error names the same `compaction.<field>` as Pi's (agent.ts:189).
 func compactionFields(scope string, enabled *bool, reserve, keep, background *int) (*bool, *int, *int, *int, error) {
 	for _, field := range []struct {
 		name  string

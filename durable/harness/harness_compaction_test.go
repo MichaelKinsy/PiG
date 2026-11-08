@@ -3294,6 +3294,8 @@ func TestPerConversationCompactionSettings(t *testing.T) {
 		if got := stored(); got != expected {
 			t.Fatalf("stored = %s, want %s", got, expected)
 		}
+		// Pi's twin gives 1.5, which the *int API cannot express; -1 is the other non-integer-0-or-more input (a deviation
+		// noted in the test mapping).
 		for _, bad := range []durable.CompactionSettings{
 			{ReserveTokens: new(-1)},
 			{ModelOverrides: durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: "faux/faux-1", Override: durable.CompactionPolicyOverride{BackgroundTokens: new(-1)}})},
