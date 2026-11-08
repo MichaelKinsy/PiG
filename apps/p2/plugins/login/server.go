@@ -124,11 +124,12 @@ func serveLoginService(holders state.SourceHandle) host.LocalFactory {
 		return contracts.Implementation{Members: contracts.VariantImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"login": member("login"), "owner": member("owner")},
 			Methods: map[string]contracts.MethodFunction{
-				"start": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+				"start": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					current, err := resources()
 					if err != nil {
 						return nil, err
 					}
+					chordctx.Suspend(ctx) // the state's publications are serialized off the loop (Logins.publish)
 					remote, _ := objectOf(args).Value("remote").(bool)
 					id, err := logins().Start(current, text(args, "owner"), text(args, "providerId"), ai.AuthType(text(args, "authType")), remote)
 					if err != nil {
@@ -136,13 +137,16 @@ func serveLoginService(holders state.SourceHandle) host.LocalFactory {
 					}
 					return delta.JsonObjectOf("attemptId", id), nil
 				},
-				"answer": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+				"answer": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					chordctx.Suspend(ctx)
 					return nil, logins().Answer(text(args, "owner"), text(args, "attemptId"), text(args, "promptId"), text(args, "value"))
 				},
-				"cancel": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+				"cancel": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					chordctx.Suspend(ctx)
 					return nil, logins().Cancel(text(args, "owner"), text(args, "attemptId"))
 				},
-				"dismiss": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+				"dismiss": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					chordctx.Suspend(ctx)
 					logins().Dismiss(text(args, "owner"), text(args, "attemptId"))
 					return nil, nil
 				},
