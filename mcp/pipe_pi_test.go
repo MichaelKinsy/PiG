@@ -159,6 +159,7 @@ func wantList(t *testing.T, what string, got, want []string) {
 	}
 }
 
+// Pi packages/mcp/test/pipe.test.ts:86
 func TestPipeTransportJoinsMessagesSplitAcrossChunksAndSplitsSeveralMessagesInOneChunk(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{})
 	first, second, third := pingJSON("1"), pingJSON("2"), pingJSON("3")
@@ -169,6 +170,7 @@ func TestPipeTransportJoinsMessagesSplitAcrossChunksAndSplitsSeveralMessagesInOn
 	wantList(t, "errors", program.errorList(), nil)
 }
 
+// Pi packages/mcp/test/pipe.test.ts:96
 func TestPipeTransportStripsATrailingCarriageReturnAndSkipsBlankLines(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{})
 	program.stdout("\n\r\n   \n" + pingJSON("1") + "\r\n\n")
@@ -176,6 +178,7 @@ func TestPipeTransportStripsATrailingCarriageReturnAndSkipsBlankLines(t *testing
 	wantList(t, "errors", program.errorList(), nil)
 }
 
+// Pi packages/mcp/test/pipe.test.ts:103
 func TestPipeTransportReportsInvalidMessagesAndKeepsReading(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{})
 	program.stdout("not json\n{\"jsonrpc\":\"1.0\"}\n" + pingJSON("1") + "\n")
@@ -185,6 +188,7 @@ func TestPipeTransportReportsInvalidMessagesAndKeepsReading(t *testing.T) {
 	}
 }
 
+// Pi packages/mcp/test/pipe.test.ts:110
 func TestPipeTransportDropsMessagesOverMaxMessageBytesCompleteOrNot(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{MaxMessageBytes: 48})
 	program.stdout(`{"jsonrpc":"2.0","method":"` + strings.Repeat("x", 48) + `"}` + "\n" + pingJSON("1") + "\n")
@@ -194,6 +198,7 @@ func TestPipeTransportDropsMessagesOverMaxMessageBytesCompleteOrNot(t *testing.T
 	wantList(t, "errors", program.errorList(), []string{"MCP stdio message exceeds 48 bytes", "MCP stdio message exceeds 48 bytes"})
 }
 
+// Pi packages/mcp/test/pipe.test.ts:122
 func TestPipeTransportKeepsABoundedStderrTailAndPassesEveryChunkToOnStderr(t *testing.T) {
 	var chunks []string
 	program := startFake(t, mcp.PipeTransportOptions{MaxStderrBytes: 8, OnStderr: func(chunk string) { chunks = append(chunks, chunk) }})
@@ -205,6 +210,7 @@ func TestPipeTransportKeepsABoundedStderrTailAndPassesEveryChunkToOnStderr(t *te
 	}
 }
 
+// Pi packages/mcp/test/pipe.test.ts:133
 func TestPipeTransportWritesEachMessageAsOneLine(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{})
 	if err := program.transport.Send(t.Context(), ping(1)); err != nil {
@@ -213,6 +219,7 @@ func TestPipeTransportWritesEachMessageAsOneLine(t *testing.T) {
 	wantList(t, "written", program.written(), []string{pingJSON("1") + "\n"})
 }
 
+// Pi packages/mcp/test/pipe.test.ts:139
 func TestPipeTransportReportsAnIncompleteMessageWhenTheProgramExitsThenCloses(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{})
 	program.stdout(`{"jsonrpc":"2.0"`)
@@ -221,6 +228,7 @@ func TestPipeTransportReportsAnIncompleteMessageWhenTheProgramExitsThenCloses(t 
 	wantList(t, "errors", program.errorList(), []string{"MCP stdio server closed with an incomplete JSON-RPC message"})
 }
 
+// Pi packages/mcp/test/pipe.test.ts:150
 func TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{})
 	program.pipe.end(errors.New("connection lost"))
@@ -228,6 +236,7 @@ func TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses(t *testing.T) {
 	wantList(t, "errors", program.errorList(), []string{"connection lost"})
 }
 
+// Pi packages/mcp/test/pipe.test.ts:158
 func TestPipeTransportRejectsSendAfterCloseAndAfterTheProgramEnded(t *testing.T) {
 	closedByUs := startFake(t, mcp.PipeTransportOptions{})
 	closedByUs.pipe.end(nil)
@@ -247,6 +256,7 @@ func TestPipeTransportRejectsSendAfterCloseAndAfterTheProgramEnded(t *testing.T)
 	wantList(t, "written", ended.written(), nil)
 }
 
+// Pi packages/mcp/test/pipe.test.ts:171
 func TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{})
 	closing := make(chan error, 1)
@@ -266,6 +276,7 @@ func TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime(t *testin
 	wantList(t, "errors", program.errorList(), nil)
 }
 
+// Pi packages/mcp/test/pipe.test.ts:184
 func TestPipeTransportShutsDownOnceWhenClosedTwice(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{})
 	done := make(chan struct{}, 2)
@@ -284,6 +295,7 @@ func TestPipeTransportShutsDownOnceWhenClosedTwice(t *testing.T) {
 	wantList(t, "calls", program.pipe.callList(), []string{"closeStdin"})
 }
 
+// Pi packages/mcp/test/pipe.test.ts:195
 func TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs(t *testing.T) {
 	program := startFake(t, mcp.PipeTransportOptions{CloseTimeoutMs: 400})
 	closing := make(chan error, 1)
@@ -303,6 +315,7 @@ func TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs(t *testing.T) {
 	wantList(t, "errors", program.errorList(), nil)
 }
 
+// Pi packages/mcp/test/pipe.test.ts:209
 func TestPipeTransportRejectsStartWhenOpenFails(t *testing.T) {
 	transport := mcp.NewPipeTransport(mcp.PipeTransportOptions{Open: func(mcp.McpPipeHandlers) (mcp.McpPipe, error) {
 		return nil, errors.New("not_supported")
@@ -312,6 +325,7 @@ func TestPipeTransportRejectsStartWhenOpenFails(t *testing.T) {
 	}
 }
 
+// Pi packages/mcp/test/pipe.test.ts:214
 func TestPipeTransportKillsAProgramThatFinishedStartingAfterClose(t *testing.T) {
 	pipe := &fakePipe{exited: make(chan struct{})}
 	release, opening := make(chan struct{}), make(chan struct{})
@@ -403,6 +417,7 @@ func spawnPipe(command string, args []string, env map[string]string, handlers mc
 	return pipe, nil
 }
 
+// Pi packages/mcp/test/pipe.test.ts:251
 func TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall(t *testing.T) {
 	command, args, env := fixtureStdioOptions("stdio-server")
 	transport := mcp.NewPipeTransport(mcp.PipeTransportOptions{Open: func(handlers mcp.McpPipeHandlers) (mcp.McpPipe, error) {
@@ -483,4 +498,75 @@ func TestPipeTransportCloseFailsWhenTheProgramDoesNotExitAfterTheKill(t *testing
 	case <-time.After(5 * time.Second):
 		t.Fatal("Close did not return")
 	}
+}
+
+// McpPipe's write, closeStdin, close and exited, through the interface, on a real program: Pi packages/mcp/test/pipe.test.ts:242-245 (spawnPipe's
+// pipe). The program answers what is written, ends when its stdin ends, and a program that is still running ends when it is closed.
+func TestMcpPipeWritesClosesStdinAndKillsAProgram(t *testing.T) {
+	command, args, env := fixtureStdioOptions("stdio-server")
+	var mu sync.Mutex
+	var stdout strings.Builder
+	handlers := mcp.McpPipeHandlers{
+		OnStdout: func(bytes []byte) {
+			mu.Lock()
+			defer mu.Unlock()
+			stdout.Write(bytes)
+		},
+		OnStderr: func([]byte) {},
+	}
+	seen := func(text string) bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return strings.Contains(stdout.String(), text)
+	}
+	pipe, err := spawnPipe(command, args, env, handlers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A string and bytes are both written, in order, to the program's stdin.
+	pipe.Write(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"pipe-test","version":"1"}}}` + "\n")
+	waitFor(t, func() bool { return seen(`"stdio-fixture"`) })
+	pipe.Write([]byte(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}` + "\n"))
+	waitFor(t, func() bool { return seen(`"echo"`) })
+	pipe.CloseStdin()
+	code, err := pipe.Exited()
+	if err != nil || code != 0 {
+		t.Fatalf("exit after closing stdin = %d, %v", code, err)
+	}
+	// Exited may be called again, from any goroutine.
+	if again, err := pipe.Exited(); err != nil || again != code {
+		t.Fatalf("second exit = %d, %v", again, err)
+	}
+
+	running, err := spawnPipe(command, args, env, handlers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	running.Close()
+	ended := make(chan struct{})
+	go func() {
+		_, _ = running.Exited()
+		close(ended)
+	}()
+	select {
+	case <-ended:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the program still ran after Close")
+	}
+}
+
+// The transport keeps the options it was given, as Pi's frozen copy does (pipe.test.ts:31 passes them): changing a returned copy changes nothing.
+func TestPipeTransportKeepsACopyOfItsOptions(t *testing.T) {
+	var stderr []string
+	transport := mcp.NewPipeTransport(mcp.PipeTransportOptions{MaxMessageBytes: 48, MaxStderrBytes: 8, CloseTimeoutMs: 1_000, OnStderr: func(chunk string) { stderr = append(stderr, chunk) }})
+	options := transport.Options()
+	if options.MaxMessageBytes != 48 || options.MaxStderrBytes != 8 || options.CloseTimeoutMs != 1_000 || options.OnStderr == nil {
+		t.Fatalf("options = %+v", options)
+	}
+	options.MaxMessageBytes = 1
+	if got := transport.Options().MaxMessageBytes; got != 48 {
+		t.Fatalf("MaxMessageBytes after changing a copy = %d", got)
+	}
+	options.OnStderr("x")
+	wantList(t, "stderr", stderr, []string{"x"})
 }
