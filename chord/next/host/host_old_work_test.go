@@ -370,11 +370,12 @@ func TestOldWorkMutualDrainsTheProvidersCallReachesTheDependentWhileTheDependent
 	slow := startReloadCall(dependent, "slow", nil)
 	second.entered.wait(t)
 	owReload(t, host, shape, queue)
+	// The provider's call holds its old attempt open until the dependent's call has had its answer.
 	second.open.fire()
-	first.open.fire()
 	if got := owAnswer(t, slow); got != "v1 slow -> v1 x" {
 		t.Fatalf("slow = %q, want \"v1 slow -> v1 x\"", got)
 	}
+	first.open.fire()
 	if got := owAnswer(t, work); got != "v1 work -> v1 ping" && got != "v1 work -> v2 ping" {
 		t.Fatalf("work = %q, want \"v1 work -> v1 ping\" or \"v1 work -> v2 ping\"", got)
 	}
