@@ -19,20 +19,22 @@ import (
 
 var classHeaders = []string{"classdiagram", "classdiagram-v2"}
 
-var classDiagram = diagram{
-	kind:    "class",
-	headers: classHeaders,
-	render: func(src string) (*canvas, drawnMeta, bool) {
-		g := parseClass(src)
-		if g == nil {
-			return nil, drawnMeta{}, false
-		}
-		c := layoutClass(g)
-		if c == nil {
-			return nil, drawnMeta{}, false
-		}
-		return c, drawnMeta{warnings: g.warnings, classDefs: g.classDefs}, true
-	},
+func classDiagram() *diagram {
+	return &diagram{
+		kind:    "class",
+		headers: classHeaders,
+		render: func(src string) (*canvas, drawnMeta, bool) {
+			g := parseClass(src)
+			if g == nil {
+				return nil, drawnMeta{}, false
+			}
+			c := layoutClass(g)
+			if c == nil {
+				return nil, drawnMeta{}, false
+			}
+			return c, drawnMeta{warnings: g.warnings, classDefs: g.classDefs}, true
+		},
+	}
 }
 
 type classOp struct {

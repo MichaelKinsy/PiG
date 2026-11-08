@@ -170,6 +170,18 @@ jobs:
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      # The regeneration of stale frames (the changelog, the SDK bundles, the docs pages) needs the zstd the committed frames were written with; see the linux job.
+      - name: Restore the pinned zstd
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PIG_ZSTD=$(automation/ci/install-zstd.sh)" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
       - name: Restore the Go build cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -334,6 +346,20 @@ jobs:
         with:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      # Every embedded zstd frame is written with one zstd (internal/zstdblob.PinnedCLIVersion, pinned in automation/dev/toolchains.lock); the runner's own zstd is
+      # another version and compresses the same input to different bytes. install-zstd.sh builds the checksummed release source into ~/.cache/pig-zstd, which the cache keeps for the pin.
+      # The frame tests fail, not skip, here (PIG_REQUIRE_ZSTD=1) so a job that loses the command stops checking the frames.
+      - name: Restore the pinned zstd
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
+      - name: Install the pinned zstd
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PIG_ZSTD=$(automation/ci/install-zstd.sh)" >> "$GITHUB_ENV"
+          echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
       # This restores the newest cache a previous run saved, so a job recompiles only what changed.
       - name: Restore the Go build cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

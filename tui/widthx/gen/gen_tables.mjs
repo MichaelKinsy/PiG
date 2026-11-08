@@ -145,12 +145,14 @@ for (let cp = 1; cp <= 0x110000; cp++) {
 if (row.length) out.push("\t" + row.join(" "));
 out.push("}");
 out.push("");
-out.push("// rgiSequences: multi-code-point strings matching /^\\p{RGI_Emoji}$/v.");
-out.push("var rgiSequences = [...]string{");
-for (const s of [...rgi].sort()) {
-	out.push("\t\"" + [...s].map((c) => { const cp = c.codePointAt(0); return cp < 0x10000 ? "\\u" + cp.toString(16).padStart(4, "0") : "\\U" + cp.toString(16).padStart(8, "0"); }).join("") + "\",");
-}
-out.push("}");
+out.push("// rgiSequenceCount is the number of multi-code-point strings that match /^\\p{RGI_Emoji}$/v; rgiSequenceText holds them sorted, each followed by a newline (none contains one). A constant string costs no per-string header, where an array of 2760 strings costs 16 bytes each.");
+out.push(`const rgiSequenceCount = ${rgi.size}`);
+out.push("");
+out.push("const rgiSequenceText = \"\" +");
+const rgiSorted = [...rgi].sort();
+rgiSorted.forEach((s, i) => {
+	out.push("\t\"" + [...s].map((c) => { const cp = c.codePointAt(0); return cp < 0x10000 ? "\\u" + cp.toString(16).padStart(4, "0") : "\\U" + cp.toString(16).padStart(8, "0"); }).join("") + "\\n\"" + (i + 1 < rgiSorted.length ? " +" : ""));
+});
 const text = out.join("\n") + "\n";
 fs.writeFileSync(path.join(here, "output.sha256"), `${sha256(text)}  unicode_tables.go\n`);
 process.stdout.write(text);

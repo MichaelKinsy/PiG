@@ -9,7 +9,7 @@ func TestRadiusBaselineModelsKeepTheirCatalogJSON(t *testing.T) {
 	records := map[string]string{}
 	for _, generated := range GeneratedModels {
 		if generated.Provider == RadiusProviderID {
-			records[generated.ID] = generated.Record
+			records[generated.ID] = ResolveCatalogRecord(generated.Record)
 		}
 	}
 	models := NewRadiusGatewayProvider(RadiusProviderOptions{}).GetModels()

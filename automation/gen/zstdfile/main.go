@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-// Command zstdfile writes the zstd frame that a go:embed file carries: zstdfile SOURCE FRAME stores SOURCE's bytes as FRAME (internal/zstdblob.Encode). A FRAME that already decodes to SOURCE's bytes is left as it is, so a library upgrade does not rewrite committed frames; the drift tests compare decoded bytes, not frame bytes.
+// Command zstdfile writes the zstd frame that a go:embed file carries: zstdfile SOURCE FRAME stores SOURCE's bytes as FRAME (internal/zstdblob.Encode: the zstd command at zstdblob.PinnedCLIVersion, so run it in the tern-ci image; any other zstd makes it stop with an error). A FRAME that already decodes to SOURCE's bytes is left as it is; zstdblob's TestCommittedFramesAreWhatEncodeWrites checks, from scratch, that every committed frame is what Encode writes.
 package main
 
 import (

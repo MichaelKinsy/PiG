@@ -35,7 +35,7 @@ func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pi
 	tmp := t.TempDir()
 	// The binary embeds CHANGELOG.md.zst (embed.go), so the overlay replaces that file with the fixture's frame.
 	fixture := filepath.Join(tmp, "CHANGELOG.md.zst")
-	if err := os.WriteFile(fixture, zstdblob.Encode(data), 0o600); err != nil {
+	if err := os.WriteFile(fixture, zstdblob.EncodeLibrary(data), 0o600); err != nil {
 		return pig, pi, err
 	}
 	overlay, err := json.Marshal(map[string]any{"Replace": map[string]string{filepath.Join(root, "CHANGELOG.md.zst"): fixture}})

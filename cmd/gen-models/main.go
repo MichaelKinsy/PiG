@@ -744,7 +744,7 @@ func emit(path, src string, rows []modelRow) error {
 	b.WriteString("\tEnabled              *bool\n")
 	b.WriteString("\tLab                  string\n")
 	b.WriteString("\tProviders            []ModelCatalogProvider\n")
-	b.WriteString("\t// Record is the entry's JSON as Pi's catalog data spells it: the model object Pi serializes, member order included.\n")
+	b.WriteString("\t// Record is the entry's JSON as Pi's catalog data spells it: the model object Pi serializes, member order included. A built-in row holds a three-byte reference (NUL, row index high and low byte) to its record in the compressed chunks of catalog_records/; ResolveCatalogRecord returns the JSON, so no read of it may skip that call.\n")
 	b.WriteString("\tRecord string\n")
 	b.WriteString("}\n\n")
 	fmt.Fprintf(&b, "// GeneratedModels is the static catalog (%d entries). generatedCatalog gives its rows the shared maps the tables below hold.\n", len(rows))
@@ -809,7 +809,9 @@ func emit(path, src string, rows []modelRow) error {
 		if len(r.Providers) > 0 {
 			fmt.Fprintf(&b, "\t\tProviders: %s,\n", catalogProvidersLiteral(r.Providers))
 		}
-		fmt.Fprintf(&b, "\t\tRecord: %q,\n", r.Record)
+		if r.Record != "" {
+			fmt.Fprintf(&b, "\t\tRecord: %q,\n", catalogRecordRef(i))
+		}
 		b.WriteString("\t},\n")
 	}
 	b.WriteString("}\n")
@@ -824,7 +826,10 @@ func emit(path, src string, rows []modelRow) error {
 	if err != nil {
 		return fmt.Errorf("format generated source: %w", err)
 	}
-	return os.WriteFile(path, formatted, 0o644)
+	if err := os.WriteFile(path, formatted, 0o644); err != nil {
+		return err
+	}
+	return writeCatalogRecordChunks(filepath.Join(filepath.Dir(path), "catalog_records"), rows)
 }
 
 // unsupportedFields names the model fields a row of its type cannot carry. ImageModel and ClassifierModel hold the base
