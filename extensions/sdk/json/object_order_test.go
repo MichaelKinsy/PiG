@@ -1,6 +1,7 @@
 package json
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
 	"slices"
@@ -319,6 +320,36 @@ func TestSortOrderEntriesSortsByPointer(t *testing.T) {
 	for i := 1; i < len(s); i++ {
 		if s[i-1].pointer > s[i].pointer {
 			t.Fatalf("heapOrderEntries: entry %d is out of order", i)
+		}
+	}
+}
+
+// BenchmarkSortOrderEntries compares the local sort with slices.SortFunc, the copy of the standard library's sort it replaced, on the addresses of n objects:
+// "shuffled" in a random order, "runs" as a decode leaves them (ascending within each 64-object span, the spans in a random order).
+func BenchmarkSortOrderEntries(b *testing.B) {
+	for _, n := range []int{100, 2000, 50000} {
+		for _, shape := range []string{"shuffled", "runs"} {
+			source := make([]orderEntry, n)
+			for i := range source {
+				p := uintptr(i*7919%n) * 48
+				if shape == "runs" {
+					p = uintptr((i/64)*7919%(n/64+1))*64*48 + uintptr(i%64)*48
+				}
+				source[i].pointer = p
+			}
+			work := make([]orderEntry, n)
+			b.Run(fmt.Sprintf("local/%s/%d", shape, n), func(b *testing.B) {
+				for range b.N {
+					copy(work, source)
+					sortOrderEntries(work)
+				}
+			})
+			b.Run(fmt.Sprintf("slices/%s/%d", shape, n), func(b *testing.B) {
+				for range b.N {
+					copy(work, source)
+					slices.SortFunc(work, func(a, b orderEntry) int { return cmp.Compare(a.pointer, b.pointer) })
+				}
+			})
 		}
 	}
 }
