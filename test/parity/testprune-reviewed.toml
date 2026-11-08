@@ -972,6 +972,6 @@ reason = "A test-helper expectation for the isolated home: Go telemetry is switc
 [[entry]]
 path = "coding/cli/rpc_shutdown_test.go"
 commit = "5b8189f98ae763aca14843a8feefe94bc5752c59"
-class = "DIVERGENCE"
-cite = "D234"
-reason = "PiG follows Pi main ace560c30 ahead of the v1.5.0 pin (D234, owner-approved). Pi main keeps the signal handlers until exit and counts signals (rpc-mode.ts signalCount, shutdown() returns when shuttingDown): once a shutdown has started, a stdin end, a ctx.shutdown() request or a single SIGTERM does nothing and the dispose finishes, and only a repeated signal exits at once with 128+signum. TestRPCShutdownTriggers therefore expects a single signal and a stdin end during a started dispose not to interrupt it (the dispose then exits with the first trigger's status), a shutdown request during a stdin-end dispose to do nothing, and a repeated signal to exit 143 at once. Pi 1.5.0 takes the default signal action and exits 0 at once. Pi's own cases are rpc-prompt-response-semantics.test.ts:594, 613 and 631 at ace560c30."
+class = "CITE"
+cite = "packages/coding-agent/src/modes/rpc/rpc-mode.ts:383"
+reason = "The pin contains Pi main ace560c30. Pi keeps the signal handlers until exit and counts signals (rpc-mode.ts signalCount, shutdown() returns when shuttingDown): once a shutdown has started, a stdin end, a ctx.shutdown() request or a single SIGTERM does nothing and the dispose finishes, and only a repeated signal exits at once with 128+signum. TestRPCShutdownTriggers therefore expects a single signal and a stdin end during a started dispose not to interrupt it (the dispose then exits with the first trigger's status), a shutdown request during a stdin-end dispose to do nothing, and a repeated signal to exit 143 at once. Pi 1.5.0 takes the default signal action and exits 0 at once. Pi's own cases are rpc-prompt-response-semantics.test.ts:594, 613 and 631 at ace560c30."

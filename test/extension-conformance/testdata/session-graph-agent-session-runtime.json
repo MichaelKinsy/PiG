@@ -38,6 +38,8 @@
 		"before_switch|resume|target",
 		"shutdown|resume|target",
 		"start|resume|previous",
+		"agent_start",
+		"agent_end",
 		"shutdown|quit|-"
 	],
 	"fork": {
