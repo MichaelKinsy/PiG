@@ -210,10 +210,26 @@ func openEnvs(ctx runtime.TuiContext) error {
 	if current := here(); current != nil && current.Env != nil && *current.Env != "" {
 		selected = *current.Env
 	}
-	overlay = ctx.Overlay("envs", components.NewListOverlay(runtime.Selectors(ctx), components.ListOverlayOptions{
+	// The registry that has the places is read asynchronously: until it answers, the session's environment is not known and this device is selected; the first
+	// rows listed with it move the cursor to the session's environment, unless the visitor moved it already.
+	var list *components.ListOverlay
+	placed := here() != nil
+	list = components.NewListOverlay(runtime.Selectors(ctx), components.ListOverlayOptions{
 		Title: func() string { return fmt.Sprintf("Environments (%d)", len(envs())) },
 		Rows: func() []components.ListRow {
 			current := here()
+			if current != nil && !placed {
+				placed = true
+				key := local
+				if current.Env != nil && *current.Env != "" {
+					key = *current.Env
+				}
+				ctx.Post(func() {
+					if selection := list.Selection(); selection != nil && *selection == local {
+						list.Select(key)
+					}
+				})
+			}
 			mark := func(env *string) string {
 				if current != nil && ((current.Env == nil && env == nil) || (current.Env != nil && env != nil && *current.Env == *env)) {
 					return "● "
@@ -315,7 +331,8 @@ func openEnvs(ctx runtime.TuiContext) error {
 			return lines
 		},
 		OnClose: closeAll,
-	}), pitui.OverlaySpec{Width: p2tui.Percent(100), Anchor: "bottom-center"})
+	})
+	overlay = ctx.Overlay("envs", list, pitui.OverlaySpec{Width: p2tui.Percent(100), Anchor: "bottom-center"})
 	return nil
 }
 
