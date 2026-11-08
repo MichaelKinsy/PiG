@@ -226,6 +226,39 @@ func TestEngineDocuments(t *testing.T) {
 	})
 }
 
+// LoadContent is LoadDocument's content without its record: the value at a point, the base's version, and how many deltas followed the base.
+func TestLoadContentReadsADocumentsValueVersionAndDeltaCountAtAPointWithoutItsRecord(t *testing.T) {
+	kit := newEngine(t)
+	id := kit.mustCommit(kit.create("a", delta.JsonObjectOf("n", float64(0))))[0]
+	kit.mustCommit(kit.delta(id, 1, `[["s",["n"],1]]`))
+	kit.mustCommit(kit.delta(id, 2, `[["s",["n"],2]]`))
+	load := func(documentID int64, at DocumentPoint) (DocumentContentAt, error) {
+		return Read(kit.store, func(executor sqlite.SqliteExecutor) (DocumentContentAt, error) {
+			return LoadContent(executor, documentID, at)
+		}, background)
+	}
+	current, err := load(id, CurrentPoint)
+	noError(t, err)
+	if engineJSON(t, current.Value) != `{"n":2}` || current.Version != 1 || current.DeltasSinceBase != 2 {
+		t.Fatalf("LoadContent now = %s, version %d, deltas %d; want {\"n\":2}, 1, 2", engineJSON(t, current.Value), current.Version, current.DeltasSinceBase)
+	}
+	past, err := load(id, AtSeq(2))
+	noError(t, err)
+	if engineJSON(t, past.Value) != `{"n":1}` || past.DeltasSinceBase != 1 {
+		t.Fatalf("LoadContent at seq 2 = %s, deltas %d; want {\"n\":1}, 1", engineJSON(t, past.Value), past.DeltasSinceBase)
+	}
+	whole := engineFind(t, kit.store, kit.at("a"), CurrentPoint)
+	stored, err := engineLoad(t, kit.store, whole, CurrentPoint)
+	noError(t, err)
+	if engineJSON(t, stored.Value) != engineJSON(t, current.Value) || stored.Version != current.Version || stored.DeltasSinceBase != current.DeltasSinceBase {
+		t.Fatalf("LoadDocument and LoadContent disagree: %+v and %+v", stored, current)
+	}
+	// A failed read ends the store, so the document without revisions comes last.
+	if _, err := load(id+100, CurrentPoint); err == nil {
+		t.Fatal("LoadContent of a document without revisions did not fail")
+	}
+}
+
 // lifetime creates adapter record 10 at "a" (its base `{ n: 0 }`), then changes and retires it in later commits.
 func lifetime(t *testing.T, history DocumentHistory) *engineKit {
 	t.Helper()

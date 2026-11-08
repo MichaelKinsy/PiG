@@ -14,7 +14,7 @@ func TestTerminalThemeGivesARolesColourAndTheDefaultAfterItAndTellsListenersOfAN
 	light := surfaces.Theme{ID: "l", Name: "l", Mode: "light", Colors: map[string]string{"accent": "#00ff00"}, Tui: map[string]string{"accent": "42"}}
 	theme := NewTerminalTheme(dark, "truecolor")
 	assert.Equal(t, "d", theme.Theme().ID)
-	assert.Equal(t, "\x1b[38;2;255;0;0mNotes\x1b[39m", theme.Fg("accent", "Notes"))
+	assert.Equal(t, "\x1b[38;2;255;0;0mNotes\x1b[39m", (*TerminalTheme).Fg(theme, "accent", "Notes"))
 	assert.Equal(t, "\x1b[48;2;255;0;0mNotes\x1b[49m", theme.Bg("accent", "Notes"))
 	calls := 0
 	remove := theme.OnChange(func() { calls++ })

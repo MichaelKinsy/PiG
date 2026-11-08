@@ -415,9 +415,19 @@ func TestOptimisticAddReturnsTheResultOfItsCall(t *testing.T) {
 	scope := scopeOn(newHost(t), func() {})
 	defer scope.Dispose()
 	_, add, _ := OptimisticLast[string, int](scope, func() string { return "real" })
+	identity := OptimisticAdd[string, int](func(_ string, run func() (int, error)) (int, error) { return run() })
+	viaLast, errLast := add("z", func() (int, error) { return 5, nil })
+	direct, errDirect := identity("z", func() (int, error) { return 5, nil })
+	if errLast != nil || errDirect != nil || viaLast != direct {
+		t.Fatalf("add = %v, %v; the identity add gives %v, %v", viaLast, errLast, direct, errDirect)
+	}
 	got, err := call(add)
 	if err != nil || got != 7 {
 		t.Fatalf("add = %v, %v; want 7, nil", got, err)
+	}
+	failure := errors.New("the call failed")
+	if got, err := add("y", func() (int, error) { return 3, failure }); !errors.Is(err, failure) || got != 3 {
+		t.Fatalf("add of a failing call = %v, %v; want 3 and the call's error", got, err)
 	}
 }
 
