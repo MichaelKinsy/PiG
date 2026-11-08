@@ -196,6 +196,7 @@ func TestRetryWakesReplaceAndStop(t *testing.T) {
 
 // Own test: one observer follows every source of a declaration, including the same source twice, and stop leaves nothing
 // followed.
+// Cites packages/chord/src/host/attempt.ts:118 (Self.retryOn over watchable sources).
 func TestRetryWakesTheSameSourceTwice(t *testing.T) {
 	e := newModelsEnv(t)
 	wakes := &retryWakes{}
