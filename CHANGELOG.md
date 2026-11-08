@@ -229,6 +229,11 @@ All notable public changes to PiG will be recorded in this file.
 - `contracts.CheckBytes` and the `data.Validator.Type` accessor: a bytes leaf is plain data checked by the validator.
 - The Go, Rust and Python SDKs no longer fail a tool's registration for a `Type.Refine` refinement under a schema keyword the host did not traverse, and a child session's custom tools may carry refinements. The `validation_parameters` member of a tool declaration, which carried TypeBox's `~kind` form of the schema for the old validator, is gone with the validator that read it; the Python `refinement_sites` and Rust `RefinementSite` and `TSchema::refinement_sites`, `refinement_count` and `to_validation_value` are removed.
 
+### Added
+
+- Anthropic requests with a session id (and cache retention not `none`) use message threads (`message-threads-2026-08-12` beta), as in Pi: the server continues from the previous reply and PiG sends only the new messages. When anything earlier in the request changed, or the server can't continue the thread, the full request is sent. On by default only for the `anthropic` provider on `api.anthropic.com`; set `compat.supportsMessageThreads` in `models.json` to change that, for example for gateways that forward the `thread` field. `ai.CleanupSessionResources` frees a session's thread state. Cache warming does not touch the session's thread.
+- Go API `ai`: `StreamOptions.DisableContinuation` keeps a request from using or replacing server-side continuation state such as Anthropic message threads. Set it on requests that repeat an earlier one, such as cache warming.
+
 ### Fixed
 
 - PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the select list, settings list, editor autocomplete, and the model, OAuth, scoped-models, user-message and settings-submenu selectors. A focused component that handles these keys now receives them in fullscreen mode instead of the transcript scrolling, as in Pi. <!-- fix: 69cd9d29e6 -->

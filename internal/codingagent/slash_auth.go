@@ -13,13 +13,10 @@ import (
 
 // handleLoginCommand mirrors Pi's handleLoginCommand (interactive-mode.ts:5775-5795).
 func handleLoginCommand(sc *SlashContext) error {
-	ref := jsstring.ToLower(jsstring.Trim(sc.Args))
-	if ref == "" {
+	if jsstring.Trim(sc.Args) == "" {
 		return showLoginAuthTypeSelector(sc, nil)
 	}
-	matches := slices.DeleteFunc(slices.Clone(sc.LoginProviders()), func(p tui.OAuthProvider) bool {
-		return jsstring.ToLower(p.ID) != ref && jsstring.ToLower(p.Name) != ref
-	})
+	matches := FindMatchingProviders(sc.LoginProviders(), sc.Args, func(p tui.OAuthProvider) (string, string) { return p.ID, p.Name })
 	if len(matches) == 1 {
 		return startProviderLogin(sc, matches[0], nil)
 	}

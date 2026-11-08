@@ -168,6 +168,11 @@ func (m *ModelSelectorComponent) UpdateModels(models []ModelSelectorItem) {
 	if m.done {
 		return
 	}
+	// The user may have moved while the refresh was in flight, and the refresh can shift rows.
+	preferred := ""
+	if m.cursor >= 0 && m.cursor < len(m.filtered) {
+		preferred = m.active[m.filtered[m.cursor]].FQ()
+	}
 	m.all = sortModelItems(models, m.current, m.defaultModel)
 	byID := make(map[string]ModelSelectorItem, len(models))
 	for _, item := range models {
@@ -189,7 +194,7 @@ func (m *ModelSelectorComponent) UpdateModels(models []ModelSelectorItem) {
 	} else {
 		m.cursor = min(m.cursor, max(0, len(m.active)-1))
 	}
-	m.applyFilter()
+	m.applyFilterPreferring(preferred)
 	m.Invalidate()
 }
 
@@ -437,7 +442,13 @@ func (m *ModelSelectorComponent) setScope(scope ModelScope) {
 	m.applyFilter()
 }
 
-func (m *ModelSelectorComponent) applyFilter() {
+func (m *ModelSelectorComponent) applyFilter() { m.applyFilterPreferring("") }
+
+// applyFilterPreferring is filterModels(query, preferredModel): it keeps the preferred model ("<provider>/<id>") selected if it is still listed. Otherwise,
+// when filtering by a query, it moves the cursor to the top row so the best match is highlighted; when the query is cleared, it keeps the current position
+// clamped to the (restored) list length.
+// pig divergence (D312): Pi df0d88aac keeps the selection through a catalog refresh; Pi 1.5.0 has no preferred model.
+func (m *ModelSelectorComponent) applyFilterPreferring(preferred string) {
 	indices := make([]int, len(m.active))
 	for i := range m.active {
 		indices[i] = i
@@ -462,7 +473,13 @@ func (m *ModelSelectorComponent) applyFilter() {
 		rest := slices.DeleteFunc(m.filtered, func(index int) bool { return m.isDefaultModel(m.active[index]) })
 		m.filtered = slices.Concat(defaults, rest)
 	}
-	if query != "" {
+	preferredIndex := -1
+	if preferred != "" {
+		preferredIndex = slices.IndexFunc(m.filtered, func(index int) bool { return m.active[index].FQ() == preferred })
+	}
+	if preferredIndex >= 0 {
+		m.cursor = preferredIndex
+	} else if query != "" {
 		m.cursor = 0
 	} else if m.cursor >= len(m.filtered) {
 		m.cursor = len(m.filtered) - 1
