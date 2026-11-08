@@ -4035,13 +4035,21 @@
     },
     {
       "path": "packages/coding-agent/test/auth-login.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:839cebc1dce9ade4a62ea1dd6ac4bf3539b81affde79e16da7b9e87bc688f8bc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:839cebc1dce9ade4a62ea1dd6ac4bf3539b81affde79e16da7b9e87bc688f8bc",
+      "evidence": [
+        "coding/cli/auth_login_test.go"
+      ],
+      "rationale": "All 22 cases of pi auth login run as Go tests of coding/cli (one TestAuthLogin... per Pi case, same arguments, prompts and expected output), plus the Go-only provider-own-cancel and occupied-fallback-name cases."
     },
     {
       "path": "packages/coding-agent/test/auth-logout.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9dbc5f7ea18231b558c246edac85e31132f545f422f96e47d09f73247f409d18"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9dbc5f7ea18231b558c246edac85e31132f545f422f96e47d09f73247f409d18",
+      "evidence": [
+        "coding/cli/auth_logout_test.go"
+      ],
+      "rationale": "All 8 cases of pi auth logout run as TestAuthLogout... in coding/cli with the same stored credentials, arguments and output."
     },
     {
       "path": "packages/coding-agent/test/auth-storage.test.ts",
@@ -4050,8 +4058,12 @@
     },
     {
       "path": "packages/coding-agent/test/auth-terminal.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a13be777ecf771f5f1f7efa175d2ac8edf9ce28ed04d2f680ce5b96b40e2f189"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a13be777ecf771f5f1f7efa175d2ac8edf9ce28ed04d2f680ce5b96b40e2f189",
+      "evidence": [
+        "coding/cli/auth_terminal_test.go"
+      ],
+      "rationale": "All 4 cases run as TestAuthTerminal... in coding/cli over a pipe in place of the PassThrough: stdin closing before an answer rejects and reports the interrupt once; an answer ends cleanly without an interrupt; an answer delivered before EOF is kept; cancelling one prompt does not cancel the login."
     },
     {
       "path": "packages/coding-agent/test/auth-url-copy.test.ts",
@@ -5459,8 +5471,13 @@
     },
     {
       "path": "packages/coding-agent/test/plan-mode-utils.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fd5ecbea02727749fdbe536e9e7caf142d14a0d64840f162cbced7b0ed279cf2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fd5ecbea02727749fdbe536e9e7caf142d14a0d64840f162cbced7b0ed279cf2",
+      "evidence": [
+        "examples/extensions/plan-mode/utils_test.go",
+        "examples/extensions/plan-mode/upstream_test.go"
+      ],
+      "rationale": "Pi main changed the example: full step text (truncation moved to the widget), the last Plan: section, whole-line steps with Markdown stripped, steps that start with backticks, DONE marker variants and prose completions without negations, duplicate collapse, newly-marked counts and allStepsComplete. Each new case is a subtest of utils_test.go with the same inputs and expected values; upstream_test.go compares the pinned Pi function on the same inputs. The example's index changes (thinking text, widget truncation, nextTurn delivery, whole-plan fallback) are in main.go."
     },
     {
       "path": "packages/coding-agent/test/powershell-config.test.ts",
@@ -5717,8 +5734,19 @@
     },
     {
       "path": "packages/coding-agent/test/rpc-prompt-response-semantics.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e603a8e75448085387f029e8fe696686865df168188454a7558e3a66650f97d2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e603a8e75448085387f029e8fe696686865df168188454a7558e3a66650f97d2",
+      "evidence": [
+        "coding/cli/rpc_prompt_semantics_upstream_test.go#TestRPCPromptResponseSemanticsUpstream",
+        "test/parity/scenarios/rpc/25-rpc-clear-queue.toml",
+        "coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand",
+        "coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown",
+        "coding/cli/rpc_idle_shutdown_test.go#TestRPCExtensionShutdownWaitsForCommandOfSameChunk",
+        "coding/cli/rpc_repeated_signal_test.go#TestRPCSingleSignalDuringInputEndShutdownLetsItFinish",
+        "coding/cli/rpc_repeated_signal_test.go#TestRPCInputEndDuringSignalShutdownLetsItFinish",
+        "coding/cli/rpc_repeated_signal_test.go#TestRPCRepeatedSignalDuringShutdownExitsAtOnce"
+      ],
+      "rationale": "The v1.1.0 diff replaces the test's own MockAssistantStream subclass of EventStream with pi-ai's createAssistantMessageEventStream (and, in agent-session-concurrent, a waitForStreaming poll instead of a fixed sleep): test infrastructure, no case or expectation changes. The Go tests build streams with ai.NewAssistantMessageEventStream and wait on the session state. Earlier cases: All 7 cases run through a real RPC process in TestRPCPromptResponseSemanticsUpstream: :197 one failure response, :237 one started response with data.disposition started (changed in 0.99.1), :259 extension command and intercepted input reported handled with no agent_start (new), :291 queued during streaming with disposition queued, :329 steer and follow_up reported handled when an extension consumes A and queues B, with the queue_update and exactly one response (new, #9803), :377 steer and follow Pi main adds two groups, each over a real RPC process in Go: \"RPC extension shutdown requests\" (idle async ctx.shutdown(), the command response before the exit, a command that arrives before the idle check) are the three TestRPCExtensionShutdown... tests of rpc_idle_shutdown_test.go; \"RPC shutdown triggers\" (stdin EOF then one SIGTERM, SIGTERM then EOF, a repeated signal exits at once) are the three tests of rpc_repeated_signal_test.go (D234)."
     },
     {
       "path": "packages/coding-agent/test/rpc.test.ts",
@@ -6233,8 +6261,20 @@
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-codemode.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c0600f43dc0f32e02b34b3860d2e2c1aa1c03d27ab2904b1844e398513646236"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c0600f43dc0f32e02b34b3860d2e2c1aa1c03d27ab2904b1844e398513646236",
+      "evidence": [
+        "coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "coding/codemode_session_upstream_test.go#TestUpstreamCodemodeOptionsAndStore",
+        "coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
+        "coding/codemode_session_upstream_test.go#Pi #10631: a misplaced options line fails before the script runs",
+        "coding/codemode_session_upstream_test.go#formats output at the item limit in linear time",
+        "coding/codemode_session_upstream_test.go#arrayImagesContext",
+        "coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "coding/extension/builtin/codemode/tool_refs_pi_test.go#TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences"
+      ],
+      "rationale": "25 it blocks; every case is a subtest of the three cited Go tests with the same scripts and expectations (reviewed row carried, including the 1.1.0 multi-item headers, console_output and classify cases). 1.2.0 changes three cases: 'applies the timeout_ms option and rejects invalid options' gains the misplaced options line (#10631), already in that subtest; the new 'formats output at the item limit in linear time' (#10678) is the subtest of the same name in TestUpstreamCodemodeOptionsAndStore (100000 text(\"\") items, `==> text 100000/100000 <==`, under 5 s); 'reports provider errors as results and invalid arguments as exceptions' gains ten argument cases (arrayModel, arrayContext, arrayState, arrayQuestions, arrayQuestion, noInstructions, badBool, badKind, arrayImagesContext, badImageBlock), added to that subtest of TestUpstreamCodemodeModels with Pi's messages (dca0f8983c). Pi v1.4.0→v1.5.0 delta (v1.5.0 has 26 upstream case sites, every changed hunk of the file diff checked against its Go assertion): the new case 'summarizes union and multi-line output types instead of inlining them' (#11501) is TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes with the same process, entries and count tools and the same three descriptions; the TypeBoxAgentTool type annotation has no Go form. Pi main adds \"summarizes output fields behind local schema references\" (#11803): the session-level test registers report and result tools with $ref output schemas and compares the descriptions the model sees; TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences checks describeOutput on the same schemas."
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-compaction-model-overrides.test.ts",
@@ -6286,8 +6326,25 @@
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-mcp.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:16737be52cd9ac132b39c9781d303d182ea4a318e6f309a4102478517ecc804c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:16737be52cd9ac132b39c9781d303d182ea4a318e6f309a4102478517ecc804c",
+      "evidence": [
+        "coding/mcpext/extension_test.go#TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel",
+        "coding/mcpext/extension_test.go#TestAgentSessionMCPWithdrawsAndRestoresMCPToolsTheServerChanges",
+        "coding/mcp_session_resume_upstream_test.go#TestAgentSessionMCPToolsAfterResumeAndReloadDeclaresToolsToolSearchLoadedAgainOnResumeOnceTheirServerConnects",
+        "coding/mcp_session_resume_upstream_test.go#TestAgentSessionMCPToolsAfterResumeAndReloadRestoredToolsWhenAnExtensionSetsTheLoadoutBeforeTheyRegister",
+        "coding/mcp_session_resume_upstream_test.go#TestAgentSessionMCPToolsAfterResumeAndReloadDoesNotActivateRestoredToolsThatRegisterAfterTheNextPromptStarts",
+        "coding/mcp_session_resume_upstream_test.go#TestAgentSessionMCPToolsAfterResumeAndReloadDeclaresToolsToolSearchLoadedAgainAfterReload",
+        "coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPKeepsMCPToolsWhenToolsNamesNoMCPTool",
+        "coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPRemovesMCPToolsWithNoTools",
+        "coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPDoesNotDeclareUnnamedMCPToolsRestoredFromTheTranscript",
+        "coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPLetsToolSearchDeclareUnnamedMCPToolsWhenToolsNamesIt",
+        "coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPFiltersMCPToolsByTheMcpEntriesOfTools",
+        "coding/mcp_session_upstream_test.go#TestAgentSessionMCPTellsScriptsWhatDirectlyExposedMCPToolsResolveTo",
+        "coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools",
+        "coding/mcp_session_upstream_test.go#TestAgentSessionMCPWaitsForServersWhoseScriptIdentifiersDifferFromTheirNames"
+      ],
+      "rationale": "47 it blocks plus test.each tables. Earlier cases are ported at the extension boundary and at the Session boundary (reviewed row carried: coding/mcpext/extension_test.go, coding/mcp_session_upstream_test.go, mcp_session_resume_upstream_test.go, mcp_session_tool_flags_upstream_test.go, through the 1.0.4 tool selection cases). 1.2.0 adds 'tells scripts what directly exposed MCP tools resolve to' (TestAgentSessionMCPTellsScriptsWhatDirectlyExposedMCPToolsResolveTo; red before 8217a5923f with `isError?, _meta?`), adds 'activates another extension's codemode tool when it reaches other tools' (TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools; red before 34c4d8e058), and changes the slow-docs script of 'waits for servers whose script identifiers differ from their names' to resolve four namespace spellings to [\"mcp__slow_docs\"] (TestAgentSessionMCPWaitsForServersWhoseScriptIdentifiersDifferFromTheirNames, updated in f6c7d9a6ee). Pi main changes only the import of createMcpToolName (from the mcp package instead of src/extensions/mcp/tools.ts): no case or expectation changes; the Go tests use mcp.CreateMcpToolName."
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-model-extension.test.ts",
@@ -7387,8 +7444,12 @@
     },
     {
       "path": "packages/coding-agent/test/terminal-question.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8b3415d41fdb22ff48724d9dd5adec01abd8757d71415a5d447a78ea5239614a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8b3415d41fdb22ff48724d9dd5adec01abd8757d71415a5d447a78ea5239614a",
+      "evidence": [
+        "internal/terminalquestion/terminalquestion_test.go"
+      ],
+      "rationale": "All 5 cases run in internal/terminalquestion: output selection and cleanup after an answer, EOF without an interrupt callback, Ctrl+C reporting an interrupt, caller cancellation not reporting one, and an already-cancelled prompt."
     },
     {
       "path": "packages/coding-agent/test/test-harness.test.ts",
