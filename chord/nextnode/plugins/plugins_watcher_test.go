@@ -97,10 +97,21 @@ func stateOf(t testing.TB, object *delta.JsonObject) PluginsState {
 // watcherOn is a watcher of root and base on a fresh loop, closed and joined when the test ends.
 func watcherOn(t *testing.T, root, base string) *watcherFixture {
 	t.Helper()
+	return watcherOver(t, []string{root}, base)
+}
+
+// watcherOver is a watcher of roots (root is the first, "" for none) and base on a fresh loop, closed and joined when the
+// test ends.
+func watcherOver(t *testing.T, roots []string, base string) *watcherFixture {
+	t.Helper()
+	root := ""
+	if len(roots) > 0 {
+		root = roots[0]
+	}
 	f := &watcherFixture{t: t, root: root, base: base, loop: host.NewLoop(), scheduler: chord.NewDeliveryScheduler()}
 	batch := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(f.scheduler).UseMicrotasks(f.loop.Queue).UseSection(f.loop.Run)
 	f.watcher = newPluginWatcher(watcherOptions{
-		Roots: []string{root}, Base: []string{base}, Kinds: kinds,
+		Roots: roots, Base: []string{base}, Kinds: kinds,
 		Failed: func(err error) {
 			f.mu.Lock()
 			defer f.mu.Unlock()
@@ -196,7 +207,8 @@ func (f *watcherFixture) forget() { f.run(func() { forgetMarks(f.watcher) }) }
 func forgetMarks(w *pluginWatcher) {
 	clear(w.dirty)
 	clear(w.install)
-	w.set, w.manifest, w.baseChanged = 0, 0, false
+	w.set, w.manifest = 0, 0
+	clear(w.differing)
 	w.marksChanged()
 }
 
@@ -309,10 +321,9 @@ func TestTheWatchersMarksAsksForDiscoveryForADirectoryUnderARootAndAFacetFileAtA
 	if marks := f.marks(); !marks.Set || !reflect.DeepEqual(marks.Dirty, list("@test/b")) {
 		t.Fatalf("marks = %+v, want set and @test/b dirty", marks)
 	}
+	writeFiles(t, f.base, map[string]string{"core.ts": "export {};"})
 	f.mark(filepath.Join(f.base, "core.ts"))
-	if marks := f.marks(); !marks.Base {
-		t.Fatalf("marks = %+v, want base", marks)
-	}
+	eventually(t, 5*time.Second, "base", func() bool { return f.marks().Base })
 	f.close()
 }
 
@@ -476,8 +487,10 @@ func TestTheWatcherAndLinksSurvivesALinkLoopCreatedUnderARootItsStatNeverEscapes
 func TestTheWatcherRemovingAWatchedRootOrBaseDirectoryMarksSetAndBaseAsFsWatchReportsIt(t *testing.T) {
 	root := realOf(t, tempRoot(t))
 	base := realOf(t, tempRoot(t))
+	// The base directory's source file is what the watcher recorded at its start: the directory's removal is its loss.
+	writeFiles(t, base, map[string]string{"core.ts": "export {};"})
 	f := watcherOn(t, root, base)
-	// Nothing in them: only their own removal is an event, which `fs.watch` names by the directory's base name under it.
+	// Nothing in the root: only its own removal is an event, which `fs.watch` names by the directory's base name under it.
 	if err := os.Remove(root); err != nil {
 		t.Fatal(err)
 	}
@@ -485,7 +498,7 @@ func TestTheWatcherRemovingAWatchedRootOrBaseDirectoryMarksSetAndBaseAsFsWatchRe
 	if f.marks().Base {
 		t.Fatal("base set by a root's removal")
 	}
-	if err := os.Remove(base); err != nil {
+	if err := os.RemoveAll(base); err != nil {
 		t.Fatal(err)
 	}
 	eventually(t, 5*time.Second, "base", func() bool { return f.marks().Base })

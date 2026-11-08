@@ -1058,3 +1058,206 @@ func liveStateOf(ref *Reference) *RefState {
 	ref.binding.loop.Run(func() { state = ref.State().Value() })
 	return state
 }
+
+// Ports the describe 'old work across hosts (decision "Reload restarts every affected object", `call.old`)' of consumer.test.ts.
+//
+// backCall is a provider on side whose `work` (after its gate) calls a dependent on the other host, which holds the provider
+// and calls its `x` back over the link: both reload at once while `work` runs. When raised, the reload raises the provider's
+// version (no `accepts`) and the dependent's new code needs it; dependentFirst reloads the dependent's host first and the
+// provider's 50 ms later.
+func backCall(t *testing.T, side string, raised, dependentFirst bool) (string, time.Duration) {
+	t.Helper()
+	address := func(on string) func(*delta.JsonObject) (contracts.Address, error) {
+		return func(*delta.JsonObject) (contracts.Address, error) {
+			if on == "server" {
+				return Server.Address(nil), nil
+			}
+			return Session.Address(jsonObject("id", "S1")), nil
+		}
+	}
+	other := map[string]string{"server": "worker", "worker": "server"}[side]
+	provider := mustContract(contracts.Remote("app.provider-"+side, contracts.RemoteDeclaration{
+		Version: 1, Params: contracts.Params{}, HostAddress: address(side),
+		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+			contracts.Meth("work", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+			contracts.Meth("x", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+		}})},
+	}))
+	providerV2 := mustContract(contracts.Evolve(provider, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+		return e.AddState("v", "more", contracts.Str())
+	}))
+	dependent := mustContract(contracts.Remote("app.dependent-"+other, contracts.RemoteDeclaration{
+		Version: 1, Params: contracts.Params{}, HostAddress: address(other),
+		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+			contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+		}})},
+	}))
+	gates := make(chan *reloadGate, 1)
+	serve := func(h FacetHost, onSide, code string) error {
+		typ := provider
+		if raised && code == "v2" {
+			typ = providerV2
+		}
+		if onSide == side {
+			state := map[string]chord.Watchable[delta.JsonValue]{}
+			if typ == providerV2 {
+				state["more"] = constant("m")
+			}
+			return h.Serve(typ, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+				return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{State: state, Methods: map[string]contracts.MethodFunction{
+					"work": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						select {
+						case gate := <-gates:
+							gate.entered.fire()
+							gate.open.await(t, ctx)
+						default:
+						}
+						got, err := owCall(ctx.(Ctx), dependent, jsonObject(), "ping")
+						return code + " work -> " + got, err
+					},
+					"x": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return code + " x", nil },
+				}}}, nil
+			}, ServeOptions{})
+		}
+		return h.Serve(dependent, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			held := self.Get(typ, jsonObject())
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				"ping": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					value, err := held.Call("x", nil, ctx)
+					text, _ := value.(string)
+					return code + " ping -> " + text, err
+				},
+			}}}, nil
+		}, ServeOptions{})
+	}
+	workerFacet := func(code string) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			if _, err := serveNotes(h, PlacedNotes); err != nil {
+				return err
+			}
+			return serve(h, "worker", code)
+		})
+	}
+	rel := relay(t, relayedOptions{
+		Trusted: true,
+		Server:  func(h FacetHost) error { return serve(h, "server", "v1") },
+		Worker:  func(h FacetHost) error { return serve(h, "worker", "v1") },
+	})
+	// The worker exists once a hold reached it.
+	_, err := rel.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
+	must(t, err)
+	key := Session.Address(jsonObject("id", "S1")).Key
+	rel.WorkerLoaded(t, key)
+	worker := rel.Worker(key)
+	host := rel.Server
+	if side == "worker" {
+		host = worker
+	}
+	options := RootOptions{Principal: workerPrincipal("S1")}
+	work := func() (any, error) {
+		return host.Root(func(ctx Ctx) (any, error) { return owCall(ctx, provider, jsonObject(), "work") }, background, options)
+	}
+	// A root keeps the dependent referenced (else it ends after each run, and the work would create it afresh).
+	held, kept, keptEnded := newSignal(), newSignal(), make(chan struct{})
+	var keptErr error
+	go func() {
+		defer close(keptEnded)
+		_, keptErr = host.Root(func(ctx Ctx) (any, error) {
+			if _, err := ctx.Get(dependent, jsonObject(), GetOptions{}); err != nil {
+				return nil, err
+			}
+			kept.fire()
+			held.await(t, ctx)
+			return nil, nil
+		}, background, options)
+	}()
+	select {
+	case <-kept:
+	case <-keptEnded:
+		t.Fatalf("the root keeping the dependent ended: %v", keptErr)
+	case <-time.After(30 * time.Second):
+		t.Fatalf("the root keeping the dependent never got it")
+	}
+	if got, err := work(); err != nil || got != "v1 work -> v1 ping -> v1 x" {
+		t.Fatalf("the first work = %v, %v, want \"v1 work -> v1 ping -> v1 x\"", got, err)
+	}
+	gate := newReloadGate()
+	gates <- gate
+	running := make(chan reloadOutcome, 1)
+	go func() { value, err := work(); running <- reloadOutcome{value: value, err: err} }()
+	gate.entered.wait(t)
+	reloadServer := func() ReloadReport {
+		return reloadMust(t)(rel.Server.Reload([]HostFacet{{Name: "@test/server", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return serve(h, "server", "v2")
+		})}}, background, ReloadOptions{}))
+	}
+	reloadWorker := func() ReloadReport {
+		return reloadMust(t)(worker.Reload([]HostFacet{{Name: "@test/worker", Facet: workerFacet("v2")}}, background, ReloadOptions{}))
+	}
+	first, second := reloadServer, reloadWorker
+	if side == "server" {
+		first, second = reloadWorker, reloadServer
+	}
+	var reports []ReloadReport
+	if dependentFirst {
+		reports = append(reports, first())
+		time.Sleep(50 * time.Millisecond)
+		reports = append(reports, second())
+	} else {
+		done := make(chan ReloadReport, 2)
+		for _, reload := range []func() ReloadReport{first, second} {
+			go func() { done <- reload() }()
+		}
+		reports = append(reports, <-done, <-done)
+	}
+	for _, report := range reports {
+		if len(report.Failed) != 0 {
+			t.Fatalf("a reload failed %+v", report.Failed)
+		}
+	}
+	opened := time.Now()
+	gate.open.fire()
+	outcome := receive(t, running)
+	took := time.Since(opened)
+	held.fire()
+	<-keptEnded
+	if outcome.err != nil {
+		return "rejected: " + outcome.err.Error(), took
+	}
+	text, _ := outcome.value.(string)
+	return text, took
+}
+
+func TestOldWorkAcrossHostsABackCallFromTheDependentOnTheWorkerRunsOnTheServerProvidersOpenOldAttempt(t *testing.T) {
+	// Without the flag, `x` would wait for the provider's new attempt, which waits for this very call's drain.
+	answer, took := backCall(t, "server", false, false)
+	if answer != "v1 work -> v2 ping -> v1 x" || took > time.Second {
+		t.Fatalf("answer = %q after %v, want \"v1 work -> v2 ping -> v1 x\" within a second", answer, took)
+	}
+}
+
+func TestOldWorkAcrossHostsABackCallFromTheDependentOnTheServerRunsOnTheWorkerProvidersOpenOldAttempt(t *testing.T) {
+	answer, took := backCall(t, "worker", false, false)
+	if answer != "v1 work -> v2 ping -> v1 x" || took > time.Second {
+		t.Fatalf("answer = %q after %v, want \"v1 work -> v2 ping -> v1 x\" within a second", answer, took)
+	}
+}
+
+func TestOldWorkAcrossHostsTheProvidersVersionRaisedWhichTheDependentsNewCodeNeedsTheWorkRunsOnTheDependentsOldAttempt(t *testing.T) {
+	for _, side := range []string{"server", "worker"} {
+		answer, took := backCall(t, side, true, false)
+		// The dependent's successor waits for the provider's: its old attempt stays open for the work.
+		if answer != "v1 work -> v1 ping -> v1 x" || took > time.Second {
+			t.Fatalf("%s: answer = %q after %v, want \"v1 work -> v1 ping -> v1 x\" within a second", side, answer, took)
+		}
+	}
+}
+
+func TestOldWorkAcrossHostsTheSameWithTheDependentsHostReloadedFirstItsReadinessWaitsOutTheOtherHostsVersionRefusal(t *testing.T) {
+	for _, side := range []string{"server", "worker"} {
+		answer, took := backCall(t, side, true, true)
+		if answer != "v1 work -> v1 ping -> v1 x" || took > time.Second {
+			t.Fatalf("%s: answer = %q after %v, want \"v1 work -> v1 ping -> v1 x\" within a second", side, answer, took)
+		}
+	}
+}

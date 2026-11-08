@@ -70,10 +70,10 @@ func benchServer(b *testing.B) (plain *httptest.Server, port int, file string) {
 	}
 	component := CreateHttp(h, HttpOptions{Listen: &ListenAddress{Host: "127.0.0.1"}, OnError: func(HttpError) {}}, background)
 	routes := contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /json", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /json", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			return jsonOf(map[string]any{"ok": true}), nil
 		}),
-		RouteFunc("GET /file", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /file", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			return FileResponse(file, FileResponseOptions{})
 		}),
 	}})

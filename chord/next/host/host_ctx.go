@@ -69,18 +69,50 @@ type callContext struct {
 	// signal is the "returned or parked" of the call this is the ctx of (nil for a scope that runs no handler). The ctx
 	// answers Value(parking.Key) with it.
 	signal *parking.Signal
+	// attempt is the attempt a method call runs on; nil for a root scope, a routine or a job run (no chain node).
+	attempt oldWorkSource
 }
 
-var _ Ctx = (*callContext)(nil)
+var (
+	_ Ctx      = (*callContext)(nil)
+	_ callNode = (*callContext)(nil)
+)
 
-func newCallContext(ctx context.Context, from caller, host *chordHost) *callContext {
-	return &callContext{Context: ctx, principal: from.principal, incarnation: from.incarnation, host: host}
+// newCallContext is the ctx of a handler run: a method call's is its own node of the call chain (on: the attempt it runs on,
+// as the chain's `CallNode`), so the chain costs no allocation; a root scope, a routine or a job run has none (on is nil).
+func newCallContext(ctx context.Context, from caller, host *chordHost, on oldWorkSource) *callContext {
+	return &callContext{Context: ctx, principal: from.principal, incarnation: from.incarnation, host: host, attempt: on}
 }
 
-// Value answers the call's parking signal under parking.Key and delegates every other key.
+// Value answers the call's parking signal under parking.Key, itself under the call chain's key when it is a method call's,
+// and delegates every other key.
 func (c *callContext) Value(key any) any {
 	if key == parking.Key && c.signal != nil {
 		return c.signal
+	}
+	if c.attempt != nil && key == callChainKey.Token() {
+		return callNode(c)
+	}
+	return c.Context.Value(key)
+}
+
+// on is the attempt its handler runs on (only read through the call chain, which a method call's ctx answers).
+func (c *callContext) on() oldWorkSource { return c.attempt }
+
+// up is the chain of the call that made this one.
+func (c *callContext) up() callNode { return chainOf(c.Context) }
+
+// chained is c's context with c's own call chain node: what a getter made through Get belongs to (old work during a
+// reload), without the call's other values (its parking signal).
+type chained struct {
+	context.Context
+	node *callContext
+}
+
+// Value answers the chain's key with the call's node; every other key is the call's context's.
+func (c chained) Value(key any) any {
+	if key == callChainKey.Token() && c.node.attempt != nil {
+		return callNode(c.node)
 	}
 	return c.Context.Value(key)
 }
@@ -115,7 +147,8 @@ func (c *callContext) Get(typ *contracts.Contract, params any, options GetOption
 		if c.settling == nil {
 			c.settling, c.settlingCancel = chordctx.WithCancel(chordctx.Background())
 		}
-		scoped = withLinkedAbortSignal(c.settling, c.Context)
+		// Under this ctx's call chain: the getter belongs to the call (old work during a reload).
+		scoped = withLinkedAbortSignal(c.settling, chained{Context: c.Context, node: c})
 	})
 	if err != nil {
 		return nil, err

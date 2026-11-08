@@ -132,7 +132,9 @@ func TestTheWorkersSideSendsStartedWhenTheAppConnectsThenReadyWithItsLoadReportA
 	if !ready.Idle || ready.Report == nil || len(ready.Report.Plugins.Added) != 0 || len(ready.Report.Failed) != 0 {
 		t.Fatalf("ready = %+v report=%+v, want idle with no plugin added and none failed", ready, ready.Report)
 	}
-	worker.child.Kill()
+	// Shut down, not killed: a SIGKILL would leave its lock's socket file on macOS and the BSDs.
+	worker.child.Send(ToWorker{Kind: ToWorkerShutdown})
+	<-worker.child.Exited()
 }
 
 func TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegisteredSoFarInReverseOrderExits0(t *testing.T) {
