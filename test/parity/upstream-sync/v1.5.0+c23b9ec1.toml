@@ -3812,9 +3812,9 @@ rationale = "coding/extension/builtin/toolsearch ports tool.ts, schema refs thro
 [[files]]
 path = "packages/coding-agent/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent"]
+rationale = "Pi eebd5d90 exports MarkdownMessageType, MarkdownTransformerOptions and MarkdownTransformerRegistration from the package root; Go has no barrel exports, the names live in coding/extension."
 
 [[files]]
 path = "packages/coding-agent/src/main.ts"
@@ -3826,23 +3826,23 @@ rationale = "coding/cli/main.go ports main.ts at c23b9ec1."
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader"]
+rationale = "tui/branch_summary.go: the expanded body runs the transformers of the summary type on the summary without Pi's header, with the entry's messageId and timestamp (tui.MarkdownSurface)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader"]
+rationale = "tui/compaction_summary.go: as the branch summary."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/custom-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent", "test:internal/codingagent/markdown_surface_async_test.go#TestSurfaceMarkdownTransformsNeverBlockTheRenderLoop"]
+rationale = "tui/custom_message.go: the default body runs the custom transformers; a renderer's component stays and is not called again. pig additive (D19): the chain runs off the render loop."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
@@ -3882,9 +3882,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_surface_test.go#TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader"]
+rationale = "tui/skill_invocation.go: the expanded skill block runs the custom transformers on the skill content without the header."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
