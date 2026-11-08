@@ -106,3 +106,35 @@ func TestSecondServerOnTheSameDataDirIsRefused(t *testing.T) {
 		t.Fatal("two servers shared a data directory")
 	}
 }
+
+// A request whose handler is still writing when the host closes is answered by that handler alone: a root scope returns at once when the host closes, and
+// the server's own error answer (http.Error) used to write the response beside it (-race: Header and WriteHeader against the handler's).
+func TestARequestServedWhileTheHostClosesIsAnsweredByItsHandlerOnly(t *testing.T) {
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	holdFacet := host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
+		return p2runtime.Routes.Contribute(self, p2runtime.Entry("GET /hold", p2runtime.RouteHandler(
+			func(response http.ResponseWriter, _ *http.Request, _ p2runtime.RequestAccess, _ host.Ctx) error {
+				close(entered)
+				<-release
+				return p2runtime.SendJSON(response, http.StatusOK, map[string]any{"held": true}, nil)
+			})))
+	})
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{}, Facets: []host.HostFacet{{Name: "hold", Facet: holdFacet}}})
+	answer := make(chan p2test.HTTPResult, 1)
+	go func() {
+		result, err := p2test.HTTP(fixture.Server.Port, "/hold", p2test.HTTPOptions{})
+		if err != nil {
+			t.Error(err)
+		}
+		answer <- result
+	}()
+	<-entered
+	if err := fixture.Server.Host.Close(p2test.Background); err != nil {
+		t.Fatal(err)
+	}
+	close(release)
+	if result := <-answer; result.Status != http.StatusOK || !strings.Contains(result.Body, `"held":true`) {
+		t.Fatalf("the handler's answer: %+v", result)
+	}
+}
