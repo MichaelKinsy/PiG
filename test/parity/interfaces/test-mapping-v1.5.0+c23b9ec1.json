@@ -2281,15 +2281,15 @@
     },
     {
       "path": "packages/chord/test/documents/documents.test.ts",
-      "disposition": "ported",
+      "disposition": "partial",
       "upstreamTestHash": "sha256:3a3b3103ce02255404ccbab1ee69187e04bf40945c7945440b25a3bf2c87bb8e",
       "evidence": [
         "chord/next/documents/documents_test.go",
         "chord/next/documents/documents_telemetry_test.go",
         "chord/next/host/host_documents_cancel_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). 2 JS-only cases are designed out (rows/chord-misca2.md; owner approval pending): no Go form (undefined, symbol keys, AbortSignal/performance.now spies, type-level).",
-      "designedOutCases": [
+      "rationale": "8 of 10 upstream cases have a Go test on this branch; the 2 listed in missingCases have a Go test only on the unmerged lane fix/chord-gap-b (d74d70c587): \"cost nothing on the committed path\" = chord/next/documents/documents_cost_test.go TestTransactionsTheirContextsEndCancelledCostNothingOnTheCommittedPathNoCheckOfTheContextBeyondTheCommitsOwn, \"times nothing when nothing records\" = chord/next/documents/documents_telemetry_test.go TestCommitsInTelemetryTimesNothingWhenNothingRecords. The row becomes ported when gap-b lands.",
+      "missingCases": [
         "transactions their context's end cancelled (decision \"Mistakes that wait are reported at once\" (e)) › cost nothing on the committed path: no check of the context beyond the commit's own (cost guard)",
         "commits in telemetry (slice 9) › times nothing when nothing records"
       ]
@@ -4005,15 +4005,12 @@
     },
     {
       "path": "packages/chord/test/surfaces/client.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:227e4ce02a1dbcd614060684dff02eff2be8da27a6a641879fab174278af1edc",
       "evidence": [
         "chord/next/surfaces/surfaces_client_test.go"
       ],
-      "rationale": "9 of 10 upstream cases have a Go test on this branch; the 1 listed in missingCases have none yet (chord-missing-cases/). 1 of them have a Go test only on an unmerged lane branch.",
-      "missingCases": [
-        "applying a new set in place › keeps a plugin's old facet when its new script fails, and reports it"
-      ]
+      "rationale": "All 10 upstream cases have a Go test on this branch. \"applying a new set in place › keeps a plugin's old facet when its new script fails, and reports it\" = chord/next/surfaces/surfaces_client_test.go TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt (Pi client.test.ts:182-194: same scripts, a `plugins` error naming @test/a, the greeting stays \"hello\"); it came in with the merged fix/chord-appcases lane."
     },
     {
       "path": "packages/chord/test/surfaces/connection.test.ts",
