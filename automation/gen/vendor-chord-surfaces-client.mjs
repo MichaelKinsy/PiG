@@ -98,6 +98,22 @@ for (const file of walk(join(telemetryDir, "dist")).sort()) {
 	if (name.endsWith(".js") && !name.startsWith("dist/testing/")) copy(file, join(pi, "node_modules/@earendil-works/pi-telemetry", name));
 }
 
+// The terminal sandbox's bootstrap (node/tui/sandbox.ts `BOOTSTRAP`, a template literal): the child's main script, read as the
+// template evaluates it, with the two values it interpolates left as the placeholders `@MAX_PIPE_FRAME@` and
+// `@SANDBOX_BUILTINS@` the Go launcher substitutes (D601).
+{
+	const text = readFileSync(join(src, "node/tui/sandbox.ts"), "utf8");
+	const start = text.indexOf("const BOOTSTRAP = `");
+	if (start < 0) throw new Error("node/tui/sandbox.ts has no BOOTSTRAP template");
+	const body = text.slice(start + "const BOOTSTRAP = ".length, text.indexOf("`;\n", start) + 1);
+	const evaluate = new Function("MAX_PIPE_FRAME", "JSON", "SANDBOX_BUILTINS", `return ${body};`);
+	const bootstrap = evaluate("@MAX_PIPE_FRAME@", { stringify: () => "@SANDBOX_BUILTINS@" }, []);
+	const target = join(outDir, "tui/bootstrap.cjs.in");
+	mkdirSync(dirname(target), { recursive: true });
+	writeFileSync(target, bootstrap);
+	files.push("tui/bootstrap.cjs.in");
+}
+
 const manifest = {
 	commit,
 	pin,

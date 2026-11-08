@@ -5,5 +5,5 @@
 // packages/chord/src/node/surfaces.
 //
 // The client side of both surfaces (the page's runtime, the terminal's runtime, React bindings) is TypeScript that runs in a
-// browser or in the terminal's sandbox: it is vendored byte for byte under client (D476).
+// browser or in the terminal's sandbox: it is vendored byte for byte under client (D601).
 package surfaces

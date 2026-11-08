@@ -25,7 +25,7 @@ import (
 //
 // Forced Go differences. esbuild's Go API (pin 0.28.2, as the plugins component's builds) replaces its JavaScript API; a
 // failing build is an error naming its messages. A Go process has no `execArgv`: the server process's conditions are
-// those of NODE_OPTIONS (see D476).
+// those of NODE_OPTIONS (see D601).
 
 // BaseBundle is a built base bundle: its hash, its script's and stylesheet's paths (under the surface's prefix), every file by
 // path, and the files esbuild read for it with their bytes' hashes (the app's base code: a file that differs from them
