@@ -133,3 +133,41 @@ func TestPrincipalKey(t *testing.T) {
 		runtime.KeepAlive(custom)
 	})
 }
+
+// Ports packages/chord/test/data/principal.test.ts, "samePrincipal" (Pi main de229e073): the kit's owner is a principal the
+// app chooses, recognized by canonical JSON.
+func TestSamePrincipal(t *testing.T) {
+	ada := user("u1")
+
+	t.Run("matches the same canonical JSON, whatever the property order; nothing else", func(t *testing.T) {
+		for _, c := range []struct {
+			name      string
+			principal data.Principal
+			want      bool
+		}{
+			{"the same members in another order", delta.JsonObjectOf("id", "u1", "kind", "user"), true},
+			{"an extra member", delta.JsonObjectOf("kind", "user", "id", "u1", "name", "Ada"), false},
+			{"another kind", delta.JsonObjectOf("kind", "guest", "id", "u1"), false},
+			{"no principal", nil, false},
+		} {
+			if got := data.SamePrincipal(c.principal, ada, bg); got != c.want {
+				t.Fatalf("%s: SamePrincipal = %v, want %v", c.name, got, c.want)
+			}
+		}
+	})
+
+	t.Run("computes each principal's key once (cost guard)", func(t *testing.T) {
+		owner := user("owner")
+		caller := user("owner")
+		walks := func(work func(ctx context.Context)) int { return nexttest.Counted(t, work).Walks }
+		if got := walks(func(ctx context.Context) {
+			data.SamePrincipal(caller, owner, ctx)
+			data.SamePrincipal(caller, owner, ctx)
+		}); got != 2 {
+			t.Fatalf("walks = %d, want 2 (the owner's and the caller's key, once each)", got)
+		}
+		if got := walks(func(ctx context.Context) { data.SamePrincipal(user("owner"), owner, ctx) }); got != 1 {
+			t.Fatalf("walks for a new principal object = %d, want 1", got)
+		}
+	})
+}
