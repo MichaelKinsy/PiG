@@ -78,7 +78,7 @@ func (s *TuiScope) Hold(typ *contracts.Contract, params any) (*host.Reference, e
 }
 
 // follow follows a source until Dispose: its changes call changed; the reader of its current value is the result.
-func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.Context) (started func(listener func()), stop func(), err error)) func() (T, bool) {
+func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.Context) (started func(listener func()), stop func() (chord.WatchEnd, error), err error)) func() (T, bool) {
 	go func() {
 		started, stop, err := start(s.ctx)
 		if err != nil {
