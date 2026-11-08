@@ -285,8 +285,15 @@ func nodeConnectionFailure(cause error) (message, code string) {
 			return op.Op + " " + code, code
 		}
 	}
-	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || errors.Is(cause, net.ErrClosed) {
+	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || errors.Is(cause, net.ErrClosed) || isServerClosedIdle(cause) {
 		return "other side closed", "UND_ERR_SOCKET"
 	}
 	return "", ""
+}
+
+// isServerClosedIdle reports net/http's unexported errServerClosedIdle, the error a transport gives a request whose connection the server
+// closed before the request's first byte was read: a peer's FIN that the connection's reader sees before the request's own write or read does.
+func isServerClosedIdle(err error) bool {
+	//portlint:allow erroridentity net/http exports no value or type for errServerClosedIdle (transport.go), so its text is its identity
+	return err != nil && err.Error() == "http: server closed idle connection"
 }

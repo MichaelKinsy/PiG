@@ -130,7 +130,7 @@ func TestAnthropicSetupTransportFailure(t *testing.T) {
 				defer func() { _ = provider.Close() }()
 				opts := StreamOptions{Effort: "low", MaxRetries: new(0), Fetch: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
 					if mode == "connection" {
-						return nil, io.ErrUnexpectedEOF
+						return nil, errors.New("connection failed")
 					}
 					if mode == "abort" {
 						cancel()

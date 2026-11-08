@@ -158,7 +158,7 @@ func TestTransportDiagnosticLeavesEventStreamUnchanged(t *testing.T) {
 		t.Fatalf("events = %v, want a single error event", kinds)
 	}
 	result := stream.Result()
-	if result.StopReason != StopReasonError || result.ErrorMessage != "Connection error." || !IsRetryableAssistantError(*result) {
+	if result.StopReason != StopReasonError || result.ErrorMessage != "Connection error.: other side closed (UND_ERR_SOCKET)" || !IsRetryableAssistantError(*result) {
 		t.Fatalf("result = %q %q", result.StopReason, result.ErrorMessage)
 	}
 }
