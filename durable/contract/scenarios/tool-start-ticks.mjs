@@ -23,13 +23,23 @@ const spin = () => {
 	passes++
 	queueMicrotask(spin)
 }
-const setImmediateOf = globalThis.setImmediate
+const setImmediateOf = globalThis.setImmediate, clearImmediateOf = globalThis.clearImmediate
+const pending = new Set()
+const settled = () => { if (paused && immediates === 0) { paused = false; queueMicrotask(spin) } }
 globalThis.setImmediate = (callback, ...args) => {
 	immediates++
-	return setImmediateOf((...rest) => {
+	const handle = setImmediateOf((...rest) => {
+		pending.delete(handle)
 		immediates--
-		try { callback(...rest) } finally { if (paused && immediates === 0) { paused = false; queueMicrotask(spin) } }
+		try { callback(...rest) } finally { settled() }
 	}, ...args)
+	pending.add(handle)
+	return handle
+}
+// A cleared immediate never runs, so it stops counting as pending here.
+globalThis.clearImmediate = handle => {
+	if (pending.delete(handle)) { immediates--; settled() }
+	clearImmediateOf(handle)
 }
 const mark = label => console.log(`${label}: ${passes}`)
 
