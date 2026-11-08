@@ -105,19 +105,27 @@ type staged struct {
 	plugins    *namedMap[*stagedPlugin]
 }
 
+// checkPluginNames is the error for the first plugin of facets whose name is no npm package name: a programming error, so
+// `load` and `reload` fail before they change anything (decision "Mistakes that wait are reported at once" (d)).
+func checkPluginNames(facets []HostFacet) error {
+	for _, facet := range facets {
+		if !IsPluginName(facet.Name) {
+			return fmt.Errorf("%q is not a valid plugin name", facet.Name)
+		}
+	}
+	return nil
+}
+
 // emptyStaged is a staged table with nothing in it.
 func emptyStaged() *staged {
 	return &staged{types: newNamedMap[*served](), registries: newNamedMap[stagedRegistry](), plugins: newNamedMap[*stagedPlugin]()}
 }
 
-// stagePlugin runs one plugin's setup and checks what it declared: its name (an npm name), a type or registry it serves
+// stagePlugin runs one plugin's setup and checks what it declared: its name (an npm name, checked by checkPluginNames before), a type or registry it serves
 // twice, a remote type on a host without a principal or address, every provider's `accepts` (`checkAccepts`) and every
 // registry provider's shape. It returns the first error, naming the plugin.
 func stagePlugin(plugin HostFacet, host *chordHost) (*stagedPlugin, error) {
 	name := plugin.Name
-	if !IsPluginName(name) {
-		return nil, fmt.Errorf("%q is not a valid plugin name", name)
-	}
 	types := newNamedMap[*served]()
 	registryTable := newNamedMap[stagedRegistry]()
 	var contributions []facetContribution
