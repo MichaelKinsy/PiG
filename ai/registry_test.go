@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 // TestImageCatalogPin binds the image catalog to @earendil-works/pi-ai's IMAGE_MODELS at the pinned version.
@@ -675,6 +676,33 @@ func TestCodegenByteIdentical(t *testing.T) {
 		}
 		if !bytes.Equal(normalizeSourceComment(committed), normalizeSourceComment(regenerated)) {
 			t.Errorf("%s drift\ncommitted=%d bytes regenerated=%d bytes: re-run `go generate ./ai/...`", committedPath, len(committed), len(regenerated))
+		}
+	}
+	// The record chunks are compared decoded: a frame's bytes depend on the encoder's version, its content does not.
+	regeneratedChunks, err := os.ReadDir(filepath.Join(dir, "catalog_records"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	committedChunks, err := catalogRecordFiles.ReadDir("catalog_records")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(regeneratedChunks) != len(committedChunks) {
+		t.Fatalf("catalog_records drift: %d chunks committed, %d regenerated", len(committedChunks), len(regeneratedChunks))
+	}
+	for _, entry := range regeneratedChunks {
+		regenerated, err := os.ReadFile(filepath.Join(dir, "catalog_records", entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		committed, err := catalogRecordFiles.ReadFile("catalog_records/" + entry.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, err1 := zstdblob.Decode(regenerated)
+		got, err2 := zstdblob.Decode(committed)
+		if err1 != nil || err2 != nil || !bytes.Equal(got, want) {
+			t.Errorf("catalog_records/%s drift: re-run `go generate ./ai/...`", entry.Name())
 		}
 	}
 }
