@@ -415,11 +415,15 @@ func TestOptimisticAddReturnsTheResultOfItsCall(t *testing.T) {
 	scope := scopeOn(newHost(t), func() {})
 	defer scope.Dispose()
 	_, add, _ := OptimisticLast[string, int](scope, func() string { return "real" })
-	run := func(add OptimisticAdd[string, int]) (int, error) { return add("x", func() (int, error) { return 7, nil }) }
-	got, err := run(add)
+	got, err := call(add)
 	if err != nil || got != 7 {
 		t.Fatalf("add = %v, %v; want 7, nil", got, err)
 	}
+}
+
+// call adds "x" with a call that gives 7.
+func call(add OptimisticAdd[string, int]) (int, error) {
+	return add("x", func() (int, error) { return 7, nil })
 }
 
 type noJSONValue struct{}
