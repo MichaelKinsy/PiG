@@ -212,14 +212,23 @@ func parallelOverWeighted(items []int, weight func(item int) int64, minWeight in
 	var wg sync.WaitGroup
 	start, spent := 0, int64(0)
 	for n := 1; start < len(items); n++ {
-		// A part ends where the cost so far reaches its share of the whole; the last takes the rest.
+		// A part ends at the item boundary nearest its share of the whole, so one record heavier than a share stands alone beside the light
+		// records before it, and does not swallow them; a part holds at least minWeight, and the last takes the rest.
 		end := len(items)
 		if n < parts {
 			share := total * int64(n) / int64(parts)
+			partFrom := spent
 			end = start
-			for end < len(items) && (spent < share || end == start) {
-				spent += weight(items[end]) + fixed
+			for end < len(items) {
+				cost := weight(items[end]) + fixed
+				if end > start && spent-partFrom >= minWeight && spent+cost/2 >= share {
+					break
+				}
+				spent += cost
 				end++
+			}
+			if total-spent < minWeight {
+				end = len(items)
 			}
 		}
 		part := items[start:end]

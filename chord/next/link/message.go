@@ -6,6 +6,8 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -137,6 +139,13 @@ type HelloMessage struct {
 	Calls       int
 }
 
+// CARRIER bounds a trace carrier: the most keys it has (Keys) and the longest key or value (Length), in UTF-16 units.
+var CARRIER = struct{ Keys, Length int }{Keys: 8, Length: 256}
+
+// NAME_LENGTH is the longest name a message carries (a type's, a host kind's): a relay records them in its spans
+// unparsed, so a peer cannot hand it an unbounded string (slice 9 review M1).
+const NAME_LENGTH = 256
+
 // HoldMessage holds an object. Principal is whom the hold acts for and Incarnation the origin's, read only on a parent
 // link; Chain is the instance ids of the activations waiting for this hold (Q5), read only on a trusted link; Limit
 // is the decoded limit per part of the link the hold was admitted on (Q2), read only on a parent link. Address is
@@ -153,6 +162,13 @@ type HoldMessage struct {
 	Incarnation string
 	Chain       []string
 	Limit       Optional[int]
+	// Trace is the caller's trace carrier (R5, slice 9): an adapter's opaque string record, bounded by CARRIER, printable
+	// ASCII only. nil is no carrier; an empty one is a carrier without keys.
+	Trace map[string]string
+	// TraceOrder is the order of Trace's keys as a decoded message had them (Pi's object keeps its insertion order, a Go map
+	// has none): encoding writes them in it again, so a relayed carrier is the one that arrived. Empty (or not exactly Trace's
+	// keys): the keys sorted.
+	TraceOrder []string
 }
 
 // ReleaseMessage releases a hold.
@@ -162,7 +178,8 @@ type ReleaseMessage struct {
 }
 
 // CallMessage calls a method. Args is absent for a method without arguments; Segments are the byte segments of a
-// payload whose method's schema has a `bytes()` leaf, referenced from its JSON by `{"$bytes": i}`.
+// payload whose method's schema has a `bytes()` leaf, referenced from its JSON by `{"$bytes": i}`. Old is old work of a
+// reload (decision "Reload restarts every affected object"): honoured only from a trusted link.
 type CallMessage struct {
 	Origin   Optional[int]
 	Call     int
@@ -170,6 +187,10 @@ type CallMessage struct {
 	Method   int
 	Args     Part
 	Segments [][]byte
+	Trace    map[string]string
+	// TraceOrder is HoldMessage.TraceOrder.
+	TraceOrder []string
+	Old        bool
 }
 
 // AbortMessage aborts a call.
@@ -413,13 +434,14 @@ func conforms(message Message) bool {
 		return typed.Protocol >= 0 && isUUID(typed.Incarnation) && typed.Calls >= 1
 	case *HoldMessage:
 		return validOrigin(typed.Origin) && typed.Hold >= 0 && typed.Version >= 1 && isHex16(typed.Fingerprint) && typed.Params != nil &&
+			jsstring.Length(typed.Type) <= NAME_LENGTH && jsstring.Length(typed.Address.Kind) <= NAME_LENGTH && validCarrier(typed.Trace) &&
 			(typed.Principal == nil || isString(typed.Principal.Value("kind"))) &&
 			(typed.Incarnation == "" || isUUID(typed.Incarnation)) && validIDs(typed.Chain) &&
 			(!typed.Limit.Ok || typed.Limit.Value >= 0)
 	case *ReleaseMessage:
 		return validOrigin(typed.Origin) && typed.Hold >= 0
 	case *CallMessage:
-		return validOrigin(typed.Origin) && typed.Call >= 0 && typed.Hold >= 0 && typed.Method >= 0
+		return validOrigin(typed.Origin) && typed.Call >= 0 && typed.Hold >= 0 && typed.Method >= 0 && validCarrier(typed.Trace)
 	case *AbortMessage:
 		return validOrigin(typed.Origin) && typed.Call >= 0
 	case *RetryMessage:
@@ -481,6 +503,31 @@ func conforms(message Message) bool {
 }
 
 func validOrigin(origin Optional[int]) bool { return !origin.Ok || origin.Value >= 1 }
+
+// validCarrier is the message schema's trace carrier: at most CARRIER.Keys keys, keys and values at most CARRIER.Length
+// long, of printable ASCII only (keys without spaces), as W3C's headers and Chord's adapters are, so no control
+// character becomes a stored trace or span id (review M2).
+func validCarrier(carrier map[string]string) bool {
+	if len(carrier) > CARRIER.Keys {
+		return false
+	}
+	for key, value := range carrier {
+		if key == "" || len(key) > CARRIER.Length || len(value) > CARRIER.Length {
+			return false
+		}
+		for index := 0; index < len(key); index++ {
+			if key[index] < 0x21 || key[index] > 0x7e {
+				return false
+			}
+		}
+		for index := 0; index < len(value); index++ {
+			if value[index] < 0x20 || value[index] > 0x7e {
+				return false
+			}
+		}
+	}
+	return true
+}
 
 func validIDs(ids []string) bool {
 	if len(ids) > CHAIN {
@@ -558,4 +605,14 @@ func isUUID(text string) bool {
 	}
 	//portlint:allow utf16units the length check above admits only ASCII text here, so byte offsets are UTF-16 offsets (incarnation pattern, message.ts:48)
 	return isLowerHex(text[:8]) && isLowerHex(text[9:13]) && isLowerHex(text[14:18]) && isLowerHex(text[19:23]) && isLowerHex(text[24:])
+}
+
+// carrierValue is the carrier as it is written: an object with its keys in order (the insertion order a decoded carrier
+// had, else sorted).
+func carrierValue(carrier map[string]string, order []string) any {
+	object := delta.NewJsonObject(len(carrier))
+	for _, key := range chordtelemetry.CarrierKeys(carrier, order) {
+		object.Set(key, carrier[key])
+	}
+	return object
 }

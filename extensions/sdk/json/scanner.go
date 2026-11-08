@@ -22,7 +22,7 @@ import (
 func Valid(data []byte) bool {
 	scan := newScanner()
 	defer freeScanner(scan)
-	return checkValid(data, scan) == nil
+	return validate(data, scan) == nil
 }
 
 // checkValid verifies that data is valid JSON-encoded data.

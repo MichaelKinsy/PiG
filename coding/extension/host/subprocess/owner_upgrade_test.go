@@ -2,47 +2,39 @@ package subprocess
 
 import (
 	"bytes"
-	"compress/gzip"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"golang.org/x/mod/modfile"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/internal/gosdkbundle"
+	"github.com/MichaelKinsy/PiG/internal/sdkpack"
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 // A standalone may import the staged SDK through its legacy module path, including SDK self-imports.
 func TestLegacyStandaloneBuildsStagedSDKSubpackages(t *testing.T) {
 	root := t.TempDir()
 	sdkDir := stagedSDKDir(t, root, "go")
-	for _, name := range sdk.BundledFiles() {
-		data, err := sdk.Source.ReadFile(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		// An embedded name under .gz/ holds the gzip of the file under the rest of the name, without .gz.
-		if stripped, compressed := strings.CutPrefix(name, ".gz/"); compressed {
-			reader, err := gzip.NewReader(bytes.NewReader(data))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if data, err = io.ReadAll(reader); err != nil {
-				t.Fatal(err)
-			}
-			name = strings.TrimSuffix(stripped, ".gz")
-		}
-		path := filepath.Join(sdkDir, name)
+	frame, err := gosdkbundle.Source.ReadFile(sdkpack.ArchiveName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob, err := zstdblob.Decode(frame)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sdkpack.Walk(blob, func(name string, data []byte) error {
+		path := filepath.Join(sdkDir, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
+			return err
 		}
-		if err := os.WriteFile(path, data, 0o644); err != nil {
-			t.Fatal(err)
-		}
+		return os.WriteFile(path, data, 0o644)
+	}); err != nil {
+		t.Fatal(err)
 	}
 	for _, replacement := range []string{"./missing-sdk", sdkDir} {
 		t.Run(filepath.Base(replacement), func(t *testing.T) {

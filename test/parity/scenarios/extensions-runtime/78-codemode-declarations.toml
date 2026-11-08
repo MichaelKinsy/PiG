@@ -1,5 +1,5 @@
 # Behavior family: extensions-runtime (codemode declarations)
-# Pi 1.2.0 probe: packages/codemode declarations.ts schemaToType (401 schemas, with maxChars, $ref and $defs, URIError), renderToolSignature and renderToolSample (150 tools each, with inputMaxChars),
+# Pi 1.2.0 probe: packages/codemode declarations.ts schemaToType (401 schemas, with maxChars, $ref and $defs, malformed $ref escapes), renderToolSignature and renderToolSample (150 tools each, with inputMaxChars),
 # renderDeclarations (100 tool and global sets: tools, plain and namespaced globals, signatures, doc comments) and renderToolOutputType (95 output schemas incl. MCP CallToolResult shapes,
 # which Pi 1.2.0 renders as plain types). testdata/upstream-oracle.mjs regenerates the deterministic and seeded-random corpus with Pi; each result is compared as one JSON line. The Go tests in
 # codemode/upstream_oracle_test.go compare PiG with the committed golden of the same corpus; this scenario compares the two printed streams, so a stale golden shows up too.
@@ -24,5 +24,8 @@ timeout_seconds = 240
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['declare const tools', 'Promise<', 'codemode tool declaration:', '"URIError:']
+both_contain = ['declare const tools', 'Promise<', 'codemode tool declaration:']
+# Pi 6d3e342b2 (#11803, in the pin c23b9ec1) makes a $ref whose escape is malformed or not UTF-8 (`#/%E0%A4%A`, `#/%FF`) name nothing, so every render function prints `unknown`;
+# Pi 1.2.0 threw a URIError there, which this scenario used to require in both streams. Neither stream may carry one now.
+both_not_contain = ['URIError']
 runs = 2

@@ -27,6 +27,50 @@ If you omit `--model` and no default model exists, RPC mode starts with Pi's `un
 
 The initial active tool list and system-message tool declarations retain extension load and registration order. When several extensions register the same tool name, the first registration wins.
 
+## Serve many sessions
+
+```bash
+pig --mode rpc --listen /run/user/1000/pig.sock [--model <provider/model>] [options]
+```
+
+`--listen <path>` serves one RPC session per connection on the Unix socket at `<path>` (D232). The connection carries Pi's RPC protocol unchanged: the client writes commands and reads responses and events, framed as in [Framing](#framing).
+
+- Every connection creates a new Session, persisted under the Session directory unless you pass `--no-session`. `--listen` rejects `--continue`, `--resume`, `--session`, `--session-id` and `--fork`.
+- Closing a connection is the end of that session's standard input: PiG shuts the session down, closes the connection and keeps serving.
+- The server ignores its own standard input and runs until a termination signal. The signal shuts every live session down, then PiG exits with `128 +` the signal number.
+- Every session has the server's working directory, agent directory, flags, model and tool selection. Start another server for a different working directory.
+- The socket path must not exist. PiG binds the socket inside a fresh directory of mode 0700 next to the path, sets mode 0600 and links it into place, so it is private from the moment the path exists and the process umask is not changed. PiG removes the socket at exit, and only while the path still names the socket it created. **The socket has no authentication**: any process that runs as your user (the sessions' own tools, a sandbox or container that runs as your user with the directory mounted) and root can connect and drive a full session with the server's credentials, tools and approvals. Put it in a directory only you can reach, such as `$XDG_RUNTIME_DIR`. A path longer than a socket address holds (104 bytes on macOS, 108 on Linux) is refused.
+- By default every session has its own extension processes, as a process per session would. No extension state is shared between sessions: a module variable, `process.env`, `globalThis` or a timer in Node, and a package variable in Go, Rust, Python or Lisp, belong to one session. The cost is one set of extension processes per session (see the memory table in `bench/sessionhost/README.md`). Extensions compiled into the host program (a Piglet Binary's fused Go extensions, or a program's own `ExtensionFactories`) run inside the server process in both modes, so their package-level state is the server's and is shared by every session.
+- `--listen-share-extensions` makes the sessions share the extension processes: sessions that load the same extension run in one process per cell, and an additional session costs a small part of a process. **Warning: module-level state is then shared between sessions.** An extension that keeps a client, a cache or a timer in a module variable, in `process.env` or in `globalThis` sees the other sessions' writes and its timers outlive their session while another session keeps the process. Each session still has its own extension instance, registration, replicated state and events. Exact standalone extensions and quarantined cells keep a process of their own in this mode too. A `/reload` from one connection re-evaluates edited modules for the next generation of every session. The flag is an error without `--listen`.
+- `SIGINT` (Ctrl+C), `SIGTERM` and `SIGHUP` end the server as described above, and a further signal during the shutdown terminates the extension processes and exits at once. On Windows only the console-close events and Ctrl+C reach the server.
+- A crash or a kill leaves the socket file behind, and the next start refuses the path as existing until you delete it by hand. Mode 0600 applies on Unix only. On Windows the server listens on an `AF_UNIX` socket (Windows 10 version 1803 or later), not a named pipe, and the socket's access follows the permissions of its directory.
+
+A client that connects twice and prompts both sessions:
+
+```python
+import json, socket
+
+def session(path):
+    s = socket.socket(socket.AF_UNIX); s.connect(path); return s, s.makefile("rw")
+
+def prompt(f, text):
+    f.write(json.dumps({"type": "prompt", "message": text}) + "\n"); f.flush()
+
+a, fa = session("/run/user/1000/pig.sock")
+b, fb = session("/run/user/1000/pig.sock")
+prompt(fa, "Name one prime number.")
+prompt(fb, "Name one even number.")
+for f in (fa, fb):
+    for line in f:
+        r = json.loads(line)
+        if r.get("type") == "agent_settled":
+            break  # the run ended
+        if r.get("type") == "response" and r.get("command") == "prompt" and (not r.get("success") or r["data"].get("disposition") == "handled"):
+            break  # refused (no model, bad auth), or handled without a run: no agent_settled follows
+for s, f in ((a, fa), (b, fb)):
+    f.close(); s.close()
+```
+
 ## Framing
 
 Each input or output record is one JSON object followed by LF (`\n`).
@@ -58,9 +102,9 @@ PiG implements the command union in the pinned Pi `rpc-types.ts`. The generated 
 
 Close standard input to shut down RPC mode. PiG cancels active prompts, Bash commands, Session transitions, model-selection handlers, retries, and extension UI requests before it closes the process. When standard input ends while `new_session`, `fork`, `clone` or `switch_session` is still replacing the Session, PiG finishes the replacement and writes its response before it exits. Pi 1.5.0 exits without answering that command (D146). A suspended extension command's continuation can run before its runtime stops (D85), and a settle-tail handler of a runtime that cannot report its wait holds standard input open until it finishes (D86).
 
-An extension can also request shutdown with `ctx.shutdown()`. If the session is idle and no command is being handled, PiG shuts down right away, also while the client sends nothing. Otherwise it shuts down once the current command has finished and its response is written (for `prompt`, once the prompt settles) or the active run emits `agent_settled`. A request made while an extension-started compaction runs waits for the next command or run to finish. Pi 1.5.0 acts on a request only after the next command or at `agent_settled`, and an extension command that requests shutdown exits before its `prompt` response is written; PiG follows Pi main 1708b4788 (D231).
+An extension can also request shutdown with `ctx.shutdown()`. If the session is idle and no command is being handled, PiG shuts down right away, also while the client sends nothing. Otherwise it shuts down once the current command has finished and its response is written (for `prompt`, once the prompt settles) or the active run emits `agent_settled`. A request made while an extension-started compaction runs waits for the next command or run to finish.
 
-Once a shutdown has started, from standard input ending, a request or a signal, a later end of input or a single SIGTERM or SIGHUP does not interrupt it, so closing standard input and sending SIGTERM together is safe: the dispose finishes and the process exits with the status of the first trigger (0, or 128 plus the signal number). A second signal exits at once with 128 plus its number. Pi 1.5.0 lets the next signal kill the process in the middle of the dispose, and a second trigger exit 0 at once; PiG follows Pi main ace560c30 (D234). Print mode likewise keeps handling signals during its final cleanup. Two signals the operating system delivers back to back can reach PiG as one, because the Go runtime merges a signal that arrives before it took the previous one; send a forcing second signal a short moment after the first (D234).
+Once a shutdown has started, from standard input ending, a request or a signal, a later end of input or a single SIGTERM or SIGHUP does not interrupt it, so closing standard input and sending SIGTERM together is safe: the dispose finishes and the process exits with the status of the first trigger (0, or 128 plus the signal number). A second signal exits at once with 128 plus its number. Print mode likewise keeps handling signals during its final cleanup. Two signals the operating system delivers back to back can reach PiG as one, because the Go runtime merges a signal that arrives before it took the previous one; send a forcing second signal a short moment after the first.
 
 Go programs can use `github.com/MichaelKinsy/PiG/coding/rpcclient`, the port of Pi's TypeScript `RpcClient`. It starts `pig --mode rpc`, correlates responses, exposes typed command methods, and delivers events to listeners. Other languages use the JSONL protocol directly.
 

@@ -61,13 +61,13 @@ Distributed file: `.github/CODE_OF_CONDUCT.md`
 
 PiG customizes the enforcement contact and preserves the required source and license attribution in the document.
 
-## grok-mermaid 0.2.2
+## lovely-mermaid 0.3.3
 
-Source: <https://github.com/xl0/grok-mermaid/tree/v0.2.2>
+Source: <https://github.com/xl0/lovely-mermaid/tree/v0.3.3>
 
-Reviewed source revision: `3430584a71350d72b5a0310e91bcd55578a9f981`
+Reviewed source revision: `a28f683ef3d9eda3497e5818f4f18dfdc3a87ed9`
 
-Published npm integrity: `sha512-XcJEP5dDC8liHBh52mlLjU18fNvu1ckFsu0QpIG3+APZ270fsj9wxpiA6cOURmbUEuoMVgjbC2+UYgTdCqqgzA==`
+Published npm integrity: `sha512-EMLJS934qwt2MLO/a5o+T/89HGbuXZPwmCpHIhHO+DVrm+y5tHlEHgpZzlC2o4yW/rFPHRFO9xSMafzqH4wH5A==`
 
 Distributed files: `internal/mermaid/**`
 
@@ -86,7 +86,7 @@ Distributed file: `internal/mermaid/width_data.go`
 - Copyright (c) 2015 The Rust Project Developers
 - License: Apache-2.0 OR MIT; PiG uses the MIT option for this derived data
 
-The width table is generated through `grok-mermaid` from the exact `unicode-width` 0.2.0 crate pinned by `grok-mermaid`'s width oracle. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+The width table is generated through `lovely-mermaid` from the exact `unicode-width` 0.2.0 crate pinned by `lovely-mermaid`'s width oracle. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
 
 ## png 0.17.14 and fdeflate 0.3.6
 
@@ -717,6 +717,10 @@ Source: <https://github.com/libuv/libuv/blob/v1.51.0/src/win/process.c>
 
 `extensions/sdk/json/` derives from the Go Authors' Go 1.27.1 `src/encoding/json` implementation, with lossless UTF-16 surrogate handling for the extension wire. It retains the Go Authors' copyright headers and BSD-3-Clause license in `extensions/sdk/json/LICENSE`. `extensions/sdk/json/README.md` records the source files and local modifications. The SDK source bundle carries this license.
 
+## Go sort
+
+`internal/sortx/zsortfunc.go` is the Go Authors' Go 1.27.3 `src/sort/zsortfunc.go` with the `lessSwap`, `sortedHint`, `xorshift` and `nextPowerOfTwo` declarations of `src/sort/sort.go` that it needs, under the package name `sortx`. It retains the Go Authors' copyright header, under the BSD-3-Clause license in `LICENSES/BSD-3-Clause.txt`.
+
 ## Unicode 17.0.0 character data
 
 The generated `tui/widthx/unicode_tables.go` derives character properties and emoji sequences from the Unicode Character Database and Unicode emoji data, pinned in `tui/widthx/gen/inputs.sha256`. Copyright © 1991-2026 Unicode, Inc. Used under Unicode License V3, reproduced in `LICENSES/Unicode-3.0.txt` (source: https://www.unicode.org/license.txt). This data license supplements the MIT license for the Go implementation.
@@ -781,6 +785,15 @@ Distributed files: `third_party/semver/`, a package of the root module. The dire
 
 - Copyright (C) 2014-2019 Matt Butcher and Matt Farina.
 - License: MIT, in `third_party/semver/LICENSE.txt` and `LICENSES/MIT.txt`.
+
+## golang.org/x/text v0.43.0 (collation, PiG fork)
+
+Source: <https://github.com/golang/text/tree/v0.43.0>
+
+Distributed files: `third_party/collate/`, a package of the root module. It holds the algorithm of `collate` and `internal/colltab` of v0.43.0 for the root locale and the default options, and the root part of the tables of `collate/tables.go`, with the changes listed in `third_party/collate/FORK.md` (the tables of the other locales are not copied).
+
+- Copyright 2009 The Go Authors.
+- License: BSD-3-Clause, in `third_party/collate/LICENSE` and `LICENSES/BSD-3-Clause.txt`.
 
 ## evanw/esbuild v0.28.2 (plugin builds)
 

@@ -24,11 +24,7 @@ import (
 
 // lispImageFormat names the shape of the generated image. Bump it when build.lisp or the runner contract changes in a way the SDK tree hash
 // does not already cover.
-const lispImageFormat = "pig-lisp-image-2"
-
-// lispControlStackSize is the control stack of the generated image's main thread and of every thread it starts (the image saves the runtime options it was built with): a request whose
-// arguments nest 10000 levels deep (the bound of the host's own JSON marshal; the SDK's JSON reader takes 10016) decodes and is served on it, where SBCL's 2 MB default is exhausted well before.
-const lispControlStackSize = "64MB"
+const lispImageFormat = "pig-lisp-image-3"
 
 // LispExtension describes one factory-style Lisp extension that can be built into a generated runner image. The factory is the one
 // function NEW-EXTENSION its ASDF system, or its single source file, defines; Package names the system or the file (without .lisp).
@@ -216,7 +212,7 @@ func buildLispImage(ctx context.Context, cacheRoot, key string, normalized []Lis
 					return "", err
 				}
 				buildprogress.Phase(ctx, "Building Lisp image", strings.Join(names, ", ")+" (compile, save image)")
-				cmd := linkerexec.CommandContext(ctx, sbcl, "--noinform", "--disable-ldb", "--lose-on-corruption", "--control-stack-size", lispControlStackSize, "--end-runtime-options",
+				cmd := linkerexec.CommandContext(ctx, sbcl, "--noinform", "--disable-ldb", "--lose-on-corruption", "--end-runtime-options",
 					"--non-interactive", "--no-sysinit", "--no-userinit", "--disable-debugger",
 					"--load", filepath.Join(sdkRoot, "src", "build.lisp"))
 				cmd.Dir = scratch

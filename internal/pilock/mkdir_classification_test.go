@@ -117,7 +117,7 @@ func TestAcquireRetriesOnlyWindowsEPERMAmongNonEEXISTMkdirErrors(t *testing.T) {
 					t.Fatalf("err = %v, want the unwrapped %s and not ErrLocked", err, name)
 				}
 				// Pi surfaces the fs error's Node message (lib/node_errors.js uvException).
-				if want := nonEEXISTMkdirMessages[name] + ", mkdir '" + path + ".lock'"; err.Error() != want {
+				if want := nonEEXISTMkdirMessages[name] + ", mkdir '" + resolvedLockTarget(t, path) + ".lock'"; err.Error() != want {
 					t.Fatalf("message = %q, want %q", err.Error(), want)
 				}
 				if got := calls.Load(); got != 2 {

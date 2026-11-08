@@ -1,5 +1,5 @@
 # Behavior family: rpc
-# Surface: an abort while a tool runs ends the tool with "Command aborted", and the agent loop still starts the next turn (agent-loop.ts executeToolCallsSequential breaks only the tool batch). That request's signal is already aborted, so its setup fails: auth resolution throws the signal's reason (packages/ai/src/auth/resolve.ts:53 signal.throwIfAborted()) and lazyStream reports the setup rejection as stopReason "error" (packages/ai/src/api/lazy.ts createSetupErrorMessage). Pi 1.1.0 records {"stopReason":"error","errorMessage":"This operation was aborted"}; PiG reported {"stopReason":"aborted","errorMessage":"context canceled"} before coding/services.go and ai/auth_resolve.go used ai.AbortReason.
+# Surface: an abort while a tool runs ends the tool with "Command aborted", and the agent loop still starts the next turn (agent-loop.ts executeToolCallsSequential breaks only the tool batch). That request's signal is already aborted, so its setup fails: auth resolution throws the signal's reason (packages/ai/src/auth/resolve.ts:53 signal.throwIfAborted()) and lazyStream reports the setup rejection with the request signal: lazy.ts:83 `signal?.aborted ? "aborted" : "error"` (Pi f3a64af07, #8635, in the pin c23b9ec1; createSetupErrorMessage takes the stop reason). Pinned Pi 1.5.0+c23b9ec1 records {"stopReason":"aborted","errorMessage":"This operation was aborted"} (Pi 1.1.0 recorded "error" for the same abort, so this scenario asserted "error" until the pin moved); PiG reported {"stopReason":"aborted","errorMessage":"context canceled"} before coding/services.go and ai/auth_resolve.go used ai.AbortReason.
 # The abort is sent only after the tool's first output update, so it always lands while the tool runs; no fixed delay decides the order.
 
 name = "55-rpc-abort-during-tool-next-request"
@@ -46,7 +46,7 @@ stderr_equal = true
 runs = 3
 both_contain = [
   'Command aborted',
-  '"stopReason":"error"',
+  '"stopReason":"aborted"',
   '"errorMessage":"This operation was aborted"',
 ]
 both_not_contain = [

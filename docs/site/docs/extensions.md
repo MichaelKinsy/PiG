@@ -122,7 +122,7 @@ Do not start processes, sockets, watchers, or timers in the factory because some
 Start long-lived resources from `session_start` or from the command or tool that needs them.
 Close session-scoped resources from an idempotent `session_shutdown` handler.
 
-`ctx.shutdown()` requests a graceful shutdown. Interactive mode defers it until the agent is idle after its queued steering and follow-up messages. RPC mode runs it right away when the session is idle and no command is being handled, and otherwise once the current command has finished (including its response) or the active run settles; a request made while an extension-started compaction runs waits for the next command or run to finish. Print mode ignores it and exits when all prompts are processed. RPC follows Pi main 1708b4788 (D231); Pi 1.5.0 waits for the next command.
+`ctx.shutdown()` requests a graceful shutdown. Interactive mode defers it until the agent is idle after its queued steering and follow-up messages. RPC mode runs it right away when the session is idle and no command is being handled, and otherwise once the current command has finished (including its response) or the active run settles; a request made while an extension-started compaction runs waits for the next command or run to finish. Print mode ignores it and exits when all prompts are processed.
 
 A normal prompt follows this hook sequence:
 
@@ -576,6 +576,8 @@ Run: pig extension upgrade /home/me/.pig/agent/extensions/ask
 A build that also fails on an error that is not an SDK change, in the extension or in another extension of the same packed cell, keeps the plain build message.
 
 `pig extension upgrade [<name|path>...] [--all] [--dry-run] [--summary]` rewrites the extension with the rules in `extensions/sdk/upgrade`. The rules parse and type-check the Go source, edit only the SDK uses they recognize, and format the result with `go/format`. The command copies the original files to `<config root>/state/extension-upgrade/<time>-<name>/` first (`<time>-<name>-2/` and so on when that directory exists), prints a unified diff, rebuilds the extension, and reports one status per extension: `upgraded`, `up to date`, `needs manual changes`, `failed` or `skipped`. `--dry-run` prints the diff and changes nothing. `--summary` prints one line per extension. With no argument, the command upgrades every Go extension that settings, packages, the agent directory and a trusted project directory load.
+
+The type check does not run in the `pig` binary. `pig` builds the program in `extensions/sdk/upgrade/driver` from the SDK it stages, with the Go toolchain that builds the extension, and runs it. The Go build cache keeps the program. The first analysis after a Go or SDK update compiles it, which takes a few seconds on a cold build cache. Later analyses start it in a fraction of a second. The build needs no network.
 
 Before, written for SDK 0.2.0:
 

@@ -402,6 +402,24 @@ fn build<T>(sock: &str, factory: impl FnOnce() -> T) -> T {
     match built { Ok(built) => built, Err(payload) => std::panic::resume_unwind(payload) }
 }
 
+// The panic of a member's factory or serve loop, as the member's failure line reads it: where it panicked and what it said. The thread that panicked runs the hook, and it is the thread that catches the panic.
+thread_local! { static PANIC_REPORT: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) }; }
+
+fn install_panic_report() {
+    let default = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let payload = info.payload();
+        let message = payload.downcast_ref::<&str>().map(|text| text.to_string()).or_else(|| payload.downcast_ref::<String>().cloned()).unwrap_or_else(|| "Box<dyn Any>".to_string());
+        let location = info.location().map(|at| format!(" at {}:{}:{}", at.file(), at.line(), at.column())).unwrap_or_default();
+        PANIC_REPORT.with(|slot| *slot.borrow_mut() = Some(format!("panicked{location}: {message}")));
+        default(info);
+    }));
+}
+
+fn take_panic_report() -> String {
+    PANIC_REPORT.with(|slot| slot.borrow_mut().take()).unwrap_or_else(|| "extension panicked".to_string())
+}
+
 // The host percent-encodes the four characters that delimit a control line (packed_go.go encodeAdmissionField); the percent sign decodes last.
 fn unescape_field(field: &str) -> String {
     field.replace("%09", "\t").replace("%0A", "\n").replace("%0D", "\r").replace("%25", "%")
@@ -414,8 +432,8 @@ fn start(item: Item, sock: String, shared: Shared) -> std::sync::mpsc::Receiver<
     thread::spawn(move || {
         let built: Box<dyn FnOnce() + Send> = Box::new(move || { let _ = built_sender.send(()); });
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (item.run)(sock.clone(), built)));
-        let result = match result { Ok(result) => result, Err(_) => Err(std::io::Error::other("extension panicked")) };
-        if let Err(err) = &result { eprintln!("{}: {}", item.name, err); let _ = pig_sdk::report_load_failure(&sock); }
+        let result = match result { Ok(result) => result, Err(_) => Err(std::io::Error::other(take_panic_report())) };
+        if let Err(err) = &result { eprintln!("extension \"{}\" load failed: {}", item.name, err); let _ = pig_sdk::report_load_failure(&sock); }
         let (state, cond) = &*shared;
         let mut state = state.lock().unwrap();
         state.live -= 1;
@@ -428,7 +446,8 @@ fn start(item: Item, sock: String, shared: Shared) -> std::sync::mpsc::Receiver<
 `
 
 // rustRunnerMain starts each member's factory, then admits a further generation of a member's factory for every "admit" line on stdin: Pi re-invokes an extension's factory in the process that already holds its static state. The runner exits once every generation has ended, unless the host parked it for a replacement Session. A "park" line names a socket the runner connects to once it holds the process open, so the host retires its last generation only after the notice took effect.
-const rustRunnerMain = `    let shared: Shared = Arc::new((Mutex::new(State::default()), Condvar::new()));
+const rustRunnerMain = `    install_panic_report();
+    let shared: Shared = Arc::new((Mutex::new(State::default()), Condvar::new()));
     let active = env::var("PIG_EXT_ACTIVE_MEMBERS").ok();
     let mut started = 0;
     for item in items.iter().copied() {

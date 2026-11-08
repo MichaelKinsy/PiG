@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Ports packages/coding-agent/src/extensions/llama/huggingface.ts.
@@ -273,7 +274,7 @@ func sortQuantizations(sizes []quantizationSize) []HuggingFaceQuantization {
 		}
 		return *size
 	}
-	slices.SortStableFunc(quantizations, func(left, right HuggingFaceQuantization) int {
+	sortx.Stable(quantizations, func(left, right HuggingFaceQuantization) int {
 		if left.Name == "Q4_K_M" {
 			return -1
 		}

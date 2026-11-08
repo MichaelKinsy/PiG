@@ -3,7 +3,6 @@ package toolsearch_test
 // pi: packages/coding-agent/src/extensions/tool-search/tool.ts
 
 import (
-	_ "embed"
 	"reflect"
 	"slices"
 	"testing"
@@ -76,9 +75,6 @@ func TestBm25RankerMatchesUnicodeQueries(t *testing.T) {
 	}
 }
 
-//go:embed testdata/tokenize_goldens.json
-var tokenizeGoldens []byte
-
 // usesDictionary reports whether the text holds a character of a script that ICU segments with a dictionary, the scripts a Piglet Binary built without the word dictionaries (D92) keeps whole.
 func usesDictionary(text string) bool {
 	for _, r := range text {
@@ -99,7 +95,7 @@ func TestTokenizeMatchesPiOnEveryScriptClass(t *testing.T) {
 		Text   string   `json:"text"`
 		Tokens []string `json:"tokens"`
 	}
-	if err := jsstring.UnmarshalKeepingSurrogates(tokenizeGoldens, &probes); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(goldens(t, "tokenize_goldens.json"), &probes); err != nil {
 		t.Fatal(err)
 	}
 	stripped := stripsDictionaries()

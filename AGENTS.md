@@ -51,6 +51,8 @@ Additive records use `docs/additive-features.md`. Observable Stock PiG differenc
 
 Change the version only with `make set-version VERSION=x.y.z`.
 
+PiG does not run on iPhone or iPad. iOS does not let a terminal app run a downloaded binary. On those devices, `install.sh` and the npm launcher tell the user to run PiG on a computer and connect with ssh. Do not add an iOS build target without a new owner decision.
+
 ## Pig-owned format and update policy
 
 Pig-owned source, manifest, record, graph/plan, builder, Marketplace,
@@ -173,6 +175,8 @@ byte-faithful behavior before and after.
 
 Port Pi's design, not one case's output. Use Pi's shared data (model catalog, `defaultModelPerProvider`, auth metadata) and one shared function where Pi has one. Never hard-code a provider or model in shared code; cite the Pi line when Pi itself special-cases one. Test shared paths with several provider shapes, never only Copilot or `test-faux`, and fix a special case's siblings together.
 
+Do not trust a tool only because a binary with its name is on `PATH`. On Debian, `/usr/bin/fd` can be FDclone, a file manager that takes the terminal. Before PiG uses a system `fd` or `rg`, it confirms the identity from the `--version` output, and it runs the check and the search without a controlling terminal. When you add a new external tool, apply the same rule: check its identity, detach it from the terminal, and fall back to the managed download.
+
 ## TypeScript async/Promise parity
 
 Treat every upstream `async`, `Promise`, `.then`, `Promise.all`, `Promise.race`, and intentionally unawaited call as control-flow behavior, not syntax to erase. Before porting it, record whether the caller waits, what ordering is guaranteed, how cancellation and errors propagate, whether work is concurrent, and which executor/event loop owns callbacks. Then preserve that contract in Go:
@@ -273,14 +277,14 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 927 / 1031 intended-portable entries ✅ (89.9%); **Verification:** 814 behavioral (87.8%), 113 untested.
-Raw PORT_MAP rows: 1135. Breakdown: 104 n/a (designed out) · 19 🟡 partial · 85 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 959 / 1021 intended-portable entries ✅ (93.9%); **Verification:** 814 behavioral (84.9%), 145 untested.
+Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 20 🟡 partial · 42 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 | package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 270 | 22 | 248 | 246 | 0 | 2 | 99.2% | 97.6% |
-| `chord` | 323 | 29 | 294 | 208 | 6 | 80 | 70.7% | 77.9% |
+| `chord` | 323 | 39 | 284 | 240 | 7 | 37 | 84.5% | 67.5% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
 | `coding-agent` | 263 | 27 | 236 | 235 | 1 | 0 | 99.6% | 96.6% |
 | `durable` | 100 | 10 | 90 | 76 | 11 | 3 | 84.4% | 98.7% |
@@ -293,8 +297,8 @@ Raw PORT_MAP rows: 1135. Breakdown: 104 n/a (designed out) · 19 🟡 partial ·
 
 - **Four core packages (agent, ai, coding-agent, tui):** 531 / 534 intended-portable files ✅ (99.4%) from 585 rows; 517 behavioral (97.4%), 0 weak-only, 14 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 616 / 619 intended-portable files ✅ (99.5%) from 681 rows; 552 behavioral (89.6%), 0 weak-only, 64 untested.
-- **Whole monorepo (12 packages):** 927 / 1031 intended-portable files ✅ (89.9%) from 1135 rows; 814 behavioral (87.8%), 0 weak-only, 113 untested.
-- **Interface closure:** 13943 of 15012 semantic interface IDs closed (295 designed-out, 1069 pending, 13648 ported). A file-level ✅ does not close an interface ID.
+- **Whole monorepo (12 packages):** 959 / 1021 intended-portable files ✅ (93.9%) from 1135 rows; 814 behavioral (84.9%), 0 weak-only, 145 untested.
+- **Interface closure:** 14317 of 15012 semantic interface IDs closed (307 designed-out, 695 pending, 14010 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
@@ -309,7 +313,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `compaction` | 16 | 16 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 148 | 147 | 0 | 1 | 0 | 63 | not run |
+| `extensions-runtime` | 150 | 149 | 0 | 1 | 0 | 67 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 18 | 18 | 0 | 0 | 0 | 12 | not run |
 | `interactive-rendering` | 78 | 77 | 1 | 0 | 0 | 37 | not run |
@@ -519,6 +523,14 @@ Reproduce a Windows CI job locally before you change code. Run the same command 
 
 Set `PIG_HOME` and `PIG_CODING_AGENT_DIR` to a directory with a space in its path, as CI does. Many Windows bugs are path bugs: separators, drive letters, 8.3 short names, and `D:\work\project` against `/work/project`. Compare with what Pi does on Windows before you change a path rule.
 
+A test must pass on Linux, macOS and Windows unless it states why the platform cannot run it. The macOS and Windows CI shards run only on a dispatched run, so a branch can be green on Linux and still have platform failures. Before you report a lane as ready, ask the coordinator for a dispatched run when the lane touches files, paths, locks, sockets, processes or signals.
+
+Look for these faults:
+- A Windows path written into generated JavaScript or JSON without encoding. `D:\` in a template literal is an invalid escape. Encode the path with `json.Marshal` or `JSON.stringify`, or use `filepath.ToSlash`.
+- File and directory removal. macOS and Windows can report `ENOTEMPTY`, `EPERM` or a pending delete where Linux succeeds. Compare with what Pi does on that platform before you change a retry or an error.
+- AF_UNIX sockets on Windows. They exist as files with different ownership checks.
+- Temporary files that a test leaves behind. `assert-clean-tmp` fails the shard.
+
 Work on a branch named `team/<name>/<topic>`. Push it to the staging remote, not to the public repository. The integrator stacks verified branches into the release branch. Each commit follows Commit hygiene below: `git commit --signoff -S`.
 
 ## Code and lint policy
@@ -567,7 +579,7 @@ Go style:
 - Build, CI, release-candidate, security-analysis, and documented setup commands use the Go version in `.go-version`, the single source. Do not write the version number in this file.
 - `.go-version` is the one Go pin. Workflows, scripts, images, the devcontainer, and the `toolchain` lines of `go.mod` and `go.work` name that release and no other. A script reads `.go-version` instead of repeating the number. Moving the pin changes `.go-version` and its recorded copies in one change; `make compliance` and `TestGoVersionPolicy` fail on any other release. Dated measurement records keep the release they ran on.
 - Maintained modules declare Go 1.26 or 1.26.0 as their language floor unless a concrete language requirement is approved. Do not raise a `go` directive merely to match the build toolchain.
-- Use language features available at the module floor. Prefer applicable modern standard-library APIs such as `slices.Sort`, `slices.SortFunc`, `cmp.Compare`, `maps.Copy`, `slices.Sorted(maps.Keys(m))`, `strings.Cut`, `CutPrefix`, `SplitSeq`, `for i := range n`, `wg.Go`, `min`, and `max`.
+- Use language features available at the module floor. Prefer applicable modern standard-library APIs such as `slices.Sort`, `cmp.Compare`, `maps.Copy`, `slices.Sorted(maps.Keys(m))`, `strings.Cut`, `CutPrefix`, `SplitSeq`, `for i := range n`, `wg.Go`, `min`, and `max`. For a sort with a comparison function, `slices.SortFunc` and `slices.SortStableFunc` compile one more copy of the sort (6 to 27 KB) for each element shape. In code that `cmd/pig` links, call `sortx.Func` and `sortx.Stable` from `internal/sortx` instead: they sort up to 12 (`Func`) or 20 (`Stable`) elements as `slices` does, and a longer slice takes 13 to 68% more CPU. Keep `slices.SortFunc` and `slices.SortStableFunc` where n can be large on a timed path (a keystroke, a frame, a listing, a request body) or the element shape is already linked (strings, pointers, ints), and give the reason in the `sort-instance` entry of `automation/ci/perflint/baseline.toml`: `make perf-lint` fails on a new use without one.
 - `go fix -diff ./...` should be empty.
 - When observable behavior changes, update the doc comment in the same commit.
 
@@ -581,6 +593,16 @@ make lint
 `make port-lint` runs the porting anti-pattern analyzers (`automation/ci/portlint/README.md`) against a ratcheting `baseline.toml`. Fix a finding at the source, or mark one reviewed false positive with `//portlint:allow <check> <reason>`. Never add a baseline entry for new code.
 
 Use `make lint-changed` in the development loop. It runs every configured linter over whole changed Go files in changed packages relative to the merge base with `main`. Use `make lint` for the full-repository gate. `make check` always runs the full-repository gate.
+
+## Binary size and dependencies
+
+Binary size is a product property. The release binary has a size ceiling for each target in `automation/perf/ratchet.toml`, and `TestReleaseBinarySizeGate` enforces it. Do not raise a ceiling. When a change makes the binary bigger than its ceiling, find the cause and remove it. After a change makes the binary smaller, lower the ceiling to the new size in the same commit.
+
+Most growth comes from a package that becomes live, not from the code you wrote. The Go linker removes code that nothing calls. When a change starts to call a package that was already in the dependency graph, the whole package and its own dependencies come into the binary. In 0.7.1, one call from the TypeBox check path made a vendored JSON Schema validator live, and that validator pulled in `golang.org/x/text/message`. The binary grew by 766 KB.
+
+Before you add an import to code that `cmd/pig` reaches, find out what it costs. Build `cmd/pig` for the release target before and after the change, and compare the per-package symbol sizes with `go run ./automation/ci/sizereport` (`-out` saves a report, `-base` shows the packages that grew, `-why <package>` prints the chain of references that keeps a package in the binary). If a package is large, use a smaller mechanism, use a package that is already live, or move the work out of the main binary. `TestReleaseBinaryLinksOnlyAllowedPackages` reads `automation/perf/linked-packages.toml` and fails with the name of any heavyweight package that `cmd/pig` links and the list does not name, and of any package on its forbid table. A new entry in the allow list for a third-party package needs the owner's approval; a package under `third_party/` counts as third-party. A package of PiG itself needs no approval, but it joins the list only in the commit that makes it that large, and that commit message gives the size report. A package that leaves the binary leaves the list in the same commit.
+
+Do not keep two implementations of one concept in the binary: one YAML parser, one width table per module, one schema checker. The `extensions/sdk` copy of the width table is the exception, because the SDK is a separately published module. Tools that only developers or piglet builds need, such as the Go type checker, do not go into the `pig` binary.
 
 ## Commands
 

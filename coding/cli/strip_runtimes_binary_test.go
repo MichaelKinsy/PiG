@@ -74,7 +74,7 @@ func TestStrippedBinaryOmitsExtensionSDKSources(t *testing.T) {
 		t.Fatalf("go tool nm: %v", err)
 	}
 	for line := range strings.SplitSeq(string(out), "\n") {
-		for _, symbol := range []string{"/extensions/sdk.Source", "/extensions/sdk-py.Source", "/extensions/sdk-rs.Source", "klauspost/compress/zstd."} {
+		for _, symbol := range []string{"/extensions/sdk.Source", "/internal/gosdkbundle.Source", "/extensions/sdk-py.Source", "/extensions/sdk-rs.Source", "klauspost/compress/zstd."} {
 			if strings.Contains(line, symbol) {
 				t.Errorf("stripped pig links %s", strings.TrimSpace(line))
 			}

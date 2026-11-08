@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -367,6 +368,9 @@ type HostCallbacks struct {
 	// that page, whether more entries remain, and the current branch leaf.
 	GetEntriesPage func(cursor, maxBytes int) ([]json.RawMessage, int, bool, string)
 
+	// GetMessageEntries returns the entries message_end persisted since cursor, each with the sequence its message was numbered by, and the cursor after them.
+	GetMessageEntries func(cursor int) ([]sessionentry.MessageSeq, int)
+
 	// GetModelAuth resolves request auth for a model lookup.
 	// upstream: modelRegistry.getApiKeyAndHeaders(model)
 	GetModelAuth func(context.Context, string, string) map[string]any
@@ -690,6 +694,17 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 		}
 	}
 	return state
+}
+
+// messageEntries returns the message entries persisted since cursor and the cursor after them.
+func (b *UIBridge) messageEntries(cursor int) ([]sessionentry.MessageSeq, int) {
+	b.mu.RLock()
+	get := b.actions.GetMessageEntries
+	b.mu.RUnlock()
+	if get == nil {
+		return nil, cursor
+	}
+	return get(cursor)
 }
 
 // SetThemeFunc registers the source of the host's active theme palette,
@@ -1266,6 +1281,8 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GetEntries = fn.(func() []json.RawMessage)
 	case "getEntriesPage":
 		b.actions.GetEntriesPage = fn.(func(int, int) ([]json.RawMessage, int, bool, string))
+	case "getMessageEntries":
+		b.actions.GetMessageEntries = fn.(func(int) ([]sessionentry.MessageSeq, int))
 	case "getSessionID":
 		b.actions.GetSessionID = fn.(func() string)
 	case "getSessionFile":

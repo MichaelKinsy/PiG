@@ -15,9 +15,7 @@ func TestMermaidRejectedInputRemainsUnchanged(t *testing.T) {
 		name, body string
 		width      int
 	}{
-		{"semicolon inside statement", "sequenceDiagram\n  A->>B: seq [1;1:1A]", 200},
-		{"unrecognized type", "gitGraph\n  commit", 200},
-		{"incomplete message", "sequenceDiagram\n  A->>", 200},
+		{"unrecognized type", "gantt\n  title Plan", 200},
 		{"oversized sequence", "sequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there", 12},
 		{"unmeasured width", "sequenceDiagram\n  A->>B: hello", 0},
 	} {

@@ -43,7 +43,7 @@ func TestToolExecutionEventsKeepInsertionOrderOnTheWire(t *testing.T) {
 		agent.ToolExecutionUpdateEvent{ToolCallID: "c", ToolName: "t", Args: args, PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}, Details: wireOrderDetails{Zeta: "z", Alpha: 1}}},
 		agent.ToolExecutionEndEvent{ToolCallID: "c", ToolName: "t", Result: result, IsError: true},
 	} {
-		DispatchAgentLoopEvent(runner, event, nil)
+		DispatchAgentLoopEvent(runner, event, nil, nil)
 	}
 	for name, want := range map[string]string{
 		EventToolExecutionStart:  `{"type":"tool_execution_start","toolCallId":"c","toolName":"t","args":{"z":1,"a":{"y":[{"q":1,"b":2}],"b":null},"m":"x"}}`,
@@ -79,7 +79,7 @@ func TestToolExecutionUpdatePartialResultIsTheObjectTheToolPassed(t *testing.T) 
 			runner := inproc.NewRunner([]extension.Extension{{Path: "/tmp/partial.ts", Handlers: map[string][]extension.HandlerFn{
 				EventToolExecutionUpdate: {func(args ...any) (any, error) { got = args[0].(extension.ToolExecutionUpdateEvent); return nil, nil }},
 			}}}, ".")
-			DispatchAgentLoopEvent(runner, agent.ToolExecutionUpdateEvent{ToolCallID: "c", ToolName: "t", Args: json.RawMessage(`{}`), PartialResult: tc.partial}, nil)
+			DispatchAgentLoopEvent(runner, agent.ToolExecutionUpdateEvent{ToolCallID: "c", ToolName: "t", Args: json.RawMessage(`{}`), PartialResult: tc.partial}, nil, nil)
 			if !reflect.DeepEqual(got.PartialResult, tc.process) {
 				t.Errorf("in-process partialResult = %#v, want %#v", got.PartialResult, tc.process)
 			}
@@ -111,7 +111,7 @@ func TestToolExecutionEventsKeepTheToolsMemberOrderOnTheWire(t *testing.T) {
 		agent.ToolExecutionUpdateEvent{ToolCallID: "c", ToolName: "t", PartialResult: agent.AgentToolResult{MemberOrder: []string{"details", "content"}, Content: text, Details: json.RawMessage(`{"k":1}`)}},
 		agent.ToolExecutionEndEvent{ToolCallID: "c", ToolName: "t", IsError: true, Result: agent.AgentToolResult{MemberOrder: []string{"details", "isError", "content"}, Content: text, Details: json.RawMessage(`{"k":1}`), IsError: true}},
 	} {
-		DispatchAgentLoopEvent(runner, event, nil)
+		DispatchAgentLoopEvent(runner, event, nil, nil)
 	}
 	for name, want := range map[string]string{
 		EventToolExecutionUpdate: `{"type":"tool_execution_update","toolCallId":"c","toolName":"t","args":null,"partialResult":{"details":{"k":1},"content":[{"type":"text","text":"x"}]}}`,

@@ -8,6 +8,7 @@
 package testfixture
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/hex"
@@ -20,6 +21,7 @@ import (
 	"io"
 	"maps"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -37,6 +39,20 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/tui"
 )
+
+// ioWait dials addr ("host:port"), writes "waiting\n" and returns when the peer writes a line.
+func ioWait(addr string) error {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close() }()
+	if _, err := fmt.Fprintln(conn, "waiting"); err != nil {
+		return err
+	}
+	_, err = bufio.NewReader(conn).ReadString('\n')
+	return err
+}
 
 // kitProbe is the component kit's conformance view (D107,
 // docs/plan/extension-component-kit.md §10). It logs every HandleInput and
@@ -324,10 +340,14 @@ func modelConformanceOptions() map[string]any {
 	}
 }
 
+// processFactoryCalls is a package-level counter the factory increments (D232): every generation in one Go process shares it.
+var processFactoryCalls atomic.Int64
+
 // Extension returns the canonical Go SDK fixture shared by subprocess and
 // fused conformance harnesses.
 func Extension() *sdk.Extension {
 	ext := sdk.New("sdk-fixture")
+	processFactoryCalls.Add(1)
 	// factoryAgentDir is getAgentDir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
 	factoryAgentDir, factoryAgentDirErr := sdk.AgentDir()
 	if factoryAgentDirErr != nil {
@@ -606,6 +626,22 @@ func Extension() *sdk.Extension {
 	ext.EntryViewRenderer("kit-entry", func(sdk.Context, map[string]any, sdk.EntryRenderOptions, int) (kit.View, error) {
 		return (&kitProbe{}).View(0), nil
 	})
+	// The click cards: a message and an entry that keep per-message state (the clicks and where the last one landed) the way Pi's renderer keeps it in a
+	// WeakMap keyed by the message, and count the click a mouse region of their view reports.
+	ext.MessageViewRenderer("conformance-click-message", func(_ sdk.Context, message map[string]any, options sdk.MessageRenderOptions, _ int) (kit.View, error) {
+		return clickCardView("clickcard", message["content"], options.State, options.Expanded), nil
+	})
+	ext.MessageViewEvent("conformance-click-message", func(_ sdk.Context, _ map[string]any, options sdk.MessageRenderOptions, event kit.Event) error {
+		countClick(options.State, event)
+		return nil
+	})
+	ext.EntryViewRenderer("conformance-click-entry", func(_ sdk.Context, entry map[string]any, options sdk.EntryRenderOptions, _ int) (kit.View, error) {
+		return clickCardView("clickentry", entry["data"], options.State, options.Expanded), nil
+	})
+	ext.EntryViewEvent("conformance-click-entry", func(_ sdk.Context, _ map[string]any, options sdk.EntryRenderOptions, event kit.Event) error {
+		countClick(options.State, event)
+		return nil
+	})
 	ext.EntryRenderer("conformance-entry", func(_ sdk.Context, entry map[string]any, options sdk.EntryRenderOptions, width int) ([]string, error) {
 		return []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=%d", entry["data"], options.Expanded, width)}, nil
 	})
@@ -692,6 +728,44 @@ func Extension() *sdk.Extension {
 	}, func(ctx sdk.Context, params map[string]any) (any, error) {
 		text, _ := params["text"].(string)
 		return map[string]string{"content": "echo: " + text}, nil
+	})
+
+	// D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+	var sharedMu sync.Mutex
+	sharedCalls := 0
+	var sharedHeard []string
+	if _, err := ext.Events().On("shared-cells", func(_ sdk.Context, data any) error {
+		from, _ := data.(map[string]any)["from"].(string)
+		sharedMu.Lock()
+		sharedHeard = append(sharedHeard, from)
+		sharedMu.Unlock()
+		return nil
+	}); err != nil {
+		panic(err)
+	}
+	ext.Tool("counter", "This instance's call count", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
+		sharedMu.Lock()
+		defer sharedMu.Unlock()
+		sharedCalls++
+		return map[string]string{"content": strconv.Itoa(sharedCalls)}, nil
+	})
+	// Registered only for the module-state row, so the other conformance comparisons see the tool set every SDK fixture shares.
+	if os.Getenv("PIG_FIXTURE_MODULE_STATE") != "" {
+		ext.Tool("module_state", "The factory calls this process's package has seen", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
+			return map[string]string{"content": "factoryCalls=" + strconv.FormatInt(processFactoryCalls.Load(), 10)}, nil
+		})
+	}
+	ext.Tool("ping", "Emit on the shared-cells channel", sdk.Schema{"type": "object", "required": []string{"name"}, "properties": map[string]any{"name": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		name, _ := params["name"].(string)
+		if err := ctx.Events().Emit("shared-cells", map[string]any{"from": name}); err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "pinged"}, nil
+	})
+	ext.Tool("received", "What this instance heard on shared-cells", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
+		sharedMu.Lock()
+		defer sharedMu.Unlock()
+		return map[string]string{"content": "received=" + strings.Join(sharedHeard, ",")}, nil
 	})
 
 	ext.Tool("update_tool", "Stream two partial results", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
@@ -944,6 +1018,14 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("liveness_fire_call", "Exercise a no-result UI host call", func(ctx sdk.Context, _ string) error {
 		ctx.SetTitle("Conformance title")
+		return nil
+	})
+	// io_wait and io_wait_settled wait on a plain TCP read: they dial the address they get, announce themselves with a "waiting" line and return when the peer writes a line.
+	ext.Command("io_wait", "Wait on a socket read", func(_ sdk.Context, addr string) error {
+		return ioWait(addr)
+	})
+	ext.Command("io_wait_settled", "Make agent_settled wait on a socket read", func(_ sdk.Context, addr string) error {
+		ext.OnEvent("agent_settled", func(sdk.Context, map[string]any) (any, error) { return nil, ioWait(addr) })
 		return nil
 	})
 
@@ -1414,6 +1496,56 @@ func Extension() *sdk.Extension {
 			return err
 		}
 		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
+		return nil
+	})
+	// event_ordered_result_probe is event_result_probe whose result keeps its members in the order they are written: a Go handler authors an object with
+	// member order as a json.RawMessage (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder proposes a draft this way).
+	ext.Command("event_ordered_result_probe", "Subscribe to an event with a handler that returns the given JSON, members in written order", func(ctx sdk.Context, args string) error {
+		name, raw, _ := strings.Cut(strings.TrimSpace(args), " ")
+		if !json.Valid([]byte(raw)) {
+			return fmt.Errorf("event_ordered_result_probe: %q is not JSON", raw)
+		}
+		result := json.RawMessage(raw)
+		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
+		return nil
+	})
+	// event_keys_probe subscribes to the event named by the argument with a handler that reports, as JSON, the keys of its payload member and of that
+	// object's zeta member in the order Object.keys gives them (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder/object_keys).
+	ext.Command("event_keys_probe", "Subscribe to the event named by the argument with a handler that reports the key order of its payload", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			payload, _ := data["payload"].(map[string]any)
+			zeta, _ := payload["zeta"].(map[string]any)
+			wire, err := json.Marshal([][]string{hctx.ObjectKeys(payload), hctx.ObjectKeys(zeta)})
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify("event_keys:"+name+":"+string(wire), "info")
+			return nil, nil
+		})
+		return nil
+	})
+	// event_echo_probe subscribes to the event named by the argument with a handler that hands back, unchanged, the objects it was sent: the entries of a
+	// turn boundary, the context's messages but the first, the provider request's payload, a tool result's content and details, a message_end message
+	// (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder).
+	ext.Command("event_echo_probe", "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			switch name {
+			case "turn_end":
+				return map[string]any{"entries": data["entries"]}, nil
+			case "context":
+				messages, _ := data["messages"].([]any)
+				return map[string]any{"messages": messages[1:]}, nil
+			case "before_provider_request":
+				return data["payload"], nil
+			case "tool_result":
+				return map[string]any{"content": data["content"], "details": data["details"]}, nil
+			case "message_end":
+				return map[string]any{"message": data["message"]}, nil
+			}
+			return nil, fmt.Errorf("event_echo_probe has no echo for %s", name)
+		})
 		return nil
 	})
 	// event_payload_probe reports the JSON of the event the named handler received, so a conformance test compares what every SDK was sent
@@ -3556,6 +3688,8 @@ type conformanceEditor struct{ *sdk.Editor }
 
 func (e *conformanceEditor) HandleInput(data string) error {
 	switch data {
+	case "!":
+		panic("bad key")
 	case "q":
 		return nil
 	case "a":
@@ -3810,4 +3944,26 @@ func registerSignalAbort(ext *sdk.Extension) {
 func dialogText(value any) string {
 	text, _ := value.(string)
 	return text
+}
+
+// clickCardView is the view of a click card: its text under a mouse region named "card" that answers click only.
+func clickCardView(prefix string, subject any, state map[string]any, expanded bool) kit.View {
+	clicks, _ := state["clicks"].(int)
+	last, ok := state["last"].(string)
+	if !ok {
+		last = "none"
+	}
+	region := kit.NewMouseRegion("card", kit.NewText(fmt.Sprintf("%s:%v:clicks=%d:last=%s:expanded=%t", prefix, subject, clicks, last, expanded), 0, 0))
+	region.Types = []string{"click"}
+	return kit.View{Root: region}
+}
+
+// countClick counts a click the "card" region reported and remembers where it landed, in the region's own coordinates.
+func countClick(state map[string]any, event kit.Event) {
+	if event.Type != kit.EventMouse || event.Node != "card" || event.Mouse == nil {
+		return
+	}
+	clicks, _ := state["clicks"].(int)
+	state["clicks"] = clicks + 1
+	state["last"] = fmt.Sprintf("%d,%d", event.Mouse.X, event.Mouse.Y)
 }

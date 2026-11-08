@@ -91,11 +91,9 @@ func RunAuthLogin(ctx context.Context, args []string, options AuthLoginOptions) 
 		ai.LoginOptions{GetDeviceID: options.GetDeviceID})
 	if err != nil {
 		message := err.Error()
-		//portlint:allow erroridentity auth-login.ts:78 compares the message, and ai providers create their own "Login cancelled" errors
-		cancelled := ctx.Err() != nil || message == errLoginCancelled.Error()
 		if _, ok := errors.AsType[*codingagent.CredentialSynchronizationError](err); ok {
 			terminal.Error("Logged in to " + provider.Name + ", but local model state could not be synchronized: " + message)
-		} else if cancelled {
+		} else if ctx.Err() != nil || message == errLoginCancelled.Error() { //portlint:allow erroridentity Pi compares the message (auth-login.ts:78 `message === "Login cancelled"`): providers, extension subprocesses and the OAuth callback server each build their own "Login cancelled" error, so there is no shared identity to match
 			terminal.Error("Login cancelled.")
 		} else {
 			terminal.Error("Failed to log in to " + provider.Name + ": " + message)
@@ -274,8 +272,6 @@ func createLoginInteraction(providerID string, authType ai.AuthType, request log
 // selectInTerminal lists options by number and asks until the answer is one of them.
 func selectInTerminal(ctx context.Context, message string, options []ai.AuthSelectOption, terminal LoginTerminal) (string, error) {
 	terminal.Write(message)
-	selectPrompt := "Select 1-" + strconv.Itoa(len(options)) + ": "
-	selectRetry := "Enter a number from 1 to " + strconv.Itoa(len(options)) + "."
 	for index, option := range options {
 		description := ""
 		if option.Description != "" {
@@ -283,15 +279,17 @@ func selectInTerminal(ctx context.Context, message string, options []ai.AuthSele
 		}
 		terminal.Write("  " + strconv.Itoa(index+1) + ". " + option.Label + description)
 	}
+	count := strconv.Itoa(len(options))
+	prompt, invalid := "Select 1-"+count+": ", "Enter a number from 1 to "+count+"."
 	for {
-		answer, err := terminal.Question(ctx, selectPrompt)
+		answer, err := terminal.Question(ctx, prompt)
 		if err != nil {
 			return "", err
 		}
 		if number, ok := parseSelection(widthx.JSTrim(answer)); ok && number >= 1 && number <= len(options) {
 			return options[number-1].ID, nil
 		}
-		terminal.Write(selectRetry)
+		terminal.Write(invalid)
 	}
 }
 

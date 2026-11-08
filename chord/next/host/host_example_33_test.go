@@ -98,7 +98,8 @@ func TestExample33Reload(t *testing.T) {
 	exCall(t, ref, "add", jsonObject("text", "first"))
 	exEqual(t, "1. list", exValue(t, ref, "list"), exJSON(t, `["first (v1)"]`))
 	exEqual(t, "1. banner", exValue(t, ref, "banner"), "v1")
-	// 2. A pure swap while a call runs: the running `add` finishes on the old code, the next call runs on the new one.
+	// 2. A restart of pure code while a call runs: the running `add` finishes on the old code, the next call waits at the gate
+	// until the old attempt drained, then runs on the new code. Documents stay.
 	open := make(chan struct{})
 	slowAdd.Store(&open)
 	running := make(chan any, 1)
@@ -111,7 +112,7 @@ func TestExample33Reload(t *testing.T) {
 	swap, err := host.Reload([]HostFacet{{Name: "@example/notes", Facet: notesV2}, {Name: "@example/search", Facet: searchV1}, {Name: "@example/clock", Facet: clockPlugin}}, background, ReloadOptions{})
 	must(t, err)
 	wantReloadPlugins(t, swap, nil, []string{"@example/notes"}, nil)
-	if want := []ReloadedObject{{Object: "example.notes", Kind: ReloadSwapped}}; !reflect.DeepEqual(swap.Objects, want) {
+	if want := []ReloadedObject{{Object: "example.notes", Kind: ReloadRestarted}}; !reflect.DeepEqual(swap.Objects, want) {
 		t.Fatalf("2. objects = %+v, want %+v", swap.Objects, want)
 	}
 	close(open)
@@ -135,13 +136,13 @@ func TestExample33Reload(t *testing.T) {
 	if want := []ReloadedObject{{Object: "example.search", Kind: ReloadRestarted}}; !reflect.DeepEqual(restart.Objects, want) {
 		t.Fatalf("3. objects = %+v, want %+v", restart.Objects, want)
 	}
-	// "3. reload: ... - the reference shows": a restart drains first, and the reference shows `loading` meanwhile.
-	exEqual(t, "3. the reference shows", exStateNow(t, index), "loading")
+	// "3. reload: ... - the reference shows": the old attempt drains its running call and the reference shows it `live`.
+	exEqual(t, "3. the reference shows", exStateNow(t, index), "live")
 	close(reindexOpen)
 	slowReindex.Store(nil)
 	must(t, exReceive(t, "the reindex call's result", reindexing))
+	scopeEventually(t, "3. search now on tantivy", func() bool { return exValue(t, index, "engine") == "tantivy" })
 	exWaitState(t, index, "live")
-	exEqual(t, "3. search now on", exValue(t, index, "engine"), "tantivy")
 	// The log's order is the example's output: the running call finishes on the old native, which closes (reload) before
 	// the new one opens.
 	wantLog := []string{
@@ -170,7 +171,7 @@ func TestExample33Reload(t *testing.T) {
 			return contracts.Implementation{}, errors.New("a typo in the new factory")
 		}, ServeOptions{})
 	})
-	failed, err := host.Reload([]HostFacet{{Name: "@example/notes", Facet: broken}}, background, ReloadOptions{})
+	failed, err := host.Reload([]HostFacet{{Name: "@example/notes", Facet: broken}, {Name: "@example/search", Facet: searchV2}, {Name: "@example/clock", Facet: clockPlugin}}, background, ReloadOptions{})
 	must(t, err)
 	if len(failed.Failed) != 1 || !strings.Contains(failed.Failed[0].Error.Error(), "a typo in the new factory") {
 		t.Fatalf("6. failed = %v", failedMessages(failed.Failed))

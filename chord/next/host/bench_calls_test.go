@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/test/next/bench/calls.ts: the paths slice 8 touched under every object (no registries involved): a
@@ -44,8 +46,24 @@ var benchItem = mustContract(contracts.Local("bench.item", contracts.LocalDeclar
 	Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 }))
 
-func BenchmarkCalls(b *testing.B) {
-	host := newHost(b, HostOptions{OnError: func(err HostError) { b.Errorf("onError %s", err.Kind) }})
+func BenchmarkCalls(b *testing.B) { benchCalls(b, nil) }
+
+// BenchmarkCallsTraced is BenchmarkCalls on a host recording to an in-memory adapter, each call under a span of it (tracing
+// on); run it with a fixed -benchtime=Nx, the recorder keeps what it records. BenchmarkCalls is tracing off.
+func BenchmarkCallsTraced(b *testing.B) { benchCalls(b, telemetry.NewInMemoryTelemetryContext()) }
+
+// benchCalls runs the rows; recorder is the host's adapter, none when nil.
+func benchCalls(b *testing.B, recorder *telemetry.InMemoryTelemetryContext) {
+	options := HostOptions{OnError: func(err HostError) { b.Errorf("onError %s", err.Kind) }}
+	var background = background
+	if recorder != nil {
+		options.Telemetry = recorder
+		_ = recorder.StartSpan(telemetry.SpanOptions{Name: "bench"}, func(span telemetry.TelemetrySpan) error {
+			background = chordctx.WithTelemetry(background, span)
+			return nil
+		})
+	}
+	host := newHost(b, options)
 	mustLoad(b)(host.Load([]HostFacet{{Name: "@bench/calls", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(benchStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			counter := self.State(benchCounterDoc).(*documents.Singleton)

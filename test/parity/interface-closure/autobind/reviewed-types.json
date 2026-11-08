@@ -203,14 +203,6 @@
     "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace",
     "reason": "Pi replace(text): {delta: string | undefined, arguments} takes the provider's complete text and returns the missing piece when it continues the text so far, else undefined. Go Replace(text) (delta string, hasDelta bool, arguments JsonObject, order schemaObjectOrder) returns hasDelta false where Pi returns an undefined delta, and the member order beside the arguments."
   },
-  "pkg:chord/.#Ctx::property:get::call:0": {
-    "go": "chord/host/types.go#Ctx.Get",
-    "reason": "Pi chord/src/types.ts:33 Ctx.get<C extends AnyContract>(type, input: InputOf<C>, options?: GetOptions<P>): Promise<Ref<C>> types the input as Static of the contract's input schema, computed from the contract value; Go methods cannot be generic or compute types from values, so Get(*Contract, any, *GetOptions) (Ref, error) takes the input untyped and the host normalizes it against the contract's input schema at runtime as Pi's does (invalid/input), failing with the error Pi's promise rejects with. TestHostCtxGetActsAsTheRootPrincipalAtIngressAndAsTheHostInsideObjects (host.test.ts:508-531) and TestStateInitRunsInARootItCanCallOtherObjects."
-  },
-  "pkg:chord/.#Factory::call:0": {
-    "go": "chord/host/object.go#Factory",
-    "reason": "Pi chord/src/object.ts:79-83 Factory<C, P> = (input: InputOf<C>, principal: P, self: Self<P>) => ImplementationOf<C, P> types the input as Static of the contract's input schema and the result as the contract's implementation shape, both computed from the contract value; Go cannot compute types from values, so Factory is func(input any, principal Principal, self Self) (Implementation, error): the input is the normalized value (as Pi hands the factory), the principal is the app's untyped Principal, and the error is what Pi's factory throws. TestPrincipalsFactoriesMethodsAndContextsSeeTheAppsPrincipal (principals.test.ts)."
-  },
   "pkg:chord/context#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",
     "reason": "The same declaration as pkg:chord/.#ContextKey::property:token, published again by Pi's ./context entrypoint (chord/src/context/index.ts:58-60 createContextKey returns a frozen {token: Symbol(description)}). Go has no symbol type, so chordctx.Token is a comparable opaque value, equal exactly for the same key and carrying its description. TestContextKeyTokenMatchesPi (chord/context/context_key_token_pi_oracle_test.go) compares token description, identity and toString with Pi's createContextKey in Node."
@@ -437,7 +429,7 @@
   },
   "pkg:mcp/.#McpPipe::property:exited": {
     "go": "mcp/pipe.go#McpPipe.Exited",
-    "reason": "Pi pipe.ts:17 declares `readonly exited: Promise<unknown>`: it settles when the program has ended, whatever the reason, and also after close(); PipeTransport awaits it and treats a rejection that close() did not cause as the exit failure. Go has no promise property: McpPipe.Exited() (int, error) blocks until the program has ended and returns its exit code, or the error that ended it (Pi's rejection); it may be called any number of times and after Close, as a settled promise may be awaited again. TestMcpPipeWritesClosesStdinAndKillsAProgram and TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses assert both outcomes."
+    "reason": "Pi pipe.ts:17 declares `readonly exited: Promise<unknown>`: it settles when the program has ended, whatever the reason, and also after close(); PipeTransport awaits it and treats a rejection that close() did not cause as the exit failure. Go has no promise property: McpPipe.Exited() (int, error) blocks until the program has ended and returns its exit code, or the error that ended it (Pi's rejection); it may be called any number of times and after Close, as a settled promise may be awaited again. TestMcpPipeWritesClosesStdinAndKillsAProgram and TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses assert both outcomes, and env/process_mcp_pipe_test.go asserts them on the production pipe, env.RemoteProcess, behind a pi-env daemon."
   },
   "pkg:mcp/.#isMcpServerOverride::call:0": {
     "go": "mcp/config.go#IsMcpServerOverride",

@@ -102,11 +102,19 @@ func writeFileAtomic(path string, data []byte) (err error) {
 		return err
 	}
 	// The rename is durable once its directory entry is; a platform that cannot open or sync a directory has nothing more to give.
-	if dir, openErr := os.Open(filepath.Dir(path)); openErr == nil {
-		_ = dir.Sync()
-		_ = dir.Close()
-	}
+	syncDirectory(filepath.Dir(path))
 	return nil
+}
+
+// syncDirectory flushes a directory's entries and reports whether it could; the credential write is complete either way.
+func syncDirectory(path string) bool {
+	dir, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	synced := dir.Sync() == nil
+	_ = dir.Close()
+	return synced
 }
 
 // InMemoryAuthStorageBackend keeps the document in memory.

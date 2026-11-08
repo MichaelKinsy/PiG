@@ -28,7 +28,7 @@ func awaitRPCReport(t *testing.T, report, event string) {
 	}
 }
 
-// A single signal during a started shutdown does nothing (Pi main ace560c30, D234), and that includes the hold on the Session's agent events that the signal's termination prelude takes: a run that a session_shutdown handler starts meanwhile must not wait on a hold nobody releases, or the dispose waits for the handler forever. Pi's handler holds nothing.
+// A single signal during a started shutdown does nothing (Pi main ace560c30), and that includes the hold on the Session's agent events that the signal's termination prelude takes: a run that a session_shutdown handler starts meanwhile must not wait on a hold nobody releases, or the dispose waits for the handler forever. Pi's handler holds nothing.
 func TestRPCSingleSignalDuringShutdownDoesNotBlockARunTheHandlerStarts(t *testing.T) {
 	p, report := startRPCShutdownFixture(t, "RPC_SHUTDOWN_SLOW=800", "RPC_SHUTDOWN_SEND_AFTER=300", "RPC_SHUTDOWN_RECORD_DONE=1")
 	awaitReady(p)
@@ -86,7 +86,7 @@ func readRPCShutdownReportFile(report string) []string {
 	return strings.Fields(string(data))
 }
 
-// Pi calls process.exit at a repeated signal (rpc-mode.ts signalCount > 1), so a stdout nobody reads holds neither a repeated SIGHUP, which Pi's first signal would flush for, nor a repeated signal that arrives while another exit already waits for that stdout (D234).
+// Pi calls process.exit at a repeated signal (rpc-mode.ts signalCount > 1), so a stdout nobody reads holds neither a repeated SIGHUP, which Pi's first signal would flush for, nor a repeated signal that arrives while another exit already waits for that stdout.
 func TestRPCRepeatedSignalExitsWhileStdoutIsStuck(t *testing.T) {
 	for _, tc := range []struct {
 		name string

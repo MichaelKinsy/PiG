@@ -99,12 +99,30 @@
                   (lambda (a b) (or (< (length a) (length b)) (and (= (length a) (length b)) (string< a b)))))
             (remove-if #'cx-array-index-key-p keys))))
 
+(defstruct (cx-literal (:constructor cx-literal (text))) (text "" :type string))
+
 (defun cx-json-stringify (value)
-  "JSON.stringify for a decoded JSON value."
-  (cond ((hash-table-p value)
-         (format nil "{~{~A~^,~}}" (mapcar (lambda (key) (concatenate 'string (to-json key) ":" (cx-json-stringify (gethash key value)))) (cx-ordered-keys value))))
-        ((cx-array-p value) (format nil "[~{~A~^,~}]" (map 'list #'cx-json-stringify value)))
-        (t (to-json value))))
+  "JSON.stringify for a decoded JSON value. The containers are walked with a stack of the function's own and every piece is written to one stream, so neither a value nested thousands of levels deep nor one with hundreds of thousands of members depends on the thread's control stack."
+  (with-output-to-string (out)
+    (let ((stack (list value)))
+      (loop while stack
+            do (let ((item (pop stack)))
+                 (cond ((cx-literal-p item) (write-string (cx-literal-text item) out))
+                       ((hash-table-p item)
+                        (let ((keys (cx-ordered-keys item)))
+                          (push (cx-literal "}") stack)
+                          (loop for (key . more) on (reverse keys)
+                                do (push (gethash key item) stack)
+                                   (push (cx-literal (concatenate 'string (to-json key) ":")) stack)
+                                   (when more (push (cx-literal ",") stack)))
+                          (push (cx-literal "{") stack)))
+                       ((cx-array-p item)
+                        (push (cx-literal "]") stack)
+                        (loop for i from (1- (length item)) downto 0
+                              do (push (aref item i) stack)
+                                 (when (plusp i) (push (cx-literal ",") stack)))
+                        (push (cx-literal "[") stack))
+                       (t (write-string (to-json item) out))))))))
 
 (defun cx-unit-json (unit)
   (if (<= #xD800 unit #xDFFF) (format nil "\"\\u~(~4,'0X~)\"" unit) (to-json (string (code-char unit)))))

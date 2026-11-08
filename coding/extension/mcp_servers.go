@@ -75,7 +75,7 @@ type McpOAuthConfig struct {
 	// for servers that only accept known clients. Default: the app name.
 	ClientName string `json:"clientName,omitempty"`
 	// ClientRegistration is how pi identifies itself without ClientID. `auto`
-	// (default): pi's Client ID Metadata Document on pi.dev when the
+	// (default): pi's Client ID Metadata Document on pi-in-go.dev when the
 	// authorization server supports it for public clients, otherwise dynamic
 	// client registration; with ClientName or a CallbackURL other than
 	// `/callback` on localhost or 127.0.0.1, always dynamic client

@@ -18,13 +18,10 @@ import (
 var uncaughtGoroutineHandler atomic.Pointer[func(value any, stack []byte)]
 
 // SetUncaughtGoroutineHandler installs the handler that RecoverUncaught calls and returns a function that removes it.
-// The handler owns ending the process. It is also the receiver of Chord's uncaught failures (a replicated-state
-// listener failure no onError handled): state.ts reportErrorAsync rethrows in a microtask, which reaches the same
-// uncaughtException handler, after the reporting call.
 func SetUncaughtGoroutineHandler(handler func(value any, stack []byte)) (restore func()) {
 	uncaughtGoroutineHandler.Store(&handler)
 	previous := chord.SetUncaughtErrorReporter(func(err error) {
-		//portlint:allow golifetime the handler ends the process, as the microtask rethrow of state.ts reportErrorAsync reaches uncaughtException; nothing outlives it
+		//portlint:allow golifetime the handler ends the process, as the rethrow of an unhandled failure reaches uncaughtException; nothing outlives it
 		go handler(err, nil)
 	})
 	return func() {

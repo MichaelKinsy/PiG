@@ -46,6 +46,11 @@ var vendoredIdentityPatches = map[string][][2]string{
 	"pi-coding-agent/utils/version-check.js": {
 		{`const LATEST_VERSION_URL = "https://pi.dev/api/latest-version";`, `const LATEST_VERSION_URL = "` + pigidentity.HostedOrigin + `/api/latest-version";`},
 	},
+	// D64: pi's Client ID Metadata Documents are served from PiG's origin, in Pi's shape.
+	"pi-coding-agent/extensions/mcp/oauth.js": {
+		{"/** pi's Client ID Metadata Documents on pi.dev: `client.json` and `<callback ID>/client.json`. */\nconst PI_CLIENT_METADATA_DOCUMENTS = {\n    baseUrl: \"https://pi.dev/oauth\",",
+			"/** PiG's Client ID Metadata Documents on its own origin (D64), Pi's shape: `client.json` and `<callback ID>/client.json`. */\nconst PI_CLIENT_METADATA_DOCUMENTS = {\n    baseUrl: \"" + pigidentity.HostedOrigin + "/oauth\","},
+	},
 	"pi-coding-agent/package-manager-cli.js": {
 		{`const DEFAULT_INSTALLER_API_BASE = "https://pi.dev/api/installer/releases";`, `const DEFAULT_INSTALLER_API_BASE = "` + pigidentity.HostedOrigin + `/api/installer/releases";`},
 	},

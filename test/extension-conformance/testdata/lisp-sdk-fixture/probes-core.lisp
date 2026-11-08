@@ -31,6 +31,14 @@
   (loop with deadline = (+ (get-internal-real-time) (* seconds internal-time-units-per-second))
         until (or (funcall predicate) (> (get-internal-real-time) deadline)) do (sleep 0.005)))
 (defun core-nan () (sb-kernel:make-double-float #x7ff80000 0))
+(defun core-io-wait (addr)
+  "Dial ADDR (host:port), write \"waiting\" and return when the peer writes a line."
+  (let* ((colon (position #\: addr :from-end t))
+         (socket (make-instance 'sb-bsd-sockets:inet-socket :type :stream :protocol :tcp)))
+    (sb-bsd-sockets:socket-connect socket (sb-bsd-sockets:make-inet-address (subseq addr 0 colon)) (parse-integer addr :start (1+ colon)))
+    (let ((stream (sb-bsd-sockets:socket-make-stream socket :input t :output t :buffering :none :external-format :utf-8)))
+      (unwind-protect (progn (write-line "waiting" stream) (finish-output stream) (read-line stream nil nil))
+        (close stream)))))
 
 ;;; ---------------------------------------------------------------- tools
 
@@ -51,6 +59,22 @@
     (pig:tool ext "echo" "Echo input text"
               (core-json "{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"Text to echo\"},\"offset\":{\"type\":\"number\"}}}")
               (lambda (ctx params) (declare (ignore ctx)) (pig:obj "content" (concatenate 'string "echo: " (core-str (pig:jget params "text"))))))
+    ;; D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+    (let ((calls 0) (heard '()) (heard-lock (sb-thread:make-mutex)))
+      (pig:events-on (pig:extension-events ext) "shared-cells"
+                     (lambda (ctx data) (declare (ignore ctx))
+                       (sb-thread:with-mutex (heard-lock) (setf heard (append heard (list (pig:jget data "from")))))))
+      (pig:tool ext "counter" "This instance's call count" (core-schema "properties" (pig:obj))
+                (lambda (ctx params) (declare (ignore ctx params))
+                  (pig:obj "content" (format nil "~D" (sb-thread:with-mutex (heard-lock) (incf calls))))))
+      (pig:tool ext "ping" "Emit on the shared-cells channel"
+                (core-json "{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}")
+                (lambda (ctx params)
+                  (pig:events-emit (pig:ctx-events ctx) "shared-cells" (pig:obj "from" (pig:jget params "name")))
+                  (pig:obj "content" "pinged")))
+      (pig:tool ext "received" "What this instance heard on shared-cells" (core-schema "properties" (pig:obj))
+                (lambda (ctx params) (declare (ignore ctx params))
+                  (pig:obj "content" (sb-thread:with-mutex (heard-lock) (format nil "received=~{~A~^,~}" heard))))))
     (pig:tool ext "render_probe" "Render its own tool card" (core-schema "properties" (pig:obj))
               (lambda (ctx params) (declare (ignore ctx params)) "render ok"))
     (pig:tool-renderers ext "render_probe" :render-shell "self"
@@ -295,6 +319,11 @@
   (pig:command ext "liveness_host_call" "Exercise an awaited host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-wait-for-idle ctx)))
   (pig:command ext "liveness_user_call" "Exercise an interactive host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-input ctx "Question" :placeholder "Answer")))
   (pig:command ext "liveness_fire_call" "Exercise a no-result UI host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-title ctx "Conformance title")))
+  ;; io_wait and io_wait_settled wait on a plain TCP read: they dial the address they get, announce themselves with a "waiting" line and return when the peer writes a line
+  (pig:command ext "io_wait" "Wait on a socket read" (lambda (ctx args) (declare (ignore ctx)) (core-io-wait args)))
+  (pig:command ext "io_wait_settled" "Make agent_settled wait on a socket read"
+               (lambda (ctx args) (declare (ignore ctx))
+                 (pig:on ext "agent_settled" (lambda (hctx data) (declare (ignore hctx data)) (core-io-wait args) nil))))
   (pig:command ext "usage-probe" "Report context usage" (lambda (ctx args) (declare (ignore args)) (core-info ctx (pig:to-json (or (pig:ctx-get-context-usage ctx) :null)))))
   (pig:command ext "replica-probe" "Report the replicated model, session id, name, file and context usage"
                (lambda (ctx args)
@@ -655,6 +684,30 @@
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)
                        (let ((result (pig:from-json raw))) (pig:on ext name (lambda (hctx data) (declare (ignore hctx data)) result))))))
+      (pig:command ext "event_ordered_result_probe" "Subscribe to an event with a handler that returns the given JSON, members in written order"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name raw) (split-first args)
+                       (let ((result (pig:from-json raw))) (pig:on ext name (lambda (hctx data) (declare (ignore hctx data)) result))))))
+      (pig:command ext "event_keys_probe" "Subscribe to the event named by the argument with a handler that reports the key order of its payload"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (flet ((keys (object) (let (ks) (maphash (lambda (k v) (declare (ignore v)) (push k ks)) object) (coerce (nreverse ks) 'vector))))
+                         (pig:on ext name
+                                 (lambda (hctx data)
+                                   (let ((payload (pig:jget data "payload")))
+                                     (core-info hctx (format nil "event_keys:~A:~A" name (pig:to-json (vector (keys payload) (keys (pig:jget payload "zeta")))))))
+                                   nil))))))
+      (pig:command ext "event_echo_probe" "Subscribe to the event named by the argument with a handler that hands back the objects it was sent"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (pig:on ext name
+                               (lambda (hctx data) (declare (ignore hctx))
+                                 (cond ((equal name "turn_end") (pig:obj "entries" (pig:jget data "entries")))
+                                       ((equal name "context") (pig:obj "messages" (subseq (pig:jget data "messages") 1)))
+                                       ((equal name "before_provider_request") (pig:jget data "payload"))
+                                       ((equal name "tool_result") (pig:obj "content" (pig:jget data "content") "details" (pig:jget data "details")))
+                                       ((equal name "message_end") (pig:obj "message" (pig:jget data "message")))
+                                       (t (error "event_echo_probe has no echo for ~A" name))))))))
       (pig:command ext "event_payload_probe" "Subscribe and report the payload of the event named by the argument"
                    (lambda (ctx args) (declare (ignore ctx))
                      (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))

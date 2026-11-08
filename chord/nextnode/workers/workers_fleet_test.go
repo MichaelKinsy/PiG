@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -41,6 +42,10 @@ type fleetOptions struct {
 	onAuthorize func(address contracts.Address)
 	// env is added to the workers' environment.
 	env map[string]string
+	// entry is the workers' program: the fixture's by default.
+	entry string
+	// baseDir is the directory the worker base's copy is written into (WorkersOptions.BaseDir).
+	baseDir string
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -126,10 +131,15 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	if options.idleMs != 0 {
 		idle = options.idleMs
 	}
+	entry := options.entry
+	if entry == "" {
+		entry = fixtureEntry(t)
+	}
 	workers, err := CreateWorkers(server, fixtureSession, WorkersOptions{
-		Kind:  "worker",
-		Entry: fixtureEntry(t),
-		Env:   withEnv(fixtureEnvironment("worker"), options.env),
+		Kind:    "worker",
+		Entry:   entry,
+		BaseDir: options.baseDir,
+		Env:     withEnv(fixtureEnvironment("worker"), options.env),
 		Authorize: func(_ data.Principal, address contracts.Address) (bool, error) {
 			if options.onAuthorize != nil {
 				options.onAuthorize(address)
@@ -266,6 +276,25 @@ func errorKind(err WorkersError) string {
 	default:
 		return fmt.Sprintf("%T", err)
 	}
+}
+
+// reportedErrors is every error the workers reported so far, with the private cause and the stderr tail of a failed worker,
+// for a test whose wait timed out to say why.
+func (f *fleet) reportedErrors() string {
+	var text strings.Builder
+	for _, each := range f.errors.all() {
+		switch failed := each.(type) {
+		case WorkerFailedError:
+			tail := failed.StderrTail
+			if len(tail) > 600 {
+				tail = tail[len(tail)-600:]
+			}
+			fmt.Fprintf(&text, "[worker_failed %s: %v; stderr %q] ", failed.Address, failed.Error, tail)
+		default:
+			fmt.Fprintf(&text, "[%T %+v] ", each, each)
+		}
+	}
+	return text.String()
 }
 
 // firstFailure is the first `worker_failed` the workers reported.
@@ -406,8 +435,8 @@ func newPlugins(t testing.TB, root string) *plugins.Plugins {
 		t.Fatal(err)
 	}
 	component := plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots:   []string{root},
-		Kinds:   []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord/next"}}},
+		Roots:   []plugins.PluginRoot{{Path: root}},
+		Kinds:   []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord"}}},
 		OnError: func(plugins.PluginsError) {},
 	}, background)
 	t.Cleanup(component.Close)

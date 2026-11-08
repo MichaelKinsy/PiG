@@ -29,8 +29,11 @@ function stringifyEventPayload(event) {
   }
   return hasSet ? JSON.stringify(event, (_key, value) => (value instanceof Set ? [...value] : value)) : JSON.stringify(event);
 }
+// D232: a module-level counter the factory increments; every generation in one Node process shares it.
+let processFactoryCalls = 0;
 export default function (pi) {
   pi.ownThinkingRuns(true);
+  processFactoryCalls++;
   // factoryAgentDir is getAgentDir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
   const factoryAgentDir = getAgentDir();
   let schemaRejected = false;
@@ -299,6 +302,15 @@ export default function (pi) {
     parameters: { type: "object", required: ["text"], properties: { text: { type: "string", description: "Text to echo" }, offset: { type: "number" } } },
     async execute(_id, params) { return { content: [{ type: "text", text: `echo: ${params.text ?? ""}` }] }; },
   });
+  // D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+  let sharedCalls = 0;
+  const sharedHeard = [];
+  pi.events.on("shared-cells", (data) => sharedHeard.push(data.from));
+  pi.registerTool({ name: "counter", description: "This instance's call count", parameters: { type: "object", properties: {} }, async execute() { return { content: [{ type: "text", text: String(++sharedCalls) }] }; } });
+  // Registered only for the module-state row, so the other conformance comparisons see the tool set every SDK fixture shares.
+  if (process.env.PIG_FIXTURE_MODULE_STATE) pi.registerTool({ name: "module_state", description: "The factory calls this process's module has seen", parameters: { type: "object", properties: {} }, async execute() { return { content: [{ type: "text", text: "factoryCalls=" + processFactoryCalls }] }; } });
+  pi.registerTool({ name: "ping", description: "Emit on the shared-cells channel", parameters: { type: "object", required: ["name"], properties: { name: { type: "string" } } }, async execute(_id, params) { pi.events.emit("shared-cells", { from: params.name }); return { content: [{ type: "text", text: "pinged" }] }; } });
+  pi.registerTool({ name: "received", description: "What this instance heard on shared-cells", parameters: { type: "object", properties: {} }, async execute() { return { content: [{ type: "text", text: "received=" + sharedHeard.join(",") }] }; } });
   let abortObserved = false;
   pi.registerTool({
     name: "update_tool",
@@ -907,6 +919,9 @@ export default function (pi) {
   pi.registerCommand("send_user_message", { description: "Send a user message", handler: async (args) => pi.sendUserMessage(args ? JSON.parse(args) : "hello-user", { deliverAs: "followUp" }) });
   pi.registerCommand("set_session_name", { description: "Set the session name", handler: async () => pi.setSessionName("conformance-session") });
   pi.registerCommand("event_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
+  pi.registerCommand("event_ordered_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON, members in written order", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
+  pi.registerCommand("event_keys_probe", { description: "Subscribe to the event named by the argument with a handler that reports the key order of its payload", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => { ctx.ui.notify("event_keys:" + name + ":" + JSON.stringify([Object.keys(event.payload), Object.keys(event.payload.zeta)]), "info"); }); } });
+  pi.registerCommand("event_echo_probe", { description: "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event) => { switch (name) { case "turn_end": return { entries: event.entries }; case "context": return { messages: event.messages.slice(1) }; case "before_provider_request": return event.payload; case "tool_result": return { content: event.content, details: event.details }; case "message_end": return { message: event.message }; } throw new Error(`event_echo_probe has no echo for ${name}`); }); } });
   pi.registerCommand("event_field_probe", { description: "Report a field of the events named by the argument `<event> <field>`", handler: async (args) => { const [name, field] = String(args).trim().split(/\s+/); pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_field:${name}.${field}=${JSON.stringify(event[field]) ?? "absent"}`, "info"); }); } });
   pi.registerCommand("event_probe_on", { description: "Subscribe to the event named by the argument", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (_event, ctx) => { ctx.ui.notify(`event_probe_on:${name}`, "info"); }); } });
   pi.registerCommand("host_state_probe", {
@@ -2029,6 +2044,33 @@ export default function (pi) {
       ctx.ui.notify(`${result ?? ""}`, "info");
     },
   });
+  // The click cards, written as Pi's renderers are: the state lives in a WeakMap keyed by the message (entry) object, which the renderer receives on every rebuild, and a MouseRegion over the text counts the click.
+  const clickCard = (prefix, subjectOf) => {
+    const states = new WeakMap();
+    return (subject, options) => {
+      let state = states.get(subject);
+      if (state === undefined) {
+        state = { clicks: 0, last: "none" };
+        states.set(subject, state);
+      }
+      const content = { render: () => [`${prefix}:${subjectOf(subject)}:clicks=${state.clicks}:last=${state.last}:expanded=${options.expanded}`], invalidate() {} };
+      return new piTui.MouseRegion(content, (event) => {
+        if (event.type !== "click") return undefined;
+        state.clicks += 1;
+        state.last = `${event.x},${event.y}`;
+        return { handled: true };
+      });
+    };
+  };
+  pi.registerMessageRenderer("conformance-click-message", clickCard("clickcard", (message) => message.content));
+  // A card in a padded Box, as Pi's own cards are: the MouseRegion answers inside the padding only, so Box.handleMouse leaves a click on the padding unhandled.
+  const paddedClick = clickCard("clickpadded", (message) => message.content);
+  pi.registerMessageRenderer("conformance-click-padded", (message, options, theme) => {
+    const box = new piTui.Box(3, 0);
+    box.addChild(paddedClick(message, options, theme));
+    return box;
+  });
+  pi.registerEntryRenderer("conformance-click-entry", clickCard("clickentry", (entry) => entry.data));
   pi.registerMessageRenderer("kit-message", (_message, _options, theme) => new KitProbe(theme));
   pi.registerEntryRenderer("kit-entry", (_entry, _options, theme) => new KitProbe(theme));
   pi.registerCommand("kit-surfaces", {

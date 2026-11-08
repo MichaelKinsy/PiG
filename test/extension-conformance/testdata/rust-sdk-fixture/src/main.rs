@@ -13,6 +13,8 @@ use pig_sdk::{
 };
 use pig_sdk::{EditorBase, EditorComponent, JsString};
 use serde_json::{Value, json};
+use std::io::{BufRead, BufReader, Write};
+use std::net::TcpStream;
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -141,6 +143,14 @@ impl RemoteComponent for TimerFocused {
         }
         self.disposed.store(true, Ordering::Release);
     }
+}
+
+/// Dials `addr` ("host:port"), writes "waiting\n" and returns when the peer writes a line.
+fn io_wait(addr: &str) -> std::io::Result<()> {
+    let mut peer = TcpStream::connect(addr)?;
+    peer.write_all(b"waiting\n")?;
+    BufReader::new(peer).read_line(&mut String::new())?;
+    Ok(())
 }
 
 /// Subscribes `handler` to the event `name`. A before_agent_start handler registers with `on_before_agent_start` and receives the event as Pi's object (`BeforeAgentStartEvent::snapshot`).
@@ -2450,6 +2460,71 @@ fn main() {
     ext.entry_view_renderer("kit-entry", |_ctx, _entry, _options, _width| {
         Ok(kit_probe_view())
     });
+    // conformance-click-message / conformance-click-entry: a card whose mouse region counts clicks in the renderer state the SDK keeps per displayed
+    // message. The handler runs for each event the host's view took, before the render.
+    fn click_state(state: &pig_sdk::RenderState, event: &kit::Event) {
+        if event.kind != EventKind::Mouse || event.node != "card" {
+            return;
+        }
+        let Some(mouse) = &event.mouse else { return };
+        let mut state = state.lock().unwrap();
+        let clicks = state.get("clicks").and_then(Value::as_i64).unwrap_or(0);
+        state.insert("clicks".into(), json!(clicks + 1));
+        state.insert("last".into(), json!(format!("{},{}", mouse.x, mouse.y)));
+    }
+    fn click_view(
+        label: &str,
+        subject: &str,
+        state: &pig_sdk::RenderState,
+        expanded: bool,
+    ) -> kit::View {
+        let state = state.lock().unwrap();
+        let clicks = state.get("clicks").and_then(Value::as_i64).unwrap_or(0);
+        let last = state.get("last").and_then(Value::as_str).unwrap_or("none");
+        kit::View::new(
+            kit::MouseRegion::new(
+                "card",
+                Text::new(
+                    format!("{label}:{subject}:clicks={clicks}:last={last}:expanded={expanded}"),
+                    0,
+                    0,
+                ),
+            )
+            .types(["click"]),
+        )
+    }
+    ext.message_view_renderer(
+        "conformance-click-message",
+        |_ctx, message, options, _width| {
+            let content = message.get("content").and_then(Value::as_str).unwrap_or("");
+            Ok(click_view(
+                "clickcard",
+                content,
+                &options.state,
+                options.expanded,
+            ))
+        },
+    );
+    ext.message_view_event(
+        "conformance-click-message",
+        |_ctx, _message, options, event| {
+            click_state(&options.state, &event);
+            Ok(())
+        },
+    );
+    ext.entry_view_renderer("conformance-click-entry", |_ctx, entry, options, _width| {
+        let data = entry.get("data").and_then(Value::as_str).unwrap_or("");
+        Ok(click_view(
+            "clickentry",
+            data,
+            &options.state,
+            options.expanded,
+        ))
+    });
+    ext.entry_view_event("conformance-click-entry", |_ctx, _entry, options, event| {
+        click_state(&options.state, &event);
+        Ok(())
+    });
     ext.markdown_transformer_with_options(|markdown, context| {
         // "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists.
         if let Some(rest) = markdown.strip_prefix("trace:") {
@@ -2714,6 +2789,56 @@ fn main() {
         |_ctx, params: Value| {
             let text = params.get("text").and_then(Value::as_str).unwrap_or("");
             ToolResult::text(format!("echo: {text}"))
+        },
+    );
+    // D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+    let shared_calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let shared_heard = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    {
+        let heard = shared_heard.clone();
+        ext.events()
+            .on("shared-cells", move |_ctx, data| {
+                heard.lock().unwrap().push(
+                    data.get("from")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                );
+                Ok(())
+            })
+            .unwrap();
+    }
+    ext.tool(
+        "counter",
+        "This instance's call count",
+        json!({"type": "object", "properties": {}}),
+        move |_ctx, _params: Value| {
+            ToolResult::text(
+                (shared_calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1).to_string(),
+            )
+        },
+    );
+    ext.tool(
+        "ping",
+        "Emit on the shared-cells channel",
+        json!({"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}),
+        |ctx, params: Value| match ctx.events().emit(
+            "shared-cells",
+            json!({"from": params.get("name").and_then(Value::as_str).unwrap_or("")}),
+        ) {
+            Ok(()) => ToolResult::text("pinged"),
+            Err(err) => ToolResult::error(err.to_string()),
+        },
+    );
+    ext.tool(
+        "received",
+        "What this instance heard on shared-cells",
+        json!({"type": "object", "properties": {}}),
+        move |_ctx, _params: Value| {
+            ToolResult::text(format!(
+                "received={}",
+                shared_heard.lock().unwrap().join(",")
+            ))
         },
     );
     ext.tool_with_prepare_arguments(
@@ -3229,6 +3354,31 @@ fn main() {
         |ctx, _args| match ctx.wait_for_idle() {
             Ok(_) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    // io_wait and io_wait_settled wait on a plain TCP read: they dial the address they get, announce themselves with a "waiting" line and return when the peer writes a line.
+    ext.command(
+        "io_wait",
+        "Wait on a socket read",
+        |_ctx, args| match io_wait(args) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    let io_wait_subscriber = ext.event_subscriber();
+    let io_wait_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "io_wait_settled",
+        "Make agent_settled wait on a socket read",
+        move |_ctx, args| {
+            let addr = args.to_string();
+            let subscription = io_wait_subscriber.on_event("agent_settled", move |_ctx, _data| {
+                io_wait(&addr).map_err(|err| err.to_string())?;
+                Ok(None)
+            });
+            io_wait_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
         },
     );
     ext.command(
@@ -3982,6 +4132,80 @@ fn main() {
                 .lock()
                 .unwrap()
                 .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    let event_ordered_result_subscriber = ext.event_subscriber();
+    let event_ordered_result_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_ordered_result_probe",
+        "Subscribe to an event with a handler that returns the given JSON, members in written order",
+        move |_ctx, args| {
+            let trimmed = args.trim();
+            let (name, raw) = trimmed.split_once(' ').unwrap_or((trimmed, "null"));
+            // serde_json keeps the members in the order they are written (preserve_order).
+            let result: serde_json::Value = match serde_json::from_str(raw) {
+                Ok(value) => value,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let subscription = subscribe(&event_ordered_result_subscriber, name, move |_ctx, _data| {
+                Ok(Some(result.clone()))
+            });
+            event_ordered_result_subscriptions
+                .lock()
+                .unwrap()
+                .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    let event_keys_subscriber = ext.event_subscriber();
+    let event_keys_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_keys_probe",
+        "Subscribe to the event named by the argument with a handler that reports the key order of its payload",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let reported = name.clone();
+            let subscription = subscribe(&event_keys_subscriber, &name, move |ctx, data| {
+                let keys = |value: &Value| -> Vec<String> {
+                    value.as_object().map(|o| o.keys().cloned().collect()).unwrap_or_default()
+                };
+                let payload = &data["payload"];
+                let wire = serde_json::json!([keys(payload), keys(&payload["zeta"])]);
+                ctx.notify(&format!("event_keys:{reported}:{wire}"), "info");
+                Ok(None)
+            });
+            event_keys_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    let event_echo_subscriber = ext.event_subscriber();
+    let event_echo_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_echo_probe",
+        "Subscribe to the event named by the argument with a handler that hands back the objects it was sent",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let echoed = name.clone();
+            let subscription = subscribe(&event_echo_subscriber, &name, move |_ctx, data| {
+                let member = |key: &str| data.get(key).cloned().unwrap_or(Value::Null);
+                match echoed.as_str() {
+                    "turn_end" => Ok(Some(serde_json::json!({ "entries": member("entries") }))),
+                    "context" => {
+                        let messages = member("messages");
+                        let rest: Vec<Value> = messages.as_array().map(|m| m[1..].to_vec()).unwrap_or_default();
+                        Ok(Some(serde_json::json!({ "messages": rest })))
+                    }
+                    "before_provider_request" => Ok(Some(member("payload"))),
+                    "tool_result" => Ok(Some(serde_json::json!({ "content": member("content"), "details": member("details") }))),
+                    "message_end" => Ok(Some(serde_json::json!({ "message": member("message") }))),
+                    other => Err(format!("event_echo_probe has no echo for {other}")),
+                }
+            });
+            event_echo_subscriptions.lock().unwrap().push(subscription);
             CommandResult::Ok
         },
     );
@@ -5683,7 +5907,10 @@ fn state_push_reader(
                 Ok(id) => format!("tokens=250,id={id}"),
                 Err(err) => format!("error:{err}"),
             },
-            Ok(Some(usage)) => format!("tokens={}", usage.tokens.map(|n| n.to_string()).unwrap_or_default()),
+            Ok(Some(usage)) => format!(
+                "tokens={}",
+                usage.tokens.map(|n| n.to_string()).unwrap_or_default()
+            ),
             Ok(None) => "none".to_string(),
             Err(err) => format!("error:{err}"),
         }));
@@ -5881,6 +6108,9 @@ impl EditorComponent for ConformanceEditor {
         &self.base
     }
     fn handle_input(&mut self, data: &JsString) -> Result<(), String> {
+        if data == "!" {
+            panic!("bad key");
+        }
         if data == "q" {
             return Ok(());
         }
@@ -6607,7 +6837,7 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
         }));
     }
     if case["ops"].as_str() == Some("globlimit") {
-        // Pi main 676af1d77 (pig divergence (D253)): the tool asks glob for one result past its limit.
+        // Pi main 676af1d77 (#11747): the tool asks glob for one result past its limit.
         let glob_log = log.clone();
         options.find.operations = Some(pig_sdk::FindOperations {
             exists: path_op(log, "exists", |_| Ok(true)),

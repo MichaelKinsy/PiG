@@ -98,7 +98,7 @@ func acceptorOf(t testing.TB, node *NodeHost, principal data.Principal) host.Hos
 func handmade(t *testing.T, name, kind, source string) PluginScript {
 	t.Helper()
 	dir := t.TempDir()
-	plugin := Plugin{Name: name, Dir: dir, Facets: map[string]string{kind: filepath.Join(dir, kind+".ts")}, Dependencies: []string{}, External: []string{}}
+	plugin := Plugin{Name: name, Dir: dir, Root: dir, Layout: LayoutDirectory, Facets: map[string]string{kind: filepath.Join(dir, kind+".ts")}, Dependencies: []string{}, External: []string{}}
 	return PluginScript{Plugin: plugin, Built: BuiltFacet{Kind: BuiltFacetScript, Plugin: name, Facet: kind, Source: source, Digest: sha256Hex(source)}}
 }
 
@@ -122,7 +122,7 @@ func loadOn(t *testing.T, scripts ...PluginScript) (*NodeHost, host.LoadReport, 
 	return node, report, serverFor(t, workerRoute(node))
 }
 
-const emptyFacet = `(function (require, module, exports) { module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => {}) }; })`
+const emptyFacet = `(function (require, module, exports) { module.exports = { default: require("@earendil-works/chord").defineFacet(() => {}) }; })`
 
 func TestNodeLoadsAFacetAndClosesWhenAskedTo(t *testing.T) {
 	node, report, _ := loadOn(t, handmade(t, "@test/p", "worker", emptyFacet))
@@ -195,7 +195,7 @@ func TestNodeAReloadAfterTheProcessEndedFailsWithItsExit(t *testing.T) {
 func TestNodeGivesTheProcessesOutputToOnOutputByStream(t *testing.T) {
 	var mu sync.Mutex
 	got := map[NodeStream]string{}
-	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) { console.log("to stdout"); console.error("to stderr"); module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => {}) }; })`)
+	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) { console.log("to stdout"); console.error("to stderr"); module.exports = { default: require("@earendil-works/chord").defineFacet(() => {}) }; })`)
 	node, _, err := NewPluginRuntime(NodeOptions{OnOutput: func(stream NodeStream, chunk []byte) {
 		mu.Lock()
 		got[stream] += string(chunk)
@@ -217,7 +217,7 @@ func TestNodeGivesTheProcessesOutputToOnOutputByStream(t *testing.T) {
 
 func TestNodeAnUncaughtExceptionEndsTheProcessWithItsFatalAndClosesTheLink(t *testing.T) {
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => { throw new Error("late failure"); }, 0); }) };
+		module.exports = { default: require("@earendil-works/chord").defineFacet(() => { setTimeout(() => { throw new Error("late failure"); }, 0); }) };
 	})`)
 	node, _, _ := loadOn(t, script)
 	<-node.Exited()
@@ -236,7 +236,7 @@ func TestNodeAnUncaughtExceptionEndsTheProcessWithItsFatalAndClosesTheLink(t *te
 // NodeOptions.ExecArgv are Node's flags of the process: --expose-gc is how the tests that read the heap start it.
 func TestNodeExecArgvAreTheProcessesFlags(t *testing.T) {
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { if (typeof globalThis.gc !== "function") throw new Error("no gc"); }) };
+		module.exports = { default: require("@earendil-works/chord").defineFacet(() => { if (typeof globalThis.gc !== "function") throw new Error("no gc"); }) };
 	})`)
 	load := func(argv ...string) host.LoadReport {
 		node, report, err := NewPluginRuntime(NodeOptions{ExecArgv: argv}).Load(RuntimeLoad{Kind: "worker", Scripts: []PluginScript{script}, Principal: workerPrincipal, Peer: serverPrincipal}, background)
@@ -290,7 +290,7 @@ func TestNodeTreeIsExtractedOncePerContent(t *testing.T) {
 	if err != nil || second != first {
 		t.Fatalf("second = %q, %v; want %q", second, err, first)
 	}
-	if _, err := os.Stat(filepath.Join(first, "pi", "chord", "src", "next-node", "plugins", "evaluate.ts")); err != nil {
+	if _, err := os.Stat(filepath.Join(first, "pi", "chord", "src", "node", "plugins", "evaluate.ts")); err != nil {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(cache)
@@ -629,7 +629,7 @@ func TestNodeTreeIsRepairedWhenItIsPartialOrHasNoMarker(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, completeMarker)); err != nil {
 		t.Fatalf("a marker is written last: %v", err)
 	}
-	evaluate := filepath.Join(dir, "pi", "chord", "src", "next-node", "plugins", "evaluate.ts")
+	evaluate := filepath.Join(dir, "pi", "chord", "src", "node", "plugins", "evaluate.ts")
 	for _, damage := range []struct {
 		what string
 		do   func() error
@@ -769,7 +769,7 @@ func TestNodeDecodesEveryKindOfHostErrorWithItsFields(t *testing.T) {
 // anywhere in it, and a cycle ends the chain.
 func TestNodeAnUncaughtExceptionKeepsItsCauseChain(t *testing.T) {
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-		const next = require("@earendil-works/chord/next");
+		const next = require("@earendil-works/chord");
 		module.exports = { default: next.defineFacet(() => { setTimeout(() => {
 			const provider = new next.ChordError({ code: "unavailable", message: "no provider" });
 			provider.cause = "not an error";
@@ -799,7 +799,7 @@ func TestNodeAnUncaughtExceptionKeepsItsCauseChain(t *testing.T) {
 
 func TestNodeACauseThatIsItsOwnCauseEndsTheChain(t *testing.T) {
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => {
+		module.exports = { default: require("@earendil-works/chord").defineFacet(() => { setTimeout(() => {
 			const cycle = new Error("cycle");
 			cycle.cause = new Error("again", { cause: cycle });
 			throw cycle;
@@ -919,7 +919,7 @@ func TestNodeTheHostsKeepAliveCountsReachTheApp(t *testing.T) {
 func TestNodeACoreModuleImportsChordByItsPackageName(t *testing.T) {
 	cache := t.TempDir()
 	module := filepath.Join(t.TempDir(), "core.mjs")
-	source := `import { defineFacet, hostKind, method, remote, str } from "@earendil-works/chord/next";
+	source := `import { defineFacet, hostKind, method, remote, str } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 const Worker = hostKind("test.worker");
 const Hello = remote("test.hello", { version: 1, params: {}, hostAddress: () => Worker(), variants: { main: { state: {}, methods: { hi: method(str(), str()) } } } });

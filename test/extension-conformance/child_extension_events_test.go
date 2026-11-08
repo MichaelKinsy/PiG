@@ -3,7 +3,6 @@ package extensionconformance
 import (
 	"bufio"
 	"bytes"
-	_ "embed"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -39,16 +38,12 @@ export default function (pi) {
 `
 
 // childExtensionEventsWant is what Pi's own createAgentSession gives the extension its resource loader loaded (the Node row runs Pi's classes and asserts it): bindExtensions delivers session_start, and the prompt's events follow, with hasUI false, the session's scopedModels in ctx.scopedModels and a UI context whose dialogs answer nothing.
-//
-//go:embed testdata/child-session-extension-events.json
-var childExtensionEventsWant string
+var childExtensionEventsWant = testdataString("child-session-extension-events.json")
 
 // childEntryEventsWant is the events the session reports to its listener for the same run, in order: Pi's createAgentSession emits an entry_appended event, named here by the entry's custom type, from the appendEntry call of each handler, before the event the handler was handling reaches the listener, and none for ctx.sessionManager.appendCustomEntry.
 //
 // mutation-checked: dropping the emit of reportExtensionEntry (coding/session_extension_loader_host.go) fails every row (no entry_appended reaches the listener); emitting for ctx.sessionManager.appendCustomEntry too fails every row with an extra entry_appended:direct:turn_start.
-//
-//go:embed testdata/child-session-entry-events.json
-var childEntryEventsWant string
+var childEntryEventsWant = testdataString("child-session-entry-events.json")
 
 // checkChildExtensionEvents runs the fixture's child_events tool once with the child's resources selected by option and once with a DefaultResourceLoader the extension built, and compares what the probe recorded with Pi's.
 //

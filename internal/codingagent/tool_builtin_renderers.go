@@ -83,6 +83,10 @@ type builtInRenderState struct {
 	writeHighlight *writeHighlightCache
 	// writePlain is the write card's lines for a path without a language, extended as its content streams in.
 	writePlain writePlainLines
+	// writeWarmed is the length of the content the whole-file highlight was last warmed at (warmWholeHighlight), and writeWarmOff
+	// that the file's language cannot resume, so no warm-up is worth its cost.
+	writeWarmed  int
+	writeWarmOff bool
 	// highlighter is the row's highlighting of a complete write call's file, or of a codemode call's script (upstream
 	// WriteCallRenderComponent.highlighter and CodemodeRenderState.scriptHighlighter). A complete write call redraws on
 	// every update and expand toggle with the same file, and a codemode call on every progress update and timer tick with
@@ -630,6 +634,9 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 	// fileContent !== null && !context.argsComplete ? updateWriteHighlightCacheIncremental : undefined).
 	if ok && !context.ArgsComplete {
 		state.writeHighlight = updateWriteHighlightCacheIncremental(state.writeHighlight, rawPath, content)
+		if lang != "" {
+			state.warmWholeHighlight(content, lang)
+		}
 	} else {
 		state.writeHighlight = nil
 	}

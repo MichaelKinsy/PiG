@@ -1,0 +1,39 @@
+// The counter's [[.Placement]] facet, code [[.Code]].
+import { defineFacet, defineState, defineTable, int, local, method, obj, query, str } from "@test/app/v1";
+import { Counter } from "./contract.ts";
+[[if eq .Broken "build"]]const broken = ;[[end]]
+[[if eq .Broken "evaluation"]]throw new Error("the counter's new code throws when evaluated");[[end]]
+[[.Latch]]
+const Count = defineState("reload.count", { schema: obj({ n: int() }), version: 1, initial: () => ({ n: 0 }), persist: true, checkpointWhen: () => false });
+const Visits = defineTable("reload.visits", { version: 1, columns: { at: int() }, key: ["at"] });
+const Store = local("reload.store", { version: 1, params: {}, members: { count: int(), add: method(int(), str()), visits: method(undefined, int()) } });
+export default defineFacet((host) => {
+	[[if eq .Broken "setup"]]throw new Error("the counter's new setup throws");[[end]]
+	host.serve(Store, (_params, self) => {
+		const doc = self.state(Count);
+		const visits = self.table(Visits);
+		return {
+			count: self.derive([doc], ([value]) => value.n),
+			add: async (n, ctx) => {
+				await doc.change((draft) => { draft.n += n; }, ctx);
+				const at = doc.value.n;
+				await self.tx(async (tx) => { tx.put(visits, { at }); }, ctx);
+				return `[[.Code]]:${at}`;
+			},
+			visits: async (ctx) => visits.count(query(Visits), ctx),
+		};
+	});
+	host.serve(Counter, (_params, _principal, self) => {
+		[[if .Native]]self.open(async () => { [[if eq .Broken "open"]]throw new Error("the native does not open");[[end]] natives.opens.push([[.CodeJSON]]); return [[.CodeJSON]]; }, (value, reason) => { natives.closes.push(`${value}:${reason.kind}`); });[[end]]
+		const store = self.get(Store, {});
+		return { variant: "main", members: {
+			label: self.derive([store.count], ([n]) => [[if .V2]]({ text: `[[.Code]]:${n}`, code: [[.CodeJSON]] })[[else]]`[[.Code]]:${n}`[[end]]),
+			count: self.derive([store.count], ([n]) => n),
+			[[if .V2]]add: async ({ n }, ctx) => ({ text: await store.add(n, ctx) }),[[else]]add: (n, ctx) => store.add(n, ctx),[[end]]
+			slow: async (name) => { const held = latch(name); held.entered.resolve(); await held.open.promise; return `[[.Code]]:${name}`; },
+			slowAdd: async (name, ctx) => { const held = latch(name); held.entered.resolve(); await held.open.promise; return store.add(10, ctx); },
+			code: async () => [[.CodeJSON]],
+			visits: (ctx) => store.visits(ctx),
+		} };
+	}[[if .Accepts]], { accepts: { 1: { state: { main: { label: (current) => current.text } }, methods: { add: { args: (old) => ({ n: old }), result: (current) => current.text } } } } }[[end]]);
+});

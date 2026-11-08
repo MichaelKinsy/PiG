@@ -223,7 +223,7 @@ func radiusModelEntry(model *ai.Model) ModelEntry {
 	capabilities := model.Capabilities
 	return ModelEntry{
 		Type:          model.Type,
-		CatalogRecord: ai.CatalogRecordOf(model),
+		CatalogRecord: ai.CatalogRecordRefOf(model),
 		ProviderID:    model.ProviderMeta.ProviderID, ModelID: model.ID, BaseURL: model.ProviderMeta.BaseURL, DisplayName: model.DisplayName,
 		API: string(ai.APIPiMessages), Reasoning: model.ProviderMeta.Reasoning,
 		ThinkingLevelMap: nilIfEmptyMap(model.ThinkingLevelMap), Input: nilIfEmptySlice(model.Input),

@@ -677,6 +677,33 @@ func TestCodegenByteIdentical(t *testing.T) {
 			t.Errorf("%s drift\ncommitted=%d bytes regenerated=%d bytes: re-run `go generate ./ai/...`", committedPath, len(committed), len(regenerated))
 		}
 	}
+	// The record chunks are compared inflated: a gzip stream's bytes depend on the compressor's version, its content does not.
+	regeneratedChunks, err := os.ReadDir(filepath.Join(dir, "catalog_records"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	committedChunks, err := catalogRecordFiles.ReadDir("catalog_records")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(regeneratedChunks) != len(committedChunks) {
+		t.Fatalf("catalog_records drift: %d chunks committed, %d regenerated", len(committedChunks), len(regeneratedChunks))
+	}
+	for _, entry := range regeneratedChunks {
+		regenerated, err := os.ReadFile(filepath.Join(dir, "catalog_records", entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		committed, err := catalogRecordFiles.ReadFile("catalog_records/" + entry.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, err1 := inflateCatalogChunk(regenerated)
+		got, err2 := inflateCatalogChunk(committed)
+		if err1 != nil || err2 != nil || !bytes.Equal(got, want) {
+			t.Errorf("catalog_records/%s drift: re-run `go generate ./ai/...`", entry.Name())
+		}
+	}
 }
 
 // sourceCommentRE matches the generated header's `// Source: models.generated.<ext>`

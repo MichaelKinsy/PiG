@@ -1,0 +1,3 @@
+### Fixed
+
+- A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed environment variable) no longer takes down the other Go extensions that share its runtime cell. The packed runner now reports the panic as that extension's own load error, as an isolated process does, with the stack in its stderr log, and every sibling keeps running; `/reload` lists only the failing extension. A factory that returns no extension fails the same way in a Go, Python or Lisp cell (`factory returned nil`, `factory returned None`), and a Lisp cell no longer hangs the load until the caller cancels it when a factory returns nothing. <!-- fix: eda66dd663 -->

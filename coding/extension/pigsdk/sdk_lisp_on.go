@@ -3,9 +3,6 @@
 package pigsdk
 
 import (
-	"slices"
-	"sync"
-
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 
 	lispsdk "github.com/MichaelKinsy/PiG/extensions/sdk-lisp"
@@ -20,8 +17,5 @@ func lispBundle() (sdkBundle, bool) {
 	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.ExtensionSDKLisp) {
 		return sdkBundle{}, false
 	}
-	return sdkBundle{lang: "lisp", files: lispBundleFiles(), fsys: lispsdk.Source, stagedHash: lispsdk.StagedHash()}, true
+	return sdkBundle{lang: "lisp", stagedHash: lispsdk.StagedHash(), unpack: func() ([]byte, error) { return decodeBundle(lispsdk.Source) }}, true
 }
-
-// lispBundleFiles lists the embedded Lisp SDK once per process: the embedded files never change, and staging and the staged directory's hash both read the list, which they never write; its capacity is clipped, so an append copies it.
-var lispBundleFiles = sync.OnceValue(func() []string { return slices.Clip(lispsdk.BundledFiles()) })

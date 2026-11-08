@@ -444,6 +444,30 @@ func HighlightCode(code, lang string) []string {
 	return highlightCodeLines(code, lang)
 }
 
+// WarmHighlight highlights code for the active theme as HighlightCode does and discards the lines. HighlightCode of a longer
+// text that starts with code then continues from the state this leaves, instead of highlighting from the first line, so a
+// caller whose text streams in can pay for the whole text a step at a time and not all at once when the text is complete.
+// The lines are not kept in the memo: each warm-up is a new text that nothing asks for again, and kept lines would fill the
+// memo's budget, whose reset also drops the resume state.
+// It reports whether such a state is held; false means the text cannot resume (a language highlight.js lacks, a build without
+// syntax highlighting, or code the engine cannot resume over), so a caller that warms as the text grows stops warming.
+// pig additive (D112): the lines HighlightCode returns are the same with or without a warm-up; only when they are computed differs.
+func WarmHighlight(code, lang string) bool {
+	if highlightStripped() {
+		return false
+	}
+	t := ActiveTheme()
+	hlMu.Lock()
+	if t != hlTheme {
+		// The active theme changed: drop the colors cached for the old one, as highlightCodeLines does.
+		resetHighlightCacheLocked()
+		hlTheme = t
+	}
+	hlMu.Unlock()
+	highlightResumable(highlightRegistry(), code, lang, t)
+	return highlightResumeHeld(code, lang, t)
+}
+
 // HighlightEpoch is what HighlightCode's lines depend on besides its arguments: the active theme and the highlight.js
 // languages loaded. Within one epoch HighlightCode returns the same lines for the same code and language, so a caller may
 // keep lines it highlighted instead of highlighting the same code again.
@@ -528,18 +552,30 @@ func storeHighlightLocked(key hlKey, out []string) {
 	if size > hlCacheMaxBytes {
 		return
 	}
+	// A code block that is streamed stores a longer prefix per frame, and each replaces the entry before it, so those keys are not copied, or streaming a block of n bytes would copy O(n) bytes per frame more (TestScalingStreamedCodeBlockHighlight). The key of the frame that ends up staying is copied when the stream ends, below.
+	streamed := false
 	if last := hlLast; last.lang == key.lang && strings.HasPrefix(key.code, last.code) {
 		if lines, ok := hlCache[last]; ok {
 			delete(hlCache, last)
 			hlCacheBytes -= hlEntrySize(last, lines)
+			streamed = true
 		}
+	}
+	// Any other key must not hold the text it was sliced from: the code of a fence is a part of a chunk that the block lexer copied the document's strings to, and a memo entry would keep the whole chunk, which hlEntrySize does not count.
+	if !streamed {
+		// The block that was streamed before this one is complete: its key, the last of its frames, keeps the text it was sliced from until it has its own.
+		if lines, ok := hlCache[hlLast]; ok && hlLastShared {
+			delete(hlCache, hlLast)
+			hlCache[hlKey{lang: strings.Clone(hlLast.lang), code: strings.Clone(hlLast.code)}] = lines
+		}
+		key = hlKey{lang: strings.Clone(key.lang), code: strings.Clone(key.code)}
 	}
 	if len(hlCache) >= hlCacheMax || hlCacheBytes+size > hlCacheMaxBytes {
 		resetHighlightCacheLocked()
 	}
 	hlCache[key] = out
 	hlCacheBytes += size
-	hlLast = key
+	hlLast, hlLastShared = key, streamed
 }
 
 // hlKey memoizes highlighted lines for the active theme and loaded languages.
@@ -562,8 +598,9 @@ var (
 	hlGeneration int
 	hlCache      = map[hlKey][]string{}
 	hlCacheBytes int
-	// hlLast is the entry stored last, which the next prefix of a streamed block replaces.
-	hlLast hlKey
+	// hlLast is the entry stored last, which the next prefix of a streamed block replaces. hlLastShared reports that its key was stored without a copy of its strings, which the next store that does not continue the block makes.
+	hlLast       hlKey
+	hlLastShared bool
 )
 
 // hlEntrySize is the bytes a memo entry retains: the code held by its key and the highlighted lines.
@@ -579,7 +616,7 @@ func hlEntrySize(key hlKey, lines []string) int {
 func resetHighlightCacheLocked() {
 	clear(hlCache)
 	hlCacheBytes = 0
-	hlLast = hlKey{}
+	hlLast, hlLastShared = hlKey{}, false
 	resetHighlightResumesLocked()
 }
 
