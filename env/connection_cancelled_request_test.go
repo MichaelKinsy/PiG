@@ -2,15 +2,15 @@ package env
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-// Pi's Connection.request (packages/env/src/connection.ts:190-200) awaits #connect, which takes no signal, and #send (:230-251) then registers the request, calls onStart, writes it and only afterwards sends `cancel` for an aborted signal. A request whose signal is already aborted therefore always reaches the daemon. PiG chose at random between the started connection and the done context, and failed half of such requests with a synthesized `aborted` error without sending them.
-// mutation-checked: restoring the `case <-ctx.Done()` branch of Connection.connect fails it.
-func TestRequestWithACancelledContextIsStillSentOnAStartedConnection(t *testing.T) {
+// Pi main c96e368e2 (D304): Connection.request awaits untilAborted(#connect(), signal), so a request whose signal is already aborted rejects with code `aborted` and is never sent, also on a started connection.
+func TestRequestWithACancelledContextIsNotSentAndIsAborted(t *testing.T) {
 	t.Parallel()
 	connection := daemonConnection(t)
 	if _, err := connection.Session(background); err != nil {
@@ -21,16 +21,18 @@ func TestRequestWithACancelledContextIsStillSentOnAStartedConnection(t *testing.
 	target := t.TempDir()
 	for attempt := range 200 {
 		var started atomic.Bool
-		_, _ = connection.Request(cancelled, "lstat", Json{"path": target}, RequestOptions{OnStart: func(uint32, int) { started.Store(true) }})
-		if !started.Load() {
-			t.Fatalf("attempt %d: the request with a cancelled context was not sent", attempt)
+		_, err := connection.Request(cancelled, "lstat", Json{"path": target}, RequestOptions{OnStart: func(uint32, int) { started.Store(true) }})
+		if started.Load() {
+			t.Fatalf("attempt %d: the request with a cancelled context was sent", attempt)
+		}
+		if remote, ok := errors.AsType[*RemoteError](err); !ok || remote.Code != "aborted" {
+			t.Fatalf("attempt %d: err = %v, want code aborted", attempt, err)
 		}
 	}
 }
 
-// Pi's #connect (packages/env/src/connection.ts:216-227) has no signal: a request whose signal aborts while the daemon starts waits for the start, then is sent and cancelled (:250). Its outcome comes from the daemon, or from the start when the start fails.
-// mutation-checked: restoring the `case <-ctx.Done()` branch of Connection.connect fails it.
-func TestRequestCancelledWhileTheDaemonStartsWaitsForTheStart(t *testing.T) {
+// Pi main c96e368e2 (D304): a request whose signal aborts while the daemon starts rejects at once with code `aborted`; the start goes on and the request is never sent.
+func TestRequestCancelledWhileTheDaemonStartsIsAbortedAtOnce(t *testing.T) {
 	t.Parallel()
 	daemon := daemonBinary(t)
 	release := make(chan struct{})
@@ -56,12 +58,18 @@ func TestRequestCancelledWhileTheDaemonStartsWaitsForTheStart(t *testing.T) {
 	cancel()
 	select {
 	case result := <-done:
-		t.Fatalf("the request settled before the daemon started: %+v, %v", result.reply.JSON, result.err)
-	case <-time.After(200 * time.Millisecond):
+		if remote, ok := errors.AsType[*RemoteError](result.err); !ok || remote.Code != "aborted" {
+			t.Fatalf("err = %v, want code aborted", result.err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the request did not settle at once while the daemon started")
 	}
 	close(release)
-	<-done
-	if !started.Load() {
-		t.Fatal("the request was not sent after the daemon started")
+	// The start went on: another request on the connection works.
+	if _, err := connection.Info(background); err != nil {
+		t.Fatalf("Info after the aborted request: %v", err)
+	}
+	if started.Load() {
+		t.Fatal("the aborted request was sent")
 	}
 }

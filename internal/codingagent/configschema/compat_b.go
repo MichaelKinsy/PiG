@@ -16,6 +16,7 @@ func AnthropicMessagesCompatSchema() *Schema {
 		Optional("supportsMidConvoEffort", Boolean(D("Whether the exact model transport supports effort-only system messages and thinking binding controls."), Default(false))),
 		optionalCompatBoolean("supportsMidConvoSystemMessages", D("Whether the exact model accepts system-role messages inside the conversation. When false, later system messages are folded into the top-level system prompt."), Default(false)),
 		Optional("supportsMidConvoToolChanges", Boolean(D("Whether the exact model accepts mid-conversation tool_addition and tool_removal blocks. Requires supportsMidConvoSystemMessages."), Default(false))),
+		optionalCompatBoolean("supportsMessageThreads", D("Whether the endpoint supports Anthropic message threads, which let a request with a session id send only the new messages and continue from the previous reply. Default: true for provider anthropic with a baseUrl on api.anthropic.com, false otherwise. Set true for gateways that forward the thread request field.")),
 		Optional("allowedFallbackModels", Array(AnthropicAllowedFallbackModelSchema(), Opt{"maxItems", 3}, D("Models Anthropic accepts for server-side refusal fallback, with local pricing metadata for returned fallback responses. When absent or empty, callers must omit fallbacks; Anthropic rejects the field for models with no permitted fallback targets."))),
 	}, D("Compatibility settings for Anthropic Messages-compatible APIs."), Opt{"additionalProperties", true})
 }
@@ -46,6 +47,7 @@ func ProviderCompatSchema() *Schema {
 		optionalCompatBoolean("supportsDeveloperRole", D("Whether the provider supports the developer role instead of system. Defaults are API-specific.")),
 		optionalCompatBoolean("supportsMidConvoSystemMessages", D("Whether the exact model accepts system or developer messages after the conversation has started. When false, later system messages are folded into the leading system message."), Default(false)),
 		optionalSessionAffinityFormat(D("Session-affinity header format. Defaults are API-specific or auto-detected.")),
+		optionalPromptCacheKeyMode(D("Controls the prompt_cache_key request field for openai-completions and openai-responses: auto keeps each API's default, enabled sends it whenever caching is active, disabled never sends it. Default: auto.")),
 		optionalCompatBoolean("supportsMidConvoEffort", D("Whether thinking level changes are sent inside the conversation instead of changing the request's effort, so a change keeps the prompt cache. Used by the anthropic-messages and openai-responses APIs."), Default(false)),
 		optionalCompatBoolean("supportsLongCacheRetention", D("Whether the provider supports long prompt cache retention. Defaults are API-specific or auto-detected.")),
 		optionalCompatBoolean("supportsStrictMode", D("Whether the provider supports strict tool schemas. Defaults are API-specific.")),

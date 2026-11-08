@@ -216,6 +216,73 @@ func TestClassifierModelsUpstream(t *testing.T) {
 			t.Fatalf("chat with oauth: err=%v", err)
 		}
 	})
+	// .upstream/current/packages/ai/test/classifier-models.test.ts:248
+	t.Run("routes GitHub Copilot Microsoft-Decision-1 to the account's /v1/systemone endpoint", func(t *testing.T) {
+		credentials := NewInMemoryCredentialStore()
+		if _, err := credentials.Modify(t.Context(), "github-copilot", func(*Credential) (*Credential, error) {
+			return &Credential{
+				Type: CredentialOAuth, Access: "tid=test;exp=9999999999;proxy-ep=proxy.enterprise.githubcopilot.com;", Refresh: "refresh",
+				Expires: time.Now().UnixMilli() + 3_600_000,
+				// The login records only picker models; classifiers stay listed.
+				AvailableModelIDs: []byte(`["gpt-6-luna"]`),
+			}, nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		models := BuiltinModels(CreateModelsOptions{Credentials: credentials})
+		decision, _ := models.GetModelOfType(ModelTypeClassifier, "github-copilot", "microsoft-decision-1").(*ClassifierModel)
+		if decision == nil {
+			t.Fatal("missing GitHub Copilot decision model")
+		}
+		if decision.API != "typesafe-system-one" || decision.BaseURL != "https://api.individual.githubcopilot.com" || !reflect.DeepEqual(decision.Input, []string{"text"}) || decision.ContextWindow != 32768 {
+			t.Fatalf("decision=%+v", decision)
+		}
+		if models.GetModel("github-copilot", "microsoft-decision-1") != nil {
+			t.Fatal("chat lookup returned the classifier")
+		}
+		available, err := models.GetAvailableOfType(t.Context(), ModelTypeClassifier, "github-copilot")
+		if err != nil || len(available) != 1 || available[0].ModelID() != "microsoft-decision-1" {
+			t.Fatalf("available=%v err=%v", available, err)
+		}
+
+		var urls []string
+		var headers http.Header
+		result := models.Classify(t.Context(), decision, classifierTestContext(), ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
+			urls = append(urls, r.URL.String())
+			headers = r.Header.Clone()
+			return clsJSON(200, `{"answers":{"approved":{"type":"noul","noul":0.8}}}`), nil
+		})}})
+
+		if !reflect.DeepEqual(urls, []string{"https://api.enterprise.githubcopilot.com/v1/systemone"}) {
+			t.Fatalf("urls=%v", urls)
+		}
+		if got := headers.Get("Authorization"); got != "Bearer tid=test;exp=9999999999;proxy-ep=proxy.enterprise.githubcopilot.com;" {
+			t.Errorf("authorization=%q", got)
+		}
+		// Copilot rejects requests without an editor version.
+		if headers.Get("Editor-Version") == "" || headers.Get("Copilot-Integration-Id") != "vscode-chat" {
+			t.Errorf("headers=%v", headers)
+		}
+		if result.StopReason != "stop" || clsAnswer(t, result.Answers, "approved") != (ClassifierBoolAnswer{Probability: 0.8}) {
+			t.Fatalf("result=%+v", result)
+		}
+	})
+	// .upstream/current/packages/ai/test/classifier-models.test.ts:288
+	t.Run("adds the System One version prefix to the GitHub Copilot catalog base URL", func(t *testing.T) {
+		models := BuiltinModels()
+		decision, _ := models.GetModelOfType(ModelTypeClassifier, "github-copilot", "microsoft-decision-1").(*ClassifierModel)
+		if decision == nil {
+			t.Fatal("missing GitHub Copilot decision model")
+		}
+		var urls []string
+		models.Classify(t.Context(), decision, classifierTestContext(), ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{APIKey: "secret", APIKeySet: true, Fetch: clsClient(func(r *http.Request) (*http.Response, error) {
+			urls = append(urls, r.URL.String())
+			return clsJSON(200, `{"answers":{"approved":{"type":"noul","noul":0.8}}}`), nil
+		})}})
+		if !reflect.DeepEqual(urls, []string{"https://api.individual.githubcopilot.com/v1/systemone"}) {
+			t.Fatalf("urls=%v", urls)
+		}
+	})
 	// .upstream/v0.99.1/packages/ai/test/classifier-models.test.ts:165
 	t.Run("routes OpenRouter classifier models through the System One API", func(t *testing.T) {
 		models := BuiltinModels()

@@ -552,7 +552,7 @@ func TestCacheWarmingFormatsStatusAndUsageEntries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := FormatCacheWarmingUsage(entry), "Cache warmed (extension override): $0.029497"; got != want {
+	if got, want := FormatCacheWarmingUsage(entry.Usage.Cost.Total, entry.Note), "Cache warmed (extension override): $0.029497"; got != want {
 		t.Fatalf("usage = %q, want %q", got, want)
 	}
 }

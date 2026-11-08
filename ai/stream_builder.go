@@ -38,6 +38,8 @@ type assistantStreamBuilder struct {
 	requestServiceTier string
 	// errorMessage rewrites the message of a failed stream, or is nil.
 	errorMessage func(string) string
+	// causeDetail appends the deepest cause of a failure to its message (anthropic-messages.ts withCauseDetail).
+	causeDetail bool
 	// providerEvent is the bound OnProviderStreamEvent observer, or nil.
 	providerEvent func(data any) error
 	// providerEventOption and providerEventModel are the request's OnProviderStreamEvent option and the model it receives, for an adapter that
@@ -498,10 +500,14 @@ func (builder *assistantStreamBuilder) recordTransportFailure(err error) {
 
 // failureMessage is the ErrorMessage recorded for err.
 func (builder *assistantStreamBuilder) failureMessage(err error) string {
-	if builder.errorMessage != nil {
-		return builder.errorMessage(err.Error())
+	message := err.Error()
+	if builder.causeDetail {
+		message = WithCauseDetail(err)
 	}
-	return err.Error()
+	if builder.errorMessage != nil {
+		return builder.errorMessage(message)
+	}
+	return message
 }
 
 func (builder *assistantStreamBuilder) finishBlocks() {

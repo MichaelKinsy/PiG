@@ -117,26 +117,36 @@ func TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable(t *testing
 	}
 }
 
+// Pi qwen-token-plan-models.test.ts "uses the China Token Plan environment variable" (3e4f8726).
+func TestEnvAPIKeysQwenIndividualCnUsesChinaTokenPlanVariable(t *testing.T) {
+	clearEnvKeyVars(t)
+	got := FindEnvKeys("qwen-token-plan-individual-cn", map[string]string{"QWEN_TOKEN_PLAN_CN_API_KEY": "test"})
+	if !slices.Equal(got, []string{"QWEN_TOKEN_PLAN_CN_API_KEY"}) {
+		t.Fatalf("FindEnvKeys = %v", got)
+	}
+}
+
 // TestEnvAPIKeysTableMatchesUpstream checks every entry of upstream
 // getApiKeyEnvVars, including the entries PiG previously resolved nowhere
 // (meta, qwen-token-plan*, ant-ling, baseten, nvidia, zai-coding-cn).
 func TestEnvAPIKeysTableMatchesUpstream(t *testing.T) {
 	want := map[string][]string{
-		"github-copilot":             {"COPILOT_GITHUB_TOKEN"},
-		"anthropic":                  {"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY"},
-		"ant-ling":                   {"ANT_LING_API_KEY"},
-		"qwen-token-plan":            {"QWEN_TOKEN_PLAN_API_KEY"},
-		"qwen-token-plan-cn":         {"QWEN_TOKEN_PLAN_CN_API_KEY"},
-		"qwen-token-plan-individual": {"QWEN_TOKEN_PLAN_API_KEY"},
-		"openai":                     {"OPENAI_API_KEY"},
-		"azure":                      {"AZURE_OPENAI_API_KEY"},
-		"nvidia":                     {"NVIDIA_API_KEY"},
-		"deepseek":                   {"DEEPSEEK_API_KEY"},
-		"google":                     {"GEMINI_API_KEY"},
-		"google-vertex":              {"GOOGLE_CLOUD_API_KEY"},
-		"groq":                       {"GROQ_API_KEY"},
-		"cerebras":                   {"CEREBRAS_API_KEY"},
-		"xai":                        {"XAI_API_KEY"},
+		"github-copilot":                {"COPILOT_GITHUB_TOKEN"},
+		"anthropic":                     {"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY"},
+		"ant-ling":                      {"ANT_LING_API_KEY"},
+		"qwen-token-plan":               {"QWEN_TOKEN_PLAN_API_KEY"},
+		"qwen-token-plan-cn":            {"QWEN_TOKEN_PLAN_CN_API_KEY"},
+		"qwen-token-plan-individual":    {"QWEN_TOKEN_PLAN_API_KEY"},
+		"qwen-token-plan-individual-cn": {"QWEN_TOKEN_PLAN_CN_API_KEY"},
+		"openai":                        {"OPENAI_API_KEY"},
+		"azure":                         {"AZURE_OPENAI_API_KEY"},
+		"nvidia":                        {"NVIDIA_API_KEY"},
+		"deepseek":                      {"DEEPSEEK_API_KEY"},
+		"google":                        {"GEMINI_API_KEY"},
+		"google-vertex":                 {"GOOGLE_CLOUD_API_KEY"},
+		"groq":                          {"GROQ_API_KEY"},
+		"cerebras":                      {"CEREBRAS_API_KEY"},
+		"xai":                           {"XAI_API_KEY"},
 		// .upstream/v0.99.1/packages/ai/src/env-api-keys.ts:93
 		"typesafe":              {"TYPESAFE_API_KEY"},
 		"radius":                {"RADIUS_API_KEY"},
