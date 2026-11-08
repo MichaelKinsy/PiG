@@ -18,14 +18,16 @@ func must(contract *contracts.Contract, err error) *contracts.Contract {
 }
 
 var (
-	c      = p2runtime.Contract
-	str    = schema.Str
-	num    = schema.Num
-	nul    = schema.Nul
-	prop   = schema.Prop
-	opt    = schema.Opt
-	obj    = func(properties schema.Properties) schema.Schema { return schema.Obj(properties) }
-	arr    = func(item schema.Schema, options ...schema.ArrayOption) schema.Schema { return schema.Arr(item, options...) }
+	c    = p2runtime.Contract
+	str  = schema.Str
+	num  = schema.Num
+	nul  = schema.Nul
+	prop = schema.Prop
+	opt  = schema.Opt
+	obj  = func(properties schema.Properties) schema.Schema { return schema.Obj(properties) }
+	arr  = func(item schema.Schema, options ...schema.ArrayOption) schema.Schema {
+		return schema.Arr(item, options...)
+	}
 	union  = func(branches ...schema.Schema) schema.Schema { return schema.Union(branches) }
 	lit    = func(value string) schema.Schema { return p2runtime.Literal(value) }
 	method = func(sides ...schema.Schema) *contracts.Method {

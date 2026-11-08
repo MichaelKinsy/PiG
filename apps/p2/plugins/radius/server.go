@@ -198,4 +198,3 @@ func radiusLogin(_ []string) int {
 	fmt.Println("Signed in. A running p2 connects to Radius within 30 seconds.")
 	return 0
 }
-

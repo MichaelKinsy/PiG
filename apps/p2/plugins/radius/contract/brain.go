@@ -109,17 +109,17 @@ const (
 	// maxMessageBytes is the largest message a socket carries.
 	maxMessageBytes = 16 * 1024 * 1024
 	// defaultHTTPWindow is the relay's default window, for relays that do not state it in `connection_open`.
-	defaultHTTPWindow      = 256 * 1024
-	congestionHighBytes    = 1024 * 1024
-	congestionLowBytes     = 256 * 1024
-	protocolVersion        = 2
-	dataHeaderBytes        = 18
-	frameBinary       byte = 1
-	frameText         byte = 2
-	frameEnd          byte = 3
-	bodyChunkBytes         = 256 * 1024
-	retryInitial           = time.Second
-	retryMax               = 30 * time.Second
+	defaultHTTPWindow        = 256 * 1024
+	congestionHighBytes      = 1024 * 1024
+	congestionLowBytes       = 256 * 1024
+	protocolVersion          = 2
+	dataHeaderBytes          = 18
+	frameBinary         byte = 1
+	frameText           byte = 2
+	frameEnd            byte = 3
+	bodyChunkBytes           = 256 * 1024
+	retryInitial             = time.Second
+	retryMax                 = 30 * time.Second
 	// A client channel's origin while the brain's Radius origin is unknown (nobody opened it in a browser yet).
 	clientOrigin = "https://radius.invalid"
 	// The relay's close of a host socket another brain with this server ID replaced (relay protocol).
