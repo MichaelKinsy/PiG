@@ -35,6 +35,9 @@ type Options struct {
 	Modules surfaces.ClientModules
 	// Mode is the window's colour mode at start, "dark" or "light".
 	Mode string
+	// Origin is the server's loopback origin ("http://127.0.0.1:<port>"): uploads go to its `POST /upload` route, the only way
+	// a file enters a session (the session's files answer the server alone).
+	Origin string
 	// Preferred are the device's languages, most preferred first.
 	Preferred []string
 	// Changed is called after any change of the host's own state (theme, language, connection), from any goroutine: the
@@ -45,6 +48,9 @@ type Options struct {
 	// OnError receives what the client reports: host errors, plugins left out, failed updates, messages of the language.
 	OnError func(error)
 }
+
+// Origin is the server's loopback origin (empty when not given).
+func (h *Host) Origin() string { return h.opts.Origin }
 
 // Host is the open client.
 type Host struct {

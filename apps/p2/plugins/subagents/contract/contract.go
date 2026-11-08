@@ -3,7 +3,10 @@
 package contract
 
 import (
+	"slices"
+
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/schema"
 )
@@ -50,3 +53,41 @@ var ChildStore = func() *contracts.Contract {
 	}
 	return contract
 }()
+
+// RemoteEnvironments are the remote environments a session's conversations work on (`remoteEnvironments`): the session's
+// (a row's `env`), then its subagents' own (archived ones included: still usable), each once, in that order. A read/write
+// guest can reach all of them. children is the session's `ChildSchema` list as JSON; both may be nil.
+func RemoteEnvironments(session *delta.JsonObject, children []any) []string {
+	environments := []string{}
+	add := func(env any) {
+		if text, ok := env.(string); ok && text != "" && !slices.Contains(environments, text) {
+			environments = append(environments, text)
+		}
+	}
+	if session != nil {
+		add(session.Value("env"))
+	}
+	for _, each := range children {
+		if child, ok := each.(*delta.JsonObject); ok {
+			if location, ok := child.Value("location").(*delta.JsonObject); ok {
+				add(location.Value("env"))
+			}
+		}
+	}
+	return environments
+}
+
+// ConversationLocation is where a conversation works (`conversationLocation`): a child's own location, else the session's
+// (the main conversation's) as its cwd and env (null when none). Both may be nil (nil when neither is given).
+func ConversationLocation(session, child *delta.JsonObject) *delta.JsonObject {
+	if child != nil {
+		if location, ok := child.Value("location").(*delta.JsonObject); ok {
+			return location
+		}
+	}
+	if session == nil {
+		return nil
+	}
+	env := session.Value("env")
+	return delta.JsonObjectOf("cwd", session.Value("cwd"), "env", env)
+}

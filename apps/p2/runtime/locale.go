@@ -63,3 +63,7 @@ func sign(n int) int {
 	}
 	return 0
 }
+
+// LocaleCompare is `a.localeCompare(b)` (see localeCompare for what it covers): for the plugins that sort names as Pi's
+// code does.
+func LocaleCompare(a, b string) int { return localeCompare(a, b) }

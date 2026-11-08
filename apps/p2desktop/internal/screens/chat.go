@@ -256,13 +256,22 @@ func (c *Chat) Metrics() Metrics {
 	return m
 }
 
-// Send sends text as the user's message (steering the run when one is going), with a fresh request ID.
-func (c *Chat) Send(text string) error {
+// Send sends text as the user's message (steering the run when one is going), with a fresh request ID; attachments are the
+// IDs Upload answered.
+func (c *Chat) Send(text string, attachments ...string) error {
 	c.mu.Lock()
 	c.sendSeq++
 	id := fmt.Sprintf("desktop-%s-%d", c.session, c.sendSeq)
 	c.mu.Unlock()
-	_, err := c.ref.Call("send", delta.JsonObjectOf("text", text, "requestId", id), c.ctx)
+	args := delta.JsonObjectOf("text", text, "requestId", id)
+	if len(attachments) > 0 {
+		ids := make([]any, len(attachments))
+		for i, a := range attachments {
+			ids[i] = a
+		}
+		args = delta.JsonObjectOf("text", text, "requestId", id, "attachments", ids)
+	}
+	_, err := c.ref.Call("send", args, c.ctx)
 	c.fail(err)
 	return err
 }
