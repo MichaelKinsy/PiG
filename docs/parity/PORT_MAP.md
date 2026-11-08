@@ -807,6 +807,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/store/engine.ts` | `chord/next/store/engine.go` | ✅ |
 | `packages/chord/src/next/store/outbox.ts` | `chord/next/store/outbox.go` | ✅ |
 | `packages/chord/src/next/store/store.ts` | `chord/next/store/store.go` | ✅ |
+| `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go (D431)` | ✅ |
 | `packages/chord/src/next/store/applier.ts` | `chord/next/store/applier.go` | ✅ |
 | `packages/chord/src/next/store/apply-batch.ts` | `chord/next/store/apply_batch.go` | ✅ |
 | `packages/chord/src/next/store/index.ts` | `(export barrel: the Go package exports the names directly. Each exported name of the list exists in package store: ArchivePart (ArchiveManifest is ManifestPart), Backend/SqliteBackend, expression builders (Add And ColumnRef Condition Coalesce Concat Expression Eq Gt Gte InArray IsNull Lt Lte Max Min Ne Not Or Prefix ReplacePrefix SetOf Sub When), ImportStore, JsonColumnOptions/Json, DecodeJsonl/EncodeJsonl, Outbox/OutboxCommit, ColumnRefs/Query, OpenStore/Store/StoreOptions, DefineTable/TableDefinition/TableOptions, EvolveTable/TableEditor, Page/PageOptions, CompareText, StoreWrite. Type-level only, designed out by the other D3 agents: Columns PutRowOf RowOf KeyOf PatchOf AddedColumn TableTailEditor TableOf Table)` | n/a |

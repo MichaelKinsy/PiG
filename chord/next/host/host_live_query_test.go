@@ -65,7 +65,9 @@ func mustTableDef(name string, options store.TableOptions) *store.TableDefinitio
 }
 
 // lqQueries are the live queries collected weakly as they are declared (Pi's `instancesOf(LiveQuery, "load")`).
-type lqQueries struct{ refs []weak.Pointer[store.LiveQuery] }
+type lqQueries struct {
+	refs []weak.Pointer[store.LiveQuery]
+}
 
 // serveBoard serves `Board` with a live query of the newest `limit` items; declare runs first in its factory.
 func (q *lqQueries) serveBoard(h FacetHost, limit int64, declare func(self StoreSelf)) error {
@@ -77,8 +79,9 @@ func (q *lqQueries) serveBoard(h FacetHost, limit int64, declare func(self Store
 		items := self.Table(lqItems)
 		other := self.Table(lqOther)
 		query := self.Query(items, lqNewest, limit)
-		if q != nil {
-			q.refs = append(q.refs, weak.Make(unwrapMember(query).(*store.LiveQuery)))
+		// The recording that stages a reload declares inert queries: only an attempt's own is collected.
+		if live, ok := unwrapMember(query).(*store.LiveQuery); ok && q != nil {
+			q.refs = append(q.refs, weak.Make(live))
 		}
 		tx := func(ctx context.Context, write func(tx documents.Tx) error) (delta.JsonValue, error) {
 			_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, write(tx) }, ctx)
@@ -321,7 +324,7 @@ func TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver(t *te
 	}
 	report := reloadMust(t)(reloadApp(b.host, func(h FacetHost) error { return (&lqQueries{}).serveBoard(h, 2, nil) }))
 	if len(report.Objects) != 1 || report.Objects[0].Object != "app.board" || report.Objects[0].Kind != reloadedKindOfABoard {
-		t.Fatalf("objects = %+v", report.Objects)
+		t.Fatalf("objects = %+v, failed = %+v, plugins = %+v", report.Objects, report.Failed, report.Plugins)
 	}
 	turn(b.host)
 	equalInts(t, "ids", idsOf(b.items(t)), 3, 2)
@@ -430,4 +433,3 @@ func TestLiveQueryMemoryCollectsARestartedAttemptsQuery(t *testing.T) {
 	collectedWithin(t, queries.refs[from])
 	closeHosts(t, host)
 }
-
