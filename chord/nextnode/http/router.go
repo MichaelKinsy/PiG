@@ -32,10 +32,12 @@ import (
 // HttpRoute answers a request with a response description, in the request's scope (`ctx.Principal()`, its Done).
 type HttpRoute func(request HttpRequest, ctx host.Ctx) (HttpResponse, error)
 
-// HttpRouteOptions is a route with its options: Page admits a top-level navigation from another site (a link to it) with
-// its authentication; CrossSite admits any foreign request (a webhook), always anonymous.
+// HttpRouteOptions is a route with its options: Public serves it without a principal (deny by default: a route without it
+// answers 401 to a request no authenticator recognized); Page admits a top-level navigation from another site (a link to it) with
+// its authentication; CrossSite admits any foreign request (a webhook), always anonymous, so public too.
 type HttpRouteOptions struct {
 	Handler   HttpRoute
+	Public    bool
 	Page      bool
 	CrossSite bool
 }
@@ -88,6 +90,8 @@ type HttpSocket struct {
 type HttpSocketEntry struct {
 	Pattern string
 	Handler *HttpSocket
+	// Public accepts the socket without a principal (else 401 before the handler runs).
+	Public bool
 }
 
 // HttpRelay is a relay (p2's Radius): a forwarder on loopback that sends forwarded headers. Verify recognizes its requests
@@ -170,6 +174,8 @@ type RouteMatch struct {
 	Plugin    string
 	Params    map[string]string
 	Handler   HttpRoute
+	// Public: served without a principal (marked Public, or CrossSite: always anonymous).
+	Public    bool
 	Page      bool
 	CrossSite bool
 	Wraps     []ResolvedWrap
@@ -181,6 +187,7 @@ type SocketMatch struct {
 	Plugin     string
 	Params     map[string]string
 	Handler    *HttpSocket
+	Public     bool
 	MaxPayload int
 }
 
@@ -240,7 +247,7 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 				routes[method] = tree
 			}
 			entry := &routeEntry{
-				pattern: key, plugin: plugin, handler: route.Route.Handler, page: route.Route.Page,
+				pattern: key, plugin: plugin, handler: route.Route.Handler, page: route.Route.Page, public: route.Route.Public || route.Route.CrossSite,
 				crossSite: route.Route.CrossSite, segments: segments,
 			}
 			if taken := insert(tree, segments, entry); taken == nil {
@@ -259,7 +266,7 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 				report(registries.RegistryConflict{Message: fmt.Sprintf("socket \"%s\" is no pattern", socket.Pattern), Plugins: []string{plugin}})
 				continue
 			}
-			entry := &socketEntry{pattern: socket.Pattern, plugin: plugin, handler: socket.Handler, segments: segments, maxPayload: maxPayload}
+			entry := &socketEntry{pattern: socket.Pattern, plugin: plugin, handler: socket.Handler, public: socket.Public, segments: segments, maxPayload: maxPayload}
 			if taken := insert(sockets, segments, entry); taken == nil {
 				router.SocketHandlers[socket.Handler] = struct{}{}
 			} else {
@@ -308,7 +315,7 @@ func (r *Router) Socket(path string) (*SocketMatch, Lookup) {
 	if status != Found {
 		return nil, status
 	}
-	return &SocketMatch{Pattern: entry.pattern, Plugin: entry.plugin, Params: params, Handler: entry.handler, MaxPayload: entry.maxPayload}, Found
+	return &SocketMatch{Pattern: entry.pattern, Plugin: entry.plugin, Params: params, Handler: entry.handler, Public: entry.public, MaxPayload: entry.maxPayload}, Found
 }
 
 func lookupRoute(tree *node[routeEntry], path string) (*RouteMatch, Lookup) {
@@ -317,7 +324,7 @@ func lookupRoute(tree *node[routeEntry], path string) (*RouteMatch, Lookup) {
 		return nil, status
 	}
 	return &RouteMatch{
-		Pattern: entry.pattern, Plugin: entry.plugin, Params: params, Handler: entry.handler, Page: entry.page,
+		Pattern: entry.pattern, Plugin: entry.plugin, Params: params, Handler: entry.handler, Public: entry.public, Page: entry.page,
 		CrossSite: entry.crossSite, Wraps: entry.wraps,
 	}, Found
 }
@@ -341,6 +348,7 @@ type routeEntry struct {
 	pattern   string
 	plugin    string
 	handler   HttpRoute
+	public    bool
 	page      bool
 	crossSite bool
 	segments  []segment
@@ -354,6 +362,7 @@ type socketEntry struct {
 	pattern    string
 	plugin     string
 	handler    *HttpSocket
+	public     bool
 	segments   []segment
 	maxPayload int
 }

@@ -162,7 +162,7 @@ func TestTheLinksEndpointRefusesASocketWithoutAPrincipalFromAnotherOriginOrHostF
 		}},
 	})
 	port := server.port
-	mustRefused(t, port, "/chord", nil, 403)
+	mustRefused(t, port, "/chord", nil, 401)
 	mustRefused(t, port, "/chord", withHeaders(owner, map[string]string{"origin": "http://evil.com"}), 403)
 	mustRefused(t, port, "/chord", withHeaders(owner, map[string]string{"origin": "null"}), 403)
 	mustRefused(t, port, "/chord", withHeaders(owner, map[string]string{"origin": "HTTP://127.0.0.1:" + strconv.Itoa(port)}), 403)
@@ -230,7 +230,7 @@ func TestTheLinksEndpointCutsOffAClientThatStoppedReadingPast4MiBUnsentBeyondThe
 
 func TestPluginSocketsHandTheSocketAndItsRequestToTheHandlerInAScopeWithItsPrincipalNoPrincipalIsRefused(t *testing.T) {
 	server := serving(t, []plugin{echo()}, servedOptions{})
-	mustRefused(t, server.port, "/echo/lobby", nil, 403)
+	mustRefused(t, server.port, "/echo/lobby", nil, 401)
 	mustRefused(t, server.port, "/nope", owner, 404)
 	socket := mustSocketTo(t, server.port, "/echo/lobby", owner)
 	if got := nextMessage(t, socket); got != "lobby as owner" {
@@ -682,4 +682,28 @@ func TestGCKeepsNothingOfAClosedPluginSocket(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("the socket, its request or its scope is still kept")
+}
+
+func TestAPublicSocketIsAcceptedWithoutAPrincipalAndRunsAnonymousAnotherIsRefused401(t *testing.T) {
+	seen := make(chan string, 1)
+	handler := &HttpSocket{Handle: func(_ *WebSocketHandle, _ HttpRequest, ctx host.Ctx) error {
+		seen <- httpKindOf(ctx.Principal())
+		return nil
+	}}
+	server := serving(t, []plugin{{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{
+		{Pattern: "/open", Handler: handler, Public: true},
+		{Pattern: "/closed", Handler: noopSocket()},
+	}})}}, servedOptions{})
+	mustRefused(t, server.port, "/closed", nil, 401)
+	socket := mustSocketTo(t, server.port, "/open", nil)
+	socket.Start()
+	select {
+	case kind := <-seen:
+		if kind != "anonymous" {
+			t.Fatalf("kind = %q", kind)
+		}
+	case <-time.After(within):
+		t.Fatal("the public socket's handler did not run")
+	}
+	server.close()
 }
