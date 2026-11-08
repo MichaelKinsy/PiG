@@ -535,6 +535,9 @@ func (o *attemptWritableOwner) InSection() bool {
 // Do runs work as one section of the host's loop (nested when the caller is in one).
 func (o *attemptWritableOwner) Do(work func()) { o.attempt.object.host.enter(work) }
 
+// OnLoop reports whether the caller runs a section of the host's loop.
+func (o *attemptWritableOwner) OnLoop() bool { return o.attempt.object.host.onLoop() }
+
 func (o *attemptWritableOwner) AssertUsable() error {
 	if o.attempt.token.Sealed() {
 		return o.attempt.object.ended()
