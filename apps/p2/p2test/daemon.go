@@ -44,11 +44,7 @@ func UseTerminalDaemon(t testing.TB) {
 		t.Fatalf("building the pi-env daemon: %v", daemonErr)
 	}
 	t.Setenv("P2_TERMINAL_DAEMON", daemonPath)
-	shell := "/bin/sh"
-	if path, err := exec.LookPath("bash"); err == nil {
-		shell = path
-	}
-	t.Setenv("SHELL", shell)
+	t.Setenv("SHELL", "/bin/sh")
 }
 
 type daemonBuildError struct {
