@@ -30,12 +30,12 @@ type ReloadResult struct {
 
 // reloader is the server's reload state: the facets it loaded and the revision of each plugin last rolled out.
 type reloader struct {
-	mu         sync.Mutex
-	running    bool
-	facets     []host.HostFacet
-	selection  []Plugin
-	revision   map[string]string
-	build      func(plugin string) string
+	mu        sync.Mutex
+	running   bool
+	facets    []host.HostFacet
+	selection []Plugin
+	revision  map[string]string
+	build     func(plugin string) string
 }
 
 // scriptsOf is the complete set the workers receive: a script per selected plugin with a worker facet, its digest

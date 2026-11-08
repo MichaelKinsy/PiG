@@ -211,3 +211,11 @@ func record(value any) map[string]any {
 	m, _ := value.(map[string]any)
 	return m
 }
+
+func mustURL(text string) *url.URL {
+	u, err := url.Parse(text)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}

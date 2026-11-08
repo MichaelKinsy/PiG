@@ -29,14 +29,6 @@ var (
 	serverURL = mustURL("https://server.test")
 )
 
-func mustURL(text string) *url.URL {
-	u, err := url.Parse(text)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
-
 // recordingUI is the launcher UI of an action under test: it confirms what it is shown and records the notices.
 type recordingUI struct {
 	mu      sync.Mutex
