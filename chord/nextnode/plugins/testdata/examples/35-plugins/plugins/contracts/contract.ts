@@ -1,7 +1,7 @@
 // The contracts the plugins share: a contracts-only plugin (no facet file). A plugin that imports this file gets its
 // own copy built into its script; the app's code declares the same contracts (same names, versions and shapes).
 
-import { hostKind, int, local, method, remote, str } from "@earendil-works/chord/next";
+import { hostKind, int, local, method, remote, str } from "@earendil-works/chord";
 
 /** The worker's host kind: `Notes` lives there. */
 export const Worker = hostKind("example.worker");

@@ -3,7 +3,7 @@
 // app's keep-alive counts) and `Echo` are served by the worker's Go core facet (workers_fixture_worker_test.go `fixtureGoCore`) and
 // reach this host through its proxy facet (plugins.BridgedFacet): `Control` binds to them as it binds to any type of the closure.
 import { existsSync } from "node:fs";
-import { defineFacet, hostKind, int, local, map, method, remote, str } from "@earendil-works/chord/next";
+import { defineFacet, hostKind, int, local, map, method, remote, str } from "@earendil-works/chord";
 
 const Session = hostKind("session", { id: str() });
 
