@@ -221,6 +221,7 @@ func (h *relayedHold) call(message *link.CallMessage) *chordtelemetry.OpenSpan {
 		forwarded := *message
 		if carrier := chordtelemetry.CarrierOf(span.Span()); carrier != nil {
 			forwarded.Trace = carrier
+			forwarded.TraceOrder = nil
 		}
 		upstream.link.send(link.WithOrigin(&forwarded, link.Some(upstream.origin)))
 		return span

@@ -149,7 +149,7 @@ func ownTuple(message Message) string {
 			optional[3] = float64(typed.Limit.Value)
 		}
 		if typed.Trace != nil {
-			optional[4] = typed.Trace
+			optional[4] = carrierValue(typed.Trace, typed.TraceOrder)
 		}
 		for len(optional) > 0 && optional[len(optional)-1] == nil {
 			optional = optional[:len(optional)-1]
@@ -183,7 +183,7 @@ func ownTuple(message Message) string {
 		//portlint:allow utf16units head is a closed JSON tuple ending in the one-byte ASCII ']' that is also one code unit; dropped as head.slice(0, -1) at text.ts:93
 		tail := "null"
 		if typed.Trace != nil {
-			tail = jsonText(typed.Trace)
+			tail = jsonText(carrierValue(typed.Trace, typed.TraceOrder))
 		}
 		if typed.Old {
 			tail += ",true"
@@ -399,11 +399,11 @@ func fromFields(fields []any, rest []byte) Message {
 		}
 		if trace := optional(10); trace != nil {
 			// The message schema refuses another shape of carrier.
-			carrier, ok := carrierOf(trace)
+			carrier, order, ok := carrierOf(trace)
 			if !ok {
 				failWith(errSchema)
 			}
-			message.Trace = carrier
+			message.Trace, message.TraceOrder = carrier, order
 		}
 		return message
 	case "R":
@@ -427,11 +427,11 @@ func fromFields(fields []any, rest []byte) Message {
 		}
 		message.Args, message.Segments = payloadFields(fields, rest)
 		if f[5] != nil {
-			carrier, ok := carrierOf(f[5])
+			carrier, order, ok := carrierOf(f[5])
 			if !ok {
 				failWith(errSchema)
 			}
-			message.Trace = carrier
+			message.Trace, message.TraceOrder = carrier, order
 		}
 		if len(f) == 7 {
 			// The message schema checks the flag (`true` only).

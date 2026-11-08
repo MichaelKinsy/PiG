@@ -128,8 +128,8 @@ type CommitFence struct {
 	// Admit is called at the step's entry: false rejects the commit `released` and writes nothing.
 	Admit func() bool
 	// Adopt is called after `COMMIT`: it adopts the commit, ids being its created documents' ids in the order of
-	// their writes. An error stops the store (an unknown outcome).
-	Adopt func(seq int64, ids []int64) error
+	// their writes and rows the table rows its writes changed (`chord.commit`'s `rows`). An error stops the store (an unknown outcome).
+	Adopt func(seq int64, ids []int64, rows int64) error
 }
 
 // Attachment is what the open host gives the store: its `storage_failed` listener and its batch, in which adapters
@@ -637,7 +637,7 @@ func (store *ChordStore) step(writes []StagedWrite, fence CommitFence, ctx conte
 	lastSeq := store.LastSeq()
 	if len(writes) == 0 {
 		// An empty commit takes no seq; a failing Adopt stops the store as for any commit.
-		if err := fence.Adopt(lastSeq, []int64{}); err != nil {
+		if err := fence.Adopt(lastSeq, []int64{}, 0); err != nil {
 			return 0, store.fail(err)
 		}
 		return lastSeq, nil
@@ -681,7 +681,7 @@ func (store *ChordStore) step(writes []StagedWrite, fence CommitFence, ctx conte
 		metrics.Counter("chord.store.commits", telemetry.InstrumentOptions{}).Add(1, nil)
 		metrics.Counter("chord.store.statements", telemetry.InstrumentOptions{}).Add(float64(done.step.Statements), nil)
 	}
-	if err := fence.Adopt(seq, done.step.Created); err != nil {
+	if err := fence.Adopt(seq, done.step.Created, done.step.Rows); err != nil {
 		return 0, store.fail(err)
 	}
 	return seq, nil

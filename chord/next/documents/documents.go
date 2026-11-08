@@ -2,10 +2,14 @@ package documents
 
 import (
 	"context"
+	"time"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/documents/documents.ts
@@ -32,6 +36,8 @@ type DocumentsOwner interface {
 	// Fail fails the live object `broken` with error (a document the code cannot read, slice 6a §1.4); ignored when it
 	// is not live.
 	Fail(err *data.ChordError)
+	// Telemetry is the host's telemetry adapter: commit durations go to its metrics.
+	Telemetry() telemetry.TelemetryContext
 	// Do runs work as one section of the host's serialization: it does not block, and is inline when the caller is in
 	// a section already.
 	Do(work func())
@@ -292,14 +298,40 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 		result, err = fn(tx)
 	}
 	if err == nil {
+		// Timed only when something records: the commit's duration metric, its event on the enclosing span.
+		timed := !chordtelemetry.Untraced(d.owner.Telemetry()) || !chordtelemetry.Untraced(chordctx.Telemetry(ctx))
+		var started time.Time
+		if timed {
+			started = time.Now()
+		}
 		// In-memory-only commits are synchronous (W12): the store's step is taken only for persisted writes.
 		err = tx.Commit()
+		if err == nil && timed {
+			d.recordCommit(tx, float64(time.Since(started))/float64(time.Millisecond), ctx)
+		}
 	}
 	if err != nil {
 		d.Do(tx.Discard)
 		return nil, err
 	}
 	return result, nil
+}
+
+// recordCommit: a commit of tx that took duration ms (from its start to its adoption): its event on ctx's span (the method,
+// routine or job it ran in) and the host's commit duration metric; a commit that changed nothing records nothing.
+func (d *Documents) recordCommit(tx *Transaction, duration float64, ctx context.Context) {
+	var documents, ops, writes, rows int64
+	d.Do(func() { documents, ops, writes, rows = tx.Committed() })
+	if documents == 0 && writes == 0 {
+		return
+	}
+	if span := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(span) {
+		span.AddEvent("chord.commit", telemetry.SpanAttributes{
+			telemetry.Attr("documents", float64(documents)), telemetry.Attr("ops", float64(ops)),
+			telemetry.Attr("rows", float64(rows)), telemetry.Attr("duration", duration),
+		})
+	}
+	chordtelemetry.Metrics(d.owner.Telemetry().Metrics()).Histogram("chord.commit.duration").Record(duration, nil, chordctx.Telemetry(ctx))
 }
 
 // Fence seals token (the seal fence): its transactions are refused from now on, and the one holding the line is

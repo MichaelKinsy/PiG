@@ -103,7 +103,7 @@ func (binaryCodec) Encode(message Message) (encoded []byte, err error) {
 		writer.byte(kind)
 	}
 	if trace != nil {
-		writer.json(trace)
+		writer.json(carrierValue(trace, traceOrderOf(message)))
 	}
 	encodeFields(message, writer)
 	return writer.finish(), nil
@@ -132,8 +132,8 @@ func (binaryCodec) Decode(bytes []byte) (message Message, err error) {
 	reader.end()
 	if hasTrace {
 		// The message schema refuses a carrier on a kind without one, or of another shape.
-		carrier, ok := carrierOf(trace)
-		if !ok || !setTrace(message, carrier) {
+		carrier, order, ok := carrierOf(trace)
+		if !ok || !setTrace(message, carrier, order) {
 			failWith(errSchema)
 		}
 	}
@@ -201,34 +201,48 @@ func traceOf(message Message) map[string]string {
 	return nil
 }
 
-// setTrace sets a decoded hold's or call's carrier; false for another kind.
-func setTrace(message Message, carrier map[string]string) bool {
+// traceOrderOf is the key order of a hold's or call's carrier, as it was decoded.
+func traceOrderOf(message Message) []string {
 	switch typed := message.(type) {
 	case *HoldMessage:
-		typed.Trace = carrier
+		return typed.TraceOrder
 	case *CallMessage:
-		typed.Trace = carrier
+		return typed.TraceOrder
+	}
+	return nil
+}
+
+// setTrace sets a decoded hold's or call's carrier; false for another kind.
+func setTrace(message Message, carrier map[string]string, order []string) bool {
+	switch typed := message.(type) {
+	case *HoldMessage:
+		typed.Trace, typed.TraceOrder = carrier, order
+	case *CallMessage:
+		typed.Trace, typed.TraceOrder = carrier, order
 	default:
 		return false
 	}
 	return true
 }
 
-// carrierOf reads a decoded JSON value as a carrier: an object of strings. The message schema refuses any other shape.
-func carrierOf(value any) (map[string]string, bool) {
+// carrierOf reads a decoded JSON value as a carrier: an object of strings, and its keys in the order they came. The message
+// schema refuses any other shape.
+func carrierOf(value any) (map[string]string, []string, bool) {
 	object, ok := value.(*delta.JsonObject)
 	if !ok {
-		return nil, false
+		return nil, nil, false
 	}
 	carrier := make(map[string]string, object.Len())
+	order := make([]string, 0, object.Len())
 	for key, member := range object.All() {
 		text, ok := member.(string)
 		if !ok {
-			return nil, false
+			return nil, nil, false
 		}
 		carrier[key] = text
+		order = append(order, key)
 	}
-	return carrier, true
+	return carrier, order, true
 }
 
 // setOrigin sets a decoded message's origin in place; false for a kind without one.

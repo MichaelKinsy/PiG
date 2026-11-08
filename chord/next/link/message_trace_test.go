@@ -207,3 +207,23 @@ func traceOf(message link.Message) map[string]string {
 	}
 	return nil
 }
+
+// Pi writes a carrier's keys in insertion order, so a carrier that arrived as `{z, a}` is written on as `{z, a}`; a carrier
+// made here, a Go map, is written with sorted keys.
+func TestACarrierKeepsTheOrderOfItsKeysAsItArrivedAndIsWrittenSortedWhenMade(t *testing.T) {
+	eachCodec(t, func(t *testing.T, codec link.Codec) {
+		arrived := &link.CallMessage{Call: 1, Hold: 0, Method: 1, Trace: map[string]string{"z": "1", "a": "2", "m": "3"}, TraceOrder: []string{"z", "a", "m"}}
+		decoded := decode(t, codec, encode(t, codec, arrived)).(*link.CallMessage)
+		if !reflect.DeepEqual(decoded.TraceOrder, []string{"z", "a", "m"}) {
+			t.Fatalf("decoded key order = %v, want z, a, m", decoded.TraceOrder)
+		}
+		again := decode(t, codec, encode(t, codec, decoded)).(*link.CallMessage)
+		if !reflect.DeepEqual(again.TraceOrder, []string{"z", "a", "m"}) {
+			t.Fatalf("relayed key order = %v, want z, a, m", again.TraceOrder)
+		}
+		made := &link.CallMessage{Call: 1, Hold: 0, Method: 1, Trace: map[string]string{"z": "1", "a": "2", "m": "3"}}
+		if got := decode(t, codec, encode(t, codec, made)).(*link.CallMessage).TraceOrder; !reflect.DeepEqual(got, []string{"a", "m", "z"}) {
+			t.Fatalf("made carrier key order = %v, want sorted", got)
+		}
+	})
+}

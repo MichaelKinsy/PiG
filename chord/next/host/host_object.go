@@ -333,6 +333,9 @@ func (d *objectDocuments) Batch() *state.Batch { return d.object.host.batch }
 // Context is the object's context.
 func (d *objectDocuments) Context() context.Context { return d.object.ctx }
 
+// Telemetry is the host's telemetry adapter.
+func (d *objectDocuments) Telemetry() telemetry.TelemetryContext { return d.object.host.telemetry }
+
 // Store is the host's store and the object's owner name in it, when the host has one.
 func (d *objectDocuments) Store() (*store.ChordStore, string, bool) {
 	chordStore := d.object.host.store

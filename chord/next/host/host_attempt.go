@@ -583,6 +583,7 @@ func (a *attempt) Open(
 	}
 	owner := nativeOwner{
 		object: a.object.text, position: len(a.natives) + 1, context: a.ctx, report: host.report, loop: host.loop(),
+		typ: a.served.contract.Name, hostKey: host.spanHost, telemetry: host.telemetry,
 	}
 	native := newNativeHandle[any](open, closer, closeTimeout, owner)
 	a.natives = append(a.natives, native)
@@ -749,7 +750,7 @@ func (a *attempt) startRoutines() {
 	run.ctx, run.abort = chordctx.WithCancel(a.ctx)
 	a.routineRun = run
 	a.routines.start(routineOwner{
-		label: object.text, host: object.host, caller: a.caller(), context: run.ctx,
+		label: object.text, typ: a.served.contract.Name, host: object.host, caller: a.caller(), context: run.ctx,
 		admit: func(cleanup func()) func(err error) { return a.admitTo(run.calls, cleanup) },
 	})
 }
@@ -1776,7 +1777,7 @@ func (a *attempt) prepareTables(dl *deadline) *keyedPromise[struct{}] {
 			a.object.host.enter(func() { admitted = !a.token.Sealed() && a.abandoned == nil })
 			return admitted
 		},
-		Adopt: func(int64, []int64) error { return nil },
+		Adopt: func(int64, []int64, int64) error { return nil },
 	}
 	dl.pause()
 	prepared := awaitTask(a.object.host, func() (struct{}, error) {

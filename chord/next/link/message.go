@@ -6,6 +6,7 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -164,6 +165,10 @@ type HoldMessage struct {
 	// Trace is the caller's trace carrier (R5, slice 9): an adapter's opaque string record, bounded by CARRIER, printable
 	// ASCII only. nil is no carrier; an empty one is a carrier without keys.
 	Trace map[string]string
+	// TraceOrder is the order of Trace's keys as a decoded message had them (Pi's object keeps its insertion order, a Go map
+	// has none): encoding writes them in it again, so a relayed carrier is the one that arrived. Empty (or not exactly Trace's
+	// keys): the keys sorted.
+	TraceOrder []string
 }
 
 // ReleaseMessage releases a hold.
@@ -183,7 +188,9 @@ type CallMessage struct {
 	Args     Part
 	Segments [][]byte
 	Trace    map[string]string
-	Old      bool
+	// TraceOrder is HoldMessage.TraceOrder.
+	TraceOrder []string
+	Old        bool
 }
 
 // AbortMessage aborts a call.
@@ -598,4 +605,14 @@ func isUUID(text string) bool {
 	}
 	//portlint:allow utf16units the length check above admits only ASCII text here, so byte offsets are UTF-16 offsets (incarnation pattern, message.ts:48)
 	return isLowerHex(text[:8]) && isLowerHex(text[9:13]) && isLowerHex(text[14:18]) && isLowerHex(text[19:23]) && isLowerHex(text[24:])
+}
+
+// carrierValue is the carrier as it is written: an object with its keys in order (the insertion order a decoded carrier
+// had, else sorted).
+func carrierValue(carrier map[string]string, order []string) any {
+	object := delta.NewJsonObject(len(carrier))
+	for _, key := range chordtelemetry.CarrierKeys(carrier, order) {
+		object.Set(key, carrier[key])
+	}
+	return object
 }

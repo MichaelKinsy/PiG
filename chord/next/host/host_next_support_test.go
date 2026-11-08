@@ -587,7 +587,7 @@ func tableOwner() *testOwner {
 	return &testOwner{scope: new(struct{}), queries: store.NewLiveQueries()}
 }
 func openFence() store.CommitFence {
-	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int64) error { return nil }}
 }
 
 // rejection is the error err is, as ChordError JSON when it is one; the test fails when err is nil.
@@ -1492,6 +1492,8 @@ type relayedOptions struct {
 	Limits link.PartLimits
 	// Loop drives all three kinds of host (Pi's fake timers); nil is the real loop.
 	Loop sectionLoop
+	// Telemetry is the telemetry adapter of each host: tab, server, workers.
+	Telemetry struct{ Tab, Server, Worker telemetry.TelemetryContext }
 }
 
 // relay builds Pi's `relayed(options)`: three hosts, a tab connected to a server, and a server routing `Session` to an
@@ -1514,6 +1516,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 		RevokedBy:   serverRevoked,
 		Compression: options.ServerCompression,
 		OnError:     result.Errors.Server.push,
+		Telemetry:   options.Telemetry.Server,
 		loop:        options.Loop,
 	})
 	result.Server = server
@@ -1534,6 +1537,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			RevokedBy:   options.RevokedBy,
 			Compression: options.WorkerCompression,
 			OnError:     result.Errors.Worker.push,
+			Telemetry:   options.Telemetry.Worker,
 			loop:        options.Loop,
 		})
 		must(t, host.Connect(b, LinkOptions{Principal: serverPrincipal(), Trusted: options.Trusted, Codec: codec}, ctx))
@@ -1596,7 +1600,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 		}
 		return nil
 	})}}, ctx))
-	tab := newHost(t, HostOptions{Compression: options.TabCompression, OnError: result.Errors.Tab.push, loop: options.Loop})
+	tab := newHost(t, HostOptions{Compression: options.TabCompression, Telemetry: options.Telemetry.Tab, OnError: result.Errors.Tab.push, loop: options.Loop})
 	mustLoad(t)(tab.Load(nil, ctx))
 	a, b := link.MemoryLinkPair()
 	// A worker may be resolving already (a host object of the server started it during its load): its resolve appends to

@@ -15,6 +15,8 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -76,6 +78,12 @@ func NewOpenSpan(parent pitelemetry.TelemetryContext, name string, attributes pi
 	open := &OpenSpan{span: pitelemetry.NoopTelemetryContext, done: make(chan struct{})}
 	if Untraced(parent) {
 		return open
+	}
+	// A link names the work itself: an extracted parent wrapped as a span (AsSpan) is the parent.
+	for index := range links {
+		if wrapped, ok := links[index].Context.(parentSpan); ok {
+			links[index].Context = wrapped.TelemetryContext
+		}
 	}
 	started := make(chan struct{})
 	go func() {
@@ -282,4 +290,28 @@ func (instruments *Instruments) UpDownCounter(name string) pitelemetry.Telemetry
 // Histogram is the histogram name.
 func (instruments *Instruments) Histogram(name string) pitelemetry.TelemetryHistogram {
 	return once(instruments, "h", name, func() pitelemetry.TelemetryHistogram { return instruments.typed.Histogram(name) })
+}
+
+// CarrierKeys are the keys of carrier in order: order when it is exactly its keys (the insertion order a carrier came with:
+// Pi's object keeps it, a Go map has none), otherwise sorted.
+func CarrierKeys(carrier map[string]string, order []string) []string {
+	if len(order) == len(carrier) {
+		seen := make(map[string]struct{}, len(order))
+		exact := true
+		for _, key := range order {
+			if _, ok := carrier[key]; !ok {
+				exact = false
+				break
+			}
+			if _, dup := seen[key]; dup {
+				exact = false
+				break
+			}
+			seen[key] = struct{}{}
+		}
+		if exact {
+			return order
+		}
+	}
+	return slices.Sorted(maps.Keys(carrier))
 }
