@@ -11,8 +11,8 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// A request whose signal is aborted before its provider starts fails inside lazyStream's setup: auth resolution throws the signal's reason (packages/ai/src/auth/resolve.ts:53 signal.throwIfAborted(), raced by raceWithAbortSignal), and packages/ai/src/api/lazy.ts createSetupErrorMessage reports every setup rejection as stopReason "error" with the error's message. A plain abort()'s reason is Node's DOMException AbortError, "This operation was aborted". Pi 1.1.0 shows it after an abort during a tool call: the next turn's request ends with {stopReason:"error", errorMessage:"This operation was aborted"}, never "context canceled".
-func TestRequestCancelledBeforeItsProviderStartsIsAPiSetupError(t *testing.T) {
+// A request whose signal is aborted before its provider starts fails inside lazyStream's setup: auth resolution throws the signal's reason (packages/ai/src/auth/resolve.ts:53 signal.throwIfAborted(), raced by raceWithAbortSignal), and packages/ai/src/api/lazy.ts createSetupErrorMessage carries the error's message. A plain abort()'s reason is Node's DOMException AbortError, "This operation was aborted". Pi 1.1.0 reported it as stopReason "error"; Pi f3a64af07 (#8635, issue #8409) passes the request signal to lazyStream, which reports it as `signal?.aborted ? "aborted" : "error"`: the next turn's request after an abort during a tool call ends with {stopReason:"aborted", errorMessage:"This operation was aborted"}, never "context canceled".
+func TestRequestCancelledBeforeItsProviderStartsIsAnAbortedPiSetupError(t *testing.T) {
 	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
@@ -44,8 +44,8 @@ func TestRequestCancelledBeforeItsProviderStartsIsAPiSetupError(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
 			result := services.ModelRuntime().StreamSimple(ctx, model, request, test.options).Result()
-			if result.StopReason != ai.StopReasonError || result.ErrorMessage != "This operation was aborted" {
-				t.Fatalf("stopReason=%q errorMessage=%q, want %q %q", result.StopReason, result.ErrorMessage, ai.StopReasonError, "This operation was aborted")
+			if result.StopReason != ai.StopReasonAborted || result.ErrorMessage != "This operation was aborted" {
+				t.Fatalf("stopReason=%q errorMessage=%q, want %q %q", result.StopReason, result.ErrorMessage, ai.StopReasonAborted, "This operation was aborted")
 			}
 			// createSetupErrorMessage lists errorMessage before timestamp; the message keeps that order wherever it is written.
 			persisted, err := json.Marshal(result)
@@ -68,8 +68,8 @@ func TestRequestCancelledBeforeItsProviderStartsIsAPiSetupError(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 		result := services.ModelRuntime().Complete(ctx, &ai.Model{ID: "gpt-4o-mini", Provider: faux}, request, ai.StreamOptions{})
-		if result.StopReason != ai.StopReasonError || result.ErrorMessage != "This operation was aborted" {
-			t.Fatalf("stopReason=%q errorMessage=%q, want %q %q", result.StopReason, result.ErrorMessage, ai.StopReasonError, "This operation was aborted")
+		if result.StopReason != ai.StopReasonAborted || result.ErrorMessage != "This operation was aborted" {
+			t.Fatalf("stopReason=%q errorMessage=%q, want %q %q", result.StopReason, result.ErrorMessage, ai.StopReasonAborted, "This operation was aborted")
 		}
 	})
 }
