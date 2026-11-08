@@ -1,4 +1,0 @@
-### Fixed
-
-- A chord worker whose link was lost while it ran (a blocked process past the heartbeat, a protocol error, or its own close of the link) no longer fails its address for good: the worker is stopped and its holders get a new one, reported as `worker_link_lost`. A second lost link within a minute still fails the address ("worker lost its link"), so a worker that loses every link does not restart in a loop. <!-- fix: 72feaeb0c8 -->
-- A worker killed by a signal no longer leaves its lock's socket file to fail every later start of its address (macOS and the BSDs): the workers component clears a lock file nobody accepts on before each start and after the exit of a child a signal ended, and a lock taker treats a regular file at the lock's path as stale instead of retrying until its context ends. <!-- fix: 72feaeb0c8 -->
