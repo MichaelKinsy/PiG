@@ -251,6 +251,7 @@ func (full *anthThreadPayload) body(thread string, from int) (json.RawMessage, e
 				continue
 			}
 		case "messages":
+			//portlint:allow nilslicenull full.messages[from:] slices a non-nil slice, so it is [] and never null when nothing follows the prefix
 			messages, err := json.Marshal(full.messages[from:])
 			if err != nil {
 				return nil, err
@@ -293,7 +294,11 @@ func (p *anthropicProvider) prepareThread(session string, payload any) (*anthThr
 			return nil, err
 		}
 		if hash == slot.entry.prefixHash && anthThreads.take(session, slot.entry) {
-			thread, err := json.Marshal(map[string]string{"type": "continue", "previous_message_id": slot.entry.replyID})
+			//portlint:allow jsonescape the reply id is a server-issued ASCII identifier with no <, > or &
+			thread, err := json.Marshal(struct {
+				Type              string `json:"type"`
+				PreviousMessageID string `json:"previous_message_id"`
+			}{"continue", slot.entry.replyID})
 			if err != nil {
 				return nil, err
 			}

@@ -1046,7 +1046,7 @@ snippet = "ChatTemplateArgs            map[string]any `json:\"chatTemplateArgs,o
 check = "emptydrop"
 file = "ai/openai.go"
 func = "(decl)"
-snippet = "AllowedFallbackModels          []AnthropicAllowedFallbackModel `json:\"allowedFallbackModels,omitempty\"`"
+snippet = "AllowedFallbackModels  []AnthropicAllowedFallbackModel `json:\"allowedFallbackModels,omitempty\"`"
 
 [[hit]]
 check = "emptydrop"
