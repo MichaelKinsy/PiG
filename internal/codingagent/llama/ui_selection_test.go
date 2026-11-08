@@ -61,13 +61,28 @@ func openSearch(t *testing.T) *pendingSearch {
 			return nil, ctx.Err()
 		}
 	}
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		model, ok := s.view.SearchModels(search)
 		s.selected <- struct {
 			model string
 			ok    bool
 		}{model, ok}
 	}()
+	// A test that does not pick a model closes the search, so its goroutine does not outlive the test.
+	t.Cleanup(func() {
+		select {
+		case <-done:
+		default:
+			s.press("\x1b")
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Error("the search did not close on escape")
+			}
+		}
+	})
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		s.view.mu.Lock()
