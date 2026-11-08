@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
@@ -163,7 +164,9 @@ var sessionSource = runtime.TuiSessionSource{
 		if err != nil {
 			return func() {}
 		}
+		var mu sync.Mutex
 		var stop func()
+		stopped := false
 		go func() {
 			if err := p2runtime.WhenLive(context.Background(), ref); err != nil {
 				return
@@ -171,7 +174,7 @@ var sessionSource = runtime.TuiSessionSource{
 			if variant, _, _ := ref.Variant(); variant != "reader" {
 				return
 			}
-			stop = p2tui.FollowMember(ref.Member("children"), func(value delta.JsonValue) {
+			follow := p2tui.FollowMember(ref.Member("children"), func(value delta.JsonValue) {
 				named := map[string][]runtime.SessionChild{}
 				if object, ok := value.(interface{ Keys() []string }); ok {
 					for _, session := range object.Keys() {
@@ -187,10 +190,23 @@ var sessionSource = runtime.TuiSessionSource{
 				}
 				rt.Post(func() { onChange(named) })
 			})
+			// A stop that came first leaves nothing to follow.
+			mu.Lock()
+			if stopped {
+				mu.Unlock()
+				follow()
+				return
+			}
+			stop = follow
+			mu.Unlock()
 		}()
 		return func() {
-			if stop != nil {
-				stop()
+			mu.Lock()
+			stopped = true
+			current := stop
+			mu.Unlock()
+			if current != nil {
+				current()
 			}
 			ref.Release()
 		}

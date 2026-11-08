@@ -80,12 +80,13 @@ func ValidatePrefsPatch(value any) (patch map[string]any, errText string) {
 			}
 			return nil, "invalid keybindings (" + reason + ")"
 		}
+		// pi keeps each binding in the form it arrived in (a string stays a string, a list a list); only the sanitized id set is checked above.
 		result := map[string]any{}
 		for _, id := range ids {
 			if bindings[id] == nil {
 				result[id] = nil
-			} else {
-				result[id] = config[id]
+			} else if _, kept := config[id]; kept {
+				result[id] = bindings[id]
 			}
 		}
 		patch["keybindings"] = result
