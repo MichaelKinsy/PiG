@@ -10,6 +10,10 @@ import (
 
 // Ports packages/chord/src/sync/remote.ts
 
+// JsonObject is a JSON object, the host's description of a session (SessionSyncStore.PutMeta): Pi's
+// `{ [key: string]: unknown }`, which Go reads as the ordered JSON object of Chord's delta package.
+type JsonObject = delta.JsonObject
+
 // Seq is a store's commit sequence (`Store.LastSeq`, an outbox commit's Seq); 0 is before every commit.
 type Seq = int64
 
@@ -78,7 +82,7 @@ type SessionSummary struct {
 	// Head is where its history ends; LogStart for a session with a description and no history.
 	Head Seq
 	// Meta is the host's description of the session; nil when it has none.
-	Meta *delta.JsonObject
+	Meta *JsonObject
 }
 
 // SessionChanges are the sessions changed after a cursor, and the cursor to continue from.
@@ -105,9 +109,9 @@ type SessionSyncStore interface {
 	Sessions(ctx context.Context, cursor *string) (SessionChanges, error)
 	// PutMeta is the host's description of a session (title, location, which device started it), outside its history: the
 	// last write wins, and it may be ahead of or behind the batches.
-	PutMeta(ctx context.Context, sessionID string, meta *delta.JsonObject) error
+	PutMeta(ctx context.Context, sessionID string, meta *JsonObject) error
 	// GetMeta is the description; nil when there is none.
-	GetMeta(ctx context.Context, sessionID string) (*delta.JsonObject, error)
+	GetMeta(ctx context.Context, sessionID string) (*JsonObject, error)
 }
 
 // SessionSyncMaintenance is the remote's own side: folding history into snapshots, which clients never do.

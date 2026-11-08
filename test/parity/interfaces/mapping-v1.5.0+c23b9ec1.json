@@ -116534,8 +116534,26 @@
     },
     {
       "id": "pkg:chord/.#Store",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bfae94dd06930f5a190023e87b2bbeb92e5afa9b442db41460cdb38943887d4e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bfae94dd06930f5a190023e87b2bbeb92e5afa9b442db41460cdb38943887d4e",
+      "rationale": "Derived by the interface gap detector: Store is Go chord/next/store/store.go#Store (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/store.go#Store"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/import.go#ImportStore"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
+        "test:chord/next/store/outbox_test.go#TestOutbox",
+        "test:chord/next/store/store_test.go#TestStore"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Store::property:close",
@@ -116585,13 +116603,47 @@
     },
     {
       "id": "pkg:chord/.#Store::property:export",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9a675f34e15d11cb527268e74a173968576b94196fe6ac8716f6eb54d0a7c92f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9a675f34e15d11cb527268e74a173968576b94196fe6ac8716f6eb54d0a7c92f",
+      "rationale": "Derived by the interface gap detector: Store::property:export is Go chord/next/store/store.go#Store.Export (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/store.go#Store.Export"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/archive.go#writeStoreArchive"
+      ],
+      "evidence": [
+        "test:chord/sync/lines_test.go#TestSnapshotBodies",
+        "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
+        "test:chord/next/store/archive_test.go#TestArchivePartSchema"
+      ]
     },
     {
       "id": "pkg:chord/.#Store::property:export::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:12ae7d99ea2ceeec1ecacb55a18b6255757e47f63b1a4dabe04934360a9b2c85"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:12ae7d99ea2ceeec1ecacb55a18b6255757e47f63b1a4dabe04934360a9b2c85",
+      "rationale": "Derived by the interface gap detector: Store::property:export::call:0 is Go chord/next/store/store.go#Store.Export (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/store.go#Store.Export"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/app/archive.go#writeStoreArchive"
+      ],
+      "evidence": [
+        "test:chord/sync/lines_test.go#TestSnapshotBodies",
+        "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
+        "test:chord/next/store/archive_test.go#TestArchivePartSchema"
+      ]
     },
     {
       "id": "pkg:chord/.#Store::property:lastSeq",
@@ -124017,18 +124069,43 @@
     },
     {
       "id": "pkg:chord/json#copyJson",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2efc1d28d888888e2126ce480154333e437577e38e908b3be9a55f0e1e55ad53"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2efc1d28d888888e2126ce480154333e437577e38e908b3be9a55f0e1e55ad53",
+      "rationale": "Derived by the interface gap detector: copyJson is Go chord/json.go#CopyJSON (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/json.go#CopyJSON"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/json.go#CopyJSON"
+      ],
+      "evidence": [
+        "test:chord/json_test.go#TestCopyJSONDetachesSharedAliases",
+        "test:chord/json_test.go#TestCopyJSONKeepsNilAsNullAndRefusesNonJSONKindsInObjectsAndArrays",
+        "test:chord/json_test.go#TestCopyJSONNormalizesNumbersAndKeepsObjectRoot"
+      ]
     },
     {
       "id": "pkg:chord/json#copyJson::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:566c14e17ae755515946082a83d66b060dba2e9a08ed53b81883aa7fad8923ec"
+      "upstreamShapeHash": "sha256:566c14e17ae755515946082a83d66b060dba2e9a08ed53b81883aa7fad8923ec",
+      "disposition": "designed-out",
+      "rationale": "INTENTION CHECK: the second parameter is CopyJsonOptions.omitUndefinedProperties (json.ts:10). Pi's guard (json.test.ts \"optionally omits undefined object properties without normalizing arrays\": non-JSON values never become JSON silently, arrays stay strict) is ported as the PiG test TestCopyJSONKeepsNilAsNullAndRefusesNonJSONKindsInObjectsAndArrays (chord/json_test.go). Go has no undefined, so the flag has nothing to select; the value argument and result are the CopyJSON row.",
+      "pigTargets": [
+        "chord/json.go#CopyJSON"
+      ]
     },
     {
       "id": "pkg:chord/json#CopyJsonOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:13e53eba146f305198c4eea23688583ed0a105614771ed4ec62803e821de2fdc"
+      "upstreamShapeHash": "sha256:13e53eba146f305198c4eea23688583ed0a105614771ed4ec62803e821de2fdc",
+      "disposition": "designed-out",
+      "rationale": "INTENTION CHECK: Pi's test (chord/test/json.test.ts \"optionally omits undefined object properties without normalizing arrays\") guards that a value that is not JSON never becomes JSON silently, that an absent property is dropped only where the option allows, and that arrays stay strict. The option itself has no counterpart because Go has no `undefined` (an `any` nil is JSON null, a Go value either holds a key or not), but the intention exists in PiG and is tested: TestCopyJSONKeepsNilAsNullAndRefusesNonJSONKindsInObjectsAndArrays (chord/json_test.go) asserts a nil member is kept as null, [nil] stays, and a func is refused as strict JSON in an object and in an array. Designed out only the omit flag.",
+      "pigTargets": [
+        "chord/json.go#CopyJSON"
+      ]
     },
     {
       "id": "pkg:chord/json#isJsonValue",
@@ -124047,6 +124124,7 @@
         "call:chord/json.go#IsJsonValue"
       ],
       "evidence": [
+        "test:chord/json_test.go#TestCopyJSONResultIsAlwaysStrictJSON",
         "test:chord/json_test.go#TestIsJsonValueChecksStrictJSONWithoutNormalizing"
       ]
     },
@@ -124067,13 +124145,18 @@
         "call:chord/json.go#IsJsonValue"
       ],
       "evidence": [
+        "test:chord/json_test.go#TestCopyJSONResultIsAlwaysStrictJSON",
         "test:chord/json_test.go#TestIsJsonValueChecksStrictJSONWithoutNormalizing"
       ]
     },
     {
       "id": "pkg:chord/json#JsonRepresentation",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:eb037ccd1e012caeee0dd7194fd9feeefcad47c83b83798e881fdc124aef3a85"
+      "upstreamShapeHash": "sha256:eb037ccd1e012caeee0dd7194fd9feeefcad47c83b83798e881fdc124aef3a85",
+      "disposition": "designed-out",
+      "rationale": "INTENTION CHECK: JsonRepresentation<T> (json.ts:5-17) guards at compile time that what crosses as JSON is only strict JSON values. The PiG form is a runtime check of the same intention: TestCopyJSONResultIsAlwaysStrictJSON (chord/json_test.go) asserts that whatever CopyJSON accepts comes back as a value IsJsonValue accepts, for every Go kind it normalizes. Only the type-level computation has no Go meaning (Go has no conditional or mapped types).",
+      "pigTargets": [
+        "chord/json.go#CopyJSON"
+      ]
     },
     {
       "id": "pkg:chord/json#JsonValue",
@@ -128371,23 +128454,87 @@
     },
     {
       "id": "pkg:chord/sync#decodeBatch",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1cbedb2a62108253bcb0c5b6c0167b012e547139f29ba61dc743669dfea66219"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1cbedb2a62108253bcb0c5b6c0167b012e547139f29ba61dc743669dfea66219",
+      "rationale": "Derived by the interface gap detector: decodeBatch is Go chord/sync/batch.go#DecodeBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/batch.go#DecodeBatch"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/batch.go#DecodeBatch"
+      ],
+      "evidence": [
+        "test:chord/sync/limits_test.go#TestLineLimit",
+        "test:chord/sync/lines_test.go#TestBatchBodies",
+        "test:chord/sync/sync_test.go#TestBatches"
+      ]
     },
     {
       "id": "pkg:chord/sync#decodeBatch::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c93499028aa75566ce7e909b8f957e5be4cf2df346cd3b60ab1bc30bc1567caa"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c93499028aa75566ce7e909b8f957e5be4cf2df346cd3b60ab1bc30bc1567caa",
+      "rationale": "Derived by the interface gap detector: decodeBatch::call:0 is Go chord/sync/batch.go#DecodeBatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/batch.go#DecodeBatch"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/batch.go#DecodeBatch"
+      ],
+      "evidence": [
+        "test:chord/sync/limits_test.go#TestLineLimit",
+        "test:chord/sync/lines_test.go#TestBatchBodies",
+        "test:chord/sync/sync_test.go#TestBatches"
+      ]
     },
     {
       "id": "pkg:chord/sync#decodeBatchLines",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:17d2b0129aac827780118f3a97067297a29971df3037a1110ccdaecd13bb5aa4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:17d2b0129aac827780118f3a97067297a29971df3037a1110ccdaecd13bb5aa4",
+      "rationale": "Derived by the interface gap detector: decodeBatchLines is Go chord/sync/batch.go#DecodeBatchLines (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/batch.go#DecodeBatchLines"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/batch.go#DecodeBatchLines"
+      ],
+      "evidence": [
+        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units"
+      ]
     },
     {
       "id": "pkg:chord/sync#decodeBatchLines::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ae7a3029774f2d664ef00d7cf5973d6c7cd750057b92abc3b42f87f8ad69d1b4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ae7a3029774f2d664ef00d7cf5973d6c7cd750057b92abc3b42f87f8ad69d1b4",
+      "rationale": "Derived by the interface gap detector: decodeBatchLines::call:0 is Go chord/sync/batch.go#DecodeBatchLines (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/batch.go#DecodeBatchLines"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/batch.go#DecodeBatchLines"
+      ],
+      "evidence": [
+        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units"
+      ]
     },
     {
       "id": "pkg:chord/sync#decodeLogLine",
@@ -128431,13 +128578,43 @@
     },
     {
       "id": "pkg:chord/sync#decodeSnapshot",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d8c24016d20399439a3377d9c3f5a5beb3c37f0b7a283bec7a2047c08c0ea67d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d8c24016d20399439a3377d9c3f5a5beb3c37f0b7a283bec7a2047c08c0ea67d",
+      "rationale": "Derived by the interface gap detector: decodeSnapshot is Go chord/sync/batch.go#DecodeSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/batch.go#DecodeSnapshot"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/batch.go#DecodeSnapshot"
+      ],
+      "evidence": [
+        "test:chord/sync/lines_test.go#TestSnapshotBodies"
+      ]
     },
     {
       "id": "pkg:chord/sync#decodeSnapshot::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:147e3625ff713904116a60f55d08407c3053ece3b7bd78f81f9c6b6a1495e4e1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:147e3625ff713904116a60f55d08407c3053ece3b7bd78f81f9c6b6a1495e4e1",
+      "rationale": "Derived by the interface gap detector: decodeSnapshot::call:0 is Go chord/sync/batch.go#DecodeSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/batch.go#DecodeSnapshot"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/batch.go#DecodeSnapshot"
+      ],
+      "evidence": [
+        "test:chord/sync/lines_test.go#TestSnapshotBodies"
+      ]
     },
     {
       "id": "pkg:chord/sync#encodeBatch",
@@ -128485,28 +128662,96 @@
     },
     {
       "id": "pkg:chord/sync#encodeLogLine",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e21a0cb896ba4be24d8a75281563e64934419fb6c27bb8309572c5e0e164affb"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e21a0cb896ba4be24d8a75281563e64934419fb6c27bb8309572c5e0e164affb",
+      "rationale": "Derived by the interface gap detector: encodeLogLine is Go chord/sync/lines.go#EncodeLogLine (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/lines.go#EncodeLogLine"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/lines.go#EncodeLogLine"
+      ],
+      "evidence": [
+        "test:chord/sync/limits_test.go#TestLineLimit",
+        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units",
+        "test:chord/sync/lines_test.go#TestLogLines"
+      ]
     },
     {
       "id": "pkg:chord/sync#encodeLogLine::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3ae496c8543d5f7a27ce7237c6f33d1a556216597fa53e0979e27543dfd39e6d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3ae496c8543d5f7a27ce7237c6f33d1a556216597fa53e0979e27543dfd39e6d",
+      "rationale": "Derived by the interface gap detector: encodeLogLine::call:0 is Go chord/sync/lines.go#EncodeLogLine (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/lines.go#EncodeLogLine"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/lines.go#EncodeLogLine"
+      ],
+      "evidence": [
+        "test:chord/sync/limits_test.go#TestLineLimit",
+        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units",
+        "test:chord/sync/lines_test.go#TestLogLines"
+      ]
     },
     {
       "id": "pkg:chord/sync#encodeSnapshot",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ea5eda40b662648bf8eee286a49a5a825b19aa7b61b3ed20f8fed380e0a11616"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ea5eda40b662648bf8eee286a49a5a825b19aa7b61b3ed20f8fed380e0a11616",
+      "rationale": "Derived by the interface gap detector: encodeSnapshot is Go chord/sync/batch.go#EncodeSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/batch.go#EncodeSnapshot"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/batch.go#EncodeSnapshot"
+      ],
+      "evidence": [
+        "test:chord/sync/lines_test.go#TestSnapshotBodies"
+      ]
     },
     {
       "id": "pkg:chord/sync#encodeSnapshot::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6af0d6cbb0c30b52a077f38840898bf45b61d593dd9ff5216cf5ddea236804af"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6af0d6cbb0c30b52a077f38840898bf45b61d593dd9ff5216cf5ddea236804af",
+      "rationale": "Derived by the interface gap detector: encodeSnapshot::call:0 is Go chord/sync/batch.go#EncodeSnapshot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/batch.go#EncodeSnapshot"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/batch.go#EncodeSnapshot"
+      ],
+      "evidence": [
+        "test:chord/sync/lines_test.go#TestSnapshotBodies"
+      ]
     },
     {
       "id": "pkg:chord/sync#FileResult",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d62517869afcf75214f53a1fc70ab4b9c9407415f0bac18361fab5f76571eab9"
+      "upstreamShapeHash": "sha256:d62517869afcf75214f53a1fc70ab4b9c9407415f0bac18361fab5f76571eab9",
+      "disposition": "designed-out",
+      "rationale": "INTENTION CHECK: FileResult<T> and isNotFound (sync/files.ts:9-45) guard that an operation reports its failure as data and that a missing file is told apart from every other failure, which the remote relies on (a missing body is none, anything else fails). The intention exists in PiG and is tested: TestIsNotFoundTellsAMissingFileFromOtherFailures (chord/sync/lines_test.go) asserts IsNotFound is true exactly for fs.ErrNotExist, wrapped or joined, and that GetBatch of a missing slot returns none without a failure. Only the data-carrying union has no Go form: the (T, error) results carry it. chord/src/sync/files.ts:9 FileResult<T> is `{ ok: true; value: T } | { ok: false; error: Error }`, the outcome of a Promise-returning file operation reported as data. Go spells that outcome as the (T, error) results of the call, the language's form of a value-or-error result: SyncFileSystem and SyncFileReader methods return (T, error), and a missing file or directory is an error that is fs.ErrNotExist (IsNotFound) where Pi tests `code: \"not_found\"` (chord/sync/files.go). The detector's rule S13f reads every call that returns FileResult<T> as the Go results (T, error).",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem"
+      ]
     },
     {
       "id": "pkg:chord/sync#FileSyncStateStore",
@@ -128692,9 +128937,9 @@
         "call:chord/sync/filesystem.go#NewFileSystemSyncRemote"
       ],
       "evidence": [
+        "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures",
         "test:chord/sync/sync_test.go#TestHostPieces",
-        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices",
-        "test:chord/sync/limits_test.go#TestLineLimit"
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128821,6 +129066,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetBatch"
       ],
       "evidence": [
+        "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -128842,6 +129088,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetBatch"
       ],
       "evidence": [
+        "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures",
         "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -128850,7 +129097,7 @@
       "id": "pkg:chord/sync#FileSystemSyncRemote::property:getMeta",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:ffa62f72bc0a65b3cefdef105025ef68e5ad2abb5ca28d4dce5fc86165e7e198",
-      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:getMeta is Go chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:getMeta is Go chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta"
       ],
@@ -128863,7 +129110,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta"
       ],
       "evidence": [
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128871,7 +129118,7 @@
       "id": "pkg:chord/sync#FileSystemSyncRemote::property:getMeta::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3fa94125e0222e152b89b361178656ac8501d658f188f5a1e6bf9cd3988b86b8",
-      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:getMeta::call:0 is Go chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:getMeta::call:0 is Go chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta"
       ],
@@ -128884,7 +129131,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta"
       ],
       "evidence": [
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129102,7 +129349,7 @@
       "id": "pkg:chord/sync#FileSystemSyncRemote::property:sessions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:c389dd6246c9e23adc3f9f70aafb66c563b6eee247ccd6bae829541fb53936d2",
-      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:sessions is Go chord/sync/filesystem.go#FileSystemSyncRemote.Sessions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:sessions is Go chord/sync/filesystem.go#FileSystemSyncRemote.Sessions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
       ],
@@ -129115,7 +129362,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
       ],
       "evidence": [
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129123,7 +129370,7 @@
       "id": "pkg:chord/sync#FileSystemSyncRemote::property:sessions::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:ac43ee8d045ae2f280fa29b1aa76ffa4428825aa53174f4ea6cf8ef0d769ad02",
-      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:sessions::call:0 is Go chord/sync/filesystem.go#FileSystemSyncRemote.Sessions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FileSystemSyncRemote::property:sessions::call:0 is Go chord/sync/filesystem.go#FileSystemSyncRemote.Sessions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
       ],
@@ -129136,7 +129383,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
       ],
       "evidence": [
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129271,18 +129518,66 @@
     },
     {
       "id": "pkg:chord/sync#FlushSchedulerOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6f240ecf2f1ceeb31a3742eb94440efc998d5a0f260e5d81f850a7f7db1217dd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6f240ecf2f1ceeb31a3742eb94440efc998d5a0f260e5d81f850a7f7db1217dd",
+      "rationale": "Derived by the interface gap detector: FlushSchedulerOptions is Go chord/sync/scheduler.go#FlushSchedulerOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/scheduler.go#FlushSchedulerOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/scheduler.go#FlushScheduler.Close"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestFlushScheduler",
+        "test:chord/sync/sync_test.go#TestFlushSchedulerCloseAgainstAFiredTimer"
+      ]
     },
     {
       "id": "pkg:chord/sync#foldSession",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a5b87c67f8b21db8c08b1363e49a33b4680fcc99cf1f42de687ddb0c5faac8cf"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a5b87c67f8b21db8c08b1363e49a33b4680fcc99cf1f42de687ddb0c5faac8cf",
+      "rationale": "Derived by the interface gap detector: foldSession is Go chord/sync/client.go#FoldSession (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#FoldSession"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#FoldSession"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#foldSession::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:13eb501cff3bf9d9824a5926e819616791caa94484b7368df7c49abe5b7ce7df"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:13eb501cff3bf9d9824a5926e819616791caa94484b7368df7c49abe5b7ce7df",
+      "rationale": "Derived by the interface gap detector: foldSession::call:0 is Go chord/sync/client.go#FoldSession (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#FoldSession"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#FoldSession"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#HistoryUnavailableError",
@@ -129373,13 +129668,46 @@
     },
     {
       "id": "pkg:chord/sync#JsonObject",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ae2f6c5c427412f3954e9db3aade47ecded4174c3ac3ca8df2aaab44fad0af08"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ae2f6c5c427412f3954e9db3aade47ecded4174c3ac3ca8df2aaab44fad0af08",
+      "rationale": "Derived by the interface gap detector: JsonObject is Go chord/sync/remote.go#JsonObject (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#JsonObject"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetMeta"
+      ],
+      "evidence": [
+        "test:chord/delta/apply_immutable_upstream_test.go#TestCheckedImmutableOperationApplication",
+        "test:chord/delta/apply_immutable_upstream_test.go#TestImmutableApplicationAppendsToAnArrayNotYetCopiedInOneCopySharingEverythingElse",
+        "test:chord/delta/apply_immutable_upstream_test.go#TestImmutableApplicationComplexity"
+      ]
     },
     {
       "id": "pkg:chord/sync#LocalCopy",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3126c9a61c716b2c9c6524d9c8423441cad29ec0c3dc1d7932e2c7062e0feb87"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3126c9a61c716b2c9c6524d9c8423441cad29ec0c3dc1d7932e2c7062e0feb87",
+      "rationale": "Derived by the interface gap detector: LocalCopy is Go chord/sync/client.go#LocalCopy (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#LocalCopy"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#FoldSession"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestBoundedMemory",
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
+      ]
     },
     {
       "id": "pkg:chord/sync#LOG_START",
@@ -129425,13 +129753,45 @@
     },
     {
       "id": "pkg:chord/sync#LogFormatError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:843bc93e3dd9a8838700e4d9e30de5e74967f333296c3164f686c1e947b3ea87"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:843bc93e3dd9a8838700e4d9e30de5e74967f333296c3164f686c1e947b3ea87",
+      "rationale": "Derived by the interface gap detector: LogFormatError is Go chord/sync/lines.go#LogFormatError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/lines.go#LogFormatError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/lines.go#NewLogFormatError"
+      ],
+      "evidence": [
+        "test:chord/sync/lines_test.go#TestNewLogFormatErrorCarriesItsMessageAndCause",
+        "test:chord/sync/lines_test.go#TestBatchBodies",
+        "test:chord/sync/lines_test.go#TestLogLines"
+      ]
     },
     {
       "id": "pkg:chord/sync#LogFormatError::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:82f97c474a19f9e0beff0d5b597672dbe3f1728bbf83b66062ba4f2b7a3a93ce"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:82f97c474a19f9e0beff0d5b597672dbe3f1728bbf83b66062ba4f2b7a3a93ce",
+      "rationale": "Derived by the interface gap detector: LogFormatError::construct:0 is Go chord/sync/lines.go#NewLogFormatError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/lines.go#NewLogFormatError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/lines.go#NewLogFormatError"
+      ],
+      "evidence": [
+        "test:chord/sync/lines_test.go#TestNewLogFormatErrorCarriesItsMessageAndCause"
+      ]
     },
     {
       "id": "pkg:chord/sync#LogFormatError::property:cause",
@@ -129580,13 +129940,47 @@
     },
     {
       "id": "pkg:chord/sync#pullSession",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:efda8b4d3ec64477590a74fc641ec8b13311977fb73c1e52f83d1cdf3886d2bc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:efda8b4d3ec64477590a74fc641ec8b13311977fb73c1e52f83d1cdf3886d2bc",
+      "rationale": "Derived by the interface gap detector: pullSession is Go chord/sync/client.go#PullSession (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#PullSession"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#PullSession"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestBoundedMemory",
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#pullSession::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7caaf795232be1b084667bae5563e7ce2cd6de45c0b8dc5e20f968e7c648cef4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7caaf795232be1b084667bae5563e7ce2cd6de45c0b8dc5e20f968e7c648cef4",
+      "rationale": "Derived by the interface gap detector: pullSession::call:0 is Go chord/sync/client.go#PullSession (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#PullSession"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#PullSession"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestBoundedMemory",
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#PutBatchResult",
@@ -129840,8 +130234,26 @@
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fc21107899f2eb66f208ddcb09e51100dc242477340d144639d7696c49a80ae1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fc21107899f2eb66f208ddcb09e51100dc242477340d144639d7696c49a80ae1",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance is Go chord/sync/remote.go#SessionSyncMaintenance (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncMaintenance"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#FoldSession"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces",
+        "test:chord/sync/limits_test.go#TestLineLimit",
+        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:deleteSnapshots",
@@ -129971,13 +130383,45 @@
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:getMeta",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ffa62f72bc0a65b3cefdef105025ef68e5ad2abb5ca28d4dce5fc86165e7e198"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ffa62f72bc0a65b3cefdef105025ef68e5ad2abb5ca28d4dce5fc86165e7e198",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getMeta is Go chord/sync/remote.go#SessionSyncStore.GetMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.GetMeta"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.GetMeta"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:getMeta::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3fa94125e0222e152b89b361178656ac8501d658f188f5a1e6bf9cd3988b86b8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3fa94125e0222e152b89b361178656ac8501d658f188f5a1e6bf9cd3988b86b8",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:getMeta::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.GetMeta"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.GetMeta"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:getSnapshot",
@@ -130111,13 +130555,45 @@
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:putMeta",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:55c67780668a25961e6ee126c5ea144e109cae238b96ccb00118ed3007edaeba"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:55c67780668a25961e6ee126c5ea144e109cae238b96ccb00118ed3007edaeba",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putMeta is Go chord/sync/remote.go#SessionSyncStore.PutMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.PutMeta"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.PutMeta"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:putMeta::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3115ebc46093ea3d0e36268d715264c6605733a133b2948d491a7850772a9b37"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3115ebc46093ea3d0e36268d715264c6605733a133b2948d491a7850772a9b37",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:putMeta::call:0 is Go chord/sync/remote.go#SessionSyncStore.PutMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.PutMeta"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.PutMeta"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:putSnapshot",
@@ -130163,18 +130639,68 @@
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:sessions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6f8189c689f7645eaa4329af7c691702173fa804de571c242d3290a98aba7bd1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6f8189c689f7645eaa4329af7c691702173fa804de571c242d3290a98aba7bd1",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:sessions is Go chord/sync/remote.go#SessionSyncStore.Sessions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.Sessions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.Sessions"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncMaintenance::property:sessions::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:018a1229c5f02b1f4d4bb96475b64ad9c173962ae657f80272065291ec03ca6c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:018a1229c5f02b1f4d4bb96475b64ad9c173962ae657f80272065291ec03ca6c",
+      "rationale": "Derived by the interface gap detector: SessionSyncMaintenance::property:sessions::call:0 is Go chord/sync/remote.go#SessionSyncStore.Sessions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.Sessions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.Sessions"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncStore",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1ddefcf54abb50acceb99abd1f3561ad3a77d56af8a9548bb4abbc0896018a59"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1ddefcf54abb50acceb99abd1f3561ad3a77d56af8a9548bb4abbc0896018a59",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore is Go chord/sync/remote.go#SessionSyncStore (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#FoldSession"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces",
+        "test:chord/sync/limits_test.go#TestLineLimit",
+        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncStore::property:getBatch",
@@ -130220,13 +130746,45 @@
     },
     {
       "id": "pkg:chord/sync#SessionSyncStore::property:getMeta",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ffa62f72bc0a65b3cefdef105025ef68e5ad2abb5ca28d4dce5fc86165e7e198"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ffa62f72bc0a65b3cefdef105025ef68e5ad2abb5ca28d4dce5fc86165e7e198",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getMeta is Go chord/sync/remote.go#SessionSyncStore.GetMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.GetMeta"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.GetMeta"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncStore::property:getMeta::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3fa94125e0222e152b89b361178656ac8501d658f188f5a1e6bf9cd3988b86b8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3fa94125e0222e152b89b361178656ac8501d658f188f5a1e6bf9cd3988b86b8",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:getMeta::call:0 is Go chord/sync/remote.go#SessionSyncStore.GetMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.GetMeta"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.GetMeta"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncStore::property:getSnapshot",
@@ -130360,23 +130918,87 @@
     },
     {
       "id": "pkg:chord/sync#SessionSyncStore::property:putMeta",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:55c67780668a25961e6ee126c5ea144e109cae238b96ccb00118ed3007edaeba"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:55c67780668a25961e6ee126c5ea144e109cae238b96ccb00118ed3007edaeba",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:putMeta is Go chord/sync/remote.go#SessionSyncStore.PutMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.PutMeta"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.PutMeta"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncStore::property:putMeta::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3115ebc46093ea3d0e36268d715264c6605733a133b2948d491a7850772a9b37"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3115ebc46093ea3d0e36268d715264c6605733a133b2948d491a7850772a9b37",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:putMeta::call:0 is Go chord/sync/remote.go#SessionSyncStore.PutMeta (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.PutMeta"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.PutMeta"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncStore::property:sessions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6f8189c689f7645eaa4329af7c691702173fa804de571c242d3290a98aba7bd1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6f8189c689f7645eaa4329af7c691702173fa804de571c242d3290a98aba7bd1",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:sessions is Go chord/sync/remote.go#SessionSyncStore.Sessions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.Sessions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.Sessions"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SessionSyncStore::property:sessions::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:018a1229c5f02b1f4d4bb96475b64ad9c173962ae657f80272065291ec03ca6c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:018a1229c5f02b1f4d4bb96475b64ad9c173962ae657f80272065291ec03ca6c",
+      "rationale": "Derived by the interface gap detector: SessionSyncStore::property:sessions::call:0 is Go chord/sync/remote.go#SessionSyncStore.Sessions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/remote.go#SessionSyncStore.Sessions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/sync/remote.go#SessionSyncStore.Sessions"
+      ],
+      "evidence": [
+        "test:chord/sync/sync_test.go#TestHostPieces"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#storeHead",
@@ -130420,8 +131042,25 @@
     },
     {
       "id": "pkg:chord/sync#SyncBody",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ef6bb90bf0d8a7831bcdf16ed8a0c0fee8e0b09fa4fb928e5dc189a37067642c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ef6bb90bf0d8a7831bcdf16ed8a0c0fee8e0b09fa4fb928e5dc189a37067642c",
+      "rationale": "Derived by the interface gap detector: SyncBody is Go chord/sync/batch.go#SyncBody (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/batch.go#SyncBody"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/batch.go#DecodeBatch"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
+        "test:chord/sync/limits_test.go#TestLineLimit",
+        "test:chord/sync/lines_test.go#TestSnapshotBodies"
+      ]
     },
     {
       "id": "pkg:chord/sync#SyncFileInfo",
@@ -130445,8 +131084,24 @@
     },
     {
       "id": "pkg:chord/sync#SyncFileReader",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cba2cb04f88ba8ab14b9d480f278cd4f8ad80b524ac6da2164f89671368a21df"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cba2cb04f88ba8ab14b9d480f278cd4f8ad80b524ac6da2164f89671368a21df",
+      "rationale": "Derived by the interface gap detector: SyncFileReader is Go chord/sync/files.go#SyncFileReader (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileReader"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#fileBody.Close"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#fileBody.Close"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileReader::property:close",
@@ -130492,118 +131147,486 @@
     },
     {
       "id": "pkg:chord/sync#SyncFileReader::property:read",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2efc3b0f858586229a63bc450cfe0acdbb2eb320b719e2e39e3dca530f92b35f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2efc3b0f858586229a63bc450cfe0acdbb2eb320b719e2e39e3dca530f92b35f",
+      "rationale": "Derived by the interface gap detector: SyncFileReader::property:read is Go chord/sync/files.go#SyncFileReader.Read (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileReader.Read"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#fileBody.Next"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#fileBody.Next"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileReader::property:read::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:72417b385a1eec6170b3200066d58a29b39e07b64bdbdcfc917170bcc15aed7b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:72417b385a1eec6170b3200066d58a29b39e07b64bdbdcfc917170bcc15aed7b",
+      "rationale": "Derived by the interface gap detector: SyncFileReader::property:read::call:0 is Go chord/sync/files.go#SyncFileReader.Read (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileReader.Read"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#fileBody.Next"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#fileBody.Next"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e3fab566aca403c2a2e39b8659af577f990e665ddfa3407d6761bc17daca95a3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e3fab566aca403c2a2e39b8659af577f990e665ddfa3407d6761bc17daca95a3",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem is Go chord/sync/files.go#SyncFileSystem (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.DeleteSnapshots"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.DeleteSnapshots"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:appendFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:46077e4aba544327eac8570e1e412bfac120ef492b72e44c57a2352fc1a2b660"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:46077e4aba544327eac8570e1e412bfac120ef492b72e44c57a2352fc1a2b660",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:appendFile is Go chord/sync/files.go#SyncFileSystem.AppendFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.AppendFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:appendFile::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1363667f17b7923430ea3b971a222ae486a1932025c06714a38d146dac8980ed"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1363667f17b7923430ea3b971a222ae486a1932025c06714a38d146dac8980ed",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:appendFile::call:0 is Go chord/sync/files.go#SyncFileSystem.AppendFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.AppendFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:createDir",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9d4c0c008c15331b190c92644374783c8c03007012460e22d4e92f011bfe4876"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9d4c0c008c15331b190c92644374783c8c03007012460e22d4e92f011bfe4876",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:createDir is Go chord/sync/files.go#SyncFileSystem.CreateDir (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.CreateDir"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:createDir::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e6bd0682578e42cf48a453e38eb674020d5daa032160f466bfe7303b831b7ba6"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e6bd0682578e42cf48a453e38eb674020d5daa032160f466bfe7303b831b7ba6",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:createDir::call:0 is Go chord/sync/files.go#SyncFileSystem.CreateDir (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.CreateDir"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:joinPath",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:395305d26e36b303161fc08f47e03188bcd1519745f92a944fda4e0cd0458db1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:395305d26e36b303161fc08f47e03188bcd1519745f92a944fda4e0cd0458db1",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:joinPath is Go chord/sync/files.go#SyncFileSystem.JoinPath (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.JoinPath"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.path"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.path"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:joinPath::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d9699c93ae72d8b0375b7adbcebeab5ec5e374eddc5f303b6ae0bff51d6e6443"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d9699c93ae72d8b0375b7adbcebeab5ec5e374eddc5f303b6ae0bff51d6e6443",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:joinPath::call:0 is Go chord/sync/files.go#SyncFileSystem.JoinPath (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.JoinPath"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.path"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.path"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:listDir",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bb94f499e7ff05848b87811c541e3303c95fe2146245742b3359f629be82c6ac"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bb94f499e7ff05848b87811c541e3303c95fe2146245742b3359f629be82c6ac",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:listDir is Go chord/sync/files.go#SyncFileSystem.ListDir (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.ListDir"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:listDir::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2858f7153c9197d5541b2d8fd347155b8e31d3b64c553cfa986dd6b263ce5a10"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2858f7153c9197d5541b2d8fd347155b8e31d3b64c553cfa986dd6b263ce5a10",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:listDir::call:0 is Go chord/sync/files.go#SyncFileSystem.ListDir (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.ListDir"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.Sessions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:openBinaryReader",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8f2a76ce9c8a48ab5bfb72fdb6e3ae8b6ad67076bf752ea160eeb8bfb6eb982d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8f2a76ce9c8a48ab5bfb72fdb6e3ae8b6ad67076bf752ea160eeb8bfb6eb982d",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:openBinaryReader is Go chord/sync/files.go#SyncFileSystem.OpenBinaryReader (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.OpenBinaryReader"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.stream"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.stream"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:openBinaryReader::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a37735cae900558ea32eaf090bea5df0e7afa85172f8241594891e5b1c8143b0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a37735cae900558ea32eaf090bea5df0e7afa85172f8241594891e5b1c8143b0",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:openBinaryReader::call:0 is Go chord/sync/files.go#SyncFileSystem.OpenBinaryReader (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.OpenBinaryReader"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.stream"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.stream"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:readBinaryFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:81fa7b78ba124520b8dbe0c3a295d77f7d5e154d07e6583f83f30a0b4fce2b67"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:81fa7b78ba124520b8dbe0c3a295d77f7d5e154d07e6583f83f30a0b4fce2b67",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:readBinaryFile is Go chord/sync/files.go#SyncFileSystem.ReadBinaryFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.ReadBinaryFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.read"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.read"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:readBinaryFile::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:41aa2fd69f61a79801a2c0abcf9aeb0d55b37e46e4e71d74dd3f3c74c08d2815"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:41aa2fd69f61a79801a2c0abcf9aeb0d55b37e46e4e71d74dd3f3c74c08d2815",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:readBinaryFile::call:0 is Go chord/sync/files.go#SyncFileSystem.ReadBinaryFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.ReadBinaryFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.read"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.read"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:readTextFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5b5c59cb396ad443eb2c7c640fd404a9721e053e8e287570d3e24e7e506514f9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5b5c59cb396ad443eb2c7c640fd404a9721e053e8e287570d3e24e7e506514f9",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:readTextFile is Go chord/sync/files.go#SyncFileSystem.ReadTextFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.ReadTextFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/state.go#FileSyncStateStore.Get"
+      ],
+      "evidence": [
+        "reach:chord/sync/state.go#FileSyncStateStore.Get"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:readTextFile::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:93a9c5744658a01f759da7b4335ff270bc3b7bc6a4f71ad3a3ae96ff6509da9e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:93a9c5744658a01f759da7b4335ff270bc3b7bc6a4f71ad3a3ae96ff6509da9e",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:readTextFile::call:0 is Go chord/sync/files.go#SyncFileSystem.ReadTextFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.ReadTextFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/state.go#FileSyncStateStore.Get"
+      ],
+      "evidence": [
+        "reach:chord/sync/state.go#FileSyncStateStore.Get"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:remove",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2eb2b832803444cea1f5107d2cfb89deefe9381e39a74da9a49062bc9a7840b3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2eb2b832803444cea1f5107d2cfb89deefe9381e39a74da9a49062bc9a7840b3",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:remove is Go chord/sync/files.go#SyncFileSystem.Remove (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.Remove"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.DeleteSnapshots"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.DeleteSnapshots"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:remove::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f579c765731c52b922ce817c0eeb13fff5f563652c340fb8d89ccff54703ef5e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f579c765731c52b922ce817c0eeb13fff5f563652c340fb8d89ccff54703ef5e",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:remove::call:0 is Go chord/sync/files.go#SyncFileSystem.Remove (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.Remove"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.DeleteSnapshots"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.DeleteSnapshots"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:renameFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:873e315027d6f02b2d55b6bcc51bed0a61c86d75bccab59a1c95cea04e878937"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:873e315027d6f02b2d55b6bcc51bed0a61c86d75bccab59a1c95cea04e878937",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:renameFile is Go chord/sync/files.go#SyncFileSystem.RenameFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.RenameFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:renameFile::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:51fe0e9accc6850c4fb63a08c1e8073c3fdebf1dd699574032e3493254e4807e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:51fe0e9accc6850c4fb63a08c1e8073c3fdebf1dd699574032e3493254e4807e",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:renameFile::call:0 is Go chord/sync/files.go#SyncFileSystem.RenameFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.RenameFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:writeFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bdef5e14d1071ed95974be5c03f0dea54d6dc3fd9386d36d69982ecd14feeea2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bdef5e14d1071ed95974be5c03f0dea54d6dc3fd9386d36d69982ecd14feeea2",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:writeFile is Go chord/sync/files.go#SyncFileSystem.WriteFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.WriteFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncFileSystem::property:writeFile::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1363667f17b7923430ea3b971a222ae486a1932025c06714a38d146dac8980ed"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1363667f17b7923430ea3b971a222ae486a1932025c06714a38d146dac8980ed",
+      "rationale": "Derived by the interface gap detector: SyncFileSystem::property:writeFile::call:0 is Go chord/sync/files.go#SyncFileSystem.WriteFile (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/files.go#SyncFileSystem.WriteFile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "evidence": [
+        "reach:chord/sync/filesystem.go#FileSystemSyncRemote.write"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#SyncState",
@@ -130843,13 +131866,49 @@
     },
     {
       "id": "pkg:chord/sync#uploadSession",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2a7b5d16be29b874f8297d3129f25a4f728aa5e0b9beed21b15dba381bc21580"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2a7b5d16be29b874f8297d3129f25a4f728aa5e0b9beed21b15dba381bc21580",
+      "rationale": "Derived by the interface gap detector: uploadSession is Go chord/sync/client.go#UploadSession (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#UploadSession"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#UploadSession"
+      ],
+      "evidence": [
+        "test:chord/sync/limits_test.go#TestLineLimit",
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices",
+        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sync#uploadSession::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:868bfa7f0bd45e0c1bd9d6f4faa8f8618239a4a64d00e3eff3b08559b5c7e7d8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:868bfa7f0bd45e0c1bd9d6f4faa8f8618239a4a64d00e3eff3b08559b5c7e7d8",
+      "rationale": "Derived by the interface gap detector: uploadSession::call:0 is Go chord/sync/client.go#UploadSession (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sync/client.go#UploadSession"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sync/client.go#UploadSession"
+      ],
+      "evidence": [
+        "test:chord/sync/limits_test.go#TestLineLimit",
+        "test:chord/sync/sync_test.go#TestSyncingASessionBetweenDevices",
+        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/telemetry-sqlite/node#openTelemetryStore",
@@ -132760,8 +133819,26 @@
     },
     {
       "id": "pkg:chord/watch#NativeWatch",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bba24dfed25dc437debbe5c22e37d9e0547dcb97c65d6ab0f9f48488e99b362b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bba24dfed25dc437debbe5c22e37d9e0547dcb97c65d6ab0f9f48488e99b362b",
+      "rationale": "Derived by the interface gap detector: NativeWatch is Go chord/watch_impl.go#NativeWatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch_impl.go#NativeWatch"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/documents/keyed_slot.go#KeyedSlot.Watch"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestDeliverySchedulerHoldFoldsTheFramesAdvancedWhileItIsOpenIntoOneCallPerWatch",
+        "test:chord/watch_upstream_test.go#TestNativeWatchCollapses101PendingValuesToTheNewest",
+        "test:chord/watch_upstream_test.go#TestNativeWatchCollapses101PendingValuesToTheValueOfReplace"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/watch#NativeWatch::construct:0",
@@ -132898,13 +133975,47 @@
     },
     {
       "id": "pkg:chord/watch#NativeWatch::property:end",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9b8b23d91a403c30d04131e56761297107685dc365c2b0f5fe92bb217721c367"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9b8b23d91a403c30d04131e56761297107685dc365c2b0f5fe92bb217721c367",
+      "rationale": "Derived by the interface gap detector: NativeWatch::property:end is Go chord/watch_impl.go#watchLifecycle.EndWith (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch_impl.go#watchLifecycle.EndWith"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/watch_impl.go#watchLifecycle.EndWith"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestNativeWatchEndsWithEveryReasonOfItsLifecycle",
+        "test:chord/watch_upstream_test.go#TestWatchDiscardsARetirementStillPendingWhenTheSourceEnds",
+        "test:chord/watch_upstream_test.go#TestWatchEndAfterDeliveryEndsANeverStartedWatchAtItsSourcesEndDroppingWhatIsPending"
+      ]
     },
     {
       "id": "pkg:chord/watch#NativeWatch::property:end::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:109cb48d29b622109b2d22450281f2a04d8def226a089fa19bb982f30bd820dd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:109cb48d29b622109b2d22450281f2a04d8def226a089fa19bb982f30bd820dd",
+      "rationale": "Derived by the interface gap detector: NativeWatch::property:end::call:0 is Go chord/watch_impl.go#watchLifecycle.EndWith (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch_impl.go#watchLifecycle.EndWith"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/watch_impl.go#watchLifecycle.EndWith"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestNativeWatchEndsWithEveryReasonOfItsLifecycle",
+        "test:chord/watch_upstream_test.go#TestWatchDiscardsARetirementStillPendingWhenTheSourceEnds",
+        "test:chord/watch_upstream_test.go#TestWatchEndAfterDeliveryEndsANeverStartedWatchAtItsSourcesEndDroppingWhatIsPending"
+      ]
     },
     {
       "id": "pkg:chord/watch#NativeWatch::property:endAfterDelivery",
@@ -133423,8 +134534,26 @@
     },
     {
       "id": "pkg:chord/watch#Watch",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4be9ff4ad65675f66a6a77dd2bacf413b3e480ba31676020917363b2fbb69d6e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4be9ff4ad65675f66a6a77dd2bacf413b3e480ba31676020917363b2fbb69d6e",
+      "rationale": "Derived by the interface gap detector: Watch is Go chord/watch_impl.go#Watch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch_impl.go#Watch"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/documents/handles.go#Singleton.Watch"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestDeliverySchedulerHoldFoldsTheFramesAdvancedWhileItIsOpenIntoOneCallPerWatch",
+        "test:chord/watch_upstream_test.go#TestNativeWatchDeliversABacklogThatNeverDrainsInOrder",
+        "test:chord/watch_upstream_test.go#TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/watch#Watch::construct:0",
@@ -133561,13 +134690,47 @@
     },
     {
       "id": "pkg:chord/watch#Watch::property:end",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9b8b23d91a403c30d04131e56761297107685dc365c2b0f5fe92bb217721c367"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9b8b23d91a403c30d04131e56761297107685dc365c2b0f5fe92bb217721c367",
+      "rationale": "Derived by the interface gap detector: Watch::property:end is Go chord/watch_impl.go#watchLifecycle.EndWith (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch_impl.go#watchLifecycle.EndWith"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/watch_impl.go#watchLifecycle.EndWith"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestNativeWatchEndsWithEveryReasonOfItsLifecycle",
+        "test:chord/watch_upstream_test.go#TestWatchDiscardsARetirementStillPendingWhenTheSourceEnds",
+        "test:chord/watch_upstream_test.go#TestWatchEndAfterDeliveryEndsANeverStartedWatchAtItsSourcesEndDroppingWhatIsPending"
+      ]
     },
     {
       "id": "pkg:chord/watch#Watch::property:end::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:109cb48d29b622109b2d22450281f2a04d8def226a089fa19bb982f30bd820dd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:109cb48d29b622109b2d22450281f2a04d8def226a089fa19bb982f30bd820dd",
+      "rationale": "Derived by the interface gap detector: Watch::property:end::call:0 is Go chord/watch_impl.go#watchLifecycle.EndWith (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/watch_impl.go#watchLifecycle.EndWith"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/watch_impl.go#watchLifecycle.EndWith"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestNativeWatchEndsWithEveryReasonOfItsLifecycle",
+        "test:chord/watch_upstream_test.go#TestWatchDiscardsARetirementStillPendingWhenTheSourceEnds",
+        "test:chord/watch_upstream_test.go#TestWatchEndAfterDeliveryEndsANeverStartedWatchAtItsSourcesEndDroppingWhatIsPending"
+      ]
     },
     {
       "id": "pkg:chord/watch#Watch::property:endAfterDelivery",

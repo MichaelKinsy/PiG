@@ -463,6 +463,22 @@
     "go": "chord/output/output.go#Progress.Stop",
     "reason": "Pi chord/src/output.ts:364-370 async stop(): Promise<PromiseWithResolvers<void>[]> sets stopped, disarms the timer, awaits the in-flight commit and splices out the waiters. Go has no Promise or PromiseWithResolvers: Stop() blocks until the in-flight commit ends (<-inFlight) and returns []*ProgressWaiter, whose Resolve/Reject are the resolvers the final commit settles. TestProgress 'stops: waits for the commit in flight and hands back waiters no commit covered yet' (chord/output/output_test.go) ports the Pi stop case."
   },
+  "pkg:chord/sync#JsonObject": {
+    "go": "chord/sync/remote.go#JsonObject",
+    "reason": "Pi chord/src/sync/remote.ts:8 `export type JsonObject = { [key: string]: unknown }` is the host's session description (SessionSummary.meta, putMeta, getMeta). A same-named alias in chord/src/documents/definition.ts:14 (`{ [key: string]: JsonValue }`) makes the name ambiguous for the alias table, so no rule reads the body. Go spells the object as the ordered JSON object of Chord's delta package, aliased as sync.JsonObject (remote.go), the type PutMeta takes and GetMeta returns; TestHostPieces (sync_test.go) writes and reads it through SessionSyncStore."
+  },
+  "pkg:chord/sync#LogFormatError::construct:0": {
+    "go": "chord/sync/lines.go#NewLogFormatError",
+    "reason": "Pi chord/src/sync/lines.ts:14-19 `new LogFormatError(message, options?: ErrorOptions)` passes options to Error, whose only member is `cause`. Go has no ErrorOptions bag: NewLogFormatError(message string, cause error) takes the cause itself (nil for none) and LogFormatError.Unwrap returns it, as Error.cause is read. TestNewLogFormatErrorCarriesItsMessageAndCause (chord/sync/lines_test.go) and every DecodeLogLine failure assert it."
+  },
+  "pkg:chord/sync#SyncFileSystem::property:appendFile::call:0": {
+    "go": "chord/sync/files.go#SyncFileSystem.AppendFile",
+    "reason": "Pi chord/src/sync/files.ts:33 `appendFile(path, content: string | Uint8Array, context)` takes text or bytes and a file holds bytes either way: Pi's Node implementation writes a string as its UTF-8 bytes (chord/test/sync/node-files.ts). Go has no union of string and bytes, so SyncFileSystem.AppendFile(ctx, path, content []byte) takes the bytes: a caller with text passes []byte(text), the same UTF-8 content. chord/sync/filesystem.go writes bodies and state as bytes through it and TestSyncingASessionBetweenDevices and TestHostPieces (sync_test.go) write and read through osFiles."
+  },
+  "pkg:chord/sync#SyncFileSystem::property:writeFile::call:0": {
+    "go": "chord/sync/files.go#SyncFileSystem.WriteFile",
+    "reason": "Pi chord/src/sync/files.ts:31 `writeFile(path, content: string | Uint8Array, context)` takes text or bytes and a file holds bytes either way: Pi's Node implementation writes a string as its UTF-8 bytes (chord/test/sync/node-files.ts). Go has no union of string and bytes, so SyncFileSystem.WriteFile(ctx, path, content []byte) takes the bytes: a caller with text passes []byte(text), the same UTF-8 content. chord/sync/filesystem.go writes bodies and state as bytes through it and TestSyncingASessionBetweenDevices and TestHostPieces (sync_test.go) write and read through osFiles."
+  },
   "pkg:chord/tui#TuiScope::property:hold::call:0": {
     "go": "chord/next/tui/tui_scope.go#TuiScope.Hold",
     "reason": "Pi packages/chord/src/tui/scope.ts hold<C extends Contract>(Type: C, params: ParamsOf<C>): Held<C> types params by a mapped type over the contract's params shape (ParamsOf, TypeScript's compile-time computation). Go has no such type, so Hold takes the contract and params as any and the host validates params against the contract at run time (host.Hold returns the invalid-params error); the result is the host's *Reference (Held). TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose holds with Notes and reads the state."
