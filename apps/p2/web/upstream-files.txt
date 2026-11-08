@@ -513,6 +513,9 @@ src/web/virtual-list.ts
 tsconfig.json
 plugins/terminals/protocol.ts
 plugins/terminals/wasm.d.ts
+test/p2/outbox.test.ts
+test/p2/session-start.test.ts
+plugins/conversations/contract.ts
 plugins/codemode/contract.ts
 plugins/codemode/card.ts
 plugins/codemode/tui.ts
