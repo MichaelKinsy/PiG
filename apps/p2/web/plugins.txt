@@ -1,7 +1,13 @@
+artifacts
 chat
+coding-tools
 devices
 envs
 login
+logs
+send-file
 sessions
+sharing
 subagents
+terminals
 web-shell

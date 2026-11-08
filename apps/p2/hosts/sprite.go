@@ -2,6 +2,7 @@ package hosts
 
 import (
 	"encoding/json"
+	"github.com/MichaelKinsy/PiG/apps/p2/web"
 	"net/http"
 	"strings"
 	"sync"
@@ -176,4 +177,11 @@ func (h *spriteHub) serveEvents(response http.ResponseWriter, request *http.Requ
 			}
 		}
 	}
+}
+
+// spriteApplies is whether a sprite source is used with a web bundle: only a source is, and only with a branded bundle (the
+// brand layer's mark reads the page's sprite attribute; Pi's own bundle, the D472 oracle's, has no use for the hook and the
+// server stays Pi's).
+func spriteApplies(source SpriteSource, bundle *web.Bundle) bool {
+	return source != nil && bundle != nil && bundle.UpstreamVersion != ""
 }

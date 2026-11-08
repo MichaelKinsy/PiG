@@ -349,22 +349,14 @@ func (c Context) callHostAfterBegin(method string, args any, detached bool, sent
 		sent()
 	}
 	result, err := c.hostConnection().waitCall(pending)
-	// The host sends the state a publishing call changed before the call's result, and the main loop applies notifies after the read loop routed the result here: wait for those notifies so the caller's next replicated read sees the write.
-	if err == nil && result != nil && statePublishingCalls[method] && c.ext != nil && c.hostConnection() == c.ext.conn {
+	// The host pushes its state before the result of a call that changed it, and before any result when a host-side change has not reached this extension yet (Host.replyToCall). The main loop applies notifies after the read loop routed the result here, so wait for them: the caller's next replicated read is then never older than the result, or than the write the call made. The wait is a counter compare when no state precedes the result.
+	if err == nil && result != nil && c.ext != nil && c.hostConnection() == c.ext.conn {
 		c.ext.waitNotifications(result.notifySeq, nil)
 	}
 	if !effect {
 		c.reportRequestState("progress", "")
 	}
 	return result, err
-}
-
-// statePublishingCalls are the Session writes after which the host pushes its state before the call's result (coding/extension/host/subprocess
-// host_calls.go publishesStateBeforeResult): the calls whose effect an SDK reads from replicated state. Pi's equivalents change the Session
-// synchronously, so a read after the call must see the write (agent-session.ts setModel, setSessionName, sessionManager.appendLabelChange and
-// appendCustomEntry, sendCustomMessage).
-var statePublishingCalls = map[string]bool{
-	"setModel": true, "appendEntry": true, "setLabel": true, "setSessionName": true, "sendMessage": true,
 }
 
 // rpcSynchronousUIEffects are the UI calls Pi's RPC mode applies at once, inside the handler's synchronous part (rpc-mode.ts
@@ -714,7 +706,7 @@ func (c Context) AppendEntry(customType string, data any) error {
 	if err != nil {
 		return err
 	}
-	// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns. callHost waits for the state the host pushed before the result (statePublishingCalls), so the caller's next session read sees the entry.
+	// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns. callHost waits for the state the host pushed before the result, so the caller's next session read sees the entry.
 	return callResultError(result, nil)
 }
 
@@ -737,8 +729,11 @@ func (c Context) PasteToEditor(text string) {
 
 // ── Session State ────────────────────────────────────────────────────────────
 
-// GetSessionName returns the current session name. Pi's getSessionName is `string | undefined`: nil means the session has no name, and a host or transport failure is returned as an error.
+// GetSessionName returns the current session name. Pi's getSessionName is `string | undefined`: nil means the session has no name, and a host or transport failure is returned as an error. Like [Context.GetSessionID] it is replicated, and a [Context.SetSessionName] is visible to the next read.
 func (c Context) GetSessionName() (*string, error) {
+	if s, known, err := c.localSession(); known {
+		return optionalString(s.name), err
+	}
 	return hostOptionalString(c, "getSessionName", "name")
 }
 
@@ -1101,8 +1096,16 @@ func decodeModelProvider(raw json.RawMessage) string {
 	return ""
 }
 
-// GetModelInfo returns structured metadata about the active model. Pi's model is `Model | undefined`: nil means no model is set, and a host or transport failure is returned as an error.
+// GetModelInfo returns structured metadata about the active model. Pi's model is `Model | undefined`: nil means no model is set, and a host or transport failure is returned as an error. The host's state snapshots replicate the model object, so the read costs no host round trip; a replacement context, or one made before the first snapshot, asks the host. A context of a replaced or reloaded runtime returns the stale message, as the host answered it.
 func (c Context) GetModelInfo() (*ModelInfo, error) {
+	if c.replacement == nil && c.ext != nil {
+		if err := c.staleError(); err != nil {
+			return nil, err
+		}
+		if info, known, err := c.ext.replicatedModelInfo(); known {
+			return info, err
+		}
+	}
 	info, err := hostDecoded[ModelInfo](c, "getModelInfo", nil)
 	if err != nil || info.ID == "" {
 		return nil, err
@@ -1330,13 +1333,19 @@ func (c Context) GetEntries() ([]json.RawMessage, error) {
 	return c.ext.session.getEntries(), nil
 }
 
-// GetSessionID returns the current session ID, including for in-memory sessions.
+// GetSessionID returns the current session ID, including for in-memory sessions. The host's state snapshots replicate it, so the read costs no host round trip; a replacement context, or one made before the first snapshot, asks the host. A context of a replaced or reloaded runtime returns the stale message, as the host answered it.
 func (c Context) GetSessionID() (string, error) {
+	if s, known, err := c.localSession(); known {
+		return s.id, err
+	}
 	return hostRequired[string](c, "getSessionID", nil, "sessionId")
 }
 
-// GetSessionFile returns the current session file path. Pi's getSessionFile is `string | undefined`: nil means an in-memory session.
+// GetSessionFile returns the current session file path. Pi's getSessionFile is `string | undefined`: nil means an in-memory session. Like [Context.GetSessionID] it is replicated: the host pushes it when a Session is replaced.
 func (c Context) GetSessionFile() (*string, error) {
+	if s, known, err := c.localSession(); known {
+		return optionalString(s.file), err
+	}
 	return hostOptionalString(c, "getSessionFile", "sessionFile")
 }
 
@@ -2393,7 +2402,7 @@ func (c Context) CompactWithOptions(opts CompactOptions) {
 		// must not take the extension down with it.
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				fmt.Fprintf(os.Stderr, "extension: recovered from panic in compact callback: %v\n%s\n", recovered, debug.Stack())
+				diagnosticf("extension: recovered from panic in compact callback: %v\n%s\n", recovered, debug.Stack())
 			}
 		}()
 		result, err := conn.call("compact", args)

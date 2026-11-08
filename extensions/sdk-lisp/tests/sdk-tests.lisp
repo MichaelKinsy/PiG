@@ -329,3 +329,44 @@ Returns the host and the register envelope."
       (hsend host "type" "notify" "notify" (pig:obj "method" "width_change" "args" (pig:obj "width" 140)))
       (sleep 0.2)
       (check-equal '(100 120) *widths*))))
+
+;;; An SDK diagnostic goes to the log the host names in PIG_EXT_LOG and not to stderr, which the host forwards to the terminal (Go's sdk/diagnostic_test.go).
+
+(defun call-with-diagnostic-log (path body)
+  "Run BODY with PIG_EXT_LOG naming PATH (unset when PATH is NIL) and the byte counter at zero; return what BODY wrote to stderr."
+  (let ((old (sb-posix:getenv "PIG_EXT_LOG")) (pig::*diagnostic-written* 0))
+    (unwind-protect
+         (progn (if path (sb-posix:setenv "PIG_EXT_LOG" path 1) (sb-posix:unsetenv "PIG_EXT_LOG"))
+                (with-output-to-string (*error-output*) (funcall body)))
+      (if old (sb-posix:setenv "PIG_EXT_LOG" old 1) (sb-posix:unsetenv "PIG_EXT_LOG")))))
+
+(defun diagnostic-log-file ()
+  (let ((path (format nil "/tmp/pig-lisp-diag-~D-~D.log" (sb-posix:getpid) (random 1000000))))
+    (with-open-file (out path :direction :output :if-exists :supersede) (write-line "host wrote this line" out))
+    path))
+
+(deftest diagnostics-go-to-the-extension-log-and-not-to-stderr
+  (let* ((path (diagnostic-log-file))
+         (stderr (call-with-diagnostic-log path (lambda () (pig::diagnose "pig: on-loaded handler failed: ~A~%" "probe-panic-boom")))))
+    (unwind-protect
+         (progn (check-equal "" stderr)
+                (check-equal (format nil "host wrote this line~%pig: on-loaded handler failed: probe-panic-boom~%") (read-text-file path)))
+      (delete-file path))))
+
+(deftest diagnostics-fall-back-to-stderr-without-a-writable-log
+  (check-equal (format nil "pig: no host~%") (call-with-diagnostic-log nil (lambda () (pig::diagnose "pig: no host~%"))))
+  (check-equal (format nil "pig: unwritable~%") (call-with-diagnostic-log "/nonexistent-dir/ext.log" (lambda () (pig::diagnose "pig: unwritable~%")))))
+
+(defun count-substring (needle text)
+  (loop with start = 0 for found = (search needle text :start2 start) while found count t do (setf start (1+ found))))
+
+(deftest the-diagnostic-log-is-bounded
+  (let* ((path (diagnostic-log-file))
+         (chunk (format nil "~A~%" (make-string 65536 :initial-element #\x)))
+         (stderr (call-with-diagnostic-log path (lambda () (dotimes (i (floor (* 2 pig::+diagnostic-log-max+) (length chunk))) (pig::diagnose "~A" chunk))))))
+    (unwind-protect
+         (let ((text (read-text-file path)))
+           (check-equal "" stderr)
+           (check (<= (length text) (+ pig::+diagnostic-log-max+ 1024)))
+           (check-equal 1 (count-substring "further SDK diagnostics dropped" text)))
+      (delete-file path))))
