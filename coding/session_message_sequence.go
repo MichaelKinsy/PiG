@@ -8,7 +8,7 @@ import (
 )
 
 // messageSequenceLimit bounds how many messages a Session numbers at once; the oldest are forgotten first.
-const messageSequenceLimit = 1024
+const messageSequenceLimit = 1024 // pig divergence (D541): a bound PiG needs to number messages for Node extension processes; Pi has no table.
 
 // lastMessageSequence is the newest number any messageSequences of this process gave. A Node process's table of message objects is keyed by the number alone, and Sessions and graph runners that reach one process (a parked process reused by a new Session, an ExtensionRunner beside a Session) number from this one counter, so two messages never share a number.
 var lastMessageSequence atomic.Uint64
