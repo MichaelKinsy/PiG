@@ -1186,6 +1186,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a2fad25](#bf-a2fad25) | The footer's context percentage includes the prompt as soon as it is sent, for the whole reply, as Pi shows… | PiG's own defect | All platforms | Unreleased |
 | [BF-a30388b](#bf-a30388b) | GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a3859aa](#bf-a3859aa) | An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-a397ee9](#bf-a397ee9) | Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer… | PiG's own defect | macOS | Unreleased |
 | [BF-a3bfab2](#bf-a3bfab2) | A Radius gateway config cached on an OAuth credential is sanitized as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a40a16d](#bf-a40a16d) | fix(codingagent): typed input restarts the idle collection's wait on every route | PiG's own defect | All platforms | Unreleased |
 | [BF-a422947](#bf-a422947) | fix(chord/next/documents): a shared cold load hands its document to the waiters, which an ending object may… | PiG's own defect | All platforms | Unreleased |
@@ -18018,6 +18019,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3ef234b949` (2026-10-09), `82994975e6` (2026-10-09), `a3859aa658` (2026-10-09), `4180310931` (2026-10-10), `543dba2cbe` (2026-10-10), `66765600a6` (2026-10-10), `6693198f8c` (2026-10-10), `9cc4d406f7` (2026-10-10), `74ed845011` (2026-10-11), `b567ebab3c` (2026-10-11)
 - **Tests:** `ai/openai_empty_tool_call_reviewer_test.go::TestOpenAICompletionsGeneratedToolCallIDsAreUnique`, `ai/openai_empty_tool_call_reviewer_test.go::TestOpenAICompletionsReplayOmitsStoredToolCallsWithoutIDOrNameReviewed`, `ai/openai_empty_tool_call_test.go::TestOpenAICompletionsEmptyToolCallDoesNotWedgeReplay`, `ai/unreplayable_tool_call_test.go::TestReplayOmitsUnreplayableToolCallsOnEveryProviderPath`, `ai/unreplayable_tool_call_test.go::TestStreamedToolCallsWithoutIDGetDistinctIDsAcrossTurns`
 - **Release note:** An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM do) no longer leaves the session failing every later turn with `tool messages must include a non-empty string tool_call_id`. PiG gives the call a unique id, leaves a call without a name or id and its results out of every provider's replayed request, and a stored session that already holds such a call works again (D120, pi-mono #10299).
+
+### BF-a397ee9
+
+**Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer ends the prompt with `interrupted system call` on macOS: the prompt enters and leaves raw mode through the same retrying calls as the main screen, as Node's `setRawMode` retries the call.
+- **Root cause:** A stop and continue (Ctrl+Z, fg) during the API key prompt resumes inside the termios ioctl, which macOS reports as EINTR; readSecret called x/term directly, so the prompt ended with 'interrupted system call' where Node's setRawMode retries. coding/cli/auth_terminal.go reached the repository after the per-call-site EINTR audit (TestTerminalSyscallsThatCanSleepRetryEINTR), which flagged both calls.
+- **User impact:** Behavior differed from Pi
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `a397ee91ed` (2026-11-08)
+- **Tests:** `tui/terminal_syscall_eintr_audit_test.go::TestTerminalSyscallsThatCanSleepRetryEINTR`
+- **Release note:** Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer ends the prompt with `interrupted system call` on macOS: the prompt enters and leaves raw mode through the same retrying calls as the main screen, as Node's `setRawMode` retries the call.
 
 ### BF-a3bfab2
 
