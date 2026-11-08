@@ -99,6 +99,11 @@ func newTool(models func() durable.Models, access func() map[string]p2runtime.P2
 	return p2runtime.P2Tool{ToolRegistration: registration}
 }
 
+// newExtension is the plugin's Durable extension (Pi's createAgentExtension): the tool, and no prompt section of its own.
+func newExtension(models func() durable.Models, access func() map[string]p2runtime.P2Tool) *p2runtime.P2Extension {
+	return &p2runtime.P2Extension{Extension: &durable.Extension{Name: "p2-agent"}, Tools: []p2runtime.P2Tool{newTool(models, access)}}
+}
+
 func run(ctx context.Context, models func() durable.Models, access func() map[string]p2runtime.P2Tool, args map[string]any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 	validator, err := schema.Compile(args["schema"], schema.CompileOptions{Formats: formats.Formats()})
 	if err != nil {
@@ -360,7 +365,7 @@ func init() {
 				table, _ := p2runtime.Extensions.Table(extensionsSource)
 				return p2runtime.ToolsByName(table)
 			}
-			extension := &p2runtime.P2Extension{Extension: &durable.Extension{Name: "p2-agent"}, Tools: []p2runtime.P2Tool{newTool(models, access)}}
+			extension := newExtension(models, access)
 			p2runtime.ContributeKeyed(self, p2runtime.Extensions, p2runtime.Entry(extension.Extension.Name, extension))
 			return nil
 		})

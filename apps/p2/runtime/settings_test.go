@@ -103,3 +103,17 @@ func TestLockedFileCancelledBeforeTheLock(t *testing.T) {
 		t.Fatalf("cancelled: %v", err)
 	}
 }
+
+// Ports codemode-setting.test.ts "Pi Mobile's settings.json with `codemode` validates".
+func TestPiMobilesSettingsJsonWithCodemodeValidates(t *testing.T) {
+	settings, err := ValidateSettings(map[string]any{"codemode": false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := settings.Value("codemode"); got != false || len(settings.Keys()) != 1 {
+		t.Fatalf("settings = %v", settings)
+	}
+	if _, err := ValidateSettings(map[string]any{"codemode": "yes"}); !errors.Is(err, ErrInvalidSettings) {
+		t.Fatalf("codemode: yes: %v", err)
+	}
+}
