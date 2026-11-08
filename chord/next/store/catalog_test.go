@@ -84,7 +84,7 @@ func TestCatalog(t *testing.T) {
 		table := StageTable(&TableDefinitionWrite{
 			Table: catalogTable, Version: edits.Version, State: StateReady, Columns: edits.Record, Key: edits.Key, Fingerprint: edits.Fingerprint,
 		})
-		fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+		fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 		_, err := store.Commit([]StagedWrite{table, failing}, fence, background)
 		if err == nil || !strings.Contains(err.Error(), "no such table") {
 			t.Fatalf("Commit error = %v, want no such table", err)

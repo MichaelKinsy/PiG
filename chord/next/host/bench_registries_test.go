@@ -97,6 +97,13 @@ func benchRegistryOf(b testing.TB, contributors int) *benchRegistry {
 	return result
 }
 
+// setInSection sets a writable inside a section of the host's loop, as an object's code does (a registry compose the set
+// causes then reads inside the section).
+func setInSection(h Host, writable state.Writable[any], value any) (err error) {
+	h.(*chordHost).enter(func() { err = writable.Set(value) })
+	return err
+}
+
 func BenchmarkRegistries(b *testing.B) {
 	b.Run("writable.set, one watch", func(b *testing.B) {
 		one := benchRegistryOf(b, 1)
@@ -106,7 +113,7 @@ func BenchmarkRegistries(b *testing.B) {
 		watch.Start(func(context.Context, chord.NativeWatchCall[any]) error { return nil })
 		b.ReportAllocs()
 		for i := 0; b.Loop(); i++ {
-			if err := writable.Set(float64(i + 1)); err != nil {
+			if err := setInSection(one.host, writable, float64(i+1)); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -122,11 +129,15 @@ func BenchmarkRegistries(b *testing.B) {
 		_, _ = one.watch.Stop()
 		must(b, writable.Set(-1.0))
 		b.ReportAllocs()
-		for b.Loop() {
-			if err := writable.Set(-1.0); err != nil {
-				b.Fatal(err)
+		// Inside one section, as an object's code sets: the cost of a same-value set there, not a section entry.
+		one.host.(*chordHost).enter(func() {
+			for b.Loop() {
+				if err := writable.Set(-1.0); err != nil {
+					b.Error(err)
+					return
+				}
 			}
-		}
+		})
 		b.StopTimer()
 		must(b, one.host.Close(background))
 	})
@@ -143,7 +154,7 @@ func BenchmarkRegistries(b *testing.B) {
 			b.ReportAllocs()
 			sets := 0
 			for i := 0; b.Loop(); i++ {
-				if err := target.Set(float64(i + 1)); err != nil {
+				if err := setInSection(registry.host, target, float64(i+1)); err != nil {
 					b.Fatal(err)
 				}
 				sets++
