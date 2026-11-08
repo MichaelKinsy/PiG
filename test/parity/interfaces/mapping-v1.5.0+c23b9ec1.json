@@ -4725,8 +4725,26 @@
     },
     {
       "id": "pkg:agent/.#ProxyStreamOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:88862d79edd38094b711be36a593f3280e15ef46035fa2c99e8adaa5065617d9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:88862d79edd38094b711be36a593f3280e15ef46035fa2c99e8adaa5065617d9",
+      "rationale": "Derived by the interface gap detector: ProxyStreamOptions is Go agent/proxy.go#ProxyStreamOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "agent/proxy.go#ProxyStreamOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:agent/proxy.go#ProxyStreamOptions"
+      ],
+      "evidence": [
+        "test:agent/proxy_oracle_test.go#TestStreamProxyAbortMessageDependsOnWhereTheSignalFired",
+        "test:agent/proxy_oracle_test.go#TestStreamProxyDeadlineBeforeHeadersIsATimeoutAbort",
+        "test:agent/proxy_partial_arguments_upstream_test.go#TestStreamProxyShowsGrowingPartialArgumentsWithoutKeepingTheRawTextOnTheBlockInLinearTime"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:agent/.#ProxyStreamOptions::property:authToken",
@@ -4770,8 +4788,23 @@
     },
     {
       "id": "pkg:agent/.#ProxyStreamOptions::property:disableContinuation",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2a054cca456f84086c5bd671015ab5f014b02fe7e93b48f1702c86efe1f45a22"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2a054cca456f84086c5bd671015ab5f014b02fe7e93b48f1702c86efe1f45a22",
+      "rationale": "Derived by the interface gap detector: ProxyStreamOptions::property:disableContinuation is Go agent/proxy.go#ProxyStreamOptions.DisableContinuation (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "agent/proxy.go#ProxyStreamOptions.DisableContinuation"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:agent/proxy.go#ProxyStreamOptions.DisableContinuation"
+      ],
+      "evidence": [
+        "test:agent/proxy_test.go#TestProxyRequestPreservesOptionPresence"
+      ]
     },
     {
       "id": "pkg:agent/.#ProxyStreamOptions::property:headers",
@@ -26766,8 +26799,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeySupportUnlessOverridden",
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyModeIndependentlyOfLongRetention"
       ]
     },
     {
@@ -27909,8 +27942,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeySupportUnlessOverridden",
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyModeIndependentlyOfLongRetention"
       ]
     },
     {
@@ -29954,7 +29987,8 @@
       ],
       "evidence": [
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream",
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:ai/models_dispatch_abort_test.go#TestModelsDispatchSetupErrorsAreAbortedWhenTheRequestSignalIsAborted"
       ]
     },
     {
@@ -44826,9 +44860,9 @@
         "public-api:ai/openai.go#ConvertCompletionsMessagesOptions"
       ],
       "evidence": [
+        "test:ai/openai_completions_thinking_as_text_upstream_test.go#TestOpenAICompletionsThinkingAsTextReplayUpstream",
         "test:ai/convert_completions_forwarding_test.go#TestConvertCompletionsMessagesUsesTheModelsProviderBaseURLIDAndInput",
-        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties",
-        "test:ai/ledger_options_test.go#TestConvertCompletionsMessagesGrammarToolInputPropertiesReplaysACustomToolCall"
+        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties"
       ]
     },
     {
@@ -44868,9 +44902,9 @@
         "public-api:ai/openai.go#ConvertCompletionsMessages"
       ],
       "evidence": [
+        "test:ai/openai_completions_thinking_as_text_upstream_test.go#TestOpenAICompletionsThinkingAsTextReplayUpstream",
         "test:ai/convert_completions_forwarding_test.go#TestConvertCompletionsMessagesUsesTheModelsProviderBaseURLIDAndInput",
-        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties",
-        "test:ai/ledger_options_test.go#TestConvertCompletionsMessagesGrammarToolInputPropertiesReplaysACustomToolCall"
+        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties"
       ]
     },
     {
@@ -44890,9 +44924,9 @@
         "public-api:ai/openai.go#ConvertCompletionsMessages"
       ],
       "evidence": [
+        "test:ai/openai_completions_thinking_as_text_upstream_test.go#TestOpenAICompletionsThinkingAsTextReplayUpstream",
         "test:ai/convert_completions_forwarding_test.go#TestConvertCompletionsMessagesUsesTheModelsProviderBaseURLIDAndInput",
-        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties",
-        "test:ai/ledger_options_test.go#TestConvertCompletionsMessagesGrammarToolInputPropertiesReplaysACustomToolCall"
+        "test:ai/convert_completions_grammar_test.go#TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties"
       ]
     },
     {
@@ -71886,8 +71920,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeySupportUnlessOverridden",
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyModeIndependentlyOfLongRetention"
       ]
     },
     {
@@ -73073,8 +73107,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeySupportUnlessOverridden",
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyModeIndependentlyOfLongRetention"
       ]
     },
     {
@@ -75162,7 +75196,8 @@
       ],
       "evidence": [
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream",
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:ai/models_dispatch_abort_test.go#TestModelsDispatchSetupErrorsAreAbortedWhenTheRequestSignalIsAborted"
       ]
     },
     {
@@ -89303,8 +89338,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeySupportUnlessOverridden",
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyModeIndependentlyOfLongRetention"
       ]
     },
     {
@@ -89891,8 +89926,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
-        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeySupportUnlessOverridden",
+        "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyModeIndependentlyOfLongRetention"
       ]
     },
     {
@@ -152320,7 +152355,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryListWithHistory"
+        "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryListWithLive"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -154496,7 +154531,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryListWithHistory"
+        "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryListWithLive"
       ],
       "evidence": [
         "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream",
@@ -165097,8 +165132,26 @@
     },
     {
       "id": "pkg:coding-agent/.#ExtensionAPI",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5df49eb6dd393b1ff355fb1829aa880c717ad12e3b591fec57bc8b2601e794ae"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5df49eb6dd393b1ff355fb1829aa880c717ad12e3b591fec57bc8b2601e794ae",
+      "rationale": "Derived by the interface gap detector: ExtensionAPI is Go coding/extension/api.go#API (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/api.go#API"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/builtin/codemode/tool.go#CreateCodemodeExtension"
+      ],
+      "evidence": [
+        "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
+        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
+        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIMcpServersRegisterAndUnregister"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:coding-agent/.#ExtensionAPI::property:appendEntry",
@@ -167055,13 +167108,43 @@
     },
     {
       "id": "pkg:coding-agent/.#ExtensionAPI::property:registerMarkdownTransformer",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b656d3bff2472bab4b29654d0f256f88c415ad042a0a6d1c77509cf4e41e306b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b656d3bff2472bab4b29654d0f256f88c415ad042a0a6d1c77509cf4e41e306b",
+      "rationale": "Derived by the interface gap detector: ExtensionAPI::property:registerMarkdownTransformer is Go coding/extension/api.go#API.RegisterMarkdownTransformer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/api.go#API.RegisterMarkdownTransformer"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:coding/extension/api.go#API.RegisterMarkdownTransformer"
+      ],
+      "evidence": [
+        "test:test/extension-conformance/api_reference_loader_test.go#TestConformanceAPIRegisterFlagMessageRendererAndMarkdownTransformer"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#ExtensionAPI::property:registerMarkdownTransformer::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:033a76453d2661a3af203b6d301a0a8862215bc6b612995aa4045b26478b1bf3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:033a76453d2661a3af203b6d301a0a8862215bc6b612995aa4045b26478b1bf3",
+      "rationale": "Derived by the interface gap detector: ExtensionAPI::property:registerMarkdownTransformer::call:0 is Go coding/extension/api.go#API.RegisterMarkdownTransformer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/api.go#API.RegisterMarkdownTransformer"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:coding/extension/api.go#API.RegisterMarkdownTransformer"
+      ],
+      "evidence": [
+        "test:test/extension-conformance/api_reference_loader_test.go#TestConformanceAPIRegisterFlagMessageRendererAndMarkdownTransformer"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#ExtensionAPI::property:registerMcpServer",
@@ -172598,8 +172681,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories",
-        "test:test/extension-conformance/api_reference_loader_test.go#TestConformanceAPIRegisterFlagMessageRendererAndMarkdownTransformer"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
       ]
     },
     {
@@ -172620,8 +172703,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories",
-        "test:test/extension-conformance/api_reference_loader_test.go#TestConformanceAPIRegisterFlagMessageRendererAndMarkdownTransformer"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
       ]
     },
     {
@@ -183750,8 +183833,25 @@
     },
     {
       "id": "pkg:coding-agent/.#MarkdownMessageType",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b525c53606ffc7eb4360b017f7711d41c647a55843edf86a4ba1af07915c618b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b525c53606ffc7eb4360b017f7711d41c647a55843edf86a4ba1af07915c618b",
+      "rationale": "Derived by the interface gap detector: MarkdownMessageType is Go coding/extension/renderer.go#MarkdownMessageType (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/renderer.go#MarkdownMessageType"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/factoryload/api.go#markdownMessageTypes"
+      ],
+      "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
+        "test:internal/codingagent/mermaid_class_assignments_upstream_test.go#TestMermaidClassAssignmentsUpstream"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#MarkdownTransformContext",
@@ -183767,12 +183867,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/markdown_transform_proxy.go#markdownTransformProxy.transform"
+        "call:coding/extension/host/inproc/runner.go#restrictMarkdownTransformer"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories",
-        "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
       ]
     },
     {
@@ -183793,8 +183893,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories",
-        "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
       ]
     },
     {
@@ -183837,7 +183937,8 @@
       ],
       "evidence": [
         "test:tui/user_message_upstream_test.go#TestUpstreamUserMessagePersistedEntryIdentity",
-        "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity"
+        "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
+        "test:tui/markdown_surface_test.go#TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent"
       ]
     },
     {
@@ -183858,8 +183959,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories",
-        "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
       ]
     },
     {
@@ -183880,7 +183981,8 @@
       ],
       "evidence": [
         "test:tui/user_message_upstream_test.go#TestUpstreamUserMessagePersistedEntryIdentity",
-        "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity"
+        "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
+        "test:tui/markdown_surface_test.go#TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent"
       ]
     },
     {
@@ -183901,8 +184003,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidFallbackAssistantBlockMatchesDisabledTransform",
-        "test:internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidPartialWarningRemainsDisplayOnly"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidFallbackAssistantBlockMatchesDisabledTransform"
       ]
     },
     {
@@ -183923,19 +184025,51 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidFallbackAssistantBlockMatchesDisabledTransform",
-        "test:internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidPartialWarningRemainsDisplayOnly"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
+        "test:internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidFallbackAssistantBlockMatchesDisabledTransform"
       ]
     },
     {
       "id": "pkg:coding-agent/.#MarkdownTransformerOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:de6952c3947cd70abe83123532481605e89202ecc9e0398a1fe41e941dbf5a08"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:de6952c3947cd70abe83123532481605e89202ecc9e0398a1fe41e941dbf5a08",
+      "rationale": "Derived by the interface gap detector: MarkdownTransformerOptions is Go coding/extension/renderer.go#MarkdownTransformerOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/renderer.go#MarkdownTransformerOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+      ],
+      "evidence": [
+        "test:test/extension-conformance/api_register_test.go#TestConformanceAPIRegisterRenderersAndTransformer",
+        "test:test/extension-conformance/api_register_test.go#TestConformanceAPIRegisterToolCommandFlagShortcut"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#MarkdownTransformerOptions::property:messageTypes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3430738b40de7964fbc19d5d07c56ee6f5f45a31d76f14d0ec9ad448eb4789df"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3430738b40de7964fbc19d5d07c56ee6f5f45a31d76f14d0ec9ad448eb4789df",
+      "rationale": "Derived by the interface gap detector: MarkdownTransformerOptions::property:messageTypes is Go coding/extension/markdowntransform/markdowntransform.go#MarkdownTransformerOptions.MessageTypes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/extension/markdowntransform/markdowntransform.go#MarkdownTransformerOptions.MessageTypes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/extension/factoryload/api.go#markdownMessageTypes"
+      ],
+      "evidence": [
+        "test:test/extension-conformance/api_register_test.go#TestConformanceAPIRegisterRenderersAndTransformer",
+        "test:test/extension-conformance/api_register_test.go#TestConformanceAPIRegisterToolCommandFlagShortcut"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#MarkdownTransformerRegistration",
@@ -210647,7 +210781,7 @@
       "evidence": [
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
         "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues",
-        "test:internal/codingagent/settings_test.go#TestSettingsClosedUnionsAreTypedAndKeepTheirDefaults"
+        "test:internal/codingagent/markdown_surface_async_test.go#TestSurfaceMarkdownTransformIsStaticWithoutAnExtensionTransformer"
       ]
     },
     {
@@ -210669,7 +210803,7 @@
       "evidence": [
         "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
         "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues",
-        "test:internal/codingagent/settings_test.go#TestSettingsClosedUnionsAreTypedAndKeepTheirDefaults"
+        "test:internal/codingagent/markdown_surface_async_test.go#TestSurfaceMarkdownTransformIsStaticWithoutAnExtensionTransformer"
       ]
     },
     {
@@ -262828,9 +262962,7 @@
         "call:mcp/naming.go#McpNamespace"
       ],
       "evidence": [
-        "test:coding/extension/mcp_servers_oracle_test.go#TestMcpHelpersMatchPi",
-        "test:coding/extension/tool_filter_test.go#TestToolFilterScopeIntersects",
-        "test:coding/piglet/scope_summary_test.go#TestToolScopeNoticeNamesServersToolsAndReasons"
+        "test:mcp/naming_pi_test.go#TestMcpNamespaceIsMcpServerWithDashReplacedByUnderscore"
       ]
     },
     {
@@ -262850,9 +262982,7 @@
         "call:mcp/naming.go#McpNamespace"
       ],
       "evidence": [
-        "test:coding/extension/mcp_servers_oracle_test.go#TestMcpHelpersMatchPi",
-        "test:coding/extension/tool_filter_test.go#TestToolFilterScopeIntersects",
-        "test:coding/piglet/scope_summary_test.go#TestToolScopeNoticeNamesServersToolsAndReasons"
+        "test:mcp/naming_pi_test.go#TestMcpNamespaceIsMcpServerWithDashReplacedByUnderscore"
       ]
     },
     {
@@ -269511,6 +269641,7 @@
         "call:mcp/oauth/auth_provider.go#authProvider.refresh"
       ],
       "evidence": [
+        "test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInCancelsWhileAnotherProcessHoldsTheRefreshLock",
         "test:coding/session_graph_mcp_test.go#TestGraphMcpCredentialsRefreshLock"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -269532,6 +269663,7 @@
         "call:mcp/oauth/auth_provider.go#authProvider.refresh"
       ],
       "evidence": [
+        "test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInCancelsWhileAnotherProcessHoldsTheRefreshLock",
         "test:coding/session_graph_mcp_test.go#TestGraphMcpCredentialsRefreshLock"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
