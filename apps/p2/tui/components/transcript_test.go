@@ -25,7 +25,7 @@ type testContext struct {
 	themeRef *theme.ThemeRef
 }
 
-func newTestContext(t *testing.T) *testContext {
+func newTestContext(t testing.TB) *testContext {
 	t.Helper()
 	dark, _ := theme.BuiltinTheme("dark")
 	built, err := theme.CreateTheme(dark, pitui.TerminalColorModeTrueColor, theme.TerminalState{})

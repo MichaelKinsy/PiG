@@ -561,3 +561,25 @@ func clampI(v, lo, hi int) int {
 	}
 	return v
 }
+
+// Reset clears the screen, the scrollback and the pen state (RIS).
+func (g *Grid) Reset() {
+	g.reset()
+	g.scrollback = nil
+	g.syncDepth = 0
+}
+
+// Resize changes the grid size, keeping the top-left content. Rows cut off the
+// bottom are dropped; the cursor is clamped into the new bounds.
+func (g *Grid) Resize(rows, cols int) {
+	cells := make([][]Cell, rows)
+	for r := range cells {
+		cells[r] = makeRow(cols)
+		if r < g.Rows {
+			copy(cells[r], g.cells[r][:min(cols, g.Cols)])
+		}
+	}
+	g.cells, g.Rows, g.Cols = cells, rows, cols
+	g.curRow = clampI(g.curRow, 0, rows-1)
+	g.curCol = clampI(g.curCol, 0, cols-1)
+}

@@ -1,0 +1,76 @@
+goos: linux
+goarch: amd64
+pkg: github.com/MichaelKinsy/PiG/apps/p2/tui/components
+cpu: Intel(R) Xeon(R) Platinum 8468
+BenchmarkBuildTranscript/pairs=10-8     	  106540	     11169 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=10-8     	  105775	     11722 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=10-8     	  123043	     11005 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=10-8     	  103744	     11525 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=10-8     	  115946	     12596 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=10-8     	  100046	     11835 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=10-8     	   95700	     11401 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=10-8     	  105814	     12414 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=10-8     	   82263	     14900 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=10-8     	   93196	     10822 ns/op	   10184 B/op	      99 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	   10000	    106866 ns/op	  104040 B/op	    1070 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	   10000	    119227 ns/op	  104040 B/op	    1070 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	    9607	    126708 ns/op	  104041 B/op	    1070 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	   11022	    104940 ns/op	  104040 B/op	    1070 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	   12850	     96464 ns/op	  104040 B/op	    1070 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	   10000	    103551 ns/op	  104040 B/op	    1070 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	   11534	     98424 ns/op	  104040 B/op	    1070 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	   12669	     95488 ns/op	  104040 B/op	    1070 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	   13266	     91035 ns/op	  104040 B/op	    1070 allocs/op
+BenchmarkBuildTranscript/pairs=100-8    	   13826	     88096 ns/op	  104040 B/op	    1070 allocs/op
+BenchmarkTranscriptViewRender-8         	   21237	     53489 ns/op	   81200 B/op	     319 allocs/op
+BenchmarkTranscriptViewRender-8         	   23763	     51135 ns/op	   81079 B/op	     319 allocs/op
+BenchmarkTranscriptViewRender-8         	   23116	     50835 ns/op	   81081 B/op	     319 allocs/op
+BenchmarkTranscriptViewRender-8         	   24776	     49672 ns/op	   81075 B/op	     319 allocs/op
+BenchmarkTranscriptViewRender-8         	   19070	     56668 ns/op	   81098 B/op	     319 allocs/op
+BenchmarkTranscriptViewRender-8         	   24084	     50886 ns/op	   81077 B/op	     319 allocs/op
+BenchmarkTranscriptViewRender-8         	   18097	     69120 ns/op	   81103 B/op	     319 allocs/op
+BenchmarkTranscriptViewRender-8         	   16413	     81304 ns/op	   81114 B/op	     319 allocs/op
+BenchmarkTranscriptViewRender-8         	   11475	    113339 ns/op	   81164 B/op	     320 allocs/op
+BenchmarkTranscriptViewRender-8         	   11324	    104089 ns/op	   81165 B/op	     320 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   13972	     83079 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   14979	     80384 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   12776	     95874 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   12478	     93598 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   12889	     98577 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   12276	     97093 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   13645	     84157 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   16756	     71956 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   19534	     68671 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkTranscriptViewRenderCached-8   	   14985	     82847 ns/op	   81000 B/op	     318 allocs/op
+BenchmarkAssistantMessageRender-8       	 1691116	       634.3 ns/op	     640 B/op	       3 allocs/op
+BenchmarkAssistantMessageRender-8       	 2223456	       516.5 ns/op	     640 B/op	       3 allocs/op
+BenchmarkAssistantMessageRender-8       	 2197790	       514.9 ns/op	     640 B/op	       3 allocs/op
+BenchmarkAssistantMessageRender-8       	 2115396	       519.1 ns/op	     640 B/op	       3 allocs/op
+BenchmarkAssistantMessageRender-8       	 2217177	       518.0 ns/op	     640 B/op	       3 allocs/op
+BenchmarkAssistantMessageRender-8       	 2282577	       533.4 ns/op	     640 B/op	       3 allocs/op
+BenchmarkAssistantMessageRender-8       	 2570307	       440.9 ns/op	     640 B/op	       3 allocs/op
+BenchmarkAssistantMessageRender-8       	 2767425	       435.9 ns/op	     640 B/op	       3 allocs/op
+BenchmarkAssistantMessageRender-8       	 2484004	       474.4 ns/op	     640 B/op	       3 allocs/op
+BenchmarkAssistantMessageRender-8       	 2789998	       428.8 ns/op	     640 B/op	       3 allocs/op
+BenchmarkToolCardRender-8               	   51465	     24120 ns/op	   14355 B/op	     119 allocs/op
+BenchmarkToolCardRender-8               	   48564	     25104 ns/op	   14354 B/op	     119 allocs/op
+BenchmarkToolCardRender-8               	   44785	     24533 ns/op	   14355 B/op	     119 allocs/op
+BenchmarkToolCardRender-8               	   55065	     22282 ns/op	   14355 B/op	     119 allocs/op
+BenchmarkToolCardRender-8               	   55968	     23489 ns/op	   14354 B/op	     119 allocs/op
+BenchmarkToolCardRender-8               	   51946	     23781 ns/op	   14354 B/op	     119 allocs/op
+BenchmarkToolCardRender-8               	   53012	     22335 ns/op	   14355 B/op	     119 allocs/op
+BenchmarkToolCardRender-8               	   51744	     23649 ns/op	   14354 B/op	     119 allocs/op
+BenchmarkToolCardRender-8               	   51907	     23892 ns/op	   14354 B/op	     119 allocs/op
+BenchmarkToolCardRender-8               	   48932	     24441 ns/op	   14355 B/op	     119 allocs/op
+BenchmarkBashExecutionRender-8          	   39619	     29319 ns/op	   24648 B/op	     144 allocs/op
+BenchmarkBashExecutionRender-8          	   42890	     29755 ns/op	   24648 B/op	     144 allocs/op
+BenchmarkBashExecutionRender-8          	   42622	     27750 ns/op	   24648 B/op	     144 allocs/op
+BenchmarkBashExecutionRender-8          	   42498	     27219 ns/op	   24648 B/op	     144 allocs/op
+BenchmarkBashExecutionRender-8          	   42135	     27873 ns/op	   24648 B/op	     144 allocs/op
+BenchmarkBashExecutionRender-8          	   42612	     27244 ns/op	   24648 B/op	     144 allocs/op
+BenchmarkBashExecutionRender-8          	   39490	     27589 ns/op	   24648 B/op	     144 allocs/op
+BenchmarkBashExecutionRender-8          	   44422	     28307 ns/op	   24648 B/op	     144 allocs/op
+BenchmarkBashExecutionRender-8          	   43638	     27778 ns/op	   24648 B/op	     144 allocs/op
+BenchmarkBashExecutionRender-8          	   40496	     28438 ns/op	   24648 B/op	     144 allocs/op
+PASS
+ok  	github.com/MichaelKinsy/PiG/apps/p2/tui/components	83.981s

@@ -10,6 +10,7 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/components"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/jsvalue"
+	"github.com/MichaelKinsy/PiG/apps/p2/tui/prefs"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/render"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/tools"
 )
@@ -38,3 +39,6 @@ func Ordered[V any](table *p2runtime.KeyedTable[V]) []V {
 	}
 	return values
 }
+
+// TuiSettingFields are the plugin rows of `/settings`, listed after the built-in ones in key order; the key is `<plugin>.<name>`.
+var TuiSettingFields = p2runtime.NewKeyedRegistry[prefs.TuiSettingField]("p2.tui-setting-fields")
