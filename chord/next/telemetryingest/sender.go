@@ -24,7 +24,7 @@ type Sender struct {
 	limit    int
 	waiting  func(partial bool) bool
 	release  func()
-	call     func(batch Batch) (sent bool, err error)
+	call     func(batch TelemetryBatch) (sent bool, err error)
 
 	mu      sync.Mutex
 	stopped bool
@@ -42,7 +42,7 @@ func SendPageTelemetry(h host.Host, recorder *Recorder, ctx context.Context) (*S
 		// Spans only: its metrics are taken with them and dropped.
 		waiting: func(bool) bool { return recorder.QueuedSpans() > 0 },
 		release: held.Release,
-		call: func(batch Batch) (bool, error) {
+		call: func(batch TelemetryBatch) (bool, error) {
 			if held.State().Value().Kind != host.RefStateLive {
 				return false, nil
 			}
@@ -63,7 +63,7 @@ func SendWorkerTelemetry(h host.Host, recorder *Recorder, ctx context.Context) (
 		recorder: recorder, limit: WorkerBatchRows,
 		waiting: recorder.Pending,
 		release: held.Release,
-		call: func(batch Batch) (bool, error) {
+		call: func(batch TelemetryBatch) (bool, error) {
 			if held.State().Value().Kind != host.RefStateLive {
 				return false, nil
 			}

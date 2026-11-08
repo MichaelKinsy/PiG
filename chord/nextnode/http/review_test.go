@@ -7,6 +7,7 @@ import (
 	"net"
 	nethttp "net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -215,12 +216,12 @@ func TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests(t *testing.T) {
 	mounted := httptest.NewRequest("GET", "/json", strings.NewReader("{}"))
 	mounted.Host = "127.0.0.1:1"
 	converted := NodeRequestOf(mounted)
-	if converted.Refused != nil || converted.Request.Body != nethttp.NoBody {
+	if converted.Kind != NodeRequestRequest || converted.Request.Body != nethttp.NoBody {
 		t.Fatalf("converted = %+v, want a request without a body", converted)
 	}
 	post := httptest.NewRequest("POST", "/json", strings.NewReader("{}"))
 	post.Host = "127.0.0.1:1"
-	if converted := NodeRequestOf(post); converted.Refused != nil || converted.Request.Body == nethttp.NoBody {
+	if converted := NodeRequestOf(post); converted.Kind != NodeRequestRequest || converted.Request.Body == nethttp.NoBody {
 		t.Fatalf("a POST's body is kept: %+v", converted)
 	}
 }
@@ -328,12 +329,12 @@ func TestReviewAPluginSocketIsReadWhileItsHandlerRuns(t *testing.T) {
 	t.Cleanup(release.resolve)
 	received := make(chan string, 4)
 	server := serving(t, []plugin{{"@app/slow", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
-		Pattern: "/slow", Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
+		Pattern: "/slow", Socket: HttpSocketOptions{Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
 			socket.OnMessage(func(message Message) { received <- message.Text() })
 			blocked.resolve()
 			<-release.done()
 			return nil
-		}},
+		}}},
 	}}})}}, servedOptions{after: clock.afterFunc})
 	client, err := dialSocket(server.port, "/slow", owner, 0)
 	if err != nil {
@@ -374,10 +375,10 @@ func TestReviewAPluginSocketIsReadWhileItsHandlerRuns(t *testing.T) {
 func TestReviewAPluginSocketsListenersGetTypedMessages(t *testing.T) {
 	got := make(chan Message, 2)
 	server := serving(t, []plugin{{"@app/typed", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
-		Pattern: "/typed", Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
+		Pattern: "/typed", Socket: HttpSocketOptions{Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
 			socket.OnMessage(func(message Message) { got <- message })
 			return nil
-		}},
+		}}},
 	}}})}}, servedOptions{})
 	client := mustSocketTo(t, server.port, "/typed", owner)
 	client.Send([]byte("text"), false, nil)
@@ -453,9 +454,9 @@ func TestReviewSameSiteIsAClosedSet(t *testing.T) {
 	for _, each := range []struct {
 		value SameSite
 		want  string
-	}{{SameSiteStrict, "Strict"}, {SameSiteLax, "Lax"}, {SameSite(200), "Strict"}} {
-		if got := each.value.String(); got != each.want {
-			t.Fatalf("SameSite(%d) = %q, want %q", each.value, got, each.want)
+	}{{"", "Strict"}, {SameSiteStrict, "Strict"}, {SameSiteLax, "Lax"}, {"None; Secure", "Strict"}, {"lax", "Strict"}} {
+		if got := each.value.attribute(); got != each.want {
+			t.Fatalf("SameSite(%q) = %q, want %q", each.value, got, each.want)
 		}
 	}
 }
@@ -498,7 +499,7 @@ func TestReviewConflictMessagesQuoteKeysAsWritten(t *testing.T) {
 
 // Review S13: the host is lowercased as ASCII only.
 func TestReviewHostsAreLowercasedAsASCIIOnly(t *testing.T) {
-	hosts := NewStringSet("notei.example")
+	hosts := []string{"notei.example"}
 	request := admissionRequest([]admissionHeader{{"host", "note\u0130.example"}})
 	if _, ok := isRefused(admit(request, Connection{}, hosts, nil)); !ok {
 		t.Fatal("Host: noteİ.example was admitted as notei.example")
@@ -575,7 +576,7 @@ func TestReviewARouterChangeBetweenAnUpgradesCheckAndItsKeepStillEndsTheConnecti
 	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
 	server := serving(t, []plugin{tunnel}, servedOptions{
 		revokeHook: func(router *Router) {
-			if !router.Hosts.Has("t.example") {
+			if !slices.Contains(router.Hosts, "t.example") {
 				revoked <- struct{}{}
 			}
 		},
@@ -651,7 +652,7 @@ func TestReviewARouterChangeBetweenAPluginSocketUpgradesCheckAndItsKeepStillEnds
 	release := newGate()
 	t.Cleanup(release.resolve)
 	revoked := make(chan struct{}, 8)
-	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/echo", noopSocket())}})}
 	server := serving(t, []plugin{sockets}, servedOptions{
 		noListen: true,
 		revokeHook: func(router *Router) {
@@ -709,7 +710,7 @@ func TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits(t *testing.
 			tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
 			server := serving(t, []plugin{tunnel}, servedOptions{
 				revokeHook: func(router *Router) {
-					if !router.Hosts.Has("t.example") {
+					if !slices.Contains(router.Hosts, "t.example") {
 						removedSeen.Store(true)
 						hookV1.resolve()
 						<-releaseV1.done()
@@ -781,7 +782,7 @@ func TestReviewAHostRemovedAndRestoredBetweenAnUpgradesCheckAndItsKeepEndsTheCon
 	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
 	server := serving(t, []plugin{tunnel}, servedOptions{
 		revokeHook: func(router *Router) {
-			if !router.Hosts.Has("t.example") {
+			if !slices.Contains(router.Hosts, "t.example") {
 				sawGone.Store(true)
 				gone <- struct{}{}
 			} else if sawGone.Load() {
@@ -838,7 +839,7 @@ func serverSideSocket(t *testing.T) *WebSocket {
 // ends the connection at its delivery.
 func TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead(t *testing.T) {
 	router := func(order uint64, host ...string) *Router {
-		return &Router{Hosts: NewStringSet(host...), SocketHandlers: map[*HttpSocket]struct{}{}, order: order}
+		return &Router{Hosts: host, SocketHandlers: map[*HttpSocket]struct{}{}, order: order}
 	}
 	for _, read := range []string{"V0", "V2"} {
 		t.Run("the check read "+read, func(t *testing.T) {
@@ -871,7 +872,7 @@ func TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers(t *testing.
 		noListen: true,
 		revokeHook: func(router *Router) {
 			last.Store(router)
-			if !router.Hosts.Has("t.example") {
+			if !slices.Contains(router.Hosts, "t.example") {
 				gone <- struct{}{}
 			}
 		},
@@ -895,7 +896,7 @@ func TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers(t *testing.
 // drop the rest (a leak would cost one router per reload for the life of the component).
 func TestReviewTheDeliveriesKeptForUpgradesAreBoundedByTheOnesInFlight(t *testing.T) {
 	u := NewUpgrades()
-	router := func() *Router { return &Router{Hosts: NewStringSet(), SocketHandlers: map[*HttpSocket]struct{}{}} }
+	router := func() *Router { return &Router{SocketHandlers: map[*HttpSocket]struct{}{}} }
 	u.delivered(router())
 	seen := u.admitting()
 	const deliveries = 1000
@@ -924,7 +925,7 @@ func TestReviewTheDeliveriesKeptForUpgradesAreBoundedByTheOnesInFlight(t *testin
 // nothing. One composed after it judges the connection, whether or not the router the check read is ever delivered.
 func TestReviewAnUpgradeWhoseCheckReadAnUndeliveredRouterIsJudgedOnlyByLaterCompositions(t *testing.T) {
 	router := func(order uint64, host ...string) *Router {
-		return &Router{Hosts: NewStringSet(host...), SocketHandlers: map[*HttpSocket]struct{}{}, order: order}
+		return &Router{Hosts: host, SocketHandlers: map[*HttpSocket]struct{}{}, order: order}
 	}
 	for _, laterGone := range []bool{false, true} {
 		name := "only an older composition was delivered since the count"
@@ -955,7 +956,7 @@ func TestReviewAnUpgradeWhoseCheckReadAnUndeliveredRouterIsJudgedOnlyByLaterComp
 // Every upgrade that was in flight is settled once it is over, handed out or refused, so the deliveries kept for it are
 // released (the component's own `admitting` and `settled`, not the Upgrades' alone).
 func TestReviewAnUpgradeIsSettledWhetherItWasHandedOutOrRefused(t *testing.T) {
-	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/echo", noopSocket())}})}
 	server := serving(t, []plugin{sockets}, servedOptions{})
 	mustRefused(t, server.port, "/nowhere", owner, 404)
 	socket := mustSocketTo(t, server.port, "/echo", owner)
@@ -972,13 +973,13 @@ func TestReviewAnUpgradeIsSettledWhetherItWasHandedOutOrRefused(t *testing.T) {
 // goroutines of their own: their reads must be sections of the host's loop too, or they recompose the registry beside a commit
 // (data races, and a reload that fails with "reload inside a commit or a derive compute").
 func TestReviewRequestsAndUpgradesReadTheRegistriesWhileReloadsComposeThem(t *testing.T) {
-	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/echo", noopSocket())}})}
 	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
 	// A route for the requests to reach their authenticators, and an authenticator the reloads add and remove in turn.
 	routes := plugin{"@app/routes", contributing(HttpContribution{Routes: []HttpRouteEntry{
 		publicRoute("GET /x", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("x"), nil }),
 	}})}
-	extra := plugin{"@app/extra-auth", authenticating(func(HttpRequest, context.Context) (data.Principal, error) { return nil, nil })}
+	extra := plugin{"@app/extra-auth", authenticating(func(context.Context, HttpRequest) (data.Principal, error) { return nil, nil })}
 	server := serving(t, []plugin{sockets, tunnel, routes}, servedOptions{})
 	stop := make(chan struct{})
 	var wg sync.WaitGroup

@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -49,7 +50,7 @@ type WorkerOptions struct {
 	// WorkerKinds are the app's worker host kinds: the one of the address the server starts places the worker's route.
 	WorkerKinds []*contracts.HostKind
 	// Busy is the app's extra keep-alive counts (a record of numbers, all zero when idle).
-	Busy workers.BusyWatchable
+	Busy chord.Watchable[delta.JsonValue]
 	// OnError gets the worker host's errors (host.HostError) and a failed start's.
 	OnError func(err any)
 	// Node is how the worker's Node subprocess is started.
@@ -164,7 +165,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		{Name: "chord.app.files", Facet: FilesFacet(files, kit.Files, kit.Uploads)},
 		{Name: "chord.app.data.export", Facet: HostDataFacet(kit.Dir, opened, token)},
 	}
-	if _, err := start.Plugins.Load(relay, workers.WorkerLoad{
+	if _, err := start.Plugins.Load(ctx, relay, workers.WorkerLoad{
 		Kind: kit.Facet, HostKind: hostKind, GoCore: goCore,
 		Core: []plugins.CoreFacet{{Name: "chord.app.data", Module: dataModule}},
 		Bridged: []plugins.BridgedFacet{
@@ -173,7 +174,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		},
 		Principal: kit.Principal, Peer: kit.Server,
 		Store: &plugins.StoreOptions{Path: storePath}, CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(), ReloadDrainTimeout: kit.Timeouts.reloadDrain(),
-	}, ctx); err != nil {
+	}); err != nil {
 		return nil, err
 	}
 	if recorder != nil {

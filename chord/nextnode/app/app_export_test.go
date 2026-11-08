@@ -27,11 +27,7 @@ import (
 // workerStatus is the status of the worker at key in the workers' state: "" when it has none.
 func workerStatus(t *testing.T, found *workers.Workers, key string) string {
 	t.Helper()
-	value, err := found.State().Value()
-	if err != nil {
-		t.Fatal(err)
-	}
-	entry, _ := value.(*delta.JsonObject).Value(key).(*delta.JsonObject)
+	entry, _ := found.State().Value().(*delta.JsonObject).Value(key).(*delta.JsonObject)
 	if entry == nil {
 		return ""
 	}
@@ -80,8 +76,7 @@ func TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore
 	write(t, p1, "before")
 	found := s.app.Workers["project"]
 	entry := func() delta.JsonValue {
-		value, _ := found.State().Value()
-		return value.(*delta.JsonObject).Value("project|p1")
+		return found.State().Value().(*delta.JsonObject).Value("project|p1")
 	}
 	pid := entry().(*delta.JsonObject).Value("pid")
 	archive := filepath.Join(t.TempDir(), "p1.tar")

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -192,7 +193,7 @@ func (d *DefaultHeaders) Of(admitted *Admitted, router *Router, nonce string) (*
 	headers.mustSet("X-Content-Type-Options", "nosniff")
 	headers.mustSet("Referrer-Policy", "no-referrer")
 	// `X-Frame-Options` names no origin: with framers, only `frame-ancestors` speaks.
-	framed := router != nil && router.Framers.Size() > 0
+	framed := router != nil && len(router.Framers) > 0
 	if !framed && (admitted == nil || admitted.Framer == "") {
 		headers.mustSet("X-Frame-Options", "DENY")
 	}
@@ -249,7 +250,7 @@ const nonceMark = "\x00nonce\x00"
 func csp(admitted *Admitted, router *Router) [2]string {
 	var framers []string
 	if router != nil {
-		framers = router.Framers.Values()
+		framers = slices.Clone(router.Framers)
 	}
 	if admitted != nil && admitted.Framer != "" {
 		framers = append(framers, admitted.Framer)

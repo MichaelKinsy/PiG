@@ -166,7 +166,7 @@ func serving(t *testing.T, plugins []plugin, options servedOptions) *testServer 
 	component.revokeHook = options.revokeHook
 	authenticate := options.authenticate
 	if authenticate == nil {
-		authenticate = func(request HttpRequest, _ context.Context) (data.Principal, error) {
+		authenticate = func(_ context.Context, request HttpRequest) (data.Principal, error) {
 			return principalOf(request.Headers()), nil
 		}
 	}

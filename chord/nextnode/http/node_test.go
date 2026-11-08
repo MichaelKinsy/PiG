@@ -112,8 +112,8 @@ func TestMountingConvertsWithTheListenersChecksNeverPanickingBadTargetsUserinfoT
 	server := serving(t, []plugin{echoPlugin}, servedOptions{noListen: true})
 	own := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		converted := NodeRequestOf(r)
-		if converted.Refused != nil {
-			w.WriteHeader(converted.Refused.Status)
+		if converted.Kind == NodeRequestRefused {
+			w.WriteHeader(int(converted.Status))
 			return
 		}
 		response := server.http.Fetch(converted.Request, converted.Connection)
@@ -233,12 +233,12 @@ func TestNodeRequestRefusesWhatTheListenerRefuses(t *testing.T) {
 		{"TRACK", request("TRACK", "/who", "127.0.0.1:1"), 501},
 	} {
 		converted := NodeRequestOf(each.request)
-		if converted.Refused == nil || converted.Refused.Status != each.status {
+		if converted.Kind != NodeRequestRefused || int(converted.Status) != each.status {
 			t.Fatalf("%s: %+v, want refused %d", each.name, converted, each.status)
 		}
 	}
 	converted := NodeRequestOf(request("GET", "/a/../who?x=1", "127.0.0.1:8788"))
-	if converted.Refused != nil || converted.Request.URL.Path != "/who" || converted.Request.URL.RawQuery != "x=1" || converted.Request.Header.Get("Host") != "127.0.0.1:8788" {
+	if converted.Kind != NodeRequestRequest || converted.Request.URL.Path != "/who" || converted.Request.URL.RawQuery != "x=1" || converted.Request.Header.Get("Host") != "127.0.0.1:8788" {
 		t.Fatalf("converted = %+v", converted)
 	}
 }

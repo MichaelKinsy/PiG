@@ -836,18 +836,14 @@ func (a *App) manifest(address contracts.Address) ArchiveManifest {
 }
 
 // running is whether the worker at address runs.
-func running(found *workers.Workers, address contracts.Address) (bool, error) {
-	value, err := found.State().Value()
-	if err != nil {
-		return false, err
-	}
-	object, _ := value.(*delta.JsonObject)
+func running(found *workers.Workers, address contracts.Address) bool {
+	object, _ := found.State().Value().(*delta.JsonObject)
 	entry, _ := object.Value(address.Key).(*delta.JsonObject)
 	if entry == nil {
-		return false, nil
+		return false
 	}
 	status, _ := entry.Value("status").(string)
-	return status == string(workers.WorkerRunning), nil
+	return status == string(workers.WorkerRunning)
 }
 
 // ExportData writes the data the worker at address created (its store and finished files) as an archive at path, stopping nothing: a
@@ -865,11 +861,7 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 	}
 	// Running: the worker packs its own store. Else the lock, unless a worker starts first: then ask it.
 	for attempt := 1; ; attempt++ {
-		isRunning, err := running(found, address)
-		if err != nil {
-			return err
-		}
-		if isRunning {
+		if running(found, address) {
 			return a.exportRunning(address, manifest, target, ctx)
 		}
 		lock, err := a.workerLock(address, ctx)

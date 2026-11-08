@@ -260,7 +260,7 @@ func (connection *upgraded) gone(router *Router) bool {
 	if connection.relay != nil {
 		relayLeft = !slices.Contains(router.Relays, connection.relay)
 	}
-	gone := (connection.allowed != "" && !router.Hosts.Has(connection.allowed)) || relayLeft
+	gone := (connection.allowed != "" && !slices.Contains(router.Hosts, connection.allowed)) || relayLeft
 	if connection.handler != nil {
 		if _, ok := router.SocketHandlers[connection.handler]; !ok {
 			gone = true

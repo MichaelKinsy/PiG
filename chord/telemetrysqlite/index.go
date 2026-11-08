@@ -54,8 +54,8 @@ const (
 	flushInterval      = time.Second
 )
 
-// Batch is what a recorder hands its owner at once: settled spans and metric aggregates.
-type Batch = telemetryingest.Batch
+// TelemetryBatch is what a recorder hands its owner at once: settled spans and metric aggregates.
+type TelemetryBatch = telemetryingest.TelemetryBatch
 
 // closeOperation is upstream's `closing` promise.
 type closeOperation struct {
@@ -211,7 +211,7 @@ func (store *SqliteTelemetry) Histogram(name string, options telemetry.Histogram
 // Ingest queues finished spans and metric rows another process recorded, written with the next flush (a span whose id is
 // stored already is kept as it was); within the queue's bound, the rest dropped and counted. It returns how many spans it
 // queued. Callers check what they pass: the store writes it as it is.
-func (store *SqliteTelemetry) Ingest(batch Batch) int { return store.recorder.Ingest(batch) }
+func (store *SqliteTelemetry) Ingest(batch TelemetryBatch) int { return store.recorder.Ingest(batch) }
 
 // FindTraces reads committed rows only; Flush first to include newly settled spans.
 func (store *SqliteTelemetry) FindTraces(query telemetry.TraceQuery) (telemetry.FindTracesResult, error) {
@@ -295,7 +295,7 @@ func micros(ms float64) int64 {
 	return int64(math.Floor(float64(ms*1000) + 0.5))
 }
 
-func (store *SqliteTelemetry) write(batch Batch) error {
+func (store *SqliteTelemetry) write(batch TelemetryBatch) error {
 	return store.db.Transaction(func(tx chordsqlite.SqliteExecutor) error {
 		for _, span := range batch.Spans {
 			if err := writeSpan(tx, span); err != nil {

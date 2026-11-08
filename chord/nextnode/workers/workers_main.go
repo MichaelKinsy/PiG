@@ -83,15 +83,11 @@ type WorkerLoad struct {
 	ReloadDrainTimeout *time.Duration
 }
 
-// BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
-type BusyWatchable interface {
-	Value() (delta.JsonValue, error)
-	Watch(ctx context.Context) (chord.WatchHandle[delta.JsonValue], error)
-}
-
 // WorkerResult is what the app's function returns: extra keep-alive counts (busy while any is nonzero).
 type WorkerResult struct {
-	Busy BusyWatchable
+	// Busy is a record of numbers, a JSON watchable (`host.Expose` makes one of a reference's member or a source; its value is
+	// nil while its getter throws, which reads as idle).
+	Busy chord.Watchable[delta.JsonValue]
 	// Held is the number of holds the app's own code keeps on the NodeHost's objects (a reference it reads Busy through): the
 	// NodeHost counts them as references like the server's, and they do not keep the worker busy.
 	Held int
@@ -168,7 +164,7 @@ type worker struct {
 	// reloadApplying, when set (a test's seam; nil in the process of an app), is called, without the lock, each time a reload
 	// was taken off the queue and is about to be applied.
 	reloadApplying func()
-	busy           BusyWatchable
+	busy           chord.Watchable[delta.JsonValue]
 	// activity is the keep-alive counts of the NodeHost, as it last reported them (NodeOptions.OnActivity).
 	activity host.ActivityCounts
 	// held is the app's own holds on the NodeHost's objects (WorkerResult.Held).
@@ -351,7 +347,7 @@ const maxTimer = time.Duration(1<<31-1) * time.Millisecond
 // died of. Its close is the worker's last: shutdown closes it after the app's closers, those registered after
 // Load too, so the app's host closes the link to the server before the NodeHost ends and fails a reload in flight (Pi's host
 // closer closes the link before its reload rejects).
-func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Context) (host.LoadReport, error) {
+func (p *WorkerPlugins) Load(ctx context.Context, h host.Host, options WorkerLoad) (host.LoadReport, error) {
 	address := p.message.Address
 	ready := make(chan struct{})
 	var nodeLink atomic.Pointer[plugins.NodeHost]
@@ -469,12 +465,10 @@ func (w *worker) isIdleLocked() bool {
 		return false
 	}
 	if w.busy != nil {
-		if value, err := w.busy.Value(); err == nil {
-			if counts, ok := value.(*delta.JsonObject); ok {
-				for _, key := range counts.Keys() {
-					if number(counts.Value(key)) != 0 {
-						return false
-					}
+		if counts, ok := w.busy.Value().(*delta.JsonObject); ok {
+			for _, key := range counts.Keys() {
+				if number(counts.Value(key)) != 0 {
+					return false
 				}
 			}
 		}
