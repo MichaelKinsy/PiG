@@ -257,8 +257,13 @@ func TestDiscordIngressFakeProvider(t *testing.T) {
 		if want := []any{delta.JsonObjectOf("id", "discord:500:0", "name", "notes.txt")}; !jsonEqual(data.Value("attachments"), want) {
 			t.Fatalf("attachments = %v", data.Value("attachments"))
 		}
-		if !strings.Contains(fmt.Sprint(entry.Value("model")), "<attachments>") {
-			t.Fatalf("the model message lacks the attachments: %v", entry.Value("model"))
+		// `entry.model[0].content` is an array of parts, one of them the text with the `<attachments>` block.
+		content := list(object(list(entry.Value("model"))[0]).Value("content"))
+		if !slices.ContainsFunc(content, func(part any) bool {
+			text, _ := object(part).Value("text").(string)
+			return object(part).Value("type") == "text" && strings.Contains(text, "<attachments>")
+		}) {
+			t.Fatalf("the model message lacks the attachments: %s", jsonText(entry.Value("model")))
 		}
 		mirror, err := p2test.HoldIn(f.Owner, filescontract.FileSummaries, delta.NewJsonObject(0), "owner")
 		if err != nil {
