@@ -50,9 +50,9 @@ func probeCoreSetup(t *testing.T, cacheDir, imports, setup, ops string) CoreFace
 		t.Fatal(err)
 	}
 	src := "file://" + filepath.ToSlash(filepath.Join(tree, "pi", "chord", "src")) + "/"
-	module := `import * as next from "` + src + `next/index.ts";
-import * as evaluate from "` + src + `next-node/plugins/evaluate.ts";
-import * as stack from "` + src + `next-node/plugins/stack.ts";
+	module := `import * as next from "` + src + `index.ts";
+import * as evaluate from "` + src + `node/plugins/evaluate.ts";
+import * as stack from "` + src + `node/plugins/stack.ts";
 ` + imports + `
 const { defineFacet, remote, method, str, hostKind } = next;
 const Worker = hostKind("test.worker");

@@ -543,8 +543,8 @@ func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 	}
 	changed := exLine{[]string{}, []string{"@example/notes"}, []string{}, []string{}}
 	want := []stepLine{
-		{"server", changed, []host.ReloadedObject{{Object: "example.index", Kind: host.ReloadSwapped}}},
-		{"worker", changed, []host.ReloadedObject{{Object: "example.notes", Kind: host.ReloadSwapped}}},
+		{"server", changed, []host.ReloadedObject{{Object: "example.index", Kind: host.ReloadRestarted}}},
+		{"worker", changed, []host.ReloadedObject{{Object: "example.notes", Kind: host.ReloadRestarted}}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rolled = %+v, want %+v", got, want)
@@ -676,8 +676,8 @@ func TestExample36PluginFailures(t *testing.T) {
 		objects[object.Object] = object.Kind
 	}
 	wantObjects := map[string]host.ReloadedObjectKind{
-		"example.boot": host.ReloadSwapped, "example.counter": host.ReloadSwapped, "example.greeting": host.ReloadSwapped,
-		"example.price": host.ReloadSwapped, "example.summary": host.ReloadParked,
+		"example.boot": host.ReloadRestarted, "example.counter": host.ReloadRestarted, "example.greeting": host.ReloadRestarted,
+		"example.price": host.ReloadRestarted, "example.summary": host.ReloadParked,
 	}
 	if !reflect.DeepEqual(objects, wantObjects) {
 		t.Fatalf("3. objects: %v, want %v", objects, wantObjects)
@@ -764,7 +764,7 @@ func TestExample36PluginFailures(t *testing.T) {
 	if got, want := exLineOf(last), (exLine{[]string{}, []string{"@example/greeter"}, []string{}, []string{"@example/weather"}}); !reflect.DeepEqual(got, want) {
 		t.Fatalf("4. plugins: %+v, want %+v", got, want)
 	}
-	if want := []host.ReloadedObject{{Object: "example.greeting", Kind: host.ReloadSwapped}}; !reflect.DeepEqual(last.Objects, want) {
+	if want := []host.ReloadedObject{{Object: "example.greeting", Kind: host.ReloadRestarted}}; !reflect.DeepEqual(last.Objects, want) {
 		t.Fatalf("4. objects: %+v, want %+v", last.Objects, want)
 	}
 	if got, want := exFailures(t, last.Failed), map[string]string{"@example/weather": `Error: plugin "@example/weather": weather: no API key configured`}; !reflect.DeepEqual(got, want) {
@@ -1080,9 +1080,9 @@ func TestExample39BrowserBuild(t *testing.T) {
 	if gallery == nil || bad == nil || gallery.Kind != BuiltFacetScript || bad.Kind != BuiltFacetFailed {
 		t.Fatalf("unexpected build results: %+v", built.Facets)
 	}
-	// Pi's example prints `script of 1397 bytes, digest e4b85888e0b1`: the Go build is the same esbuild (Pi's pin), so the script
+	// Pi's example prints `script of 1392 bytes, digest 0e9e13b5e4c3`: the Go build is the same esbuild (Pi's pin), so the script
 	// is the same bytes.
-	if gallery.Facet != "web" || len(gallery.Source) != 1397 || gallery.Digest != sha256Hex(gallery.Source) || gallery.Digest[:12] != "e4b85888e0b1" {
+	if gallery.Facet != "web" || len(gallery.Source) != 1392 || gallery.Digest != sha256Hex(gallery.Source) || gallery.Digest[:12] != "0e9e13b5e4c3" {
 		t.Fatalf("1. @example/gallery/web: %d bytes, digest %q", len(gallery.Source), gallery.Digest)
 	}
 	if gallery.CSS == nil {
@@ -1182,8 +1182,8 @@ func TestExample39BrowserBuildEvaluatedOnAPage(t *testing.T) {
 
 // The slice-12 examples (49 to 51) build against example 49's `app/`: the app's versioned API, whose modules are the host
 // packages `@acme/app/v3`, `@acme/app/v3/server`, `@acme/app/v3/web` and `@acme/app/v2`. The app imports Chord by a relative
-// path from where Pi keeps it (`app/v3.ts`: `../../../../../src/next/index.ts`), so the app is staged where that path reaches
-// the Chord the Node host runs: under the extracted tree's `pi/chord/test/next/examples/49-plugin-api/app`, next to its `src`
+// path from where Pi keeps it (`app/v3.ts`: `../../../../src/index.ts`), so the app is staged where that path reaches
+// the Chord the Node host runs: under the extracted tree's `pi/chord/test/examples/49-plugin-api/app`, next to its `src`
 // (the modules then share the host's own instances of Chord, as Pi's example imports the app's modules in the host's
 // process).
 
@@ -1215,7 +1215,7 @@ func exAcmeApp(t *testing.T, cache string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(tree, "pi", "chord", "test", "next", "examples", "49-plugin-api", "app")
+	dir := filepath.Join(tree, "pi", "chord", "test", "examples", "49-plugin-api", "app")
 	if _, err := os.Stat(dir); err == nil {
 		return dir
 	}
@@ -1324,7 +1324,7 @@ func TestExample49PluginAPI(t *testing.T) {
 	}
 	src := "file://" + filepath.ToSlash(filepath.Join(tree, "pi", "chord", "src")) + "/"
 	coreModule := filepath.Join(t.TempDir(), "core.mjs")
-	if err := os.WriteFile(coreModule, []byte(`import { defineFacet } from "`+src+`next/host/index.ts";
+	if err := os.WriteFile(coreModule, []byte(`import { defineFacet } from "`+src+`host/index.ts";
 import * as v3 from "`+v3+`";
 export default defineFacet((host) => host.serve(v3.Greetings, { compose: (table) => table.map(({ value }) => value) }));
 `), 0o644); err != nil {
