@@ -420,20 +420,37 @@ func (aggregate *AggregateError) Error() string { return aggregate.Message }
 type NodeSqliteDatabase struct {
 	nodeSqliteExecutor
 	access *serialOperationQueue
+	mode   NodeSqliteMode
 	closed bool
 	// readOnly is a connection opened with NodeSqliteDatabaseOptions.ReadOnly: its transactions are deferred (they read
 	// one snapshot; it cannot take the write lock) and its close checkpoints nothing.
 	readOnly bool
 }
 
-// NewNodeSqliteDatabase adapts database; the adapter owns it from now on. It is Pi's `new NodeSqliteDatabase(database: DatabaseSync)`.
-func NewNodeSqliteDatabase(database *DatabaseSync) *NodeSqliteDatabase {
-	return newNodeSqliteDatabase(database)
+// NodeSqliteMode is how a connection opens its file.
+type NodeSqliteMode string
+
+const (
+	// ReadWrite is the default mode.
+	ReadWrite NodeSqliteMode = "read-write"
+	// ReadOnly opens an existing file for reads (another process may write it): no directory is made, nothing is
+	// configured or checkpointed, and transactions are deferred (`BEGIN`), reading one snapshot.
+	ReadOnly NodeSqliteMode = "read-only"
+)
+
+// NewNodeSqliteDatabase adapts database; the adapter owns it from now on. It is Pi's `new NodeSqliteDatabase(database:
+// DatabaseSync, mode)`; mode is ReadWrite when omitted.
+func NewNodeSqliteDatabase(database *DatabaseSync, mode ...NodeSqliteMode) *NodeSqliteDatabase {
+	adapter := newNodeSqliteDatabase(database)
+	if len(mode) > 0 {
+		adapter.mode = mode[0]
+	}
+	return adapter
 }
 
 // newNodeSqliteDatabase adapts any native connection, so a test can wrap one to observe or fail its calls.
 func newNodeSqliteDatabase(database connection) *NodeSqliteDatabase {
-	adapter := &NodeSqliteDatabase{access: newSerialOperationQueue()}
+	adapter := &NodeSqliteDatabase{access: newSerialOperationQueue(), mode: ReadWrite}
 	adapter.nodeSqliteExecutor = nodeSqliteExecutor{
 		database:     database,
 		statements:   newStatementCache(),
@@ -455,8 +472,9 @@ func (adapter *NodeSqliteDatabase) Transaction(
 ) (err error) {
 	release := adapter.access.acquire()
 	defer release()
+	// A writer takes the write lock at once; a read-only connection cannot, and reads one snapshot.
 	begin := "BEGIN IMMEDIATE"
-	if adapter.readOnly {
+	if adapter.mode == ReadOnly {
 		begin = "BEGIN"
 	}
 	if err := adapter.database.Exec(begin); err != nil {
@@ -518,7 +536,7 @@ func (adapter *NodeSqliteDatabase) Close() error {
 	adapter.statements.order.Init()
 	adapter.statements.mu.Unlock()
 	var checkpointErr error
-	if !adapter.readOnly {
+	if adapter.mode == ReadWrite {
 		checkpointErr = adapter.database.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	}
 	// Pi closes in a finally block, so a close failure replaces the checkpoint failure.
@@ -533,6 +551,8 @@ func (adapter *NodeSqliteDatabase) Close() error {
 
 // NodeSqliteDatabaseOptions configures a file-backed SQLite connection. A nil field selects its default.
 type NodeSqliteDatabaseOptions struct {
+	// Mode is how the file opens; ReadWrite (the zero value) by default.
+	Mode NodeSqliteMode
 	// WalAutoCheckpointPages is the SQLite WAL auto-checkpoint threshold. SQLite and this adapter default to 1,000
 	// pages; 0 disables it.
 	WalAutoCheckpointPages *int
@@ -559,14 +579,12 @@ func OpenNodeSqliteDatabase(path string, options NodeSqliteDatabaseOptions) (*No
 	if options.BusyTimeoutMs != nil {
 		timeout = *options.BusyTimeoutMs
 	}
-	if options.ReadOnly {
+	if options.Mode == ReadOnly {
 		database, err := NewDatabaseSync(path, DatabaseSyncOptions{TimeoutMs: timeout, ReadOnly: true})
 		if err != nil {
 			return nil, err
 		}
-		adapter := NewNodeSqliteDatabase(database)
-		adapter.readOnly = true
-		return adapter, nil
+		return NewNodeSqliteDatabase(database, ReadOnly), nil
 	}
 	if path != ":memory:" {
 		if err := os.MkdirAll(filepath.Dir(path), 0o777); err != nil {

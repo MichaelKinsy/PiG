@@ -571,10 +571,10 @@ func (tx *Transaction) step(chordStore *store.ChordStore, staged []store.StagedW
 			})
 			return admitted
 		},
-		Adopt: func(_ int64, _ []int64, rows int64) error {
+		Adopt: func(_ int64, _ []int64, rows int) error {
 			var err error
 			tx.documents.Do(func() {
-				tx.rows = rows
+				tx.rows = int64(rows)
 				err = tx.adopt(adoptions)
 			})
 			return err

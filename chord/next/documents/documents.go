@@ -44,6 +44,12 @@ type DocumentsOwner interface {
 	Clock
 }
 
+// CancelReporter is a DocumentsOwner that reports a transaction that did not commit while its context was cancelled
+// (`transaction_cancelled`): an empty `catch` cannot hide a change that never happened. cause is the context's cause.
+type CancelReporter interface {
+	TransactionCancelled(cause error)
+}
+
 // DeclaredSlot is what Documents needs of a slot of either kind.
 type DeclaredSlot interface {
 	Definition() *SlotDefinition
@@ -312,6 +318,13 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 	}
 	if err != nil {
 		d.Do(tx.Discard)
+		// Only a transaction that did not commit reads this; Chord's own run under contexts that never abort.
+		if ctx.Err() != nil {
+			if reporter, ok := d.owner.(CancelReporter); ok {
+				cause := context.Cause(ctx)
+				d.Do(func() { reporter.TransactionCancelled(cause) })
+			}
+		}
 		return nil, err
 	}
 	return result, nil

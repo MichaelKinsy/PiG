@@ -283,6 +283,7 @@ var (
 	_ store.Claimant           = (*chordObject)(nil)
 	_ documents.Clock          = (*objectClock)(nil)
 	_ documents.DocumentsOwner = (*objectDocuments)(nil)
+	_ documents.CancelReporter = (*objectDocuments)(nil)
 )
 
 // newChordObject makes the object of served for params, in principal's identity (nil for a local one): key is its params'
@@ -333,6 +334,11 @@ func (d *objectDocuments) Batch() *state.Batch { return d.object.host.batch }
 // Context is the object's context.
 func (d *objectDocuments) Context() context.Context { return d.object.ctx }
 
+// TransactionCancelled reports a transaction that did not commit while its context was cancelled (`transaction_cancelled`).
+func (d *objectDocuments) TransactionCancelled(cause error) {
+	d.object.host.report(HostError{Kind: ErrTransactionCancelled, Object: d.object.text, Error: cause})
+}
+
 // Telemetry is the host's telemetry adapter.
 func (d *objectDocuments) Telemetry() telemetry.TelemetryContext { return d.object.host.telemetry }
 
@@ -372,6 +378,14 @@ func (o *chordObject) refState() *RefState {
 
 // state is the object's state as its references show it (Pi's `state` getter).
 func (o *chordObject) state() *RefState { return o.refState() }
+
+// Activating is whether an activation is under way: waiting for its previous instance's teardown, or activating and
+// showing `loading` (its factory, its natives' opens, a dependency still loading); a parked wait (`failed { waiting }`)
+// is not.
+func (o *chordObject) Activating() bool {
+	st := o.phase
+	return st.kind == objectWaiting || (st.kind == objectActivating && st.shown.Kind == RefStateLoading)
+}
 
 // kind is where it is: an object on this host (a reference's target that is not held over a link).
 func (o *chordObject) kind() string { return "local" }

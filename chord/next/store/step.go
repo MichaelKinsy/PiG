@@ -49,7 +49,7 @@ type Step struct {
 	// Statements counts the statements the step ran.
 	Statements int
 	// Rows are the table rows its writes changed: a `put` one, the others the count their statement returned.
-	Rows int64
+	Rows int
 }
 
 // NewStep is a step over executor at seq; catalog is the store's catalog as the step starts (read only here).

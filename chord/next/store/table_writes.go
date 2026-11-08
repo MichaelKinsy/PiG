@@ -399,7 +399,7 @@ func counted(statement Statement, record func(count int64) StoreWrite) StagedWri
 		if err != nil {
 			return nil, err
 		}
-		step.Rows += count
+		step.Rows += int(count)
 		return []StoreWrite{record(count)}, nil
 	}}
 }

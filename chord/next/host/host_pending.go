@@ -15,6 +15,8 @@ import (
 // (the call is admitted and its handler's synchronous part has run when it returns) and Wait the awaiting half.
 
 // PendingCall is a started call whose answer has not been awaited: Pi's Promise of a method call.
+//
+// pig divergence (D430): Go callers start a call and await it apart; Pi's Promise needs no second operation.
 type PendingCall struct {
 	result *parkedCallResult
 }
@@ -41,6 +43,8 @@ func (p *PendingCall) Wait(ctx context.Context) (delta.JsonValue, error) { retur
 // AwaitingCtx is Awaiting for a caller outside the package, which cannot name the host's loop: a handler's blocking work
 // (the awaits of Pi's async `onLive` or `on` handler) run on an owned task of the loop that ctx's handler runs on, its error
 // (nil: resolved) settling the returned Handled in a section. ctx is the handler's own Ctx; it runs inside a section.
+//
+// pig divergence (D430): the awaits of a handler's async remainder run from outside the host package.
 func AwaitingCtx(ctx Ctx, work func() error) *Handled {
 	return Awaiting(ctx.(*callContext).host.loop(), work)
 }

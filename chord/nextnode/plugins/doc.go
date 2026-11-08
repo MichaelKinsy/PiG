@@ -14,4 +14,10 @@
 // runtime.ts is the Go client of the subprocess (plugins_runtime.go, plugins_node.go); evaluate.ts and stack.ts are the
 // subprocess's. Nothing in the package waits on the loop: the watcher's methods run in the host's sections, and the file
 // events of its watches enter the loop through the batch's section (state.Batch.UseSection) as a timer or a link read does.
+//
+// The plugin model (slice 12): roots are PluginRoots (a Required root's plugin failing at load, or a problem discovery
+// reported in it, makes Load return a *PluginError once the host's load settled, the loaded host returned with it), the
+// app's API (PluginsOptions.Api) is checked at build and, for a computed `require`, at run time in the subprocess (the
+// shipped plugin record carries its layout, root and whether it is required, the shipped build its API), a single-file
+// plugin (LayoutFile) is a facet file at a root's top, and InstallPlugin adds plugins to a root.
 package plugins
