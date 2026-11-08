@@ -26,8 +26,9 @@ import (
 // Ports packages/chord/test/next-node/workers/workers.test.ts (the parts that need no rollout, and no blocked worker): starts
 // on demand (the link made at the fork, `started` on `connect`, the start timer covering only the start), failures that
 // stay (a crash, a `fatal`, a failed start: no fork for a new hold, holders `failed { waiting }`) until `retry` or a
-// rollout, idle stops and `busy`, `stop` and its suspension, the per-address queue, `close`, and nothing kept of 1,000
-// addresses. Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
+// rollout, a running worker's lost link recovered from once a minute (workers_blocked_unix_test.go), idle stops and `busy`,
+// `stop` and its suspension, the per-address queue, `close`, stale lock files cleared, nothing kept of 1,000 addresses, and
+// the worker base (designed out: docs/parity/divergences; a broken entry rejects its creation). Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
 
 func requireCode(t *testing.T, err error, code data.ChordErrorCode, reason data.ChordErrorReason) {
 	t.Helper()
@@ -729,4 +730,65 @@ func TestGC1000FailedAndRetriedAddressesLeaveNoStateNoRecordAndNoSuspension(t *t
 	collected := append([]weak.Pointer[delta.JsonObject](nil), refs[:50]...)
 	mu.Unlock()
 	expectCollected(t, collected...)
+}
+
+// Pi's `describe('the worker base (decision "Workers start from the base code the server booted with")')`: its first test
+// (an edit of the entry's imported source after the component was created runs in no worker, `workers.inputs` names the
+// bundled files, the bundle's file is removed by `close`) is a property of Pi's esbuild bundle of a Node entry; a Go worker
+// is this program's own compiled executable, which holds all of its code already (no counterpart, see D-WORKER-BASE in
+// docs/parity/divergences).
+
+func TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain(t *testing.T) {
+	dir := t.TempDir()
+	serverAddress := fixtureServer.Address(nil)
+	server, err := host.CreateHost(host.HostOptions{Address: &serverAddress, Principal: delta.JsonObjectOf("kind", "server"), OnError: func(host.HostError) {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plugs := newPlugins(t, dir)
+	options := WorkersOptions{
+		Kind:      "worker",
+		Entry:     filepath.Join(dir, "no-such-worker"),
+		Env:       fixtureEnvironment("worker"),
+		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
+		Principal: func(contracts.Address) (data.Principal, error) { return delta.JsonObjectOf("kind", "server"), nil },
+		Start:     func(contracts.Address, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf(), nil },
+		Lock:      func(address contracts.Address) (string, error) { return "chord-test:" + dir + ":" + address.Key, nil },
+		Plugins:   plugs,
+		OnError:   func(WorkersError) {},
+	}
+	if _, err := CreateWorkers(server, fixtureSession, options, background); err == nil {
+		t.Fatal("CreateWorkers with an entry that is no program: no error")
+	}
+	options.Entry = fixtureEntry(t)
+	workers, err := CreateWorkers(server, fixtureSession, options, background)
+	if err != nil {
+		t.Fatalf("CreateWorkers after the failed one: %v", err)
+	}
+	if err := workers.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if err := server.Close(background); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Pi's `describe('stale lock files (macOS, the BSDs; decision "Stale lock files are cleared by the starter")')`: a start
+// clears the lock file a killed worker of an earlier server left: the worker runs.
+func TestStaleLockFilesAStartClearsTheLockFileAKilledWorkerOfAnEarlierServerLeftTheWorkerRuns(t *testing.T) {
+	f := newFleet(t, fleetOptions{})
+	// What an earlier server's worker SIGKILLed while holding the lock leaves (nothing on Linux: an abstract socket).
+	location, err := lockLocationOf("chord-test:" + f.root + ":" + session("S1").Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if location.kind == lockFile {
+		leaveSocketFile(t, location.address)
+	}
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	until(t, func() bool { return refKind(notes) == host.RefStateLive })
+	if state := f.stateOf("S1"); state != nil && state.Status == WorkerFailed {
+		t.Fatalf("state = %+v, want not failed", state)
+	}
 }
