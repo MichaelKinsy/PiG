@@ -114307,17 +114307,6 @@
       "shapeHash": "sha256:50a923943b8f95d804f71b1203b7d3a5aef488fb4f1918e2cc513faf3c6546da"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#isStringRecord",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension",
-      "name": "isStringRecord",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(raw encoding/json.RawMessage) bool"
-      },
-      "shapeHash": "sha256:50a923943b8f95d804f71b1203b7d3a5aef488fb4f1918e2cc513faf3c6546da"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#listKeeps",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "listKeeps",
@@ -167633,6 +167622,17 @@
         "type": "func[T any](list func() (T, error), empty T) (T, error)"
       },
       "shapeHash": "sha256:37ef41b5fc3acc45b5fd510426163519cb36085fa7cad4a022252fa12b8099c9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#writeFileAtomic",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "writeFileAtomic",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, data []byte) (err error)"
+      },
+      "shapeHash": "sha256:16e073ebc34eb8f6c7379213978e4f9db248915460bcfcd92a1aa430f264d0a8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#CreateMcpToolRenderers",
