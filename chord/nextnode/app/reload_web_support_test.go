@@ -313,6 +313,9 @@ func (r *reloadTab) hold(name, contract string, readyTimeout time.Duration, id, 
 // call calls method with args on the reference tracked as name: the number of its answer.
 func (r *reloadTab) call(name, method string, args ...any) int {
 	r.t.Helper()
+	// A component tracks its reference in an effect one render after `useHold` returned it: a call made right after the view appeared
+	// could find none.
+	r.browser.Wait(`globalThis.reload.refs[` + quoted(name) + `] !== undefined`)
 	list := []string{quoted(name), quoted(method)}
 	for _, arg := range args {
 		text, err := json.Marshal(arg)
