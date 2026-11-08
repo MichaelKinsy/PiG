@@ -5698,5 +5698,85 @@
    "old": "\tif options.Mode == ReadOnly {\n",
    "new": "\tif options.Mode != ReadOnly {\n"
   }
+ ],
+ "packages/chord/src/delta/pending.ts": [
+  {
+   "file": "chord/delta/pending.go",
+   "old": "\tif kind == pendingReplace {\n",
+   "new": "\tif kind != pendingReplace {\n"
+  }
+ ],
+ "packages/chord/src/host/follow.ts": [
+  {
+   "file": "chord/next/host/host_follow.go",
+   "old": "\treturn (kind == followEnded && s.ending == endingNone) || kind == followDetached\n",
+   "new": "\treturn (kind == followEnded || s.ending == endingNone) || kind == followDetached\n"
+  }
+ ],
+ "packages/chord/src/node/tui/filter.ts": [
+  {
+   "file": "chord/nextnode/tui/tui_filter.go",
+   "old": "\t\tfor index+1 < len(output) && output[index+1] >= 0x20 && output[index+1] <= 0x3f {\n",
+   "new": "\t\tfor index+1 < len(output) || output[index+1] >= 0x20 && output[index+1] <= 0x3f {\n"
+  }
+ ],
+ "packages/chord/src/node/tui/sandbox.ts": [
+  {
+   "file": "chord/nextnode/tui/tui_sandbox.go",
+   "old": "\tif major > 26 || (major == 26 && (minor > 5 || (minor == 5 && patch >= 1))) {\n",
+   "new": "\tif major > 26 || (major == 26 || (minor > 5 || (minor == 5 && patch >= 1))) {\n"
+  }
+ ],
+ "packages/chord/src/node/surfaces/bundle.ts": [
+  {
+   "file": "chord/nextnode/surfaces/surfaces_bundle.go",
+   "old": "\tif resolving == nil {\n",
+   "new": "\tif resolving != nil {\n"
+  }
+ ],
+ "packages/chord/src/node/app/invite.ts": [
+  {
+   "file": "chord/nextnode/app/invite.go",
+   "old": "\t\t\t{Key: \"POST \" + InvitePath, Route: chordhttp.HttpRouteOptions{Public: true, Handler: func(request chordhttp.HttpRequest, ctx host.Ctx) (chordhttp.HttpResponse, error) {\n",
+   "new": "\t\t\t{Key: \"POST \" + InvitePath, Route: chordhttp.HttpRouteOptions{Public: false, Handler: func(request chordhttp.HttpRequest, ctx host.Ctx) (chordhttp.HttpResponse, error) {\n"
+  }
+ ],
+ "packages/chord/src/registries/entries.ts": [
+  {
+   "file": "chord/next/registries/entries.go",
+   "old": "\t\t\tcase difference < 0:\n",
+   "new": "\t\t\tcase difference > 0:\n"
+  },
+  {
+   "file": "chord/next/registries/entries.go",
+   "old": "\tif orderOf != nil {\n",
+   "new": "\tif orderOf == nil {\n"
+  }
+ ],
+ "packages/chord/src/sqlite/schema.ts": [
+  {
+   "file": "chord/sqlite/schema.go",
+   "old": "strings.HasPrefix(strings.ToLower(prefix), \"sqlite_\")",
+   "new": "strings.HasPrefix(prefix, \"sqlite_\")"
+  }
+ ],
+ "packages/chord/src/surfaces/theme-choice.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_theme_choice.go",
+   "old": "contracts.Str(contracts.Max(128))",
+   "new": "contracts.Str()"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_theme_choice.go",
+   "old": "delta.JsonObjectOf(\"dark\", nil, \"light\", nil)",
+   "new": "delta.JsonObjectOf(\"dark\", \"x\", \"light\", nil)"
+  }
+ ],
+ "packages/chord/src/node/plugins/evaluate.ts": [
+  {
+   "file": "chord/nextnode/plugins/plugins_pluginfile.go",
+   "old": "\treturn \"\", fmt.Errorf(",
+   "new": "\treturn path, fmt.Errorf("
+  }
  ]
 }
