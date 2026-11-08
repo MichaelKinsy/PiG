@@ -227,10 +227,6 @@ type Host interface {
 	// the host's publication, then while it has no value (`unavailable/undeclared` without a provider, a first `compose`
 	// that failed, a version not served here: `contract_mismatch`) until its `ReadyTimeout`, then returns the last error.
 	Registry(ctx context.Context, r registries.Registry[any, any], options GetOptions) (*registries.RegistryValueSource, error)
-	// RegistryValue is Registry's value as the value source gives it (the composition at its last good value), read inside a
-	// section of the host's loop: a source composes when it is read, and a read from another goroutine races a contribution
-	// added there as an object goes live. The value is immutable once composed, so it is safe to use after the section.
-	RegistryValue(ctx context.Context, r registries.Registry[any, any], options GetOptions) (any, error)
 	// Root runs fn with a call context for code outside objects (a Durable tool, a CLI): the host's principal (or
 	// options.Principal), this host's incarnation, ctx's telemetry and signal, `ctx.Get`. When fn settles or ctx aborts, the
 	// context is sealed: its signal aborted, `ctx.Get` refused `released`, every reference it took released; an abort returns
@@ -907,27 +903,6 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 		}
 	}
 	return value, nil
-}
-
-// RegistryValue implements Host.
-func (h *chordHost) RegistryValue(ctx context.Context, r registries.Registry[any, any], options GetOptions) (any, error) {
-	source, err := h.Registry(ctx, r, options)
-	if err != nil {
-		return nil, err
-	}
-	var value any
-	h.enter(func() {
-		start := source.Start()
-		switch {
-		case start.Kind == state.StartValue:
-			value = start.Value
-		case start.HasLast:
-			value = start.Last
-		default:
-			err = start.Error
-		}
-	})
-	return value, err
 }
 
 // Root implements Host.
