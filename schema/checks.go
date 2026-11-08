@@ -22,9 +22,11 @@ func isString(v any) bool {
 	return ok
 }
 
+// isNumber is Number.isFinite.
+// pig divergence (D303): a `number` is finite, as in TypeBox (Pi main 55a5c6914). JSON has no NaN or Infinity, so only a value built in code can be one.
 func isNumber(v any) bool {
-	_, ok := asNumber(v)
-	return ok
+	n, ok := asNumber(v)
+	return ok && isFinite(n)
 }
 
 func isIntegerValue(v any) bool {
@@ -185,6 +187,10 @@ func numberCheck(mode int, lo, hi, xmin, xmax float64, multipleOf *float64) Chec
 		n, ok := asNumber(v)
 		if !ok {
 			return mode == 0
+		}
+		// pig divergence (D303): mode 1 and 2 require a finite number (Pi main 55a5c6914).
+		if mode != 0 && !isFinite(n) {
+			return false
 		}
 		if mode == 2 && !isInteger(n) {
 			return false
@@ -627,6 +633,9 @@ func taggedCheck(key string, tags []any, checks []Check) Check {
 		return false
 	}
 }
+
+// Equal is JSON equality as `const`, `enum` and `uniqueItems` compare (Pi's `equal`, Pi main af79b0c3d; TypeBox's `Value.Equal`): the same primitives, arrays with equal items in order, objects with the same keys and equal values (key order does not matter).
+func Equal(a, b any) bool { return deepEqual(a, b) }
 
 // deepEqual is JSON equality: same primitives, arrays with equal items in order, objects with the same keys and equal values.
 func deepEqual(a, b any) bool {
