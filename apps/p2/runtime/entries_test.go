@@ -55,3 +55,33 @@ func TestPeerAndAgentMessages(t *testing.T) {
 		t.Error("unknown intent accepted")
 	}
 }
+
+func TestTypedReaders(t *testing.T) {
+	peer, ok := PeerMessageOf(PeerMessageEntry, decode(t, `{"from":{"id":"s-1","title":"Alpha"},"text":"hi","origin":"owner","extra":1}`))
+	if !ok || peer.FromID != "s-1" || peer.FromTitle != "Alpha" || peer.Text != "hi" || peer.Origin == nil || *peer.Origin != OriginOwner {
+		t.Errorf("peer = %+v, %v", peer, ok)
+	}
+	if _, ok := PeerMessageOf("p2.input", decode(t, `{}`)); ok {
+		t.Error("a peer message of the wrong kind")
+	}
+	agent, ok := AgentMessageOf(AgentMessageEntry, decode(t, `{"from":{"name":"w","conversationId":2},"intent":"question","text":"?"}`))
+	if !ok || agent.FromName != "w" || agent.FromConversationID != 2 || agent.Intent != IntentQuestion || agent.Origin != nil {
+		t.Errorf("agent = %+v, %v", agent, ok)
+	}
+	data, ok := MessageDataOf(decode(t, `{"author":{"kind":"guest","id":"g","name":"Eve"},"text":"hi","attachments":[{"id":"u","name":"a.txt"}]}`))
+	if !ok || data.Author != (Author{Kind: AuthorGuest, ID: "g", Name: "Eve"}) || data.Text != "hi" || len(data.Attachments) != 1 || data.Attachments[0] != (MessageAttachment{ID: "u", Name: "a.txt"}) {
+		t.Errorf("message data = %+v, %v", data, ok)
+	}
+	if _, ok := MessageDataOf(decode(t, `{"text":"hi"}`)); ok {
+		t.Error("message data without an author")
+	}
+	info, ok := ArtifactInfoOf(decode(t, `{"name":"plan-1","title":"Plan","type":"markdown","version":2}`))
+	if !ok || info != (ArtifactInfo{Name: "plan-1", Title: "Plan", Type: ArtifactMarkdown, Version: 2}) {
+		t.Errorf("artifact = %+v, %v", info, ok)
+	}
+	for _, bad := range []string{`{"name":"Plan","title":"x","type":"html","version":1}`, `{"name":"p","title":"x","type":"pdf","version":1}`, `{"name":"p","title":"x","type":"svg","version":0}`} {
+		if _, ok := ArtifactInfoOf(decode(t, bad)); ok {
+			t.Errorf("accepted %s", bad)
+		}
+	}
+}
