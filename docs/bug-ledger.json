@@ -21135,27 +21135,6 @@
       ]
     },
     {
-      "id": "BF-6c74cb8",
-      "title": "fix(chord): a late kill of a finished evaluation never lands on the next one",
-      "symptom": "fix(chord): a late kill of a finished evaluation never lands on the next one",
-      "rootCause": "A kill now counts only while its ask is live (a guard taken by the kill and by the end of the ask); a process killed during the ask is ended before ask returns, so the next evaluation starts another.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "6c74cb8a4c",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne"
-      ]
-    },
-    {
       "id": "BF-6c7b377",
       "title": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the…",
       "symptom": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the PiG-only selectors",
@@ -34857,25 +34836,6 @@
         "env/daemon_wire_exec_oracle_test.go::TestDaemonExecMatchesPisDaemon",
         "env/daemon_wire_exec_oracle_test.go::TestDaemonWatchMatchesPisDaemon"
       ]
-    },
-    {
-      "id": "BF-aec5a31",
-      "title": "fix(chord): a chmod of a recorded base file is compared like a write",
-      "symptom": "fix(chord): a chmod of a recorded base file is compared like a write",
-      "rootCause": "Pi passes every event of a recorded file to mark, so a file made unreadable differs and one readable again with its bytes clears. baseEvent returned on a Chmod before it looked at the file. A Chmod still renews nothing on the way to base code (the Create, Remove and Rename mask).",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "aec5a318db",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
     },
     {
       "id": "BF-af1fe1a",
