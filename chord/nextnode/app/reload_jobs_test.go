@@ -29,7 +29,7 @@ func TestAJobRunningAcrossAReloadAcrossARestartOf(t *testing.T) {
 			entry := "v2-finish(aborted:reload)"
 			s := startReloadApp(t, map[string]map[string]string{"latch": latchPlugin(t), "tasks": tasksPlugin(t, "v1", change.native)})
 			hand := latchesOf(t, s, "worker")
-			page := signIn(t, s)
+			page := reloadSignIn(t, s)
 			page.hold("tasks", tasksContract, "p1", 10*time.Second, "entries")
 			page.waitState("tasks", "live")
 			started := page.result(page.call("tasks", "start", "a"))

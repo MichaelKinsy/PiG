@@ -19,7 +19,7 @@ func rolloutApp(t *testing.T, native bool) (started, *reloadPage) {
 		"latch":   latchPlugin(t),
 		"counter": counterPlugin(t, counterCode{Code: "v1", Placement: "worker", Native: native}),
 	})
-	page := signIn(t, s)
+	page := reloadSignIn(t, s)
 	page.hold("alpha", counterContract(t, "worker", "v1"), "p1", 0, "label")
 	page.waitState("alpha", "live")
 	expectEqual(t, "add 2", page.result(page.call("alpha", "add", 2.0)), okResult("v1:2"))
@@ -61,7 +61,7 @@ func TestARolloutAcrossHostsBindsAPageThatConnectsWhileARestartDrainsToTheNewCod
 	hand.entered("running")
 	s.editAndApply(t, "counter", counterPlugin(t, counterCode{Code: "v2", Placement: "worker", Native: true}))
 	// A second page signs in while the old code drains.
-	late := signIn(t, s)
+	late := reloadSignIn(t, s)
 	late.hold("alpha", counterContract(t, "worker", "v1"), "p1", 0, "label")
 	call := late.call("alpha", "code", nil)
 	hand.open("running")
@@ -125,7 +125,7 @@ func TestARolloutAcrossHostsKeepsTheViewOfAServerConsumerBoundWhileItsWorkerProv
 			"counter": counterPlugin(t, counterCode{Code: "v1", Placement: "worker"}),
 			"summary": summaryPlugin(t, "s1"),
 		})
-		page := signIn(t, s)
+		page := reloadSignIn(t, s)
 		page.hold("alpha", summaryContract, "p1", 0, "label")
 		page.waitLabel("alpha", "s1(0)")
 		page.waitState("alpha", "live")

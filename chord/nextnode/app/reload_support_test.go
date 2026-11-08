@@ -434,8 +434,8 @@ type reloadPage struct {
 	results []callResult
 }
 
-// signIn opens a page as the owner: a device session's token on the links endpoint.
-func signIn(t testing.TB, s started) *reloadPage {
+// reloadSignIn opens a page as the owner: a device session's token on the links endpoint.
+func reloadSignIn(t testing.TB, s started) *reloadPage {
 	t.Helper()
 	sessions, err := s.app.Host.Get(background, Sessions, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {

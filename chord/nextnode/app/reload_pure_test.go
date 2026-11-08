@@ -36,7 +36,7 @@ func TestAReloadOfPureCodeStaysLiveWhileARunningCallFinishesOnTheOldCodeThenShow
 				"latch":   latchPlugin(t),
 				"counter": counterPlugin(t, counterCode{Code: "v1", Placement: placement}),
 			})
-			page := signIn(t, s)
+			page := reloadSignIn(t, s)
 			page.hold("alpha", counterContract(t, placement, "v1"), "p1", 0, "label")
 			page.waitLabel("alpha", "v1:0")
 			expectEqual(t, "add 2", page.result(page.call("alpha", "add", 2.0)), okResult("v1:2"))
@@ -123,7 +123,7 @@ func TestAReloadOfPureCodeShowsLoadingOnceThenTheNewCodeForAPureServerObjectOver
 		"counter": counterPlugin(t, counterCode{Code: "v1", Placement: "worker"}),
 		"summary": summaryPlugin(t, "s1"),
 	})
-	page := signIn(t, s)
+	page := reloadSignIn(t, s)
 	page.hold("alpha", summaryContract, "p1", 0, "label")
 	page.waitLabel("alpha", "s1(0)")
 	page.waitState("alpha", "live")

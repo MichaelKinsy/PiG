@@ -21,7 +21,7 @@ func TestAReloadRestartingAnObjectWithNativesStaysLiveWhileTheOldCodeDrainsThenS
 				"counter": counterPlugin(t, counterCode{Code: "v1", Placement: placement, Native: true}),
 			})
 			hand := latchesOf(t, s, placement)
-			page := signIn(t, s)
+			page := reloadSignIn(t, s)
 			page.hold("alpha", counterContract(t, placement, "v1"), "p1", 0, "label")
 			page.waitState("alpha", "live")
 			expectEqual(t, "add 2", page.result(page.call("alpha", "add", 2.0)), okResult("v1:2"))
@@ -89,7 +89,7 @@ func TestAReloadRestartingAnObjectWithNativesCutsARunningCallOffAtTheReloadDrain
 				"latch":   latchPlugin(t),
 				"counter": counterPlugin(t, counterCode{Code: "v1", Placement: placement, Native: true}),
 			})
-			page := signIn(t, s)
+			page := reloadSignIn(t, s)
 			page.hold("alpha", counterContract(t, placement, "v1"), "p1", 0, "label")
 			page.waitState("alpha", "live")
 			hand := latchesOf(t, s, placement)
