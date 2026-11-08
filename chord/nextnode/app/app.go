@@ -13,6 +13,7 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -64,6 +65,16 @@ func mustHostKind(name string, props ...contracts.Property) *contracts.HostKind 
 		panic(err)
 	}
 	return kind
+}
+
+// AppPlugins are the plugins of a running app, for its "apply changes" control and its installs.
+type AppPlugins struct {
+	// State is the marks (`dirty`, `install`, `set`, `base`): what the app's button shows.
+	State chord.Watchable[delta.JsonValue]
+	// Install installs plugins from git or npm into the user's root (slice 12's `installPlugin`) and returns their names.
+	Install func(ctx context.Context, source plugins.PluginSource) ([]string, error)
+	// Component is the plugins component itself.
+	Component *plugins.Plugins
 }
 
 // AppAPI is the app's API (slice 12): its package name, the versions it provides (newest first) and this process's modules of them by
@@ -319,8 +330,8 @@ type App struct {
 	HTTP *chordhttp.HttpComponent
 	// Workers are the workers components, by host kind name.
 	Workers map[string]*workers.Workers
-	// Plugins is the plugins component, for the app's "apply changes" control: its marks and its rollouts.
-	Plugins *plugins.Plugins
+	// Plugins is the plugins of the running app, for its "apply changes" control and its installs.
+	Plugins AppPlugins
 	// Node is the server's plugins' host (the NodeHost the server host accepted the link of).
 	Node *plugins.NodeHost
 	// DataDir is the data directory.
@@ -494,14 +505,19 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	// The web surface serves a browser build's assets under its prefix (Pi's `publicPath: ${WEB_PREFIX}assets/`).
 	assetsPath := nodesurfaces.WebPrefix + "assets/"
-	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
+	component := plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
 		Api:        &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		PublicPath: &assetsPath,
 		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 		PrincipalAttributes: options.PrincipalAttributes,
 	}, ctx)
-	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
+	a.Plugins = AppPlugins{
+		State:     component.State(),
+		Install:   a.installPlugin,
+		Component: component,
+	}
+	a.build, a.rollout = component.Build, component.Rollout
 	workerHosts := &workerHosts{keys: map[string]string{}, principals: map[string]string{}}
 	link := &OwnerLink{}
 	owner := options.Principal.Owner
@@ -573,7 +589,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}, ctx); err != nil {
 		return err
 	}
-	for _, each := range surfacesOf(h, options, a.Plugins) {
+	for _, each := range surfacesOf(h, options, a.Plugins.Component) {
 		a.surfaces = append(a.surfaces, each)
 		core = append(core, each.facets...)
 		switch each.name {
@@ -610,7 +626,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err := PrivateStore(pluginsStore); err != nil {
 		return err
 	}
-	node, _, err := a.Plugins.Load(plugins.PluginsLoad{
+	node, _, err := a.Plugins.Component.Load(plugins.PluginsLoad{
 		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
 		Store: &plugins.StoreOptions{Path: pluginsStore},
@@ -813,7 +829,7 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 			return workerLock(options.Name, dataDir, address), nil
 		},
 		IdleMs:    idle,
-		Plugins:   a.Plugins,
+		Plugins:   a.Plugins.Component,
 		OnError:   func(err workers.WorkersError) { a.report(AppErrorWorkers, err) },
 		Forgotten: func(address contracts.Address) { hosts.forget(address.Key) },
 	}, ctx)
@@ -838,10 +854,10 @@ func linkHost(listened string, port int) string {
 	return name + ":" + strconv.Itoa(port)
 }
 
-// InstallPlugin installs plugins from git or npm into the user's root and returns their names (Pi's `app.plugins.install`, which binds
+// installPlugin is AppPlugins.Install: it installs plugins from git or npm into the user's root and returns their names (it binds
 // the user's root where Plugins.InstallPlugin takes any root); applying changes loads them.
-func (a *App) InstallPlugin(source plugins.PluginSource, ctx context.Context) ([]string, error) {
-	return a.Plugins.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
+func (a *App) installPlugin(ctx context.Context, source plugins.PluginSource) ([]string, error) {
+	return a.Plugins.Component.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
 }
 
 // ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind, then the web and terminal surfaces;
@@ -849,11 +865,11 @@ func (a *App) InstallPlugin(source plugins.PluginSource, ctx context.Context) ([
 func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	a.applyMu.Lock()
 	defer a.applyMu.Unlock()
-	built, err := a.build(a.Plugins.Marks().Dirty, ctx)
+	built, err := a.build(a.Plugins.Component.Marks().Dirty, ctx)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
-	server, err := a.Plugins.Step("server", a.Node)
+	server, err := a.Plugins.Component.Step("server", a.Node)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
@@ -1018,8 +1034,8 @@ func (a *App) Close(ctx context.Context) error {
 			errs = append(errs, a.Host.Close(ctx))
 		}
 		errs = append(errs, a.store.Close(ctx))
-		if a.Plugins != nil {
-			a.Plugins.Close()
+		if a.Plugins.Component != nil {
+			a.Plugins.Component.Close()
 		}
 		errs = append(errs, a.lock.Release())
 		a.closed = errors.Join(errs...)

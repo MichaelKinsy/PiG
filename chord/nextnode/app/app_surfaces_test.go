@@ -360,7 +360,7 @@ func TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePrevious
 	if after.Plugins[0].Digest == before.Plugins[0].Digest {
 		t.Fatalf("the plugin's digest did not change: %s", after.Plugins[0].Digest)
 	}
-	if dirty := s.app.Plugins.Marks().Dirty; len(dirty) != 0 {
+	if dirty := s.app.Plugins.Component.Marks().Dirty; len(dirty) != 0 {
 		t.Fatalf("dirty after the rollout = %v", dirty)
 	}
 	for _, url := range []string{before.Plugins[0].URL, before.Combined, after.Plugins[0].URL, after.Combined} {
@@ -443,7 +443,7 @@ func TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithIts
 	if !reflect.DeepEqual(changed["web"], []string{"@test/notes"}) || !reflect.DeepEqual(changed["tui"], []string{"@test/lines"}) {
 		t.Fatalf("changed plugins by step = %v: the web step rolls out the web plugins, the terminal step the terminal plugins", changed)
 	}
-	if dirty := s.app.Plugins.Marks().Dirty; len(dirty) != 0 {
+	if dirty := s.app.Plugins.Component.Marks().Dirty; len(dirty) != 0 {
 		t.Fatalf("dirty after the rollout = %v", dirty)
 	}
 }
@@ -453,7 +453,7 @@ func TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs(t *testing.T) {
 		t.Run(file, func(t *testing.T) {
 			main := webEntry(t, webStarted)
 			s := startTestApp(t, nil, withWeb(main, false))
-			if s.app.Plugins.Marks().Base {
+			if s.app.Plugins.Component.Marks().Base {
 				t.Fatal("base is marked at start")
 			}
 			if err := os.WriteFile(filepath.Join(filepath.Dir(main), file), []byte(text), 0o644); err != nil {

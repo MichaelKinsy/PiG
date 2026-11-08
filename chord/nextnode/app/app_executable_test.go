@@ -62,7 +62,7 @@ func TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCl
 		o.processStart = func() time.Time { return began }
 	})
 	<-s.app.BaseWatched()
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked at start")
 	}
 	if v2 := program.build("v2"); bytes.Equal(v1, v2) {
@@ -86,7 +86,7 @@ func TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared(t *testing.T)
 	if got := s.errors.kinds(); len(got) != 1 || got[0] != AppErrorServerScan {
 		t.Fatalf("reported %v, want [server_scan]", got)
 	}
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked")
 	}
 }
@@ -124,7 +124,7 @@ func TestAppDoesNotCompareAnExecutableUnderTheGoBuildCache(t *testing.T) {
 	}
 	editEcho(t, s.root, "barrier")
 	untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked by an edit of an executable under the go-build cache")
 	}
 	if got := s.errors.kinds(); len(got) != 0 {
@@ -180,7 +180,7 @@ func startWithExecutable(t *testing.T, modified, began time.Time) started {
 func TestAppMarksAnExecutableEditedAfterTheProcessStartedBeforeItWasRead(t *testing.T) {
 	// The mtime is now (the file was just written), the process started an hour ago; the ctime is now too.
 	s := startWithExecutable(t, time.Now(), time.Now().Add(-time.Hour))
-	if !s.app.Plugins.Marks().Base {
+	if !s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is not marked for an executable edited since the process started")
 	}
 }
@@ -191,7 +191,7 @@ func TestAppMarksAnExecutableEditedAfterTheProcessStartedBeforeItWasRead(t *test
 func TestAppDoesNotMarkAnExecutableStampedInTheFutureComparedByItsBytes(t *testing.T) {
 	// mtime tomorrow, process started in an hour (so the ctime, now, is before the start too): neither timestamp is in range.
 	s := startWithExecutable(t, time.Now().Add(24*time.Hour), time.Now().Add(time.Hour))
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked for an executable stamped in the future")
 	}
 }

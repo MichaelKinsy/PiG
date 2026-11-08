@@ -222,7 +222,7 @@ func (s started) removeAndApply(t testing.TB, dir string) plugins.RolloutResult 
 }
 
 // dirty is whether plugin dir is still marked dirty.
-func (s started) dirty() []string { return s.app.Plugins.Marks().Dirty }
+func (s started) dirty() []string { return s.app.Plugins.Component.Marks().Dirty }
 
 // rolloutFailures are the plugins a rollout's hosts kept on their old code, as `<step>/<host>: <plugin>`, and hosts that failed.
 func rolloutFailures(result plugins.RolloutResult) []string {
