@@ -7,6 +7,7 @@ package host
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
@@ -23,6 +24,8 @@ var privateMode = lazyregexp.New(`\x1b\[\?(\d+)([hl])`)
 type TerminalModes struct {
 	// Allowed are the modes a frame may set.
 	Allowed map[string]bool
+	// mu guards order and state: the owner loop filters the runtime's output while the trusted UI's goroutine restores the modes it closed over.
+	mu sync.Mutex
 	// state is the last state per mode as written by the current worker (only modes it changed), in the order first changed.
 	order []string
 	state map[string]string
@@ -51,6 +54,8 @@ func (m *TerminalModes) Filter(data string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	for _, match := range privateMode.FindAllStringSubmatch(output, -1) {
 		if _, ok := m.state[match[1]]; !ok {
 			m.order = append(m.order, match[1])
@@ -62,6 +67,12 @@ func (m *TerminalModes) Filter(data string) (string, error) {
 
 // Restore re-applies the worker's mode state after launcher-drawn UI (worker output was discarded meanwhile).
 func (m *TerminalModes) Restore() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.restore()
+}
+
+func (m *TerminalModes) restore() string {
 	var b strings.Builder
 	for _, mode := range m.order {
 		if mode != "1049" && mode != "2026" {
@@ -72,6 +83,12 @@ func (m *TerminalModes) Restore() string {
 }
 
 func (m *TerminalModes) inverse() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.inverseLocked()
+}
+
+func (m *TerminalModes) inverseLocked() string {
 	var b strings.Builder
 	for _, mode := range m.order {
 		if def, ok := defaultModes[mode]; ok && def != m.state[mode] {
@@ -83,7 +100,9 @@ func (m *TerminalModes) inverse() string {
 
 // Cleanup is the inverse of every mode the worker changed, then the fixed reset; it forgets the worker's state.
 func (m *TerminalModes) Cleanup() string {
-	inverse := m.inverse()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	inverse := m.inverseLocked()
 	m.order, m.state = nil, map[string]string{}
 	return inverse + TerminalReset
 }
@@ -93,12 +112,18 @@ func (m *TerminalModes) SuspendSequence() string { return m.inverse() + Terminal
 
 // ResumeSequence re-enters the worker's terminal state after SuspendSequence (the worker then redraws everything).
 func (m *TerminalModes) ResumeSequence() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	alt := ""
-	if m.AltScreen() {
+	if m.state["1049"] == "h" {
 		alt = "\x1b[?1049h"
 	}
-	return alt + m.Restore() + "\x1b[2J\x1b[H"
+	return alt + m.restore() + "\x1b[2J\x1b[H"
 }
 
 // AltScreen is whether the worker currently has the alternate screen.
-func (m *TerminalModes) AltScreen() bool { return m.state["1049"] == "h" }
+func (m *TerminalModes) AltScreen() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.state["1049"] == "h"
+}
