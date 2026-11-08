@@ -133,8 +133,8 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		}
 		f.send("subagent-answer")
 		answered := f.until(chatView, func(v delta.JsonValue) bool { return subagentResult(v, "answer") != nil })
-		if resultText(subagentResult(answered, "answer")) != "Echo: hello helper" {
-			t.Errorf("answer = %q", resultText(subagentResult(answered, "answer")))
+		if agentResultText(subagentResult(answered, "answer")) != "Echo: hello helper" {
+			t.Errorf("answer = %q", agentResultText(subagentResult(answered, "answer")))
 		}
 		reports := 0
 		for _, text := range textsOf(answered) {
@@ -202,7 +202,7 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		})
 		f.send("subagent-status")
 		view := f.until(chatView, func(v delta.JsonValue) bool { return subagentResult(v, "status") != nil })
-		if got := resultText(subagentResult(view, "status")); got != "1 archived (status with a name shows one)." {
+		if got := agentResultText(subagentResult(view, "status")); got != "1 archived (status with a name shows one)." {
 			t.Errorf("status = %q", got)
 		}
 		control, err := p2test.HoldIn(f.Owner, subagentscontract.SubagentControl, delta.JsonObjectOf("session", f.Session), "participant")
@@ -448,13 +448,13 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 	f.until(view, func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Configured wt." }) })
 	spawn(map[string]any{"action": "status"}, "status")
 	status := f.until(view, func(v delta.JsonValue) bool { return subagentResult(v, "status") != nil })
-	if !regexp.MustCompile(regexp.QuoteMeta("· in "+worktree) + `$`).MatchString(resultText(subagentResult(status, "status"))) {
-		t.Errorf("status = %q", resultText(subagentResult(status, "status")))
+	if !regexp.MustCompile(regexp.QuoteMeta("· in "+worktree) + `$`).MatchString(agentResultText(subagentResult(status, "status"))) {
+		t.Errorf("status = %q", agentResultText(subagentResult(status, "status")))
 	}
 	// Its bash ran in the worktree.
 	sub := f.hold(agent.Value("conversationId").(float64))
 	childView := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "bash")) > 0 })
-	if got := resultText(toolResults(childView, "bash")[0]); !regexp.MustCompile(`/worktree\s*$`).MatchString(got) {
+	if got := agentResultText(toolResults(childView, "bash")[0]); !regexp.MustCompile(`/worktree\s*$`).MatchString(got) {
 		t.Errorf("pwd = %q", got)
 	}
 	sub.Release()
@@ -580,7 +580,7 @@ func TestSubagentWithAStaleCwdWorksInTheSessionsCwdAgain(t *testing.T) {
 		defer chat.Release()
 		view := f.until(chat.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "bash")) > 0 }, 30*time.Second)
 		agent := object(object(object(view).Value("docs")).Value("pi.agent"))
-		return strings.TrimSpace(resultText(toolResults(view, "bash")[0])), agent.Value("cwd")
+		return strings.TrimSpace(agentResultText(toolResults(view, "bash")[0])), agent.Value("cwd")
 	}
 	// The session's cwd, not the stale path, the server's process cwd or the app directory.
 	if got, cwd := pwd("old"); got != project || cwd != project {
@@ -682,8 +682,8 @@ func TestSubagentTeamMessaging(t *testing.T) {
 	askerChat := f.hold(asker.Value("conversationId").(float64))
 	answered := f.until(askerChat.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "team")) >= 3 })
 	teamResults := toolResults(answered, "team")
-	if !strings.Contains(resultText(teamResults[len(teamResults)-1]), "Echo: ") {
-		t.Errorf("the sibling's latest answer: %q", resultText(teamResults[len(teamResults)-1]))
+	if !strings.Contains(agentResultText(teamResults[len(teamResults)-1]), "Echo: ") {
+		t.Errorf("the sibling's latest answer: %q", agentResultText(teamResults[len(teamResults)-1]))
 	}
 	f.quiet(statuses)
 
@@ -750,12 +750,12 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 
 	t.Run("validates tools against the caller's own, session-level ones excluded", func(t *testing.T) {
 		bad := subagent(map[string]any{"action": "spawn", "name": "bad", "message": "x", "tools": []string{"codemode", "bogus"}})
-		if bad.Value("isError") != true || !regexp.MustCompile(`^Unknown tools: bogus\. Choose from your own tools: .*\bcodemode\b`).MatchString(resultText(bad)) {
-			t.Errorf("bad = %q", resultText(bad))
+		if bad.Value("isError") != true || !regexp.MustCompile(`^Unknown tools: bogus\. Choose from your own tools: .*\bcodemode\b`).MatchString(agentResultText(bad)) {
+			t.Errorf("bad = %q", agentResultText(bad))
 		}
 		main := subagent(map[string]any{"action": "spawn", "name": "bad", "message": "x", "tools": []string{"subagent", "rename_session"}})
-		if !strings.HasPrefix(resultText(main), "Unknown tools: subagent, rename_session. ") {
-			t.Errorf("main = %q", resultText(main))
+		if !strings.HasPrefix(agentResultText(main), "Unknown tools: subagent, rename_session. ") {
+			t.Errorf("main = %q", agentResultText(main))
 		}
 		chosen := subagent(map[string]any{"action": "spawn", "name": "chosen", "message": "x", "tools": []string{"bash", "codemode"}})
 		if strings.Join(toolsOf(chosen), ",") != "bash,codemode" {
@@ -777,7 +777,7 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 		}, "\n")
 		spawned := subagent(map[string]any{"action": "spawn", "name": "coder", "message": "codemode " + script})
 		if spawned.Value("isError") != false {
-			t.Fatal(resultText(spawned))
+			t.Fatal(agentResultText(spawned))
 		}
 		given := toolsOf(spawned)
 		for _, each := range []string{"read", "bash", "codemode"} {
@@ -796,9 +796,9 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 		childView := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return len(toolResults(v, "codemode")) > 0 })
 		ran := toolResults(childView, "codemode")[0]
 		if ran.Value("isError") != false {
-			t.Fatal(resultText(ran))
+			t.Fatal(agentResultText(ran))
 		}
-		output := resultText(ran)
+		output := agentResultText(ran)
 		if !strings.HasPrefix(output, "Script completed") {
 			t.Fatalf("output = %q", output)
 		}
@@ -842,8 +842,8 @@ func TestSubagentsWithCodeMode(t *testing.T) {
 				reported(name)
 			}
 		}
-		if refused.Value("isError") != true || !strings.HasPrefix(resultText(refused), "Unknown tools: codemode. Choose from your own tools: ") {
-			t.Fatalf("refused = %q", resultText(refused))
+		if refused.Value("isError") != true || !strings.HasPrefix(agentResultText(refused), "Unknown tools: codemode. Choose from your own tools: ") {
+			t.Fatalf("refused = %q", agentResultText(refused))
 		}
 		given := toolsOf(subagent(map[string]any{"action": "spawn", "name": "plain", "message": "x"}))
 		if !contains(given, "read") || contains(given, "codemode") {
