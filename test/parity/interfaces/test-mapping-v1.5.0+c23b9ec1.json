@@ -3437,15 +3437,8 @@
     },
     {
       "path": "packages/chord/test/node/workers/child.test.ts",
-      "disposition": "partial",
-      "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41",
-      "evidence": [
-        "chord/nextnode/workers/workers_main_test.go"
-      ],
-      "rationale": "Owner hold (2026-11-08): D600 is not approved as a design-out of this file. Intention of \"the child entry's imports › loads no esbuild\": a forked worker does not pay for the server's build tool. PiG form: a deps test that the worker's package links no esbuild. Measured on the host (go list -deps ./chord/nextnode/workers): 26 esbuild packages, because chord/nextnode/workers imports chord/nextnode/plugins, which holds BuildFacet, the base inputs and the CSS module build beside the runtime a worker needs. The intention therefore does NOT hold in PiG, and the test would fail: the open work is to split the build (plugins_build.go, plugins_baseinputs.go, plugins_cssmodules.go and the watcher that calls BuildFacet) from the worker-side plugin runtime, then assert the deps. Not designed out; not ported.",
-      "missingCases": [
-        "the child entry's imports › loads no esbuild: a worker importing workerMain and processLock never imports it"
-      ]
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41"
     },
     {
       "path": "packages/chord/test/node/workers/control.test.ts",

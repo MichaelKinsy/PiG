@@ -20,7 +20,9 @@ func runVendored(t *testing.T, script func(pi func(path string) string) string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	pi := func(path string) string { return pcJSON(t, fileURL(filepath.Join(tree, "pi", "chord", "src", filepath.FromSlash(path)))) }
+	pi := func(path string) string {
+		return pcJSON(t, fileURL(filepath.Join(tree, "pi", "chord", "src", filepath.FromSlash(path))))
+	}
 	body := strings.Join([]string{
 		`import { registerHooks } from "node:module";`,
 		`import assert from "node:assert/strict";`,
