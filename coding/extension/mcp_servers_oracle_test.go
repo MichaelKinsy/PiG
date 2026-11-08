@@ -3,7 +3,7 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/mcp"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"strings"
 	"testing"
 
@@ -200,8 +200,8 @@ emit({
 		}
 	}
 	for j, server := range servers {
-		if got := mcp.McpNamespace(server); got != want.Namespaces[j] {
-			t.Errorf("mcp.McpNamespace(%q) = %q, Pi %q", server, got, want.Namespaces[j])
+		if got := mcpshared.McpNamespace(server); got != want.Namespaces[j] {
+			t.Errorf("mcpshared.McpNamespace(%q) = %q, Pi %q", server, got, want.Namespaces[j])
 		}
 	}
 }

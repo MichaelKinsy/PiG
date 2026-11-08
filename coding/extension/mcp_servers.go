@@ -3,7 +3,6 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/mcp"
 	"regexp"
 	"slices"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
@@ -443,7 +443,7 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 	if _, ok := objectMap(value); ok {
 		value, _ = resolveExposureAliases(value, mustObjectMap(value))
 	}
-	result := mcp.ValidateMcpServerConfig(name, value, mcp.McpServerConfigOptions{
+	result := mcpshared.ValidateMcpServerConfig(name, value, mcpshared.McpServerConfigOptions{
 		CheckMetadataDocumentCallback: func(callbackURL string, _ bool) string {
 			if IsClientMetadataDocumentCallback(callbackURL) {
 				return ""
@@ -453,11 +453,11 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 		// pig divergence (D156): the URL is checked after environment expansion, as headers and env values are resolved (Pi #10654).
 		ExpandURL: ExpandMcpURL,
 	})
-	if result.Kind == mcp.McpServerConfigInvalid {
+	if result.Kind == mcpshared.McpServerConfigInvalid {
 		return McpServerConfig{}, result.Error
 	}
 	message := checkExposures(result.Fields)
-	if message == "" && result.Kind == mcp.McpServerConfigHTTP {
+	if message == "" && result.Kind == mcpshared.McpServerConfigHTTP {
 		message = checkAuth(result.Fields, result.URL)
 	}
 	if message != "" {

@@ -1,7 +1,7 @@
 package piglet
 
 import (
-	"github.com/MichaelKinsy/PiG/mcp"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"os"
 	"strings"
 	"testing"
@@ -43,7 +43,7 @@ func TestToolScopeNoticeNamesServersToolsAndReasons(t *testing.T) {
 	allow := []string{"mcp__docs__a"}
 	p := &Piglet{Name: "demo", Extensions: []ExtensionEntry{{Name: MCPAdapterExtensionName, Tools: &allow}}}
 	scope := CompileToolScope(p, nil)
-	docs := &extension.ToolNamespace{Name: mcp.McpNamespace("docs")}
+	docs := &extension.ToolNamespace{Name: mcpshared.McpNamespace("docs")}
 	var hidden []extension.HiddenTool
 	for _, tool := range []extension.ToolInfo{{Name: "mcp__docs__a", Namespace: docs}, {Name: "mcp__docs__b", Namespace: docs}, {Name: "mcp__docs__c", Namespace: docs}, {Name: "read_mcp_resource"}} {
 		if info, ok := scope.HiddenInfo(tool); ok {

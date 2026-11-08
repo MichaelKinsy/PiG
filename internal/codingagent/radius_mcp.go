@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -58,7 +59,7 @@ func PlanRadiusMcpServer(providerID, agentDir, cwd string) (*RadiusMcpServerPlan
 			if suffix == 1 {
 				name = "radius-mcp"
 			} else {
-				name = fmt.Sprintf("radius-mcp-%d", suffix)
+				name = "radius-mcp-" + strconv.Itoa(suffix)
 			}
 		}
 	}
@@ -79,10 +80,12 @@ func (plan *RadiusMcpServerPlan) Apply() (bool, error) {
 // with `auth` set, as Pi's `{ ...existing.config, auth }` does, and a new one is the Radius MCP URL. `auth` replaces the
 // MCP OAuth sign-in, so `oauth` is removed.
 func radiusMcpServerConfig(mcpPath, name string, existing bool, providerID string) (json.RawMessage, error) {
-	auth, err := json.Marshal(map[string]string{"provider": providerID})
+	// The one-member object Pi writes as { provider }; a map would encode in sorted key order, which is the same for one key.
+	provider, err := json.Marshal(providerID)
 	if err != nil {
 		return nil, err
 	}
+	auth := append(append([]byte(`{"provider":`), provider...), '}')
 	server := orderedjson.New()
 	if existing {
 		raw, err := globalMcpServerJSON(mcpPath, name)

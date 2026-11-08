@@ -17,7 +17,6 @@ const (
 	// MarkdownMessageAssistantThinking marks the reasoning/thinking trace of an assistant turn. Mirrors upstream
 	// MarkdownTransformContext.messageType "assistant-thinking"; the built-in Mermaid transformer skips it.
 	MarkdownMessageAssistantThinking MarkdownMessageType = "assistant-thinking"
-	// pig divergence (D313): Pi eebd5d90 lets a transformer opt into the custom, summary and changelog surfaces; Pi 1.5.0 has only the three transcript types.
 	// MarkdownMessageCustom marks custom messages without a message renderer and the content of expanded skill blocks.
 	MarkdownMessageCustom MarkdownMessageType = "custom"
 	// MarkdownMessageSummary marks the summary of an expanded branch or compaction summary, without Pi's header.
