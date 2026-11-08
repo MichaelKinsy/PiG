@@ -51,3 +51,20 @@ func Fingerprints(t testing.TB, modules ...string) map[string]Contract {
 	}
 	return contracts
 }
+
+// RunNodeTests runs Pi's own test files for browser-side modules (vendored verbatim under apps/p2/web/upstream, with the
+// modules they import) with `node --test`: p2's browser client is Pi's TypeScript, so its tests are Pi's tests. A path is
+// relative to apps/p2/web/upstream; a failing test file fails t with Node's report. A missing node binary fails the test.
+func RunNodeTests(t testing.TB, files ...string) {
+	t.Helper()
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("running Pi's tests needs node (run in the tern-ci image): %v", err)
+	}
+	for _, file := range files {
+		cmd := exec.Command(node, "--test", filepath.Join(Root(), "apps/p2/web/upstream", file))
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Errorf("node --test %s: %v\n%s", file, err, out)
+		}
+	}
+}
