@@ -48,11 +48,6 @@ func refused(t *testing.T, port int, path string, headers map[string]string) {
 	_ = response.Body.Close()
 }
 
-func itoa(value int) string {
-	encoded, _ := json.Marshal(value)
-	return string(encoded)
-}
-
 func TestProxyMarkingIsNeverAuthenticationIncludingTheLoopbackUnixSocketBridge(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"p2.proxy.test"}})
