@@ -40,15 +40,15 @@ func TestWorkspacePath(t *testing.T) {
 
 func TestWorkspaceGlobsAndSearchText(t *testing.T) {
 	for value, want := range map[string][]string{
-		"":                    {},
-		"*.ts, src/":          {"**/*.ts", "**/src"},
-		"*.{ts,tsx}":          {"**/*.ts", "**/*.tsx"},
-		"./src/*.ts":          {"src/*.ts"},
-		"/dist":               {"dist"},
-		"**/a, a/**":          {"**/a", "**/a/**"},
-		"{a,b}/{c,d}":         {"**/a/c", "**/a/d", "**/b/c", "**/b/d"},
-		"*.ts,*.ts":           {"**/*.ts"},
-		"{a,b},c":             {"**/a", "**/b", "**/c"},
+		"":            {},
+		"*.ts, src/":  {"**/*.ts", "**/src"},
+		"*.{ts,tsx}":  {"**/*.ts", "**/*.tsx"},
+		"./src/*.ts":  {"src/*.ts"},
+		"/dist":       {"dist"},
+		"**/a, a/**":  {"**/a", "**/a/**"},
+		"{a,b}/{c,d}": {"**/a/c", "**/a/d", "**/b/c", "**/b/d"},
+		"*.ts,*.ts":   {"**/*.ts"},
+		"{a,b},c":     {"**/a", "**/b", "**/c"},
 	} {
 		got, ok := WorkspaceGlobs(value)
 		if !ok || !reflect.DeepEqual(got, want) {
