@@ -37,12 +37,21 @@ plugins/logs/contract.ts
 plugins/logs/web.tsx
 plugins/logs/style.css
 plugins/sharing/web.tsx
+plugins/mcp/contract.ts
+plugins/mcp/web.tsx
 plugins/artifacts/contract.ts
 plugins/send-file/contract.ts
 plugins/artifacts/store.ts
 plugins/artifacts/tool.ts
 plugins/send-file/tool.ts
 plugins/send-file/worker.ts
+plugins/envs/web.tsx
+plugins/envs/contract.web.tsx
+plugins/envs/EnvsPanel.tsx
+plugins/envs/DirectoryPicker.tsx
+plugins/envs/SecretsSection.tsx
+plugins/envs/style.css
+plugins/envs/secret-presets.ts
 ../../packages/ai/package.json
 ../../packages/ai/src/utils/estimate.ts
 ../../packages/ai/src/utils/identity.ts
@@ -374,17 +383,7 @@ plugins/discord/style.css
 plugins/discord/web.tsx
 plugins/drafts/contract.ts
 plugins/drafts/package.json
-plugins/envs/DirectoryPicker.tsx
-plugins/envs/EnvsPanel.tsx
-plugins/envs/SecretsSection.tsx
-plugins/envs/contract.ts
-plugins/envs/contract.web.tsx
 plugins/envs/package.json
-plugins/envs/schema.ts
-plugins/envs/secret-presets.ts
-plugins/envs/style.css
-plugins/envs/web.tsx
-plugins/files/contract.ts
 plugins/files/package.json
 plugins/history/activity.css
 plugins/history/activity.tsx
@@ -396,12 +395,7 @@ plugins/login/package.json
 plugins/login/web.tsx
 plugins/logs/contract.ts
 plugins/logs/package.json
-plugins/logs/style.css
-plugins/logs/web.tsx
-plugins/mcp/contract.ts
 plugins/mcp/package.json
-plugins/mcp/web.tsx
-plugins/models/contract.ts
 plugins/models/package.json
 plugins/ports/PortsPanel.tsx
 plugins/ports/activity.css
@@ -580,6 +574,6 @@ plugins/radius/contract.ts
 <<<<<<<<< Temporary merge branch 1
 <<<<<<<<<<< Temporary merge branch 1
 ||||||||||| 61a9fb49714
-=======
 ||||||| merged common ancestors
 =========
+=======
