@@ -245,12 +245,11 @@ func TestNodeAPluginsInfiniteLoopEndsWithTheGoHostsHeartbeatOnTheLink(t *testing
 }
 
 // Not Pi's: Pi's `await reload()` is followed by `transported()` and `delivered()` (event-loop hops) before a test reads what a
-// host's watchers saw. Here the process boundary has no shared loop, so Reload waits itself: when it returns, every frame
-// the reload caused has been handled by the Go host the link is attached to and its watch listener entered, with no waiting by
-// the caller. The frames carry a 40 KiB label deflated by the Node host (RuntimeLoad.Compression) to a Go host without a
+// host's watchers saw. Here the process boundary has no shared loop, so the test waits for the frame of the restarted object
+// (Reload itself waits for the frames written before its reply). The frame carries a 40 KiB label deflated by the Node host (RuntimeLoad.Compression) to a Go host without a
 // compressor, which inflates asynchronously and holds the later messages of the link meanwhile: the case where the frames
 // are far behind the reply.
-func TestEndToEndTheFramesAReloadCausedAreDeliveredWhenReloadReturnsAlsoWhenTheirPartsInflateAsynchronously(t *testing.T) {
+func TestEndToEndTheFramesAReloadCausedAreDeliveredAlsoWhenTheirPartsInflateAsynchronously(t *testing.T) {
 	root := tempRoot(t, "contracts", "notes")
 	c := pcNew(t, root)
 	address := workerKind.Address(nil)
@@ -278,8 +277,10 @@ func TestEndToEndTheFramesAReloadCausedAreDeliveredWhenReloadReturnsAlsoWhenThei
 	pcWrite(t, root, "notes", "label.ts", "export const label = \""+label+"\";\n")
 	c.waitMarks(t, "dirty notes", pcDirty("@test/notes"))
 	c.rollout(t, []RolloutStep{step}, c.build(t, c.Marks().Dirty...))
+	// The restarted object's new snapshot comes after the report (Pi's reload does not wait for the new attempt).
+	frames.count(t, 1)
 	if got := frames.all(); !reflect.DeepEqual(got, []delta.JsonValue{label}) {
-		t.Fatalf("frames when Rollout returned = %d frames, want the one with the new label (%d bytes)", len(got), len(label))
+		t.Fatalf("frames when the snapshot arrived = %d frames, want the one with the new label (%d bytes)", len(got), len(label))
 	}
 }
 

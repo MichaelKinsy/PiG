@@ -261,6 +261,13 @@ func Tuple(items []Schema, options ...AnnotationOption) Schema {
 	return with(chordjson.ObjectOf("type", "array", "prefixItems", schemaList(items), "items", false, "minItems", float64(len(items))), options)
 }
 
+// Recursive is a schema that contains itself, as a tree's children are trees: build receives a reference to the schema it returns (Pi's `recursive(id, build)`, Pi main af79b0c3d). id becomes the schema's `$id` and the target of the reference, so it must be unique among the recursive schemas within one schema. The result is a copy of what build returns with `$id` set, appended unless the schema has one.
+func Recursive(id string, build func(self Schema) Schema) Schema {
+	schema := build(chordjson.ObjectOf("$ref", id)).Clone()
+	schema.Set("$id", id)
+	return schema
+}
+
 // Map is an object with string keys and values of value (a record).
 func Map(value Schema, options ...AnnotationOption) Schema {
 	return with(chordjson.ObjectOf("type", "object", "additionalProperties", value), options)

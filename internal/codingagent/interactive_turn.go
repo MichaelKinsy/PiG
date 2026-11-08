@@ -707,11 +707,12 @@ func (m *InteractiveMode) handleBashCommand(ctx context.Context, command string,
 			block = tui.NewBashExecutionComponent(command, m.tuiInst, excludeFromContext, m.outputPad)
 			m.toolMu.Lock()
 			m.bashOrder = append(m.bashOrder, block)
-			// upstream: interactive-mode.ts:3871,7009,7037 never call setExpanded on a new BashExecutionComponent; it starts collapsed.
+			// pig divergence (D311): Pi acd059b72 starts the block in the current expand state, where Pi 1.5.0 starts it collapsed.
+			block.SetExpanded(m.toolsExpanded)
 			m.toolMu.Unlock()
 			if deferred {
-				// Upstream shows a command started during a run in the pending-message area and keeps it there until
-				// the next prompt submitted while idle moves it into the chat (flushPendingBashComponents).
+				// Upstream shows a command started during a run in the pending-message area and keeps it there until the
+				// run settles or the next prompt submitted while idle moves it into the chat (flushPendingBashComponents).
 				m.pendingBashBlocksMu.Lock()
 				m.pendingBashBlocks = append(m.pendingBashBlocks, block)
 				m.pendingBashBlocksMu.Unlock()
@@ -819,7 +820,7 @@ func (m *InteractiveMode) finishUserBash(ctx context.Context, handle Interactive
 }
 
 // flushPendingBashBlocks moves the commands started during a run from the pending-message area into the chat
-// (interactive-mode.ts flushPendingBashComponents). Upstream calls it only for a prompt submitted while idle.
+// (interactive-mode.ts flushPendingBashComponents). Upstream calls it for a prompt submitted while idle and when the run settles.
 func (m *InteractiveMode) flushPendingBashBlocks() {
 	m.pendingBashBlocksMu.Lock()
 	pending := m.pendingBashBlocks

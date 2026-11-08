@@ -84,6 +84,31 @@ func TestEntryAppendedRendersCacheWarmingUsage(t *testing.T) {
 	})
 }
 
+// Back-to-back cache warms update one line with the cumulative cost; a line
+// added in between, or a different note, starts a new one.
+func TestConsecutiveCacheWarmsShareOneLine(t *testing.T) {
+	session := NewSession("warm-merge", t.TempDir())
+	mode := cacheWarmingTestMode(t, session, true)
+	warm := func(cost float64, note string) UsageEntry {
+		e := UsageEntry{Note: note}
+		e.Usage.Cost.Total = cost
+		return e
+	}
+	mode.addCacheWarmingUsage(warm(0.01, ""))
+	mode.addCacheWarmingUsage(warm(0.02, ""))
+	chat := strings.Join(mode.chatContainer.Render(100), "\n")
+	if strings.Count(chat, "Cache warmed") != 1 || !strings.Contains(chat, "Cache warmed: $0.030") {
+		t.Fatalf("merged transcript = %q", chat)
+	}
+	mode.addCacheWarmingUsage(warm(0.04, "extension override"))
+	mode.chatContainer.Add(tui.NewSpacer(1))
+	mode.addCacheWarmingUsage(warm(0.05, "extension override"))
+	chat = strings.Join(mode.chatContainer.Render(100), "\n")
+	if strings.Count(chat, "Cache warmed") != 3 {
+		t.Fatalf("transcript = %q, want three lines", chat)
+	}
+}
+
 // Rebuilding the transcript from the Session shows persisted refreshes where
 // they happened, as upstream renderSessionEntries does.
 func TestRebuildRendersPersistedCacheWarmingUsage(t *testing.T) {

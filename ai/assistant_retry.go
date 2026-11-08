@@ -93,6 +93,8 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"http2 request did not get a response",
 	// Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057, Pi 29057ece).
 	"stream disconnected before completion",
+	// Magpie gateway relaying a dropped upstream Anthropic stream, for example "Claude Code's stream from Anthropic was cut short after the reply had begun" (#11879, Pi 566344046).
+	"cut short after the reply had begun",
 	// Node ERR_HTTP2_STREAM_CANCEL: the HTTP/2 session died before the request was sent, for example after the Bedrock SDK's 5-minute session timeout (utils/retry.ts, #10379).
 	"pending stream has been canceled",
 	// Provider-requested retry delay cap failures flow through the outer policy.
