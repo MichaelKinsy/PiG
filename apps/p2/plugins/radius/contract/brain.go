@@ -19,6 +19,7 @@ import (
 	"time"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/gorilla/websocket"
 )
 
@@ -109,17 +110,17 @@ const (
 	// maxMessageBytes is the largest message a socket carries.
 	maxMessageBytes = 16 * 1024 * 1024
 	// defaultHTTPWindow is the relay's default window, for relays that do not state it in `connection_open`.
-	defaultHTTPWindow      = 256 * 1024
-	congestionHighBytes    = 1024 * 1024
-	congestionLowBytes     = 256 * 1024
-	protocolVersion        = 2
-	dataHeaderBytes        = 18
-	frameBinary       byte = 1
-	frameText         byte = 2
-	frameEnd          byte = 3
-	bodyChunkBytes         = 256 * 1024
-	retryInitial           = time.Second
-	retryMax               = 30 * time.Second
+	defaultHTTPWindow        = 256 * 1024
+	congestionHighBytes      = 1024 * 1024
+	congestionLowBytes       = 256 * 1024
+	protocolVersion          = 2
+	dataHeaderBytes          = 18
+	frameBinary         byte = 1
+	frameText           byte = 2
+	frameEnd            byte = 3
+	bodyChunkBytes           = 256 * 1024
+	retryInitial             = time.Second
+	retryMax                 = 30 * time.Second
 	// A client channel's origin while the brain's Radius origin is unknown (nobody opened it in a browser yet).
 	clientOrigin = "https://radius.invalid"
 	// The relay's close of a host socket another brain with this server ID replaced (relay protocol).
@@ -272,6 +273,7 @@ type Brain struct {
 
 // NewBrain makes a brain; Start connects it.
 func NewBrain(options BrainOptions) *Brain {
+	//portlint:allow ctxbackground the brain owns this context for its life: Close cancels it
 	ctx, cancel := context.WithCancel(context.Background())
 	pick := func(value, fallback time.Duration) time.Duration {
 		if value > 0 {
@@ -1108,7 +1110,10 @@ func sameStrings(a, b []string) bool {
 }
 
 func (b *Brain) putShares(config *Config, shares []string) error {
-	body, err := json.Marshal(map[string]any{"emails": shares})
+	// The body is what JSON.stringify({ emails: shares }) writes: `<`, `>` and `&` are not escaped.
+	body, err := chordjson.Marshal(struct {
+		Emails []string `json:"emails"`
+	}{shares})
 	if err != nil {
 		return err
 	}

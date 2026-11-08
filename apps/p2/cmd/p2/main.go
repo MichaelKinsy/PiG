@@ -40,7 +40,6 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/projects"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/prompt"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/proxy-marker"
-	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/quiet-tools"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/radius"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/search"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/send-file"
@@ -50,6 +49,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/terminals"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/tree"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/voice"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/web-shell"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/workspace"
 )
@@ -68,9 +68,6 @@ func main() {
 		hosts.RunWorker()
 	case "server":
 		os.Exit(runServer())
-	case hosts.TUISubcommand:
-		// The terminal client of a running server (Pi's `npm run tui`).
-		os.Exit(hosts.RunTUI(os.Args[2:]))
 	case "owner-link":
 		// A private invitation, emitted to the invoking user's terminal only.
 		link, err := p2runtime.OwnerLink(context.Background(), os.Args[2:], os.Getenv)
@@ -80,7 +77,7 @@ func main() {
 		}
 		fmt.Println(link)
 	default:
-		fmt.Fprintf(os.Stderr, "usage: p2 [server|worker|tui [url] [options]|owner-link [base-url]]\n")
+		fmt.Fprintf(os.Stderr, "usage: p2 [server|worker|owner-link [base-url]]\n")
 		os.Exit(2)
 	}
 }

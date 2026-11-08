@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -323,7 +324,7 @@ func projectFiles(ctx context.Context, locations []p2runtime.Location, environme
 		case readFailure == nil && len(utf16Units(text)) <= contract.ProjectFileMaxChars:
 			files = append(files, delta.JsonObjectOf("location", toJSON(formOf(location)), "text", text))
 		case readFailure == nil:
-			files = append(files, delta.JsonObjectOf("location", toJSON(formOf(location)), "error", "larger than 262144 characters"))
+			files = append(files, delta.JsonObjectOf("location", toJSON(formOf(location)), "error", fmt.Sprintf("larger than %d characters", contract.ProjectFileMaxChars)))
 		case !isNotFound(readFailure):
 			files = append(files, delta.JsonObjectOf("location", toJSON(formOf(location)), "error", truncateUnits(failureMessage(readFailure), 2000)))
 		}

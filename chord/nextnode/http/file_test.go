@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/file.ts
+// pi: packages/chord/src/node/http/file.ts
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ import (
 // Tests of file responses (slice 10 §2): the type by extension (no active types), a `root` refusing a file whose real path
 // lies outside it, and the file handle opened by the first read and closed when the request's scope seals, on every path (a
 // full read, `HEAD`, a 416, a wrap replacing the response, a disconnect). Ports
-// packages/chord/test/next-node/http/file.test.ts.
+// packages/chord/test/node/http/file.test.ts.
 
 // fileOf is a file of size bytes named name in a fresh directory.
 func fileOf(t *testing.T, name string, size int) string {

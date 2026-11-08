@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/gorilla/websocket"
 )
 
@@ -92,6 +94,7 @@ func Start(t testing.TB, options Options) *Relay {
 	}
 	r.Gateway = "http://" + listener.Addr().String()
 	r.server = &http.Server{Handler: http.HandlerFunc(r.serve)}
+	//portlint:allow golifetime Serve returns when Close shuts the server down
 	go func() { _ = r.server.Serve(listener) }()
 	t.Cleanup(r.Close)
 	return r
@@ -161,10 +164,11 @@ func (r *Relay) serve(w http.ResponseWriter, request *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"actor":        map[string]any{"principal_id": Owner.ID, "principal_kind": Owner.Kind},
-		"organization": map[string]any{"id": Owner.OrganizationID},
-	})
+	body, _ := chordjson.Marshal(delta.JsonObjectOf(
+		"actor", delta.JsonObjectOf("principal_id", Owner.ID, "principal_kind", Owner.Kind),
+		"organization", delta.JsonObjectOf("id", Owner.OrganizationID),
+	))
+	_, _ = w.Write(body)
 }
 
 func (r *Relay) serveSocket(w http.ResponseWriter, request *http.Request) {
@@ -201,6 +205,7 @@ func (r *Relay) serveSocket(w http.ResponseWriter, request *http.Request) {
 	r.host = conn
 	r.mu.Unlock()
 	r.readyOnce.Do(func() { close(r.hostReady) })
+	//portlint:allow golifetime ends when the host socket closes (its read fails)
 	go r.readHost(conn)
 }
 
@@ -312,7 +317,9 @@ func (r *Relay) connectClient(w http.ResponseWriter, request *http.Request) {
 			}
 		}
 	}
+	//portlint:allow golifetime ends when either socket of the pair closes (its read fails)
 	go pipe(client, channel)
+	//portlint:allow golifetime ends when either socket of the pair closes (its read fails)
 	go pipe(channel, client)
 }
 

@@ -106,7 +106,7 @@ func TestSubagentReporterAnAnswerSettlesTheWait(t *testing.T) {
 }
 
 // The subagent's run failed with this message queued behind it: Durable leaves it queued and nothing places it.
-func TestSubagentReporterAMessageStillQueuedOnceIdleIsWithdrawn(t *testing.T) {
+func TestSubagentReporterAMessageStillQueuedOnceTheSubagentIsIdleIsWithdrawnNotAwaitedForever(t *testing.T) {
 	f := newReporterFixture(durable.SubmissionQueued, false)
 	done := f.start(func() error { return nil })
 	close(f.idle)
@@ -120,7 +120,7 @@ func TestSubagentReporterAMessageStillQueuedOnceIdleIsWithdrawn(t *testing.T) {
 	}
 }
 
-func TestSubagentReporterAMessagePlacedMeanwhileIsAwaited(t *testing.T) {
+func TestSubagentReporterAMessagePlacedMeanwhileIsAwaitedNotWithdrawn(t *testing.T) {
 	f := newReporterFixture(durable.SubmissionQueued, true)
 	// The pause lets an admission in flight place the message.
 	done := f.start(func() error {

@@ -26,33 +26,28 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 			return p2test.StubMembers{State: map[string]any{"settings": settings}}
 		}}},
 	})
-	extensions, err := fixture.Host.Registry(p2test.Background, p2runtime.Extensions.Registry, host.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	switches, err := fixture.Host.Registry(p2test.Background, p2runtime.ExtensionSwitches.Registry, host.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	extension := func() (found *p2runtime.P2Extension) {
-		// Without a plugin serving the registry (no extension loaded at all) reading it panics: nothing there.
-		defer func() {
-			if r := recover(); r != nil {
-				t.Logf("recovered: %v", r)
-			}
-		}()
-		table, err := p2runtime.Extensions.Table(extensions)
+	// A registry's value is read inside a section of the host's loop (its source does): its contributions change there.
+	extension := func() *p2runtime.P2Extension {
+		value, err := registryCurrent(fixture.Host, p2runtime.Extensions.Registry)
 		if err != nil {
-			t.Logf("table: %v", err)
+			t.Logf("registry: %v", err)
 			return nil
 		}
-		found, _ = table.Get("codemode")
+		table, ok := value.(*p2runtime.KeyedTable[*p2runtime.P2Extension])
+		if !ok {
+			return nil
+		}
+		found, _ := table.Get("codemode")
 		return found
 	}
 	switchIs := func(want bool) func() (bool, error) {
 		return func() (bool, error) {
-			table, err := p2runtime.ExtensionSwitches.Table(switches)
+			value, err := registryCurrent(fixture.Host, p2runtime.ExtensionSwitches.Registry)
 			if err != nil {
+				return false, nil
+			}
+			table, ok := value.(*p2runtime.KeyedTable[*bool])
+			if !ok {
 				return false, nil
 			}
 			on, _ := table.Get("codemode")
@@ -110,4 +105,13 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 		t.Fatal(err)
 	}
 	wait(func() (bool, error) { return extension() != nil, nil }, "the extension again")
+}
+
+// registryCurrent is a registry's value now, read as the host's section gives it (the source reads inside one).
+func registryCurrent(h host.Host, registry registries.Registry[any, any]) (any, error) {
+	source, err := h.Registry(p2test.Background, registry, host.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return source.Current()
 }

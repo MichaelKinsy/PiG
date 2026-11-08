@@ -327,9 +327,9 @@ func TestSharingFakeProvider(t *testing.T) {
 		}
 	})
 
-	// The web halves of Pi's "serves guests the app, never other sessions, sources or data": the guest loads the app's pages of
-	// its session, polls the manifest and fetches the current bundle's files (the refusals are the next case).
-	t.Run("serves guests the app", func(t *testing.T) {
+	// Pi's "serves guests the app, never other sessions, sources or data": the guest loads the app's pages of its session, polls
+	// the manifest and fetches the current bundle's files, and is refused everything else.
+	t.Run("serves guests the app, never other sessions, sources or data", func(t *testing.T) {
 		for _, path := range []string{"/", "/s/" + session, "/s/" + session + "/c/2"} {
 			if status := tunnel(path, alice.cookie, http.MethodGet, "").Status; status != 200 {
 				t.Errorf("%s: %d, want 200", path, status)
@@ -352,9 +352,7 @@ func TestSharingFakeProvider(t *testing.T) {
 		if status := tunnel("/s/"+other, alice.cookie, http.MethodGet, "").Status; status != 403 {
 			t.Errorf("/s/%s: %d, want 403", other, status)
 		}
-	})
 
-	t.Run("refuses a guest's other requests", func(t *testing.T) {
 		for _, path := range []string{
 			"/__p2_web/app-UNKNOWN.js", "/src/hosts/server.ts", "/@fs" + fixture.DataDir + "/shares.sqlite",
 			"/src/hosts/web/%2e%2e%2fserver.ts", "/plugins/../src/hosts/server.ts",

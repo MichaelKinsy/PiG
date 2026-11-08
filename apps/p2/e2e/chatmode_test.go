@@ -2,9 +2,6 @@
 // with a plugin subset: what the fake provider receives (P2_FAKE_REQUESTS), mentions with their digest and attachments, a chat
 // message during a run, guests, and the switch and the agent's name across a compatible reload of the plugin. Guests join
 // through a loopback server with an allowed tunnel Host (share.test).
-//
-// Pi's plugin list names `search`, which has no Go plugin yet: the list here is Pi's without it (the requests checked are those
-// of the tools and prompts of the plugins named).
 
 package e2e_test
 
@@ -36,9 +33,10 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat-mode"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/search"
 )
 
-var chatModePlugins = []string{"chat", "chat-mode", "conversations", "drafts", "envs", "files", "models", "sessions", "sharing", "status", "subagents"}
+var chatModePlugins = []string{"chat", "chat-mode", "conversations", "drafts", "envs", "files", "models", "search", "sessions", "sharing", "status", "subagents"}
 
 func TestChatModeServerSharingFakeProvider(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
@@ -407,12 +405,9 @@ func TestChatModeReloadKeepsTheModeAndItsName(t *testing.T) {
 		t.Fatal(err)
 	}
 	until(mode.Member("name"), func(value delta.JsonValue) bool { return value == "Claude" })
-	result, err := fixture.Server.Reload([]string{"chat-mode"}, p2test.Background)
-	if err != nil {
+	// Pi asserts the reload succeeds (its server step always lists the host); an unchanged reload is a no-op in both.
+	if _, err := fixture.Server.Reload([]string{"chat-mode"}, p2test.Background); err != nil {
 		t.Fatal(err)
-	}
-	if len(result.Workers) == 0 && len(result.Server.Plugins.Changed) == 0 {
-		t.Fatalf("the rollout reached neither the server nor the worker: %+v", result)
 	}
 	// The same reference follows the reloaded object: the state is the document's, and it still takes changes.
 	until(mode.Member("enabled"), func(value delta.JsonValue) bool { return value == true })

@@ -138,6 +138,25 @@ func TestTheBaseMarkFindsAnEditMadeBetweenABaseBuildAndItsWatchWithNoLaterEvent(
 	f.baseIs(true)
 }
 
+// A record arriving after the close watches nothing and marks nothing (Pi 284e63d9 watcher.ts recordBase's closed guard).
+func TestARecordedBaseAfterTheCloseWatchesNothing(t *testing.T) {
+	_, f := based(t, nil)
+	elsewhere := realOf(t, tempRoot(t))
+	writeFiles(t, elsewhere, map[string]string{"entry.ts": "edited after the build"})
+	records := 0
+	f.run(func() { records = len(f.watcher.records) })
+	f.close()
+	f.recordBase(BaseInputs{filepath.Join(elsewhere, "entry.ts"): hashOf("as built")})
+	if f.marks().Base {
+		t.Fatal("base set by a record that arrived after the close")
+	}
+	f.run(func() {
+		if len(f.watcher.records) != records {
+			t.Fatalf("records = %d after the close, want %d", len(f.watcher.records), records)
+		}
+	})
+}
+
 // Ports watcher.test.ts "watches a base directory removed and recreated, and compares its files".
 func TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles(t *testing.T) {
 	parent := realOf(t, tempRoot(t))
@@ -271,5 +290,42 @@ func TestTheBaseMarkReadsRecordedFilesOnBoundedGoroutinesThatEndWithTheWatcher(t
 	buf = buf[:runtime.Stack(buf, true)]
 	if strings.Contains(string(buf), "(*pluginWatcher).compareQueued") || strings.Contains(string(buf), "(*pluginWatcher).readEvents") {
 		t.Fatalf("a watcher goroutine outlived join:\n%s", buf)
+	}
+}
+
+// Ports app.test.ts "settles baseWatched only once the base bundles' records were compared (an edit right after the start)" (Pi
+// 284e63d9: `recordBase` settles once its first comparisons did): the channel closes after each file of the record was read, so
+// `base` then knows the record. A record of no file settles at once, and one arriving after the close watches nothing.
+func TestRecordBaseSettlesOnceItsFirstComparisonsEnded(t *testing.T) {
+	_, f := based(t, nil)
+	elsewhere := realOf(t, tempRoot(t))
+	writeFiles(t, elsewhere, map[string]string{"a.ts": "v2", "b.ts": "same"})
+	var done <-chan struct{}
+	f.run(func() {
+		done = f.watcher.recordBase(BaseInputs{
+			filepath.Join(elsewhere, "a.ts"): hashOf("v1"),
+			filepath.Join(elsewhere, "b.ts"): hashOf("same"),
+		})
+	})
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first comparisons did not end")
+	}
+	if !f.marks().Base {
+		t.Fatal("base is not set once the record's comparisons ended, a.ts differs from it")
+	}
+	f.run(func() { done = f.watcher.recordBase(BaseInputs{}) })
+	select {
+	case <-done:
+	default:
+		t.Fatal("an empty record did not settle at once")
+	}
+	f.run(func() { f.watcher.close() })
+	f.run(func() { done = f.watcher.recordBase(BaseInputs{filepath.Join(elsewhere, "a.ts"): hashOf("v2")}) })
+	select {
+	case <-done:
+	default:
+		t.Fatal("a record after the close did not settle at once")
 	}
 }

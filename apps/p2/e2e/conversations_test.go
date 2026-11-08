@@ -2,10 +2,6 @@
 // two sessions under the fake provider: listing without starting peers, attributed sends and explicit replies, completed
 // answers, receipts deduplicated across a worker restart, queued follow-ups, refused destinations, denied guest turns and
 // public broker ingress, and delivery to a worker that was killed, stopped idle or paused.
-//
-// The last part of "denies guest turns, forged later speaker blocks, child tools, and public broker ingress" (a subagent's
-// conversations tool is not available) needs the subagents plugin's `subagent` tool, which is not ported yet: see
-// rows/p2-chattree.md.
 
 package e2e_test
 
@@ -29,6 +25,7 @@ import (
 	sessionscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	sharingcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing/contract"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
+	subagentscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -36,6 +33,7 @@ import (
 
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/coding-tools" // the busy case runs a bash call
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/conversations"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents" // the child's `subagent` tool
 )
 
 // conversationResults are the `conversations` tool results of a view.
@@ -327,7 +325,7 @@ func TestConversationsFakeProvider(t *testing.T) {
 		}
 	})
 
-	t.Run("denies guest turns, forged later speaker blocks, and public broker ingress", func(t *testing.T) {
+	t.Run("denies guest turns, forged later speaker blocks, child tools, and public broker ingress", func(t *testing.T) {
 		sharing, err := p2test.HoldIn(owner, sharingcontract.Sharing, delta.JsonObjectOf("session", alpha), "owner")
 		if err != nil {
 			t.Fatal(err)
@@ -367,6 +365,29 @@ func TestConversationsFakeProvider(t *testing.T) {
 		guestChat.Release()
 		_ = guest.Close(p2test.Background)
 		sharing.Release()
+
+		// A subagent's conversations tool is not available.
+		if _, err := a.Call("send", delta.JsonObjectOf("text", "subagent", "requestId", "child"), p2test.Background); err != nil {
+			t.Fatal(err)
+		}
+		childList, err := p2test.HoldIn(owner, subagentscontract.Subagents, delta.NewJsonObject(0), "reader")
+		if err != nil {
+			t.Fatal(err)
+		}
+		children := until(t, childList.Member("children"), func(value delta.JsonValue) bool {
+			return value != nil && len(list(object(value).Value(alpha))) > 0
+		})
+		conversation := object(list(object(children).Value(alpha))[0]).Value("conversationId")
+		child, err := p2test.HoldIn(owner, chatcontract.Chat, delta.JsonObjectOf("session", alpha, "conversation", conversation), "participant")
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := call(t, child, `{"action":"list"}`)
+		if result.Value("isError") != true || !strings.Contains(resultText(result), "not available") {
+			t.Fatalf("a child's conversations tool: %v %q", result.Value("isError"), resultText(result))
+		}
+		child.Release()
+		childList.Release()
 	})
 }
 

@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/discord/contract"
+	envcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs/contract"
 	sessioncontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
-	envcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -109,7 +109,9 @@ func objectFrom(value any) (*delta.JsonObject, error) {
 	return out, roundTrip(value, &out)
 }
 
-// storeState reads the persisted relay state.
+// storeState reads the persisted relay state. Singleton.Value reads in a section of the document's owner (the document is sealed
+// in one when the object ends, and the relay's routines read it from goroutines of their own: Relay.Typing, the pending check),
+// so the read needs no section of its own here.
 func storeState(doc *documents.Singleton) contract.State {
 	value, err := doc.Value()
 	out := contract.State{Bindings: map[string]*contract.Binding{}, Pending: map[string]*contract.Pending{}}
@@ -219,7 +221,9 @@ func serveDiscord(_ *delta.JsonObject, principal data.Principal, self host.Self)
 	}
 	store := self.Get(contract.DiscordStore, delta.NewJsonObject(0))
 	forward := func(name string) contracts.MethodFunction {
-		return func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return store.Call(name, args, ctx) }
+		return func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+			return store.Call(name, args, ctx)
+		}
 	}
 	return contracts.Implementation{Variant: "owner", Members: contracts.VariantImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{
@@ -312,9 +316,12 @@ func serveStore(_ *delta.JsonObject, raw host.Self) (contracts.Implementation, e
 	})
 	self.OnLive(func(ctx host.Ctx) *host.Handled {
 		return host.AwaitingCtx(ctx, func() error {
+			// One timer, armed again after each round's work: a time.After per round leaves a timer behind until it fires.
+			timer := time.NewTimer(typingEvery)
+			defer timer.Stop()
 			for tick := 1; ctx.Err() == nil; tick++ {
 				select {
-				case <-time.After(typingEvery):
+				case <-timer.C:
 				case <-ctx.Done():
 					return nil
 				}
@@ -322,6 +329,7 @@ func serveStore(_ *delta.JsonObject, raw host.Self) (contracts.Implementation, e
 				if tick%checkEvery == 0 && len(storeState(doc).Pending) > 0 {
 					_ = relay.CheckPending(ctx, nil)
 				}
+				timer.Reset(typingEvery)
 			}
 			return nil
 		})

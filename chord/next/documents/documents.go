@@ -2,10 +2,14 @@ package documents
 
 import (
 	"context"
+	"time"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/documents/documents.ts
@@ -32,10 +36,23 @@ type DocumentsOwner interface {
 	// Fail fails the live object `broken` with error (a document the code cannot read, slice 6a §1.4); ignored when it
 	// is not live.
 	Fail(err *data.ChordError)
+	// Telemetry is the host's telemetry adapter: its commits are recorded when it records.
+	Telemetry() telemetry.TelemetryContext
+	// Metrics are the host's instruments (made once per adapter): commit durations go to them.
+	Metrics() *chordtelemetry.Instruments
 	// Do runs work as one section of the host's serialization: it does not block, and is inline when the caller is in
 	// a section already.
 	Do(work func())
+	// InSection reports whether the caller runs in a section of the host's serialization already: a read there takes no
+	// section (no closure to make).
+	InSection() bool
 	Clock
+}
+
+// CancelReporter is a DocumentsOwner that reports a transaction that did not commit while its context was cancelled
+// (`transaction_cancelled`): an empty `catch` cannot hide a change that never happened. cause is the context's cause.
+type CancelReporter interface {
+	TransactionCancelled(cause error)
 }
 
 // DeclaredSlot is what Documents needs of a slot of either kind.
@@ -117,6 +134,9 @@ func (d *Documents) Own() *SealToken { return d.own }
 
 // Do runs work as one section of the host's serialization.
 func (d *Documents) Do(work func()) { d.owner.Do(work) }
+
+// InSection reports whether the caller runs in a section of the owner's serialization already.
+func (d *Documents) InSection() bool { return d.owner.InSection() }
 
 // Declare is a handle to definition's slot for an attempt sealed by token, whose `at(key)` pins declarer takes: the slot
 // made by the first declaration of its name, checked against the values for later ones (SlotDefinition.Check). The
@@ -292,14 +312,50 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 		result, err = fn(tx)
 	}
 	if err == nil {
+		// Timed only when something records: the commit's duration metric, its event on the enclosing span.
+		timed := !chordtelemetry.Untraced(d.owner.Telemetry()) || !chordtelemetry.Untraced(chordctx.Telemetry(ctx))
+		var started time.Time
+		if timed {
+			started = commitNow()
+		}
 		// In-memory-only commits are synchronous (W12): the store's step is taken only for persisted writes.
 		err = tx.Commit()
+		if err == nil && timed {
+			d.recordCommit(tx, float64(commitNow().Sub(started))/float64(time.Millisecond), ctx)
+		}
 	}
 	if err != nil {
 		d.Do(tx.Discard)
+		// Only a transaction that did not commit reads this; Chord's own run under contexts that never abort.
+		if ctx.Err() != nil {
+			if reporter, ok := d.owner.(CancelReporter); ok {
+				cause := context.Cause(ctx)
+				d.Do(func() { reporter.TransactionCancelled(cause) })
+			}
+		}
 		return nil, err
 	}
 	return result, nil
+}
+
+// commitNow reads the clock a timed commit uses; a package var so a test can count its reads (as host_uuid.go's setUUIDClock).
+var commitNow = time.Now
+
+// recordCommit: a commit of tx that took duration ms (from its start to its adoption): its event on ctx's span (the method,
+// routine or job it ran in) and the host's commit duration metric; a commit that changed nothing records nothing.
+func (d *Documents) recordCommit(tx *Transaction, duration float64, ctx context.Context) {
+	var documents, ops, writes, rows int64
+	d.Do(func() { documents, ops, writes, rows = tx.Committed() })
+	if documents == 0 && writes == 0 {
+		return
+	}
+	if span := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(span) {
+		span.AddEvent("chord.commit", telemetry.SpanAttributes{
+			telemetry.Attr("documents", float64(documents)), telemetry.Attr("ops", float64(ops)),
+			telemetry.Attr("rows", float64(rows)), telemetry.Attr("duration", duration),
+		})
+	}
+	d.owner.Metrics().Histogram("chord.commit.duration").Record(duration, nil, nil)
 }
 
 // Fence seals token (the seal fence): its transactions are refused from now on, and the one holding the line is

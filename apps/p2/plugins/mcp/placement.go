@@ -6,11 +6,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
-	envsplugin "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	envsplugin "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
@@ -170,7 +169,7 @@ func Place(config OwnerConfig, leases []Lease, envs *chordjson.Object, work Work
 			if !set {
 				enabled = server.Enabled
 			}
-			if enabled && (!locked || slices.Contains(lock.MCP, server.Name)) {
+			if enabled && (!locked || contains(lock.MCP, server.Name)) {
 				use(ownerSpec(server, &lease, envs))
 			}
 		}
@@ -185,6 +184,15 @@ func Place(config OwnerConfig, leases []Lease, envs *chordjson.Object, work Work
 		placement.Leases = append(placement.Leases, placed)
 	}
 	return placement
+}
+
+func contains(list []string, item string) bool {
+	for _, each := range list {
+		if each == item {
+			return true
+		}
+	}
+	return false
 }
 
 // projectOf is the project configuration the lease's worker sent, checked.

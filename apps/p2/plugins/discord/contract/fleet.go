@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -14,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Ports apps/p2/plugins/discord/fleet.ts: the owner's Discord bots (server, a native of `DiscordStore`): their tokens in
@@ -72,6 +75,7 @@ func OpenFleet(dataDir string) (*Fleet, error) {
 	}
 	for id, entry := range file.Bots {
 		bot := fleet.start(id)
+		//portlint:allow golifetime Connect returns once the bot is connected or closed (Pi's un-awaited connect)
 		go bot.Connect(entry.Token)
 	}
 	return fleet, nil
@@ -308,11 +312,17 @@ func (f *Fleet) start(id string) *Bot {
 
 func (f *Fleet) save() error {
 	f.mu.Lock()
-	data, err := json.MarshalIndent(f.file, "", "\t")
+	compact, err := chordjson.Marshal(f.file)
 	f.mu.Unlock()
 	if err != nil {
 		return err
 	}
+	// JSON.stringify(file, null, "\t"): no HTML escaping, then the tab indentation.
+	var indented bytes.Buffer
+	if err := json.Indent(&indented, compact, "", "\t"); err != nil {
+		return err
+	}
+	data := indented.Bytes()
 	temporary := fmt.Sprintf("%s.%d.tmp", f.path, os.Getpid())
 	if err := os.WriteFile(temporary, append(data, '\n'), 0o600); err != nil {
 		return err
