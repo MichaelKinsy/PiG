@@ -56,3 +56,32 @@ func FuzzNonASCIIScansMatchContainsAny(f *testing.F) {
 	}
 	f.Fuzz(assertNonASCIIScansMatchReference)
 }
+
+// TestFromFirstNonASCIIMatchesBytewise puts one non-ASCII byte at every offset of ASCII strings of every length around the eight-byte block
+// size of the scan, and checks it against the plain loop.
+func TestFromFirstNonASCIIMatchesBytewise(t *testing.T) {
+	bytewise := func(s string) (string, bool) {
+		for i := 0; i < len(s); i++ {
+			if s[i] >= 0x80 {
+				return s[i:], true
+			}
+		}
+		return "", false
+	}
+	for n := 0; n <= 40; n++ {
+		ascii := strings.Repeat("a", n)
+		if got, ok := fromFirstNonASCII(ascii); ok || got != "" {
+			t.Fatalf("fromFirstNonASCII(%q) = %q, %v; want none", ascii, got, ok)
+		}
+		for at := 0; at < n; at++ {
+			for _, c := range []byte{0x80, 0xB3, 0xC3, 0xFF} {
+				s := ascii[:at] + string([]byte{c}) + ascii[at+1:] + "é"
+				gotS, gotOK := fromFirstNonASCII(s)
+				wantS, wantOK := bytewise(s)
+				if gotS != wantS || gotOK != wantOK {
+					t.Fatalf("fromFirstNonASCII(%q) = %q, %v; want %q, %v", s, gotS, gotOK, wantS, wantOK)
+				}
+			}
+		}
+	}
+}

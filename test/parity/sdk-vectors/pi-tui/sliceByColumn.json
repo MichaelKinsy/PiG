@@ -1,5 +1,5 @@
 {
- "pin": "1.5.0",
+ "pin": "1.5.0+c23b9ec1",
  "package": "pi-tui@1.5.0",
  "module": "pi-tui",
  "export": "sliceByColumn",
@@ -522,7 +522,7 @@
     2,
     false
    ],
-   "result": "\u001b_pi:c\u0007テ"
+   "result": "テ"
   },
   {
    "name": "case 0052",
@@ -582,7 +582,7 @@
     7,
     false
    ],
-   "result": "\u001b[H\u001b_Gf=100,a=T;AAAA\u001b\\\u001b[1m\u001b[999999999m\u001b[31m\u001b^pm\u001b\\\u001b]8;;\u001b\\\u001b[31m\u001b]1337;File=inline=1:AAAA\u0007"
+   "result": "\u001b[H\u001b[1m\u001b[999999999m\u001b[31m\u001b^pm\u001b\\\u001b]8;;\u001b\\\u001b[31m\u001b]1337;File=inline=1:AAAA\u0007"
   },
   {
    "name": "case 0058",
@@ -782,7 +782,7 @@
     25,
     true
    ],
-   "result": "\u001b_Gf=100,a=T;AAAA\u001b\\\u001b7İ\u001b[H☺️\u001b]1337;File=inline=1:AAAA\u0007\u001b]8;;unterminated‌\u001b]0;title\u0007a b—"
+   "result": "\u001b7İ\u001b[H☺️\u001b]1337;File=inline=1:AAAA\u0007\u001b]8;;unterminated‌\u001b]0;title\u0007a b—"
   },
   {
    "name": "case 0078",
@@ -982,7 +982,7 @@
     4,
     true
    ],
-   "result": "\u001b_Gf=100,a=T;AAAA\u001b\\\u001b[27m\u001b[39munte"
+   "result": "\u001b[27m\u001b[39munte"
   },
   {
    "name": "case 0098",
@@ -1352,7 +1352,7 @@
     1,
     false
    ],
-   "result": "\u001b_Gf=100,a=T;AAAA\u001b\\\u001b[?25l\u001b[4:3m\u001b]8;;http://x.test/a\u0007r"
+   "result": "\u001b[?25l\u001b[4:3m\u001b]8;;http://x.test/a\u0007r"
   },
   {
    "name": "case 0135",
@@ -1582,7 +1582,7 @@
     17,
     false
    ],
-   "result": "\u001b_Gf=100,a=T;AAAA\u001b\\\u001b_pi:c\u0007\u001b[4m\u001bP1$r\u001b\\"
+   "result": "\u001b_pi:c\u0007\u001b[4m\u001bP1$r\u001b\\"
   },
   {
    "name": "case 0158",
@@ -1612,7 +1612,7 @@
     10,
     false
    ],
-   "result": "\u001b[m\u001b_pi:c\u0007\u001b[38;2;10;20;30m5l"
+   "result": "\u001b[m\u001b[38;2;10;20;30m5l"
   },
   {
    "name": "case 0161",
@@ -2082,7 +2082,7 @@
     22,
     true
    ],
-   "result": "\u001b[38;2;10;20;30m\u001b_Gf=100,a=T;AAAA\u001b\\\u001b]133;A\u0007m\u001b\\\u001bX sos\u001b\\"
+   "result": "\u001b[38;2;10;20;30m\u001b]133;A\u0007m\u001b\\\u001bX sos\u001b\\"
   },
   {
    "name": "case 0208",
@@ -2652,7 +2652,7 @@
     13,
     true
    ],
-   "result": "\u001b[2m\u001b[38;2;10;20;30m\u001b_Gf=100,a=T;AAAA\u001b\\minated　↔️"
+   "result": "\u001b[2m\u001b[38;2;10;20;30mminated　↔️"
   },
   {
    "name": "case 0265",
