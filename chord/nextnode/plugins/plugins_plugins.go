@@ -740,7 +740,7 @@ func (c *Plugins) buildOne(plugin Plugin, kind string, plugins []Plugin, ctx con
 	definition := c.kinds[kind]
 	options := BuildOptions{
 		HostPackages: definition.HostPackages, Platform: definition.Platform, Kinds: c.kindNames, Plugins: plugins,
-		Api: c.options.Api, PublicPath: c.options.PublicPath,
+		Api: c.options.Api, PublicPath: c.options.PublicPath, Node: c.options.Node,
 	}
 	built, err := BuildFacet(plugin, kind, options, ctx)
 	if err != nil {

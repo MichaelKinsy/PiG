@@ -63,6 +63,9 @@ type BuildOptions struct {
 	Plugins []Plugin
 	// PublicPath is where the app serves a browser build's assets: the URL prefix their imports evaluate to (nil: `/`).
 	PublicPath *string
+	// Node is how the Node subprocess that reads the mapping of a CSS module is started (NodeOptions.Command and ReadyTimeout;
+	// the Node is found as the plugin host's is): one per build that has a CSS module.
+	Node NodeOptions
 }
 
 // BuildInput is a file a build read, with the hash of the bytes it handed its tool (the watcher's inputs).
@@ -157,6 +160,7 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 		return BuiltFacet{}, err
 	}
 	rules := newImportRules(plugin, kind, entry, options, ctx)
+	defer rules.mappings.close()
 	if wrongEntry := rules.checkEntry(named, entry); wrongEntry != "" {
 		return failed([]string{wrongEntry}), nil
 	}
@@ -209,6 +213,10 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 		buildOptions.Engines = []api.Engine{{Name: api.EngineNode, Version: "22"}}
 	}
 	result := api.Build(buildOptions)
+	// A CSS module whose mapping could not be read because ctx ended is an abort, not a failed build.
+	if cause := rules.mappings.abort(); cause != nil {
+		return BuiltFacet{}, cause
+	}
 	if len(result.Errors) > 0 {
 		errors := make([]string, len(result.Errors))
 		for i, message := range result.Errors {
@@ -434,6 +442,8 @@ type importRules struct {
 	readCopied map[string]bool
 	// scoped is the scoped stylesheet of every CSS module read, by its file.
 	scoped map[string]string
+	// mappings reads the mapping of each CSS module (one Node subprocess, started by the first).
+	mappings *mappingEvaluator
 	// importers is the first importer of every file resolved, by file.
 	importers map[string]string
 	// versions is the API versions imported, in the order they were first imported.
@@ -452,6 +462,7 @@ func newImportRules(own Plugin, kind, entry string, options BuildOptions, ctx co
 		readInputs:   map[string]string{},
 		readCopied:   map[string]bool{},
 		scoped:       map[string]string{},
+		mappings:     newMappingEvaluator(options.Node, ctx),
 		importers:    map[string]string{},
 	}
 	for _, each := range options.Plugins {
@@ -593,7 +604,7 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 // cssModule is the CSS module file with contents as the facet imports it: a module whose default export is the class
 // mapping, importing the scoped stylesheet (ScopeCSSModule), which the build collects with the facet's other CSS.
 func (rules *importRules) cssModule(file, contents string) (api.OnLoadResult, error) {
-	scoped, err := ScopeCSSModule(rules.own.Name, rules.own.Dir, file, contents)
+	scoped, err := scopeCSSModule(rules.own.Name, rules.own.Dir, file, contents, rules.mappings)
 	if err != nil {
 		var failure *cssModuleError
 		if errors.As(err, &failure) {
@@ -604,7 +615,7 @@ func (rules *importRules) cssModule(file, contents string) (api.OnLoadResult, er
 	rules.mu.Lock()
 	rules.scoped[file] = scoped.CSS
 	rules.mu.Unlock()
-	module := "import " + jsString(scopedCSSNamespace+":"+file) + ";export default " + classMapObject(scoped.Classes) + ";"
+	module := "import " + jsString(scopedCSSNamespace+":"+file) + ";export default " + scoped.Classes + ";"
 	return api.OnLoadResult{Contents: &module, Loader: api.LoaderJS, ResolveDir: filepath.Dir(file)}, nil
 }
 
