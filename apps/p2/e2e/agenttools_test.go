@@ -61,8 +61,8 @@ func hasText(view delta.JsonValue, wanted func(string) bool) bool {
 	return false
 }
 
-// resultText is a tool result's text.
-func resultText(result *delta.JsonObject) string {
+// agentResultText is a tool result's text.
+func agentResultText(result *delta.JsonObject) string {
 	if result == nil {
 		return ""
 	}

@@ -84,7 +84,7 @@ func TestCodeModeAgentFakeProvider(t *testing.T) {
 		view := f.until(f.Chat.Member("view"), func(v delta.JsonValue) bool { return codemodeResult(v) != nil && idle(v) }, 0)
 		result := codemodeResult(view)
 		callID, _ = result.Value("toolCallId").(string)
-		text := resultText(result)
+		text := agentResultText(result)
 		if result.Value("isError") != false {
 			t.Fatal(text)
 		}
@@ -201,9 +201,9 @@ func TestCodeModeOffWhileTheAgentPluginStays(t *testing.T) {
 	f.send(`codemode return await tools.agent({ prompt: 'json {"back":true}', schema: { type: "object" } });`)
 	view := f.until(f.Chat.Member("view"), func(v delta.JsonValue) bool { return codemodeResult(v) != nil && idle(v) })
 	if codemodeResult(view).Value("isError") != false {
-		t.Fatal(resultText(codemodeResult(view)))
+		t.Fatal(agentResultText(codemodeResult(view)))
 	}
-	if got := scriptOutput(t, resultText(codemodeResult(view))); !strings.Contains(got, `"back":true`) {
+	if got := scriptOutput(t, agentResultText(codemodeResult(view))); !strings.Contains(got, `"back":true`) {
 		t.Errorf("output = %q", got)
 	}
 }
