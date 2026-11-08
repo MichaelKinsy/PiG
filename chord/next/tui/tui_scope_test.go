@@ -22,6 +22,7 @@ import (
 var (
 	bg    = context.Background()
 	Notes = mustContract(contracts.Local("test.notes", contracts.LocalDeclaration{
+		Params:  contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{contracts.Mem("text", contracts.Str()), contracts.Mem("write", contracts.NewMethod(contracts.Str()))},
 	}))
@@ -104,7 +105,7 @@ func TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispo
 	h := newHost(t)
 	var changes atomic.Int64
 	scope := NewTuiScope(h, func() { changes.Add(1) })
-	notes, err := scope.Hold(Notes, nil)
+	notes, err := scope.Hold(Notes, delta.NewJsonObject(0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +152,7 @@ func TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChange
 	var changes atomic.Int64
 	scope := NewTuiScope(h, func() { changes.Add(1) })
 	defer scope.Dispose()
-	notes, _ := scope.Hold(Notes, nil)
+	notes, _ := scope.Hold(Notes, delta.NewJsonObject(0))
 	read := WatchMember(scope, notes.Member("text"))
 	text, add, _ := OptimisticLast(scope, func() delta.JsonValue { v, _ := read(); return v })
 	until(t, func() bool { return text() == "first" })
