@@ -23,7 +23,7 @@ var (
 // A deep link is input from any program or web page on the machine, so it is never turned into a URL of another origin or
 // a path outside these shapes: the id and the conversation number are matched against the shapes p2's own router accepts
 // (`pathRoute`: `/s/<session>` with an optional `/c/<n>`), and everything else is refused.
-// pig additive (D480): pig:// links open only the page shapes p2's router knows.
+// pig additive (D481): pig:// links open only the page shapes p2's router knows.
 func RouteOf(raw string) (string, bool) {
 	u, err := url.Parse(raw)
 	if err != nil || !strings.EqualFold(u.Scheme, Scheme) || u.User != nil || u.Port() != "" {
@@ -52,4 +52,14 @@ func sessionRoute(session string) (string, bool) {
 		return "", false
 	}
 	return "/s/" + session, true
+}
+
+// sessionOfRoute is the session a route opens ("": none).
+func sessionOfRoute(route string) (string, bool) {
+	rest, ok := strings.CutPrefix(route, "/s/")
+	if !ok {
+		return "", false
+	}
+	id, _, _ := strings.Cut(rest, "/")
+	return id, sessionID.MatchString(id)
 }

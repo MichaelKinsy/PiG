@@ -5,6 +5,7 @@ package fakeshell
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/shell"
 )
@@ -61,6 +62,10 @@ func (p *Platform) SetMenu(m shell.Menu) {
 
 func (p *Platform) NewWindow(spec shell.WindowSpec) (shell.Window, error) {
 	w := &Window{Spec: spec, URL: spec.URL, focused: true}
+	if spec.Content != nil {
+		spec.Content.Attach(func() { w.redraws.Add(1) })
+		w.onClose = append(w.onClose, spec.Content.Detach)
+	}
 	p.mu.Lock()
 	p.Windows = append(p.Windows, w)
 	p.mu.Unlock()
@@ -114,7 +119,12 @@ type Window struct {
 	focused bool
 	closed  bool
 	onClose []func()
+	// redraws counts the frames native content asked for.
+	redraws atomic.Int64
 }
+
+// Redraws is how many frames the window's native content asked for.
+func (w *Window) Redraws() int64 { return w.redraws.Load() }
 
 func (w *Window) Load(url string) {
 	w.mu.Lock()

@@ -67,6 +67,10 @@ type WindowSpec struct {
 	MinHeight     int
 	// StateKey remembers the window's bounds across launches.
 	StateKey string
+	// Content, when set, is what the window shows instead of a page: the framework draws it itself (native views), so
+	// URL, Origin, Background and Microphone mean nothing and Load does nothing. The adapter accepts the content types
+	// its own package makes (shell/mygoshell/native).
+	Content Content
 	// URL is loaded once the window exists; Load changes it later. Empty shows a blank page.
 	URL string
 	// Background fills the window until the page paints (CSS color syntax).
@@ -78,6 +82,15 @@ type WindowSpec struct {
 	DevTools bool
 	// Microphone lets the page use the microphone (the voice mode), after the system's own prompt.
 	Microphone bool
+}
+
+// Content is a window's native content: what it draws is a function of its state, and a change of the state asks the
+// window for a new frame.
+type Content interface {
+	// Attach is called once the window exists; redraw asks for a new frame and may be called from any goroutine.
+	Attach(redraw func())
+	// Detach is called once the window closed: the content stops asking for frames and releases what it holds.
+	Detach()
 }
 
 // Window is the app's main window.

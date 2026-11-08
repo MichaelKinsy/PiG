@@ -22,10 +22,23 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/leakcheck"
+	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/surfacehost"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/shell"
 )
 
 var configureFetch sync.Once
+
+// NativeContent is what the app draws itself when it has no web page to show: the window's content, which the app starts
+// on the surface host once the in-process server is up, and which opens a session when a link or a notification asks.
+type NativeContent interface {
+	shell.Content
+	// Invalidate asks for a new frame (the surface host's Changed).
+	Invalidate()
+	// Start gives the content its surface host; it draws a start page until then.
+	Start(h *surfacehost.Host) error
+	// OpenSession selects a session (a deep link, a notification).
+	OpenSession(id string)
+}
 
 // Config is what New takes.
 type Config struct {
@@ -40,6 +53,9 @@ type Config struct {
 	Idle time.Duration
 	// StateDir keeps the desktop app's own state ("": the user's config directory).
 	StateDir string
+	// Native, when set, is what the window shows instead of the server's page: the native client, a surface host of the
+	// server over an in-process link. Nil shows the web UI in the system's web view (the fallback).
+	Native NativeContent
 	// Port is the loopback port the server asks for. nil: the one of the last launch if free, else any free port. 0: any
 	// free port.
 	Port *int
@@ -62,6 +78,7 @@ type App struct {
 	window   shell.Window
 	server   *hosts.P2Server
 	notifier *notifier
+	surface  *surfacehost.Host
 	origin   string
 	pending  string
 	closed   bool
@@ -180,6 +197,10 @@ func (a *App) startServer() {
 			a.mu.Unlock()
 		}
 	}
+	if a.cfg.Native != nil {
+		a.startNative(server, route)
+		return
+	}
 	if route == "" {
 		route = "/"
 	}
@@ -188,7 +209,43 @@ func (a *App) startServer() {
 	}
 }
 
-// pig additive (D480): the server runs in the app's process on loopback; the port of the last launch is asked for first so the
+// startNative opens the surface host on the server and gives it to the window's content.
+func (a *App) startNative(server *hosts.P2Server, route string) {
+	native := a.cfg.Native
+	h, err := surfacehost.Open(surfacehost.Options{
+		Server:    server.Host,
+		Plugins:   builtinPlugins,
+		Modules:   builtinModules,
+		Preferred: preferredLanguages(),
+		Changed:   native.Invalidate,
+		Outdated:  func() { a.cfg.Errors("the server publishes another base: this app is outdated") },
+		OnError:   func(err error) { a.cfg.Errors("%v", err) },
+	})
+	if err != nil {
+		a.cfg.Errors("the native client did not start: %v", err)
+		a.p.ShowError("PiG could not connect to its server", err.Error())
+		return
+	}
+	if err := native.Start(h); err != nil {
+		h.Close()
+		a.cfg.Errors("the native client did not start: %v", err)
+		a.p.ShowError("PiG could not open its screens", err.Error())
+		return
+	}
+	a.mu.Lock()
+	if a.closed {
+		a.mu.Unlock()
+		h.Close()
+		return
+	}
+	a.surface = h
+	a.mu.Unlock()
+	if id, ok := sessionOfRoute(route); ok {
+		native.OpenSession(id)
+	}
+}
+
+// pig additive (D481): the server runs in the app's process on loopback; the port of the last launch is asked for first so the
 // web UI keeps its per-origin settings.
 // listen starts the server on the port asked for: the last one when it is free, else any free port.
 func (a *App) listen() (*hosts.P2Server, error) {
@@ -202,6 +259,10 @@ func (a *App) listen() (*hosts.P2Server, error) {
 	// As `p2 server` does, before any provider request or login fetch of this process.
 	configureFetch.Do(p2runtime.ConfigureFetch)
 	options := hosts.ServerOptions{DataDir: a.cfg.DataDir, Port: &port, Fake: a.cfg.Fake, Idle: a.cfg.Idle}
+	if a.cfg.Native != nil {
+		// pig additive (D481): the server serves the desktop surface's scripts object beside its own.
+		options.Facets = append(options.Facets, surfacehost.ServerFacet(builtinPlugins))
+	}
 	server, err := hosts.StartServer(options)
 	var listenErr *net.OpError
 	if err != nil && port != 0 && errors.As(err, &listenErr) {
@@ -229,7 +290,11 @@ func (a *App) openWindow() {
 		DevTools:   a.p.Debug(),
 		Microphone: true,
 	}
-	if origin != "" {
+	if a.cfg.Native != nil {
+		spec.Content = a.cfg.Native
+		spec.Background = ""
+		spec.Microphone = false
+	} else if origin != "" {
 		spec.URL, spec.Origin = origin+"/", origin
 	}
 	// Without an origin the window shows a blank page; Load gives it the server's origin once the server listens.
@@ -268,6 +333,13 @@ func (a *App) show() {
 
 // navigate opens a page of the server in the window.
 func (a *App) navigate(route string) {
+	if a.cfg.Native != nil {
+		if id, ok := sessionOfRoute(route); ok {
+			a.cfg.Native.OpenSession(id)
+		}
+		a.show()
+		return
+	}
 	a.mu.Lock()
 	origin := a.origin
 	if origin == "" {
@@ -368,9 +440,12 @@ func (a *App) shutdown() {
 	a.cancel()
 	a.starting.Wait()
 	a.mu.Lock()
-	server, note := a.server, a.notifier
-	a.server, a.notifier = nil, nil
+	server, note, surface := a.server, a.notifier, a.surface
+	a.server, a.notifier, a.surface = nil, nil, nil
 	a.mu.Unlock()
+	if surface != nil {
+		surface.Close()
+	}
 	if note != nil {
 		note.close()
 	}
