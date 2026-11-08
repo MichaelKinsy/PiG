@@ -10,6 +10,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/mcp/contract"
+	subagentscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -36,25 +37,6 @@ const retryAfter = 2 * time.Second
 // codemodeExtension is the code mode plugin's extension: its switch is on while the `codemode` setting is, absent without
 // the plugin.
 const codemodeExtension = "codemode"
-
-// subagentsKind is the kind of the subagents plugin's registry document (`Subagents.definition.kind`).
-const subagentsKind = "p2.subagents"
-
-// subagentRegistry reads the subagents plugin's `p2.subagents` document (plugins/subagents/contract.worker.ts `Subagents`,
-// version 2: kept on the root conversation), as far as the leases need it: read-only. PENDING: replaced by the subagents
-// plugin's own token when its worker contract is ported (rows/p2-mcp.md).
-var subagentRegistry = durable.DefineDoc(durable.DocDefinition[struct{}]{
-	CommonDocDefinition: durable.CommonDocDefinition[struct{}]{
-		Kind:    subagentsKind,
-		Version: 2,
-		Initial: func() struct{} { return struct{}{} },
-		Migrate: func(durable.JsonObject, int) (struct{}, error) {
-			return struct{}{}, errors.New("the MCP worker only reads the subagent registry")
-		},
-		CheckpointWhen: func(struct{}, []durable.Op, durable.CheckpointInfo) bool { return false },
-	},
-	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
-})
 
 // Worker is the plugin's worker facet.
 var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
@@ -181,7 +163,7 @@ func leaseLocations(self host.StoreSelf, view *host.Reference, harnessOf func() 
 				return nil, err
 			}
 			return p2runtime.NewCommitSignal(opened, func(publication durable.CommitPublication) bool {
-				return p2runtime.ChangesDocument(publication, subagentsKind)
+				return p2runtime.ChangesDocument(publication, subagentscontract.SubagentsDoc.AnyDefinition().Kind)
 			}), nil
 		},
 		func(value any, _ host.NativeCloseReason, _ context.Context) error {
@@ -287,7 +269,7 @@ func setLocations(ctx context.Context, view *host.Reference, harnessOf func() (*
 
 // workLocations is every distinct location the session's conversations work at: the main one's and active subagents'.
 func workLocations(ctx context.Context, opened harness.Harness, environments p2runtime.ExecutionEnvironments) ([]p2runtime.Location, error) {
-	registry, err := opened.SnapshotErased(ctx, subagentRegistry, durable.ROOT_CONVERSATION_ID)
+	registry, err := opened.SnapshotErased(ctx, subagentscontract.SubagentsDoc, durable.ROOT_CONVERSATION_ID)
 	if err != nil {
 		return nil, err
 	}
