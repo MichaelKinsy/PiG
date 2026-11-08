@@ -272,6 +272,7 @@ func TestARolloutAcrossHostsBringsAPageWhoseLinkWasDownDuringTheRolloutOntoTheNe
 	tab.waitText("alpha", ".label", "v1:2")
 
 	tab.typeInto("alpha", ".kept", "kept")
+	tab.browser.Run(`(() => { const Native = WebSocket; globalThis.wslog = []; globalThis.WebSocket = class extends Native { constructor(...args) { super(...args); this.addEventListener("open", () => wslog.push("open")); this.addEventListener("close", (e) => wslog.push("close " + e.code + " " + e.reason)); } }; })()`)
 	tab.browser.Run(`globalThis.page.holdReconnect(); globalThis.page.dropLink()`)
 	tab.browser.Wait(`globalThis.page.connection !== "connected"`)
 	tab.waitState("alpha", "loading")
