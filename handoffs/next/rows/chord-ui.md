@@ -58,3 +58,9 @@ Owner decision: owner sign-off pending.
 - `surfaces/{preference,locale-choice,theme-choice,themes,active-language,active-theme}.ts` -> `surfaces_{preference,locale_choice,theme_choice,themes,active_language,active_theme}.go`, partial. Tests mapped 1:1 (`preference`, `locale-choice`, `active-language`, `themes`, `active-theme` test files: all cases). `go test -race -count=3` green.
 - Go form notes (extend D450/D452): ThemeVariables returns a map (order is the caller's); Theme records are maps; Follow* take a `context.Context` last and end their watches in Stop.
 - Still pending in surfaces: `client.ts`, `connection.ts`, `loaded.ts`, `registered.ts`, `scripts.ts` (client-side; vendored per specs/chord-ui-homes.md), formatTime.
+
+## Update 2 (telemetry package, T6 first part)
+
+- `packages/telemetry/src/memory.ts` (telemetryNow, microsecond stamps) -> `telemetry/memory_now.go` + `memory.go`; `render.ts` (control-character escape, microsecond lengths) -> `render.go`; `internal/jsclock.TimeOrigin`. Tests: `telemetry_now_test.go` (2 cases of store.test.ts), 2 render cases added to `render_upstream_test.go`. `go test ./telemetry/` green after `run.sh --prepare` (Pi 1.5.0 oracle tests pass; they do not yet cover the new clock: oracle must move to Pi main with the pin).
+- Noticed (not changed): `telemetry/memory.go` AddEvent appends `eventTimes` twice per event (lines ~340-341), so `eventTimes[index]` misaligns after the first event.
+- Still pending T6: chord `telemetry.ts`, host/remote/jobs/link/store/http spans, `telemetry-ingest`, `telemetry-sqlite` v2.
