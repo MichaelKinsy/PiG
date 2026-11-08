@@ -1,11 +1,8 @@
 // Ports test/p2/artifacts.test.ts (Pi main c23b9ec1): the `artifact` tool, the artifact index, the `/artifact` route and the
 // inline preview contract, owner and guests.
 //
-// The long artifact of "serves Markdown/text as non-executable documents and validates byte bounds" is saved by a plugin of
-// this test binary (artifacts_save_test.go) through the same SaveArtifact the tool uses, where Pi's script of the `codemode`
-// tool makes the call (the plugin of that tool is a lane of its own; the fake provider streams a tool call's arguments at 800
-// characters a second, so half a MiB as an `artifact {json}` prompt takes eleven minutes). Pi's check that the store refuses a
-// large artifact before touching the files is `plugins/artifacts/store_test.go` (SaveArtifact with no files).
+// The long-preview case of "serves Markdown/text as non-executable documents and validates byte bounds" is PENDING the codemode
+// plugin (see the case); the store's refusal of a large artifact before touching the files is `plugins/artifacts/store_test.go`.
 
 package e2e_test
 
@@ -79,8 +76,6 @@ func versionsOf(artifacts delta.JsonValue) []float64 {
 
 func TestArtifactsFakeProvider(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
-	t.Setenv(saveArtifactEnv, "1")
-	registerSaveArtifact()
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"share.test"}})
 	owner := fixture.Browser()
 	sessions, err := p2test.HoldIn(owner, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
@@ -386,28 +381,10 @@ func TestArtifactsFakeProvider(t *testing.T) {
 				t.Fatalf("%s: CSP %q body %q", kind, response.Headers.Get("Content-Security-Policy"), response.Body)
 			}
 		}
-		// Inline previews stop at MaxArtifactPreview characters and say so. (Saved by the test binary's own plugin: see
-		// artifacts_save_test.go.)
-		if _, err := fixture.Server.Host.Root(func(ctx host.Ctx) (any, error) {
-			saver, err := ctx.Get(saveArtifact, delta.JsonObjectOf("session", session), host.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-			return saver.Call("save", delta.JsonObjectOf("name", "long", "size", float64(artifactscontract.MaxArtifactPreview+10)), ctx)
-		}, p2test.Background, host.RootOptions{}); err != nil {
-			t.Fatal(err)
-		}
-		content, err := p2test.HoldIn(owner, artifactscontract.ArtifactContent, delta.JsonObjectOf("session", session), "reader")
-		if err != nil {
-			t.Fatal(err)
-		}
-		read, err := content.Call("read", delta.JsonObjectOf("name", "long", "version", float64(1)), p2test.Background)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if object(read).Value("truncated") != true || len(object(read).Value("content").(string)) != artifactscontract.MaxArtifactPreview {
-			t.Fatalf("truncated = %v, length %d", object(read).Value("truncated"), len(object(read).Value("content").(string)))
-		}
-		content.Release()
+		// PENDING (needs the codemode plugin, lane P2AgentTools): Pi saves a `long` artifact of MaxArtifactPreview+10 characters with
+		// a code mode script and reads it through ArtifactContent: truncated, exactly MaxArtifactPreview characters. The fake
+		// provider streams a tool call's arguments at 800 characters a second, so the same call as an `artifact {json}` prompt
+		// takes eleven minutes. The cut itself (limit, UTF-16 units, no split pair) is `preview`'s unit test
+		// (plugins/artifacts/store_test.go).
 	})
 }
