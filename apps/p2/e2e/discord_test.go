@@ -6,6 +6,7 @@
 package e2e_test
 
 import (
+	"encoding/json"
 	"context"
 	"fmt"
 	"net/http"
@@ -66,7 +67,8 @@ func (r *discordRig) must(method string, args delta.JsonValue) *delta.JsonObject
 			}
 			return hosts.Member("workers").Value()
 		}, p2test.Background, host.RootOptions{})
-		r.t.Fatalf("%s: %v (workers %v)", method, err, workers)
+		encoded, _ := json.Marshal(workers)
+		r.t.Fatalf("%s: %v (workers %s)", method, err, encoded)
 	}
 	return object(value)
 }
