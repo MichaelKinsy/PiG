@@ -1,6 +1,7 @@
 package native
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/sprite"
@@ -33,8 +34,8 @@ func (m *markCache) bitmap(v sprite.Variant, scale int) *ui.Bitmap {
 }
 
 // banner is v's empty-state banner (the web's login.svg grid) with scale pixels per cell.
-func (m *markCache) banner(v sprite.Variant, scale int) *ui.Bitmap {
-	key := "banner:" + v.ID + "@" + string(rune('0'+scale))
+func (m *markCache) banner(v sprite.Variant, dark bool, scale int) *ui.Bitmap {
+	key := fmt.Sprintf("banner:%s@%d/%v", v.ID, scale, dark)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.known == nil {
@@ -43,7 +44,7 @@ func (m *markCache) banner(v sprite.Variant, scale int) *ui.Bitmap {
 	if b, ok := m.known[key]; ok {
 		return b
 	}
-	b := ui.NewBitmap(sprite.Banner(v, scale))
+	b := ui.NewBitmap(sprite.Banner(v, dark, scale))
 	m.known[key] = b
 	return b
 }
