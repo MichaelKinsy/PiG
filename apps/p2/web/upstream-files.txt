@@ -33,3 +33,7 @@ plugins/sharing/contract.ts
 src/runtime/worker.ts
 plugins/chat/shell.ts
 plugins/sessions/lock-worker.ts
+plugins/logs/contract.ts
+plugins/logs/web.tsx
+plugins/logs/style.css
+plugins/sharing/web.tsx
