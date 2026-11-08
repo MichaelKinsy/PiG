@@ -145,7 +145,7 @@ func TestEmbeddedBundleIsWhole(t *testing.T) {
 // Every public file the table names is embedded, and nothing outside the table is served by name.
 func TestPublicFilesAreEmbedded(t *testing.T) {
 	for path, file := range publicFileTable {
-		body, err := ReadPublicFile(file)
+		body, err := (&Bundle{}).ReadPublicFile(file)
 		if err != nil || len(body) == 0 {
 			t.Errorf("%s: %v", path, err)
 		}
@@ -157,5 +157,36 @@ func TestPublicFilesAreEmbedded(t *testing.T) {
 		if _, ok := LookupPublicFile(path); ok {
 			t.Errorf("%s is a public file", path)
 		}
+	}
+}
+
+// The embedded bundle is the PiG-branded build, made from the unbranded one (Pi's own, the D472 oracle target): it names the
+// version it was branded from and carries the brand's public files.
+func TestEmbeddedBundleIsBranded(t *testing.T) {
+	bundle, err := Embedded()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bundle.Brand.Name != "PiG" || bundle.Brand.Light != "#ffffff" || bundle.Brand.Dark != "#101c1a" {
+		t.Errorf("brand %+v", bundle.Brand)
+	}
+	if len(bundle.UpstreamVersion) != 64 || bundle.UpstreamVersion == bundle.Version {
+		t.Errorf("upstream version %q (bundle %q)", bundle.UpstreamVersion, bundle.Version)
+	}
+	for _, name := range []string{"icons/favicon.svg", "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png", "manifest.webmanifest"} {
+		if len(bundle.Public[name]) == 0 {
+			t.Errorf("no public %s", name)
+		}
+	}
+	var manifest struct {
+		Name      string `json:"name"`
+		ShortName string `json:"short_name"`
+	}
+	if err := json.Unmarshal(bundle.Public["manifest.webmanifest"], &manifest); err != nil {
+		t.Fatal(err)
+	}
+	// `name` stays Pi's: test/p2/health.test.ts reads it.
+	if manifest.Name != "Pi" || manifest.ShortName != "PiG" {
+		t.Errorf("manifest %+v", manifest)
 	}
 }

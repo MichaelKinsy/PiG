@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	"github.com/MichaelKinsy/PiG/apps/p2/web"
 
 	// The web facet nothing else loads on the server: the app layout.
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/web-shell"
@@ -31,7 +32,12 @@ func TestWebClientRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{Web: &enabled, DataDir: dataDir})
+	bundle, err := web.Embedded()
+	if err != nil {
+		t.Fatal(err)
+	}
 	command := exec.Command("node", "ui/ui.mjs", "http://127.0.0.1:"+strconv.Itoa(fixture.Server.Port), strconv.Itoa(os.Getpid()))
+	command.Env = append(os.Environ(), "P2_UI_TITLE="+bundle.Brand.Name)
 	output, err := command.CombinedOutput()
 	t.Logf("%s", output)
 	if err != nil {

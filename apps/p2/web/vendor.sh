@@ -21,3 +21,6 @@ mkdir -p "$here/upstream"
     printf '%s  %s\n' "$(shasum -a 256 "$target" | cut -d' ' -f1)" "$path"
   done <"$list"
 } >"$here/MANIFEST"
+# Pi's plugin web facets (every plugins/<name>/web.ts[x] of the commit, vendored or not): what decides which plugins a bundle can
+# hold, independent of what was vendored (cmd/p2's tests compare it with the linked plugins and with the vendored files).
+git -C "$pi" ls-tree -r --name-only "$commit" apps/p2/plugins | sed -n 's#^apps/p2/plugins/\([^/]*\)/web\.tsx\{0,1\}$#\1#p' | sort -u >"$here/pi-web-plugins.txt"

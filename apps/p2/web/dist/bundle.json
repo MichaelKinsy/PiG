@@ -1,7 +1,7 @@
 {
-	"version": "2ce1999fd85280ad5c780e2df63de79afb4e3eaff799c05ebe76fb2fae5c18c4",
-	"script": "app-XZSUEGA5.js",
-	"style": "app-XS4LWRDH.css",
+	"version": "30ab85343d7d15beff4cc44b3d1c91d0076d9b25ff687eb28accd487db92002d",
+	"script": "app-V642X3K6.js",
+	"style": "app-MMH4KMJY.css",
 	"plugins": [
 		"chat",
 		"envs",
@@ -41,28 +41,43 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-XS4LWRDH.css",
+			"name": "app-MMH4KMJY.css",
 			"type": "text/css; charset=utf-8",
-			"size": 337833,
-			"sha256": "eec0939b54b093d2470b06797839f255f41642ded52a589276aa8409f79bdf57"
+			"size": 342859,
+			"sha256": "477be00a2e2ef8650a678e4a4def3e10170101fb73cc946dfbb14b4a1dc233d2"
 		},
 		{
-			"name": "app-XS4LWRDH.css.map",
+			"name": "app-MMH4KMJY.css.map",
 			"type": "application/json",
-			"size": 606411,
-			"sha256": "b5cabfcf808f5664164d9bf6562198af1d72e730bb1b2d77aab16e8e982a069b"
+			"size": 616181,
+			"sha256": "29a4c269e50bda0d11aaf86f831f24693ec25dfed9ff79d3fae0e64be58aaa10"
 		},
 		{
-			"name": "app-XZSUEGA5.js",
+			"name": "app-V642X3K6.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1092285,
-			"sha256": "032937aff97be324364d444bd6dd3a97f7d6d36fe4c2b8fdca5f4843715f4a86"
+			"size": 1098124,
+			"sha256": "e287c3595d3060d8525c6390a013c7113157a693f0036024f194fd8a3e734597"
 		},
 		{
-			"name": "app-XZSUEGA5.js.map",
+			"name": "app-V642X3K6.js.map",
 			"type": "application/json",
-			"size": 5310470,
-			"sha256": "2eee8afa418f29461aeb456c4684ae1fccd20cfcbbd7284f0aa3ee6ad6330ed1"
+			"size": 5324118,
+			"sha256": "f2d59986b7ef7eefd1a91f57a64b31a9082a6112e1ac64950e7d69d61e74c218"
 		}
-	]
+	],
+	"brand": {
+		"name": "PiG",
+		"themeColor": {
+			"light": "#ffffff",
+			"dark": "#101c1a"
+		},
+		"upstreamVersion": "2ce1999fd85280ad5c780e2df63de79afb4e3eaff799c05ebe76fb2fae5c18c4",
+		"public": [
+			"icons/apple-touch-icon.png",
+			"icons/favicon.svg",
+			"icons/icon-192.png",
+			"icons/icon-512.png",
+			"manifest.webmanifest"
+		]
+	}
 }

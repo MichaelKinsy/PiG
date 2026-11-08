@@ -40,7 +40,24 @@ type Bundle struct {
 	Style  string
 	// Plugins are the plugins whose web facets the bundle holds, alphabetical.
 	Plugins []string
+	// Brand is how the page names the app and colours its first paint (Pi's, unless the bundle was branded).
+	Brand Brand
+	// Public are the bundle's own versions of public files (the brand's icons and manifest), by path under public/.
+	Public map[string][]byte
+	// UpstreamVersion is the version of the unbranded bundle (Pi's own) this one was branded from; "" when not branded.
+	UpstreamVersion string
 }
+
+// Brand is the identity of the page itself (the part of the brand the Go server writes; the rest is in the bundle's CSS and
+// sources): the name in the title and the home-screen title, and the colours of the first paint and of the browser chrome.
+type Brand struct {
+	Name  string
+	Light string
+	Dark  string
+}
+
+// UpstreamBrand is Pi's own (web.ts).
+var UpstreamBrand = Brand{Name: "Pi", Light: "#fbfaf8", Dark: "#151413"}
 
 // Manifest is what pages poll (`WebManifest`): the bundle's version and its files' addresses. Style is null for none.
 type Manifest struct {
@@ -68,6 +85,12 @@ type bundleJSON struct {
 		Name string `json:"name"`
 		Type string `json:"type"`
 	} `json:"files"`
+	Brand *struct {
+		Name            string                       `json:"name"`
+		ThemeColor      struct{ Light, Dark string } `json:"themeColor"`
+		UpstreamVersion string                       `json:"upstreamVersion"`
+		Public          []string                     `json:"public"`
+	} `json:"brand"`
 }
 
 var (
@@ -102,6 +125,19 @@ func load(files fs.FS, dir string) (*Bundle, error) {
 		}
 		bundle.Files[file.Name] = File{Body: body, Type: file.Type}
 	}
+	bundle.Brand = UpstreamBrand
+	if described.Brand != nil {
+		bundle.Brand = Brand{Name: described.Brand.Name, Light: described.Brand.ThemeColor.Light, Dark: described.Brand.ThemeColor.Dark}
+		bundle.UpstreamVersion = described.Brand.UpstreamVersion
+		bundle.Public = make(map[string][]byte, len(described.Brand.Public))
+		for _, name := range described.Brand.Public {
+			body, err := fs.ReadFile(files, dir+"/public/"+name)
+			if err != nil {
+				return nil, fmt.Errorf("web bundle: %w", err)
+			}
+			bundle.Public[name] = body
+		}
+	}
 	if _, ok := bundle.Files[bundle.Script]; !ok {
 		return nil, fmt.Errorf("web bundle: no entry script %q", bundle.Script)
 	}
@@ -135,7 +171,10 @@ func LookupPublicFile(path string) (PublicFile, bool) {
 	return file, ok
 }
 
-// ReadPublicFile is the content of a public file.
-func ReadPublicFile(file PublicFile) ([]byte, error) {
+// ReadPublicFile is the content of a public file: the bundle's own version (the brand's), else Pi's.
+func (b *Bundle) ReadPublicFile(file PublicFile) ([]byte, error) {
+	if body, ok := b.Public[file.File]; ok {
+		return body, nil
+	}
 	return fs.ReadFile(publicFiles, "upstream/public/"+file.File)
 }

@@ -50,6 +50,9 @@ type ServerOptions struct {
 	Fake *bool
 	// Web serves the web UI (nil: true).
 	Web *bool
+	// Sprite is where the PiG sprite the branded mark draws comes from (nil: none, the server is Pi's; ignored unless the web
+	// bundle is branded). The server owns it and closes it.
+	Sprite SpriteSource
 	// Idle is the time before a session worker stops (default 5 minutes; `P2_IDLE_MS`).
 	Idle time.Duration
 	// MoveTimeout is how long a running worker may take to follow a relocation before it is restarted instead (default 60 s).
@@ -185,6 +188,13 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 			return nil, err
 		}
 		state.web = &Web{Nonce: state.nonce, Bundle: bundle}
+		if options.Sprite != nil && bundle.UpstreamVersion != "" {
+			state.sprite = newSpriteHub(options.Sprite)
+			state.web.Sprite = state.sprite
+		}
+	}
+	if options.Sprite != nil && state.sprite == nil {
+		options.Sprite.Close() // nothing draws it: no web UI, or Pi's own bundle
 	}
 	httpServer := &http.Server{Handler: state}
 	port := 8788
@@ -291,6 +301,9 @@ func StartServer(options ServerOptions) (*P2Server, error) {
 				first = err
 			}
 		}
+		if state.sprite != nil {
+			state.sprite.close()
+		}
 		note(sessionWorkers.Close(closeCtx))
 		note(h.Close(closeCtx))
 		note(store.Close(closeCtx))
@@ -368,6 +381,7 @@ type serverState struct {
 	loaded       chan struct{}
 	nonce        string
 	web          *Web
+	sprite       *spriteHub
 }
 
 // authenticate is who the request is. Loopback is the device owner, except for a browser request another site made or
@@ -538,16 +552,23 @@ func (s *serverState) handle(response http.ResponseWriter, request *http.Request
 	header.Set("Content-Security-Policy", ContentSecurityPolicy(s.nonce, nil))
 	header.Set("X-Frame-Options", "DENY")
 	path := request.URL.EscapedPath()
+	// A stream (the sprite events) outlives the host's root scope: dispatch hands it back to run once the scope has ended, so
+	// closing the host never waits for it.
+	var stream func()
 	_, err := s.host.Root(func(ctx host.Ctx) (any, error) {
-		return nil, s.dispatch(response, request, path, ctx)
+		return nil, s.dispatch(response, request, path, ctx, &stream)
 	}, chordctx.Background(), host.RootOptions{})
+	if err == nil && stream != nil {
+		stream()
+		return
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "p2 server: request failed", err)
 		http.Error(response, "", http.StatusInternalServerError)
 	}
 }
 
-func (s *serverState) dispatch(response http.ResponseWriter, request *http.Request, path string, ctx host.Ctx) error {
+func (s *serverState) dispatch(response http.ResponseWriter, request *http.Request, path string, ctx host.Ctx, stream *func()) error {
 	access, err := s.resolveAccess(request, ctx)
 	if err != nil {
 		return err
@@ -587,6 +608,11 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 		s.web.Handle(response, request)
 		return nil
 	}
+	// The chosen PiG sprite, a public file like the icons (see SpriteAssetPath).
+	if s.sprite != nil && (path == SpriteAssetPath || path == LoginAssetPath) && get && !ForeignBrowserRequest(request) {
+		s.sprite.serveAsset(response, request)
+		return nil
+	}
 	if path == "/__p2_dev" {
 		// Dev mode is designed out (D473): the endpoint answers as a server without it (P2_DEV unset).
 		if !p2runtime.IsOwner(principal) || (request.Method == http.MethodPost && !p2runtime.FromOrigin(request, origin.Origin)) {
@@ -620,6 +646,10 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 			return err
 		}
 		response.Header().Set("Set-Cookie", cookie)
+	}
+	if s.sprite != nil && path == SpriteEventsPath && get && (p2runtime.IsOwner(principal) || p2runtime.IsGuest(principal)) {
+		*stream = func() { s.sprite.serveEvents(response, request) }
+		return nil
 	}
 	guest, isGuest := principal.(p2runtime.GuestPrincipal)
 	if p2runtime.IsOwner(principal) || (isGuest && s.web != nil && s.web.GuestMayLoad(request, guest)) {
