@@ -1,4 +1,4 @@
-// The PiG mark and the empty state's banner follow the selected sprite in live pages (light and dark desktop, light phone): the
+// The PiG mark (the sidebar's, the favicon and the empty state's head beside its heading) follows the selected sprite in live pages (light and dark desktop, light phone): the
 // default sprite first, then each sprite the test selects (one stdin line per step, the sprite's name; "end" finishes), with
 // a screenshot of the empty state of every page at every step.
 //   node sprite.mjs <base url> <output directory>
@@ -31,23 +31,24 @@ for (const view of views) {
 	await context.addInitScript((value) => localStorage.setItem("pi-theme", value), view.theme);
 	view.page = await context.newPage();
 	await view.page.goto(`${base}/`);
-	await view.page.waitForSelector(".brand-banner", { timeout: 60000 });
+	await view.page.waitForSelector(".hero-title .pi-logo", { timeout: 60000 });
 }
 const state = (page) =>
 	page.evaluate(() => {
-		const banner = document.querySelector(".brand-banner");
 		const mark = document.querySelector(".pi-logo");
 		const icon = document.querySelector('link[rel="icon"]');
 		const info = JSON.parse(document.documentElement.dataset.brandSprite || "null");
-		const box = banner?.getBoundingClientRect();
+		const head = document.querySelector(".hero-title .pi-logo");
+		const box = head?.getBoundingClientRect();
+		const title = document.querySelector(".hero h2")?.getBoundingClientRect();
 		return {
 			key: info?.key,
 			name: info?.name,
-			tagline: info?.tagline,
-			taglineShown: document.querySelector(".brand-tagline")?.textContent,
-			banner: banner?.getAttribute("src"),
-			bannerLoaded: banner instanceof HTMLImageElement && banner.complete && banner.naturalWidth > 0,
-			bannerScale: box ? box.width / 54 : 0,
+			headSrc: head?.getAttribute("src"),
+			headLoaded: head instanceof HTMLImageElement && head.complete && head.naturalWidth > 0,
+			headScale: box ? box.width / 16 : 0,
+			headBeside: box && title ? box.right <= title.left && Math.abs(box.top + box.height / 2 - (title.top + title.height / 2)) < 2 : false,
+			extras: document.querySelectorAll(".brand-banner, .brand-tagline").length,
 			mark: mark?.tagName,
 			markSrc: mark?.getAttribute("src"),
 			icon: icon?.getAttribute("href"),
@@ -59,10 +60,11 @@ const check = (label, current, theme) => {
 	if (!current.key) problems.push("no sprite info");
 	if (current.mark !== "IMG" || !current.markSrc?.includes(`/__p2_brand/sprite.svg?v=${current.key}`)) problems.push("the mark is not the sprite");
 	if (!current.icon?.includes(`/__p2_brand/sprite.svg?v=${current.key}`)) problems.push("the favicon is not the sprite");
-	if (!current.banner?.includes(`/__p2_brand/login.svg?v=${current.key}&theme=${theme}`) || !current.bannerLoaded) problems.push(`the banner is not the sprite's for the ${theme} page`);
-	if (current.taglineShown !== current.tagline) problems.push("the tagline is not the sprite's");
+	if (!current.headSrc?.includes(`/__p2_brand/sprite.svg?v=${current.key}`) || !current.headLoaded) problems.push("the empty state's head is not the sprite");
+	if (!current.headBeside) problems.push("the head is not inline left of the heading");
+	if (current.extras) problems.push("the empty state shows a banner or tagline");
 	if (current.heading !== "What should PiG do?") problems.push(`heading ${current.heading}`);
-	if (!Number.isInteger(current.bannerScale)) problems.push(`the banner is at ${current.bannerScale}x, not a whole multiple`);
+	if (!Number.isInteger(current.headScale)) problems.push(`the head is at ${current.headScale}x, not a whole multiple`);
 	if (problems.length) fail(`${label}: ${problems.join("; ")} ${JSON.stringify(current)}`);
 };
 let previous;
@@ -73,7 +75,7 @@ for (;;) {
 		console.log(`STEP ${step}`);
 		label = await nextLine();
 		if (label === "end") break;
-		await Promise.all(views.map(({ page }) => page.waitForFunction((was) => JSON.parse(document.documentElement.dataset.brandSprite || "null")?.key !== was && document.querySelector(".brand-banner")?.complete, previous, { timeout: 30000 })));
+		await Promise.all(views.map(({ page }) => page.waitForFunction((was) => JSON.parse(document.documentElement.dataset.brandSprite || "null")?.key !== was && document.querySelector(".hero-title .pi-logo")?.complete, previous, { timeout: 30000 })));
 	}
 	await Promise.all(views.map(({ page }) => page.waitForTimeout(300)));
 	let shown;
@@ -84,7 +86,7 @@ for (;;) {
 		await view.page.screenshot({ path: join(out, `${label}-${view.name}.png`) });
 	}
 	previous = shown.key;
-	console.log(JSON.stringify({ label, key: shown.key, name: shown.name, tagline: shown.tagline, scale: shown.bannerScale }));
+	console.log(JSON.stringify({ label, key: shown.key, name: shown.name, scale: shown.headScale }));
 	step++;
 }
 console.log("DONE");

@@ -421,7 +421,7 @@ func (a *App) promptBar(c *ui.Context, p promptBar) {
 				if p.Thinking != "" && p.Thinking != "off" {
 					label += " · " + p.Thinking
 				}
-				ui.Text(c, label).FontSize(11).TextColor(t.TextMuted).Underline().SingleLine()
+				ui.Text(c, label).FontSize(11).TextColor(t.TextMuted).DottedUnderline().SingleLine()
 				ui.Spacer(c)
 				if p.Clients > 0 || p.HasHit || p.HasCost {
 					ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
@@ -444,7 +444,8 @@ func (a *App) promptBar(c *ui.Context, p promptBar) {
 				// The web keeps the bar's space with a skeleton until the model's window is known.
 				ui.Row(c).Height(16).AlignItems(ui.Center).Gap(8).Children(func() {
 					ui.Progress(c, 0).Height(2).Grow(1)
-					ui.Text(c, "00%/000k").FontSize(11).Font("monospace").TextColor(ui.Color{})
+					// The web's skeleton block over the numbers' invisible text: 00%/000k is 8 mono cells of 6.6 px, 9 px tall.
+					ui.Row(c).Size(53, 9).Radius(3).Background(t.Border).Children(func() {})
 				})
 			}
 			if p.Window > 0 {

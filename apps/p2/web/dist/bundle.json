@@ -1,7 +1,7 @@
 {
-	"version": "125f835d7eec629038ebe76f07b903f60da4c22b407a627055a9ee356f808ad0",
-	"script": "app-HGAPGHB4.js",
-	"style": "app-R2MCWDKW.css",
+	"version": "208277b122480c6bcbef18c4eea3f0cef0b95be935fbb3c33f35634fb7134ad7",
+	"script": "app-M2SZQMF6.js",
+	"style": "app-S7ASXKO7.css",
 	"plugins": [
 		"agent",
 		"artifacts",
@@ -61,28 +61,28 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-HGAPGHB4.js",
+			"name": "app-M2SZQMF6.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1319326,
-			"sha256": "fc0e96b187e5982d2baca8599bdc4c51171d982258b5abe3711ca0b326a040ab"
+			"size": 1318702,
+			"sha256": "3c49ec19b76a665f890879feea65eedd0624f090b4bce92560131633b1b392b5"
 		},
 		{
-			"name": "app-HGAPGHB4.js.map",
+			"name": "app-M2SZQMF6.js.map",
 			"type": "application/json",
-			"size": 6179128,
-			"sha256": "fee0153de69a5272b0313a2f70969e9747933ab2c92ce0499bf200a0a7b3ac96"
+			"size": 6177029,
+			"sha256": "738a93c771e8a43f336ade710937b2d35733c0017f035b289c11d7f2310d9ba2"
 		},
 		{
-			"name": "app-R2MCWDKW.css",
+			"name": "app-S7ASXKO7.css",
 			"type": "text/css; charset=utf-8",
-			"size": 347480,
-			"sha256": "a27958872c5073d5fcb30d7de1afdc2ed04e078cd6d4bd0137292f8b90a85c91"
+			"size": 347177,
+			"sha256": "4eba356ee61f712224e188b03cfd65fd1114e1232da8f9fd35eb13f634805f3a"
 		},
 		{
-			"name": "app-R2MCWDKW.css.map",
+			"name": "app-S7ASXKO7.css.map",
 			"type": "application/json",
-			"size": 627138,
-			"sha256": "5f6814c1b1ef9afbb2ace7de22045ecb2f4bb751e6fa2edbeb0765369f178199"
+			"size": 626375,
+			"sha256": "93b07b627bf8ea1990df340d9c28edd835489d82e8d5d335b66b95c5e7fbe3a0"
 		},
 		{
 			"name": "ghostty-vt-BNEKZYKQ.wasm",

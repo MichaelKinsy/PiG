@@ -98,14 +98,14 @@ export function stylesheet() {
 `;
 	};
 	return `
-/* PiG brand layer (web/brand/brand.mjs): colours from web/brand/tokens.json, the pig mark at whole multiples of its 14x13 grid. */
+/* PiG brand layer (web/brand/brand.mjs): colours from web/brand/tokens.json, the pig mark at whole multiples of its grid. */
 ${theme("light")}${theme("dark")}.pi-logo {
 	width: 56px;
 	height: 52px;
 }
 .hero-title .pi-logo {
-	width: 42px;
-	height: 39px;
+	width: 28px;
+	height: 26px;
 }
 .pi-logo.compact {
 	width: 28px;
@@ -118,34 +118,12 @@ ${theme("light")}${theme("dark")}.pi-logo {
 	image-rendering: pixelated;
 }
 .hero-title .pi-logo.sprite {
-	width: 48px;
-	height: 42px;
+	width: 32px;
+	height: 28px;
 }
 .pi-logo.sprite.compact {
 	width: 32px;
 	height: 28px;
-}
-/* The empty state's head: the sprite's banner at a whole multiple of its 54x18 grid (6x: the pig is 96x84), its tagline, the question. */
-.brand-hero {
-	flex-direction: column;
-	gap: var(--s3);
-}
-.brand-banner {
-	width: 324px;
-	height: 108px;
-	max-width: 100%;
-	image-rendering: pixelated;
-}
-@media (max-width: 560px) {
-	.brand-banner {
-		width: 270px;
-		height: 90px;
-	}
-}
-.brand-tagline {
-	margin: 0;
-	color: var(--muted);
-	font-size: var(--fs-md);
 }
 /* Reading: running text at 1.65, a step looser than the interface's 1.5; code keeps its own. */
 .messages .assistant .elanor-markdown :is(p, li) {
@@ -161,10 +139,10 @@ const pigLogo = (() => {
 	return `import { useSyncExternalStore } from "react";
 
 // The mark is the PiG pig. With a sprite hook on the server (pig additive: PiG Standard's \`/sprite\`) the page carries the chosen
-// sprite's info as JSON (data-brand-sprite: key, name, tagline; "" for none) and streams changes; the mark, the favicon and the
-// empty state's banner then draw that sprite's SVGs. Without the hook the attribute is absent and nothing below runs: the mark is
+// sprite's info as JSON (data-brand-sprite: key, name; "" for none) and streams changes; the mark and the favicon then draw
+// that sprite's SVGs. Without the hook the attribute is absent and nothing below runs: the mark is
 // the brand's pig.
-type SpriteInfo = { key: string; name: string; tagline: string };
+type SpriteInfo = { key: string; name: string };
 const root = document.documentElement;
 const listeners = new Set<() => void>();
 let streaming = false;
@@ -196,42 +174,10 @@ function subscribeSprite(listener: () => void): () => void {
 	}
 	return () => listeners.delete(listener);
 }
-// The page theme (the sidebar's choice or the system's; the page sets data-theme), which the banner's wordmark colors follow.
-const themeListeners = new Set<() => void>();
-let themeObserver: MutationObserver | undefined;
-const pageTheme = (): "light" | "dark" => (root.dataset.theme === "light" ? "light" : "dark");
-function subscribeTheme(listener: () => void): () => void {
-	themeListeners.add(listener);
-	themeObserver ??= new MutationObserver(() => {
-		for (const each of themeListeners) each();
-	});
-	themeObserver.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
-	return () => themeListeners.delete(listener);
-}
 const useSprite = (): SpriteInfo | null => {
 	useSyncExternalStore(subscribeSprite, () => root.dataset.brandSprite ?? "");
 	return spriteInfo();
 };
-
-/** The empty state's head: the sprite's banner (the pig beside its "PiG." wordmark), its tagline, then the question. */
-export function PiHero({ title }: { title: string }) {
-	const sprite = useSprite();
-	const theme = useSyncExternalStore(subscribeTheme, pageTheme);
-	if (!sprite)
-		return (
-			<div className="hero-title">
-				<PiLogo />
-				<h2>{title}</h2>
-			</div>
-		);
-	return (
-		<div className="hero-title brand-hero">
-			<img className="brand-banner" src={\`/__p2_brand/login.svg?v=\${sprite.key}&theme=\${theme}\`} alt={sprite.name} />
-			{sprite.tagline && <p className="brand-tagline">{sprite.tagline}</p>}
-			<h2>{title}</h2>
-		</div>
-	);
-}
 
 export function PiLogo({ compact = false }: { compact?: boolean }) {
 	const sprite = useSprite();
@@ -256,12 +202,7 @@ const files = {
 	"plugins/chat/web.tsx": {
 		literals: [
 			['"Message Pi…"', '"Message PiG…"', "Message Pi…"],
-			["\tPiLogo,\n\tPlusIcon,\n", "\tPiHero,\n\tPiLogo,\n\tPlusIcon,\n", null],
-			[
-				'\t\t\t\t\t\t\t<div className="hero-title">\n\t\t\t\t\t\t\t\t<PiLogo />\n\t\t\t\t\t\t\t\t<h2>What should Pi do?</h2>\n\t\t\t\t\t\t\t</div>',
-				'\t\t\t\t\t\t\t<PiHero title="What should PiG do?" />',
-				"What should Pi do?",
-			],
+			["<h2>What should Pi do?</h2>", "<h2>What should PiG do?</h2>", "What should Pi do?"],
 		],
 	},
 	"plugins/devices/web.tsx": { literals: [["Open Pi's domain on the other device", "Open PiG's domain on the other device", "Open Pi's domain on the other device"]] },
