@@ -569,17 +569,35 @@ func (g *Grid) Reset() {
 	g.syncDepth = 0
 }
 
-// Resize changes the grid size, keeping the top-left content. Rows cut off the
-// bottom are dropped; the cursor is clamped into the new bounds.
+// Smallest grid xterm.js lets a terminal shrink to (MINIMUM_COLS, MINIMUM_ROWS).
+const (
+	minCols = 2
+	minRows = 1
+)
+
+// Resize changes the grid size like xterm.js: sizes below 2 columns or 1 row are raised to that. Columns past the new width are cut. When the
+// rows shrink, blank rows below the cursor go first; once the cursor is on the last row, the top rows move to the scrollback so the cursor
+// keeps its row. Growing adds blank rows at the bottom.
 func (g *Grid) Resize(rows, cols int) {
-	cells := make([][]Cell, rows)
-	for r := range cells {
-		cells[r] = makeRow(cols)
-		if r < g.Rows {
-			copy(cells[r], g.cells[r][:min(cols, g.Cols)])
+	rows, cols = max(rows, minRows), max(cols, minCols)
+	for len(g.cells) > rows {
+		if len(g.cells)-1 > g.curRow {
+			g.cells = g.cells[:len(g.cells)-1]
+			continue
 		}
+		g.scrollback = append(g.scrollback, rowToString(g.cells[0]))
+		g.cells = g.cells[1:]
+		g.curRow--
 	}
-	g.cells, g.Rows, g.Cols = cells, rows, cols
+	for len(g.cells) < rows {
+		g.cells = append(g.cells, makeRow(g.Cols))
+	}
+	for r, row := range g.cells {
+		resized := makeRow(cols)
+		copy(resized, row[:min(cols, len(row))])
+		g.cells[r] = resized
+	}
+	g.Rows, g.Cols = rows, cols
 	g.curRow = clampI(g.curRow, 0, rows-1)
 	g.curCol = clampI(g.curCol, 0, cols-1)
 }

@@ -74,7 +74,7 @@ func TestRetryStatusIndicatorCountsDown(t *testing.T) {
 	now := func() time.Time { return time.UnixMilli(clock.Load()) }
 	indicator := newRetryStatusIndicator(t.Context(), screen, ctx, 1, 4_000, "overloaded", time.Millisecond, now)
 	defer indicator.Dispose()
-	if got := indicator.Message; !strings.Contains(got, "Retrying (attempt 2) in 3s: overloaded (ctrl+o to cancel)") {
+	if got := messageOf(indicator); !strings.Contains(got, "Retrying (attempt 2) in 3s: overloaded (ctrl+o to cancel)") {
 		t.Fatalf("initial message %q", got)
 	}
 	clock.Store(2_500)

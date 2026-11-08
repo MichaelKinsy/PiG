@@ -61,13 +61,13 @@ func NewRetryStatusIndicator(ctx context.Context, ui tui.TUI, rc render.RenderCo
 
 // newRetryStatusIndicator is NewRetryStatusIndicator with the tick period and the clock injected for tests.
 func newRetryStatusIndicator(ctx context.Context, ui tui.TUI, rc render.RenderContext, attempt int, at int64, errText string, period time.Duration, now func() time.Time) *StatusIndicator {
-	message := func() string {
-		seconds := max(0, (at-now().UnixMilli()+999)/1000)
+	message := func(nowMs int64) string {
+		seconds := max(0, (at-nowMs+999)/1000)
 		return fmt.Sprintf("Retrying (attempt %d) in %ds: %s (%s to cancel)", attempt+1, seconds, errText, rc.KeyText("app.interrupt"))
 	}
 	indicator := newStatusIndicator("retry", ui,
 		func(spinner string) string { return rc.Theme().Current().Fg("warning", spinner) },
-		func(text string) string { return rc.Theme().Current().Fg("muted", text) }, message())
+		func(text string) string { return rc.Theme().Current().Fg("muted", text) }, message(now().UnixMilli()))
 	ctx, cancel := context.WithCancel(ctx)
 	done := make(chan struct{})
 	go func() {
@@ -79,9 +79,11 @@ func newRetryStatusIndicator(ctx context.Context, ui tui.TUI, rc render.RenderCo
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				indicator.SetMessage(message())
+				// One clock read per tick: the message and the stop decision must agree.
+				nowMs := now().UnixMilli()
+				indicator.SetMessage(message(nowMs))
 				ui.RequestRender()
-				if now().UnixMilli() >= at {
+				if nowMs >= at {
 					return
 				}
 			}
@@ -122,10 +124,9 @@ func NewCompactionStatusIndicator(ui tui.TUI, ctx render.RenderContext, trigger 
 // CustomEditor is pi's CustomEditor: app actions by binding id, Escape and the empty-editor exit rule, embedded working status.
 type CustomEditor struct {
 	*tui.Editor
-	// indicator is drawn by Render in the top border; borderColor colors the dashes around it (the theme's editor border).
-	indicator   *StatusIndicator
-	borderColor func(string) string
-	actions     []customEditorAction
+	// indicator is drawn by Render in the top border; the embedded Editor.BorderColor colors the dashes around it.
+	indicator *StatusIndicator
+	actions   []customEditorAction
 	// OnEscape and OnCtrlD replace the handlers registered for app.interrupt and app.exit while set.
 	OnEscape func()
 	OnCtrlD  func()
@@ -139,7 +140,7 @@ type customEditorAction struct {
 // NewCustomEditor builds the editor with the ref's editor theme (`super(tui, ctx.theme.editor, options)`).
 func NewCustomEditor(ui tui.TUI, ctx render.RenderContext, options tui.EditorOptions) *CustomEditor {
 	theme := ctx.Theme().Editor
-	return &CustomEditor{Editor: tui.NewEditorWithTUI(ui, theme, options), borderColor: theme.BorderColor}
+	return &CustomEditor{Editor: tui.NewEditorWithTUI(ui, theme, options)}
 }
 
 // SetWorkingStatusIndicator shows an indicator in the top border; nil clears it. The indicator keeps its own colors (accent and muted, or

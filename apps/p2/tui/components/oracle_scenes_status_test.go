@@ -41,7 +41,7 @@ func init() {
 	}))
 
 	longText := func() string {
-		lines := make([]string, 14)
+		lines := make([]string, 10)
 		for i := range lines {
 			lines[i] = fmt.Sprintf("editor line %d 日本語", i)
 		}
@@ -60,17 +60,21 @@ func init() {
 			return scene
 		}
 	}
-	registerScene("editor-plain", editorScene(nil, func() []string { return []string{pasted("hello"), pasted(longText), keyUpArrow, keyUpArrow} }))
+	registerScene("editor-plain", editorScene(nil, func() []string {
+		return []string{pasted("hello"), pasted(longText), pasted(longText), keyUpArrow, keyUpArrow}
+	}))
 	registerScene("editor-working", editorScene(func(ui pitui.TUI, ctx oracleContext) *StatusIndicator {
 		return NewWorkingStatusIndicator(ui, ctx, "Working...", nil)
-	}, func() []string { return append([]string{pasted("hello"), pasted(longText)}, ups(8)...) }))
+	}, func() []string {
+		return append([]string{pasted("hello"), pasted(longText), pasted(longText)}, ups(8)...)
+	}))
 	registerScene("editor-working-long", editorScene(func(ui pitui.TUI, ctx oracleContext) *StatusIndicator {
 		return NewWorkingStatusIndicator(ui, ctx, "Working on a long message that does not fit the border at narrow widths 日本語", nil)
-	}, func() []string { return append([]string{pasted(longText)}, ups(10)...) }))
+	}, func() []string { return append([]string{pasted(longText), pasted(longText)}, ups(10)...) }))
 	registerScene("editor-retry", editorScene(func(ui pitui.TUI, ctx oracleContext) *StatusIndicator {
 		return NewRetryStatusIndicator(context.Background(), ui, ctx, 1, 0, "overloaded")
-	}, func() []string { return []string{pasted("one\ntwo"), pasted(longText)} }))
+	}, func() []string { return []string{pasted("one\ntwo"), pasted(longText), pasted(longText)} }))
 	registerScene("editor-compaction", editorScene(func(ui pitui.TUI, ctx oracleContext) *StatusIndicator {
 		return NewCompactionStatusIndicator(ui, ctx, "manual", nil)
-	}, func() []string { return append([]string{pasted(longText)}, ups(14)...) }))
+	}, func() []string { return append([]string{pasted(longText), pasted(longText)}, ups(14)...) }))
 }
