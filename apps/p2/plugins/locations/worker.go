@@ -250,12 +250,19 @@ func moveOnce(ctx host.Ctx, session func() (durableharness.Harness, error), sign
 		if err != nil {
 			return struct{}{}, err
 		}
-		current, _ := draft.Get("pending").(*delta.JsonObject)
+		// A draft's object is a handle (*delta.Object), not a *delta.JsonObject: read it as the handle it is, or the move's
+		// record is never cleared and the mover repeats the move (each repeat fences the worker).
+		current := draft.Object("pending")
 		// A newer destination waits for its own turn.
 		if current == nil {
 			return struct{}{}, nil
 		}
-		if now, err := p2runtime.ParseLocationJSON(current); err != nil || !p2runtime.SameLocation(now, *pending) {
+		now := p2runtime.Location{}
+		now.Cwd, _ = current.Get("cwd").(string)
+		if name, ok := current.Get("env").(string); ok {
+			now.Env = &name
+		}
+		if !p2runtime.SameLocation(now, *pending) {
 			return struct{}{}, nil
 		}
 		draft.Delete("pending")
