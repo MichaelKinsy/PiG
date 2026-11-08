@@ -331,11 +331,11 @@ func BenchmarkPluginsReload(b *testing.B) {
 	root := benchPluginSet(b)
 	cache := b.TempDir()
 	modules := benchModules(b, cache)
-	kind := func(name string) KindDefinition {
-		return KindDefinition{Name: name, Platform: PlatformNode, HostPackages: []string{benchSpecifier}}
+	kind := func(name string) KindEntry {
+		return KindEntry{Name: name, Definition: KindDefinition{Platform: PlatformNode, HostPackages: []string{benchSpecifier}}}
 	}
 	component := CreatePlugins(PluginsOptions{
-		Roots: []PluginRoot{{Path: root}}, Api: &benchApp, Kinds: []KindDefinition{kind("server"), kind("worker")}, OnError: func(PluginsError) {},
+		Roots: []PluginRoot{{Path: root}}, Api: &benchApp, Kinds: []KindEntry{kind("server"), kind("worker")}, OnError: func(PluginsError) {},
 		Node: benchNodeOptions(cache),
 	}, background)
 	defer component.Close()

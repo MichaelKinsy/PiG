@@ -43,6 +43,22 @@ const (
 	SessionEphemeral SessionKind = "ephemeral"
 )
 
+// SessionInfo is a browser or device session as `Sessions.list` shows it: never its token or hash. Kind is SessionBrowser or
+// SessionDevice; Principal is the principal's JSON (the generic parameter is designed out, D457).
+type SessionInfo struct {
+	ID        string
+	Label     string
+	Kind      SessionKind
+	Principal delta.JsonValue
+	Created   float64
+	LastUsed  float64
+}
+
+// JSON is the session as an element of the `list` member.
+func (i SessionInfo) JSON() *delta.JsonObject {
+	return delta.JsonObjectOf("id", i.ID, "label", i.Label, "kind", string(i.Kind), "principal", i.Principal, "created", i.Created, "lastUsed", i.LastUsed)
+}
+
 // Sessions is the kit's sessions (one per server): issue, verify, revoke, and the watchable list of persisted ones.
 //
 // `list` is the browser and device sessions as SessionInfo shows them: id, label, kind, principal, created, lastUsed; ephemeral
@@ -229,10 +245,10 @@ func sessionsFacet(cookieSecret string, ephemeral *EphemeralSessions) host.Facet
 							if err != nil {
 								return nil, err
 							}
-							list = append(list, delta.JsonObjectOf(
-								"id", id, "label", session.Value("label"), "kind", session.Value("kind"), "principal", principal,
-								"created", session.Value("created"), "lastUsed", session.Value("lastUsed"),
-							))
+							list = append(list, SessionInfo{
+								ID: id, Label: session.Value("label").(string), Kind: SessionKind(session.Value("kind").(string)), Principal: principal,
+								Created: session.Value("created").(float64), LastUsed: session.Value("lastUsed").(float64),
+							}.JSON())
 						}
 						return list, nil
 					}),

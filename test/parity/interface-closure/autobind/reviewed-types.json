@@ -547,6 +547,14 @@
     "go": "chord/next/store/expression.go#When",
     "reason": "Pi `when(condition, a: Operand<T, K>, b)` takes an Expression or a plain value (Operand<T, K> = Expression<T, K> | T); Go's When(condition Condition, a, b any) takes an *Expression or a Go value and compiles each by its dynamic type. Exercised by TestCompilingConditions (chord/next/store/expression_test.go)."
   },
+  "pkg:chord/app#AppApi": {
+    "go": "chord/nextnode/plugins/plugins_build.go#AppApi",
+    "reason": "Pi 1.5.0+c23b9ec1 app/index.ts re-exports plugins/build.ts:31 AppApi = { name, versions }: the same Go plugins.AppApi (plugins_build.go) the app's AppOptions.Api takes."
+  },
+  "pkg:chord/app#ArchiveManifest": {
+    "go": "chord/nextnode/app/archive.go#ArchiveManifest",
+    "reason": "Pi 1.5.0+c23b9ec1 app/archive.ts:22 ArchiveManifest is the manifest an archive says about itself: Go app.ArchiveManifest (archive.go) has its format, app, api and address (ArchiveAddress), written and read by PackStore/UnpackStore (archive_test.go, archive.test.ts cases)."
+  },
   "pkg:chord/context#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",
     "reason": "The same declaration as pkg:chord/.#ContextKey::property:token, published again by Pi's ./context entrypoint (chord/src/context/index.ts:58-60 createContextKey returns a frozen {token: Symbol(description)}). Go has no symbol type, so chordctx.Token is a comparable opaque value, equal exactly for the same key and carrying its description. TestContextKeyTokenMatchesPi (chord/context/context_key_token_pi_oracle_test.go) compares token description, identity and toString with Pi's createContextKey in Node."
@@ -590,6 +598,14 @@
   "pkg:chord/output#Progress::property:stop::call:0": {
     "go": "chord/output/output.go#Progress.Stop",
     "reason": "Pi chord/src/output.ts:364-370 async stop(): Promise<PromiseWithResolvers<void>[]> sets stopped, disarms the timer, awaits the in-flight commit and splices out the waiters. Go has no Promise or PromiseWithResolvers: Stop() blocks until the in-flight commit ends (<-inFlight) and returns []*ProgressWaiter, whose Resolve/Reject are the resolvers the final commit settles. TestProgress 'stops: waits for the commit in flight and hands back waiters no commit covered yet' (chord/output/output_test.go) ports the Pi stop case."
+  },
+  "pkg:chord/plugins#AppApi": {
+    "go": "chord/nextnode/plugins/plugins_build.go#AppApi",
+    "reason": "Pi 1.5.0+c23b9ec1 plugins/build.ts:31 AppApi = { readonly name: string; readonly versions: readonly string[] }: Go plugins.AppApi has the fields Name and Versions (plugins_build.go) and BuildFacet, CreatePlugins and TestPlugin take it as Pi's do (plugins_build_test.go, build.test.ts cases about the app's API)."
+  },
+  "pkg:chord/plugins#PluginRoot": {
+    "go": "chord/nextnode/plugins/plugins_discover.go#PluginRoot",
+    "reason": "Pi 1.5.0+c23b9ec1 plugins/discover.ts PluginRoot = string | { readonly path: string; readonly required?: boolean }: a root is a path, or a path marked required. Go has no unions: plugins.PluginRoot is the one struct of the object form (Path, Required) and the string form is PluginRoot{Path: path} (plugins_discover.go). TestDiscoverPlugins* and TestCreatePluginsRequiredRoot* read both forms' behavior (a required root's failing plugin rejects the load)."
   },
   "pkg:chord/sync#JsonObject": {
     "go": "chord/sync/remote.go#JsonObject",

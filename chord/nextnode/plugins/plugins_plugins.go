@@ -32,12 +32,16 @@ import (
 // goroutines at once (one build per facet of the plugins to build: Pi's Promise.all).
 
 // KindDefinition is one facet kind: Node or browser builds, and the host packages (by specifier) its builds keep external.
-// Name is the kind (`server`, `worker`, `web`): upstream's record key, which Go keeps as a field so the kinds stay in the
-// order the app gave them.
 type KindDefinition struct {
-	Name         string
 	Platform     Platform
 	HostPackages []string
+}
+
+// KindEntry is one entry of upstream's `kinds` record: the kind (`server`, `worker`, `web`), the record's key, and its definition.
+// A record keeps its keys in insertion order and a Go map does not, so the kinds are a slice of entries in the order the app gave them.
+type KindEntry struct {
+	Name       string
+	Definition KindDefinition
 }
 
 // PluginsErrorKind tags a PluginsError: a failure of the batch of the marks (the kinds of state.BatchError) or of the
@@ -70,7 +74,7 @@ type PluginsOptions struct {
 	Api *AppApi
 	// Kinds are the app's facet kinds (one file per kind in a plugin), each with where its builds run and the host packages
 	// they keep external, in the app's order.
-	Kinds []KindDefinition
+	Kinds []KindEntry
 	// Base is the server's own base code, files and directories, hashed when the component is created: `base` is set while one
 	// differs from it or a source file is new in one of the directories (the app restarts its hosts; Chord restarts nothing).
 	Base []string
@@ -120,11 +124,16 @@ type RolloutHost struct {
 	Error  error
 }
 
+// Stopped is Pi's `stopped: true`: the host stopped cleanly during the step. It is read from Kind, so it cannot disagree with it.
+func (h RolloutHost) Stopped() bool { return h.Kind == RolloutStopped }
+
 // StepResult is what a rollout step's reload returns: one result per host (D12).
 type StepResult struct {
 	Hosts []RolloutHost
 }
 
+// pig divergence (D607): Reload also takes the sets the rollout applied (Pi's step reads `plugins.current` atomically after its ship); steps from Plugins.Step run over a NodeHost.
+//
 // RolloutStep is what a rollout step does: reloads its hosts with the facets of its kinds. An error stops the rollout.
 type RolloutStep struct {
 	Name  string
@@ -179,6 +188,8 @@ type PluginsLoad struct {
 	GoPackages   []GoPackage
 	Telemetry    telemetry.TelemetryContext
 	PrincipalKey *data.PrincipalKeyFunction
+	// PrincipalAttributes is RuntimeLoad.PrincipalAttributes.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	RevokedBy    host.RevokedBy[delta.JsonValue]
 	// Bridged are the app's Go core facets whose local types the plugins use (RuntimeLoad.Bridged); ParentServes is the remote
 	// types the Go host serves that the plugins use (RuntimeLoad.ParentServes).
@@ -200,7 +211,7 @@ func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
 	}
 	for i, kind := range options.Kinds {
 		c.kindNames[i] = kind.Name
-		c.kinds[kind.Name] = kind
+		c.kinds[kind.Name] = kind.Definition
 	}
 	report := func(kind PluginsErrorKind, err error) {
 		if options.OnError != nil {
@@ -401,6 +412,8 @@ func (c *Plugins) Current(kind string) ([]PluginScript, bool) {
 	return scripts, ok
 }
 
+// pig divergence (D607): Pi's `load(host, options, context)` is handed a Host; this starts the Node subprocess host (and Reload and Step take it).
+//
 // Load starts a Node subprocess that hosts options.Kind's current set, evaluated with options.Modules, and options.Core
 // (the app's own facets): a plugin whose build or evaluation fails is left out and reported with the host's report. The app
 // attaches the returned host's Link to a Go host (PluginRuntime.Load). A required root's plugin failing, and a problem
@@ -425,7 +438,7 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		Address: options.Address, Principal: options.Principal, Peer: options.Peer, Heartbeat: options.Heartbeat,
 		CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout, Compression: options.Compression,
 		Store:      options.Store,
-		GoPackages: options.GoPackages, Telemetry: options.Telemetry, PrincipalKey: options.PrincipalKey, RevokedBy: options.RevokedBy,
+		GoPackages: options.GoPackages, Telemetry: options.Telemetry, PrincipalKey: options.PrincipalKey, RevokedBy: options.RevokedBy, PrincipalAttributes: options.PrincipalAttributes,
 		Bridged: options.Bridged, ParentServes: options.ParentServes,
 	}, ctx)
 	if h == nil {
@@ -436,13 +449,13 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		if len(problems) == 0 {
 			return h, report, err
 		}
-		return h, report, &PluginError{Required: failure.Required, Failed: failure.Failed, Problems: problems}
+		return h, report, NewPluginError(failure.Required, failure.Failed, problems...)
 	}
 	if err != nil {
 		return nil, host.LoadReport{}, err
 	}
 	if len(problems) > 0 {
-		return h, report, &PluginError{Required: []host.PluginFailure{}, Failed: report.Failed, Problems: problems}
+		return h, report, NewPluginError([]host.PluginFailure{}, report.Failed, problems...)
 	}
 	return h, report, nil
 }
@@ -482,6 +495,8 @@ func (c *Plugins) Reload(h *NodeHost, built *Built, ctx context.Context) (host.R
 	return h.reloaded(call, ctx)
 }
 
+// pig divergence (D607): Pi's `step(name, host)` takes a live Host; this takes the NodeHost Load returned.
+//
 // Step is a rollout step named name: Reload(h, built), one host named name.
 func (c *Plugins) Step(name string, h *NodeHost) (RolloutStep, error) {
 	kind, err := c.kindOf(h, "step")
@@ -599,8 +614,12 @@ func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 
 // WatchBase adds a running base artifact's record (a base bundle's inputs, beside Base; see Recorder): `base` is set while one
 // of its files differs from the bytes it read or is gone; each is compared once now. Files under `node_modules` are never
-// watched. The channel it returns closes once those comparisons ended (Pi's `watchBase` settles then).
-func (c *Plugins) WatchBase(inputs BaseInputs) <-chan struct{} {
+// watched.
+func (c *Plugins) WatchBase(inputs BaseInputs) { c.WatchBaseCompared(inputs) }
+
+// WatchBaseCompared is WatchBase that returns a channel closed once the comparisons of the record ended: where Pi's app reads
+// nothing of `watchBase`, the Go app's `BaseWatched` waits for them.
+func (c *Plugins) WatchBaseCompared(inputs BaseInputs) <-chan struct{} {
 	var compared <-chan struct{}
 	c.section(func() { compared = c.watcher.recordBase(inputs) })
 	return compared

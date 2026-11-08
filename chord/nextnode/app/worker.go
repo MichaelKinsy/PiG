@@ -16,12 +16,14 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/next/telemetryingest"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/node/app/worker.ts
@@ -47,13 +49,15 @@ import (
 // WorkerOptions is what StartWorker takes: the app's API and kinds as the server's StartServer has them, this process's modules.
 type WorkerOptions struct {
 	API   AppAPI
-	Kinds []AppKind
+	Kinds []AppKindEntry
 	// WorkerKinds are the app's worker host kinds: the one of the address the server starts places the worker's route.
 	WorkerKinds []*contracts.HostKind
 	// Busy is the app's extra keep-alive counts (a record of numbers, all zero when idle).
 	Busy chord.Watchable[delta.JsonValue]
 	// OnError gets the worker host's errors (host.HostError) and a failed start's.
 	OnError func(err any)
+	// PrincipalAttributes is who a span was for (`createHost`'s `principalAttributes`): this worker's hook, as the server's is its own.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// Node is how the worker's Node subprocess is started.
 	Node plugins.NodeOptions
 }
@@ -71,7 +75,7 @@ func StartWorker(options WorkerOptions) {
 	packages := plugins.HostPackages{}
 	maps.Copy(packages, options.API.Modules)
 	for _, kind := range options.Kinds {
-		maps.Copy(packages, kind.Packages)
+		maps.Copy(packages, kind.Kind.Packages)
 	}
 	nodeOptions := options.Node
 	workers.WorkerMain(func(start workers.WorkerStart, ctx context.Context) (*workers.WorkerResult, error) {
@@ -178,7 +182,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 			{Name: "chord.app.worker-info", Contracts: []*contracts.Contract{WorkerInfo}},
 			{Name: "chord.app.data.export", Contracts: []*contracts.Contract{HostDataExport}},
 		},
-		Principal: kit.Principal, Peer: kit.Server,
+		Principal: kit.Principal, Peer: kit.Server, PrincipalAttributes: options.PrincipalAttributes,
 		Store: &plugins.StoreOptions{Path: storePath}, CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(), ReloadDrainTimeout: kit.Timeouts.reloadDrain(),
 	}); err != nil {
 		return nil, err

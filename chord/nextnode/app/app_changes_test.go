@@ -31,7 +31,7 @@ func untilMarks(t testing.TB, app *App, what string, ok func(plugins.PluginsStat
 	t.Helper()
 	ctx, cancel := context.WithTimeout(background, 30*time.Second)
 	defer cancel()
-	watch, err := app.Plugins.State().Watch(ctx)
+	watch, err := app.Plugins.Component.State().Watch(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,11 +44,11 @@ func untilMarks(t testing.TB, app *App, what string, ok func(plugins.PluginsStat
 		}
 		return nil
 	})
-	for !ok(app.Plugins.Marks()) {
+	for !ok(app.Plugins.Component.Marks()) {
 		select {
 		case <-changed:
 		case <-ctx.Done():
-			t.Fatalf("timed out waiting for %s (marks %+v)", what, app.Plugins.Marks())
+			t.Fatalf("timed out waiting for %s (marks %+v)", what, app.Plugins.Component.Marks())
 		}
 	}
 }
@@ -113,7 +113,7 @@ func TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer(t *tes
 	}
 	// Restarted: the new attempt goes live once the old one ended.
 	untilText(t, served, "changed")
-	if dirty := s.app.Plugins.Marks().Dirty; len(dirty) != 0 {
+	if dirty := s.app.Plugins.Component.Marks().Dirty; len(dirty) != 0 {
 		t.Fatalf("dirty after the rollout = %v", dirty)
 	}
 }
@@ -221,7 +221,7 @@ func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 			s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, func(o *AppOptions) {
 				o.Base = []string{filepath.Join(dir, "api"), filepath.Join(dir, "start.ts")}
 			})
-			if s.app.Plugins.Marks().Base {
+			if s.app.Plugins.Component.Marks().Base {
 				t.Fatal("base is marked at start")
 			}
 			changed := filepath.Join(dir, name)
@@ -236,7 +236,7 @@ func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 			}
 			editEcho(t, s.root, "barrier")
 			untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
-			if s.app.Plugins.Marks().Base {
+			if s.app.Plugins.Component.Marks().Base {
 				t.Fatal("base is marked by a rewrite with the same bytes")
 			}
 			if err := os.WriteFile(changed, []byte("export const changed = 1;"), 0o644); err != nil {
@@ -267,7 +267,7 @@ func TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes
 		o.Workers = []AppWorkerKind{worker}
 	})
 	<-s.app.BaseWatched()
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked at start")
 	}
 	if got := s.errors.kinds(); len(got) != 0 {
@@ -279,7 +279,7 @@ func TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes
 	}
 	editEcho(t, s.root, "barrier")
 	untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked by a rewrite with the same bytes")
 	}
 	if err := replaceFile(entry, append(append([]byte(nil), bytes...), '\n')); err != nil {
@@ -336,17 +336,17 @@ func TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt(t *test
 	s := startTestApp(t, nil, func(o *AppOptions) {
 		o.Install = plugins.InstallOptions{NpmCommand: []string{node, filepath.Join(tools, "npm.mjs")}}
 	})
-	if s.app.Plugins.Marks().Set {
+	if s.app.Plugins.Component.Marks().Set {
 		t.Fatal("the set mark is set before the install")
 	}
-	names, err := s.app.InstallPlugin(plugins.PluginSource{Git: url, Ref: "v1"}, background)
+	names, err := s.app.Plugins.Install(background, plugins.PluginSource{Git: url, Ref: "v1"})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/echo"}) {
 		t.Fatalf("InstallPlugin = %v, %v", names, err)
 	}
 	if got := dirEntries(t, filepath.Join(s.dataDir, "plugins")); !reflect.DeepEqual(got, []string{"echo"}) {
 		t.Fatalf("the user's root = %v, want [echo]", got)
 	}
-	if !s.app.Plugins.Marks().Set {
+	if !s.app.Plugins.Component.Marks().Set {
 		t.Fatal("the set mark is not set after the install")
 	}
 	if _, err := s.app.ApplyChanges(background); err != nil {

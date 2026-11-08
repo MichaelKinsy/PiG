@@ -47,7 +47,7 @@ func newBuildFixture(t *testing.T, entry string) *buildFixture {
 		t.Fatal(err)
 	}
 	created := plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots: []plugins.PluginRoot{{Path: root}}, Kinds: []plugins.KindDefinition{{Name: "web", Platform: plugins.PlatformBrowser}},
+		Roots: []plugins.PluginRoot{{Path: root}}, Kinds: []plugins.KindEntry{{Name: "web", Definition: plugins.KindDefinition{Platform: plugins.PlatformBrowser}}},
 	}, chordctx.Background())
 	building := newSurfaceBuild(Web, PlatformBrowser, WebPrefix, surfaceBuildOptions{kind: "web", entry: entry, plugins: created}, server)
 	report, err := server.Load([]host.HostFacet{{Name: "chord.web", Facet: ScriptsFacet(Web, building.set)}}, chordctx.Background())

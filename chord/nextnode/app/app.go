@@ -14,6 +14,7 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -67,6 +68,16 @@ func mustHostKind(name string, props ...contracts.Property) *contracts.HostKind 
 	return kind
 }
 
+// AppPlugins are the plugins of a running app, for its "apply changes" control and its installs.
+type AppPlugins struct {
+	// State is the marks (`dirty`, `install`, `set`, `base`): what the app's button shows.
+	State chord.Watchable[delta.JsonValue]
+	// Install installs plugins from git or npm into the user's root (slice 12's `installPlugin`) and returns their names.
+	Install func(ctx context.Context, source plugins.PluginSource) ([]string, error)
+	// Component is the plugins component itself.
+	Component *plugins.Plugins
+}
+
 // AppAPI is the app's API (slice 12): its package name, the versions it provides (newest first) and this process's modules of them by
 // specifier (`@acme/app/v3`, `@acme/app/v3/server`).
 type AppAPI struct {
@@ -75,12 +86,18 @@ type AppAPI struct {
 	Modules  plugins.HostPackages
 }
 
-// AppKind is a facet kind of the app: its name, where its builds run, and the packages besides the API its plugins share (`react`).
+// AppKind is a facet kind of the app: where its builds run, and the packages besides the API its plugins share (`react`).
 // Its API modules are named by convention: `<api>/<version>` and `<api>/<version>/<kind>` for every version.
 type AppKind struct {
-	Name     string
 	Platform plugins.Platform
 	Packages plugins.HostPackages
+}
+
+// AppKindEntry is one entry of upstream's `kinds` record: the kind's name, the record's key, and its AppKind. A record keeps its keys
+// in insertion order and a Go map does not, so the kinds are a slice of entries in the order the app gave them.
+type AppKindEntry struct {
+	Name string
+	Kind AppKind
 }
 
 // AppWorkerKind is a worker kind: a host kind of the app and how its workers start (the workers component's options).
@@ -150,15 +167,15 @@ type AppLimits struct {
 // AppTimeouts are the hosts' timeouts (`HostOptions.closeTimeout`, `HostOptions.readyTimeout`, `HostOptions.reloadDrainTimeout`):
 // zero is the host's default.
 type AppTimeouts struct {
-	Close time.Duration
-	Ready time.Duration
-	// ReloadDrain bounds how long a reload's restart keeps an object's old attempt open for old work.
-	ReloadDrain time.Duration
+	CloseTimeout time.Duration
+	ReadyTimeout time.Duration
+	// ReloadDrainTimeout bounds how long a reload's restart keeps an object's old attempt open for old work.
+	ReloadDrainTimeout time.Duration
 }
 
-func (t AppTimeouts) close() *time.Duration       { return optionalDuration(t.Close) }
-func (t AppTimeouts) ready() *time.Duration       { return optionalDuration(t.Ready) }
-func (t AppTimeouts) reloadDrain() *time.Duration { return optionalDuration(t.ReloadDrain) }
+func (t AppTimeouts) close() *time.Duration       { return optionalDuration(t.CloseTimeout) }
+func (t AppTimeouts) ready() *time.Duration       { return optionalDuration(t.ReadyTimeout) }
+func (t AppTimeouts) reloadDrain() *time.Duration { return optionalDuration(t.ReloadDrainTimeout) }
 
 func optionalDuration(d time.Duration) *time.Duration {
 	if d == 0 {
@@ -187,7 +204,7 @@ type AppOptions struct {
 	Listen *chordhttp.ListenAddress
 	API    AppAPI
 	// Kinds are the app's facet kinds, in order: `server` and each worker kind's facet kind among them.
-	Kinds     []AppKind
+	Kinds     []AppKindEntry
 	Principal AppPrincipals
 	// Workers are the worker kinds; none: a server with clients only. They need Principal.Worker.
 	Workers []AppWorkerKind
@@ -203,6 +220,9 @@ type AppOptions struct {
 	Facets []host.HostFacet
 	// Telemetry is the app's telemetry store; nil: none.
 	Telemetry AppTelemetry
+	// PrincipalAttributes is who a span was for (`createHost`'s `principalAttributes`): the server's hook, also stamped on the spans
+	// pages send (the principal of their link). Nil: none.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// Web is the web surface (slice 11): the app's web entry, its page template, the paths serving the page; the `web` facet kind.
 	// Nil: no web surface.
 	Web *AppWeb
@@ -246,14 +266,14 @@ func (k KitStart) json() *delta.JsonObject {
 		files.Set("maxTotal", float64(k.Files.MaxTotal))
 	}
 	timeouts := delta.NewJsonObject(0)
-	if k.Timeouts.Close != 0 {
-		timeouts.Set("closeTimeout", float64(k.Timeouts.Close/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	if k.Timeouts.CloseTimeout != 0 {
+		timeouts.Set("closeTimeout", float64(k.Timeouts.CloseTimeout/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
-	if k.Timeouts.Ready != 0 {
-		timeouts.Set("readyTimeout", float64(k.Timeouts.Ready/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	if k.Timeouts.ReadyTimeout != 0 {
+		timeouts.Set("readyTimeout", float64(k.Timeouts.ReadyTimeout/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
-	if k.Timeouts.ReloadDrain != 0 {
-		timeouts.Set("reloadDrainTimeout", float64(k.Timeouts.ReloadDrain/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	if k.Timeouts.ReloadDrainTimeout != 0 {
+		timeouts.Set("reloadDrainTimeout", float64(k.Timeouts.ReloadDrainTimeout/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
 	object := delta.JsonObjectOf("dir", k.Dir, "facet", k.Facet, "principal", k.Principal, "server", k.Server, "files", files, "telemetry", k.Telemetry)
 	if k.Uploads != 0 {
@@ -288,13 +308,13 @@ func decodeKitStart(value delta.JsonValue) (KitStart, error) {
 	}
 	if timeouts, ok := object.Value("timeouts").(*delta.JsonObject); ok {
 		if n, ok := timeouts.Value("closeTimeout").(float64); ok {
-			kit.Timeouts.Close = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+			kit.Timeouts.CloseTimeout = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 		if n, ok := timeouts.Value("readyTimeout").(float64); ok {
-			kit.Timeouts.Ready = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+			kit.Timeouts.ReadyTimeout = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 		if n, ok := timeouts.Value("reloadDrainTimeout").(float64); ok {
-			kit.Timeouts.ReloadDrain = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+			kit.Timeouts.ReloadDrainTimeout = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 	}
 	if kit.Dir == "" || kit.Facet == "" {
@@ -317,8 +337,8 @@ type App struct {
 	HTTP *chordhttp.HttpComponent
 	// Workers are the workers components, by host kind name.
 	Workers map[string]*workers.Workers
-	// Plugins is the plugins component, for the app's "apply changes" control: its marks and its rollouts.
-	Plugins *plugins.Plugins
+	// Plugins is the plugins of the running app, for its "apply changes" control and its installs.
+	Plugins AppPlugins
 	// Node is the server's plugins' host (the NodeHost the server host accepted the link of).
 	Node *plugins.NodeHost
 	// DataDir is the data directory.
@@ -446,7 +466,8 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	hostOptions := host.HostOptions{
 		Address: nil, Principal: options.Principal.Server, Store: opened.store,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(),
-		OnError: func(err host.HostError) { a.report(AppErrorHost, err) },
+		OnError:             func(err host.HostError) { a.report(AppErrorHost, err) },
+		PrincipalAttributes: options.PrincipalAttributes,
 	}
 	server := Server.Address(nil)
 	hostOptions.Address = &server
@@ -477,9 +498,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	kinds := make([]plugins.KindDefinition, len(options.Kinds))
+	kinds := make([]plugins.KindEntry, len(options.Kinds))
 	for i, kind := range options.Kinds {
-		kinds[i] = plugins.KindDefinition{Name: kind.Name, Platform: kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}
+		kinds[i] = plugins.KindEntry{Name: kind.Name, Definition: plugins.KindDefinition{Platform: kind.Kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}}
 	}
 	base := make([]string, len(options.Base))
 	for i, path := range options.Base {
@@ -489,13 +510,18 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	// The web surface serves a browser build's assets under its prefix (Pi's `publicPath: ${WEB_PREFIX}assets/`).
 	assetsPath := nodesurfaces.WebPrefix + "assets/"
-	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
+	component := plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
 		Api:        &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		PublicPath: &assetsPath,
 		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
-	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
+	a.Plugins = AppPlugins{
+		State:     component.State(),
+		Install:   a.installPlugin,
+		Component: component,
+	}
+	a.build, a.rollout = component.Build, component.Rollout
 	workerHosts := &workerHosts{keys: map[string]string{}, principals: map[string]string{}}
 	link := &OwnerLink{}
 	owner := options.Principal.Owner
@@ -531,7 +557,12 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			WorkerHost: func(principal data.Principal) (string, bool) {
 				return workerHosts.get(data.PrincipalKey(principal, chordctx.Background(), nil))
 			},
-			PrincipalAttributes: func(data.Principal) telemetry.SpanAttributes { return nil },
+			PrincipalAttributes: func(principal data.Principal) telemetry.SpanAttributes {
+				if options.PrincipalAttributes == nil {
+					return nil
+				}
+				return options.PrincipalAttributes(principal)
+			},
 		})})
 	}
 	core = append(core, options.Facets...)
@@ -562,7 +593,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}, ctx); err != nil {
 		return err
 	}
-	for _, each := range surfacesOf(h, options, a.Plugins) {
+	for _, each := range surfacesOf(h, options, a.Plugins.Component) {
 		a.surfaces = append(a.surfaces, each)
 		core = append(core, each.facets...)
 		switch each.name {
@@ -579,7 +610,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err := failedPlugins(report); err != nil {
 		return err
 	}
-	var serverKind *AppKind
+	var serverKind *AppKindEntry
 	for i := range options.Kinds {
 		if options.Kinds[i].Name == "server" {
 			serverKind = &options.Kinds[i]
@@ -588,16 +619,17 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	modules := plugins.HostPackages{}
 	maps.Copy(modules, options.API.Modules)
 	if serverKind != nil {
-		maps.Copy(modules, serverKind.Packages)
+		maps.Copy(modules, serverKind.Kind.Packages)
 	}
 	// The server host's own store is the kit's; the plugins' is another file (two chord stores cannot share one).
 	pluginsStore := filepath.Join(opened.layout.Server, "plugins.sqlite")
 	if err := PrivateStore(pluginsStore); err != nil {
 		return err
 	}
-	node, _, err := a.Plugins.Load(plugins.PluginsLoad{
+	node, _, err := a.Plugins.Component.Load(plugins.PluginsLoad{
 		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
+		PrincipalAttributes: options.PrincipalAttributes,
 		Store: &plugins.StoreOptions{Path: pluginsStore},
 		// The delegation the other way: what the Go server host serves (the choices, the telemetry ingest, the app's Go facets) is
 		// bound there when a plugin holds it, as Pi's one server host binds it (D605).
@@ -749,12 +781,12 @@ func openServer(path string, ctx context.Context) (opened openedServer, err erro
 }
 
 // hostPackagesOf is the host packages of kind: the API's shared and per-kind module of every version, and its packages.
-func hostPackagesOf(api AppAPI, kind AppKind) []string {
+func hostPackagesOf(api AppAPI, kind AppKindEntry) []string {
 	var packages []string
 	for _, version := range api.Versions {
 		packages = append(packages, api.Name+"/"+version, api.Name+"/"+version+"/"+kind.Name)
 	}
-	for name := range kind.Packages {
+	for name := range kind.Kind.Packages {
 		packages = append(packages, name)
 	}
 	return packages
@@ -798,7 +830,7 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 			return workerLock(options.Name, dataDir, address), nil
 		},
 		IdleMs:    idle,
-		Plugins:   a.Plugins,
+		Plugins:   a.Plugins.Component,
 		OnError:   func(err workers.WorkersError) { a.report(AppErrorWorkers, err) },
 		Forgotten: func(address contracts.Address) { hosts.forget(address.Key) },
 	}, ctx)
@@ -823,10 +855,10 @@ func linkHost(listened string, port int) string {
 	return name + ":" + strconv.Itoa(port)
 }
 
-// InstallPlugin installs plugins from git or npm into the user's root and returns their names (Pi's `app.plugins.install`, which binds
+// installPlugin is AppPlugins.Install: it installs plugins from git or npm into the user's root and returns their names (it binds
 // the user's root where Plugins.InstallPlugin takes any root); applying changes loads them.
-func (a *App) InstallPlugin(source plugins.PluginSource, ctx context.Context) ([]string, error) {
-	return a.Plugins.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
+func (a *App) installPlugin(ctx context.Context, source plugins.PluginSource) ([]string, error) {
+	return a.Plugins.Component.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
 }
 
 // ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind, then the web and terminal surfaces;
@@ -834,11 +866,11 @@ func (a *App) InstallPlugin(source plugins.PluginSource, ctx context.Context) ([
 func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	a.applyMu.Lock()
 	defer a.applyMu.Unlock()
-	built, err := a.build(a.Plugins.Marks().Dirty, ctx)
+	built, err := a.build(a.Plugins.Component.Marks().Dirty, ctx)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
-	server, err := a.Plugins.Step("server", a.Node)
+	server, err := a.Plugins.Component.Step("server", a.Node)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
@@ -995,8 +1027,8 @@ func (a *App) Close(ctx context.Context) error {
 			errs = append(errs, a.Host.Close(ctx))
 		}
 		errs = append(errs, a.store.Close(ctx))
-		if a.Plugins != nil {
-			a.Plugins.Close()
+		if a.Plugins.Component != nil {
+			a.Plugins.Component.Close()
 		}
 		errs = append(errs, a.lock.Release())
 		a.closed = errors.Join(errs...)

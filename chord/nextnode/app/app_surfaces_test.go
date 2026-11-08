@@ -70,7 +70,7 @@ func webPage(request chordhttp.HttpRequest, assets nodesurfaces.PageAssets) (str
 // withWeb adds the web kind and the web surface (entry, public or not) to the options.
 func withWeb(entry string, public bool) func(*AppOptions) {
 	return func(o *AppOptions) {
-		o.Kinds = append(o.Kinds, AppKind{Name: "web", Platform: plugins.PlatformBrowser})
+		o.Kinds = append(o.Kinds, AppKindEntry{Name: "web", Kind: AppKind{Platform: plugins.PlatformBrowser}})
 		o.Web = &AppWeb{Entry: entry, Page: webPage, Public: public}
 	}
 }
@@ -356,7 +356,7 @@ func TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePrevious
 	if after.Plugins[0].Digest == before.Plugins[0].Digest {
 		t.Fatalf("the plugin's digest did not change: %s", after.Plugins[0].Digest)
 	}
-	if dirty := s.app.Plugins.Marks().Dirty; len(dirty) != 0 {
+	if dirty := s.app.Plugins.Component.Marks().Dirty; len(dirty) != 0 {
 		t.Fatalf("dirty after the rollout = %v", dirty)
 	}
 	for _, url := range []string{before.Plugins[0].URL, before.Combined, after.Plugins[0].URL, after.Combined} {
@@ -377,7 +377,7 @@ func surfaceApp(t testing.TB) started {
 	}
 	return startTestApp(t, files, func(o *AppOptions) {
 		withWeb(webEntry(t, webStarted), false)(o)
-		o.Kinds = append(o.Kinds, AppKind{Name: "tui", Platform: plugins.PlatformNode, Packages: map[string]string{"@test/app/v1/tui": tuiAPI}})
+		o.Kinds = append(o.Kinds, AppKindEntry{Name: "tui", Kind: AppKind{Platform: plugins.PlatformNode, Packages: map[string]string{"@test/app/v1/tui": tuiAPI}}})
 		o.Tui = &AppTui{Entry: surfacesFixture(t, "tui", "main.ts"), Conditions: []string{"source"}}
 	})
 }
@@ -439,7 +439,7 @@ func TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithIts
 	if !reflect.DeepEqual(changed["web"], []string{"@test/notes"}) || !reflect.DeepEqual(changed["tui"], []string{"@test/lines"}) {
 		t.Fatalf("changed plugins by step = %v: the web step rolls out the web plugins, the terminal step the terminal plugins", changed)
 	}
-	if dirty := s.app.Plugins.Marks().Dirty; len(dirty) != 0 {
+	if dirty := s.app.Plugins.Component.Marks().Dirty; len(dirty) != 0 {
 		t.Fatalf("dirty after the rollout = %v", dirty)
 	}
 }
@@ -449,7 +449,7 @@ func TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs(t *testing.T) {
 		t.Run(file, func(t *testing.T) {
 			main := webEntry(t, webStarted)
 			s := startTestApp(t, nil, withWeb(main, false))
-			if s.app.Plugins.Marks().Base {
+			if s.app.Plugins.Component.Marks().Base {
 				t.Fatal("base is marked at start")
 			}
 			if err := os.WriteFile(filepath.Join(filepath.Dir(main), file), []byte(text), 0o644); err != nil {
