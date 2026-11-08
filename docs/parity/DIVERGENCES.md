@@ -75,6 +75,10 @@ Every active divergence must have:
 
 - D247: Quit settles the interrupted run before session_shutdown and disposal. Retired by the upstream pin: Pi main 7a53c310a (`agent-session-runtime.ts` `dispose`, #9126) awaits `session.abort()` before it emits `session_shutdown`. `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` ports Pi's regression test. The ID remains reserved.
 
+- D250: A delivered image-only queued message leaves the pending queue. Retired by the upstream pin: Pi main a63c4ec5c (`fix(coding-agent): clear delivered image-only queue entries`, #8612, fixing #8581) is in the pin c23b9ec1, so `agent-session.ts` `_handleAgentEvent` matches an empty delivered text against the pending queues and the RPC stream carries the resulting `queue_update` before the user `message_start`. `TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery` ports Pi's test, `TestSessionEmptyQueuedMessagesPublishTheQueueTheyLeaveAtDelivery` names the records, and the RPC scenarios `20-rpc-runtime-boundary-values` and `35-rpc-queue-prompt-await` compare them with the pin's Pi and pin both records with `both_contain`. The ID remains reserved.
+
+- D253: find and ls read a limit below 1 as 1, and find reports the limit only when more results exist. Retired by the upstream pin: Pi main 676af1d77 (`fix(coding-agent): find and ls limit edge cases`, #11747, fixing #7121) is in the pin c23b9ec1, so both tools use `max(1, floor(limit ?? default))`, find asks for `limit + 1` results, and a custom glob receives `limit + 1`. `TestFindLimitEdgeCases7121` and `TestLsLimitEdgeCases7121` port Pi's cases, and the scenarios `tools/21-find-operations-and-limits` and `tools/15-builtin-tool-wire-details` compare the limit lines with the pin's Pi byte for byte. The ID remains reserved.
+
 ## Active divergences
 
 D78, D82 and D83 record owner-approved known gaps for 0.3.x (decision 2026-09-28). Approval records a difference; it does not prove parity, waive an unrelated defect, or turn a failing comparison into a pass. Same-process object behavior must remain Pi-exact. See `docs/findings/0.3.0-known-gaps.md` for the integration boundary and retained failures.
@@ -3287,30 +3291,6 @@ Memory: the marks live in `Session.queuedImageMessages`, cleared by `Session.Cle
 
 Parity allowance: Pi 1.5.0 has no test of queued-image sizes; the agent-session oracle queues text only.
 
-## D250 A delivered image-only queued message leaves the pending queue
-
-What: PiG ports Pi main a63c4ec5c (`fix(coding-agent): clear delivered image-only queue entries`, #8612, fixing #8581), which is not in Pi 1.5.0. When a queued user message is delivered, its text is matched against the pending steering and follow-up lists even when the text is empty, so an image-only (or empty) message is removed and `PendingMessageCount` drops.
-
-Why: Pi 1.5.0 guarded the match with a truthy text, so an image-only message stayed in the pending display and count after delivery.
-
-Pi bug: Pi 1.5.0 (`agent-session.ts` `_handleAgentEvent`, user `message_start`), fixed by Pi main a63c4ec5c ([#8581](https://github.com/earendil-works/pi/issues/8581)).
-
-Observable effect: After an image-only (or empty-text) queued message is delivered, it stays in the pending message display and count.
-
-Scope: `Session.consumeQueuedMessage`. A non-queued user message with empty text can remove a queued empty entry, as in Pi main. Removing the entry emits the `queue_update` event before the user message's `message_start`, as Pi main does, so every mode's event stream carries it, the RPC stream included. When RPC `steer` and `follow_up` queue empty messages during an empty `prompt`, two removals follow: the prompt's own `message_start` removes the queued empty steering entry, and the delivery of the steer's message then removes the queued empty follow-up entry. RPC emits those two `queue_update` records, one per removal, that Pi 1.5.0 does not.
-
-Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S8).
-
-SCRUTINIZED:approved
-
-Remove when: the pin reaches a Pi release containing a63c4ec5c.
-
-Call-site markers: `coding/session.go` (`consumeQueuedMessage`).
-
-Evidence: `TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery` (Pi's test), `TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery` (replaces the test that pinned 1.5.0's retention), `TestSessionEmptyQueuedMessagesPublishTheQueueTheyLeaveAtDelivery` (the `queue_update` records of both removals).
-
-Parity allowance: the pinned-Pi agent-session oracle makes no model call, so its queued messages are never delivered. The RPC scenarios `20-rpc-runtime-boundary-values` and `35-rpc-queue-prompt-await` queue empty `steer` and `follow_up` messages behind an empty `prompt` and let the run deliver them. Each carries two `json_pig_only_records` rules, one per removal above: `{"type":"queue_update","steering":[],"followUp":[""]}` (the prompt's removal) and `{"type":"queue_update","steering":[],"followUp":[]}` (the steer's). A rule drops its record from Pig's output only, requires exactly one per run, and requires it directly before a `message_start` record; a run with more, fewer or a moved record fails.
-
 ## D251 A draft moved out of and back into the editor keeps its collapsed paste content
 
 What: PiG ports Pi main 51313540a (`fix(coding-agent): preserve pasted text during editor restoration`, #10146, fixing #9809), which is not in Pi 1.5.0. Where the interactive mode moves the editor draft elsewhere and back, it reads `GetExpandedText()` (collapsed `[paste #N ...]` markers expanded) instead of `Text()`: when an extension installs or removes a replacement editor (`setRemoteEditor`), when an editor-slot custom UI opens and its text is restored on close or failed open (`ctx.ui.custom`, both the Go-hosted and the remote-overlay path), and when queued messages are restored above the draft (`restoreQueuedMessagesToEditor`).
@@ -3354,28 +3334,6 @@ Call-site markers: `internal/codingagent/tools/truncate.go` (`TruncateLine`), `t
 Evidence: `TestSliceHeadAndTailNeverSplitAPair`, `TestSliceHeadAndTailMatchSliceWithoutSurrogates` (`internal/jsstring`, Pi's `truncate-surrogates.test.ts`), `TestTruncateLine` (the emoji at the limit and the pair that ends at it), `TestTruncateForSummaryDropsASplitSurrogatePair`, `TestTruncateOutputKeepsSurrogatePairsWhole`, `TestTruncateDropsASplitSurrogatePair`, `TestStderrTailDropsASplitSurrogatePair`, the SDK truncation tests, and `TestConformance_TruncationHelpersAgreeAcrossSDKs`.
 
 Parity allowance: the pinned-Pi oracle script `text("é😀".repeat(30000))` of `TestExecuteOutputMatchesPi` became `éé😀` so no cut falls inside a pair, and `grep_test.go`'s surrogate case now pins Pi main's output.
-
-## D253 find and ls read a limit below 1 as 1, and find reports the limit only when more results exist
-
-What: PiG ports Pi main 676af1d77 (`fix(coding-agent): find and ls limit edge cases`, #11747, fixing #7121), which is not in Pi 1.5.0. Both tools use `max(1, floor(limit ?? default))`: `limit: 0` no longer lets fd return everything or ls print `(empty directory)`, and `1.5` no longer prints `1.5 results limit reached`. find asks fd for `limit + 1` results, shows the first `limit` and prints the limit notice only when the extra one exists, so exactly N matches give no notice. A custom `FindOperations.glob` receives `limit + 1` in every SDK that exposes it (the host passes the value on), and a glob that ignores the limit has its results cut to `limit` with the notice. Output made only of blank lines with exit code 0 now gives `No files found matching pattern`. Pi 1.5.0 reports the notice at `results >= limit` and passes `limit` to fd and to `glob`.
-
-Why: The owner approved shipping the fix in 0.7.1 ahead of the pin (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S11.). Pi 1.5.0 shows a false `limit reached` for exactly N matches and every match for `limit: 0`.
-
-Pi bug: `createFindToolDefinition` and `createLsToolDefinition` in Pi 1.5.0, fixed by Pi main 676af1d77 ([#7121](https://github.com/earendil-works/pi/issues/7121)).
-
-Scope: The find and ls tools and `FindOperations.glob` in the Go, Python, Rust and Lisp SDKs. The Node SDK runs Pi's own find tool, so its custom glob keeps receiving `limit` until the pin moves; the conformance case `globlimit` adjusts the Node reference (`expectedBuiltinReport`).
-
-Owner decision: approved by owner Michael Kinsy for 0.7.1 (port of Pi main 676af1d77 ahead of the pin).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains 676af1d77. Then the call-site markers and this record go.
-
-Call-site markers: `internal/codingagent/tools/find.go` (`Execute`, `findWithOperations`), `internal/codingagent/tools/ls.go`.
-
-Evidence: `TestFindLimitEdgeCases7121`, `TestLsLimitEdgeCases7121` (`internal/codingagent/tools/find_ls_limit_test.go`, Pi's find and ls cases), and the `globlimit` case of `TestConformance_BuiltinToolDelegationAcrossSDKs`.
-
-Parity allowance: two paired scenarios drive these limits against Pi 1.5.0, `tools/21-find-operations-and-limits` (custom glob with limit 0 and 1.5, and real fd with limit 0) and `tools/15-builtin-tool-wire-details` (`ls` limit 1.5, `find` limit 1 with one match). Each declares `normalize_replace` rules that match one complete PiG line, exactly as D253 makes PiG print it, and replace it with the complete line Pi 1.5.0 prints: three lines in scenario 21 (`limit-0`, `limit-1.5`, `fd-zero`) and two in scenario 15 (`ls fractional`, `find limited`). Every other line of both scenarios compares byte for byte (`ls limited` included). The rules alone would pass if the divergence vanished (they would not match) or if Pi started to print PiG's line (they would rewrite Pi's output), so each scenario also declares raw `pig_contains` pins of the complete PiG lines and `pi_contains` pins of the complete Pi 1.5.0 lines, checked against every run's unreplaced output; a vanished divergence or a changed Pi fails there. The random-corpus oracle tests (`TestFindToolMatchesPi`, `TestFileToolsMatchPi`, `TestLsToolMatchesPi`) leave the zero and fractional limits out and excuse an exact-N notice only after proving the match count.
 
 ## D254 `pig config` loads the user's keybindings
 

@@ -534,9 +534,7 @@
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D253",
-      "removeWhen": "the pinned Pi release contains 676af1d77. Then the call-site markers and this record go.",
+      "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "The `find` tool no longer reports the result limit when exactly `limit` files match, and `limit: 0` in `find` and `ls` no longer returns every result or an empty listing; a limit below 1 means 1 and a fractional limit is floored. A custom `FindOperations.glob` receives `limit + 1` in the Go, Python, Rust and Lisp SDKs, and a glob that ignores the limit has its results cut to it with the notice (D253).",
       "origin": "release note",
@@ -544,20 +542,11 @@
         {
           "hash": "04a8c5e9d3",
           "date": "2026-11-05"
-        },
-        {
-          "hash": "3cf1ce8466",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "e2e5706337",
-          "date": "2026-11-05"
         }
       ],
       "tests": [
         "internal/codingagent/tools/find_ls_limit_test.go::TestFindLimitEdgeCases7121",
-        "internal/codingagent/tools/find_ls_limit_test.go::TestLsLimitEdgeCases7121",
-        "test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs"
+        "internal/codingagent/tools/find_ls_limit_test.go::TestLsLimitEdgeCases7121"
       ]
     },
     {
@@ -31893,34 +31882,6 @@
       ]
     },
     {
-      "id": "BF-D250",
-      "title": "A delivered image-only queued message leaves the pending queue",
-      "symptom": "After an image-only (or empty-text) queued message is delivered, it stays in the pending message display and count.",
-      "rootCause": "",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Wrong display",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D250",
-      "removeWhen": "the pin reaches a Pi release containing a63c4ec5c.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "00d787634a",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "7056d2d9e1",
-          "date": "2026-11-05"
-        }
-      ],
-      "tests": [
-        "coding/session_queue_images_test.go::TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery",
-        "coding/session_queue_order_test.go::TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery"
-      ]
-    },
-    {
       "id": "BF-D254",
       "title": "`pig config` loads the user's keybindings",
       "symptom": "1.5.0 ignores `keybindings.json` in `pi config` (#11651).",
@@ -52657,11 +52618,6 @@
       "entry": "BF-D249"
     },
     {
-      "id": "D250",
-      "title": "A delivered image-only queued message leaves the pending queue",
-      "entry": "BF-D250"
-    },
-    {
       "id": "D251",
       "title": "A draft moved out of and back into the editor keeps its collapsed paste content",
       "entry": "BF-f43fb00"
@@ -52670,11 +52626,6 @@
       "id": "D252",
       "title": "Truncating text never splits a surrogate pair",
       "entry": "BF-a808864"
-    },
-    {
-      "id": "D253",
-      "title": "find and ls read a limit below 1 as 1, and find reports the limit only when more results exist",
-      "entry": "BF-04a8c5e"
     },
     {
       "id": "D254",
