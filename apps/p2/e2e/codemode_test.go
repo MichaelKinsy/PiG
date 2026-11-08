@@ -16,7 +16,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -168,14 +167,41 @@ func TestCodeModeFakeProvider(t *testing.T) {
 			return state != nil && state.Value("running") == true && state.Value("pid") != nil
 		})
 		pid := int(object(object(states).Value(f.Session)).Value("pid").(float64))
-		// The script's `sleep 5; echo two >> codemode.log` is a child of the worker and outlives its SIGKILL: its late `two`
-		// would land in the log the last case reads (Pi's run is fast enough to read it first). The kill takes the children
-		// along, as the worker's death does where its tools run in its process group.
-		if err := exec.Command("pkill", "-KILL", "-P", strconv.Itoa(pid)).Run(); err != nil {
+		// The live slot shows before the nested bash is spawned (under -race a while before): kill once the worker has its
+		// shell, so that the call is interrupted where Pi's (faster) run kills it. The shell outlives the worker's SIGKILL
+		// (its own session) and `sleep 5; echo two >> codemode.log` would write `two` into the log the cases read later:
+		// Pi's run finishes before that; the shell goes down after the worker here, so the interrupted call stays unwritten.
+		var shells []*os.Process
+		deadline := time.Now().Add(30 * time.Second)
+		for len(shells) == 0 {
+			if time.Now().After(deadline) {
+				t.Fatal("the worker has no shell for the sleeping call")
+			}
+			listed, _ := exec.Command("pgrep", "-P", strconv.Itoa(pid)).Output()
+			for _, field := range strings.Fields(string(listed)) {
+				child, err := strconv.Atoi(field)
+				if err != nil {
+					t.Fatal(err)
+				}
+				shell, err := os.FindProcess(child)
+				if err != nil {
+					t.Fatal(err)
+				}
+				shells = append(shells, shell)
+			}
+			if len(shells) == 0 {
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
+		worker, err := os.FindProcess(pid)
+		if err != nil {
 			t.Fatal(err)
 		}
-		if err := syscall.Kill(pid, syscall.SIGKILL); err != nil {
+		if err := worker.Kill(); err != nil {
 			t.Fatal(err)
+		}
+		for _, shell := range shells {
+			shell.Kill()
 		}
 		f.until(workers.Member("workers"), func(value delta.JsonValue) bool {
 			state := object(object(value).Value(f.Session))
