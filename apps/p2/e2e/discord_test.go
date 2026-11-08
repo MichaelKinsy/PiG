@@ -6,6 +6,7 @@
 package e2e_test
 
 import (
+	"encoding/json"
 	"context"
 	"fmt"
 	"net/http"
@@ -521,3 +522,64 @@ func batchEntry(view delta.JsonValue) *delta.JsonObject {
 func ptrOf[T any](v T) *T { return &v }
 
 var _ = subagentscontract.Subagents
+
+// Ports the server part of test/p2/ui-discord.test.ts: the first release's `{ "token" }` discord.json becomes the first bot
+// (kept at 0600), a token Discord does not accept is not kept, Remove bot forgets the bot, and tokens never reach the logs.
+func TestDiscordBotsFile(t *testing.T) {
+	const legacy = "MTIzNDU2Nzg5MDEyMzQ1Njc4.legacy-0.discord-token-sentinel"
+	const added = "MTIzNDU2Nzg5MDEyMzQ1Njc4.added-0.discord-token-sentinel"
+	dataDir := t.TempDir()
+	path := filepath.Join(dataDir, "discord.json")
+	if err := os.WriteFile(path, []byte(`{"token":"`+legacy+`"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p2test.NoLeakedGoroutines(t)
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{DataDir: dataDir})
+	view, err := p2test.HoldIn(fixture.Browser(), discordcontract.Discord, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bots := func() map[string]any {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var file struct {
+			Bots map[string]any `json:"bots"`
+		}
+		if err := json.Unmarshal(raw, &file); err != nil {
+			t.Fatal(err)
+		}
+		return file.Bots
+	}
+	// The store opens with the first holder of the view.
+	if _, err := p2test.Until(view.Member("bots"), func(value delta.JsonValue) bool { return len(list(value)) == 1 }, 30*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if first, ok := bots()["bot1"].(map[string]any); !ok || first["token"] != legacy {
+		t.Fatalf("the first release's token is not bot1: %v", bots())
+	}
+	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("discord.json mode = %v %v", info, err)
+	}
+	// A token Discord refuses (or cannot be asked about) is not kept.
+	if _, err := view.Call("addBot", delta.JsonObjectOf("token", added), p2test.Background); err == nil {
+		t.Fatal("a made-up token was accepted")
+	}
+	if got := len(bots()); got != 1 {
+		t.Fatalf("a refused token was kept: %v", bots())
+	}
+	if _, err := view.Call("removeBot", delta.JsonObjectOf("bot", "bot1"), p2test.Background); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(bots()); got != 0 {
+		t.Fatalf("a removed bot was kept: %v", bots())
+	}
+	for _, source := range p2runtime.ProcessLogs.Sources() {
+		for _, line := range p2runtime.ProcessLogs.Lines(source.ID) {
+			if strings.Contains(line.Text, "discord-token-sentinel") {
+				t.Fatalf("a token reached the logs: %s", line.Text)
+			}
+		}
+	}
+}
