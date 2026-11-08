@@ -132,10 +132,9 @@ type servedOptions struct {
 	closeTimeout time.Duration
 	authenticate Authenticator
 	// noLoad: the host is made, not loaded.
-	noLoad       bool
-	readyTimeout time.Duration
-	address      *contracts.Address
-	after        afterFunc
+	noLoad  bool
+	address *contracts.Address
+	after   afterFunc
 	// revokeHook sees each router the follower revokes connections against.
 	revokeHook func(*Router)
 }
@@ -147,10 +146,6 @@ func serving(t *testing.T, plugins []plugin, options servedOptions) *testServer 
 	errs := &collector[HttpError]{}
 	hostErrs := &collector[host.HostError]{}
 	hostOptions := host.HostOptions{Principal: principalServer(), OnError: func(err host.HostError) { hostErrs.add(err) }, Address: options.address}
-	if options.readyTimeout != 0 {
-		ready := options.readyTimeout
-		hostOptions.ReadyTimeout = &ready
-	}
 	inner, err := host.CreateHost(hostOptions)
 	if err != nil {
 		t.Fatal(err)
