@@ -60,7 +60,7 @@ func runTeam(ctx context.Context, args map[string]any, api durable.ToolExecution
 		details := subagentDetailsTeam(action, hasTo, to)
 		return p2runtime.ToolText(text, details, isError), nil
 	}
-	registry, err := registryOf(ctx, api)
+	registry, err := contract.Registry(ctx, api)
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
 	}

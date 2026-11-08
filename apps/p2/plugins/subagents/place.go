@@ -15,13 +15,6 @@ import (
 
 // Ports apps/p2/plugins/subagents/tools.ts (placement and archiving).
 
-func locationOf(location *contract.LocationValue) *p2runtime.Location {
-	if location == nil {
-		return nil
-	}
-	return &p2runtime.Location{Cwd: location.Cwd, Env: location.Env}
-}
-
 func locationValue(location p2runtime.Location) *contract.LocationValue {
 	return &contract.LocationValue{Cwd: location.Cwd, Env: location.Env}
 }
@@ -35,28 +28,11 @@ func locationJSON(location p2runtime.Location) *delta.JsonObject {
 	return delta.JsonObjectOf("cwd", location.Cwd, "env", env)
 }
 
-func registryOf(ctx context.Context, read durable.DocumentReader) (contract.SubagentState, error) {
-	state, err := durable.Snapshot(ctx, read, contract.SubagentsDoc, durable.ROOT_CONVERSATION_ID)
-	if err != nil || state == nil {
-		return contract.SubagentState{Agents: map[string]contract.Subagent{}, Reporters: map[string]durable.TaskId{}}, err
-	}
-	raw, err := read.SnapshotErased(ctx, contract.SubagentsDoc, durable.ROOT_CONVERSATION_ID)
-	if err != nil {
-		return contract.SubagentState{}, err
-	}
-	if agents, ok := raw.Value("agents").(*delta.JsonObject); ok {
-		for key := range agents.All() {
-			state.Order = append(state.Order, key)
-		}
-	}
-	return *state, nil
-}
-
 // placeSubagents places what version 1 left unplaced (an own cwd without its environment: spawnedOn tells the environment
 // it was spawned on), then lists where the session's subagents work: the conversations following the session (subagents
 // spawned without their own location, one-shot agents) and the own locations.
 func placeSubagents(ctx context.Context, session harness.Harness, spawnedOn func(conversation durable.ConversationId, cwd string) *string) (followers []durable.ConversationId, own []p2runtime.Location, err error) {
-	registry, err := registryOf(ctx, session)
+	registry, err := contract.Registry(ctx, session)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -87,7 +63,7 @@ func placeSubagents(ctx context.Context, session harness.Harness, spawnedOn func
 		}); err != nil {
 			return nil, nil, err
 		}
-		if registry, err = registryOf(ctx, session); err != nil {
+		if registry, err = contract.Registry(ctx, session); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -96,7 +72,7 @@ func placeSubagents(ctx context.Context, session harness.Harness, spawnedOn func
 		if agent.Location == nil {
 			followers = append(followers, agent.ConversationId)
 		} else {
-			own = append(own, *locationOf(agent.Location))
+			own = append(own, *contract.LocationOf(agent.Location))
 		}
 	}
 	for _, key := range slices.Sorted(maps.Keys(registry.OneShots)) {
@@ -123,28 +99,6 @@ func spawnEnvironments(recorded delta.JsonValue, sessionEnv *string) func(durabl
 		}
 		return sessionEnv
 	}
-}
-
-// ownLocation is a conversation's own location (a subagent spawned with a cwd, or a one-shot agent started by a
-// conversation with one), or nil: it follows the session.
-func ownLocation(ctx context.Context, read durable.DocumentReader, conversation durable.ConversationId) (*p2runtime.Location, error) {
-	if conversation == durable.ROOT_CONVERSATION_ID {
-		return nil, nil
-	}
-	registry, err := registryOf(ctx, read)
-	if err != nil {
-		return nil, err
-	}
-	for _, agent := range registry.Agents {
-		if agent.ConversationId == conversation && agent.Location != nil {
-			return locationOf(agent.Location), nil
-		}
-	}
-	inherited, err := durable.Snapshot(ctx, read, contract.InheritedLocationDoc, conversation)
-	if err != nil || inherited == nil {
-		return nil, err
-	}
-	return locationOf(inherited.Location), nil
 }
 
 // locator is what the subagent tool needs to place subagents: locating conversations and resolving directories.
@@ -299,7 +253,7 @@ func agentTools(choice contract.ToolChoice) (harness.Change[harness.ToolChange],
 // script's call resolves the agent once, at its start. A name whose tool goes away is ignored by Durable and works again
 // when it returns, so none is removed.
 func enableScriptTools(ctx context.Context, session harness.Harness, names []string) error {
-	registry, err := registryOf(ctx, session)
+	registry, err := contract.Registry(ctx, session)
 	if err != nil {
 		return err
 	}

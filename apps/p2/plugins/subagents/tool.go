@@ -158,7 +158,7 @@ func runSubagent(ctx context.Context, environment subagentEnvironment, args map[
 	reply := func(text string, isError bool, extra ...any) (durable.ToolExecutionResult, error) {
 		return p2runtime.ToolText(text, subagentDetails(action, namePtr, extra...), isError), nil
 	}
-	registry, err := registryOf(ctx, api)
+	registry, err := contract.Registry(ctx, api)
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
 	}
@@ -211,7 +211,7 @@ func runSubagent(ctx context.Context, environment subagentEnvironment, args map[
 				tools = strings.Join(agent.Tools, ", ")
 			}
 			if agent.Location != nil {
-				where = " · in " + p2runtime.LocationText(*locationOf(agent.Location))
+				where = " · in " + p2runtime.LocationText(*contract.LocationOf(agent.Location))
 			}
 			lines = append(lines, fmt.Sprintf("%s: %s%s · %s · thinking %s · tools %s%s", each, state, archived, agent.Model, agent.ThinkingLevel, tools, where))
 		}
@@ -379,7 +379,7 @@ func runSubagent(ctx context.Context, environment subagentEnvironment, args map[
 			}
 			// A subagent in a sandbox: a cwd alone means a path in that sandbox (it cannot be placed elsewhere).
 			if exists && agent.Location != nil && !hasEnv {
-				kept, err := environment.locate.sandbox(ctx, *locationOf(agent.Location))
+				kept, err := environment.locate.sandbox(ctx, *contract.LocationOf(agent.Location))
 				if err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
@@ -398,7 +398,7 @@ func runSubagent(ctx context.Context, environment subagentEnvironment, args map[
 		}
 		// A subagent working in a sandbox stays there, whoever configures it (only the owner's Relocate leaves one).
 		if exists && agent.Location != nil && (location != nil || followAgain) {
-			sandbox, err := environment.locate.sandbox(ctx, *locationOf(agent.Location))
+			sandbox, err := environment.locate.sandbox(ctx, *contract.LocationOf(agent.Location))
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
@@ -562,7 +562,7 @@ func runSubagent(ctx context.Context, environment subagentEnvironment, args map[
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
 	}
-	current, err := registryOf(ctx, api)
+	current, err := contract.Registry(ctx, api)
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
 	}
