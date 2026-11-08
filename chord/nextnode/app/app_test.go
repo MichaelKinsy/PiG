@@ -93,7 +93,7 @@ func TestAppRefusesASecondServerOnTheSameDataDirectoryWhileTheFirstRuns(t *testi
 func TestAppRefusesASecondServerOnTheSameDataDirectoryThroughASymbolicLink(t *testing.T) {
 	first := startTestApp(t, nil, nil)
 	link := filepath.Join(t.TempDir(), "link")
-	testenv.Symlink(t, first.dataDir, link)
+	testenv.RequireDirectoryLink(t, first.dataDir, link)
 	_, err := StartServer(optionsFor(t, link, first.root), background)
 	if err == nil || !strings.Contains(err.Error(), "another server runs on") {
 		t.Fatalf("second start: %v", err)
@@ -162,7 +162,7 @@ func TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThr
 		t.Fatalf("root: %v", err)
 	}
 	link := filepath.Join(t.TempDir(), "home-link")
-	testenv.Symlink(t, home, link)
+	testenv.RequireDirectoryLink(t, home, link)
 	if err := start(link); err == nil || !strings.Contains(err.Error(), "is the home directory") {
 		t.Fatalf("link to home: %v", err)
 	}
