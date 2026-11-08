@@ -281,6 +281,7 @@ func DeployedCommand(ctx context.Context, target env.SshTarget, directory string
 	if err != nil {
 		return nil, err
 	}
+	//portlint:allow pathseparators a launcher answer, split on the literal "\n" as sandbox-host.ts does
 	lines := strings.Split(jsstring.Trim(output), "\n")
 	line := lines[len(lines)-1]
 	value, err := chordjson.Decode([]byte(line))
