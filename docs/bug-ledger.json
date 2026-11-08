@@ -7126,6 +7126,26 @@
       "tests": []
     },
     {
+      "id": "BF-30e4a98",
+      "title": "The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's…",
+      "symptom": "The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's `setBedrockProviderLoader`, and the Go, Rust, Python and Lisp SDKs gain `SettleCredentialWrites`/`settle_credential_writes`/`runtime-settle-credential-writes`, so an extension can wait for a started OAuth refresh to be saved before it exits.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's `setBedrockProviderLoader`, and the Go, Rust, Python and Lisp SDKs gain `SettleCredentialWrites`/`settle_credential_writes`/`runtime-settle-credential-writes`, so an extension can wait for a started OAuth refresh to be saved before it exits.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "30e4a9808d",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-31118b1",
       "title": "Installing a chord plugin's npm dependencies no longer waits for a process the install command left running…",
       "symptom": "Installing a chord plugin's npm dependencies no longer waits for a process the install command left running: `npm install` ended only when the command had exited and every process holding its output pipes (a daemon npm started and left behind) had let go of them, which could be for as long as that process lived.",

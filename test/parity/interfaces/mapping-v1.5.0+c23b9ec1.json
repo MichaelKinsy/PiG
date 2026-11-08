@@ -35252,9 +35252,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -35274,9 +35274,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -81551,9 +81551,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -81573,9 +81573,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -102924,9 +102924,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -102946,9 +102946,9 @@
         "call:ai/validate_arguments.go#ValidateToolArguments"
       ],
       "evidence": [
+        "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsOfARootUndefinedSchemaGivesNoArguments",
         "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
-        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+        "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError"
       ]
     },
     {
@@ -269508,7 +269508,8 @@
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf",
-        "test:schema/coerce_upstream_test.go#TestCoerceUpstream"
+        "test:schema/coerce_upstream_test.go#TestCoerceUpstream",
+        "test:schema/pi_main_bigint_upstream_test.go#TestCoerceToABigIntOrUndefinedThroughUnionsAndTypeArrays"
       ]
     },
     {
@@ -270026,6 +270027,7 @@
         "public-api:schema/checks.go#Equal"
       ],
       "evidence": [
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainEqualOfUndefined",
         "test:schema/pi_main_follow_upstream_test.go#TestPiMainEqual"
       ]
     },
@@ -270046,6 +270048,7 @@
         "public-api:schema/checks.go#Equal"
       ],
       "evidence": [
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainEqualOfUndefined",
         "test:schema/pi_main_follow_upstream_test.go#TestPiMainEqual"
       ]
     },
@@ -270248,7 +270251,8 @@
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
-        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf",
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainChecksTypeBoxBigIntWithItsBounds"
       ]
     },
     {
@@ -270279,7 +270283,7 @@
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf",
         "test:schema/coerce_upstream_test.go#TestCoerceUpstream",
-        "test:schema/pi_main_follow_upstream_test.go#TestPiMainRecursiveSchemasNestWithDistinctIDs"
+        "test:schema/pi_main_bigint_upstream_test.go#TestCoerceToABigIntOrUndefinedThroughUnionsAndTypeArrays"
       ]
     },
     {
@@ -270674,7 +270678,8 @@
       ],
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
-        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions"
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainChecksTypeBoxBigIntWithItsBounds"
       ]
     },
     {
@@ -270717,13 +270722,43 @@
     },
     {
       "id": "pkg:schema/.#unsafe",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b6ff4ddacb4da667f3254006d9cff2929dbbba296fe8f33950ce2f14fbbeb3f4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b6ff4ddacb4da667f3254006d9cff2929dbbba296fe8f33950ce2f14fbbeb3f4",
+      "rationale": "Derived by the interface gap detector: unsafe is Go schema/builders.go#Unsafe (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Unsafe"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Unsafe"
+      ],
+      "evidence": [
+        "test:schema/pi_main_unsafe_upstream_test.go#TestPiMainTypesASchemaAsGivenWithUnsafe"
+      ]
     },
     {
       "id": "pkg:schema/.#unsafe::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:55304ddf309c8202a254aab95e5db8fb6f31a21d9bedd5639beec9dd390bf3cc"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:55304ddf309c8202a254aab95e5db8fb6f31a21d9bedd5639beec9dd390bf3cc",
+      "rationale": "Derived by the interface gap detector: unsafe::call:0 is Go schema/builders.go#Unsafe (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Unsafe"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Unsafe"
+      ],
+      "evidence": [
+        "test:schema/pi_main_unsafe_upstream_test.go#TestPiMainTypesASchemaAsGivenWithUnsafe"
+      ]
     },
     {
       "id": "pkg:schema/.#ValidationError",

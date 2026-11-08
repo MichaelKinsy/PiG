@@ -1076,7 +1076,5 @@ pkg:schema/.#BigintBounds::property:exclusiveMinimum	schema	child-gap
 pkg:schema/.#BigintBounds::property:maximum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:minimum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:multipleOf	schema	child-gap	
-pkg:schema/.#bigint	schema	no-go-symbol	
-pkg:schema/.#bigint::call:0	schema	child-gap	
-pkg:schema/.#unsafe	schema	no-go-symbol	
-pkg:schema/.#unsafe::call:0	schema	child-gap	
+pkg:schema/.#bigint	schema	child-gap	schema/builders.go#BigInt
+pkg:schema/.#bigint::call:0	schema	undecidable	schema/builders.go#BigInt
