@@ -115,6 +115,7 @@ func TestJobStartReturnsTheUnsettledRunWithTheSameKeyAcrossTransactionsWhateverI
 //
 // Pi spies `Batch.prototype.commit`; the Go Batch has no hook, so the test checks what makes the commit empty: a start
 // that only dedupes stages nothing in its transaction (`tx.StagedOf`), and no frame of `running` follows it.
+// Cites packages/chord/src/documents/transaction.ts:41 (Tx.start: a job's run staged with the transaction's writes).
 func TestJobStartCommitsNothingForAStartThatOnlyDedupes(t *testing.T) {
 	g := newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: gated(g)}, jobHostOptions{})

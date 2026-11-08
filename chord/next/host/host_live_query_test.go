@@ -179,6 +179,7 @@ func lqJSON(t *testing.T, value any) string {
 	return string(out)
 }
 
+// Cites packages/chord/src/host/attempt.ts:161 (StoreSelf.query: a live query over a table the factory declared).
 func TestLiveQueryActivationRunsTheQueryBeforeTheObjectGoesLiveOverTheRowsAlreadyStored(t *testing.T) {
 	chordStore := memoryStore(t)
 	first := newBoard(t, chordStore, 3, nil)

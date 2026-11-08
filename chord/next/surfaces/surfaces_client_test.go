@@ -195,7 +195,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		OnWake: func(func()) func() { return func() {} },
 	}
 	client, err := StartClient(ClientOptions{
-		Scripts: WebScripts,
+		Scripts: ScriptsContract(WebScripts),
 		Base:    "B1",
 		Initial: initial,
 		Modules: ClientModules{"@test/chord": struct{}{}},
@@ -235,7 +235,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		Styles:      opt.styles,
 		Environment: env,
 		OnError:     func(e ClientError) { s.mu.Lock(); s.errs = append(s.errs, e); s.mu.Unlock() },
-	}, ctx)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

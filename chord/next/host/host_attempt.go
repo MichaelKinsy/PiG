@@ -123,13 +123,13 @@ type Self interface {
 type StoreSelf interface {
 	Self
 	// Table is this object's table definition in the host's store, once per table name.
-	Table(definition *store.TableDefinition) *store.TableHandle
+	Table(definition *store.TableDefinition) store.Table
 	// Query is a live query (decision "Live queries over an object's own tables"): the rows of q (at most limit, in its
 	// order) over table, a table this factory declared, as a JSON watchable (a state member, a derive source). Run before
 	// the object goes live, and again in the commit step of every commit of this object that writes table (one query per
 	// such commit, bounded by limit; not for tables written hundreds of times a second). A limit is required
 	// (`invalid/args`).
-	Query(table *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue]
+	Query(table store.Table, q *store.Query, limit int64) chord.Watchable[delta.JsonValue]
 	// Contribute contributes value to registry R from the moment this object is live until it ends, fails or restarts (R21:
 	// a host-lifetime object): a plain value, or a Chord watchable of one (followed: its change recomposes). At most one
 	// per registry.
@@ -403,7 +403,7 @@ func (a *attempt) At(slot *documents.KeyedSlot, key string) (*documents.KeySourc
 }
 
 // Table implements StoreSelf.
-func (a *attempt) Table(definition *store.TableDefinition) *store.TableHandle {
+func (a *attempt) Table(definition *store.TableDefinition) store.Table {
 	a.assertDeclaring("table")
 	object := a.object
 	chordStore := a.assertPersistable(`table "` + definition.Name + `"`)
@@ -462,13 +462,14 @@ func (o *attemptQueryOwner) Report(err error) {
 // the commit step of every commit of the object that writes its table, and detached when its attempt ends.
 //
 // pig divergence (D431): Pi main 2439933cf, ahead of the v1.5.0 pin.
-func (a *attempt) Query(table *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
+func (a *attempt) Query(given store.Table, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
 	a.assertDeclaring("query")
 	object := a.object
 	// Plugin code may pass any table: only a handle this attempt declared is taken (its object's own table).
+	table, _ := given.(*store.TableHandle)
 	declared := false
 	for _, each := range a.tables {
-		declared = declared || each.handle == table
+		declared = declared || (table != nil && each.handle == table)
 	}
 	if !declared {
 		panic(declarationError("%s: self.query: the table is not one this factory declared", object.text))

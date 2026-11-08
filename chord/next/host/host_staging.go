@@ -409,7 +409,7 @@ func (o inertTableOwner) AssertLive() error           { return errInert }
 func (o inertTableOwner) Fail(*data.ChordError)       {}
 
 // Table implements StoreSelf.
-func (r *recordingSelf) Table(definition *store.TableDefinition) *store.TableHandle {
+func (r *recordingSelf) Table(definition *store.TableDefinition) store.Table {
 	r.assertDeclaring("table")
 	chordStore := r.assertPersistable(`table "` + definition.Name + `"`)
 	if r.tables.has(definition.Name) {
@@ -427,7 +427,7 @@ func (r *recordingSelf) Table(definition *store.TableDefinition) *store.TableHan
 
 // Query implements StoreSelf: a live query over a table this factory declared (its handle is inert: the query names the
 // table), limited.
-func (r *recordingSelf) Query(_ *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
+func (r *recordingSelf) Query(_ store.Table, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
 	r.assertDeclaring("query")
 	label := r.object.text
 	table, declared := r.tables.get(q.Table.Name)

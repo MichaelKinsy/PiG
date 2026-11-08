@@ -1007,6 +1007,7 @@ func TestTablesInATransactionInMemoryOnlyCommitsTakeNoStepAndNoSeq(t *testing.T)
 // (packages/chord/test/next/documents/transaction.test.ts:378), `tx.rows`
 // (packages/chord/test/next/documents/transaction.test.ts:380) and `tx.get`
 // (packages/chord/test/next/documents/transaction.test.ts:382), Tx.Put, Page, Rows and Get.
+// Cites packages/chord/src/documents/transaction.ts:48 and :55 (Tx.page and Tx.rows of committed rows).
 func TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet(t *testing.T) {
 	s := storedOn(t, nil, false, nil)
 	edits := s.edits[0]
