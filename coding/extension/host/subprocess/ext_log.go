@@ -71,7 +71,7 @@ func (l *fusedExtLog) remove() {
 	if l.path == "" {
 		return
 	}
-	//perf:ok cold: once per extension log removal
+	//perf:ok once per fused Host close, not per event: it must read the live variable because a later Host in this process may have replaced the entry
 	if os.Getenv(extLogEnvName) == l.path {
 		_ = os.Unsetenv(extLogEnvName)
 	}
