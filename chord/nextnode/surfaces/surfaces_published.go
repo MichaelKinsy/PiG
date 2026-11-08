@@ -215,6 +215,7 @@ func (p *PublishedScripts) filesLocked() (next.ScriptSet, map[string]ServedFile)
 // hashOf is the first 16 hex digits of the SHA-256 of text.
 func hashOf(text string) string {
 	sum := sha256.Sum256([]byte(text))
+	//portlint:allow utf16units hex text is ASCII: bytes equal UTF-16 units, sliced at the same offset as Pi's .slice(0, 16)
 	return hex.EncodeToString(sum[:])[:16]
 }
 

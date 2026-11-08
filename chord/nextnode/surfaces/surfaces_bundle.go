@@ -90,6 +90,7 @@ func BuildBase(entry string, platform BasePlatform, prefix string, conditions []
 		sum.Write([]byte(output.Path))
 		sum.Write(output.Contents)
 	}
+	//portlint:allow utf16units hex text is ASCII: bytes equal UTF-16 units, sliced at the same offset as Pi's .slice(0, 16)
 	digest := hex.EncodeToString(sum.Sum(nil))[:16]
 	bundle := &BaseBundle{Hash: digest, Files: map[string]ServedFile{}, Inputs: recorder.Inputs()}
 	for _, output := range result.OutputFiles {
@@ -104,6 +105,7 @@ func BuildBase(entry string, platform BasePlatform, prefix string, conditions []
 			}
 			bundle.Files[target] = ServedFile{Mime: mime, Bytes: output.Contents}
 		} else {
+			//portlint:allow pathseparators the path is converted to slashes first (filepath.ToSlash), and path.Base splits URL paths
 			bundle.Files[prefix+"assets/"+path.Base(filepath.ToSlash(output.Path))] = ServedFile{Mime: MimeOf(output.Path), Bytes: output.Contents}
 		}
 	}

@@ -30,6 +30,7 @@ var ErrFrameTooLarge = errors.New("terminal: a frame over 64 KiB")
 // at most limit bytes has at most limit units (a unit is never more than a byte of its UTF-8 form, as an astral character's two
 // units are four bytes), so only a longer one is counted.
 func exceedsUnits(s string, limit int) bool {
+	//portlint:allow utf16units a string of at most limit bytes has at most limit UTF-16 units (a unit is never more than a byte of its UTF-8 form), so only a longer one is counted; Pi compares output.length
 	if len(s) <= limit {
 		return false
 	}
