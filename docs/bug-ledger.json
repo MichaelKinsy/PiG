@@ -2059,13 +2059,11 @@
       "id": "BF-0cced6a",
       "title": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting…",
       "symptom": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command.",
-      "rootCause": "The owner asked for the fix to ship in 0.7.0.",
-      "rootCauseSource": "divergence record",
+      "rootCause": "",
+      "rootCauseSource": "",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D231",
-      "removeWhen": "the pin reaches a Pi release containing 1708b4788.",
+      "class": "own",
       "fixedIn": "0.7.0",
       "releaseNote": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command. A request made during startup (for example from `session_start`) is handled once input is attached, and a shutdown requested by an extension command waits until the command's `prompt` response is written. Pi 1.5.0 behaves as before; PiG follows Pi main 1708b4788 (Pi #11599, D231).",
       "origin": "release note",
@@ -2073,25 +2071,10 @@
         {
           "hash": "0cced6a687",
           "date": "2026-11-03"
-        },
-        {
-          "hash": "873466a467",
-          "date": "2026-11-03"
-        },
-        {
-          "hash": "8c1d4804b8",
-          "date": "2026-11-04"
         }
       ],
       "tests": [
-        "coding/cli/rpc_go_idle_shutdown_test.go::TestRPCGoSDKIdleShutdownReturnsBeforeSessionShutdown",
-        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown",
-        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownFromSessionStartExits",
-        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWaitsForCommandOfSameChunk",
-        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand",
-        "coding/cli/rpc_shutdown_gate_test.go::TestRPCShutdownGate",
-        "coding/cli/rpc_shutdown_regression_test.go::TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder",
-        "coding/cli/rpc_shutdown_test.go::TestRPCExtensionShutdownRequestExits"
+        "coding/cli/rpc_shutdown_gate_test.go::TestRPCShutdownGate"
       ]
     },
     {
@@ -16292,31 +16275,13 @@
       "rootCauseSource": "release note",
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D234",
-      "removeWhen": "the pin reaches a Pi release containing ace560c30. Then the call-site markers and this record go, and the Go signal limit stays as a note in the RPC documentation.",
+      "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "In RPC and print mode, a shutdown that has started now finishes. Closing standard input and sending SIGTERM or SIGHUP together, as a supervisor does, no longer kills PiG in the middle of the dispose (a pending MCP token refresh was lost); a later stdin end, `ctx.shutdown()` request or single signal does nothing, and the process exits with the code of the first trigger. A second signal exits at once with 128 plus its number. Print mode keeps its signal handlers through the final cleanup. This follows Pi main ace560c30 (D234). Two signals delivered back to back can reach PiG as one, because the Go runtime merges a pending signal; send a forcing second signal a short moment after the first.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "05102adc73",
-          "date": "2026-11-05"
-        },
-        {
           "hash": "5b8189f98a",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "915c41f36e",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "caae28ae1c",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "dd6ac93271",
           "date": "2026-11-05"
         }
       ],
@@ -16324,24 +16289,13 @@
         "coding/cli/exit_restore_paths_test.go::TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal",
         "coding/cli/print_final_disposal_signal_test.go::TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce",
         "coding/cli/print_final_disposal_signal_test.go::TestPrintModeSignalDuringFinalDisposalWaitsForIt",
-        "coding/cli/rpc_exit_once_test.go::TestRPCExitRunsItsStepsOnce",
         "coding/cli/rpc_repeated_signal_test.go::TestRPCInputEndDuringSignalShutdownLetsItFinish",
         "coding/cli/rpc_repeated_signal_test.go::TestRPCRepeatedSignalDuringShutdownExitsAtOnce",
         "coding/cli/rpc_repeated_signal_test.go::TestRPCSingleSignalDuringInputEndShutdownLetsItFinish",
-        "coding/cli/rpc_shutdown_exitlog_linux_test.go::TestRPCIgnoredSignalThenStdoutFailureLeavesAnExitLogLine",
-        "coding/cli/rpc_shutdown_exitlog_test.go::TestRPCExitLogNamesWhatEndedTheProcess",
-        "coding/cli/rpc_shutdown_hold_test.go::TestPrintModeSignalDuringFinalDisposalDoesNotBlockARunTheHandlerStarts",
-        "coding/cli/rpc_shutdown_hold_test.go::TestRPCRepeatedSignalExitsWhileStdoutIsStuck",
-        "coding/cli/rpc_shutdown_hold_test.go::TestRPCSingleSignalDuringShutdownDoesNotBlockARunTheHandlerStarts",
         "coding/cli/rpc_shutdown_retire_test.go::TestRPCInputEndAfterCommandReplacementKeepsPendingQuitShutdownQuiet",
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndSettlesBeforeShutdownStarts",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownRepeatedSignalExitsWhileAnotherExitFlushes",
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownRepeatedSignalKeepsItsExitStatus",
-        "coding/cli/rpc_shutdown_test.go::TestRPCShutdownTriggers",
-        "coding/cli/rpc_termination_test.go::TestRPCFinishRunsADisposeASignalClaimedButNeverRan",
-        "coding/cli/rpc_termination_test.go::TestRPCIgnoredSignalIsRecordedWhenTheModeEndsTheProcess",
-        "coding/cli/rpc_termination_test.go::TestRPCSignalBeforeTheRecordIsRegisteredStillRunsTheShutdown",
-        "coding/cli/rpc_termination_test.go::TestRPCSignalWaitsForTheDisposeFinishStarted"
+        "coding/cli/rpc_shutdown_test.go::TestRPCShutdownTriggers"
       ]
     },
     {
@@ -20432,6 +20386,26 @@
         "extensions/sdk/keybinding_hints_test.go::TestRenderHintsReadTheHostKeybindings",
         "test/extension-conformance/keybinding_hints_test.go::TestKeybindingHintsAcrossSDKs"
       ]
+    },
+    {
+      "id": "BF-65d2ac1",
+      "title": "A build with `pig_strip_codemode` no longer links the codemode engine through tool search",
+      "symptom": "A build with `pig_strip_codemode` no longer links the codemode engine through tool search.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A build with `pig_strip_codemode` no longer links the codemode engine through tool search.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "65d2ac1eee",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-663e84b",
@@ -31821,6 +31795,46 @@
         "durable/core/host/cf/test/output-sanitize.test.ts",
         "durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences"
       ]
+    },
+    {
+      "id": "BF-98f0403",
+      "title": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in…",
+      "symptom": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in flight (it aborts the current session first) before it emits `session_shutdown`, as Pi's `dispose` does; the run's `agent_end` reaches the extension before the shutdown.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in flight (it aborts the current session first) before it emits `session_shutdown`, as Pi's `dispose` does; the run's `agent_end` reaches the extension before the shutdown.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98f0403ec4",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-98f0403-2",
+      "title": "`pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when…",
+      "symptom": "`pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when `codemode` is stripped.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when `codemode` is stripped.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98f0403ec4",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-992f3cb",
@@ -55178,19 +55192,9 @@
       "entry": "BF-825b4ab"
     },
     {
-      "id": "D231",
-      "title": "PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()`",
-      "entry": "BF-0cced6a"
-    },
-    {
       "id": "D233",
       "title": "A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first…",
       "entry": "BF-d4e641b"
-    },
-    {
-      "id": "D234",
-      "title": "PiG follows Pi main ace560c30 ahead of the v1.5.0 pin: a started RPC or print shutdown finishes, and only a…",
-      "entry": "BF-5b8189f"
     },
     {
       "id": "D235",
