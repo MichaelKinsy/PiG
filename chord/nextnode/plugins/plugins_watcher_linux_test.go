@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports the Linux-only case of packages/chord/test/next-node/plugins/watcher.test.ts (`it.skipIf(process.platform !==
@@ -105,7 +106,7 @@ func TestTheBaseMarkReadsOnePathInOrderASecondComparisonWaitsForTheFirstHeldOnAP
 	pipe := filepath.Join(root, "held.ts")
 	fifo(t, pipe)
 	// The first comparison opens the pipe and waits for a writer; a second one is queued behind it.
-	f.recordBase(BaseInputs{pipe: hashOf("as built")})
+	f.recordBase(model.BaseInputs{pipe: hashOf("as built")})
 	f.mark(pipe)
 	f.settle()
 	// The first read gets other bytes: marked. (Two readers at once would split this: one of them gets nothing.)
@@ -125,7 +126,7 @@ func TestTheBaseMarkRenewsNothingForABurstOfAttributeChangesOnAnAncestorAndRenew
 	}
 	pipe := filepath.Join(root, "ancestor", "dir", "held.ts")
 	fifo(t, pipe)
-	f.recordBase(BaseInputs{pipe: hashOf("as built")})
+	f.recordBase(model.BaseInputs{pipe: hashOf("as built")})
 	writeWhenRead(t, pipe, "as built")
 	f.settle()
 	if f.marks().Base {

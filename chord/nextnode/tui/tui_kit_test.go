@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -94,8 +95,8 @@ func tuiApp(t testing.TB, text string) started {
 		Listen: &chordhttp.ListenAddress{Host: "127.0.0.1", Port: 0},
 		API:    app.AppAPI{Name: "@test/app", Versions: []string{"v1"}, Modules: plugins.HostPackages{"@test/app/v1": api}},
 		Kinds: []app.AppKind{
-			{Name: "server", Platform: plugins.PlatformNode},
-			{Name: "tui", Platform: plugins.PlatformNode, Packages: plugins.HostPackages{"@test/app/v1/tui": tuiAPI}},
+			{Name: "server", Platform: model.PlatformNode},
+			{Name: "tui", Platform: model.PlatformNode, Packages: plugins.HostPackages{"@test/app/v1/tui": tuiAPI}},
 		},
 		Principal: app.AppPrincipals{Server: delta.JsonObjectOf("kind", "server"), Owner: delta.JsonObjectOf("kind", "owner")},
 		Tui:       &app.AppTui{Entry: fixture(t, "tui", "main.ts"), Conditions: []string{"source"}},

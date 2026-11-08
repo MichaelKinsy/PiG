@@ -8,7 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports the bases' part of packages/chord/src/node/app/app.ts (Pi 284e63d9): `buildBases`, `watchBaseCode` and `editedSinceStart`.
@@ -34,7 +34,7 @@ var processStart = time.Now() //portlint:allow clock Pi's `performance.timeOrigi
 // or why it failed.
 type baseBuild struct {
 	name  string
-	build func() (plugins.BaseInputs, error)
+	build func() (model.BaseInputs, error)
 }
 
 // comparisons are the first comparisons of every record added after the start, to wait for.
@@ -136,15 +136,15 @@ func (a *App) watchBaseCode(compared *comparisons) {
 // one later than now (plus futureSlack) is no edit since the start (a file stamped in the future, by a skewed clock or an archive,
 // would mark every start until that time); a file neither of whose timestamps is in range keeps its hash, compared by content
 // alone.
-func (a *App) editedSinceStart(path string) plugins.BaseInputs {
+func (a *App) editedSinceStart(path string) model.BaseInputs {
 	started := processStart
 	if a.options.processStart != nil {
 		started = a.options.processStart()
 	}
-	hash, readable := plugins.HashFile(path)
+	hash, readable := model.HashFile(path)
 	if !readable {
 		// Gone since it was checked: its first comparison finds it so.
-		return plugins.BaseInputs{path: ""}
+		return model.BaseInputs{path: ""}
 	}
 	if info, err := os.Stat(path); err == nil {
 		latest := time.Now().Add(futureSlack) //portlint:allow clock Pi's `Date.now() + FUTURE_SLACK_MS` of editedSinceStart: a file's timestamps are wall-clock, and the tests set AppOptions.processStart instead
@@ -155,21 +155,21 @@ func (a *App) editedSinceStart(path string) plugins.BaseInputs {
 			}
 		}
 	}
-	return plugins.BaseInputs{path: hash}
+	return model.BaseInputs{path: hash}
 }
 
 // baseBuilds are the bases of the app: its surfaces' base bundles, then each worker kind's base.
 func (a *App) baseBuilds() []baseBuild {
 	var bases []baseBuild
 	for _, each := range a.surfaces {
-		bases = append(bases, baseBuild{name: each.name, build: func() (plugins.BaseInputs, error) {
+		bases = append(bases, baseBuild{name: each.name, build: func() (model.BaseInputs, error) {
 			built := each.build()
 			return built.Inputs, built.Err
 		}})
 	}
 	for _, kind := range a.options.Workers {
 		name := kind.Kind.Kind
-		bases = append(bases, baseBuild{name: name, build: func() (plugins.BaseInputs, error) {
+		bases = append(bases, baseBuild{name: name, build: func() (model.BaseInputs, error) {
 			built := a.Workers[name].Build()
 			return built.Inputs, built.Err
 		}})

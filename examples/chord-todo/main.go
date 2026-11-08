@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // here is this directory: the API's modules are files of it.
@@ -47,8 +48,8 @@ func api() app.AppAPI {
 // kinds are the app's facet kinds: a plugin has one file per kind it runs on (`server.ts`, `worker.ts`).
 func kinds() []app.AppKind {
 	return []app.AppKind{
-		{Name: "server", Platform: plugins.PlatformNode},
-		{Name: "worker", Platform: plugins.PlatformNode},
+		{Name: "server", Platform: model.PlatformNode},
+		{Name: "worker", Platform: model.PlatformNode},
 	}
 }
 

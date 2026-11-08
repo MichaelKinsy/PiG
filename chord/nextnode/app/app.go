@@ -23,6 +23,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/telemetryingest"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
@@ -78,7 +80,7 @@ type AppAPI struct {
 // Its API modules are named by convention: `<api>/<version>` and `<api>/<version>/<kind>` for every version.
 type AppKind struct {
 	Name     string
-	Platform plugins.Platform
+	Platform model.Platform
 	Packages plugins.HostPackages
 }
 
@@ -490,8 +492,8 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	// The web surface serves a browser build's assets under its prefix (Pi's `publicPath: ${WEB_PREFIX}assets/`).
 	assetsPath := nodesurfaces.WebPrefix + "assets/"
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
-		Api:        &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
+		Build: build.BuildFacet, Roots: []model.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
+		Api:        &model.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		PublicPath: &assetsPath,
 		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)

@@ -1,4 +1,4 @@
-package plugins
+package build
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/evanw/esbuild/pkg/api"
 )
 
@@ -46,30 +47,27 @@ const scopedCSSNamespace = "chord-css-module"
 var nonWordName = regexp.MustCompile(`[^A-Za-z0-9_-]`)
 
 // ScopeCSSModule scopes the CSS module file of the plugin plugin (its directory dir) with contents: every class renamed
-// `chord_<hash of plugin and path>_<file>_<class>`. It returns esbuild's failure (a syntax error) for the build to report.
-func ScopeCSSModule(plugin, dir, file, contents string, node NodeOptions, ctx context.Context) (ScopedCSS, error) {
-	evaluator := newMappingEvaluator(node)
-	defer evaluator.close()
-	return scopeCSSModule(plugin, dir, file, contents, evaluator, ctx)
-}
-
-// scopeCSSModule is ScopeCSSModule with the evaluator that reads the mapping: the component's builds share one.
-func scopeCSSModule(plugin, dir, file, contents string, evaluator *mappingEvaluator, ctx context.Context) (ScopedCSS, error) {
-	css, js, err := scopeBuild(plugin, dir, file, contents)
+// `chord_<hash of plugin and path>_<file>_<class>`. evaluator reads the mapping (the builds of one component share one). It
+// returns esbuild's failure (a syntax error) for the build to report.
+func ScopeCSSModule(plugin, dir, file, contents string, evaluator model.MappingEvaluator, ctx context.Context) (ScopedCSS, error) {
+	if evaluator == nil {
+		return ScopedCSS{}, fmt.Errorf("css module %s: no evaluator reads its mapping (BuildOptions.Mappings)", file)
+	}
+	css, js, err := ScopeBuild(plugin, dir, file, contents)
 	if err != nil {
 		return ScopedCSS{}, err
 	}
-	classes, err := evaluator.evaluate(ctx, js)
+	classes, err := evaluator.Evaluate(ctx, js)
 	if err != nil {
 		return ScopedCSS{}, fmt.Errorf("css module %s: %w", file, err)
 	}
 	return ScopedCSS{CSS: css, Classes: classes}, nil
 }
 
-// scopeBuild is the build that scopes a CSS module: its stylesheet, and esbuild's mapping module (CommonJS, as Pi's), or the
+// ScopeBuild is the build that scopes a CSS module: its stylesheet, and esbuild's mapping module (CommonJS, as Pi's), or the
 // build's failure.
-func scopeBuild(plugin, dir, file, contents string) (css, js string, err error) {
-	rel, err := relative(dir, file)
+func ScopeBuild(plugin, dir, file, contents string) (css, js string, err error) {
+	rel, err := model.Relative(dir, file)
 	if err != nil {
 		return "", "", err
 	}
@@ -156,10 +154,10 @@ func jsString(text string) string {
 	return strings.TrimSuffix(out.String(), "\n")
 }
 
-// decodeUTF8 is what `new TextDecoder().decode(data)` gives (the WHATWG UTF-8 decoder): a byte sequence that is not UTF-8 is
+// DecodeUTF8 is what `new TextDecoder().decode(data)` gives (the WHATWG UTF-8 decoder): a byte sequence that is not UTF-8 is
 // U+FFFD, one for each maximal subpart of a valid sequence (a truncated three-byte sequence is one, not three), and a byte
 // order mark at the start is dropped.
-func decodeUTF8(data []byte) string {
+func DecodeUTF8(data []byte) string {
 	data = bytes.TrimPrefix(data, []byte("\uFEFF"))
 	if utf8.Valid(data) {
 		return string(data)

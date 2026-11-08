@@ -2825,7 +2825,7 @@ Scope: `chord/nextnode/plugins` `BuildFacet`, the failure of an input that canno
 
 Owner decision: 2026-11-01, owner decided to keep PiG's location and record the difference (D222).
 
-Call-site marker: `chord/nextnode/plugins/plugins_build.go` (the `OnLoad` read failure).
+Call-site marker: `chord/nextnode/plugins/build/build_facet.go` (the `OnLoad` read failure).
 
 Evidence: `TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText` (`chord/nextnode/plugins/plugins_node_unix_test.go`) states PiG's text with the import's location.
 
@@ -4066,7 +4066,7 @@ Call-site markers: `chord/nextnode/workers/workers_workers.go` (`Build`), `chord
 
 Evidence: `TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith`, `TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs`, `TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose`, `TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks` (`chord/nextnode/workers`), `TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes`, `TestAppReportsABaseThatFailsAfterTheListenAndRunsOn…` (`chord/nextnode/app`).
 
-Parity allowance: Pi's `base.test.ts` has no Go bundle to run, so none of its cases runs as written; each is tested in PiG form (owner rule of 2026-11-08), see its mapping row: the plugin scripts a worker runs (BuildFacet, the Node host: lazy computed imports, module locations refused per file, mapped stacks, a facet's inputs, no tsconfig paths, `sideEffects` against the scripts Pi's own build made) and the surfaces' bases (the server's `--conditions` in each spelling), in `chord/nextnode/plugins/plugins_workerbase_test.go` and `chord/nextnode/surfaces/surfaces_bundle_test.go`. Still without a counterpart: the `NODE_COMPILE_CACHE` and `cache/node` assertions of `layout.test.ts` and `app.test.ts`, the `app.test.ts` tests that hold a worker kind's base build on a pipe, and `child.test.ts` (a worker child that carries no bundler: its Go form is a dependency test that the worker's package links no esbuild, which needs the build side of `chord/nextnode/plugins` split from the worker runtime; not done, see the mapping row).
+Parity allowance: Pi's `base.test.ts` has no Go bundle to run, so none of its cases runs as written; each is tested in PiG form (owner rule of 2026-11-08), see its mapping row: the plugin scripts a worker runs (BuildFacet, the Node host: lazy computed imports, module locations refused per file, mapped stacks, a facet's inputs, no tsconfig paths, `sideEffects` against the scripts Pi's own build made) and the surfaces' bases (the server's `--conditions` in each spelling), in `chord/nextnode/plugins/plugins_workerbase_test.go` and `chord/nextnode/surfaces/surfaces_bundle_test.go`. Still without a counterpart: the `NODE_COMPILE_CACHE` and `cache/node` assertions of `layout.test.ts` and `app.test.ts` and the `app.test.ts` tests that hold a worker kind's base build on a pipe. `child.test.ts` is tested in PiG form too: `chord/nextnode/workers/workers_child_test.go` is the dependency test that the worker's package, the plugin runtime and the plugin data link no esbuild (the component is split in `plugins/model`, `plugins/build` and `plugins`; the builder is handed to the component as `PluginsOptions.Build`).
 
 ## D604 A link's upgrade waits for the bases to be built (Pi's links connect at once)
 

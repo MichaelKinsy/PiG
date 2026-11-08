@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports the "base code" tests of packages/chord/test/node/app/app.test.ts that start a server with no `base` given (Pi's `runStart`).
@@ -219,7 +220,7 @@ func TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFa
 		if script.Plugin.Name != "@test/optional" {
 			continue
 		}
-		if script.Built.Kind != plugins.BuiltFacetFailed || !strings.Contains(strings.Join(script.Built.Errors, "\n"), `server.ts:1:`) ||
+		if script.Built.Kind != model.BuiltFacetFailed || !strings.Contains(strings.Join(script.Built.Errors, "\n"), `server.ts:1:`) ||
 			!strings.Contains(strings.Join(script.Built.Errors, "\n"), `Could not resolve "./missing.ts"`) {
 			t.Fatalf("built = %+v, want a failed build naming server.ts:1 and the import", script.Built)
 		}

@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	next "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/node/surfaces/published.ts. A client kind's published scripts (slice 11 §1, decisions "Slice 11, P3"
@@ -36,7 +37,7 @@ type published struct {
 	text   string
 	css    string
 	hasCSS bool
-	assets []plugins.Asset
+	assets []model.Asset
 }
 
 // sourceMap is a script's inline source map comment.
@@ -147,7 +148,7 @@ func (p *PublishedScripts) publish(scripts []plugins.PluginScript) ([]host.Plugi
 	defer p.mu.Unlock()
 	for _, script := range scripts {
 		built, name := script.Built, script.Plugin.Name
-		if built.Kind == plugins.BuiltFacetScript {
+		if built.Kind == model.BuiltFacetScript {
 			text := next.RegisteredSource(name, built.Digest, built.Source)
 			entry := published{digest: built.Digest, text: text, assets: built.Assets}
 			if built.CSS != nil {

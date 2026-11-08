@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -28,15 +29,15 @@ import (
 // Execution model. The component's own state and its watcher are touched only in sections of a loop of its own (host.Loop:
 // the batch of its watcher runs on it, the file events enter it), as Pi's component runs on the one event loop; what blocks
 // (discovery, builds, installs, reloads of hosts) runs outside a section. Every method may be called from any goroutine;
-// two Reloads of one host run one after another, in the order they decided their sets. BuildFacet is called from several
-// goroutines at once (one build per facet of the plugins to build: Pi's Promise.all).
+// two Reloads of one host run one after another, in the order they decided their sets. The builder (PluginsOptions.Build) is
+// called from several goroutines at once (one build per facet of the plugins to build: Pi's Promise.all).
 
 // KindDefinition is one facet kind: Node or browser builds, and the host packages (by specifier) its builds keep external.
 // Name is the kind (`server`, `worker`, `web`): upstream's record key, which Go keeps as a field so the kinds stay in the
 // order the app gave them.
 type KindDefinition struct {
 	Name         string
-	Platform     Platform
+	Platform     model.Platform
 	HostPackages []string
 }
 
@@ -59,15 +60,21 @@ type PluginsError struct {
 	Error error
 }
 
+// Builder builds one facet of a plugin into a script: BuildFacet of the plugins/build package, which the component does not
+// link itself (a worker evaluates what the server built, and links no esbuild).
+type Builder func(plugin model.Plugin, kind string, options model.BuildOptions, ctx context.Context) (model.BuiltFacet, error)
+
 // PluginsOptions is what CreatePlugins takes.
 type PluginsOptions struct {
+	// Build builds each facet (build.BuildFacet): required.
+	Build Builder
 	// Roots are the directories plugins are listed in, in order: the first root's plugin wins a duplicate name. A root marked
 	// Required (the app's own) makes Load return a *PluginError when one of its plugins fails.
-	Roots []PluginRoot
+	Roots []model.PluginRoot
 	// Api is the app's API (`{Name: "@acme/app", Versions: ["v3", "v2"]}`, newest first): plugins import it at a listed
 	// version, its per-kind modules from their kind only, one version per facet, and never Chord directly. Nil: plugins
 	// import the host packages as listed.
-	Api *AppApi
+	Api *model.AppApi
 	// Kinds are the app's facet kinds (one file per kind in a plugin), each with where its builds run and the host packages
 	// they keep external, in the app's order.
 	Kinds []KindDefinition
@@ -89,8 +96,8 @@ type PluginsOptions struct {
 // discovery saw them by name (what a reload evaluates with), and the plugins no longer discovered. Only the pointer Build
 // returned clears marks when rolled out: a copy carries none.
 type Built struct {
-	Facets  []BuiltFacet
-	Plugins map[string]Plugin
+	Facets  []model.BuiltFacet
+	Plugins map[string]model.Plugin
 	Removed []string
 
 	// self is the Built that Build made: a copy of the struct has another address.
@@ -190,6 +197,9 @@ type PluginsLoad struct {
 
 // CreatePlugins creates the plugins component (and its plugin runtime) and starts the watcher. Discovery runs at first use.
 func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
+	if options.Build == nil {
+		panic("plugins: PluginsOptions.Build is required (build.BuildFacet)")
+	}
 	c := &Plugins{
 		options:   options,
 		kindNames: make([]string, len(options.Kinds)),
@@ -197,7 +207,7 @@ func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
 		runtime:   NewPluginRuntime(options.Node),
 		mappings:  newMappingEvaluator(options.Node),
 		loop:      host.NewLoop(),
-		built:     map[string]BuiltFacet{},
+		built:     map[string]model.BuiltFacet{},
 		current:   map[string]*scriptSet{},
 	}
 	for i, kind := range options.Kinds {
@@ -219,7 +229,7 @@ func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
 }
 
 // rootPaths are the paths of roots: upstream's `roots.map((root) => (typeof root === "string" ? root : root.path))`.
-func rootPaths(roots []PluginRoot) []string {
+func rootPaths(roots []model.PluginRoot) []string {
 	paths := make([]string, len(roots))
 	for i, root := range roots {
 		paths[i] = root.Path
@@ -271,10 +281,10 @@ type Plugins struct {
 	loop    *host.Loop
 	watcher *pluginWatcher
 	// discovery is the last one; discovered whether there was one.
-	discovery  Discovery
+	discovery  model.Discovery
 	discovered bool
 	// built is the latest build of every (plugin, kind) built so far, by `plugin\x00kind`.
-	built map[string]BuiltFacet
+	built map[string]model.BuiltFacet
 	// current is the current set of each kind used so far.
 	current map[string]*scriptSet
 }
@@ -309,8 +319,8 @@ func (c *Plugins) Marks() PluginsState {
 }
 
 // Discovery is the plugins of the last discovery.
-func (c *Plugins) Discovery() Discovery {
-	var discovery Discovery
+func (c *Plugins) Discovery() model.Discovery {
+	var discovery model.Discovery
 	c.section(func() { discovery = c.discovery })
 	return discovery
 }
@@ -319,7 +329,7 @@ func (c *Plugins) Discovery() Discovery {
 // plugin set changed): plain data. It changes no current set: a rollout ships it.
 func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {
 	var before []string
-	previous := map[string]Plugin{}
+	previous := map[string]model.Plugin{}
 	var needs bool
 	c.section(func() {
 		for _, plugin := range c.discovery.Plugins {
@@ -333,21 +343,21 @@ func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {
 			return nil, err
 		}
 	}
-	var wanted []Plugin
-	var plugins []Plugin
+	var wanted []model.Plugin
+	var plugins []model.Plugin
 	removed := []string{}
 	var snapshot MarkSnapshot
 	c.section(func() {
 		plugins = c.discovery.Plugins
 		for _, name := range before {
-			if !slices.ContainsFunc(plugins, func(plugin Plugin) bool { return plugin.Name == name }) {
+			if !slices.ContainsFunc(plugins, func(plugin model.Plugin) bool { return plugin.Name == name }) {
 				removed = append(removed, name)
 			}
 		}
 		// A plugin whose files moved (a single file became a directory, a facet file came or went) is built again too.
 		for _, plugin := range plugins {
 			prior, known := previous[plugin.Name]
-			if slices.Contains(names, plugin.Name) || !known || !SameFiles(prior, plugin) {
+			if slices.Contains(names, plugin.Name) || !known || !model.SameFiles(prior, plugin) {
 				wanted = append(wanted, plugin)
 			}
 		}
@@ -369,7 +379,7 @@ func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {
 	if err != nil {
 		return nil, err
 	}
-	byName := make(map[string]Plugin, len(wanted))
+	byName := make(map[string]model.Plugin, len(wanted))
 	for _, plugin := range wanted {
 		byName[plugin.Name] = plugin
 	}
@@ -414,7 +424,7 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		return nil, host.LoadReport{}, err
 	}
 	// A required root guarantees its plugins: what discovery reported in one is as fatal as a plugin that failed.
-	var problems []DiscoveryProblem
+	var problems []model.DiscoveryProblem
 	c.section(func() {
 		for _, problem := range c.discovery.Problems {
 			if problem.Required {
@@ -582,10 +592,10 @@ func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 			return err
 		}
 	}
-	var plugin Plugin
+	var plugin model.Plugin
 	var found bool
 	c.section(func() {
-		if index := slices.IndexFunc(c.discovery.Plugins, func(each Plugin) bool { return each.Name == name }); index >= 0 {
+		if index := slices.IndexFunc(c.discovery.Plugins, func(each model.Plugin) bool { return each.Name == name }); index >= 0 {
 			plugin, found = c.discovery.Plugins[index], true
 		}
 	})
@@ -602,11 +612,11 @@ func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 // WatchBase adds a running base artifact's record (a base bundle's inputs, beside Base; see Recorder): `base` is set while one
 // of its files differs from the bytes it read or is gone; each is compared once now. Files under `node_modules` are never
 // watched.
-func (c *Plugins) WatchBase(inputs BaseInputs) { c.WatchBaseCompared(inputs) }
+func (c *Plugins) WatchBase(inputs model.BaseInputs) { c.WatchBaseCompared(inputs) }
 
 // WatchBaseCompared is WatchBase that returns a channel closed once the comparisons of the record ended: where Pi's app reads
 // nothing of `watchBase`, the Go app's `BaseWatched` waits for them.
-func (c *Plugins) WatchBaseCompared(inputs BaseInputs) <-chan struct{} {
+func (c *Plugins) WatchBaseCompared(inputs model.BaseInputs) <-chan struct{} {
 	var compared <-chan struct{}
 	c.section(func() { compared = c.watcher.recordBase(inputs) })
 	return compared
@@ -646,7 +656,7 @@ func (c *Plugins) Close() {
 func (c *Plugins) discover(ctx context.Context) error {
 	var seen DiscoverySnapshot
 	c.section(func() { seen = c.watcher.discoverySnapshot() })
-	discovery, err := DiscoverPlugins(c.options.Roots, DiscoveryOptions{Kinds: c.kindNames}, ctx)
+	discovery, err := model.DiscoverPlugins(c.options.Roots, model.DiscoveryOptions{Kinds: c.kindNames}, ctx)
 	if err != nil {
 		return err
 	}
@@ -656,7 +666,7 @@ func (c *Plugins) discover(ctx context.Context) error {
 		// A plugin no longer discovered loses its builds: a name added again is built anew, never served an old build.
 		for key := range c.built {
 			name := key[:strings.IndexByte(key, 0)]
-			if !slices.ContainsFunc(discovery.Plugins, func(plugin Plugin) bool { return plugin.Name == name }) {
+			if !slices.ContainsFunc(discovery.Plugins, func(plugin model.Plugin) bool { return plugin.Name == name }) {
 				delete(c.built, key)
 			}
 		}
@@ -678,9 +688,9 @@ func (c *Plugins) set(kind string, ctx context.Context) (*scriptSet, error) {
 			return nil, err
 		}
 	}
-	var plugins []Plugin
-	var all []Plugin
-	var cached []BuiltFacet
+	var plugins []model.Plugin
+	var all []model.Plugin
+	var cached []model.BuiltFacet
 	c.section(func() {
 		all = c.discovery.Plugins
 		for _, plugin := range all {
@@ -724,7 +734,7 @@ func (c *Plugins) set(kind string, ctx context.Context) (*scriptSet, error) {
 
 // buildJob is one facet to build.
 type buildJob struct {
-	plugin Plugin
+	plugin model.Plugin
 	kind   string
 }
 
@@ -733,8 +743,8 @@ func buildKey(plugin, kind string) string { return plugin + "\x00" + kind }
 
 // buildAll builds jobs concurrently (Promise.all), each with plugins as the discovered ones, and returns the results in the
 // order of jobs; the error of the first job that failed, once every build ended.
-func (c *Plugins) buildAll(jobs []buildJob, plugins []Plugin, ctx context.Context) ([]BuiltFacet, error) {
-	results := make([]BuiltFacet, len(jobs))
+func (c *Plugins) buildAll(jobs []buildJob, plugins []model.Plugin, ctx context.Context) ([]model.BuiltFacet, error) {
+	results := make([]model.BuiltFacet, len(jobs))
 	errs := make([]error, len(jobs))
 	var group sync.WaitGroup
 	for i, job := range jobs {
@@ -751,20 +761,20 @@ func (c *Plugins) buildAll(jobs []buildJob, plugins []Plugin, ctx context.Contex
 
 // buildOne builds plugin's facet of kind and keeps it as the latest; the watcher learns what it read. A build that fails is a
 // failed result; an error is the abort of ctx only.
-func (c *Plugins) buildOne(plugin Plugin, kind string, plugins []Plugin, ctx context.Context) (BuiltFacet, error) {
+func (c *Plugins) buildOne(plugin model.Plugin, kind string, plugins []model.Plugin, ctx context.Context) (model.BuiltFacet, error) {
 	// Discovery finds facet files of the app's kinds only.
 	definition := c.kinds[kind]
-	options := BuildOptions{
+	options := model.BuildOptions{
 		HostPackages: definition.HostPackages, Platform: definition.Platform, Kinds: c.kindNames, Plugins: plugins,
-		Api: c.options.Api, PublicPath: c.options.PublicPath, Node: c.options.Node, mappings: c.mappings,
+		Api: c.options.Api, PublicPath: c.options.PublicPath, Mappings: c.mappings,
 	}
-	built, err := BuildFacet(plugin, kind, options, ctx)
+	built, err := c.options.Build(plugin, kind, options, ctx)
 	if err != nil {
-		return BuiltFacet{}, err
+		return model.BuiltFacet{}, err
 	}
 	c.section(func() {
 		c.built[buildKey(plugin.Name, kind)] = built
-		c.watcher.used([]BuiltFacet{built})
+		c.watcher.used([]model.BuiltFacet{built})
 	})
 	return built, nil
 }

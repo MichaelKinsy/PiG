@@ -3437,8 +3437,12 @@
     },
     {
       "path": "packages/chord/test/node/workers/child.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41",
+      "evidence": [
+        "chord/nextnode/workers/workers_child_test.go"
+      ],
+      "rationale": "The one upstream case (\"the child entry's imports › loads no esbuild\": a forked worker does not pay for the server's build tool) is in PiG form (owner rule 2026-11-08: D600 does not design this file out): a deps test, TestTheWorkersPackageLinksNoEsbuild, that `go list -deps` of chord/nextnode/workers, of chord/nextnode/plugins (the worker's runtime and the Node host) and of chord/nextnode/plugins/model links no github.com/evanw/esbuild package. It holds because the plugins component was split in three layers: plugins/model (the data and discovery), plugins/build (esbuild: BuildFacet, the CSS module scoping, Recorder) and plugins (the runtime and the component), which takes the builder as PluginsOptions.Build. Measured before the split: 26 esbuild packages linked by workers. TestTheDependencyCheckSeesTheEsbuildTheBuilderLinks pins that the check sees esbuild where it is linked. Mutation: a blank import of plugins/build in the workers package fails the first test (25 esbuild packages)."
     },
     {
       "path": "packages/chord/test/node/workers/control.test.ts",

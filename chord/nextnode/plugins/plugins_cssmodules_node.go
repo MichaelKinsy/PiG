@@ -67,10 +67,10 @@ type mappingReply struct {
 	Error   *string `json:"error"`
 }
 
-// evaluate runs the mapping module js and returns its mapping as `JSON.stringify` writes it. It is the cause of ctx when ctx
+// Evaluate runs the mapping module js and returns its mapping as `JSON.stringify` writes it. It is the cause of ctx when ctx
 // ends before or during the evaluation (the process is killed: the next evaluation starts another). An error of the process (it
 // did not start, died, did not answer) is this evaluation's alone, and so is a module that does not evaluate.
-func (e *mappingEvaluator) evaluate(ctx context.Context, js string) (string, error) {
+func (e *mappingEvaluator) Evaluate(ctx context.Context, js string) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", context.Cause(ctx)
 	}

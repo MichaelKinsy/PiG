@@ -204,7 +204,7 @@
     "reason": "Pi replace(text): {delta: string | undefined, arguments} takes the provider's complete text and returns the missing piece when it continues the text so far, else undefined. Go Replace(text) (delta string, hasDelta bool, arguments JsonObject, order schemaObjectOrder) returns hasDelta false where Pi returns an undefined delta, and the member order beside the arguments."
   },
   "pkg:chord/app#AppApi": {
-      "go": "chord/nextnode/plugins/plugins_build.go#AppApi",
+      "go": "chord/nextnode/plugins/model/model_built.go#AppApi",
       "reason": "Pi 1.5.0+c23b9ec1 app/index.ts re-exports plugins/build.ts:31 AppApi = { name, versions }: the same Go plugins.AppApi (plugins_build.go) the app's AppOptions.Api takes."
   },
   "pkg:chord/app#ArchiveManifest": {
@@ -236,11 +236,11 @@
     "reason": "Pi chord/src/output.ts:364-370 async stop(): Promise<PromiseWithResolvers<void>[]> sets stopped, disarms the timer, awaits the in-flight commit and splices out the waiters. Go has no Promise or PromiseWithResolvers: Stop() blocks until the in-flight commit ends (<-inFlight) and returns []*ProgressWaiter, whose Resolve/Reject are the resolvers the final commit settles. TestProgress 'stops: waits for the commit in flight and hands back waiters no commit covered yet' (chord/output/output_test.go) ports the Pi stop case."
   },
   "pkg:chord/plugins#AppApi": {
-      "go": "chord/nextnode/plugins/plugins_build.go#AppApi",
+      "go": "chord/nextnode/plugins/model/model_built.go#AppApi",
       "reason": "Pi 1.5.0+c23b9ec1 plugins/build.ts:31 AppApi = { readonly name: string; readonly versions: readonly string[] }: Go plugins.AppApi has the fields Name and Versions (plugins_build.go) and BuildFacet, CreatePlugins and TestPlugin take it as Pi's do (plugins_build_test.go, build.test.ts cases about the app's API)."
   },
   "pkg:chord/plugins#PluginRoot": {
-      "go": "chord/nextnode/plugins/plugins_discover.go#PluginRoot",
+      "go": "chord/nextnode/plugins/model/model_discover.go#PluginRoot",
       "reason": "Pi 1.5.0+c23b9ec1 plugins/discover.ts PluginRoot = string | { readonly path: string; readonly required?: boolean }: a root is a path, or a path marked required. Go has no unions: plugins.PluginRoot is the one struct of the object form (Path, Required) and the string form is PluginRoot{Path: path} (plugins_discover.go). TestDiscoverPlugins* and TestCreatePluginsRequiredRoot* read both forms' behavior (a required root's failing plugin rejects the load)."
   },
   "pkg:codemode/.#CodemodeSandboxOptions::property:wasm": {

@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Test support for StartServer and StartWorker (Pi's test/node/app/support.ts): an app started in a temporary data directory with a
@@ -50,7 +51,7 @@ func apiModules() AppAPI {
 }
 
 func testKinds() []AppKind {
-	return []AppKind{{Name: "server", Platform: plugins.PlatformNode}, {Name: "worker", Platform: plugins.PlatformNode}, {Name: "teamworker", Platform: plugins.PlatformNode}}
+	return []AppKind{{Name: "server", Platform: model.PlatformNode}, {Name: "worker", Platform: model.PlatformNode}, {Name: "teamworker", Platform: model.PlatformNode}}
 }
 
 // workerOptions are the fixture worker's: StartWorker with the tests' API.

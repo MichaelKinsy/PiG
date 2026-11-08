@@ -70,8 +70,8 @@ and starts the server with its API, kinds and principals:
 // kinds are the app's facet kinds: a plugin has one file per kind it runs on (`server.ts`, `worker.ts`).
 func kinds() []app.AppKind {
 	return []app.AppKind{
-		{Name: "server", Platform: plugins.PlatformNode},
-		{Name: "worker", Platform: plugins.PlatformNode},
+		{Name: "server", Platform: model.PlatformNode},
+		{Name: "worker", Platform: model.PlatformNode},
 	}
 }
 ```
