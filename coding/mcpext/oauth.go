@@ -36,9 +36,11 @@ import (
 // Credentials live in `<agent-dir>/mcp-auth.json`, keyed by server name and URL.
 
 const (
-	// clientMetadataBaseURL is where pi.dev serves pi's Client ID Metadata
-	// Documents: `client.json` and `<callback ID>/client.json`.
-	clientMetadataBaseURL = "https://pi.dev/oauth"
+	// clientMetadataBaseURL is where PiG's site serves its Client ID Metadata
+	// Documents, in Pi's shape: `client.json` and `<callback ID>/client.json`.
+	// Pi serves its own on https://pi.dev/oauth; PiG's hosted origin
+	// (internal/coding/pigidentity) replaces it, as for every hosted endpoint (D64).
+	clientMetadataBaseURL = "https://pi-in-go.dev/oauth"
 	// refreshLockStale: a refresh lock that its holder stopped renewing (the
 	// process was killed) is taken over after this.
 	// upstream: packages/coding-agent/src/extensions/mcp/oauth.ts:REFRESH_LOCK_STALE_MS
@@ -364,7 +366,7 @@ func marshalStates(states storedStates) (string, error) {
 	return out.String(), nil
 }
 
-// piClientMetadataDocuments are pi's Client ID Metadata Documents on pi.dev: `client.json` and `<callback ID>/client.json`.
+// piClientMetadataDocuments are pi's Client ID Metadata Documents on PiG's origin: `client.json` and `<callback ID>/client.json`.
 func piClientMetadataDocuments() *oauth.McpClientMetadataDocuments {
 	return &oauth.McpClientMetadataDocuments{BaseURL: clientMetadataBaseURL, ListsRedirectURL: extension.IsClientMetadataDocumentCallback}
 }
