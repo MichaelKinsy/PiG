@@ -1125,7 +1125,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D352](#bf-d352) | Anthropic message threads | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D432](#bf-d432) | Sync decodes no log line longer than 32 MiB | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -17125,21 +17124,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0d59519cff` (2026-11-07), `930ef101d0` (2026-11-07)
 - **Tests:** None recorded.
 
-### BF-D432
-
-**Sync decodes no log line longer than 32 MiB**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D432)
-- **Symptom:** a body line has no bound but the string limit of the runtime; a remote's body can make a sync hold about 0.5 GiB for one line before it fails with a bare `RangeError`.
-- **Root cause:** the sync client's contract is bounded memory (an upload ends a batch at 8 MiB, a pull applies about 4 MiB at a time), and a remote's body is untrusted input: without a bound a single line grows the buffer until the body ends. A line this long cannot come from `EncodeLogLine` of a store that fits its documents in memory; the largest commit Pi writes is a batch of its own (8 MiB), so the bound is four times that.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Pi bounds a log line or the owner prefers the unbounded form.
-- **Fix commits:** `767a756f61` (2026-11-07), `930ef101d0` (2026-11-07)
-- **Tests:** `chord/sync/lines_test.go::TestBatchBodies`
-
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -25887,7 +25871,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D352 | Anthropic message threads | [BF-D352](#bf-d352) |
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
-| D432 | Sync decodes no log line longer than 32 MiB | [BF-D432](#bf-d432) |
 
 ## Fix-titled commits that are not bugs in a release
 
