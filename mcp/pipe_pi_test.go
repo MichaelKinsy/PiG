@@ -106,15 +106,6 @@ func (p *fakeProgram) errorList() []string {
 	return slices.Clone(p.errors)
 }
 
-func (p *fakeProgram) isClosed() bool {
-	select {
-	case <-p.closed:
-		return true
-	default:
-		return false
-	}
-}
-
 func (p *fakeProgram) stdout(text string) { p.handlers.OnStdout([]byte(text)) }
 func (p *fakeProgram) stderr(text string) { p.handlers.OnStderr([]byte(text)) }
 
