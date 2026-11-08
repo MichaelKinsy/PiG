@@ -370,7 +370,7 @@ func TestKeepsAPluginsOldFacetWhenItsNewScriptPanicsOrHasNoFunctionAndReportsIt(
 			s := setup(t, []RegisteredScript{a1}, []RegisteredScript{broken}, more{})
 			g := text(t, s.client.Host, greeting)
 			s.publish(t, setOf("B1", broken))
-			until(t, func() bool { return len(s.errorKinds()) > 0 })
+			untilPolled(t, func() bool { return len(s.errorKinds()) > 0 })
 			s.mu.Lock()
 			first := s.errs[0]
 			s.mu.Unlock()
