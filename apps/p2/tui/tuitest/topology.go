@@ -1,14 +1,22 @@
 package tuitest
 
 import (
+	"context"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	tuiruntime "github.com/MichaelKinsy/PiG/apps/p2/tui/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/vterm"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 	pitui "github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -22,6 +30,8 @@ type TopologyOptions struct {
 	Role tuiruntime.TuiRole
 	// Columns is the terminal width; 80 by default.
 	Columns int
+	// Ready, when set, holds the worker back until it is closed (a starting worker, a reconnect): the session is unreachable until then.
+	Ready <-chan struct{}
 }
 
 // Topology is the deployed topology for tests (test/p2/tui-fixture.ts `topology`): a "server" host, a "session:s" worker host below it (the server's link to
@@ -37,8 +47,43 @@ type Topology struct {
 func NewTopology(t testing.TB, options TopologyOptions) *Topology {
 	t.Helper()
 	owner := p2runtime.OwnerPrincipal{Access: "local"}
-	server := p2test.NewTestHost(t, p2test.TestHostOptions{Stubs: options.Server, Principal: owner})
-	worker := server.WorkerHost("s", 1, p2test.StubFacet(options.Worker...))
+	// The worker host below the server: reached through the server's route (spawned on first use, as the session workers' route does), once Ready.
+	workerAddress := p2runtime.SessionKind.Address(delta.JsonObjectOf("id", "s"))
+	worker := p2test.NewTestHost(t, p2test.TestHostOptions{Address: &workerAddress, Worker: true, Stubs: options.Worker})
+	var once sync.Once
+	var down link.Link
+	server := p2test.NewTestHost(t, p2test.TestHostOptions{Stubs: options.Server, Principal: owner, BeforeLoad: func(h host.Host) {
+		_, err := h.Route(p2runtime.SessionKind, host.RouteOptions{
+			Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
+			Resolve: func(address contracts.Address, ctx context.Context) (host.ResolvedLink, error) {
+				// One worker host: other sessions (a new one the TUI opens) have none to reach.
+				if id, _ := address.Params.Value("id").(string); id != "s" {
+					return host.ResolvedLink{}, fmt.Errorf("no worker for %s", address.Key)
+				}
+				if options.Ready != nil {
+					chordctx.Suspend(ctx)
+					select {
+					case <-options.Ready:
+					case <-ctx.Done():
+						return host.ResolvedLink{}, context.Cause(ctx)
+					}
+				}
+				var err error
+				once.Do(func() {
+					var up link.Link
+					down, up = link.MemoryLinkPair()
+					err = worker.Host.Connect(up, host.LinkOptions{Principal: p2runtime.ToChord(p2runtime.Server)}, p2test.Background)
+				})
+				if err != nil {
+					return host.ResolvedLink{}, err
+				}
+				return host.ResolvedLink{Link: down, Principal: p2runtime.ToChord(p2runtime.WorkerPrincipal{Session: "s", Generation: 1})}, nil
+			},
+		}, p2test.Background)
+		if err != nil {
+			t.Error(err)
+		}
+	}})
 	facets := make([]host.HostFacet, len(options.Facets))
 	for i, facet := range options.Facets {
 		facets[i] = host.HostFacet{Name: "tui-" + string(rune('0'+i)), Facet: facet}
@@ -61,7 +106,9 @@ func NewTopology(t testing.TB, options TopologyOptions) *Topology {
 		rt.Session, rt.HasSession = "s", true
 		rt.Screen = "chat"
 	})
-	return &Topology{Fixture: f, Server: server, Worker: worker, Client: client}
+	// `await runtime.start()`: the surfaces exist before the test types.
+	f.Poll(f.Runtime.SlotsReady)
+	return &Topology{Fixture: f, Server: server, Worker: worker.Host, Client: client}
 }
 
 // Screen is the visible screen as text, after a render (the scrollbar column trimmed).
