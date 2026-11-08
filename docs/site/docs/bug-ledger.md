@@ -1507,6 +1507,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d50faf0](#bf-d50faf0) | Replacing the editor component with `ctx.ui.setEditorComponent()` while an extension dialog is open no longer… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d514b3d](#bf-d514b3d) | In a Node extension's `before_agent_start` handler, `event.systemPrompt` and `ctx.getSystemPrompt()` now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d53cd09](#bf-d53cd09) | A tool call whose arguments are not an object is written back to each provider as Pi writes it: Anthropic and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d54d6ab](#bf-d54d6ab) | A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the… | PiG's own defect | All platforms | Unreleased |
 | [BF-d60d422](#bf-d60d422) | `pi.exec` gives the command PiG's environment unchanged, as Pi does, so a command started in a symlinked… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d64f8ed](#bf-d64f8ed) | `durable.StorageRequestError` and `durable.SessionFailed` are Pi's error classes of the same names… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d6613f8](#bf-d6613f8) | A tool call whose arguments were cut inside a surrogate pair (the codemode card cuts a call's arguments at 77… | PiG's own defect | All platforms | Unreleased |
@@ -22509,6 +22510,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d53cd09a75` (2026-10-10)
 - **Tests:** `agent/proxy_non_object_arguments_test.go::TestProxyNonObjectToolArgumentsFollowPi`, `ai/tool_call_non_object_converters_test.go::TestGoogleNullFunctionCallArgsAreTheEmptyObject`, `ai/tool_call_non_object_converters_test.go::TestNonObjectToolArgumentsReplayAsEachProviderDoes`
 - **Release note:** A tool call whose arguments are not an object is written back to each provider as Pi writes it: Anthropic and Google send `{}` for `null` (`arguments ?? {}`), Mistral sends `{}` for `null`, `0`, `false` and `""` (`arguments || {}`), Bedrock sends the value itself; a Gemini function call with `"args": null` is the empty object, and the agent proxy keeps Pi's `parseStreamingJson(...) || {}` and the streamed arguments of a `toolcall_end` that omits them.
+
+### BF-d54d6ab
+
+**A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d54d6ab58e` (2026-11-08), `d92788bdbd` (2026-11-08)
+- **Tests:** `apps/p2/e2e/artifacts_test.go::TestArtifactsFakeProvider`, `apps/p2/plugins/terminals/attach_ready_test.go::TestAnAttachmentIsReadyOnceTheHandlerSawTheHello`, `apps/p2/runtime/refs_test.go::TestFollowOfAWatchThatEndedBeforeItsStartHasNothingToFollow`
+- **Release note:** A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`). <!-- fix: p2-agent-tools -->
 
 ### BF-d60d422
 
