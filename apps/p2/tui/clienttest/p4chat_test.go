@@ -37,6 +37,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/schema"
 	pitui "github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 const (
@@ -180,7 +181,9 @@ func newP4Chat(t *testing.T, options p4ChatOptions) *p4Chat {
 	return s
 }
 
-func (s *p4Chat) configured(n int) func() bool { return func() bool { return s.calls.count("configure") == n } }
+func (s *p4Chat) configured(n int) func() bool {
+	return func() bool { return s.calls.count("configure") == n }
+}
 
 // anyNotice says a status line, of any kind, has the text.
 func anyNotice(f *tuitest.Fixture, text string) func() bool {
@@ -409,7 +412,7 @@ func TestPortsCardActionPortAndNameRadiusForwardAddressesOnly(t *testing.T) {
 	}, portstui.Renderers, &portsContext{theme: theme.NewThemeRef(built)}, true)
 	lines := card.Render(100)
 	for i, line := range lines {
-		lines[i] = strings.TrimRight(pitui.StripTerminalSequences(line), " ")
+		lines[i] = strings.TrimRight(widthx.StripTerminalSequences(line), " ")
 	}
 	shown := strings.Join(lines, "\n")
 	if !strings.Contains(shown, "ports open · 3000 · web · public") {
