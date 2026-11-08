@@ -1,8 +1,7 @@
-// Oracle for tui/testdata/markdown-marked-corpus.json: renders every case with the pinned pi-tui Markdown component plus Pi main 54280c4ff (D265) (marked 18.0.11) and the Chalk level-3 test theme of packages/tui/test/test-themes.ts, printing one {name, lines} JSON record per case.
+// Oracle for tui/testdata/markdown-marked-corpus.json: renders every case with the pinned pi-tui Markdown component (marked 18.0.11) and the Chalk level-3 test theme of packages/tui/test/test-themes.ts, printing one {name, lines} JSON record per case.
 // Regenerate the golden after changing the corpus:
 //   node test/parity/testdata/markdown-marked-pi.mjs > tui/testdata/markdown-marked-golden.jsonl
 import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
-import { piMarkdown } from "../../../tui/testdata/pi_markdown_overlay.mjs";
 import assert from "node:assert/strict";
 import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
@@ -13,8 +12,7 @@ assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).versio
 assert.equal(JSON.parse(readFileSync(join(root, "node_modules/marked/package.json"), "utf8")).version, "18.0.11");
 const dist = join(root, "node_modules/@earendil-works/pi-tui/dist");
 const { Markdown: pinnedMarkdown } = await import(pathToFileURL(join(dist, "components/markdown.js")).href);
-// The pinned Markdown with Pi main 54280c4ff (hidden HTML comments) applied, as PiG follows it (D265).
-const Markdown = await piMarkdown(root + "/", pinnedMarkdown);
+const Markdown = pinnedMarkdown;
 const { setCapabilities } = await import(pathToFileURL(join(dist, "terminal-image.js")).href);
 const { Chalk } = await import(pathToFileURL(join(root, "node_modules/chalk/source/index.js")).href);
 const chalk = new Chalk({ level: 3 });
