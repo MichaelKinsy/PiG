@@ -1450,6 +1450,28 @@
       "tests": []
     },
     {
+      "id": "BF-0a547c7",
+      "title": "fix(chord): TuiScope takes its parent ctx; no sleeps in its tests; tui and surfaces join the race list",
+      "symptom": "fix(chord): TuiScope takes its parent ctx; no sleeps in its tests; tui and surfaces join the race list",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0a547c7879",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/next/tui/tui_scope_test.go::TestOptimisticNeverCallsChangedAfterDispose",
+        "chord/next/tui/tui_scope_test.go::TestScopeReadsNothingFromAWatchableWithoutAValueNeverPanicking"
+      ]
+    },
+    {
       "id": "BF-0aa31c4",
       "title": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node…",
       "symptom": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).",
@@ -10031,6 +10053,35 @@
       ]
     },
     {
+      "id": "BF-41b25ac",
+      "title": "fix(chord): surfaces followers stop before their pick watch binds and call out with no lock held…",
+      "symptom": "fix(chord): surfaces followers stop before their pick watch binds and call out with no lock held; Message(key) sends []; page state keyed by weak host identity; PageState nil and sameValue panics",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "41b25ac705",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_active_theme_test.go::TestFollowsTheRegistryThePrincipalsPickAndTheMode",
+        "chord/next/surfaces/surfaces_active_theme_test.go::TestThemeChoicesAreKeptPerPrincipal",
+        "chord/next/surfaces/surfaces_follower_stop_test.go::TestAFollowersCallbackMayStopItAndChangeTheDevice",
+        "chord/next/surfaces/surfaces_follower_stop_test.go::TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly",
+        "chord/next/surfaces/surfaces_follower_stop_test.go::TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly",
+        "chord/next/surfaces/surfaces_messages_test.go::TestAMessageWithNoArgumentsHasEmptyParamsAndRenders",
+        "chord/next/surfaces/surfaces_page_state_test.go::TestPageStateIsCollectedWithItsHost",
+        "chord/next/surfaces/surfaces_page_state_test.go::TestPageStateOfAnInterfaceReadsNilAndAStructHoldingASliceIsNeverTheSame",
+        "chord/next/surfaces/surfaces_preference_test.go::TestPreferenceIsNoneBeforeAChoiceAndEachPrincipalsOwnAfter"
+      ]
+    },
+    {
       "id": "BF-41b305d",
       "title": "Codemode rejects a `// @options:` line that is not the first line of the script with an error before the…",
       "symptom": "The line used to be ignored, so its `timeout_ms` never applied and the script ran without a deadline (Pi #10631).",
@@ -13580,6 +13631,27 @@
         "test/extension-conformance/session_skill_helpers_test.go::TestConformance_SessionAndSkillHelpersAgreeAcrossSDKs",
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
+      ]
+    },
+    {
+      "id": "BF-54c4ee3",
+      "title": "fix(chord): the platform locale is the first set variable of LC_ALL, LC_MESSAGES, LANG (C and POSIX are…",
+      "symptom": "fix(chord): the platform locale is the first set variable of LC_ALL, LC_MESSAGES, LANG (C and POSIX are en-US); an ICU mismatch fails the drift test under CI",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "54c4ee3645",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_platform_test.go::TestPlatformLocaleIsThatOfTheFirstSetVariable"
       ]
     },
     {
@@ -22205,6 +22277,30 @@
         "coding/session_tool_modifiers_port_test.go::TestToolModifierOptionsSurviveReloadPort",
         "internal/codingagent/tool_modifiers_test.go::TestApplyToolModifiersMatchesUpstream",
         "internal/codingagent/tool_modifiers_test.go::TestGetToolListErrorMatchesUpstream"
+      ]
+    },
+    {
+      "id": "BF-7434ca9",
+      "title": "fix(cli): pig --version prints Pi's bare version; remove D63",
+      "symptom": "fix(cli): pig --version prints Pi's bare version; remove D63",
+      "rootCause": "pig --version and -v print coding.UpstreamPackageVersion, as pi --version does. The composite version stays in the help banner, the startup line and the separate fields of pig version. Self-update, the installer, the npm e2e and the bench arm check read the PiG release from pig version. PIG_VERSION_FORMAT, the D63 entry, its docs and its call-site markers are removed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7434ca91ae",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "automation/release/set-version/main_test.go::TestSetVersionRejectsAREADMEWithoutTheVersionExample",
+        "automation/release/set-version/main_test.go::TestSetVersionWritesTheREADMEVersionExample",
+        "test/parity/runner/asserts_version_test.go::TestDivergeTokensAreEvaluatedAgainstOutput",
+        "test/parity/runner/asserts_version_test.go::TestExpandVersionTokensUsesThePins"
       ]
     },
     {
@@ -44480,25 +44576,6 @@
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
       ]
-    },
-    {
-      "id": "BF-e163ba8",
-      "title": "fix(chord): a native watch ends as a section of its host",
-      "symptom": "fix(chord): a native watch ends as a section of its host",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "e163ba898d",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
     },
     {
       "id": "BF-e16cbba",
