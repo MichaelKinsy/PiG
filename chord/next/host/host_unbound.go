@@ -1,6 +1,10 @@
 package host
 
-import "github.com/MichaelKinsy/PiG/chord/next/data"
+import (
+	"slices"
+
+	"github.com/MichaelKinsy/PiG/chord/next/data"
+)
 
 // Ports packages/chord/src/next/host/unbound.ts. The unbound index (dependency model §1, §4): the requests a host decided
 // cannot bind yet, by the name they wait for. Before the host's first publication every request made here, and every hold
@@ -99,6 +103,13 @@ func (i *unboundIndex) add(name string, request unboundRequest) {
 		i.names.add(name)
 	}
 	requests.add(request)
+}
+
+// Names are the names requests wait for, sorted.
+func (i *unboundIndex) Names() []string {
+	names := i.names.items()
+	slices.Sort(names)
+	return names
 }
 
 // delete: request ended or binds: it leaves the index.

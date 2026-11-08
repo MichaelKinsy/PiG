@@ -26,7 +26,8 @@ import (
 // Ports packages/chord/test/next-node/plugins/plugins.test.ts (all but "end to end: a server and a worker", which is
 // plugins_endtoend_test.go). Tests of the plugins component (slice 7c §4, §5, §7): per plugin at startup and reload (a failing
 // build, evaluation, setup; unchanged plugins untouched; added and removed plugins; the closure rule through builds),
-// `rollout` (order, stopping at a rejecting step, marks), installs through the component, GC over 200 reloads. The component
+// `rollout` (order, stopping at a rejecting step, marks), installs through the component, the app's API and required roots
+// (slice 12), plugins whose files move and removed plugins (slice 12), GC over 200 reloads. The component
 // logic that needs no Node (Build, Scripts, rollout order and marks, installs, fake steps) runs on real builds with no
 // NodeHost; whatever loads or reloads facets runs on a real Node host (docs/plan/chord-plugins-node-evaluator.md), where a
 // case that Pi writes against a LOCAL type (`host.get(Item)`, a held `item.label.value`) or a JavaScript object (WeakRefs,
@@ -61,6 +62,9 @@ type pcOptions struct {
 	install InstallOptions
 	// hostError gets what the Node hosts' hosts report in the background (NodeOptions.OnError).
 	hostError func(NodeHostError)
+	// roots are the component's roots (the root given to pcNew when nil) and api its API.
+	roots []PluginRoot
+	api   *AppApi
 }
 
 // pcComponent is the component over a root (plugins.test.ts's `component`), its reports collected, and the cache directory
@@ -114,8 +118,12 @@ func pcNew(t *testing.T, root string, opts ...pcOptions) *pcComponent {
 		node.ExecArgv = []string{"--expose-gc"}
 	}
 	reported := &pcReported{}
+	roots := chosen.roots
+	if roots == nil {
+		roots = []PluginRoot{{Path: root}}
+	}
 	created := CreatePlugins(PluginsOptions{
-		Roots: []string{root}, Kinds: pcKinds(chosen.modules), Install: chosen.install, OnError: reported.add, Node: node,
+		Roots: roots, Api: chosen.api, Kinds: pcKinds(chosen.modules), Install: chosen.install, OnError: reported.add, Node: node,
 	}, background)
 	t.Cleanup(created.Close)
 	return &pcComponent{Plugins: created, cache: cache, reported: reported}
@@ -181,7 +189,7 @@ func (h pcLoaded) label(dir string) string {
 func (c *pcComponent) coreFile(t *testing.T, name, imports, body string) CoreFacet {
 	t.Helper()
 	file := filepath.Join(t.TempDir(), "core.mjs")
-	text := `import { ` + imports + ` } from "` + c.src(t) + `next/index.ts";` + "\n" + body
+	text := `import { ` + imports + ` } from "` + c.src(t) + `index.ts";` + "\n" + body
 	if err := os.WriteFile(file, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +268,7 @@ func TestPluginsPerPluginAtStartupLeavesOutAPluginWhoseBuildFailsWhoseEvaluation
 	pcItemPlugin(t, root, "good", "good")
 	pcPluginSource(t, root, "syntax", "export default {")
 	pcPluginSource(t, root, "throws", "throw new Error(\"at import\");\nexport default {};")
-	pcPluginSource(t, root, "setup", "import { defineFacet } from \"@earendil-works/chord/next\";\nexport default defineFacet(() => { throw new Error(\"in setup\"); });")
+	pcPluginSource(t, root, "setup", "import { defineFacet } from \"@earendil-works/chord\";\nexport default defineFacet(() => { throw new Error(\"in setup\"); });")
 	c := pcNew(t, root)
 	core := c.coreFile(t, "@app/core", "constant, defineFacet, local, str", `const Item = local("test.item", { version: 1, params: {}, members: { label: str() } });
 export default defineFacet((h) => h.serve(Item, () => ({ label: constant("core") })));
@@ -313,7 +321,7 @@ func TestPluginsPerPluginAtReloadRebuildsOnePluginOfThreeOnlyItChangesTheOthersA
 	if want := (host.PluginChanges{Added: []string{}, Changed: []string{"@test/b"}, Removed: []string{}}); !reflect.DeepEqual(report.Plugins, want) {
 		t.Fatalf("plugins = %+v", report.Plugins)
 	}
-	if want := []host.ReloadedObject{{Object: "test.b", Kind: host.ReloadedObjectKind("swapped")}}; !reflect.DeepEqual(report.Objects, want) {
+	if want := []host.ReloadedObject{{Object: "test.b", Kind: host.ReloadRestarted}}; !reflect.DeepEqual(report.Objects, want) {
 		t.Fatalf("objects = %+v", report.Objects)
 	}
 	if got := []string{h.label("a"), h.label("b"), h.label("c")}; !slices.Equal(got, []string{"a1", "b2", "c1"}) {
@@ -387,14 +395,14 @@ func TestPluginsPerPluginAtReloadKeepsAConsumerEditedTogetherWithAProviderWhoseN
 	root := tempRoot(t)
 	provider := func(version string) string {
 		return strings.Join([]string{
-			`import { constant, defineFacet, local, int } from "@earendil-works/chord/next";`,
+			`import { constant, defineFacet, local, int } from "@earendil-works/chord";`,
 			`export const P = local("test.provider", { version: ` + version + `, params: {}, members: { n: int() } });`,
 			`export default defineFacet((host) => host.serve(P, () => ({ n: constant(` + version + `) })));`,
 		}, "\n")
 	}
 	consumer := func(version string) string {
 		return strings.Join([]string{
-			`import { defineFacet, local, int, str } from "@earendil-works/chord/next";`,
+			`import { defineFacet, local, int, str } from "@earendil-works/chord";`,
 			`const P = local("test.provider", { version: ` + version + `, params: {}, members: { n: int() } });`,
 			`const C = local("test.consumer", { version: 1, params: {}, members: { label: str() } });`,
 			`export default defineFacet((host) => host.serve(C, (_, self) => ({ label: self.derive([self.get(P, {}).n], ([n]) => "v` + version + ` " + n) })));`,
@@ -654,6 +662,182 @@ func TestPluginsInstallsThroughTheComponentClearsThePluginsInstallMarkAndDirties
 	}
 }
 
+// loadErr is `plugins.load(host, { kind, core: [], modules })` on a Node host that the Go side does not route: the load's
+// error with the host that is loaded all the same (a *PluginError comes once the host's load settled), closed when the test
+// ends.
+func (c *pcComponent) loadErr(t *testing.T, kind string, modules HostPackages) (host.LoadReport, error) {
+	t.Helper()
+	address := workerKind.Address(nil)
+	node, report, err := c.Load(PluginsLoad{
+		Kind: kind, Modules: modules, Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
+	}, background)
+	if node == nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = node.Close(background) })
+	return report, err
+}
+
+// plugins.test.ts › the app's API, required roots and installs (slice 12 §1, §5) › checks plugins' imports against the app's
+// API, and its required root makes load reject.
+func TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstTheAppsAPIAndItsRequiredRootMakesLoadReject(t *testing.T) {
+	app := tempRoot(t)
+	user := tempRoot(t)
+	facet := func(version string) string {
+		return `import { defineFacet } from "@acme/app/` + version + `";` + "\nexport default defineFacet(() => {});"
+	}
+	writePlugin(t, app, "core", "@test/core", map[string]string{"worker.ts": facet("v3")}, nil)
+	writePlugin(t, app, "old", "@test/old", map[string]string{"worker.ts": facet("v1")}, nil)
+	writePlugin(t, user, "mine", "@test/mine", map[string]string{"worker.ts": facet("v1")}, nil)
+	c := pcNew(t, app, pcOptions{
+		modules: []string{"@acme/app/v3"}, roots: []PluginRoot{{Path: app, Required: true}, {Path: user}},
+		api: &AppApi{Name: "@acme/app", Versions: []string{"v3"}},
+	})
+	module := filepath.Join(t.TempDir(), "v3.mjs")
+	writeFiles(t, filepath.Dir(module), map[string]string{"v3.mjs": `export { defineFacet } from "` + c.src(t) + `index.ts";`})
+	_, err := c.loadErr(t, "worker", HostPackages{"@acme/app/v3": module})
+	failure, ok := errors.AsType[*PluginError](err)
+	if !ok {
+		t.Fatalf("load error = %T %v, want a *PluginError", err, err)
+	}
+	if got := pcFailedNames(failure.Required); !slices.Equal(got, []string{"@test/old"}) {
+		t.Fatalf("required = %v", got)
+	}
+	if got := pcFailedNames(failure.Failed); !slices.Equal(got, []string{"@test/mine", "@test/old"}) {
+		t.Fatalf("failed = %v", got)
+	}
+	if want := `"@acme/app/v1": @acme/app/v1 is not available: this app provides v3`; !strings.Contains(failure.Required[0].Error.Error(), want) {
+		t.Fatalf("required error = %q, want it to contain %q", failure.Required[0].Error, want)
+	}
+}
+
+// plugins.test.ts › the app's API, required roots and installs (slice 12 §1, §5) › rejects load when a required root is
+// missing, holds a broken package or loses a name to an earlier root (Opus M3).
+func TestPluginsTheAppsAPIRequiredRootsAndInstallsRejectsLoadWhenARequiredRootIsMissingHoldsABrokenPackageOrLosesANameToAnEarlierRootOpusM3(t *testing.T) {
+	facet := "import { defineFacet } from \"@earendil-works/chord\";\nexport default defineFacet(() => {});"
+	broken := tempRoot(t)
+	writePlugin(t, broken, "core", "@app/core", map[string]string{"server.ts": facet}, nil)
+	writeFiles(t, filepath.Join(broken, "core"), map[string]string{"package.json": "{ not json"})
+	user := tempRoot(t)
+	app := tempRoot(t)
+	writePlugin(t, user, "core", "@app/core", map[string]string{"server.ts": facet}, nil)
+	writePlugin(t, app, "core", "@app/core", map[string]string{"server.ts": facet}, nil)
+	for _, each := range []struct {
+		name    string
+		roots   []PluginRoot
+		problem string
+	}{
+		{"a broken package", []PluginRoot{{Path: broken, Required: true}}, `package\.json: `},
+		{"a missing root", []PluginRoot{{Path: filepath.Join(broken, "missing"), Required: true}}, `the required root does not exist`},
+		{"a name an earlier root has", []PluginRoot{{Path: user}, {Path: app, Required: true}}, `plugin "@app/core" is in .* already`},
+	} {
+		t.Run(each.name, func(t *testing.T) {
+			c := pcNew(t, "", pcOptions{roots: each.roots})
+			_, err := c.loadErr(t, "server", nil)
+			failure, ok := errors.AsType[*PluginError](err)
+			if !ok {
+				t.Fatalf("load error = %T %v, want a *PluginError", err, err)
+			}
+			if len(failure.Problems) != 1 || !regexpMatch(each.problem, failure.Problems[0].Error) {
+				t.Fatalf("problems = %+v, want one matching %q", failure.Problems, each.problem)
+			}
+		})
+	}
+}
+
+// plugins.test.ts › the app's API, required roots and installs (slice 12 §1, §5) › installs a plugin into one of its roots and
+// marks set; refuses a directory that is no root.
+func TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRootsAndMarksSetRefusesADirectoryThatIsNoRoot(t *testing.T) {
+	root := tempRoot(t)
+	repository := gitRepository(t, "hello", map[string]string{
+		"package.json": `{"name":"@bob/hello"}`, "worker.ts": "export default { setup: () => {} };",
+	}, "v1", nil)
+	tools := tempRoot(t)
+	writeFiles(t, tools, map[string]string{"npm.mjs": "process.exit(0);"})
+	c := pcNew(t, root, pcOptions{install: InstallOptions{NpmCommand: []string{pcNode(t), filepath.Join(tools, "npm.mjs")}}})
+	c.build(t)
+	names, err := c.InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(names, []string{"@bob/hello"}) {
+		t.Fatalf("names = %v", names)
+	}
+	if marks := c.Marks(); !marks.Set {
+		t.Fatalf("marks = %+v, want set", marks)
+	}
+	built := c.build(t)
+	if len(built.Plugins) != 1 || built.Plugins["@bob/hello"].Name != "@bob/hello" {
+		t.Fatalf("built plugins = %+v", built.Plugins)
+	}
+	_, err = c.InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, tools, background)
+	if want := "plugins.installPlugin: " + tools + " is not one of the roots"; err == nil || err.Error() != want {
+		t.Fatalf("error = %v, want %q", err, want)
+	}
+}
+
+// pcItemText is the source of a worker facet serving `test.<name>` labelled label.
+func pcItemText(t *testing.T, name, label string) string {
+	t.Helper()
+	return strings.Join([]string{
+		`import { constant, defineFacet, local, str } from "@earendil-works/chord";`,
+		`const Item = local("test.` + name + `", { version: 1, params: {}, members: { label: str() } });`,
+		`export default defineFacet((host) => host.serve(Item, () => ({ label: constant(` + pcJSON(t, label) + `) })));`,
+	}, "\n")
+}
+
+// plugins.test.ts › plugins whose files move, and removed plugins (slice 12 fix round 2, Sol) › rebuilds a single-file plugin
+// that gains a same-named directory (the directory wins) without being named. (The label is read with the probe.)
+func TestPluginsPluginsWhoseFilesMoveAndRemovedPluginsRebuildsASingleFilePluginThatGainsASameNamedDirectoryTheDirectoryWinsWithoutBeingNamed(t *testing.T) {
+	root := tempRoot(t)
+	writeFiles(t, root, map[string]string{"hello.worker.ts": pcItemText(t, "hello", "from a file")})
+	c := pcNew(t, root)
+	h := c.loadWorker(t, "", nil)
+	if got := h.label("hello"); got != "from a file" {
+		t.Fatalf("label = %q, want from a file", got)
+	}
+	writePlugin(t, root, "hello", "hello", map[string]string{"worker.ts": pcItemText(t, "hello", "from a directory")}, nil)
+	c.waitMarks(t, "set", func(marks PluginsState) bool { return marks.Set })
+	built := c.build(t)
+	if len(built.Plugins) != 1 || built.Plugins["hello"].Layout != LayoutDirectory {
+		t.Fatalf("built plugins = %+v, want hello as a directory", built.Plugins)
+	}
+	step, err := c.Step("worker", h.node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.rollout(t, []RolloutStep{step}, built)
+	if got := h.label("hello"); got != "from a directory" {
+		t.Fatalf("label = %q, want from a directory", got)
+	}
+}
+
+// plugins.test.ts › plugins whose files move, and removed plugins (slice 12 fix round 2, Sol) › forgets what a removed
+// plugin's builds read: a change there no longer dirties it.
+func TestPluginsPluginsWhoseFilesMoveAndRemovedPluginsForgetsWhatARemovedPluginsBuildsReadAChangeThereNoLongerDirtiesIt(t *testing.T) {
+	root := tempRoot(t)
+	writePlugin(t, root, "contracts", "@test/contracts", map[string]string{"contract.ts": "export const c = 1;"}, nil)
+	writePlugin(t, root, "user", "@test/user", map[string]string{
+		"worker.ts": "import { c } from \"../contracts/contract.ts\";\nexport default { setup: () => c };",
+	}, nil)
+	c := pcNew(t, root)
+	c.build(t, "@test/user")
+	if err := os.RemoveAll(filepath.Join(root, "user")); err != nil {
+		t.Fatal(err)
+	}
+	c.waitMarks(t, "set", func(marks PluginsState) bool { return marks.Set })
+	// The removal rolled out (no host here): its mark clears.
+	c.rollout(t, nil, c.build(t))
+	if marks := c.Marks(); len(marks.Dirty) != 0 {
+		t.Fatalf("dirty = %v, want none", marks.Dirty)
+	}
+	writeFiles(t, filepath.Join(root, "contracts"), map[string]string{"contract.ts": "export const c = 2;"})
+	c.waitMarks(t, "contracts dirty", func(marks PluginsState) bool { return slices.Contains(marks.Dirty, "@test/contracts") })
+	if marks := c.Marks(); slices.Contains(marks.Dirty, "@test/user") {
+		t.Fatalf("dirty = %v, want @test/user not dirty", marks.Dirty)
+	}
+}
+
 // pcProbeModule is the host package `@test/probe` of the GC cases: `made(value)` keeps a WeakRef to value in the subprocess
 // (Pi's `probe.made`, whose `made` array the probe's ops read as `globalThis.__made`).
 func pcProbeModule(t *testing.T) HostPackages {
@@ -720,7 +904,7 @@ func TestPluginsGCCollectsOldFacetsOver200ReloadsTheHeapStaysFlatAfterWarmUp(t *
 	root := tempRoot(t)
 	source := func(label string) string {
 		return strings.Join([]string{
-			`import { constant, defineFacet, local, str } from "@earendil-works/chord/next";`,
+			`import { constant, defineFacet, local, str } from "@earendil-works/chord";`,
 			`import { made } from "@test/probe";`,
 			`const Item = local("test.gc", { version: 1, params: {}, members: { label: str() } });`,
 			// A closure per evaluation, which only this evaluation's code holds.
@@ -819,30 +1003,31 @@ func TestPluginsFixRound1AppliesTheRemovalsOfTheBuildItWasGivenNeverALaterDiscov
 }
 
 // pcHoldOps are the probe ops that stand in for Pi's `vi.spyOn(batch, "commit")` that aborts right after the reload's commit.
-// The reload's report waits for each started fate's `attempt.checked` (host.ts `#report`); the ops hold that promise with a
-// gate, so the wait is open, and `reached` resolves when the report began to wait (the commit is done). The test aborts the
-// Go context then, and `release` opens the gate afterwards (the swap's handover waits on the same promise).
+// The reload's report reads each restarted object's `readinessCause` (host.ts `#report`, `#checked`), the first thing it waits
+// for after the commit; the ops make that getter answer a promise held by a gate, so the wait is open, and `reached` resolves
+// when the report began to wait (the commit is done). The test aborts the Go context then, and `release` opens the gate
+// afterwards.
 func pcHoldOps(src string) string {
 	return `holdChecks: async () => {
-	const { Attempt } = await import("` + src + `next/host/attempt.ts");
-	const proto = Attempt.prototype;
-	const descriptor = Object.getOwnPropertyDescriptor(proto, "checked");
+	const { ChordObject } = await import("` + src + `host/object.ts");
+	const proto = ChordObject.prototype;
+	const descriptor = Object.getOwnPropertyDescriptor(proto, "readinessCause");
 	const gate = Promise.withResolvers();
 	const reached = Promise.withResolvers();
 	globalThis.__hold = { proto, descriptor, gate, reached };
-	Object.defineProperty(proto, "checked", {
+	Object.defineProperty(proto, "readinessCause", {
 		configurable: true,
 		get() {
 			const real = descriptor.get.call(this);
 			reached.resolve();
-			return Promise.all([real, gate.promise]).then(([cause]) => cause);
+			return gate.promise.then(() => real);
 		},
 	});
 },
 reached: async () => { await globalThis.__hold.reached.promise; },
 release: async () => {
 	const { proto, descriptor, gate } = globalThis.__hold;
-	Object.defineProperty(proto, "checked", descriptor);
+	Object.defineProperty(proto, "readinessCause", descriptor);
 	gate.resolve();
 },
 `
@@ -904,7 +1089,7 @@ func TestPluginsFixRound1LeavesAPluginOutOfAHostWhoseKindItsRebuiltFacetsNoLonge
 	if err := os.Remove(filepath.Join(root, "a", "worker.ts")); err != nil {
 		t.Fatal(err)
 	}
-	pcWrite(t, root, "a", "server.ts", "import { defineFacet } from \"@earendil-works/chord/next\";\nexport default defineFacet(() => {});")
+	pcWrite(t, root, "a", "server.ts", "import { defineFacet } from \"@earendil-works/chord\";\nexport default defineFacet(() => {});")
 	c.waitMarks(t, "set", func(marks PluginsState) bool { return marks.Set })
 	built := c.build(t, "@test/a")
 	if len(built.Removed) != 0 {
@@ -1013,7 +1198,7 @@ func TestPluginsTheReloadQueuesAndGarbageCollectionLetsARejectedNewFacetGoOnceIt
 	root := tempRoot(t)
 	source := func(bad string) string {
 		return strings.Join([]string{
-			`import { constant, defineFacet, int, local } from "@earendil-works/chord/next";`,
+			`import { constant, defineFacet, int, local } from "@earendil-works/chord";`,
 			`import { made } from "@test/probe";`,
 			`const state = { bad: ` + bad + `, big: new Array(10000).fill("payload") };`,
 			"made(state);",

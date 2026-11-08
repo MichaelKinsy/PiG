@@ -60,7 +60,7 @@ type WorkerStart struct {
 type WorkerLoad struct {
 	Kind string
 	// Core is the app's own facets that are JavaScript: modules whose default export is the facet, loaded into the NodeHost
-	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord/next`).
+	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord`).
 	Core []plugins.CoreFacet
 	// GoCore are the app's own facets that are Go: they load on the worker's Go host, and the local types the NodeHost's
 	// facets use are named by Bridged.
@@ -374,6 +374,10 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
 	}, ctx)
 	if err != nil {
+		// A *plugins.PluginError comes with the loaded host (Pi's `host` is the caller's to stop): the worker ends instead.
+		if node != nil {
+			_ = node.Close(context.WithoutCancel(ctx))
+		}
 		return host.LoadReport{}, err
 	}
 	nodeLink.Store(node)

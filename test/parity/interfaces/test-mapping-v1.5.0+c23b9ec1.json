@@ -2873,38 +2873,73 @@
     },
     {
       "path": "packages/chord/test/node/plugins/base-inputs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6a00a348d8e11c0febd25e446cb2b81bbfe58e4ef977920c83cd11b3cedb5c3e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6a00a348d8e11c0febd25e446cb2b81bbfe58e4ef977920c83cd11b3cedb5c3e",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_baseinputs_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/build.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0cf142af28726b7ef9b76f515d07340ecac657d6153556e2a7522073a7f7485b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0cf142af28726b7ef9b76f515d07340ecac657d6153556e2a7522073a7f7485b",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_build_test.go",
+        "chord/nextnode/plugins/plugins_cssmodules_test.go"
+      ],
+      "rationale": "All 30 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/discover.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c2c44f15e621cbbf7f1bdcda1027e00bcaeeaad4c2f9a6f12f860854028249ea"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c2c44f15e621cbbf7f1bdcda1027e00bcaeeaad4c2f9a6f12f860854028249ea",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_discover_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/evaluate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7ff1ce2c08a4b03bfe247b67dbbca3e8b981c9016a2049ac474d3558a0932ea5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7ff1ce2c08a4b03bfe247b67dbbca3e8b981c9016a2049ac474d3558a0932ea5",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_evaluate_test.go",
+        "chord/nextnode/plugins/plugins_node_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/install.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ae9f02459719ce69b1f910b53a22187379796cca8304a21ffbc80ae7bb123472"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ae9f02459719ce69b1f910b53a22187379796cca8304a21ffbc80ae7bb123472",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_install_test.go"
+      ],
+      "rationale": "All 14 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/plugins.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2130f7a727ac19aa03a900b8a8ce9c3d56a90ba8ac7e96c5524f3dc0b99a7c8d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2130f7a727ac19aa03a900b8a8ce9c3d56a90ba8ac7e96c5524f3dc0b99a7c8d",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_endtoend_test.go",
+        "chord/nextnode/plugins/plugins_examples_test.go",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go",
+        "chord/nextnode/plugins/plugins_node_test.go",
+        "chord/nextnode/plugins/plugins_plugins_test.go",
+        "chord/nextnode/plugins/plugins_runtime_test.go"
+      ],
+      "rationale": "All 25 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/runtime.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:932547aca8c5d5bd5633a46ab4f747aa131c97a590e82827a4e8d23095a9598c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:932547aca8c5d5bd5633a46ab4f747aa131c97a590e82827a4e8d23095a9598c",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_runtime_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/stack.test.ts",
@@ -2922,8 +2957,14 @@
     },
     {
       "path": "packages/chord/test/node/plugins/watcher.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c7f0de0a08218fae9c2d89014cb4a498304b2bd5b82a213dd00622532e3e30d7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c7f0de0a08218fae9c2d89014cb4a498304b2bd5b82a213dd00622532e3e30d7",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_watcher_test.go",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go",
+        "chord/nextnode/plugins/plugins_watcher_linux_test.go"
+      ],
+      "rationale": "All 23 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/react/hooks.test.ts",
