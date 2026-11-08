@@ -1151,10 +1151,11 @@ func WorkerCore(init WorkerInit, session SessionInit, liveness *Liveness, locati
 			checks := objectSelf.Registry(RelocationChecks.Registry)
 			return contracts.Implementation{Variant: "server", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 				"prepare": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					// First use in this section; then the method waits for Durable, whose publications need the host's loop.
-					_, _ = harnessOf()
-					chordctx.Suspend(ctx)
 					frozen := liveness.Freeze()
+					// Pi's async handler runs up to its first await inside the section that admits the call: the freeze. The
+					// inspection waits for the Durable session's line, whose commits publish in sections of this host's loop,
+					// so a handler that waits for it without suspending holds the loop the publication needs.
+					chordctx.Suspend(ctx)
 					result, err := prepareRelocation(ctx, args, frozen, harnessOf, checks, location)
 					if err != nil || !result.accepted {
 						if frozen {
@@ -1171,9 +1172,6 @@ func WorkerCore(init WorkerInit, session SessionInit, liveness *Liveness, locati
 					return nil, nil
 				},
 				"relocate": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					// First use in this section; then the method waits for Durable, whose publications need the host's loop.
-					_, _ = harnessOf()
-					chordctx.Suspend(ctx)
 					if !liveness.Relocating() {
 						return nil, errors.New("Relocation was not prepared")
 					}
@@ -1185,6 +1183,10 @@ func WorkerCore(init WorkerInit, session SessionInit, liveness *Liveness, locati
 					if err != nil {
 						return nil, err
 					}
+					// The relocation commits to the Durable session (the conversations' agent cwds) and awaits the commit's
+					// publication, a section of this host's loop: suspend, or the section holds the loop that publication
+					// waits for (the first await of Pi's async handler).
+					chordctx.Suspend(ctx)
 					if err := parts.Relocate(ctx, next); err != nil {
 						return nil, err
 					}

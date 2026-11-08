@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -44,49 +43,6 @@ func HostAddress(directory string) (string, error) {
 		return "@p2-terminals-" + key, nil
 	}
 	return filepath.Join(os.TempDir(), "p2-"+key+"-t.sock"), nil
-}
-
-type executableVersion struct {
-	path    string
-	size    int64
-	modTime time.Time
-	version string
-}
-
-var (
-	versionMu    sync.Mutex
-	versionCache executableVersion
-)
-
-// HostVersion is the terminal host's code version: a hash of the p2 executable it runs (Pi hashes the files of the host,
-// `terminalHostVersion`; here the host is the executable, which carries ghostty-vt.wasm too). A hash of an unchanged file
-// is remembered.
-func HostVersion() (string, error) {
-	path, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	info, err := os.Stat(path)
-	if err != nil {
-		return "", err
-	}
-	versionMu.Lock()
-	defer versionMu.Unlock()
-	if cached := versionCache; cached.path == path && cached.size == info.Size() && cached.modTime.Equal(info.ModTime()) {
-		return cached.version, nil
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
-	}
-	version := hex.EncodeToString(hash.Sum(nil))[:16]
-	versionCache = executableVersion{path: path, size: info.Size(), modTime: info.ModTime(), version: version}
-	return version, nil
 }
 
 func connectOnce(address string) (net.Conn, error) { return net.Dial("unix", address) }
