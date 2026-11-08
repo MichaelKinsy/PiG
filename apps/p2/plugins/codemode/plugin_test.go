@@ -28,20 +28,28 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 			return p2test.StubMembers{State: map[string]any{"settings": settings}}
 		}}},
 	})
-	// A registry's value is read inside a section of the host's loop (its source does): its contributions change there.
+	// A registry's value is read inside a section of the host's loop (`RegistryValue`): its contributions change there.
 	extension := func() *p2runtime.P2Extension {
-		value, err := registryCurrent(fixture.Host, p2runtime.Extensions.Registry)
+		value, err := registryValue(fixture.Host, p2runtime.Extensions.Registry)
 		if err != nil {
-			t.Logf("table: %v", err)
+			t.Logf("registry: %v", err)
 			return nil
 		}
-		found, _ = table.Get("codemode")
+		table, ok := value.(*p2runtime.KeyedTable[*p2runtime.P2Extension])
+		if !ok {
+			return nil
+		}
+		found, _ := table.Get("codemode")
 		return found
 	}
 	switchIs := func(want bool) func() (bool, error) {
 		return func() (bool, error) {
-			value, err := registryCurrent(fixture.Host, p2runtime.ExtensionSwitches.Registry)
+			value, err := registryValue(fixture.Host, p2runtime.ExtensionSwitches.Registry)
 			if err != nil {
+				return false, nil
+			}
+			table, ok := value.(*p2runtime.KeyedTable[*bool])
+			if !ok {
 				return false, nil
 			}
 			on, _ := table.Get("codemode")
@@ -101,11 +109,17 @@ func TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemo
 	wait(func() (bool, error) { return extension() != nil, nil }, "the extension again")
 }
 
-// registryCurrent is a registry's value now, read as the host's section gives it (the source reads inside one).
-func registryCurrent(h host.Host, registry registries.Registry[any, any]) (any, error) {
+// registryValue is a registry's current value (the source reads inside a section of the host's loop); an error while it has
+// none, so a poll tries again.
+func registryValue(h host.Host, registry registries.Registry[any, any]) (value any, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("registry %s: %v", registry.Name, recovered)
+		}
+	}()
 	source, err := h.Registry(p2test.Background, registry, host.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return source.Current()
+	return source.Value(), nil
 }
