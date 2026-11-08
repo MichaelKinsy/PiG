@@ -1,7 +1,7 @@
 # Differences between go.yaml.in/yaml/v3 and internal/yaml12 on the corpus of v3_differential_test.go. Columns: group, kind, document, v3 reading, yaml12 reading.
 # Readings are the document as a JSON-like value (v3: yaml.Unmarshal into an any; yaml12: ParseOrdered); keys are sorted. kind is meaning (both accept, different value), v3-rejects, or yaml12-rejects.
 # group edge: 250 documents, 181 read the same or rejected by both, meaning 34, v3-rejects 25, yaml12-rejects 10
-# group file: 39 documents, 39 read the same or rejected by both
+# group file: 40 documents, 40 read the same or rejected by both
 # group oracle: 778 documents, 395 read the same or rejected by both, meaning 72, v3-rejects 266, yaml12-rejects 45
 # group piglet-tests: 712 documents, 712 read the same or rejected by both
 edge	meaning	"- |\n x\n- >\n y"	v3="[\"x\\n\",\"y\"]"	yaml12="[\"x\\n\",\"y\\n\"]"
