@@ -963,8 +963,8 @@ rationale = "`buildFacet`: blocking `BuildFacet` on esbuild's Go API; a missing 
 path = "packages/chord/src/node/plugins/css-modules.ts"
 disposition = "translated"
 contracts = ["awaited"]
-evidence = ["test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildScopesACSSModulesClassNamesToItsFileTheImportGivingTheMapping", "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildGivesACSSModulesURLAssetsItsImportComposesAndEscapedClassNames"]
-rationale = "`scopeCssModule`: blocking `ScopeCSSModule`, one small esbuild build per CSS module, called from the facet build's OnLoad; the mapping module is parsed by `parseClassMap` (esbuild's own object literal) where Pi runs it in a `vm` context, a fuzzed parser, not an evaluation (lane chord-plugins)."
+evidence = ["test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildScopesACSSModulesClassNamesToItsFileTheImportGivingTheMapping", "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildGivesACSSModulesURLAssetsItsImportComposesAndEscapedClassNames", "test:chord/nextnode/plugins/plugins_cssmodules_pi_test.go#TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase", "test:chord/nextnode/plugins/plugins_cssmodules_node_test.go#TestScopeCSSModuleGivesWhatNodeGivesForEsbuildsMappingModuleOverGeneratedCases"]
+rationale = "`scopeCssModule`: blocking `ScopeCSSModule`, one small esbuild build per CSS module, called from the facet build's OnLoad; the mapping module runs in a Node subprocess (one per facet build with a CSS module, ended with the build, its reads bounded by ctx and NodeOptions.ReadyTimeout), the `vm` call, spread and `JSON.stringify` of Pi's, so the mapping is the JavaScript engine's (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/discover.ts"

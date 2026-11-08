@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -84,5 +85,34 @@ func TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEac
 		if inputs[filepath.Join(dir, name)] != sha256Hex(text) {
 			t.Errorf("%s: hash = %s", name, inputs[filepath.Join(dir, name)])
 		}
+	}
+}
+
+// hashFiles gives each file's hash in the order of the files, "" for one that cannot be read, however many there are.
+func TestHashFilesGivesEachFilesHashInOrderAndNothingForAnUnreadableOne(t *testing.T) {
+	dir := t.TempDir()
+	var files, want []string
+	for i := range 3*maxComparers + 1 {
+		file := filepath.Join(dir, "f"+strconv.Itoa(i)+".ts")
+		text := "export const n = " + strconv.Itoa(i) + ";"
+		if err := os.WriteFile(file, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, file)
+		want = append(want, ContentHash([]byte(text)))
+	}
+	files = append(files, filepath.Join(dir, "gone.ts"), dir)
+	want = append(want, "", "")
+	got := hashFiles(files)
+	if len(got) != len(want) {
+		t.Fatalf("%d hashes for %d files", len(got), len(files))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("hash of %s = %q, want %q", files[i], got[i], want[i])
+		}
+	}
+	if got := hashFiles(nil); len(got) != 0 {
+		t.Errorf("hashes of no file = %v", got)
 	}
 }
