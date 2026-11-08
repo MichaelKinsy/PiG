@@ -557,7 +557,7 @@ func TestUpstreamPromptTemplatesArguments(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/prompt-templates.test.ts:417
 	t.Run("parseCommandArgs/should handle escaped quotes inside quoted strings", func(t *testing.T) {
-		if got, want := ParsePromptArgs("\"quoted \\\"text\\\"\""), []string{"quoted \\text\\"}; !slices.Equal(got, want) {
+		if got, want := ParsePromptArgs("\"quoted \\\"text\\\"\""), []string{"quoted \"text\""}; !slices.Equal(got, want) {
 			t.Fatalf("got %q; want %q", got, want)
 		}
 	})

@@ -3,17 +3,15 @@ package subprocess
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Pi's regression #8092 (test/suite/regressions/8092-extension-realpath-jiti.test.ts, Pi e6865ec7e): an extension entry is realpath'd before jiti imports it,
 // so an extension whose declared dependency is only reachable beside it in the pnpm virtual store loads through the symlink pnpm puts in node_modules.
 func TestExtensionEntryIsRealpathedBeforeTheNodeImport(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("the fixture links a directory; Pi's test uses a junction on Windows, which os.Symlink does not create")
-	}
 	for _, isolation := range []string{"shared-ok", "isolated"} {
 		t.Run(isolation, func(t *testing.T) {
 			t.Parallel()
@@ -33,9 +31,8 @@ func TestExtensionEntryIsRealpathedBeforeTheNodeImport(t *testing.T) {
 			if err := os.MkdirAll(topLevel, 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.Symlink(filepath.Join(storePkgDir, "ext"), filepath.Join(topLevel, "ext")); err != nil {
-				t.Fatal(err)
-			}
+			// Pi's test links a junction on Windows, which RequireDirectoryLink creates there.
+			testenv.RequireDirectoryLink(t, filepath.Join(storePkgDir, "ext"), filepath.Join(topLevel, "ext"))
 			entry := filepath.Join(topLevel, "ext", "index.ts")
 
 			config := ExtConfig{Name: "realpath", Source: entry, Enabled: true, Isolation: isolation}

@@ -1,5 +1,5 @@
-import { Marked } from "../../../../../pi-tui.mjs";
-import { render } from "../../../../../grok-mermaid/dist/index.js";
+import { getCapabilities, Marked } from "../../../../../pi-tui.mjs";
+import { render, toAnsi } from "../../../../../lovely-mermaid/dist/index.js";
 const markdownParser = new Marked();
 function isMermaid(token) {
     return token.type === "code" && token.lang?.trim().split(/\s+/, 1)[0]?.toLowerCase() === "mermaid";
@@ -23,31 +23,36 @@ function codeSpan(line) {
     const padding = content.startsWith("`") || content.endsWith("`") ? " " : "";
     return `${fence}${padding}${content}${padding}${fence}`;
 }
-function styleSpan(span, theme) {
-    switch (span.cls) {
-        case "border":
-            return theme.fg("borderMuted", span.text);
-        case "text":
-            return theme.fg("text", span.text);
-        case "edge":
-            return theme.fg("accent", span.text);
-        case "edgeLabel":
-            return theme.fg("muted", span.text);
-        case "title":
-            return theme.fg("accent", theme.bold(span.text));
-        case "none":
-            return span.text;
-    }
-}
 function themedLines(art, theme) {
-    return art.styled.map((row) => row.map((span) => styleSpan(span, theme)).join(""));
+    const foreground = (color) => theme.getFgAnsi(color).slice(2, -1);
+    const ansiTheme = {
+        border: foreground("borderMuted"),
+        text: foreground("text"),
+        edge: foreground("accent"),
+        edgeLabel: foreground("text"),
+        title: `1;${foreground("accent")}`,
+    };
+    const linkLabels = getCapabilities().hyperlinks;
+    const displayArt = {
+        ...art,
+        // Only osc 8 the text, not the whole box.
+        styled: art.styled.map((row) => row.map((span) => {
+            if (span.href === undefined || (linkLabels && span.role === "text"))
+                return span;
+            const unlinked = { ...span };
+            delete unlinked.href;
+            return unlinked;
+        })),
+    };
+    return toAnsi(displayArt, ansiTheme);
 }
 /** Create a transformer that replaces top-level Mermaid code blocks with Unicode terminal diagrams. */
 export function createMermaidMarkdownTransformer(options) {
     return (markdown, context) => {
         const mode = options.getMode();
+        // Diagrams render in user and assistant text and in model-written summaries, not in thinking or other surfaces.
         if (mode === "off" ||
-            context.messageType === "assistant-thinking" ||
+            (context.messageType !== "user" && context.messageType !== "assistant" && context.messageType !== "summary") ||
             (context.isStreaming && mode !== "streaming")) {
             return markdown;
         }

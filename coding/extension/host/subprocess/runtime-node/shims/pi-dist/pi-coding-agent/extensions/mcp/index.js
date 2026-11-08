@@ -26,15 +26,16 @@
  * current session for registered servers.
  */
 import { join, resolve } from "node:path";
+import { createMcpToolName, mcpNamespace } from "../../../pi-mcp/index.js";
 import { getAgentDir } from "../../config.js";
-import { mcpNamespace } from "../../core/mcp-servers.js";
+import { sliceHead } from "../../core/tools/truncate.js";
 import { openBrowser } from "../../utils/open-browser.js";
 import { CODEMODE_TOOL_NAME } from "../codemode/tool.js";
 import { TOOL_SEARCH_TOOL_NAME } from "../tool-search/tool.js";
 import { getMcpToolExposure, loadMcpConfig, updateMcpServerConfig, } from "./config.js";
 import { createMcpResourceToolDefinitions, LIST_MCP_RESOURCE_TEMPLATES_TOOL, LIST_MCP_RESOURCES_TOOL, READ_MCP_RESOURCE_TOOL, } from "./resources.js";
 import { loadMcpRuntime } from "./runtime.lazy.js";
-import { createMcpToolDefinition, createMcpToolName, createMcpToolRenderers } from "./tools.js";
+import { createMcpToolDefinition, createMcpToolRenderers } from "./tools.js";
 import { showMcpManager } from "./ui.js";
 const DEFAULT_STARTUP_WAIT_MS = 10_000;
 const RESOURCE_TOOL_NAMES = new Set([
@@ -93,7 +94,7 @@ function serversSectionIntro(reaches) {
 function truncate(text, max) {
     if (text.length <= max)
         return text;
-    return max <= 1 ? "" : `${text.slice(0, max - 1).trimEnd()}…`;
+    return max <= 1 ? "" : `${sliceHead(text, max - 1).trimEnd()}…`;
 }
 /** First line of the configured description, or of the server instructions once connected. */
 function serverSummary(server) {

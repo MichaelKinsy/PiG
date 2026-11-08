@@ -19,7 +19,7 @@
 
 ;;; ---------------------------------------------------------------- the setup session manager
 
-(defstruct (setup-manager (:include session-manager) (:constructor make-setup-manager (ctx)))
+(defstruct (setup-manager (:include session-manager (replicated nil)) (:constructor make-setup-manager (ctx)))
   "The session manager of the setup callback of ctx-new-session: the reads of ctx-session-manager and the appends that seed the replacement Session.")
 
 (defun sess-write (manager method &rest members)

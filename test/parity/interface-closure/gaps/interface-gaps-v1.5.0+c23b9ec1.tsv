@@ -891,7 +891,7 @@ pkg:coding-agent/.#MarkdownTransformerRegistration::property:messageTypes	coding
 pkg:coding-agent/.#MarkdownTransformerRegistration::property:transformer	coding-agent	child-gap	
 pkg:coding-agent/.#MarkdownTransformerRegistration::property:transformer::call:0	coding-agent	child-gap	
 pkg:coding-agent/.#ReadOperations	coding-agent	child-gap	internal/codingagent/tools/read.go#ReadOperations
-pkg:coding-agent/.#ReadOperations::property:createReadStream	coding-agent	member-missing	internal/codingagent/tools/read.go#ReadOperations
+pkg:coding-agent/.#ReadOperations::property:createReadStream	coding-agent	signature-mismatch	internal/codingagent/tools/read.go#ReadOperations.CreateReadStream
 pkg:coding-agent/.#SkillInvocationMessageComponent	coding-agent	child-gap	tui/skill_invocation.go#SkillInvocationMessageComponent
 pkg:coding-agent/.#SkillInvocationMessageComponent::construct:0	coding-agent	signature-mismatch	tui/skill_invocation.go#NewSkillInvocationMessageComponent
 pkg:durable/.#Agent	durable	type-mismatch	durable/harness_types.go#Agent

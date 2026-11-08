@@ -5723,6 +5723,30 @@ function trimPartialClosingFences(tokens) {
   token.text = token.text.slice(0, -lastLine.length).replace(/\n$/, "");
 }
 __name(trimPartialClosingFences, "trimPartialClosingFences");
+var HTML_COMMENT_REGEX = /<!--[\s\S]*?(?:-->|$)/g;
+function stripHtmlComments(html) {
+  return html.replace(HTML_COMMENT_REGEX, "");
+}
+__name(stripHtmlComments, "stripHtmlComments");
+function removeHtmlCommentBlocks(tokens) {
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const token = tokens[i];
+    if (token.type === "list") {
+      for (const item of token.items)
+        removeHtmlCommentBlocks(item.tokens);
+    } else if (token.type === "blockquote") {
+      removeHtmlCommentBlocks(token.tokens ?? []);
+    } else if (token.type === "html" && stripHtmlComments(token.raw).trim() === "") {
+      tokens.splice(i, 1);
+      if (tokens[i]?.type === "space" && (i === 0 || tokens[i - 1]?.type === "space")) {
+        tokens.splice(i, 1);
+      } else if (i === tokens.length && tokens[i - 1]?.type === "space") {
+        tokens.splice(--i, 1);
+      }
+    }
+  }
+}
+__name(removeHtmlCommentBlocks, "removeHtmlCommentBlocks");
 var markdownParser = new Marked();
 markdownParser.setOptions({
   tokenizer: new MarkdownTokenizer()
@@ -5801,6 +5825,7 @@ var Markdown = class {
     if (!tokens) {
       tokens = markdownParser.lexer(normalizedText);
       trimPartialClosingFences(tokens);
+      removeHtmlCommentBlocks(tokens);
       this.cachedTokens = new WeakRef({ source: normalizedText, tokens });
     }
     const reuseBlocks = Object.keys(tokens.links).length === 0;
@@ -6072,7 +6097,7 @@ var Markdown = class {
         break;
       case "html":
         if ("raw" in token && typeof token.raw === "string") {
-          lines.push(this.applyDefaultStyle(token.raw.trim()));
+          lines.push(this.applyDefaultStyle(stripHtmlComments(token.raw).trim()));
         }
         break;
       case "space":
@@ -6093,7 +6118,13 @@ var Markdown = class {
       const segments = text.split("\n");
       return segments.map((segment) => applyText(segment)).join("\n");
     }, "applyTextWithNewlines");
-    for (const token of tokens) {
+    let dropLeadingSpace = false;
+    for (let i = 0; i < tokens.length; i++) {
+      let token = tokens[i];
+      if (dropLeadingSpace && token.type === "text" && !token.tokens?.length && /^[ \t]/.test(token.text)) {
+        token = { ...token, text: token.text.replace(/^[ \t]+/, "") };
+      }
+      dropLeadingSpace = false;
       switch (token.type) {
         case "latex": {
           const latexToken = token;
@@ -6151,7 +6182,9 @@ var Markdown = class {
           break;
         }
         case "html":
-          if ("raw" in token && typeof token.raw === "string") {
+          if (token.raw.startsWith("<!--")) {
+            dropLeadingSpace = i === 0 || /[ \t]$/.test(tokens[i - 1].raw);
+          } else {
             result += applyTextWithNewlines(token.raw);
           }
           break;
@@ -9881,8 +9914,7 @@ var TuiAltScreen = class extends TuiBase {
     const fullRedraw = this.previousScreen.length === 0 || this.previousScreenWidth !== width || this.previousScreenHeight !== height;
     const changedRows = screen.map((line, row) => line !== this.previousScreen[row]);
     const imageAnchorsNeedRedraw = screen.some((line, row) => changedRows[row] && (isImageLine3(line) || isImageLine3(this.previousScreen[row] ?? "")));
-    const isWezTerm = Boolean(process.env.WEZTERM_PANE) || process.env.TERM_PROGRAM?.toLowerCase() === "wezterm";
-    const imageCellsNeedRedraw = !imageAnchorsNeedRedraw && isWezTerm && this.imageProtocol === "kitty" && changedRows.some(Boolean) && screen.some((line, row) => {
+    const imageCellsNeedRedraw = !imageAnchorsNeedRedraw && this.imageProtocol === "kitty" && changedRows.some(Boolean) && screen.some((line, row) => {
       const placementRows = getKittyImagePlacementRows(line);
       if (placementRows === void 0)
         return false;
@@ -9908,7 +9940,7 @@ var TuiAltScreen = class extends TuiBase {
         buffer += deleteAllKittyPlacements();
     }
     buffer += preparedKittyScreen.evictedImageDeletion;
-    const drawKittyImagesLast = redrawImages && this.imageProtocol === "kitty" && screen.some(isImageLine3) && isWezTerm;
+    const drawKittyImagesLast = redrawImages && this.imageProtocol === "kitty" && screen.some(isImageLine3);
     if (drawKittyImagesLast) {
       for (let row = 0; row < height; row++) {
         if (!fullRedraw && !imagesNeedRedraw && screen[row] === this.previousScreen[row])
