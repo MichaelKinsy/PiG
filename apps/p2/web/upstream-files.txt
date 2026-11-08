@@ -524,3 +524,6 @@ plugins/projects/contract.ts
 plugins/workspace/protocol.ts
 plugins/ports/protocol.ts
 plugins/locations/contract.ts
+plugins/conversations/contract.ts
+test/p2/outbox.test.ts
+test/p2/session-start.test.ts
