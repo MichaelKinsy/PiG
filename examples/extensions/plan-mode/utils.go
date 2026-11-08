@@ -1,7 +1,6 @@
 package planmode
 
 import (
-	"math"
 	"regexp"
 	"strconv"
 	"strings"

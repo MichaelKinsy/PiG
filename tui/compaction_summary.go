@@ -21,6 +21,7 @@ type CompactionSummaryMessageComponent struct {
 	tokensBefore  int
 	expanded      bool
 	markdownTheme *MarkdownTheme
+	surface       markdownSurface
 }
 
 // CompactionSummaryMessage is the part of Pi's CompactionSummaryMessage (coding-agent core/messages.ts:62) that
@@ -69,9 +70,9 @@ func (c *CompactionSummaryMessageComponent) updateDisplay() {
 	content.Add(NewSpacer(1))
 	if c.expanded {
 		header := "**Compacted from " + tokenStr + " tokens**\n\n"
-		content.Add(finishedMarkdown(NewMarkdownWithOptions(header+c.summary, 0, 0, c.markdownTheme, &DefaultTextStyle{
+		content.Add(c.surface.markdown(header, c.summary, c.markdownTheme, &DefaultTextStyle{
 			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
-		}, nil)))
+		}))
 	} else {
 		content.Add(NewText(theme.Fg("customMessageText", "Compacted from "+tokenStr+" tokens (") +
 			theme.Fg("dim", AppKeyText("app.tools.expand", "ctrl+o")) +
@@ -111,4 +112,10 @@ func formatThousands(n int) string {
 // SetOutputPad is Pi's setOutputPad(outputPad): the horizontal padding of the Box is the outputPad setting.
 func (c *CompactionSummaryMessageComponent) SetOutputPad(outputPad int) {
 	c.SetPaddingX(outputPad)
+}
+
+// SetMarkdownTransform installs the display-only Markdown transform of the expanded body, which sees the summary without the header, and the state it reads for the Markdown render cache key. It is Pi's markdownTransformers, messageId and timestamp of the compaction summary component; a nil transform shows the Markdown as it is.
+func (c *CompactionSummaryMessageComponent) SetMarkdownTransform(transform func(markdown string, availableWidth int) string, state func() string) {
+	c.surface.transform, c.surface.state = transform, state
+	c.updateDisplay()
 }
