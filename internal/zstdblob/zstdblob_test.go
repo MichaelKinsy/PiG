@@ -4,13 +4,28 @@ package zstdblob
 
 import (
 	"bytes"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"runtime"
+	"slices"
+	"strings"
 	"testing"
 )
 
+// committedFrames are the zstd frames the repository embeds, relative to the module root. A frame that is not listed fails TestEveryCommittedFrameIsListed, so it cannot escape TestCommittedFramesAreWhatEncodeWrites.
+var committedFrames = []string{
+	"CHANGELOG.md.zst",
+	"extensions/sdk-lisp/sdk.zst",
+	"extensions/sdk-py/sdk.zst",
+	"extensions/sdk-rs/sdk.zst",
+	"internal/gosdkbundle/sdk.zst",
+	"internal/pigdocs/pages.zst",
+}
+
 func TestRoundTrip(t *testing.T) {
 	for _, raw := range [][]byte{[]byte("x"), bytes.Repeat([]byte("embedded text "), 5000)} {
-		frame := Encode(raw)
+		frame := EncodeLibrary(raw)
 		got, err := Decode(frame)
 		if err != nil {
 			t.Fatal(err)
@@ -22,7 +37,7 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func TestDecodeRejectsDamage(t *testing.T) {
-	frame := Encode(bytes.Repeat([]byte("embedded text "), 5000))
+	frame := EncodeLibrary(bytes.Repeat([]byte("embedded text "), 5000))
 	if _, err := Decode(frame[:len(frame)/2]); err == nil {
 		t.Fatal("a truncated frame decoded")
 	}
@@ -34,7 +49,7 @@ func TestDecodeRejectsDamage(t *testing.T) {
 // Decoding must leave nothing behind: no goroutine and a result of exactly the recorded size.
 func TestDecodeSizesResultExactlyAndLeavesNoGoroutines(t *testing.T) {
 	raw := bytes.Repeat([]byte("embedded text "), 5000)
-	frame := Encode(raw)
+	frame := EncodeLibrary(raw)
 	before := runtime.NumGoroutine()
 	got, err := Decode(frame)
 	if err != nil {
@@ -48,21 +63,78 @@ func TestDecodeSizesResultExactlyAndLeavesNoGoroutines(t *testing.T) {
 	}
 }
 
-// An input above zstdCLIMinimum is encoded by the zstd command when there is one and by the library otherwise; either way the frame decodes to the input and records its size, and the command's frame is no larger than the library's.
-func TestEncodeLargeInputRoundTripsAndIsNoLargerThanTheLibrary(t *testing.T) {
-	var raw []byte
-	for i := 0; len(raw) < 3*zstdCLIMinimum; i++ {
-		raw = append(raw, []byte("line "+string(rune('a'+i%26))+" of embedded text, number "+string(rune('0'+i%10))+"\n")...)
+// pinnedCLI returns when the zstd command that writes the committed frames is on PATH. Without it the test is skipped on a developer's machine, where the generators say what to do (RequirePinnedCLI), and fails where CI sets the environment: a CI that has lost the pinned command would otherwise stop checking the frames.
+func pinnedCLI(t *testing.T) {
+	t.Helper()
+	err := RequirePinnedCLI()
+	if err == nil {
+		return
 	}
-	frame := Encode(raw)
-	got, err := Decode(frame)
-	if err != nil || !bytes.Equal(got, raw) {
-		t.Fatalf("round trip: %v", err)
+	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" {
+		t.Fatal(err)
 	}
-	if _, ok := frameSize(frame); !ok {
-		t.Fatal("the frame records no content size")
+	t.Skip(err)
+}
+
+func TestPinnedCLIVersionIsInstalledWhereCIRuns(t *testing.T) {
+	pinnedCLI(t)
+	if version, err := CLIVersion(); err != nil || version != PinnedCLIVersion {
+		t.Fatalf("zstd %q, %v; want %s", version, err, PinnedCLIVersion)
 	}
-	if library := encodeWithLibrary(raw); len(frame) > len(library) {
-		t.Fatalf("Encode made %d bytes, the library %d", len(frame), len(library))
+}
+
+// Encode is what every committed frame is: decoding a frame and encoding the result from scratch (no Reuse, which keeps any frame that decodes to the same bytes) gives the same bytes. A frame written by another zstd version, by the library or by hand differs, and a regeneration on a machine with the pinned command would then change it.
+func TestCommittedFramesAreWhatEncodeWrites(t *testing.T) {
+	pinnedCLI(t)
+	root := filepath.Join("..", "..")
+	for _, name := range committedFrames {
+		t.Run(name, func(t *testing.T) {
+			frame, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, err := Decode(frame)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if again := Encode(raw); !bytes.Equal(again, frame) {
+				t.Fatalf("%s is %d bytes and Encode of its content is %d: regenerate it in the tern-ci image (zstd %s), e.g. go generate for the file's package", name, len(frame), len(again), PinnedCLIVersion)
+			}
+		})
+	}
+}
+
+// A frame added to the repository joins committedFrames, so the check above covers it.
+func TestEveryCommittedFrameIsListed(t *testing.T) {
+	root := filepath.Join("..", "..")
+	var found []string
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			switch entry.Name() {
+			case ".git", "node_modules", ".upstream", ".cache", "target":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(path, ".zst") {
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			found = append(found, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(found)
+	want := slices.Clone(committedFrames)
+	slices.Sort(want)
+	if !slices.Equal(found, want) {
+		t.Fatalf("zstd files in the repository %v, listed in committedFrames %v", found, want)
 	}
 }
