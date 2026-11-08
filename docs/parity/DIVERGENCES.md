@@ -3828,3 +3828,69 @@ Call-site markers: `internal/codingagent/interactive_tree.go` (`navigateTree`), 
 Evidence: `TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap` (red without the hold: the editor painted during the navigation), `TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose`, `TestTreeDialogsOfOtherContextsNeverStartTheHold`, `TestTreeNavigationPaintsAnExtensionDialog` and `TestTreeNavigationPaintsAnExtensionOverlay` (`internal/codingagent/interactive_tree_frames_test.go`); scenario `tree/15-tree-navigation-no-stale-frame` (fails 42 of 119 sampled panes with `holdFrames` a no-op).
 
 Parity allowance: scenario `tree/15-tree-navigation-no-stale-frame` runs a `session_before_tree` handler that awaits 600 ms. Both programs end on the same pane (`output_equal`). PiG's pane, sampled every 10 ms from the choice until "Navigated to selected point" shows, never shows the old leaf with the prompt gone (`pig_no_stale_frames`); Pi's samples are not asserted, because Pi shows that pane throughout the await.
+
+## D350 OpenCode Zen and Go Claude models send per-message effort
+
+What: PiG's catalog generator (`internal/modelgen/providers/opencode.go`) gives OpenCode Zen and Go Claude models per-message effort and `block_binding: drop_block`, as Pi main does. Pi 1.5.0 sends neither. Ports Pi main 9ee7586a9 (`fix(ai): send drop_block for OpenCode Zen and Go Claude models`, #10954), which is not in Pi 1.5.0.
+
+Why: OpenCode serves these Claude models over an Anthropic-messages endpoint that needs the per-message effort and the drop_block binding to keep thinking blocks coherent across turns.
+
+Pi bug: 1.5.0 omits both for OpenCode Claude models.
+
+Scope: the OpenCode Zen and Go Claude records in the generated catalog.
+
+Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-07; PiG carried the change since 9fcb1c0790).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 9ee7586a9. Then the call-site marker and this record go.
+
+Call-site markers: `internal/modelgen/providers/opencode.go`.
+
+Evidence: `TestOpencodeModelGeneration` (`cmd/gen-models/opencode_model_generation_test.go`) and `TestCatalogGenerationMatchesPi` (golden re-recorded with 9ee7586a9 applied).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+
+## D351 Anthropic non-strict tool schemas keep root $defs
+
+What: PiG keeps a tool schema's root `$defs` and `definitions` when it sends the schema to an Anthropic Messages endpoint without strict mode, as Pi main does. Pi 1.5.0 strips them, which leaves dangling `$ref`s. Ports Pi main 4a6a58eb (`fix(ai): keep root $defs in Anthropic non-strict tool schemas`), which is not in Pi 1.5.0.
+
+Why: A `$ref` into a removed `$defs` makes Anthropic reject the tool definition.
+
+Pi bug: 1.5.0 drops root `$defs` in non-strict mode.
+
+Scope: the Anthropic non-strict tool schema path (`ai/anthropic.go`, `ai/anthropic_stream.go`, `ai/direct_simple.go`).
+
+Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-07; PiG carried the change since d3f6c2b6ff).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 4a6a58eb. Then the call-site marker and this record go.
+
+Call-site markers: `ai/anthropic.go`.
+
+Evidence: `TestAnthropicStrictToolSchemas` and `TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema` (`ai/anthropic_strict_tool_schema_upstream_test.go`, Pi's `anthropic-strict-tool-schema.test.ts`).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+
+## D352 Anthropic message threads
+
+What: PiG ports Anthropic message threads (`ai/anthropic_threads.go`): with a session id and cache retention other than none, requests continue from the previous reply and send only new messages, a rejected continue is resent in full as a new thread, and an endpoint that rejects threads turns them off for the session. `compat.supportsMessageThreads` overrides the default (on for provider `anthropic` on api.anthropic.com), and `StreamOptions.DisableContinuation` keeps a request off thread state (the cache warmer sets it). Pi 1.5.0 has none of this. Ports Pi main a758f3ae4 (`feat(ai): Anthropic message threads`, #11545), which is not in Pi 1.5.0.
+
+Why: Smaller requests and cache continuity on long Anthropic sessions.
+
+Pi bug: Not a Pi bug: a feature ahead of the pin.
+
+Scope: the Anthropic Messages request path, `agent/proxy.go` options, `internal/codingagent/cache_warmer.go`, `schemas/models.schema.json`.
+
+Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-07; PiG carried the change since 559eb57d05).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.
+
+Call-site markers: `ai/anthropic_threads.go`.
+
+Evidence: `TestAnthropicMessageThreadsCreateThenContinue` and the other `TestAnthropicMessageThreads*` cases (`ai/anthropic_message_threads_test.go`, Pi's `anthropic-message-threads.test.ts`).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.

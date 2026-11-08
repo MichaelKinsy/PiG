@@ -21,7 +21,7 @@ func TestModelResolverDefaultsUpstream(t *testing.T) {
 		// .upstream/v0.99.1/packages/coding-agent/test/model-resolver.test.ts:742
 		{"xai default tracks current model", map[string]string{"xai": "grok-4.7"}},
 		// .upstream/v0.99.1/packages/coding-agent/test/model-resolver.test.ts:746
-		{"qwen token plan individual default tracks current model", map[string]string{"qwen-token-plan-individual": "qwen3.8-max"}},
+		{"qwen token plan individual default tracks current model", map[string]string{"qwen-token-plan-individual": "qwen3.8-max", "qwen-token-plan-individual-cn": "qwen3.8-max"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for provider, want := range tc.want {
