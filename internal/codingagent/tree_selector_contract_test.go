@@ -241,8 +241,6 @@ func runTreeContracts(t *testing.T, cases []treeContractCase) []treeContractTrac
 			got := replayTreeContract(t, probe)
 			traces[i] = got
 			want := expected[i]
-			// pig divergence (D248): the search line draws a cursor Pi 1.5.0 does not; the rest of every frame is compared as it is.
-			normalizeTreeSearchLinesD248(got.Frames, want.Frames, probe.Width)
 			if !reflect.DeepEqual(got.Steps, want.Steps) || !reflect.DeepEqual(got.Frames, want.Frames) {
 				t.Fatalf("keys=%q differ from Pi:\nsteps = %q\nPi    = %q\n%s", probe.Keys, got.Steps, want.Steps, firstFrameDifference(got.Frames, want.Frames))
 			}
@@ -426,9 +424,13 @@ func wantSearch(want string) func(t *testing.T, tr treeContractTrace) {
 	return func(t *testing.T, tr treeContractTrace) {
 		t.Helper()
 		got := treeSearchRow(tr.lastFrame())
-		// pig divergence (D248): an empty query's search row ends in a space Pi 1.5.0 does not draw; a query's own trailing space is compared as it is.
+		// tree-selector.ts SearchLine: an empty query's row ends in a space, and the row of the focused selector ends in the cursor cell (a reverse-video space; the
+		// cursor marker is invisible). The label input takes the cursor while a label is edited (`searchLine.focused = value && labelInput === null`).
 		if want == "  Type to search:" {
-			got = strings.TrimSuffix(got, " ")
+			want += " "
+		}
+		if !strings.Contains(treeFrameText(tr.lastFrame()), "Label (empty to remove):") {
+			want += " "
 		}
 		if got != want {
 			t.Errorf("search row = %q, want %q", got, want)
