@@ -341,9 +341,11 @@ export class Harness {
           try { onWake(wake); last = wake } catch (error) { report({ kind: "host_error", callback: "onWake", error }) }
         }
       }
+      // The agent each conversation's last resolveAgent hook answered: generation.ts hands the agent it resolved to the sections it renders (PromptInput.agent), so a section effect reads it here, in the tick it starts, where resolving it again is a Session read Pi does not make.
+      const resolvedAgents = new Map<number, unknown>()
       const runtimeHostApi = { client, agent: (id: number, context: Context) => harness.resolveAgent(id, undefined, context), watchDoc: (token: any, ...args: unknown[]) => harness.watchDoc(token, ...args), conversation: async (id: number, binding: InvocationBinding, context: Context) => { const found = await harness.conversation(id, context); return found && boundConversation(found, binding) } }
       const runtime: EffectRuntime = {
-        client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info as ReportInfo, context), now: options.now,
+        client, registry, get models() { return currentModels() }, env: options.env, report: (error, info, context) => harness.report(error, info as ReportInfo, context), now: options.now, resolvedAgent: id => resolvedAgents.get(id),
         hostApi: runtimeHostApi,
         readTarget: () => self.harness,
         spanContext: (span, base) => harness.telemetry.spanContext(span, base),
@@ -364,7 +366,11 @@ export class Harness {
           // The span of a phase invocation (telemetry.ts): started when the core asks, answered with its handle and carrier.
           phaseSpan: (payload: Parameters<HarnessTelemetry["phaseSpan"]>[0]) => harness.telemetry.phaseSpan(payload),
           registrySnapshot: () => registry.snapshot(),
-          resolveAgent: (payload, _context, effect) => agentJSON(resolveAgent(payload.state, options.registry.snapshot(), harness.settings, reportWrap(effect.conversationId as ConversationId)), o => registry.id(o)),
+          resolveAgent: (payload, _context, effect) => {
+            const agent = resolveAgent(payload.state, options.registry.snapshot(), harness.settings, reportWrap(effect.conversationId as ConversationId))
+            resolvedAgents.set(effect.conversationId as number, agent)
+            return agentJSON(agent, o => registry.id(o))
+          },
           // harness/tool.ts prepare and validate: the arguments, or {error} with the text of what the repair or validation threw.
           prepareArguments: payload => {
             const tool = registry.tool(payload.toolName, payload.handler) as any

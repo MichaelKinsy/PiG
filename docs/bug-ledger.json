@@ -4512,6 +4512,28 @@
       ]
     },
     {
+      "id": "BF-1e64d3f",
+      "title": "A Durable core's warm turn waits exactly the microtask passes Pi's does",
+      "symptom": "A Durable core's warm turn waits exactly the microtask passes Pi's does.",
+      "rootCause": "The host's section effect resolved the agent again for the section's input (a Session read of pi.agent through the core) where generation.ts passes the agent it already resolved into PromptInput. Each of the nine model calls of a turn spent four passes more than Pi's `await section.render()`: a warm turn of eight lookups waited 6975 / 6956 passes against Pi's 6939 / 6920 (node profile), +36 per wait, and the F-ticks rows, which pin a cold submit and a short wait, did not show it. The host now keeps the agent its resolveAgent hook last answered for each conversation and a section renders with that.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable core's warm turn waits exactly the microtask passes Pi's does. The Cloudflare host's section effect resolved the agent a second time for the section's input, four passes more than Pi's `await section.render()` on each model call (+36 per turn of eight lookups); it now renders with the agent the `resolveAgent` hook last answered, as generation.ts passes the agent it resolved. The contract rows `F-ticks-warm-node` and `F-ticks-warm-gate` and the host test `warm-ticks.test.ts` pin Pi's counts.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1e64d3f44e",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "durable/core/host/cf/test/warm-ticks.test.ts"
+      ]
+    },
+    {
       "id": "BF-1ed43b3",
       "title": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…",
       "symptom": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture modules to the root SDK version",
