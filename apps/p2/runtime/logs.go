@@ -94,11 +94,15 @@ type LogRedactor struct {
 	secrets      map[string]struct{}
 	directories  []string
 	fingerprints map[string]string
+	// seenEnv is the environment entries refresh has judged already, so a redaction does not match every entry's name again.
+	seenEnv map[string]struct{}
+	// ordered is every secret and its percent-encoded form, longest first; nil when a secret was added since it was built.
+	ordered []string
 }
 
 // NewLogRedactor returns an empty redactor.
 func NewLogRedactor() *LogRedactor {
-	return &LogRedactor{secrets: map[string]struct{}{}, fingerprints: map[string]string{}}
+	return &LogRedactor{secrets: map[string]struct{}{}, fingerprints: map[string]string{}, seenEnv: map[string]struct{}{}}
 }
 
 // AddSecret makes value (and the parts of a URL it is) a secret.
@@ -108,18 +112,26 @@ func (r *LogRedactor) AddSecret(value string) {
 	r.addSecret(value)
 }
 
+// insert records a secret, and drops the ordered list when it is new.
+func (r *LogRedactor) insert(secret string) {
+	if _, ok := r.secrets[secret]; !ok {
+		r.secrets[secret] = struct{}{}
+		r.ordered = nil
+	}
+}
+
 func (r *LogRedactor) addSecret(value string) {
 	if value == "" || value == redacted {
 		return
 	}
-	r.secrets[value] = struct{}{}
+	r.insert(value)
 	if trimmed := strings.TrimSpace(value); trimmed != "" && trimmed != redacted {
-		r.secrets[trimmed] = struct{}{}
+		r.insert(trimmed)
 	}
 	// Line capture must also protect multiline values (private credentials) line by line.
 	for _, line := range lineBreak.Split(value, -1) {
 		if line != "" && line != redacted {
-			r.secrets[line] = struct{}{}
+			r.insert(line)
 		}
 	}
 	parsed, err := url.Parse(value)
@@ -127,10 +139,10 @@ func (r *LogRedactor) addSecret(value string) {
 		return
 	}
 	if name := parsed.User.Username(); name != "" {
-		r.secrets[name] = struct{}{}
+		r.insert(name)
 	}
 	if password, ok := parsed.User.Password(); ok && password != "" {
-		r.secrets[password] = struct{}{}
+		r.insert(password)
 	}
 	fragment, _ := url.ParseQuery(parsed.Fragment)
 	for _, parameters := range []url.Values{parsed.Query(), fragment} {
@@ -140,7 +152,7 @@ func (r *LogRedactor) addSecret(value string) {
 			}
 			for _, token := range tokens {
 				if token != "" {
-					r.secrets[token] = struct{}{}
+					r.insert(token)
 				}
 			}
 		}
@@ -177,6 +189,10 @@ func (r *LogRedactor) collect(value any, sensitive bool) {
 // a logout or a configuration error.
 func (r *LogRedactor) refresh() {
 	for _, entry := range os.Environ() {
+		if _, seen := r.seenEnv[entry]; seen {
+			continue
+		}
+		r.seenEnv[entry] = struct{}{}
 		key, value, _ := strings.Cut(entry, "=")
 		if value != "" && sensitiveKey.MatchString(key) {
 			r.addSecret(value)
@@ -228,28 +244,37 @@ func (r *LogRedactor) refresh() {
 	}
 }
 
-// Redact is text without its secrets.
-func (r *LogRedactor) Redact(text string) string {
-	r.mu.Lock()
-	r.refresh()
-	secrets := make([]string, 0, len(r.secrets))
+// order is the secrets and their percent-encoded forms, longest first: overlapping secrets cannot leave an unredacted suffix.
+// The result is never modified, so a redaction uses it outside the lock.
+func (r *LogRedactor) order() []string {
+	all := make([]string, 0, 2*len(r.secrets))
 	for secret := range r.secrets {
-		secrets = append(secrets, secret)
+		all = append(all, secret)
+		if encoded := encodeURIComponent(secret); encoded != secret {
+			all = append(all, encoded)
+		}
 	}
-	r.mu.Unlock()
-	// Longest first: overlapping secrets cannot leave an unredacted suffix.
-	slices.SortFunc(secrets, func(a, b string) int {
+	slices.SortFunc(all, func(a, b string) int {
 		if len(a) != len(b) {
 			return len(b) - len(a)
 		}
 		return strings.Compare(a, b)
 	})
+	return slices.Compact(all)
+}
+
+// Redact is text without its secrets.
+func (r *LogRedactor) Redact(text string) string {
+	r.mu.Lock()
+	r.refresh()
+	if r.ordered == nil {
+		r.ordered = r.order()
+	}
+	secrets := r.ordered
+	r.mu.Unlock()
 	result := text
 	for _, secret := range secrets {
 		result = strings.ReplaceAll(result, secret, redacted)
-		if encoded := encodeURIComponent(secret); encoded != secret {
-			result = strings.ReplaceAll(result, encoded, redacted)
-		}
 	}
 	result = headerRedact.ReplaceAllString(result, "${1}: "+redacted)
 	result = bearerRedact.ReplaceAllString(result, "${1} "+redacted)
