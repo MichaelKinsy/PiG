@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	chattui "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/tui"
 	devicescontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices/contract"
 	devicestui "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices/tui"
 	envscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs/contract"
@@ -18,7 +19,6 @@ import (
 	sharingtui "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing/tui"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
 	statustui "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/tui"
-	chattui "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/tui"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui"
 	tuiruntime "github.com/MichaelKinsy/PiG/apps/p2/tui/runtime"
@@ -133,8 +133,12 @@ func ownerStubs(c *calls) ([]p2test.Stub, *ownerCells) {
 					return nil, nil
 				},
 				"save": ok, "delete": ok,
-				"generateKey":      func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("publicKey", "", "identityFile", ""), nil },
-				"uploadKey":        func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("publicKey", "", "identityFile", ""), nil },
+				"generateKey": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+					return delta.JsonObjectOf("publicKey", "", "identityFile", ""), nil
+				},
+				"uploadKey": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+					return delta.JsonObjectOf("publicKey", "", "identityFile", ""), nil
+				},
 				"publicKey":        ok,
 				"listDirectory":    func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return listing, nil },
 				"sandboxStatus":    func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return stopped, nil },

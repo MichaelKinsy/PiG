@@ -40,7 +40,9 @@ func SessionsStub(rows ...sessionscontract.Session) p2test.Stub {
 func DraftsStub() p2test.Stub {
 	return p2test.Stub{Contract: draftscontract.Drafts, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
 		return p2test.StubMembers{Variant: "author", State: map[string]any{"drafts": self.Cell([]any{})}, Methods: map[string]p2test.StubMethod{
-			"claim": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("texts", []any{}), nil },
+			"claim": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				return delta.JsonObjectOf("texts", []any{}), nil
+			},
 		}}
 	}}
 }
@@ -204,17 +206,29 @@ func NewChatStub(t testing.TB, options ChatStubOptions) *ChatStub {
 				c.sent[conversation] = append(c.sent[conversation], SentMessage{Conversation: conversation, RequestID: id, Text: text})
 				return delta.JsonObjectOf("submissionId", float64(len(c.sent[conversation]))), nil
 			},
-			"stop":            func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("restored", []any{}), nil },
-			"dequeue":         func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("text", nil), nil },
-			"configure":       none,
-			"compact":         func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("taskId", float64(1)), nil },
-			"abortCompaction": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("aborted", float64(0)), nil },
-			"reset":           none,
+			"stop": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				return delta.JsonObjectOf("restored", []any{}), nil
+			},
+			"dequeue": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				return delta.JsonObjectOf("text", nil), nil
+			},
+			"configure": none,
+			"compact": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				return delta.JsonObjectOf("taskId", float64(1)), nil
+			},
+			"abortCompaction": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				return delta.JsonObjectOf("aborted", float64(0)), nil
+			},
+			"reset": none,
 			"dequeueOwn": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
 				return delta.JsonObjectOf("restored", []any{}, "skipped", float64(0)), nil
 			},
-			"shell":      func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("shellId", "shell-1"), nil },
-			"abortShell": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf("aborted", false), nil },
+			"shell": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				return delta.JsonObjectOf("shellId", "shell-1"), nil
+			},
+			"abortShell": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				return delta.JsonObjectOf("aborted", false), nil
+			},
 		}
 		for name, method := range options.Methods {
 			methods[name] = method
