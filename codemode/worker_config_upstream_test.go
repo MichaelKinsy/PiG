@@ -168,10 +168,10 @@ func TestCodemodeEmbedsItsOnlyModuleSource(t *testing.T) {
 		if fileAccess.Match(data) {
 			t.Errorf("%s reads the file system: %s", file, fileAccess.Find(data))
 		}
-		embedded = embedded || strings.Contains(string(data), "//go:embed assets/quickjs.wasm.gz\nvar quickJSWasmGzip []byte")
+		embedded = embedded || strings.Contains(string(data), "//go:embed assets/quickjs.wasm.zst\nvar quickJSWasmFrame []byte")
 	}
 	if !embedded {
-		t.Error("codemode does not embed assets/quickjs.wasm.gz")
+		t.Error("codemode does not embed assets/quickjs.wasm.zst")
 	}
 	tool, err := os.ReadFile(filepath.Join("..", "coding", "extension", "builtin", "codemode", "execute.go"))
 	if err != nil {

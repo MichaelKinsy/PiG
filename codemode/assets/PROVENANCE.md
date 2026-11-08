@@ -9,7 +9,7 @@ Licenses: `quickjs-wasi` is MIT, Copyright (c) 2026 Vercel, Inc. The module cont
 
 Refresh on an upstream pin move, in one change:
 
-1. Install the new `@earendil-works/pi-coding-agent` in a scratch directory and copy `node_modules/.../quickjs-wasi/quickjs.wasm` over `quickjs.wasm`, then run `go generate ./codemode` to rebuild `quickjs.wasm.gz`, the gzip of it that the binary embeds (`TestEmbeddedQuickJSWasmGzipInflatesToTheAsset` fails when the two differ).
+1. Install the new `@earendil-works/pi-coding-agent` in a scratch directory and copy `node_modules/.../quickjs-wasi/quickjs.wasm` over `quickjs.wasm`, then run `go generate ./codemode` to rebuild `quickjs.wasm.zst`, the zstd frame of it that the binary embeds (`TestEmbeddedQuickJSWasmFrameExpandsToTheAsset` fails when the two differ).
 2. Regenerate `prelude.js` and reapply D145 unless upstream fixed Pi #10650: `node -e 'import("<upstream>/packages/codemode/src/runtime/prelude-source.ts").then(m => require("fs").writeFileSync("prelude.js", m.PRELUDE_SOURCE))'`.
 3. Update the hashes here, in `codemode/sandbox_test.go` (`TestEmbeddedSourcesMatchTheirRecordedHashes`) and in `THIRD_PARTY_NOTICES.md`.
 4. Re-run the ported sandbox tests: the prelude assumes the engine's behavior.

@@ -47,3 +47,22 @@ func TestDecodeSizesResultExactlyAndLeavesNoGoroutines(t *testing.T) {
 		t.Fatalf("result capacity %d, want %d", cap(got), len(raw))
 	}
 }
+
+// An input above zstdCLIMinimum is encoded by the zstd command when there is one and by the library otherwise; either way the frame decodes to the input and records its size, and the command's frame is no larger than the library's.
+func TestEncodeLargeInputRoundTripsAndIsNoLargerThanTheLibrary(t *testing.T) {
+	var raw []byte
+	for i := 0; len(raw) < 3*zstdCLIMinimum; i++ {
+		raw = append(raw, []byte("line "+string(rune('a'+i%26))+" of embedded text, number "+string(rune('0'+i%10))+"\n")...)
+	}
+	frame := Encode(raw)
+	got, err := Decode(frame)
+	if err != nil || !bytes.Equal(got, raw) {
+		t.Fatalf("round trip: %v", err)
+	}
+	if _, ok := frameSize(frame); !ok {
+		t.Fatal("the frame records no content size")
+	}
+	if library := encodeWithLibrary(raw); len(frame) > len(library) {
+		t.Fatalf("Encode made %d bytes, the library %d", len(frame), len(library))
+	}
+}
