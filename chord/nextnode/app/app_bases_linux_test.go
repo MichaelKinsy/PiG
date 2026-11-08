@@ -20,8 +20,8 @@ import (
 
 // The tests of app_bases_test.go that hold a base build on a named pipe (Pi's mkfifo, Linux only).
 
-// pending is whether the channel is still open after 300 ms (Pi's `pending`).
-func pending(done <-chan struct{}) bool {
+// stillOpen is whether the channel is still open after 300 ms (Pi's `pending`).
+func stillOpen(done <-chan struct{}) bool {
 	select {
 	case <-done:
 		return false
@@ -107,10 +107,10 @@ func TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBas
 		t.Fatalf("the page answered %d before its base was built", got.status)
 	case <-time.After(300 * time.Millisecond):
 	}
-	if !pending(s.app.BasesBuilt()) {
+	if !stillOpen(s.app.BasesBuilt()) {
 		t.Fatal("the bases are built")
 	}
-	if !pending(s.app.BaseWatched()) {
+	if !stillOpen(s.app.BaseWatched()) {
 		t.Fatal("the base code is watched before the bases are built: the scan runs after them")
 	}
 	stop := feedPipe(t, pipe, "export {};")
@@ -181,4 +181,3 @@ func TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuil
 	}
 	<-s.app.BaseWatched()
 }
-

@@ -1,10 +1,13 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/next/data"
+	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
@@ -83,8 +86,6 @@ func (a *App) reportLate(kind AppErrorKind, err any, base string) {
 // is kept between starts; the server answers meanwhile, each request needing a base waits for it), then records the server's own
 // code. A built base's record is added to what the plugins compare; a failed one is reported (`base_build`) and the server runs on.
 func (a *App) startBases(bases []baseBuild) {
-	a.basesBuilt = make(chan struct{})
-	a.baseWatched = make(chan struct{})
 	built, watched := a.basesBuilt, a.baseWatched
 	//portlint:allow golifetime the bases' builds cannot be cancelled (esbuild) and the close does not wait for them: what they finish after it is dropped, as upstream's
 	go func() {
@@ -173,4 +174,17 @@ func (a *App) baseBuilds() []baseBuild {
 		}})
 	}
 	return bases
+}
+
+// linksAfterTheBases holds a link's upgrade until the bases are built: a client that connects while the server builds (a page
+// reconnecting to a restarted server) would hold the scripts object's empty set, and its base is none the page runs (it reloads).
+// Pi's client has that window too; its build is quicker than a Go server's, which starts the plugins' Node. A request the server
+// closes meanwhile is refused. The options are the zero ones the links endpoint gave every socket.
+func (a *App) linksAfterTheBases(chordhttp.HttpRequest, data.Principal) (chordhttp.LinkOptions, error) {
+	select {
+	case <-a.basesBuilt:
+		return chordhttp.LinkOptions{}, nil
+	case <-a.ended:
+		return chordhttp.LinkOptions{}, errors.New("the app is closing")
+	}
 }
