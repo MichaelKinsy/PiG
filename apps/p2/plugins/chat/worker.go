@@ -31,6 +31,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
@@ -744,8 +745,9 @@ func statsEqual(current *delta.JsonObject, next p2runtime.ActiveStats) bool {
 }
 
 func jsonEqual(a, b delta.JsonValue) bool {
-	left, errA := json.Marshal(a)
-	right, errB := json.Marshal(b)
+	left, errA := chordjson.Marshal(a)
+	right, errB := chordjson.Marshal(b)
+	//perf:ok the stats usage is compared once per turn; Chord deltas have no deep equality
 	return errA == nil && errB == nil && string(left) == string(right)
 }
 

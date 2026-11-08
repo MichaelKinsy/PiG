@@ -410,6 +410,9 @@ func reduceContent(raw json.RawMessage) (json.RawMessage, error) {
 			parts[i] = reduced
 		}
 	}
+	if parts == nil {
+		parts = []json.RawMessage{}
+	}
 	return json.Marshal(parts)
 }
 
@@ -423,7 +426,8 @@ func (l *requestLog) append(messages []ai.Message) error {
 		var content struct {
 			Content json.RawMessage `json:"content"`
 		}
-		if err := json.Unmarshal(raw, &content); err != nil {
+		//perf:ok the fake provider logs a request for the tests only
+		if err := json.Unmarshal(raw, &content); err != nil { //portlint:allow jsonclone a typed value converted from its stored JSON form, cold (see the perf:ok above)
 			return err
 		}
 		reduced, err := reduceContent(content.Content)
