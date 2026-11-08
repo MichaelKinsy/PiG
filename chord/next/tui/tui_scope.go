@@ -78,11 +78,18 @@ func (s *TuiScope) Hold(typ *contracts.Contract, params any) (*host.Reference, e
 }
 
 // follow follows a source until Dispose: its changes call changed; the reader of its current value is the result.
-func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.Context) (func(listener func()), error)) func() (T, bool) {
+func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.Context) (started func(listener func()), stop func(), err error)) func() (T, bool) {
 	go func() {
-		started, err := start(s.ctx)
+		started, stop, err := start(s.ctx)
 		if err != nil {
 			// Disposed (or the source ended) before the watch started: nothing to follow.
+			return
+		}
+		// The watch ends in Dispose itself, not through its context's cancellation (D452): a Go context's AfterFunc
+		// runs on a goroutine of its own, so the watch would still end while the host closes.
+		s.release(func() { _, _ = stop() })
+		if s.disposed() {
+			_, _ = stop()
 			return
 		}
 		started(func() { s.redraw() })
@@ -105,10 +112,10 @@ func follow[T any](s *TuiScope, value func() (T, error), start func(ctx context.
 // WatchNative follows source (an in-process value: a reference's state, a registry's value) until Dispose; returns a
 // reader of its current value (false while it has none: nothing throws in a redraw).
 func WatchNative[T any](s *TuiScope, source chord.NativeWatchable[T]) func() (T, bool) {
-	return follow(s, func() (T, error) { return source.Value(), nil }, func(ctx context.Context) (func(func()), error) {
+	return follow(s, func() (T, error) { return source.Value(), nil }, func(ctx context.Context) (func(func()), func() (chord.WatchEnd, error), error) {
 		watch, err := source.Watch(ctx)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		return func(listener func()) {
 			watch.Start(func(context.Context, chord.NativeWatchCall[T]) error {
@@ -117,16 +124,16 @@ func WatchNative[T any](s *TuiScope, source chord.NativeWatchable[T]) func() (T,
 				}
 				return nil
 			})
-		}, nil
+		}, watch.Stop, nil
 	})
 }
 
 // WatchJSON follows source (a JSON watchable: a member's watchable, a derive) until Dispose; see WatchNative.
 func WatchJSON[T any](s *TuiScope, source chord.Watchable[T]) func() (T, bool) {
-	return follow(s, func() (T, error) { return source.Value(), nil }, func(ctx context.Context) (func(func()), error) {
+	return follow(s, func() (T, error) { return source.Value(), nil }, func(ctx context.Context) (func(func()), func() (chord.WatchEnd, error), error) {
 		watch, err := source.Watch(ctx)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		return func(listener func()) {
 			watch.Start(func(context.Context, chord.WatchCall[T]) error {
@@ -135,16 +142,16 @@ func WatchJSON[T any](s *TuiScope, source chord.Watchable[T]) func() (T, bool) {
 				}
 				return nil
 			})
-		}, nil
+		}, watch.Stop, nil
 	})
 }
 
 // WatchMember follows a reference's member until Dispose; see WatchNative.
 func WatchMember(s *TuiScope, member *host.ReferenceMember) func() (delta.JsonValue, bool) {
-	return follow(s, member.Value, func(ctx context.Context) (func(func()), error) {
+	return follow(s, member.Value, func(ctx context.Context) (func(func()), func() (chord.WatchEnd, error), error) {
 		watch, err := member.Watch(ctx)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		return func(listener func()) {
 			watch.Start(func(context.Context, chord.WatchCall[delta.JsonValue]) error {
@@ -153,7 +160,7 @@ func WatchMember(s *TuiScope, member *host.ReferenceMember) func() (delta.JsonVa
 				}
 				return nil
 			})
-		}, nil
+		}, watch.Stop, nil
 	})
 }
 
