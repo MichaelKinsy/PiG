@@ -27,6 +27,9 @@ func AppendCanonical(dst, raw []byte) ([]byte, error) {
 	if IsCanonical(raw) {
 		return append(dst, raw...), nil
 	}
+	if out, ok := appendCompacted(dst, raw); ok {
+		return out, nil
+	}
 	canonical, err := canonicalize(raw)
 	if err != nil {
 		return dst, err

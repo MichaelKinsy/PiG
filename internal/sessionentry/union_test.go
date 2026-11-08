@@ -2,6 +2,8 @@ package sessionentry
 
 import (
 	"bytes"
+	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -346,5 +348,138 @@ func TestSessionHeaderSameRecord(t *testing.T) {
 		if base.SameRecord(other) {
 			t.Fatalf("a header with another %s is the same record", name)
 		}
+	}
+}
+
+// harnessSessionLines writes n session records shaped like the Pi-Bolt long-transcript fixture (assistant turns with thinking, Markdown and a bash call, their tool results, a user message every 20 turns; about 2.6 KB a record). spaced writes them with Python's json.dumps separators, as that harness does; Pi and PiG write compact JSON.
+func harnessSessionLines(n int, spaced bool) []json.RawMessage {
+	rng := rand.New(rand.NewSource(1))
+	vocabulary := strings.Fields("alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega the of and to in is that for it with as was on be at by this had not are but from or have")
+	words := func(count int) string {
+		parts := make([]string, count)
+		for i := range parts {
+			parts[i] = vocabulary[rng.Intn(len(vocabulary))]
+		}
+		return strings.Join(parts, " ")
+	}
+	markdown := func(chars int) string {
+		var out strings.Builder
+		for out.Len() < chars {
+			switch r := rng.Float64(); {
+			case r < 0.15:
+				out.WriteString("## " + words(4) + "\n\n")
+			case r < 0.3:
+				for range 4 {
+					out.WriteString("- **" + words(2) + "**: " + words(10) + " `" + words(1) + "()`\n")
+				}
+				out.WriteString("\n")
+			case r < 0.4:
+				out.WriteString("```ts\nconst a = f(1);\nconst b = g(2);\n```\n\n")
+			default:
+				out.WriteString(words(60) + "\n\n")
+			}
+		}
+		return out.String()
+	}
+	respace := func(compact []byte) []byte {
+		out := make([]byte, 0, len(compact)+len(compact)/16)
+		inString := false
+		for i := 0; i < len(compact); i++ {
+			c := compact[i]
+			out = append(out, c)
+			switch {
+			case inString && c == '\\':
+				i++
+				out = append(out, compact[i])
+			case c == '"':
+				inString = !inString
+			case !inString && (c == ',' || c == ':'):
+				out = append(out, ' ')
+			}
+		}
+		return out
+	}
+	var lines []json.RawMessage
+	parent := any(nil)
+	add := func(entry obj) {
+		id := fmt.Sprintf("%08x", len(lines)+1)
+		entry = append(entry, member{"id", id}, member{"parentId", parent}, member{"timestamp", "2026-01-01T00:00:00.000Z"})
+		parent = id
+		raw, err := marshalLine(entry)
+		if err != nil {
+			panic(err)
+		}
+		if spaced {
+			raw = respace(raw)
+		}
+		lines = append(lines, raw)
+	}
+	zero := obj{{"input", 0}, {"output", 0}, {"cacheRead", 0}, {"cacheWrite", 0}, {"total", 0}}
+	for turn := 0; len(lines) < n; turn++ {
+		if turn%20 == 0 {
+			add(obj{{"type", "message"}, {"message", obj{{"role", "user"}, {"content", []any{obj{{"type", "text"}, {"text", "Next task: " + words(30)}}}}, {"timestamp", 1700000000000}}}})
+		}
+		call := fmt.Sprintf("call_h%d", turn)
+		add(obj{{"type", "message"}, {"message", obj{{"role", "assistant"}, {"content", []any{
+			obj{{"type", "thinking"}, {"thinking", words(436)}, {"thinkingSignature", "reasoning_content"}},
+			obj{{"type", "text"}, {"text", markdown(1310)}},
+			obj{{"type", "toolCall"}, {"id", call}, {"name", "bash"}, {"arguments", obj{{"command", fmt.Sprintf("echo history %d", turn)}}}}}},
+			{"api", "openai-completions"}, {"provider", "fake"}, {"model", "fake-model"},
+			{"usage", obj{{"input", 1000}, {"output", 500}, {"cacheRead", 0}, {"cacheWrite", 0}, {"totalTokens", 1500}, {"cost", zero}}},
+			{"stopReason", "toolUse"}, {"timestamp", 1700000001000}}}})
+		add(obj{{"type", "message"}, {"message", obj{{"role", "toolResult"}, {"toolCallId", call}, {"toolName", "bash"}, {"content", []any{obj{{"type", "text"}, {"text", words(150)}}}}, {"isError", false}, {"timestamp", 1700000002000}}}})
+	}
+	return lines
+}
+
+// member is one key and value of an obj.
+type member struct {
+	key   string
+	value any
+}
+
+// obj is a JSON object written in the order of its members, as the Pi-Bolt harness (Python dict) and Pi write them.
+type obj []member
+
+func (o obj) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	for i, m := range o {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		key, err := marshalLine(m.key)
+		if err != nil {
+			return nil, err
+		}
+		value, err := marshalLine(m.value)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(key)
+		buf.WriteByte(':')
+		buf.Write(value)
+	}
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
+}
+
+// BenchmarkDecodeSessionEntryHarnessShape decodes the records of a 4,000-entry session as its first load does: spaced is how the Pi-Bolt harness writes the file, compact how Pi and PiG do.
+func BenchmarkDecodeSessionEntryHarnessShape(b *testing.B) {
+	for _, spaced := range []bool{false, true} {
+		lines := harnessSessionLines(4000, spaced)
+		size := 0
+		for _, line := range lines {
+			size += len(line)
+		}
+		b.Run(map[bool]string{false: "compact", true: "spaced"}[spaced], func(b *testing.B) {
+			b.SetBytes(int64(size))
+			b.ReportAllocs()
+			for b.Loop() {
+				for _, line := range lines {
+					DecodeSessionEntry(line)
+				}
+			}
+		})
 	}
 }
