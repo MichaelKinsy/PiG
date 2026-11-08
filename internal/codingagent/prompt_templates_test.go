@@ -27,8 +27,9 @@ func TestParsePromptArgs(t *testing.T) {
 		{"multi-space", "foo   bar", []string{"foo", "bar"}},
 		{"double-quoted", `foo "hello world" bar`, []string{"foo", "hello world", "bar"}},
 		{"single-quoted", `foo 'hello world' bar`, []string{"foo", "hello world", "bar"}},
-		{"quote-merging", `pre"in quotes"post`, []string{"prein quotespost"}},
-		{"trailing-quote-unterminated", `foo "unterminated`, []string{"foo", "unterminated"}},
+		// A quote only opens quoting at the start of an argument (Pi 96667f342).
+		{"quote-inside-word", `pre"in quotes"post`, []string{`pre"in`, `quotes"post`}},
+		{"trailing-quote-unterminated", `foo "unterminated`, []string{"foo", `"unterminated`}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

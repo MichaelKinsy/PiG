@@ -6,7 +6,7 @@ import { OPENAI_CODEX_MODELS } from "./openai-codex.models.js";
 export function openaiCodexProvider() {
     return createProvider({
         id: "openai-codex",
-        name: "OpenAI Codex (legacy)",
+        name: "OpenAI Codex",
         baseUrl: "https://chatgpt.com/backend-api",
         auth: {
             oauth: lazyOAuth({
