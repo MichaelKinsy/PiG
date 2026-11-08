@@ -33,13 +33,14 @@ import (
 // an app with project workers, short host timeouts, its root holding the suite's plugins (Pi's TypeScript, as testdata/reload
 // templates); the test's hands (edit a plugin on disk and apply the changes, the latches of calls in flight); and the page.
 //
-// Go forced differences (D606): Pi's page is a Chromium tab running the base bundle and the web plugins' React components, driven
-// through CDP. Its Go form is a tab host connected to the server's links endpoint as the owner (a device session's token), which
-// holds the counter and the other objects through its own references, tracks each reference's states and the values of its
-// members, and calls from them: what a web plugin's component shows is the reference's last label, count and state. Page-only
-// things (DOM, typing, scroll, page loads, a link dropped from the page's script, the web step of the rollout) are the browser
-// rows (Playwright, the web surface). The server's latches are reached through a latch facet on the server's plugins' process
-// (`reload.servercontrol`): Pi's server plugins run in the test's own process.
+// Go difference, for now (D606: sequencing, T11's Chromium harness is not on follow/chord-int yet): Pi's page is a Chromium tab running
+// the base bundle and the web plugins' React components, driven through CDP. Here it is a tab host connected to the server's links
+// endpoint as the owner (a device session's token), which holds the counter and the other objects through its own references,
+// tracks each reference's states and the values of its members, and calls from them: what a web plugin's component shows is the
+// reference's last label, count and state. Page-only things (DOM, typing, scroll, page loads, a link dropped from the page's script,
+// the web step of the rollout) are the browser rows, run in real Chromium through the Go CDP driver (chord/nextnode/internal/browsertest,
+// the web surface; fix/chord-reload-web). The server's latches are reached through a latch facet on the server's plugins' process
+// (`reload.servercontrol`): Pi's server plugins run in the test's own process (D462).
 
 // reloadTimeouts are the hosts' timeouts of the suite's apps (the server's and the workers'): a call outliving a restart's drain is cut
 // off after 1 s, an object's close takes at most 2 s, a call waits at most 5 s for its object to go live.
@@ -216,19 +217,25 @@ func startReloadApp(t testing.TB, plugins map[string]map[string]string) started 
 	})
 }
 
-// edit writes files into plugin dir of the app's root (an edit on disk) and waits until the watcher marked it dirty (or, for a plugin
-// not discovered yet, the plugin set changed).
-func (s started) edit(t testing.TB, dir string, files map[string]string) {
+// edit writes files into plugin dir of the app's root (an edit on disk) and waits until the watcher marked every plugin the edit
+// affects dirty: the plugin itself (for one not discovered yet, until the plugin set changed) and the plugins in alsoDirty, the ones
+// that import its files. The rollout applies the marks the watcher has made when it runs: one that finds a dependent unmarked leaves
+// it out. A plugin already there is waited for by its own mark, not by the set mark an earlier edit left.
+func (s started) edit(t testing.TB, dir string, files map[string]string, alsoDirty ...string) {
 	t.Helper()
+	_, err := os.Stat(filepath.Join(s.root, dir))
+	known := err == nil
 	writePlugin(t, s.root, dir, "@test/"+dir, files)
 	name := "@test/" + dir
-	untilMarks(t, s.app, name+" marked", func(m plugins.PluginsState) bool { return slices.Contains(m.Dirty, name) || m.Set })
+	untilMarks(t, s.app, strings.Join(append([]string{name}, alsoDirty...), ", ")+" marked", func(m plugins.PluginsState) bool {
+		return (slices.Contains(m.Dirty, name) || (!known && m.Set)) && !slices.ContainsFunc(alsoDirty, func(also string) bool { return !slices.Contains(m.Dirty, also) })
+	})
 }
 
-// editAndApply edits plugin dir and applies the changes (the rollout: server, workers, clients).
-func (s started) editAndApply(t testing.TB, dir string, files map[string]string) plugins.RolloutResult {
+// editAndApply edits plugin dir (see edit) and applies the changes (the rollout: server, workers, clients).
+func (s started) editAndApply(t testing.TB, dir string, files map[string]string, alsoDirty ...string) plugins.RolloutResult {
 	t.Helper()
-	s.edit(t, dir, files)
+	s.edit(t, dir, files, alsoDirty...)
 	return s.apply(t)
 }
 

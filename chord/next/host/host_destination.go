@@ -98,8 +98,9 @@ func (d *destination) reference(typ *contracts.Contract, params *delta.JsonObjec
 }
 
 // placedHere reports whether a reference to typ with params goes here: a local type, or a remote one whose host address is
-// this host's. A `hostAddress` that fails returns its error.
-func (d *destination) placedHere(typ *contracts.Contract, params *delta.JsonObject) (bool, error) {
+// this host's and that the delegate does not take, by served: whether the table the check is made against serves a type by name
+// (the published one for a reference, the staged one for the closure rule of a reload). A `hostAddress` that fails returns its error.
+func (d *destination) placedHere(typ *contracts.Contract, params *delta.JsonObject, served func(name string) bool) (bool, error) {
 	if typ.Kind == contracts.KindLocal {
 		return true, nil
 	}
@@ -107,7 +108,7 @@ func (d *destination) placedHere(typ *contracts.Contract, params *delta.JsonObje
 	if err != nil {
 		return false, err
 	}
-	return d.isHere(address) && !d.delegates(typ.Name, nil), nil
+	return d.isHere(address) && !(d.delegating && !served(typ.Name)), nil
 }
 
 // hold is where a hold arriving on from acting as principal goes, by the address it names (a request's `address`, and

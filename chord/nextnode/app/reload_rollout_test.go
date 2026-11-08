@@ -128,8 +128,11 @@ func TestARolloutAcrossHostsKeepsTheViewOfAServerConsumerBoundWhileItsWorkerProv
 		page := signIn(t, s)
 		page.hold("alpha", summaryContract, "p1", 0, "label")
 		page.waitLabel("alpha", "s1(0)")
+		page.waitState("alpha", "live")
 		settled := len(page.states("alpha"))
-		result := s.editAndApply(t, "counter", counterPlugin(t, counterCode{Code: "v2", Placement: "worker", Contract: "v2"}))
+		// The summary imports the counter's contract file: the edit marks it too, and the rollout must find it dirty (it applies what the
+		// watcher had marked when it runs; one applied before the summary's mark restarts nothing on the server and the row's gap does not show).
+		result := s.editAndApply(t, "counter", counterPlugin(t, counterCode{Code: "v2", Placement: "worker", Contract: "v2"}), "@test/summary")
 		expectEqual(t, "failures", rolloutFailures(result), []string{})
 		page.waitState("alpha", "live")
 		expectEqual(t, "code", page.result(page.call("alpha", "code", nil)), okResult("s1"))
