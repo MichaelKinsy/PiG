@@ -73,6 +73,28 @@ func TestLineLimit(t *testing.T) {
 		isRangeError(t, err)
 	})
 
+	t.Run("counts characters that the chunks cut as whole ones", func(t *testing.T) {
+		emoji := strings.Replace(string(line), "é", "\U0001F600", 1)
+		emojiUnits := jsstring.Length(emoji)
+		for _, text := range []string{string(line), emoji} {
+			size := jsstring.Length(text)
+			for _, cut := range []int{1, 2, 3, 5} {
+				setStringLimit(t, size)
+				commits, err := collect(t, &batchCommits{lines: &batchLines{chunks: chunked([]byte(text), cut)}})
+				noError(t, err)
+				if len(commits) != 1 {
+					t.Fatalf("cut %d: commits = %d, want 1", cut, len(commits))
+				}
+				setStringLimit(t, size-1)
+				_, err = collect(t, &batchCommits{lines: &batchLines{chunks: chunked([]byte(text), cut)}})
+				isRangeError(t, err)
+			}
+		}
+		if emojiUnits == units {
+			t.Fatal("the emoji line has the units of the plain one")
+		}
+	})
+
 	t.Run("fails an unfinished line past the limit before its newline arrives", func(t *testing.T) {
 		setStringLimit(t, units)
 		_, err := collect(t, DecodeBatch(gzipped(t, strings.Repeat("x", units+1))))
@@ -131,21 +153,16 @@ func TestSizesCountUTF16Units(t *testing.T) {
 			batches[index] = rows{store.Row{"id": string(rune('a' + index)), "n": int64(index), "pad": strings.Repeat("é", pad)}}
 		}
 		commitAll(t, s, batches...)
-		pages := &outboxPages{store: s, after: LogStart, limit: 100}
+		// After the table's own commit: the page holds the four big ones.
+		pages := &outboxPages{store: s, after: 1, limit: 100}
 		page, err := pages.next(background)
 		noError(t, err)
-		units, bytes := 0, 0
-		for _, each := range page {
-			size, err := encodedSize(each)
-			noError(t, err)
-			units += size
-			text, err := appendWrites(nil, each)
-			noError(t, err)
-			bytes += len(text) + 64
+		if len(page) != 4 {
+			t.Fatalf("page = %d commits, want 4", len(page))
 		}
-		wantLimit := int64(pageBytes * len(page) / units)
-		if byteLimit := int64(pageBytes * len(page) / bytes); wantLimit == byteLimit || pages.limit != wantLimit {
-			t.Fatalf("limit = %d, want %d by units (%d by bytes)", pages.limit, wantLimit, byteLimit)
+		// An average of a little over 256 Ki units: 3 commits (floor of 3.99) fit pageBytes; 1 by bytes (their 2 bytes a unit).
+		if pages.limit != 3 {
+			t.Fatalf("limit = %d, want 3", pages.limit)
 		}
 	})
 

@@ -127,6 +127,11 @@ func (scheduler *FlushScheduler) arm(due time.Time) {
 // run is the timer's callback: one flush, then the next one when commits arrived during it or it failed.
 func (scheduler *FlushScheduler) run() {
 	scheduler.mu.Lock()
+	// A timer that fired as Close ran cannot be stopped: its callback does nothing after close, as Pi's never runs.
+	if scheduler.closed {
+		scheduler.mu.Unlock()
+		return
+	}
 	scheduler.disarm = nil
 	scheduler.due = nil
 	running := make(chan struct{})

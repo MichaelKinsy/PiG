@@ -117,14 +117,6 @@ func TestBatchBodies(t *testing.T) {
 			t.Fatal("a body that is no gzip decoded")
 		}
 	})
-
-	t.Run("refuse a line past the bound a body holds", func(t *testing.T) {
-		huge := strings.Repeat("x", MaxLineBytes+1)
-		_, err := collect(t, DecodeBatch(gzipped(t, huge)))
-		if err == nil || !strings.Contains(err.Error(), "longer than") {
-			t.Fatalf("err = %v, want a line longer than the bound", err)
-		}
-	})
 }
 
 func TestLogLines(t *testing.T) {

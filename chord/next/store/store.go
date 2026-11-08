@@ -752,9 +752,11 @@ type stepDone struct {
 
 // runGroup is a group's turn, run by its first commit's caller (the group takes no more commits from here): its commits
 // admitted together at its entry, one as its own step, several written in one backend transaction (grouped). It settles
-// every commit of the group and then lets the queue go on, whatever happened. A panic out of a callback of the turn
-// (Admit, Adopt, the host's failed listener) is an unknown outcome: the store stops, the commits not settled yet fail
-// `storage_failed`, and the panic goes on in the caller that ran the turn.
+// every commit of the group and then lets the queue go on, whatever happened. A panic out of an Admit rejects that one
+// commit with the panic's value (admit). A panic out of another callback of the turn (Adopt, the metrics adapter) is an
+// unknown outcome: the store stops, the commits not settled yet fail `storage_failed`, and the panic goes on in the caller
+// that ran the turn. A panic out of the host's failed listener rejects the commits not settled with its value (Pi's `catch`
+// of the turn).
 func (store *ChordStore) runGroup(group *commitGroup) {
 	defer close(group.done)
 	store.mu.Lock()
@@ -764,6 +766,15 @@ func (store *ChordStore) runGroup(group *commitGroup) {
 	store.mu.Unlock()
 	defer func() {
 		if recovered := recover(); recovered != nil {
+			// What the host's listener throws rejects the commits that are not settled, with that value, as in Pi; the store
+			// is stopped already.
+			if thrown, ok := recovered.(*listenerPanic); ok {
+				err := thrownError(thrown.value)
+				for _, queued := range group.commits {
+					queued.settle(0, err)
+				}
+				return
+			}
 			cause := fmt.Errorf("store: a commit step panicked: %v", recovered)
 			failed := storageFailed(cause)
 			for _, queued := range group.commits {
@@ -781,20 +792,16 @@ func (store *ChordStore) runGroup(group *commitGroup) {
 	}
 	// A group of one is its commit's own step.
 	if len(group.commits) == 1 {
-		if queued := group.commits[0]; queued.fence.Admit() {
+		if queued := group.commits[0]; admit(queued) {
 			store.alone(queued)
-		} else {
-			queued.settle(0, discarded())
 		}
 		return
 	}
 	// Admitted together at the group's entry, as one step admits its commit: each runs to its end from here.
 	admitted := make([]*queuedCommit, 0, len(group.commits))
 	for _, queued := range group.commits {
-		if queued.fence.Admit() {
+		if admit(queued) {
 			admitted = append(admitted, queued)
-		} else {
-			queued.settle(0, discarded())
 		}
 	}
 	switch len(admitted) {
@@ -804,6 +811,22 @@ func (store *ChordStore) runGroup(group *commitGroup) {
 	default:
 		store.grouped(admitted)
 	}
+}
+
+// admit is the commit's admission at its step's entry: false once it settled `released` (its fence refused) or with what
+// its fence's Admit panicked with, as Pi rejects a commit whose admission throws and goes on with the others.
+func admit(queued *queuedCommit) (admitted bool) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			queued.settle(0, thrownError(recovered))
+			admitted = false
+		}
+	}()
+	if queued.fence.Admit() {
+		return true
+	}
+	queued.settle(0, discarded())
+	return false
 }
 
 // discarded is the `released` error of a commit its fence refused at the step's entry: its attempt ended.
@@ -863,7 +886,7 @@ func (store *ChordStore) grouped(admitted []*queuedCommit) {
 			store.eachAlone(admitted)
 			return
 		}
-		failed := store.fail(err)
+		failed := store.failTurn(err)
 		for _, queued := range admitted {
 			queued.settle(0, failed)
 		}
@@ -915,7 +938,7 @@ func (store *ChordStore) adoptGroup(admitted []*queuedCommit, done groupWritten)
 		}
 		if err := queued.fence.Adopt(step.Seq, step.Created); err != nil {
 			store.takeWhole(done.written)
-			failed := store.fail(err)
+			failed := store.failTurn(err)
 			for _, rest := range admitted[index:] {
 				rest.settle(0, failed)
 			}
@@ -952,14 +975,14 @@ func (store *ChordStore) admittedStep(writes []StagedWrite, fence CommitFence, c
 	if len(writes) == 0 {
 		// An empty commit takes no seq; a failing Adopt stops the store as for any commit.
 		if err := fence.Adopt(lastSeq, []int64{}); err != nil {
-			return 0, store.fail(err)
+			return 0, store.failTurn(err)
 		}
 		return lastSeq, nil
 	}
 	seq := lastSeq + 1
 	// Past the safe range seqs stop counting exactly (a later one would repeat): the store cannot number further.
 	if seq > MaxSafeInteger {
-		return 0, store.fail(errors.New("store: no seq past Number.MAX_SAFE_INTEGER"))
+		return 0, store.failTurn(errors.New("store: no seq past Number.MAX_SAFE_INTEGER"))
 	}
 	var thrown error
 	var done stepDone
@@ -981,7 +1004,7 @@ func (store *ChordStore) admittedStep(writes []StagedWrite, fence CommitFence, c
 		if thrown != nil && sameError(err, thrown) {
 			return 0, err
 		}
-		return 0, store.fail(err)
+		return 0, store.failTurn(err)
 	}
 	// COMMIT returned: the commit is durable, and memory follows.
 	store.mu.Lock()
@@ -996,7 +1019,7 @@ func (store *ChordStore) admittedStep(writes []StagedWrite, fence CommitFence, c
 		metrics.Counter("chord.store.statements", telemetry.InstrumentOptions{}).Add(float64(done.step.Statements), nil)
 	}
 	if err := fence.Adopt(seq, done.step.Created); err != nil {
-		return 0, store.fail(err)
+		return 0, store.failTurn(err)
 	}
 	return seq, nil
 }
@@ -1359,22 +1382,60 @@ func (store *ChordStore) latch(err error) {
 
 // fail stops the store after err (once; its host is told once); it returns the error the caller fails with.
 func (store *ChordStore) fail(err error) *data.ChordError {
-	store.mu.Lock()
-	if store.failure == nil {
-		store.failure = err
-	}
-	var failed func(error)
-	if store.state == storeOpen {
-		store.state = storeFailed
-		if store.attachment != nil {
-			failed = store.attachment.Failed
-		}
-	}
-	store.mu.Unlock()
-	if failed != nil {
+	if failed := store.stop(err); failed != nil {
 		failed(err)
 	}
 	return storageFailed(err)
+}
+
+// failTurn is fail for a commit turn: a panic out of the host's listener is what the turn throws past its own handling,
+// so runGroup rejects its commits with it as Pi's `catch` of the turn does (see listenerPanic).
+func (store *ChordStore) failTurn(err error) *data.ChordError {
+	if failed := store.stop(err); failed != nil {
+		func() {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					panic(&listenerPanic{value: recovered})
+				}
+			}()
+			failed(err)
+		}()
+	}
+	return storageFailed(err)
+}
+
+// listenerPanic is what a panic out of the host's `failed` listener is while a commit turn runs.
+type listenerPanic struct{ value any }
+
+// stop records the store's failure and returns the listener to tell when this is the first.
+func (store *ChordStore) stop(err error) func(error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.failure == nil {
+		store.failure = err
+	}
+	if store.state != storeOpen {
+		return nil
+	}
+	store.state = storeFailed
+	if store.attachment == nil {
+		return nil
+	}
+	return store.attachment.Failed
+}
+
+// ThrownError is a value a callback panicked with, as the error a commit it rejected carries: the error itself when it
+// was one (errors.Is and errors.As reach it, and so does ==), else this.
+type ThrownError struct{ Value any }
+
+func (err *ThrownError) Error() string { return fmt.Sprintf("store: a callback panicked: %v", err.Value) }
+
+// thrownError is the error a panicking callback's value stands for.
+func thrownError(recovered any) error {
+	if err, ok := recovered.(error); ok {
+		return err
+	}
+	return &ThrownError{Value: recovered}
 }
 
 // storageFailed is the `unavailable/storage_failed` error of a stopped store, its backend error as the cause.

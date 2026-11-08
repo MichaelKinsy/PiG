@@ -100,7 +100,7 @@ func decodeAll(t *testing.T, body SyncBody) decoded {
 			t.Fatalf("sequence %d follows %d", line.Commit.Seq, previous)
 		}
 		previous = line.Commit.Seq
-		if line.Bytes < 2 || line.Bytes > MaxLineBytes+1 {
+		if line.Bytes < 2 || line.Bytes > stringLimit+1 {
 			t.Fatalf("line of %d bytes for seq %d", line.Bytes, line.Commit.Seq)
 		}
 		encoded, err := EncodeLogLine(line.Commit)
