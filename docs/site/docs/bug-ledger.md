@@ -3837,13 +3837,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** A Node extension's handler that wrote the session (`pi.setSessionName`, `pi.setLabel`, `pi.sendMessage`) after an `await` read back a session log without the entry it had just written (`ctx.sessionManager.getEntries()` still ended in the earlier entry), and the replicated log later lost all but one entry, where Pi's in-process log shows every write to the next read.
-- **Root cause:** The runtime applied the host's state push for a write after the push for the next write, because the receive loop that was handed the first push is unable to read it during the synchronous call that follows an `await`.
+- **Root cause:** The runtime applied the host's state push for a write after the push for the next write, because the receive loop that held the first push (handed to it while it waited, or taken from its queue) is unable to read it during the synchronous call that follows an `await`.
 - **User impact:** Lost or altered data
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `2173cc13ed` (2026-11-07)
 - **Tests:** `test/extension-conformance/replicated_accessors_test.go::TestNodeReplicatedWritesReadBackAfterAwait`, `test/extension-conformance/replicated_accessors_test.go::TestReplicatedAccessorsReadYourWritesAcrossSDKs`
-- **Release note:** A Node extension's handler that wrote the session (`pi.setSessionName`, `pi.setLabel`, `pi.sendMessage`) after an `await` read back a session log without the entry it had just written (`ctx.sessionManager.getEntries()` still ended in the earlier entry), and the replicated log later lost all but one entry, where Pi's in-process log shows every write to the next read. Every handler of an extension that registers `pi.onLoaded` is such a handler: its requests first await the loaded handlers. The runtime applied the host's state push for a write after the push for the next write, because the receive loop that was handed the first push is unable to read it during the synchronous call that follows an `await`. The runtime now applies the state in the order the host sent it.
+- **Release note:** A Node extension's handler that wrote the session (`pi.setSessionName`, `pi.setLabel`, `pi.sendMessage`) after an `await` read back a session log without the entry it had just written (`ctx.sessionManager.getEntries()` still ended in the earlier entry), and the replicated log later lost all but one entry, where Pi's in-process log shows every write to the next read. Every handler of an extension that registers `pi.onLoaded` is such a handler: its requests first await the loaded handlers. The runtime applied the host's state push for a write after the push for the next write, because the receive loop that held the first push (handed to it while it waited, or taken from its queue) is unable to read it during the synchronous call that follows an `await`. The runtime now applies the state in the order the host sent it.
 
 ### BF-21c27bf
 
