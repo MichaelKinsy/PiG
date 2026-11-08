@@ -81,3 +81,7 @@ func MockPerformanceNow(initial float64) (*Mock, func()) {
 		mu.Unlock()
 	}
 }
+
+// TimeOrigin is performance.timeOrigin: the wall-clock time of PerformanceNow's zero, in fractional milliseconds since the
+// Unix epoch.
+func TimeOrigin() float64 { return float64(start.UnixNano()) / float64(time.Millisecond) }
