@@ -1,0 +1,24 @@
+{
+  "name": "p2",
+  "slug": "p2",
+  "identifier": "io.github.michaelkinsy.p2desktop",
+  "version": "0.0.1",
+  "copyright": "© Michael Kinsy",
+  "publisher": "Michael Kinsy",
+  "license": "MIT",
+  "main": "./cmd/p2-desktop",
+  "out": "build",
+  "icon": "resources/icon.png",
+  "urlSchemes": ["pig"],
+  "macos": {
+    "minimumSystemVersion": "12.0",
+    "infoPlist": {
+      "NSMicrophoneUsageDescription": "p2's voice mode uses the microphone."
+    }
+  },
+  "linux": {
+    "maintainer": "Michael Kinsy <54590707+MichaelKinsy@users.noreply.github.com>",
+    "comment": "p2, a Durable UI for Pi agents",
+    "categories": ["Development", "Utility"]
+  }
+}
