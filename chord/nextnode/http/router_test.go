@@ -161,7 +161,7 @@ func TestRouterPatternsAndPrecedence(t *testing.T) {
 		if match, _ := router.Route("GET", "/p"); match == nil || !match.Page || match.CrossSite {
 			t.Fatalf("GET /p = %+v, want page and not crossSite", match)
 		}
-		if match, _ := router.Route("POST", "/hook"); match == nil || match.Page || !match.CrossSite {
+		if match, _ := router.Route("POST", "/hook"); match == nil || match.Page || !match.CrossSite || !match.Public {
 			t.Fatalf("POST /hook = %+v, want crossSite and not page", match)
 		}
 		routerExpectLookup(t, router, "GET", "/notes", NoMatch)
@@ -284,6 +284,7 @@ func TestRouterHostsAndSockets(t *testing.T) {
 			Relays:     []*HttpRelay{relay},
 			Csp:        []CspEntry{{Directive: "img-src", Sources: []string{"https://cdn.example.com"}}},
 		}
+		contribution.Sockets = append(contribution.Sockets, HttpSocketEntry{Pattern: "/open", Handler: &HttpSocket{}, Public: true})
 		router, _ := routerCompose(t,
 			routerEntry{"@app/a", contribution},
 			routerEntry{"@app/b", HttpContribution{Hosts: []string{"b.example.com"}, Csp: []CspEntry{{Directive: "img-src", Sources: []string{"data:"}}}}},
@@ -305,8 +306,11 @@ func TestRouterHostsAndSockets(t *testing.T) {
 		if status != Found {
 			t.Fatalf("Socket(/terminal/7) = lookup %v, want a match", status)
 		}
-		if match.Pattern != "/terminal/:id" || match.Plugin != "@app/a" || !reflect.DeepEqual(match.Params, map[string]string{"id": "7"}) || match.MaxPayload != 10 {
+		if match.Pattern != "/terminal/:id" || match.Plugin != "@app/a" || !reflect.DeepEqual(match.Params, map[string]string{"id": "7"}) || match.MaxPayload != 10 || match.Public {
 			t.Fatalf("socket = %s", fmt.Sprintf("%+v", *match))
+		}
+		if open, status := router.Socket("/open"); status != Found || !open.Public {
+			t.Fatalf("Socket(/open) = %+v lookup %v, want a public match", open, status)
 		}
 		if _, status := router.Socket("/terminal/.."); status != BadPath {
 			t.Fatalf("Socket(/terminal/..) lookup = %v, want bad path", status)

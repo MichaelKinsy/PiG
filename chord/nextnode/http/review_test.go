@@ -50,7 +50,7 @@ func TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses(t *te
 	t.Cleanup(stuck.resolve)
 	entered := newGate()
 	server := serving(t, []plugin{{"@app/stuck", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /stuck", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /stuck", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			entered.resolve()
 			<-stuck.done()
 			return HttpResponse{}, nil
@@ -150,7 +150,7 @@ func TestReviewAnInvalidRedirectTargetIsA500ReportedResponseFailed(t *testing.T)
 // headers; the route's answer is a reported 500 and a refusal keeps the baseline.
 func TestReviewAContributedCSPSourceThatIsNoHeaderValueIsAReported500AndRefusalsKeepTheBaseline(t *testing.T) {
 	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{
-		Routes: []HttpRouteEntry{RouteFunc("GET /r", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("x"), nil })},
+		Routes: []HttpRouteEntry{publicRoute("GET /r", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("x"), nil })},
 		Csp:    []CspEntry{{Directive: "img-src", Sources: []string{"a\r\nSet-Cookie: x=1"}}},
 	})}}, servedOptions{})
 	got := mustSend(t, server.port, "GET", "/r", sendOptions{})
@@ -188,7 +188,7 @@ func TestReviewQueryParsesAsURLSearchParams(t *testing.T) {
 		t.Fatalf("q = %q, %v", first, ok)
 	}
 	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /q", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /q", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
 			value, _ := request.Query().Get("a")
 			return htmlOf(value), nil
 		}),
@@ -201,7 +201,7 @@ func TestReviewQueryParsesAsURLSearchParams(t *testing.T) {
 // Review S4: Chord's listener gives a GET or HEAD no body (Pi's Web `Request` has none), so `json()` of one is a 400.
 func TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests(t *testing.T) {
 	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /json", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /json", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
 			value, err := request.JSON()
 			if err != nil {
 				return HttpResponse{}, err
@@ -229,7 +229,7 @@ func TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests(t *testing.T) {
 func TestReviewAClientThatDisconnectsAbortsTheScopeWithPisReason(t *testing.T) {
 	entered := make(chan host.Ctx, 1)
 	server := serving(t, []plugin{{"@app/slow", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /slow", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+		publicRoute("GET /slow", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			entered <- ctx
 			<-ctx.Done()
 			return HttpResponse{Kind: KindError, Status: 503}, nil
@@ -976,7 +976,7 @@ func TestReviewRequestsAndUpgradesReadTheRegistriesWhileReloadsComposeThem(t *te
 	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
 	// A route for the requests to reach their authenticators, and an authenticator the reloads add and remove in turn.
 	routes := plugin{"@app/routes", contributing(HttpContribution{Routes: []HttpRouteEntry{
-		RouteFunc("GET /x", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("x"), nil }),
+		publicRoute("GET /x", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("x"), nil }),
 	}})}
 	extra := plugin{"@app/extra-auth", authenticating(func(HttpRequest, context.Context) (data.Principal, error) { return nil, nil })}
 	server := serving(t, []plugin{sockets, tunnel, routes}, servedOptions{})

@@ -35,3 +35,11 @@ func TestUTF16SlicingAndSplicing(t *testing.T) {
 		t.Fatal("joining units did not preserve the scalar string")
 	}
 }
+
+func TestLengthBytesIsLength(t *testing.T) {
+	for _, text := range []string{"", "abc", "é", "😀 x", "\xed\xa0\x80lone", "bad\xffbyte", "€\U0010FFFF"} {
+		if got, want := LengthBytes([]byte(text)), Length(text); got != want {
+			t.Errorf("LengthBytes(%q) = %d, want %d", text, got, want)
+		}
+	}
+}
