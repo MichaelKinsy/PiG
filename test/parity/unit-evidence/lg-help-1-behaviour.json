@@ -2283,7 +2283,6 @@
       "TestTruncateHeadLineCapBeforeByteCap",
       "TestTruncateLine",
       "TestTruncateMatchesPi",
-      "TestTruncateMiddle",
       "TestTruncateTail_ByteCap",
       "TestTruncateTail_LastLineLargerThanCap",
       "TestTruncateZeroLimitsAreLimits",
@@ -2601,7 +2600,6 @@
     "package": "./internal/codingagent/tools",
     "tests": [
       "TestGetReplacementLineRangeRejectsARangeThatEndsPastTheLastLine",
-      "TestTruncateMiddleStopsAtTheEndsOfContentWithoutCharacterStarts",
       "TestPrepareEditArgumentsRawNeedsBothTextsToRepairAnEdit"
     ],
     "upstream": "packages/coding-agent/src/core/tools/edit-diff.ts",

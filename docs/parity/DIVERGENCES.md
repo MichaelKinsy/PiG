@@ -3754,42 +3754,6 @@ Evidence: the ported `model-selector.test.ts` and `llama-ui.test.ts` cases of Pi
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 
-## D370 The OAuth callback server drops connections that have not sent a request when it closes
-
-What: The pin contains Pi 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311). Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`. Two Go mechanics ride with it: `WaitForCallback` fails at once when it is called after `Close` (Pi's wait would run to its timeout), and a wait that ends with its context frees its state so the same state can wait again (Pi's wait has no signal).
-
-Why: Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.
-
-Pi bug: none; these are Go mechanics.
-
-Owner decision: owner sign-off pending.
-
-SCRUTINIZED:pending
-
-Remove when: Go gains a way to close the connections that never sent a request without cutting a response in flight, and a wait after Close times out as Pi's does.
-
-Call-site markers: `mcp/oauth/callback.go` (`Close`).
-
-Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`, `TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` (`mcp/oauth/oauth_test.go`), `TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose` (`mcp/oauth/goroutines_test.go`).
-
-## D373 The stored PKCE verifier is dropped once its code exchange succeeded
-
-What: after `AuthorizeMcp` exchanged an authorization code and saved the tokens, PiG removes the `codeVerifier` of that sign-in from the stored OAuth state. Pi keeps it in `mcp-auth.json` until the next sign-in overwrites it or the credentials are invalidated.
-
-Why: a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.
-
-Pi bug: none observable in behavior; additive hardening.
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-08).
-
-SCRUTINIZED:pending
-
-Remove when: Pi drops the verifier after the exchange, or the owner declines the hardening.
-
-Call-site markers: `mcp/oauth/flow.go` (the exchange branch of `runFlow`).
-
-Evidence: `TestAuthorizeMcpDropsTheVerifierAfterTheExchange` (`mcp/oauth/oauth_test.go`).
-
 ## D430 Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking remainder from outside the host package (AwaitingCtx)
 
 What: Pi's `ref.method(args)` starts the call at once and returns a Promise. A caller may start several calls before awaiting any (Files v2's pipelined `append`s, which the call window allows) and the host accepts them in the order they were started. A blocking Go `Reference.Call` cannot express that, so `Reference.Start(method, args, ctx)` is the synchronous half (the call is admitted and its handler's synchronous part has run when it returns) and `PendingCall.Wait(ctx)` the awaiting half. `host.AwaitingCtx(ctx, work)` is `Awaiting` for a caller outside the package, which cannot name the host's loop: the blocking remainder of an `onLive` or `on` handler (the awaits of Pi's async function).

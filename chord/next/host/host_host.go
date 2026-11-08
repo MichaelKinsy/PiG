@@ -1029,7 +1029,7 @@ func (h *chordHost) unreferenced(object *chordObject, holders []holder, ctx cont
 
 // report reports a background failure to `onError`; a failing `onError` has nowhere left to report to.
 func (h *chordHost) report(err HostError) {
-	defer func() { _ = recover() }() // upstream: packages/chord/src/next/host/host.ts:ChordHost.report (a throwing onError is swallowed)
+	defer func() { _ = recover() }() // upstream: packages/chord/src/host/host.ts:ChordHost.report (a throwing onError is swallowed)
 	h.onError(err)
 }
 
