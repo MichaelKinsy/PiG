@@ -1058,6 +1058,7 @@ func (c *Client) connect(attempt int) {
 	var current Socket
 	current = c.transport.Socket("/chord", SocketEvents{
 		Open: func() {
+			println("DIAG open")
 			c.mu.Lock()
 			if c.closed || c.socket != current {
 				c.mu.Unlock()
@@ -1085,6 +1086,7 @@ func (c *Client) connect(attempt int) {
 		},
 		Message: func(data []byte, binary bool) {
 			c.mu.Lock()
+			println("DIAG message", len(data), c.socket != current, c.closed)
 			stale := c.socket != current || c.closed
 			l := c.link
 			c.mu.Unlock()
