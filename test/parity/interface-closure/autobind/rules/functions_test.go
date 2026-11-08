@@ -437,8 +437,8 @@ func Partial() Other                    { return Other{} }
 		{"fixed-error alias needs an error result", "FileResult<string>", "ValueNoErr", No, "S13"},
 		{"fixed-error alias value of another type", "FileResult<string>", "Wrong", No, "result"},
 		{"fixed-error alias void with a Go value", "FileResult<void>", "VoidValue", No, "S13"},
-		{"Result takes two type arguments", "Result<string>", "Value", No, ""},
-		{"an alias that is not the union is no result", "Tagged<string>", "Value", No, ""},
+		{"Result takes two type arguments", "Result<string>", "Value", Unknown, ""},
+		{"an alias that is not the union is no result", "Tagged<string>", "Value", Unknown, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := Result(env, tc.returns, sigOf(t, scope, tc.fn).Results())

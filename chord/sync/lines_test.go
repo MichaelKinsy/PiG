@@ -1,10 +1,10 @@
 package sync
 
 import (
-	"errors"
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
