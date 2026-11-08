@@ -179,7 +179,7 @@ func keyCaseVariants(bodies [][][]byte, mode string) [][][]byte {
 	return variants
 }
 
-// providerResponseOracle is providerStreamOracle with an HTTP status per body (nil: every response is 200 event-stream; otherwise the body is JSON text with that status). drop ends every body with a broken connection (Pi: the body stream errors with undici's "terminated") instead of a clean end; Pig's message for that error is "terminated (cause: <Go error>)" (D144), and every other error text must equal Pi's.
+// providerResponseOracle is providerStreamOracle with an HTTP status per body (nil: every response is 200 event-stream; otherwise the body is JSON text with that status). drop ends every body with a broken connection (Pi: the body stream errors with undici's "terminated") instead of a clean end; the error texts must equal Pi's.
 func providerResponseOracle(t *testing.T, pi [4]string, d120 bool, bodies [][][]byte, statuses []int, drop bool, newProvider func(baseURL string) Provider) {
 	t.Helper()
 	cases := make([]providerOracleCase, len(bodies))
@@ -304,7 +304,7 @@ func providerResponseOracle(t *testing.T, pi [4]string, d120 bool, bodies [][][]
 			problem = fmt.Sprintf("stopReason %s, want %s", result.StopReason, want.Message.StopReason)
 		case !reflect.DeepEqual(gotContent, wantContent) && (len(result.Content) != 0 || len(want.Message.Content) != 0):
 			problem = fmt.Sprintf("content %v, want %v", gotContent, wantContent)
-		case (result.ErrorMessage == "") != (want.Message.ErrorMessage == nil) || (want.Message.ErrorMessage != nil && !providerOracleErrorMatches(result.ErrorMessage, *want.Message.ErrorMessage, drop)):
+		case (result.ErrorMessage == "") != (want.Message.ErrorMessage == nil) || (want.Message.ErrorMessage != nil && result.ErrorMessage != *want.Message.ErrorMessage):
 			wantError := "<none>"
 			if want.Message.ErrorMessage != nil {
 				wantError = *want.Message.ErrorMessage
@@ -338,9 +338,4 @@ func providerResponseOracle(t *testing.T, pi [4]string, d120 bool, bodies [][][]
 	if differing > 0 {
 		t.Fatalf("%d bodies differ from Pi", differing)
 	}
-}
-
-// providerOracleErrorMatches reports whether Pig's error text is Pi's. For a dropped connection Pi's undici error is "terminated", which Pig reports as "terminated (cause: <Go error>)" (D144).
-func providerOracleErrorMatches(got, want string, drop bool) bool {
-	return got == want || (drop && want == "terminated" && strings.HasPrefix(got, "terminated (cause: "))
 }

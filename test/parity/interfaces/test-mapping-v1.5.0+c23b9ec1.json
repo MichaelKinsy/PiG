@@ -61,8 +61,15 @@
     },
     {
       "path": "packages/ai/test/abort.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:91d7b131993ac13536a998e80b0a6497291fc8735a7e967899c8dcdcec5a22ab"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:91d7b131993ac13536a998e80b0a6497291fc8735a7e967899c8dcdcec5a22ab",
+      "evidence": [
+        "ai/abort_upstream_test.go#TestAbortMatrixUpstream",
+        "coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationStaysErrorWhenCanceled",
+        "coding/model_runtime_abort_upstream_test.go#TestModelRuntimeProviderTimeoutWithoutRequestCancellationIsError",
+        "test/parity/scenarios/providers-faux-streaming/14-provider-immediate-abort.toml"
+      ],
+      "rationale": "All 41 cases (20 providers x 2, plus the Bedrock follow-up) run in TestAbortMatrixUpstream with the 0.99.1 model list, including together moonshotai/Kimi-K3 (abort.test.ts:181). The case inventory is read from the current pinned inventory (coding.UpstreamVersion), so the titles are the 0.99.x titles. The paced faux provider supplies generation; remote transport cancellation stays live-only as in the 0.87.1 review. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; ai/abort_upstream_test.go runs the same row through the generated catalog."
     },
     {
       "path": "packages/ai/test/anthropic-auth-token.test.ts",
@@ -174,8 +181,14 @@
     },
     {
       "path": "packages/ai/test/anthropic-message-threads.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c3c9855ef1f514fe9246f75f7a9acec233b6a6b7cad68c228bee9dc80d43a18b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c3c9855ef1f514fe9246f75f7a9acec233b6a6b7cad68c228bee9dc80d43a18b",
+      "evidence": [
+        "ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCreateThenContinue",
+        "ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsNewThreadAfterRejection",
+        "ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsOffAfterUnsupported"
+      ],
+      "rationale": "All cases of Pi a758f3ae4 (Anthropic message threads, #11545) are ported in ai/anthropic_message_threads_test.go (create then continue, continue after tool calls and effort changes, new thread when a setting changes or the server rejects, thread state off after an unsupported endpoint, in-flight continue, disableContinuation); the implementation is ai/anthropic_threads.go (D353)."
     },
     {
       "path": "packages/ai/test/anthropic-mid-conversation-effort.test.ts",
@@ -238,13 +251,23 @@
     },
     {
       "path": "packages/ai/test/anthropic-strict-tool-schema.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:121d976168c2330e41702e4c0a87bc673dbf210979e8812f1b8d3f69ee201512"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:121d976168c2330e41702e4c0a87bc673dbf210979e8812f1b8d3f69ee201512",
+      "evidence": [
+        "ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicStrictToolSchemas",
+        "ai/anthropic_strict_keywords_test.go"
+      ],
+      "rationale": "Both cases (:71 and :102; the first moved here from anthropic-eager-tool-input-compat.test.ts in 0.99.2). The keyword-fallback case runs one subtest per keyword Anthropic strict mode rejects and asserts the serialized tool payload. Pi c23b9ec1: 4a6a58eb5 keeps root $defs and definitions in Anthropic non-strict tool schemas; the 25 added lines are the cases TestAnthropicStrictToolSchemas ports (D351)."
     },
     {
       "path": "packages/ai/test/anthropic-temperature-compat.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:304e85db98b340ebe6fd592acaf00b7fed6aef10b8c8dce4b236df4bf3334371"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:304e85db98b340ebe6fd592acaf00b7fed6aef10b8c8dce4b236df4bf3334371",
+      "evidence": [
+        "ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamTemperatureCompat",
+        "cmd/gen-models/d240_sonnet5_temperature_test.go"
+      ],
+      "rationale": "All six original cases retain the exact Opus 4.7/4.8, Opus 4.6, Sonnet 4.6 and custom vendor model IDs, temperature zero/default-one inputs and omitted-versus-zero payload assertions. The gate-close-02 audit is retained with commit 663ba1582ab6228861ab4ccab397cca1885decb8; every table row passes in the candidate's full ai race run. Pi c23b9ec1: 4b9777737 (Claude Sonnet 5 takes no temperature, #7961) adds six lines to the file; the catalog side is held by cmd/gen-models TestCatalogGenerationMatchesPi (golden re-recorded at the pin) and the Go cases of this file in ai."
     },
     {
       "path": "packages/ai/test/anthropic-thinking-binding-e2e.test.ts",
@@ -483,8 +506,12 @@
     },
     {
       "path": "packages/ai/test/clamp-max-tokens.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:df80896bb514f1dfc0f4b4f3bb16027dc1b746741345597e666b09239f93691e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:df80896bb514f1dfc0f4b4f3bb16027dc1b746741345597e666b09239f93691e",
+      "evidence": [
+        "ai/clamp_max_tokens_test.go"
+      ],
+      "rationale": "Pi 0a4fad548 (#11712) leaves room for OpenRouter's input overcount when clamping max tokens; the cases were already ported in the base (D238) and ai/clamp_max_tokens_test.go runs them unchanged."
     },
     {
       "path": "packages/ai/test/classifier-images-live.test.ts",
@@ -499,8 +526,14 @@
     },
     {
       "path": "packages/ai/test/classifier-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5e8e83b1d4deec3a66bb40b4ee77fc3415f2aa6dc4ce4376d42e53a965d45e65"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5e8e83b1d4deec3a66bb40b4ee77fc3415f2aa6dc4ce4376d42e53a965d45e65",
+      "evidence": [
+        "ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+        "coding/extension_model_types_wire_test.go#TestExtensionClassifyAction",
+        "ai/opencode_endpoints_upstream_test.go#TestOpenCodeCatalogUsesProtocolSpecificEndpoints"
+      ],
+      "rationale": "Pi 7f225f25 changes the 'routes OpenRouter classifier models through the System One API' case (:248) to expect compat {imageInput: state-image-urls, sendImageOptInHeader: false}, explicit so images keep OpenRouter's form when the baseUrl is overridden. The Go subtest of the same name asserts model.Compat.ImageInput == SystemOneImageInputStateImageURLs and a false SendImageOptInHeader on the catalog models, which the regenerated classifier catalog (ai/classifier_models_generated.go) now carries. Earlier review, retained: All 5 cases. 'keeps chat and classifier entries...', 'exposes Jev only through classifier catalog accessors', the three 'routes <provider> Jev' rows and 'routes OpenRouter classifier models' are TestClassifierModelsUpstream subtests. 'rejects chat models at the classifier entry point at runtime' (:94) casts a chat model to ClassifierModel; ai.Models.Classify takes *ClassifierModel so the cast cannot compile in Go, and the reachable runtime entry that accepts any model (the extension classify action, coding.ModelRuntime via ai.AssertClassifierModel) is covered by TestExtensionClassifyAction asserting an error result containing 'is not a classifier model'. 1.1.0 adds three cases, all subtests of TestClassifierModelsUpstream (ai/classifier_models_upstream_test.go): images rejected before the provider call for text-only classifier models, GPT-6 Luna routed through the Decisions API with images (chat entry stays separate), and Decisions models listed only for API key credentials. Pi 3daa2028→b06c1f2c: Pi 195120a9 moves the OpenCode classifier base URLs from /zen/v1 to /inference/v1; TestClassifierModelsUpstream carries the new URLs. Pi 177e2ad7 (#11434) changes the 'routes opencode Jev' rows (:132-134) to expect https://opencode.ai/inference/systemone/v1/systemone (was /inference/v1/systemone) for jev-1.13 and jev-1.13-free; the Go rows follow and failed before the change against the regenerated classifier catalog (ai/classifier_models_generated.go, from the pinned provider data). TestOpenCodeCatalogUsesProtocolSpecificEndpoints walks every OpenCode and OpenCode Go chat and classifier model and checks its baseUrl against the endpoint of its API: openai-completions and openai-responses at /openai/v1, anthropic-messages at /anthropic, google-generative-ai at /google/v1beta, typesafe-system-one at /systemone/v1, under https://opencode.ai/inference and https://opencode.ai/inference/go. Pi c23b9ec1: 0ec20e157 adds the GitHub Copilot Microsoft-Decision-1 classifier cases (/v1 base URL prefix, System One request); ported in TestClassifierModelsUpstream."
     },
     {
       "path": "packages/ai/test/cloudflare-ai-binding.test.ts",
@@ -589,18 +622,35 @@
     },
     {
       "path": "packages/ai/test/context-overflow.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7f3aae44de8845fdb4f360ae16f4dc26afb5824d40e0771ee869a5c113a87546"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7f3aae44de8845fdb4f360ae16f4dc26afb5824d40e0771ee869a5c113a87546",
+      "evidence": [
+        "ai/context_overflow_upstream_test.go#TestContextOverflowMatrixUpstream",
+        "ai/context_overflow_upstream_test.go"
+      ],
+      "rationale": "All 35 cases run in TestContextOverflowMatrixUpstream with the 0.99.1 list, including Together 'Kimi-K3 - should detect overflow via isContextOverflow' (context-overflow.test.ts:341); inventory titles are read from the current pinned inventory. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 568c2a82 uses anthropic/claude-sonnet-4.5 for the OpenRouter case because anthropic/claude-sonnet-4 left the catalog; the case in TestContextOverflowMatrixUpstream follows. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-5.6-sol; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; the Go case list carries the qwen-token-plan-individual-cn row."
     },
     {
       "path": "packages/ai/test/cross-provider-handoff.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9859c97788b5e644b633b2bac72a4f6869818800aa46b9c65cd78f082337396b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9859c97788b5e644b633b2bac72a4f6869818800aa46b9c65cd78f082337396b",
+      "evidence": [
+        "ai/cross_provider_handoff_upstream_test.go#TestCrossProviderHandoffUpstream",
+        "agent/transform_test.go#TestNormalizeMessages_ThinkingNormalization",
+        "agent/transform_provider_path_test.go#TestCleanToolCycleSurvivesProviderRequest",
+        "ai/cross_provider_handoff_upstream_test.go"
+      ],
+      "rationale": "Both cases; the 0.99.1 row together moonshotai/Kimi-K3 label together-kimi-k3 (cross-provider-handoff.test.ts:110) is in ai/cross_provider_handoff_upstream_test.go:28. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; the Go case list carries the row."
     },
     {
       "path": "packages/ai/test/empty.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:75e86fd3b03ce18dc6702052a6ff314e096b6249017e3c5b14af7efbed553faa"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:75e86fd3b03ce18dc6702052a6ff314e096b6249017e3c5b14af7efbed553faa",
+      "evidence": [
+        "ai/empty_upstream_test.go#TestEmptyMessagesUpstream",
+        "ai/empty_upstream_test.go"
+      ],
+      "rationale": "All 120 cases (30 model groups x 4) run in TestEmptyMessagesUpstream, including together moonshotai/Kimi-K3 (empty.test.ts:370); the model list was compared with every getModel call of the 0.99.1 file in order. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; the Go case list carries the row."
     },
     {
       "path": "packages/ai/test/env-api-keys.test.ts",
@@ -613,8 +663,16 @@
     },
     {
       "path": "packages/ai/test/error-body.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:99555b5788c823d0880b9937093218b23c49fde8ed07dea8c7c4cf4b01e19d7f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:99555b5788c823d0880b9937093218b23c49fde8ed07dea8c7c4cf4b01e19d7f",
+      "evidence": [
+        "ai/error_body_upstream_test.go#TestNormalizeProviderErrorUpstream",
+        "ai/error_body_upstream_test.go#TestFormatProviderErrorUpstream",
+        "ai/error_body_upstream_test.go#TestProviderErrorTrimmingMatchesJS",
+        "test/parity/scenarios/providers-faux-streaming/16-provider-http-error-body.toml",
+        "ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"
+      ],
+      "rationale": "All sixteen upstream cases preserve status/body/message values, ignored stream/wrapper bodies, non-error JSON values, empty parsed objects, the 4000-character cap, body de-duplication and exact prefix composition. Go HTTP adapters use one typed raw-error carrier instead of TS SDK property bags; native Smithy status is extracted without reading its response stream. The implementation is called by real OpenAI-compatible HTTP error paths. Compiling body-extraction/prefix mutations fail unit tests and exact real-Pi HTTP output. Pi f715a15c1 adds one case, 'truncateErrorText keeps an excerpt that does not hold the whole body alive', which measures V8 heap use after truncating a 6 MB string: V8 represents a long slice as a view of its source, so ownedSlice copies it. Go has no such view type split and the excerpt, its marker and its length are the ones the existing cases assert, so the case has no Go form. Pi c23b9ec1: 4c992154d (#11783) keeps the underlying cause in connection error messages; the 43 added lines (cause depth, no-status/no-body, Error cause chain) are ported in TestConnectionErrorCauseDetailUpstream."
     },
     {
       "path": "packages/ai/test/event-stream.test.ts",
@@ -671,8 +729,12 @@
     },
     {
       "path": "packages/ai/test/generate-models-strict.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:00458d0fd5df2cc234f5b1d10b9130e14b9b620509e134e449828f49f7e99ec9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:00458d0fd5df2cc234f5b1d10b9130e14b9b620509e134e449828f49f7e99ec9",
+      "evidence": [
+        "cmd/gen-models/generate_models_strict_test.go#TestGenerateModelsStrict"
+      ],
+      "rationale": "Strict generation rejects on a failed source and leaves the data directory untouched. Pi c23b9ec1: 3e4f87265 adds glm-5.3 and the Individual CN model ids to the strict generation test; cmd/gen-models/generate_models_strict_test.go carries them and TestCatalogGenerationMatchesPi holds the output to Pi's generator."
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",
@@ -686,8 +748,14 @@
     },
     {
       "path": "packages/ai/test/github-copilot-oauth.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c0c3c4b864d3616403c171541e6ce97c12c0b427d0a2eb9efaec0f4fa37cc6eb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c0c3c4b864d3616403c171541e6ce97c12c0b427d0a2eb9efaec0f4fa37cc6eb",
+      "evidence": [
+        "ai/github_copilot_oauth_upstream_test.go",
+        "ai/github_copilot_catalog_upstream_test.go",
+        "internal/codingagent/copilot_catalog_upstream_test.go#TestCopilotAuthenticatedAccountAvailableModelsUpstream"
+      ],
+      "rationale": "All original device flow, interval/deadline, safe verification URI, refresh/account-catalog and real picker cases pass after 550d9c92a. Supplemental runtime-key transitions retain the account-filter contract. Owner-reviewed case inputs and current upstream hashes are retained. Named evidence passes on the union with Go 1.27.1, -race and -count=1; unrelated partial and live-service obligations remain open. Pi c23b9ec1: 8eddfe82f advances Vitest fake timers until the Copilot login settles (a test-harness change for JS timers, no behavior change); the Go cases take no fake timers and need no change."
     },
     {
       "path": "packages/ai/test/github-copilot-request-size-overflow.test.ts",
@@ -833,8 +901,16 @@
     },
     {
       "path": "packages/ai/test/image-tool-result.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c391fa2f624fb525506e26889f58c7d59bf9b82f1b933fe185ad804ac6166bdd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c391fa2f624fb525506e26889f58c7d59bf9b82f1b933fe185ad804ac6166bdd",
+      "evidence": [
+        "ai/image_tool_result_upstream_test.go#TestImageToolResultMatrixUpstream",
+        "ai/image_tool_result_wire_test.go#TestGeneratedModelToModelPreservesCapabilities",
+        "ai/image_tool_result_wire_test.go#TestMistralImageToolResultWireKeys",
+        "test/parity/scenarios/providers-faux-streaming/17-image-tool-result-wire.toml",
+        "ai/image_tool_result_upstream_test.go"
+      ],
+      "rationale": "All 46 cases (23 models x 2) run in TestImageToolResultMatrixUpstream; the model list matches every getModel call of the 0.99.1 file in order, with Together Kimi-K3 (:301-302) and Baseten Kimi-K2.6 unchanged. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi e5fe9777 deletes the credential-gated 'Baseten Provider (Kimi-K2.6)' pair of cases because models.dev retired the model; the Go matrix drops the baseten row (437d51c5), so 22 models x 2 = 44 cases remain and all 44 pass. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; the Go case list carries the row."
     },
     {
       "path": "packages/ai/test/images-models.test.ts",
@@ -1135,8 +1211,24 @@
     },
     {
       "path": "packages/ai/test/openai-codex-stream.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f959812c62a9dc54489b7496c4a25ed22bf1e24956115729d9cd5b25ef3240cc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f959812c62a9dc54489b7496c4a25ed22bf1e24956115729d9cd5b25ef3240cc",
+      "evidence": [
+        "ai/openai_codex_sse_upstream_test.go#TestCodexSSEAndPayloadUpstream",
+        "ai/openai_codex_sse_upstream_test.go#TestCodexSSELifetimeUpstream",
+        "ai/openai_codex_retry_upstream_test.go#TestCodexSSERetriesUpstream",
+        "ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream",
+        "coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+        "test/parity/scenarios/providers-faux-streaming/24-codex-payload-lifetime.toml",
+        "test/parity/scenarios/providers-faux-streaming/25-codex-continuation-recovery.toml",
+        "ai/user_agent_test.go",
+        "coding/codex_model_headers_test.go#TestCodexModelsJSONHeadersOverrideIdentityDefaults",
+        "ai/identity_test.go#TestFormatUserAgentForms",
+        "ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi",
+        "ai/openai_codex_retry_backoff_release_test.go#TestCodexSSERetryBackoffReleasesTheCallerContext"
+      ],
+      "rationale": "All 30 upstream case sites and 39 expanded rows are ported, including SSE framing/cancellation/timeouts, retry timing, cache affinity, selected reasoning maps, tool choice/strictness, tier pricing, account isolation, WebSocket reuse/age/idle/reconnect and both missing-continuation recovery paths. Model Runtime drives simple thinking and auto transport. D65 retains the existing product User-Agent identity difference. Compiling mutations and exact Pi payload/lifecycle and continuation scenarios guard the fixes. 1.1.0 renames and extends three cases: raw provider events with the model for each (TestCodexSSEAndPayloadUpstream 'streams SSE responses and forwards raw provider events', TestCodexWebSocketUpstream 'forwards auto transport and raw provider events from streamSimple') and 'lets model and caller headers override originator and User-Agent' (user_agent_test.go TestCodexModelAndCallerHeadersOverrideOriginatorAndUserAgent through StreamSimple with the model's headers; coding TestCodexModelsJSONHeadersOverrideIdentityDefaults through a models.json entry). Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (<platform> <release>; <arch>)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format. Codex keeps its own `originator` (D26). Pi c23b9ec1: 90b42bca6 removes the abort listener after the SSE retry backoff; the 56 added lines are the listener-release cases, ported in TestCodexSSERetryBackoffReleasesTheCallerContext (D352)."
     },
     {
       "path": "packages/ai/test/openai-completions-cache-control-format.test.ts",
@@ -1149,18 +1241,36 @@
     },
     {
       "path": "packages/ai/test/openai-completions-empty-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8727a532e1048d85517f462dc846b8170eb154e0e56b3fcd404907bd908ffd84"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8727a532e1048d85517f462dc846b8170eb154e0e56b3fcd404907bd908ffd84",
+      "evidence": [
+        "coding/openai_completions_empty_tools_upstream_test.go#TestOpenAICompletionsEmptyToolsUpstream",
+        "coding/openai_completions_empty_tools_upstream_test.go#TestOpenAICompletionsCloudflareEmptyToolsUpstream",
+        "test/parity/scenarios/providers-faux-streaming/16-completions-runtime-options.toml",
+        "ai/openai_test.go#TestOpenAICompletionsEmptyTools"
+      ],
+      "rationale": "The two changed expectations (max_completion_tokens 3904 -> 3618 for the default and explicit-maxTokens clamp cases) are asserted in TestOpenAICompletionsEmptyToolsUpstream and in scenario 16-completions-runtime-options; mutating charsPerToken to 4 fails them. Earlier cases: All eleven cases use models.json -> BuildModel -> Model Runtime StreamSimple -> captured HTTP requests: empty/omitted tools, default/explicit/clamped limits, preserved tool history, Cloudflare conservative fields, ambient endpoint env, BYOK Authorization and affinity headers. The default/clamped limits and ambient endpoint cases failed before fixing runtime lowering. Compiling overlays disabling both runtime steps fail unit guards and the exact Pi 0.87.1 probe. Go fixtures explicitly select Completions for gpt-4o-mini as upstream does. Pi c23b9ec1: 7a6bd5a97 (#11891) omits the empty tools array for tool history unless compat.requiresToolsWithToolHistory asks for it; the rewritten cases are ported in TestOpenAICompletionsEmptyTools."
     },
     {
       "path": "packages/ai/test/openai-completions-non-null-assistant-content.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ab06a46cee61291d8793a1b904cc201f902b09dc5ec19efef7e9e4fe2da25f05"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ab06a46cee61291d8793a1b904cc201f902b09dc5ec19efef7e9e4fe2da25f05",
+      "evidence": [
+        "ai/openai_completions_non_null_assistant_content_upstream_test.go#TestRequiresNonNullAssistantContentSendsNullContentForToolCallOnlyMessagesByDefault",
+        "ai/openai_completions_non_null_assistant_content_upstream_test.go#TestRequiresNonNullAssistantContentSendsEmptyStringWithoutInsertingAnAssistantMessage",
+        "ai/openai_completions_non_null_assistant_content_upstream_test.go#TestRequiresNonNullAssistantContentStillInsertsAssistantMessageWhenRequiresAssistantAfterToolResult"
+      ],
+      "rationale": "Pi 14b804d80 (#8118) adds compat.requiresNonNullAssistantContent; the three upstream cases are ported one to one."
     },
     {
       "path": "packages/ai/test/openai-completions-prompt-cache.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:276535dc7e725b031e734fd3595cb644e1728a7e12520e0bf0aa8274c7fe8a01"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:276535dc7e725b031e734fd3595cb644e1728a7e12520e0bf0aa8274c7fe8a01",
+      "evidence": [
+        "ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
+        "test/parity/scenarios/providers-faux-streaming/15-openai-cache-affinity.toml"
+      ],
+      "rationale": "All 15 sites (16 expanded cases) use production Stream with captured HTTP request JSON/headers and the upstream model/session/retention values, including both Fireworks catalog rows, Baseten, OpenRouter defaults/overrides, no-session format and explicit header precedence. Red tests expose conflated body/header cache gates and ignored retention options. A compiling overlay disabling affinity and retention handling fails the tests and exact Pi 0.87.1 probe. Pi 0.99.2 review: the 0.99.1 change moves the Fireworks session-affinity rows from glm-5p2 to glm-5p3 (openai-completions-prompt-cache.test.ts:174); both rows (models/glm-5p3 and routers/glm-5p3-fast) are ported at openai_prompt_cache_upstream_test.go:78-80 against the regenerated catalog. Pi c23b9ec1: 0f4d5e960 (#9442) adds compat.promptCacheKeyMode (auto, enabled, disabled); the 84 added lines are ported in TestOpenAICompletionsPromptCacheUpstream."
     },
     {
       "path": "packages/ai/test/openai-completions-provider-stream-event.test.ts",
@@ -1217,8 +1327,13 @@
     },
     {
       "path": "packages/ai/test/openai-completions-thinking-as-text.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2d8a28901775fd509435e7051cb0074e8cd8cbc6955ed56f235e95f62e5fdd8a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2d8a28901775fd509435e7051cb0074e8cd8cbc6955ed56f235e95f62e5fdd8a",
+      "evidence": [
+        "ai/openai_test.go#TestConvertMessagesWithCompat_ThinkingAsText",
+        "ai/openai_contract_0861_test.go#TestOpenAICompletionsThinkingAsTextUsesPlainContentParts"
+      ],
+      "rationale": "Covers converting thinking-plus-text and thinking-only replay into plain assistant text parts and reaching the endpoint with requiresThinkingAsText enabled, matching all 3 upstream cases. Pi c23b9ec1: 7a6bd5a97, 0f4d5e960 and 14b804d80 add compat fields (requiresNonNullAssistantContent, requiresToolsWithToolHistory, promptCacheKeyMode) to the compat object the case builds; the Go cases build the same compat struct."
     },
     {
       "path": "packages/ai/test/openai-completions-thinking-token-budget.test.ts",
@@ -1233,13 +1348,27 @@
     },
     {
       "path": "packages/ai/test/openai-completions-tool-choice.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:eb4565b4c9c70544f230f8b7151aa061d4d608c13ff1ae1eed5b7f2fbde63da2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:eb4565b4c9c70544f230f8b7151aa061d4d608c13ff1ae1eed5b7f2fbde63da2",
+      "evidence": [
+        "ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoicePayloadUpstream",
+        "ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
+        "ai/openai_tool_choice_stream_upstream_test.go#TestOpenAICompletionsToolChoiceStreamUpstream",
+        "test/parity/scenarios/providers-faux-streaming/22-completions-tool-choice.toml",
+        "test/parity/scenarios/providers-faux-streaming/23-completions-interleaved-deltas.toml",
+        "ai/openai_tool_choice_payload_upstream_test.go"
+      ],
+      "rationale": "All 49 upstream cases and their model/provider rows are ported with original request, metadata, replay, usage and stream assertions. Independent event blocks, first tool identity, function/custom presence, native efforts, provider controls and strict property order have regression guards and compiling mutations; exact Pi scenarios exercise payload and event paths. No cases are omitted. Pi 0.99.2 review: the 0.99.1 fixture changes are ported: opencode-go/kimi-k2.6 became opencode-go/kimi-k3 in the replay and stream fixtures (:1323,:1370,:1380,:1522) and the two thinking cases now use OpenCode Kimi K2.6 (:1428,:1450) - openai_tool_choice_formats_upstream_test.go:54-56,75-77,200-201 and openai_tool_choice_stream_upstream_test.go:26. Pi 3daa2028→b06c1f2c: Pi 63035734 and 381a2d8e reorder thinking before text in the expected stream events and update the Xiaomi replay; TestOpenAICompletionsToolChoiceStreamUpstream and the formats test follow. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). 0.5.2 (Pi e86b0547): \"uses OpenRouter reasoning object instead of reasoning_effort\" uses openrouter deepseek/deepseek-r1-0528, which is what the case in ai/openai_tool_choice_formats_upstream_test.go now loads; the catalog still lists deepseek/deepseek-r1 too (the frozen OpenRouter data of this pin is not Pi's of that day), so the change is a model-id switch with no behavior difference. Pi c23b9ec1: 7a6bd5a97 and 14b804d80 add the compat fields to the cases and 3e4f87265 adds the Individual CN provider row; the Go cases carry both."
     },
     {
       "path": "packages/ai/test/openai-completions-tool-result-images.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:aa61195696e59371a53959022431c60ae10def46b033da70990236c14ed6164b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:aa61195696e59371a53959022431c60ae10def46b033da70990236c14ed6164b",
+      "evidence": [
+        "ai/openai_completions_images_priority_upstream_test.go#TestOpenAICompletionsToolResultImagesUpstream",
+        "ai/openai_completions_empty_tool_result_test.go#TestToolResultWhitespaceOnly_NoOutputPlaceholder"
+      ],
+      "rationale": "Ports all 3 cases with upstream inputs: exact image-only user shape after dropping empty text, consecutive tool-result images batched after both results, and the empty no-image tool-result placeholder. A compiling empty-text-retention mutation fails the exact image-message assertion. Pi 4dd2b149 (#8720) runs the empty-result case for \"\", \"\\r\\n\" and \" \\n\\t\"; ai/openai_completions_empty_tool_result_test.go#TestToolResultWhitespaceOnly_NoOutputPlaceholder covers the whitespace rows. Pi c23b9ec1: 7a6bd5a97, 0f4d5e960 and 14b804d80 add compat fields to the compat object the case builds; the Go cases build the same compat struct."
     },
     {
       "path": "packages/ai/test/openai-completions-vllm-priority.test.ts",
@@ -1281,8 +1410,14 @@
     },
     {
       "path": "packages/ai/test/openai-responses-compat.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d0e872d02d22bf4cd424696c4630d80583ef96c5f02829ec16b7847a8cadd818"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d0e872d02d22bf4cd424696c4630d80583ef96c5f02829ec16b7847a8cadd818",
+      "evidence": [
+        "ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
+        "ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatHeadersUpstream",
+        "test/parity/scenarios/providers-faux-streaming/15-openai-cache-affinity.toml"
+      ],
+      "rationale": "All 18 sites (37 expanded cases) ported: Copilot omission, required tool choice, Cloudflare strictness, every supported/unsupported-off model row, every affinity-header variant, key clamping, all service-tier pricing rows and both max-output-token cases. HTTP capture uses the production provider; service-tier wire input uses SamplingParams. Red tests expose omitted reasoning incorrectly clamped on, dropped required choice, wrong affinity formats and generic header truncation. Compiling overlays fail these guards and the exact Pi probe. Pi 0.99.2 review: the 0.99.1 changes are ported: the key fixture is now sk-test-key (openai_responses_compat_upstream_test.go:20) and the service-tier cost case takes requested and returned tiers with GPT-6 \"fast\" rows (openai-responses-compat.test.ts:481-534; openai_responses_compat_upstream_test.go:185-201, close-to comparison at 12 digits). The it.each cases are table subtests with titles built from the row values. Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi e5fe9777 changes 'omits reasoning when no reasoning is requested' from github-copilot gpt-5-mini to gpt-6-sol (gpt-6-sol has off: \"none\", so it exercises the Copilot exception of #2567); the Go case takes the same model (openai_responses_compat_upstream_test.go, 437d51c5). All 18 sites remain ported. Pi 81d6759f (#11415) changes 'forwards required tool choice' (:122, :151) to openai gpt-5.6-luna: GPT-5.4 and GPT-5.5 declare their tools at the top level on OpenAI and OpenCode, so only GPT-5.6 and later keep additional_tools items and tool_choice applying to them. The Go subtest of that name uses gpt-5.6-luna with the same context and assertions (tool_choice required, no top-level tools, an additional_tools input item holding ping). The 'declares <provider>/<id> tools' subtests add the other side for openai and opencode: gpt-5.4, gpt-5.4-mini, gpt-5.4-pro and gpt-5.5 send ping in the top-level tools with no additional_tools item and no supportsAdditionalTools compat, gpt-5.6-sol, gpt-5.6-terra and gpt-5.6-luna send it in an additional_tools item, and every row keeps supportsMidConvoSystemMessages. Red: the original subtest (gpt-5.4) fails against the regenerated catalog with top-level tools=[{\"type\":\"function\",\"name\":\"ping\",...}]. Pi c23b9ec1: c5d397835 (#11793) sends session-id instead of session_id on OpenAI Responses; the changed header expectations are ported (D246)."
     },
     {
       "path": "packages/ai/test/openai-responses-empty-tool-result.test.ts",
@@ -1342,8 +1477,12 @@
     },
     {
       "path": "packages/ai/test/openai-responses-prompt-cache.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:17de0ec9bf7c1fabd7882e6a0522684c785142c811c040111e3eb06243164827"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:17de0ec9bf7c1fabd7882e6a0522684c785142c811c040111e3eb06243164827",
+      "evidence": [
+        "ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"
+      ],
+      "rationale": "Pi 0f4d5e960 (#9442) adds compat.promptCacheKeyMode to openai-responses; the cases are ported in TestOpenAIResponsesPromptCacheKeyPolicyUpstream."
     },
     {
       "path": "packages/ai/test/openai-responses-reasoning-replay-e2e.test.ts",
@@ -1578,8 +1717,16 @@
     },
     {
       "path": "packages/ai/test/qwen-token-plan-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ccbbb158c71cb09d291d1e6f311a717ef4954c5d8a57c3c2cc9c05e4f657d764"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ccbbb158c71cb09d291d1e6f311a717ef4954c5d8a57c3c2cc9c05e4f657d764",
+      "evidence": [
+        "ai/qwen_token_plan_models_test.go#qwen-token-plan-models.test.ts",
+        "ai/auth_env_keys_test.go#TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable",
+        "ai/port_wave_12_helpers_test.go#assertThinkingLevelPresence",
+        "ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels",
+        "ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels"
+      ],
+      "rationale": "All ten upstream sites at qwen-token-plan-models.test.ts:122,130,136,143,151,184,202,220,228,260 retain 88 expanded cases: exact Individual catalog, environment lookup, two text and two image-provider rows, 39 thinking payloads, 14 reasoning maps, six qwen3.8 maps, three retired-preview exclusions, 14 reasoning payloads and six qwen3.8 payloads. Original model lists, Hi prompts and reasoning levels are preserved; map checks distinguish null, absent and empty string. Case-by-case review and go test -count=1 -race ./ai pass on stable tip 4 (636bab50a9872bd92ec0d2dd4e62bf8669eec62e) with isolated HOME/Pig/Pi roots. Pi c23b9ec1: 3e4f87265 and d53980fe1 add the Qwen Token Plan Individual CN provider and glm-5.3; both exact-id cases are ported."
     },
     {
       "path": "packages/ai/test/radius-oauth.test.ts",
@@ -1636,8 +1783,15 @@
     },
     {
       "path": "packages/ai/test/retry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1e5c229c06082014f8b3cb809b402fc3322646f57f4fc1e147ebb5740c7eb697"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1e5c229c06082014f8b3cb809b402fc3322646f57f4fc1e147ebb5740c7eb697",
+      "evidence": [
+        "ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification",
+        "ai/assistant_retry_test.go#TestRetryDelayMsCapsAgentRetryDelay",
+        "ai/assistant_retry_test.go#TestRetryAssistantCall",
+        "ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle"
+      ],
+      "rationale": "Audited all 19 case sites (22 cases after expanding the four DNS table rows) against the existing assistant retry tests. Added recognizable classification names and source-line citations; tightened successful content assertions to exact block equality. Tests preserve exact strings, callback arguments and ordering, retry budgets, capped delay sequences, aborted backoff normalization, and error propagation. No cases are designed out. Pi 0.99.2 review: 0.99.1 adds \"keeps the ChatGPT subscription usage limit non-retryable\" (retry.test.ts:88) and \"retries temporary ChatGPT subscription errors\" (:94, two rows), ported at assistant_retry_test.go:52-53,67. All 21 case sites are ported. Pi 1.0.4 adds the \"pending stream has been canceled\" classification rows (bare and \"(caused by: ...)\" wording), ported at assistant_retry_test.go:44-45; all case sites are ported. Pi 550f1f3e (#10965): \"matches service unavailable wording\" with its two messages (:73-81) is two rows of TestIsRetryableAssistantErrorClassification; reverting the retry pattern fails both. Pi 0fbdbd3f (#10996, two rows) and 698a2d23 (#10920, four rows) add classification rows; all six are in assistant_retry_test.go TestIsRetryableAssistantErrorClassification. ai/vertex_adc_token_error_test.go now expects the node-fetch wording retryable, as Pi 0fbdbd3f makes it. Pi cedefc53 adds 'keeps the ChatGPT Business workspace usage limit non-retryable' (the subscription_sharing_workplace_individual_usage_limit_exceeded 429) and Pi 6e491cfa adds the two 'does not match status codes inside ids or longer numbers' rows (a req_011CU503xyz request id and 5316784 bytes); all three are ported in TestIsRetryableAssistantErrorClassification (assistant_retry_test.go) and TestIsRetryableAssistantErrorMatchesPiOracle compares the classifier with the vendored Pi module over those messages, with stream disconnected before completion (Pi 29057ece) and the boundary cases x429, 5000 and _429_. Pi c23b9ec1: 566344046 (#11885, #11879) makes the gateway wording \"cut short after the reply had begun\" retryable; the added case is ported as a TestIsRetryableAssistantErrorClassification row."
     },
     {
       "path": "packages/ai/test/sampling-options.test.ts",
@@ -1653,8 +1807,15 @@
     },
     {
       "path": "packages/ai/test/stream.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7465b9dc2d050c209e240e84a979626cb59471a99cd2c4c4a136d48000258b7e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7465b9dc2d050c209e240e84a979626cb59471a99cd2c4c4a136d48000258b7e",
+      "evidence": [
+        "ai/stream_upstream_test.go#TestStreamUpstream",
+        "ai/testdata/stream-cases.json",
+        "test/parity/testdata/extract-stream-cases.mjs",
+        "test/parity/scenarios/providers-faux-streaming/17-native-stream-options.toml"
+      ],
+      "rationale": "All 233 cases are ported with source-cited wrapper inputs extracted from pinned Pi, independently drift-checked, and Go implementations of every original helper assertion. Native HTTP/SSE/AWS and real Codex WebSocket fixtures exercise text, partial tool arguments, thinking, image payloads, multi-turn tool results, OAuth-shaped requests and all three Bedrock payload hooks. Fixed ignored raw Anthropic thinking/budget/effort and Bedrock requestMetadata; compiling mutations and exact Pi payload probes prove these paths. For stream.test.ts:1544, upstream test expectation disagrees with the pinned implementation; PiG matches the implementation. The credential-gated suite at :1541 expects max, but bedrock-converse-stream.ts:795-807 and a direct onPayload probe return high for Opus 4.6 xhigh. The lead approved asserting high, with no divergence or designed-out disposition. Remote model generation is not claimed by the hermetic matrix. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (stream.test.ts:759-760). ai/testdata/stream-cases.json was extracted from the 0.99.2 file: its 233 rows carry the same 233 line numbers and titles as the inventory. TestStreamUpstream's drift check re-runs the extractor, which needs the npm Pi 0.99.2 dist (not installable yet), so that test FAILS in this environment with ERR_MODULE_NOT_FOUND; the row data itself was compared against the inventory here. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 3daa2028→b06c1f2c: Pi b06c1f2c renames the Kimi For Coding e2e describe to 'via OpenAI Completions'; ai/testdata/stream-cases.json is regenerated from the test by test/parity/testdata/extract-stream-cases.mjs. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi 95364a54 (#10910): the NVIDIA case is Nemotron 3.5 Super VL; ai/testdata/stream-cases.json is regenerated from the pinned source (extract-stream-cases.mjs). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi e5fe9777 renames the GitHub Copilot suite from gpt-5.3-codex via OpenAI Completions to gpt-6-luna via OpenAI Responses and makes its thinking and multi-turn cases use the suite model instead of gpt-5-mini; ai/testdata/stream-cases.json is regenerated from the pinned source (still 233 cases, drift-checked by test/parity/testdata/extract-stream-cases.mjs) and TestStreamUpstream runs the GitHub Copilot cases against the gpt-6-luna catalog entry. Pi v1.4.0→v1.5.0 delta (v1.5.0 has 233 upstream case sites, every changed hunk of the file diff checked against its Go assertion): only the StringEnum import path moved (utils/typebox-helpers to utils/string-enum); no case changes, so all 233 cases and stream-cases.json stand. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix (a Qwen Token Plan Individual CN case group with Qwen3.8-Max); ai/testdata/stream-cases.json is regenerated from the file at the pin and TestStreamUpstream replays the new cases."
     },
     {
       "path": "packages/ai/test/streaming-json.test.ts",
@@ -1683,8 +1844,13 @@
     },
     {
       "path": "packages/ai/test/supports-xhigh.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e30dc68887932d35b027a4885e10ebf6483df997a5d5961cefe8e0679b73e11c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e30dc68887932d35b027a4885e10ebf6483df997a5d5961cefe8e0679b73e11c",
+      "evidence": [
+        "ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream",
+        "test/parity/scenarios/ai-sdk/02-catalog-metadata.toml"
+      ],
+      "rationale": "Reviewed against the 1.1.0 -> 42a3497d delta: 42a3497d changes one fixture cost (cacheRead 0.2 -> 0.1) in the Sonnet 5.5 case; the Go test follows. Earlier evidence is retained. Pi 3daa2028→b06c1f2c: Pi 5712b134 gives openai-codex gpt-6.1-sol a 500K context window, 195120a9 drops the opencode-go deepseek-v4-flash case, b06c1f2c adds 'excludes off for always-thinking Kimi Coding Highspeed'; TestSupportsXHighUpstream carries all three. Pi fdce48eb (#11173) removes gpt-5.5 from the openai-codex xhigh list; TestSupportsXHighUpstream drops it too. Pi c23b9ec1: b317575fd adds the Azure GPT-6 xhigh cases; ported in TestSupportsXHighUpstream."
     },
     {
       "path": "packages/ai/test/system-message-replay.test.ts",
@@ -1749,8 +1915,15 @@
     },
     {
       "path": "packages/ai/test/tokens.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4ebac99572708225cdd296a04834b33fb1c2ef9ad76876598e6babc21d21a969"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4ebac99572708225cdd296a04834b33fb1c2ef9ad76876598e6babc21d21a969",
+      "evidence": [
+        "ai/tokens_cases_upstream_test.go",
+        "ai/tokens_upstream_test.go#TestTokensOnAbortUpstream",
+        "ai/google_raw_thinking_test.go#TestGoogleRawThinkingOptions",
+        "test/parity/scenarios/providers-faux-streaming/16-google-native-thinking.toml"
+      ],
+      "rationale": "All 31 rows use the original model selection, poem prompt, options and >=1000 UTF-16-unit abort threshold. Native endpoints send only the usage available before abort and wait for transport cancellation rather than finishing first. Tests preserve all API/provider-specific zero, input-only, positive-token and cost assertions and wait for backend cleanup. The four Xiaomi rows skipped by upstream are exercised hermetically according to their current catalog API; no live early-usage availability is claimed. Clearing retained usage on failure compiles and fails early-usage rows. Raw Google thinking-object/zero-budget and neutral reasoning preservation required fixes in the option representation and Node/host bridge, with red/mutation tests and a paired ModelRuntime scenario. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (tokens.test.ts:189), ported at tokens_cases_upstream_test.go:27-28. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; the Go case list carries the row."
     },
     {
       "path": "packages/ai/test/tool-call-id-normalization.test.ts",
@@ -1763,13 +1936,26 @@
     },
     {
       "path": "packages/ai/test/tool-call-without-result.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c2bc31860f6a55783a329e46f59e6870c4eb82a5ce4f755f7d4bca9023ae25e2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c2bc31860f6a55783a329e46f59e6870c4eb82a5ce4f755f7d4bca9023ae25e2",
+      "evidence": [
+        "ai/tool_call_without_result_cases_test.go",
+        "ai/tool_call_without_result_upstream_test.go#TestToolCallWithoutResultUpstream",
+        "ai/tool_flow_test.go#TestProviderToolFlowBoundaries",
+        "test/parity/scenarios/providers-faux-streaming/15-missing-tool-results.toml"
+      ],
+      "rationale": "All 30 cases retain the exact catalog IDs, explicit Completions override, calculate tool/schema, two user prompts and response assertions. Native-wire endpoints emit the first tool call and reject the next request unless the missing result is repaired. Every case failed before provider-side repair and passes after it; a compiling bypass mutation fails both cases and the real-Pi ModelRuntime fixture. The shared pass mirrors Pi's synthetic result, failed-turn omission and held-system ordering without importing Agent's D48 orphan-removal divergence. Exact Pi re-probes also corrected stale cache-control/native-tool-change expectations; comparator strength is unchanged. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (tool-call-without-result.test.ts:194), ported at tool_call_without_result_cases_test.go:27-28. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; the Go case list carries the row."
     },
     {
       "path": "packages/ai/test/total-tokens.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:27e5730c07207be962e45205bc0d39ed13a8b4be57b85f81548820c1667057ab"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:27e5730c07207be962e45205bc0d39ed13a8b4be57b85f81548820c1667057ab",
+      "evidence": [
+        "ai/total_tokens_upstream_test.go#TestTotalTokensUpstream",
+        "ai/provider_matrix_test.go",
+        "ai/total_tokens_upstream_test.go"
+      ],
+      "rationale": "All 35 cases, including the duplicate OpenRouter DeepSeek case, retain the catalog model IDs, API override, 50-paragraph system prompt, two questions, assistant replay, raw effort options, total-versus-component equality on both turns, and Anthropic cache-activity assertion. A hermetic HTTP endpoint supplies native SSE or AWS binary eventstream payloads to every production provider parser; completed assistant messages are not injected. Test credentials replace network auth, and Codex selects SSE explicitly. This proves provider extraction/accounting rather than live cache availability or model generation. Incrementing the shared stream builder's extracted total compiles and fails every matrix case; the restored matrix passes. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (total-tokens.test.ts:382; the case title at :381 still says Kimi-K2.6), ported at total_tokens_upstream_test.go:44-45. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 568c2a82 uses anthropic/claude-sonnet-4.5 for the OpenRouter case (anthropic/claude-sonnet-4 left the catalog); the case in TestTotalTokensUpstream follows. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; the Go case list carries the row."
     },
     {
       "path": "packages/ai/test/transcript-tool-changes.test.ts",
@@ -1823,8 +2009,15 @@
     },
     {
       "path": "packages/ai/test/unicode-surrogate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1a9896a45c4bb11fa3661672fa42efd55a62c98326028cf3356e35774bae0e69"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1a9896a45c4bb11fa3661672fa42efd55a62c98326028cf3356e35774bae0e69",
+      "evidence": [
+        "ai/unicode_surrogate_cases_test.go",
+        "ai/unicode_surrogate_upstream_test.go#TestUnicodeSurrogateUpstream",
+        "ai/sanitize_unicode_test.go#TestSanitizeSurrogatesCodeUnits",
+        "test/parity/scenarios/providers-faux-streaming/14-unicode-tool-results.toml"
+      ],
+      "rationale": "All 90 source cases preserve their model IDs, API selection, tool IDs, exact emoji/LinkedIn text, lone high code unit, history, effort options, and response assertions through production providers against native-wire fixtures. WTF-8 represents the same unpaired UTF-16 code unit in a Go string; converting an invalid Go rune first would erase the test input. Fixed the no-op sanitizer and missing Anthropic/Google/Mistral tool-text calls. The endpoint validates Pi's exact sanitized text rather than accepting replacement-character corruption. Compiling helper and converter-call mutations fail the matrix and the real-Pi exact-output fixture through ModelRuntime; AI tests, race checks, and the provider parity family pass. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (unicode-surrogate.test.ts:549, the emoji-in-tool-results and LinkedIn rows), ported at unicode_surrogate_cases_test.go:89-92. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi c23b9ec1: 3e4f87265 (Qwen Token Plan Individual CN provider, #7989) adds its provider row to the matrix; the Go case list carries the row."
     },
     {
       "path": "packages/ai/test/uuid.test.ts",
@@ -1840,8 +2033,14 @@
     },
     {
       "path": "packages/ai/test/validation-probes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:31b1574150d953cb607d5657d9f2da49f0d4e5503c5db684a2f26d0cf34926cb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:31b1574150d953cb607d5657d9f2da49f0d4e5503c5db684a2f26d0cf34926cb",
+      "evidence": [
+        "ai/validate_probes_upstream_test.go#TestValidationProbesMatchPi",
+        "ai/validate_probes_upstream_test.go#TestPiAnswersItsRecordedProbeOutcomes",
+        "ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven"
+      ],
+      "rationale": "The 5 case sites expand to 168 outcome expectations, held in ai/testdata/validation-probes.json (regenerated at v1.5.0 by validation_probes_corpus.mjs against TypeBox 1.3.27: byte-identical). TestValidationProbesMatchPi runs all 168 through ai.ValidateToolArguments against Pi's recorded outcome and TestPiAnswersItsRecordedProbeOutcomes checks the same corpus against live Pi; both pass with no skips. One expectation is designed out under the owner's 2026-11-03 JS-only values and mechanics category: the second outcome of 'keeps the validator of a schema object, as before, also when the schema is changed later' (a mutated schema object keeps Pi's WeakMap-by-identity validator); PiG caches validators by schema text, so TestValidateToolArgumentsValidatesTheSchemaItIsGiven asserts the schema a call is given is the one it validates against. Pi c23b9ec1: af79b0c3d (TypeBox parity for extra types) turns four REJECT expectations into conversions (Type.BigInt, Type.Undefined). Go has no bigint or undefined value, so schema/builders.go, checks.go and coerce.go design the conversions out (PORT_MAP rows); the corpus is regenerated from the file at the pin, TestPiAnswersItsRecordedProbeOutcomes holds Pi to the new outcomes for all 168 probes, and ai/validate_probes_upstream_test.go#designedOutProbes lists the four that PiG answers with a rejection. The four rows are data rows of the file's dynamic probe tables, not named cases, so the inventory cannot list them as designedOutCases: the owner should approve them as a designed-out difference (bigint and undefined have no Go value)."
     },
     {
       "path": "packages/ai/test/validation.test.ts",
@@ -1879,8 +2078,15 @@
     },
     {
       "path": "packages/ai/test/xai-responses.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4500dc249f04766b3b014f5d0d4b91bd3afb4f2002c8fec8f2e9bcb22e6f547a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4500dc249f04766b3b014f5d0d4b91bd3afb4f2002c8fec8f2e9bcb22e6f547a",
+      "evidence": [
+        "ai/xai_responses_upstream_test.go",
+        "test/parity/scenarios/providers-faux-streaming/11-xai-omitted-reasoning.toml",
+        "ai/identity_test.go#TestFormatUserAgentForms",
+        "ai/xai_responses_upstream_test.go#TestXAIResponsesRequestUpstream"
+      ],
+      "rationale": "All 11 cases are ported: retired/all-model routing, exact thinking levels, Grok 4.7 metadata, authenticated Responses payloads, absent and xhigh effort, and default/overridden User-Agent on both APIs. Existing approved D65 substitutes PiG's product identity for Pi's default User-Agent; all header precedence assertions remain. The omitted-effort test exposed unwanted clamping to low; restoring the former condition compiles and fails the unit test and the real-Pi exact-output scenario through Services.ModelRuntime.Stream. Pi fbc456d8 expects xhigh for grok-4.5 and grok-4.3; TestXAIResponsesRoutesEveryBuiltInModelThroughResponses already expected the catalog's levels, so only its citation changed. Pi bd3c9b82 (adc5fa9f, 04a93bad) replaces the file's local `pi (<platform> <release>; <arch>)` expression with `formatUserAgent()`; the matching Go cases assert `ai.FormatUserAgent(nil)`, which carries PiG's D65 value, and ai/identity_test.go#TestFormatUserAgentForms locks the format. Pi c23b9ec1: c5d397835 changes the xAI Responses expectations from session_id to session-id; TestXAIResponsesRequestUpstream carries them (D246)."
     },
     {
       "path": "packages/ai/test/xhigh.test.ts",

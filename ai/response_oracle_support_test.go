@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -236,7 +235,6 @@ func compareResponses(t *testing.T, module, apiName string, api ai.API, run func
 		// A generated tool call id carries the clock (`name_<Date.now()>_<n>`).
 		gotJSON, wantJSON = generatedIDClock.ReplaceAll(gotJSON, []byte("_CLOCK_N")), generatedIDClock.ReplaceAll(wantJSON, []byte("_CLOCK_N"))
 		if p.CheckRequest {
-			want[i].Request = d246PiResponsesSessionHeader(apiName, want[i].Request)
 			gotJSON, _ = json.Marshal(map[string]any{"request": comparableRequest(gotRequest, p.KeepUserAgent)})
 			wantJSON, _ = json.Marshal(map[string]any{"request": comparableRequest(want[i].Request, p.KeepUserAgent)})
 		}
@@ -381,22 +379,4 @@ func (b *drainCancelBody) Read(buffer []byte) (int, error) {
 	n, err := b.ReadCloser.Read(buffer)
 	b.left -= n
 	return n, err
-}
-
-// d246PiResponsesSessionHeader is the parity allowance of D246 (Pi c5d397835): on the openai-responses path PiG sends the session-affinity header as
-// session-id where the pinned Pi 1.5.0 sends session_id. Only that header name on that API is renamed in Pi's request; nothing else is normalized.
-func d246PiResponsesSessionHeader(apiName string, request map[string]any) map[string]any {
-	headers, _ := request["headers"].(map[string]any)
-	value, ok := headers["session_id"]
-	if apiName != "openai-responses" || !ok {
-		return request
-	}
-	renamed := map[string]any{}
-	maps.Copy(renamed, headers)
-	delete(renamed, "session_id")
-	renamed["session-id"] = value
-	out := map[string]any{}
-	maps.Copy(out, request)
-	out["headers"] = renamed
-	return out
 }

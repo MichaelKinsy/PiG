@@ -1,6 +1,6 @@
 // Run Pi's packages/ai/src/utils/validation.ts validateToolArguments (pi-schema compile with coerce, formats and unresolvedRefs "reject") over {name, schema, args} probes from stdin.
 // usage: node --disable-warning=ExperimentalWarning validate_tool_args.mjs <repo root>
-// The probes are JSON texts: schema is the tool's parameters, args the call's arguments. Result per probe: {ok: JSON.stringify of the validated arguments} or {err: the error's message}.
+// The probes are JSON texts: schema is the tool's parameters, args the call's arguments. Result per probe: {ok: JSON.stringify of the validated arguments, a bigint as `<n>n` as validation-probes.test.ts renders it} or {err: the error's message}.
 // The Pi tree is .upstream/current, which must be Pi b556cfe5 or later (validation.ts imports @earendil-works/pi-schema); the package resolves to its TypeScript source there.
 import module from "node:module";
 import { readFileSync } from "node:fs";
@@ -31,7 +31,7 @@ process.stdout.write(
 		JSON.parse(input).map((p) => {
 			const tool = { name: p.name, description: "", parameters: JSON.parse(p.schema) };
 			try {
-				return { ok: JSON.stringify(validateToolArguments(tool, { type: "toolCall", id: "1", name: p.name, arguments: JSON.parse(p.args) })) };
+				return { ok: JSON.stringify(validateToolArguments(tool, { type: "toolCall", id: "1", name: p.name, arguments: JSON.parse(p.args) }), (_key, value) => (typeof value === "bigint" ? `${value}n` : value)) };
 			} catch (error) {
 				return { err: error.message };
 			}

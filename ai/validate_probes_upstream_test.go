@@ -1,6 +1,6 @@
 package ai_test
 
-// Ports packages/ai/test/validation-probes.test.ts (Pi b556cfe5): the reviewers' probes of the schema switch, TypeBox-built and plain JSON
+// Ports packages/ai/test/validation-probes.test.ts (Pi c23b9ec1): the reviewers' probes of the schema switch, TypeBox-built and plain JSON
 // (MCP-shaped) tool schemas with arguments through validateToolArguments. testdata/validation-probes.json holds every `expect(outcome(...)).toBe(...)` of that file
 // with the schema as the JSON text a tool declaration carries (TypeBox values serialize to their JSON Schema; Refine, Codec and the other
 // non-JSON constructs leave no mark), the arguments as JSON text and Pi's expected outcome. testdata/validation_probes_corpus.mjs regenerates it from the Pi test file.
@@ -57,13 +57,24 @@ func probeOutcome(result piResult) string {
 // TestValidateToolArgumentsValidatesTheSchemaItIsGiven carries that behavior.
 const identityCacheProbe = "reviewer probes (Sol) > keeps the validator of a schema object, as before, also when the schema is changed later"
 
+// designedOutProbes are the probes whose expected outcome needs a bigint or an undefined value (Pi main af79b0c3d, TypeBox parity for extra types: Type.BigInt
+// converts a JSON number or string to a bigint, Type.Undefined converts null to undefined). Go has no such value, so schema/builders.go, checks.go and
+// coerce.go design the conversions out (PORT_MAP rows of those files) and the schema {"type":"bigint"} rejects what Pi converts. TestPiAnswersItsRecordedProbeOutcomes
+// still holds Pi to these outcomes; no Go test compares them.
+var designedOutProbes = map[string]bool{
+	`reviewer probes > bigint {"n":1}`:                  true,
+	`reviewer probes > bigint {"n":"12"}`:               true,
+	"reviewer probes (Sol) > BigInt from a JSON string": true,
+	"reviewer probes (Sol) > Undefined from JSON null":  true,
+}
+
 func TestValidationProbesMatchPi(t *testing.T) {
 	probes := loadValidationProbes(t)
 	if len(probes) != 168 {
 		t.Fatalf("corpus has %d probes, Pi's file has 168", len(probes))
 	}
 	for _, probe := range probes {
-		if probe.Test == identityCacheProbe && strings.Contains(probe.Schema, `"minimum":10`) {
+		if (probe.Test == identityCacheProbe && strings.Contains(probe.Schema, `"minimum":10`)) || designedOutProbes[probe.Test] {
 			continue
 		}
 		t.Run(probe.Test, func(t *testing.T) {

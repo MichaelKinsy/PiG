@@ -31,6 +31,7 @@ import { OPENROUTER_CLASSIFIER_MODELS, OPENROUTER_IMAGE_MODELS, OPENROUTER_MODEL
 import { QWEN_TOKEN_PLAN_CLASSIFIER_MODELS, QWEN_TOKEN_PLAN_IMAGE_MODELS, QWEN_TOKEN_PLAN_MODELS } from "./providers/qwen-token-plan.models.js";
 import { QWEN_TOKEN_PLAN_CN_CLASSIFIER_MODELS, QWEN_TOKEN_PLAN_CN_IMAGE_MODELS, QWEN_TOKEN_PLAN_CN_MODELS } from "./providers/qwen-token-plan-cn.models.js";
 import { QWEN_TOKEN_PLAN_INDIVIDUAL_CLASSIFIER_MODELS, QWEN_TOKEN_PLAN_INDIVIDUAL_IMAGE_MODELS, QWEN_TOKEN_PLAN_INDIVIDUAL_MODELS } from "./providers/qwen-token-plan-individual.models.js";
+import { QWEN_TOKEN_PLAN_INDIVIDUAL_CN_CLASSIFIER_MODELS, QWEN_TOKEN_PLAN_INDIVIDUAL_CN_IMAGE_MODELS, QWEN_TOKEN_PLAN_INDIVIDUAL_CN_MODELS } from "./providers/qwen-token-plan-individual-cn.models.js";
 import { RADIUS_CLASSIFIER_MODELS, RADIUS_IMAGE_MODELS, RADIUS_MODELS } from "./providers/radius.models.js";
 import { TOGETHER_CLASSIFIER_MODELS, TOGETHER_IMAGE_MODELS, TOGETHER_MODELS } from "./providers/together.models.js";
 import { TYPESAFE_CLASSIFIER_MODELS, TYPESAFE_IMAGE_MODELS, TYPESAFE_MODELS } from "./providers/typesafe.models.js";
@@ -74,6 +75,7 @@ export const MODELS = {
     "qwen-token-plan": QWEN_TOKEN_PLAN_MODELS,
     "qwen-token-plan-cn": QWEN_TOKEN_PLAN_CN_MODELS,
     "qwen-token-plan-individual": QWEN_TOKEN_PLAN_INDIVIDUAL_MODELS,
+    "qwen-token-plan-individual-cn": QWEN_TOKEN_PLAN_INDIVIDUAL_CN_MODELS,
     "radius": RADIUS_MODELS,
     "together": TOGETHER_MODELS,
     "typesafe": TYPESAFE_MODELS,
@@ -118,6 +120,7 @@ export const IMAGE_MODELS = {
     "qwen-token-plan": QWEN_TOKEN_PLAN_IMAGE_MODELS,
     "qwen-token-plan-cn": QWEN_TOKEN_PLAN_CN_IMAGE_MODELS,
     "qwen-token-plan-individual": QWEN_TOKEN_PLAN_INDIVIDUAL_IMAGE_MODELS,
+    "qwen-token-plan-individual-cn": QWEN_TOKEN_PLAN_INDIVIDUAL_CN_IMAGE_MODELS,
     "radius": RADIUS_IMAGE_MODELS,
     "together": TOGETHER_IMAGE_MODELS,
     "typesafe": TYPESAFE_IMAGE_MODELS,
@@ -162,6 +165,7 @@ export const CLASSIFIER_MODELS = {
     "qwen-token-plan": QWEN_TOKEN_PLAN_CLASSIFIER_MODELS,
     "qwen-token-plan-cn": QWEN_TOKEN_PLAN_CN_CLASSIFIER_MODELS,
     "qwen-token-plan-individual": QWEN_TOKEN_PLAN_INDIVIDUAL_CLASSIFIER_MODELS,
+    "qwen-token-plan-individual-cn": QWEN_TOKEN_PLAN_INDIVIDUAL_CN_CLASSIFIER_MODELS,
     "radius": RADIUS_CLASSIFIER_MODELS,
     "together": TOGETHER_CLASSIFIER_MODELS,
     "typesafe": TYPESAFE_CLASSIFIER_MODELS,
