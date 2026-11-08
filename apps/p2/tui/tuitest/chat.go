@@ -219,6 +219,10 @@ func NewChatStub(t testing.TB, options ChatStubOptions) *ChatStub {
 		for name, method := range options.Methods {
 			methods[name] = method
 		}
+		if variant == "viewer" {
+			// A viewer reads: it has no send, stop or the rest.
+			methods = map[string]p2test.StubMethod{"entries": methods["entries"]}
+		}
 		members := p2test.StubMembers{
 			Variant: variant,
 			State:   map[string]any{"view": view, "stats": self.Cell(nil), "model": self.Cell(options.Model), "liveShell": self.Cell(nil)},
