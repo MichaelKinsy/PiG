@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,19 +45,65 @@ func wsLoopback(t *testing.T, maxPayload int64) (server Host, url string) {
 	return server, "ws" + strings.TrimPrefix(httpServer.URL, "http")
 }
 
+// connectingSocket is an exSocket whose ReadyState is 0 (connecting) until open, which then emits the `open` event.
+type connectingSocket struct {
+	*exSocket
+	mu     sync.Mutex
+	isOpen bool
+	sent   int
+}
+
+func (s *connectingSocket) ReadyState() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.isOpen {
+		return 0
+	}
+	return s.exSocket.ReadyState()
+}
+
+func (s *connectingSocket) Send(payload []byte) error {
+	s.mu.Lock()
+	s.sent++
+	s.mu.Unlock()
+	return s.exSocket.Send(payload)
+}
+
+func (s *connectingSocket) sentFrames() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sent
+}
+
+func (s *connectingSocket) open() {
+	s.mu.Lock()
+	s.isOpen = true
+	s.mu.Unlock()
+	s.emit(link.WebSocketOpen, nil)
+}
+
 func TestWebSocketLinksOverALoopbackServer(t *testing.T) {
 	t.Run("carry a live reference both ways; the client's hello waits for open", func(t *testing.T) {
 		_, url := wsLoopback(t, 0)
 		conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
 		must(t, err)
 		must(t, resp.Body.Close())
-		socket := newExSocket(conn)
+		// The socket reports connecting until its open event: the client's hello is held back, not sent into a
+		// socket that is not open.
+		socket := &connectingSocket{exSocket: newExSocket(conn)}
 		tab := newHost(t, HostOptions{})
 		mustLoad(t)(tab.Load(nil, background))
 		must(t, tab.Connect(link.WebSocketLink(socket), LinkOptions{Principal: serverPrincipal()}, background))
 		socket.start()
+		if sent := socket.sentFrames(); sent != 0 {
+			t.Fatalf("%d frames sent before open", sent)
+		}
+		socket.open()
 		notes, err := tab.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
+		if socket.sentFrames() == 0 {
+			t.Fatal("the hello was not sent after open")
+		}
 		added, err := notes.Call("add", jsonObject("text", "over ws"), background)
 		must(t, err)
 		if added != float64(1) {
