@@ -19,3 +19,15 @@ func TestProviderLoginFingerprintsAsPi(t *testing.T) {
 		t.Errorf("ProviderLogin = {%s v%d %s}, Pi has {%s v%d %s}", ProviderLogin.Name, ProviderLogin.Version, ProviderLogin.Fingerprint, want.Name, want.Version, want.Fingerprint)
 	}
 }
+
+// The host-internal service hashes as Pi's too (its version and shape are part of the pairing with the server's own facets).
+func TestLoginServiceFingerprintsAsPi(t *testing.T) {
+	const module = "plugins/login/contract.ts"
+	want, ok := oracle.Fingerprints(t, module)[module+"#LoginService"]
+	if !ok {
+		t.Fatal("Pi exports no LoginService")
+	}
+	if LoginService.Name != want.Name || LoginService.Version != want.Version || LoginService.Fingerprint != want.Fingerprint {
+		t.Errorf("LoginService = {%s v%d %s}, Pi has {%s v%d %s}", LoginService.Name, LoginService.Version, LoginService.Fingerprint, want.Name, want.Version, want.Fingerprint)
+	}
+}

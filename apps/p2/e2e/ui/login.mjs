@@ -28,5 +28,9 @@ console.log(await page.evaluate(() => `buttons=${document.querySelectorAll("[rol
 await page.screenshot({ path: process.env.P2_UI_SHOT ?? "/tmp/login.png" });
 console.log(frames.join("\n"));
 console.log(JSON.stringify({ dialog: text.slice(0, 300), problems }));
+// The sheet must list providers: an empty sheet, "No providers available" or a bare title is a failure.
+const rows = await page.evaluate(() => document.querySelectorAll("[role=dialog] .row-button").length);
+if (rows === 0 || text.includes("No providers available")) problems.push(`the Providers sheet lists no providers (${rows} rows)`);
+if (problems.length > 0) console.error(problems.join("\n"));
 await browser.close();
 process.exit(text.length > 20 && problems.length === 0 ? 0 : 1);
