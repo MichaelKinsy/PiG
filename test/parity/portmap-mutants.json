@@ -5511,5 +5511,192 @@
    "old": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"match\")",
    "new": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"mutant\")"
   }
+ ],
+ "packages/chord/src/watch.ts": [
+  {
+   "file": "chord/watch_impl.go",
+   "old": "\tif call.Kind == WatchCallFailed {\n",
+   "new": "\tif call.Kind != WatchCallFailed {\n"
+  }
+ ],
+ "packages/chord/src/sync/remote.ts": [
+  {
+   "file": "chord/sync/remote.go",
+   "old": "\tif from == nil || *from == LogStart {\n",
+   "new": "\tif from != nil || *from == LogStart {\n"
+  }
+ ],
+ "packages/chord/src/sync/filesystem.ts": [
+  {
+   "file": "chord/sync/filesystem.go",
+   "old": "\tif err != nil || bytes == nil {\n",
+   "new": "\tif err == nil || bytes == nil {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/connection.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_connection.go",
+   "old": "\tif l.current != at {\n",
+   "new": "\tif l.current == at {\n"
+  }
+ ],
+ "packages/chord/src/sync/client.ts": [
+  {
+   "file": "chord/sync/client.go",
+   "old": "\t\t\t\tif err != nil {\n",
+   "new": "\t\t\t\tif err == nil {\n"
+  },
+  {
+   "file": "chord/sync/scheduler.go",
+   "old": "\tif due != nil {\n",
+   "new": "\tif due == nil {\n"
+  }
+ ],
+ "packages/chord/src/tui/scope.ts": [
+  {
+   "file": "chord/next/tui/tui_scope.go",
+   "old": "\t\tif last == nil || !surfaces.SameValue(last.base, base) || !sameActions(last.actions, actions) {\n",
+   "new": "\t\tif last != nil || !surfaces.SameValue(last.base, base) || !sameActions(last.actions, actions) {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/themes.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_themes.go",
+   "old": "\t\tif first == nil {\n",
+   "new": "\t\tif first != nil {\n"
+  }
+ ],
+ "packages/chord/src/telemetry-sqlite/index.ts": [
+  {
+   "file": "chord/telemetrysqlite/index.go",
+   "old": "\t\tif err := tx.Run(\"DELETE FROM telemetry_spans WHERE ended_us < ?\", cutoff*1000); err != nil {\n",
+   "new": "\t\tif err := tx.Run(\"DELETE FROM telemetry_spans WHERE ended_us < ?\", cutoff*1000); err == nil {\n"
+  }
+ ],
+ "packages/chord/src/telemetry-sqlite/node.ts": [
+  {
+   "file": "chord/telemetrysqlite/node.go",
+   "old": "\tif err != nil {\n",
+   "new": "\tif err == nil {\n"
+  }
+ ],
+ "packages/chord/src/sync/state.ts": [
+  {
+   "file": "chord/sync/state.go",
+   "old": "\tif err := store.fs.CreateDir(ctx, store.directory, true); err != nil {\n",
+   "new": "\tif err := store.fs.CreateDir(ctx, store.directory, false); err != nil {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/registered.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_registered.go",
+   "old": "\t\tif recovered := recover(); recovered != nil {\n",
+   "new": "\t\tif recovered := recover(); recovered == nil {\n"
+  }
+ ],
+ "packages/chord/src/node/app/files-copy.ts": [
+  {
+   "file": "chord/nextnode/app/files_copy.go",
+   "old": "\t\t\treturn true\n",
+   "new": "\t\t\treturn false\n"
+  }
+ ],
+ "packages/chord/src/node/plugins/testing.ts": [
+  {
+   "file": "chord/nextnode/plugins/plugins_testing.go",
+   "old": "\tif real, err = filepath.Abs(real); err != nil {\n",
+   "new": "\tif real, err = filepath.Abs(real); err == nil {\n"
+  }
+ ],
+ "packages/chord/src/store/store.ts": [
+  {
+   "file": "chord/next/store/store.go",
+   "old": "\tif !isAnnounced || (record != nil && record.Version >= announced) {\n",
+   "new": "\tif !isAnnounced || (record != nil || record.Version >= announced) {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/active-language.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_active_language.go",
+   "old": "\t\tif current != nil && current.Locale == locale && current.Translations == translations {\n",
+   "new": "\t\tif current == nil && current.Locale == locale && current.Translations == translations {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/active-theme.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_active_theme.go",
+   "old": "\t\tif err != nil {\n",
+   "new": "\t\tif err == nil {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/page-state.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_page_state.go",
+   "old": "\treturn a == b\n",
+   "new": "\treturn a != b\n"
+  }
+ ],
+ "packages/chord/src/surfaces/translations.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_translations.go",
+   "old": "\t\t\tif byLocale == nil {\n",
+   "new": "\t\t\tif byLocale != nil {\n"
+  }
+ ],
+ "packages/chord/src/node/app/users.ts": [
+  {
+   "file": "chord/nextnode/app/users.go",
+   "old": "\t\tPersist: true,\n",
+   "new": "\t\tPersist: false,\n"
+  }
+ ],
+ "packages/chord/src/json.ts": [
+  {
+   "file": "chord/json.go",
+   "old": "\tif err != nil {\n",
+   "new": "\tif err == nil {\n"
+  }
+ ],
+ "packages/chord/src/output.ts": [
+  {
+   "file": "chord/output/output.go",
+   "old": "\tif buffer.limits.Retain != \"tail\" {\n",
+   "new": "\tif buffer.limits.Retain == \"tail\" {\n"
+  }
+ ],
+ "packages/chord/src/sqlite/migrations.ts": [
+  {
+   "file": "chord/sqlite/migrations.go",
+   "old": "\t\t\tif err := transaction.Run(\"UPDATE \"+table+\" SET version = ? WHERE singleton = 1\", migration.Version); err != nil {\n",
+   "new": "\t\t\tif err := transaction.Run(\"UPDATE \"+table+\" SET version = ? WHERE singleton = 1\", migration.Version); err == nil {\n"
+  }
+ ],
+ "packages/chord/src/sync/lines.ts": [
+  {
+   "file": "chord/sync/lines.go",
+   "old": "\t\treturn 0, false\n",
+   "new": "\t\treturn 0, true\n"
+  }
+ ],
+ "packages/chord/src/sync/batch.ts": [
+  {
+   "file": "chord/sync/batch.go",
+   "old": "\t\t\treturn BatchLine{}, false, nil\n",
+   "new": "\t\t\treturn BatchLine{}, true, nil\n"
+  }
+ ],
+ "packages/chord/src/data/principal.ts": [
+  {
+   "file": "chord/next/data/principal.go",
+   "old": "\tif cache.entries == nil {\n",
+   "new": "\tif cache.entries != nil {\n"
+  }
+ ],
+ "packages/chord/src/sqlite/node.ts": [
+  {
+   "file": "chord/sqlite/node/node.go",
+   "old": "\tif options.Mode == ReadOnly {\n",
+   "new": "\tif options.Mode != ReadOnly {\n"
+  }
  ]
 }

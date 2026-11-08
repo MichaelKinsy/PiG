@@ -3405,15 +3405,12 @@
     },
     {
       "path": "packages/chord/test/node/web/page.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:bf7d5a585b21af094470ffd57cb986b866607feea95329446bc3729d60e0b6a7",
       "evidence": [
         "chord/nextnode/app/app_web_browser_test.go"
       ],
-      "rationale": "2 of 3 upstream cases run in app_web_browser_test.go over Chromium. The third runs as TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer (vendored fixture web/telemetry.ts, SQLite store: the trace page.write -> chord.call -> chord.relay (server) -> chord.relay (the worker's Go host, forced difference D460) -> two chord.method spans, the click's id browser:<uuid>:<n>, one trace id) except its last assertion: the click span's chord.principal {\"kind\":\"owner\"}. The Go app gives the ingest facet a PrincipalAttributes hook that returns nothing (nextnode/app/app.go), so a page's spans record no principal; the host's principal-attribute function is not exported to the app. Open: wire it, then assert.",
-      "missingCases": [
-        "a page › records a click as the root of one trace through the server into the worker, stored by the server"
-      ]
+      "rationale": "All 3 upstream cases run in app_web_browser_test.go over Chromium. The third runs as TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer (vendored fixture web/telemetry.ts, SQLite store: the trace page.write -> chord.call -> chord.relay (server) -> chord.relay (the worker's Go host, forced difference D460) -> two chord.method spans, the click's id browser:<uuid>:<n>, one trace id, and the click span's chord.principal {\"kind\":\"owner\"}, which the ingest facet records through the server host's exported Host.PrincipalAttributes, as Pi's `host.principalAttributes`). Intention check: the case guards that one click is one trace from the page to the worker and that the server stamps the principal on a page's span, never the page; both are asserted over a real page."
     },
     {
       "path": "packages/chord/test/node/web/styles.test.ts",
