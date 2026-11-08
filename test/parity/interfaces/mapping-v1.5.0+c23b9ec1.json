@@ -34388,7 +34388,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:agent/proxy_non_object_arguments_test.go#TestProxyNonObjectToolArgumentsFollowPi"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
@@ -34410,14 +34410,14 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:durable/harness/partial_changes_upstream_test.go#TestPartialChangesAppendGrowingArgumentAndTextStringsInsteadOfReassigningThem"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
       "id": "pkg:ai/.#ToolCallArgumentsStream::property:append",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5b7e9207b08156e5809a23bd0741fa0ec0a040902a31de5198336a64935e145a",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
@@ -34430,14 +34430,14 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
       "id": "pkg:ai/.#ToolCallArgumentsStream::property:append::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:af5792021bd626b4e65f3778222e802b7f687b5831cddea9e5ed6bfbec55da16",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
@@ -34450,7 +34450,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
@@ -80678,7 +80678,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:agent/proxy_non_object_arguments_test.go#TestProxyNonObjectToolArgumentsFollowPi"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
@@ -80700,14 +80700,14 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:durable/harness/partial_changes_upstream_test.go#TestPartialChangesAppendGrowingArgumentAndTextStringsInsteadOfReassigningThem"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
       "id": "pkg:ai/compat#ToolCallArgumentsStream::property:append",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5b7e9207b08156e5809a23bd0741fa0ec0a040902a31de5198336a64935e145a",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
@@ -80720,14 +80720,14 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
       "id": "pkg:ai/compat#ToolCallArgumentsStream::property:append::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:af5792021bd626b4e65f3778222e802b7f687b5831cddea9e5ed6bfbec55da16",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
@@ -80740,7 +80740,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
@@ -101681,7 +101681,7 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:agent/proxy_non_object_arguments_test.go#TestProxyNonObjectToolArgumentsFollowPi"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
@@ -101703,14 +101703,14 @@
       "evidence": [
         "test:agent/proxy_stream_cost_test.go#TestProxyEventConverterToolArgumentsEqualTheWholeTextParseAfterEveryDelta",
         "test:agent/proxy_streamed_blocks_test.go#TestStreamProxyDeltasEqualConcatenationAndWholeTextParse",
-        "test:durable/harness/partial_changes_upstream_test.go#TestPartialChangesAppendGrowingArgumentAndTextStringsInsteadOfReassigningThem"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
       "id": "pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:append",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5b7e9207b08156e5809a23bd0741fa0ec0a040902a31de5198336a64935e145a",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
@@ -101723,14 +101723,14 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
       "id": "pkg:ai/utils/streaming-json#ToolCallArgumentsStream::property:append::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:af5792021bd626b4e65f3778222e802b7f687b5831cddea9e5ed6bfbec55da16",
-      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolCallArgumentsStream::property:append::call:0 is Go ai/streaming_json_parser.go#ToolCallArgumentsStream.Append (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
@@ -101743,7 +101743,7 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "reach:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
+        "test:ai/streaming_json_parser_cost_test.go#TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt"
       ]
     },
     {
@@ -245119,6 +245119,9 @@
     {
       "id": "pkg:durable/testing#createExpectAssertions::call:0",
       "disposition": "designed-out",
+      "protects": "The storage and env conformance cases run independent of any test framework: the runner injects its own assertion hook.",
+      "pigTest": "PiG's own form: durabletest.RegisterStorageConformance and RegisterEnvConformance register the same cases with assertions built on *testing.T (durabletest.CreateTestingAssertions). A Go port of the injected hook was considered.",
+      "whyNot": "The hook exists only so a TypeScript runner's expect can host the cases. Go suites run under *testing.T, so the same property is held by the registered conformance cases and a second hook would test nothing new.",
       "upstreamShapeHash": "sha256:811a5ed4e081e4ae72a5c9e6d1a77679b0c3ff090fa80f34d447f8b1565b4f4f",
       "rationale": "The Vitest/Jest runner adapter of packages/durable/src/testing: ExpectLike (assertions.ts:3, the `expect` member type of StorageConformanceRunner, runner.ts:8) and createExpectAssertions (its conversion to StorageConformanceAssertions) exist only so a TypeScript runner's `expect` can host the runner-independent conformance cases. Go suites run under *testing.T, and durabletest.RegisterStorageConformance and RegisterEnvConformance register the same cases with Assertions built on t. Designed out with StorageConformanceRunner (LEAD-RULINGS-1520 unblock-types 4, approved).",
       "pigTargets": [
@@ -245508,6 +245511,9 @@
     {
       "id": "pkg:durable/testing#ExpectLike",
       "disposition": "designed-out",
+      "protects": "The storage and env conformance cases run independent of any test framework: the runner injects its own assertion hook.",
+      "pigTest": "PiG's own form: durabletest.RegisterStorageConformance and RegisterEnvConformance register the same cases with assertions built on *testing.T (durabletest.CreateTestingAssertions). A Go port of the injected hook was considered.",
+      "whyNot": "The hook exists only so a TypeScript runner's expect can host the cases. Go suites run under *testing.T, so the same property is held by the registered conformance cases and a second hook would test nothing new.",
       "upstreamShapeHash": "sha256:b9fb584eceeddd4c4777bba1e01090c74bdc9c0afb7e92cf3ac6cc44161883b8",
       "rationale": "durable/src/testing/assertions.ts:3 ExpectLike = (actual, message?) => unknown is the assertion hook the TypeScript conformance runner injects (StorageConformanceRunner.expect) so the suite depends on no test framework. Go's conformance suite takes *testing.T and builds its assertions from it (representations.json maps StorageConformanceRunner to testing.T): durabletest.CreateTestingAssertions. Designed out by the lead's ruling of 2026-10-07 15:20 MDT (language mechanics with no Go meaning are designed out with a citation).",
       "pigTargets": [
@@ -245517,6 +245523,9 @@
     {
       "id": "pkg:durable/testing#ExpectLike::call:0",
       "disposition": "designed-out",
+      "protects": "The storage and env conformance cases run independent of any test framework: the runner injects its own assertion hook.",
+      "pigTest": "PiG's own form: durabletest.RegisterStorageConformance and RegisterEnvConformance register the same cases with assertions built on *testing.T (durabletest.CreateTestingAssertions). A Go port of the injected hook was considered.",
+      "whyNot": "The hook exists only so a TypeScript runner's expect can host the cases. Go suites run under *testing.T, so the same property is held by the registered conformance cases and a second hook would test nothing new.",
       "upstreamShapeHash": "sha256:4a7fac3d99acc7dc88c774a7574b73c4010df92de730b0e9846a70b30a89041b",
       "rationale": "The call row belongs to ExpectLike (durable/src/testing/assertions.ts:3), the injected assertion hook, which Go replaces with testing.T assertions (durabletest.CreateTestingAssertions).",
       "pigTargets": [
@@ -272121,6 +272130,7 @@
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
+        "test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream",
         "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities"
       ]
     },
@@ -272891,7 +272901,7 @@
       "evidence": [
         "test:ai/telemetry_upstream_test.go#TestAITelemetryBoundsPollErrorMessagesUpstream",
         "test:ai/telemetry_upstream_test.go#TestAITelemetryIncludesSetupFailuresAndOmitsNonScalarReasoningUpstream",
-        "test:ai/telemetry_upstream_test.go#TestAITelemetryReportsErrorAndAbortedStatusUpstream"
+        "test:ai/telemetry_upstream_test.go#TestAITelemetryKeepsABoundedErrorMessageThatDoesNotHoldTheProvidersWholeMessageAliveUpstream"
       ]
     },
     {
@@ -273612,8 +273622,8 @@
       ],
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
-        "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities",
-        "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability"
+        "test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream",
+        "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities"
       ]
     },
     {
@@ -273633,6 +273643,7 @@
         "call:chord/next/host/jobs_records.go#jobRecords.stage"
       ],
       "evidence": [
+        "test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream",
         "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities",
         "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability"
       ]
@@ -274527,8 +274538,8 @@
       ],
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestCountingOnlyCarriesMetricsAndStartsNoSpan",
-        "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities",
-        "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability"
+        "test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream",
+        "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities"
       ]
     },
     {
@@ -274548,6 +274559,7 @@
         "call:chord/next/host/jobs_records.go#jobRecords.stage"
       ],
       "evidence": [
+        "test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream",
         "test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities",
         "test:telemetry/memory_capabilities_test.go#TestInMemoryRecorderIsItsOwnMetricsAndPropagationCapability"
       ]
