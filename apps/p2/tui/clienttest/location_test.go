@@ -179,18 +179,15 @@ func TestCdRelocatesFolderCompletionRelativePathsTheWebsErrorsEnvMovesConfirmedF
 	pollContains(t, s.Fixture, "/work/src • Fixture")
 	tuitest.Poll(t, s.hasNotice("Moving to /work/src…", false))
 	// A missing folder: the server's error text, nothing relocated.
-	typed(s.Fixture, "/cd /nope")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/cd /nope")
 	tuitest.Poll(t, s.hasNotice("ENOENT: no such file or directory", true))
-	typed(s.Fixture, "/cd tpu:/x")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/cd tpu:/x")
 	tuitest.Poll(t, s.hasNotice(`Unknown environment "tpu"`, true))
 	if len(s.relocates()) != 1 {
 		t.Fatalf("relocates = %v", s.relocates())
 	}
 	// Another environment: the web's note, confirmed; `~` is that machine's home.
-	typed(s.Fixture, "/cd gpu:")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/cd gpu:")
 	pollContains(t, s.Fixture, "Move this session to gpu:~?")
 	pollScreen(t, s.Fixture, matches(`Tools will run on gpu\. The history stays; files are not copied\.`))
 	typed(s.Fixture, "y")
@@ -200,8 +197,7 @@ func TestCdRelocatesFolderCompletionRelativePathsTheWebsErrorsEnvMovesConfirmedF
 	}
 	pollContains(t, s.Fixture, "gpu:/home/gpu • Fixture")
 	// Without an argument: the prompt; Tab picks this device (starting at ~), its note is the confirmation.
-	typed(s.Fixture, "/cd")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/cd")
 	pollContains(t, s.Fixture, "Working directory · on gpu (remote)")
 	s.Send(tab)
 	pollContains(t, s.Fixture, "Working directory · on this device")
@@ -253,8 +249,7 @@ func TestNewSessionTabCyclesThisDeviceAndTheEnvironmentsNewEnvPath(t *testing.T)
 	pollContains(t, s.Fixture, "environment (this device, gpu)")
 	s.Send(tab)
 	pollContains(t, s.Fixture, "New session · on gpu (remote)")
-	typed(s.Fixture, "/data")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/data")
 	tuitest.Poll(t, func() bool { return s.calls.count("create") == 2 })
 	if got := s.calls.get("create")[1]; got != (location{env: "gpu", cwd: "~/data"}) {
 		t.Fatalf("create = %+v", got)
@@ -326,8 +321,7 @@ func TestEnvsMovesTheSessionLocalGpuSamePathThereLocalHomeWhenThePathIsMissingCu
 	}
 	pollScreen(t, s.Fixture, matches(`(?m)^/work • Fixture`))
 	// A directory gpu does not have: the prompt starts at gpu's home; Escape moves nothing.
-	typed(s.Fixture, "/cd src")
-	s.Send(enter)
+	typedEnter(s.Fixture, "/cd src")
 	tuitest.Poll(t, func() bool { return len(s.relocates()) == 3 })
 	s.run("p2.envs", "")
 	pollContains(t, s.Fixture, "Environments (1)")
