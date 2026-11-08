@@ -34,7 +34,7 @@ func (g *gate) call(ctx context.Context) error {
 		return ctx.Err()
 	}
 }
-func (g *gate) pass()                { g.answer <- nil }
+func (g *gate) pass()                 { g.answer <- nil }
 func (g *gate) refuse(message string) { g.answer <- errors.New(message) }
 
 func TestChatASentMessageShowsAndLeavesTheEditorAtOnceARefusedOneComesBackToTheEditor(t *testing.T) {
@@ -61,7 +61,10 @@ func TestChatASentMessageShowsAndLeavesTheEditorAtOnceARefusedOneComesBackToTheE
 	})
 	sentCount := func() int { mu.Lock(); defer mu.Unlock(); return len(sent) }
 	tuitest.Poll(t, func() (ok bool) {
-		top.Do(func() { found, _ := top.Runtime.Surface("chat").(*chattui.ChatSurface); ok = found != nil && found.Editable() })
+		top.Do(func() {
+			found, _ := top.Runtime.Surface("chat").(*chattui.ChatSurface)
+			ok = found != nil && found.Editable()
+		})
 		return ok
 	})
 	typed(top.Fixture, "hello there")

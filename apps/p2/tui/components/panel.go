@@ -57,7 +57,7 @@ func NewPanelFrame(ctx PanelContext, id string, content PanelContent, title func
 		return ctx.Theme().Current().Fg(token, "│")
 	}
 	// The bar must reach the bottom of the panel even when the content is shorter than the viewport.
-	body := funcComponent{
+	body := &funcComponent{
 		render: func(width int) []string {
 			inner := max(1, width-2)
 			lines := content.Render(inner)
@@ -80,7 +80,7 @@ func NewPanelFrame(ctx PanelContext, id string, content PanelContent, title func
 		ScrollbarTrackStyle: func(text string) string { return ctx.Theme().Current().Fg("scrollbarTrack", text) },
 		ScrollbarThumbStyle: func(text string) string { return ctx.Theme().Current().Fg("scrollbarThumb", text) },
 	})
-	header := funcComponent{render: func(width int) []string {
+	header := &funcComponent{render: func(width int) []string {
 		current := ctx.Theme().Current()
 		var hint string
 		if frame.Focused {

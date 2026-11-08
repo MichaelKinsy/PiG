@@ -252,6 +252,8 @@ func (c *ToolExecutionComponent) resultOf(result *tools.ToolResultView) (compone
 }
 
 func (c *ToolExecutionComponent) updateDisplay() {
+	// A parent container reuses a clean child's lines: the card's own rebuild (a new tool state, expanding) is a change it must show.
+	defer c.Container.Invalidate()
 	theme := c.ctx.Theme().Current()
 	result := c.result()
 	bg := "toolSuccessBg"
