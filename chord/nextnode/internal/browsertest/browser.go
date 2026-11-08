@@ -349,11 +349,11 @@ func (b *Browser) Call(ctx context.Context, method string, params any) (json.Raw
 	}
 }
 
-// Evaluate is the value of expression in the page (awaited), decoded into out (nil: discarded).
-func (b *Browser) Evaluate(ctx context.Context, expression string, out any) error {
+// Evaluate is the value of expression in the page (awaited), as its JSON (empty for undefined); callers decode it into their own type.
+func (b *Browser) Evaluate(ctx context.Context, expression string) (json.RawMessage, error) {
 	raw, err := b.Call(ctx, "Runtime.evaluate", map[string]any{"expression": expression, "returnByValue": true, "awaitPromise": true})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var got struct {
 		Result struct {
@@ -362,15 +362,12 @@ func (b *Browser) Evaluate(ctx context.Context, expression string, out any) erro
 		ExceptionDetails json.RawMessage `json:"exceptionDetails"`
 	}
 	if err := json.Unmarshal(raw, &got); err != nil {
-		return err
+		return nil, err
 	}
 	if len(got.ExceptionDetails) > 0 {
-		return fmt.Errorf("evaluating %s: %s", expression, got.ExceptionDetails)
+		return nil, fmt.Errorf("evaluating %s: %s", expression, got.ExceptionDetails)
 	}
-	if out == nil || len(got.Result.Value) == 0 {
-		return nil
-	}
-	return json.Unmarshal(got.Result.Value, out)
+	return got.Result.Value, nil
 }
 
 // String is expression's value as a string; the test fails when it is not one.
@@ -378,9 +375,13 @@ func (b *Browser) String(expression string) string {
 	b.t.Helper()
 	ctx, cancel := context.WithTimeout(b.base, 30*time.Second)
 	defer cancel()
-	var value string
-	if err := b.Evaluate(ctx, expression, &value); err != nil {
+	raw, err := b.Evaluate(ctx, expression)
+	if err != nil {
 		b.t.Fatal(err)
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		b.t.Fatalf("%s is not a string: %s (%v)", expression, raw, err)
 	}
 	return value
 }
@@ -390,7 +391,7 @@ func (b *Browser) Run(expression string) {
 	b.t.Helper()
 	ctx, cancel := context.WithTimeout(b.base, 30*time.Second)
 	defer cancel()
-	if err := b.Evaluate(ctx, expression, nil); err != nil {
+	if _, err := b.Evaluate(ctx, expression); err != nil {
 		b.t.Fatal(err)
 	}
 }
@@ -403,9 +404,12 @@ func (b *Browser) Wait(expression string, timeout ...time.Duration) {
 		limit = timeout[0]
 	}
 	err := Poll(b.base, limit, expression, func(ctx context.Context) (bool, error) {
+		raw, err := b.Evaluate(ctx, "Boolean("+expression+")")
+		if err != nil {
+			return false, err
+		}
 		var ok bool
-		err := b.Evaluate(ctx, "Boolean("+expression+")", &ok)
-		return ok, err
+		return ok, json.Unmarshal(raw, &ok)
 	})
 	if err != nil {
 		b.t.Fatalf("%v (console: %q)", err, b.Console())
