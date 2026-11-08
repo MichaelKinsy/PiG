@@ -227,6 +227,22 @@
     "go": "chord/output/output.go#Progress.Stop",
     "reason": "Pi chord/src/output.ts:364-370 async stop(): Promise<PromiseWithResolvers<void>[]> sets stopped, disarms the timer, awaits the in-flight commit and splices out the waiters. Go has no Promise or PromiseWithResolvers: Stop() blocks until the in-flight commit ends (<-inFlight) and returns []*ProgressWaiter, whose Resolve/Reject are the resolvers the final commit settles. TestProgress 'stops: waits for the commit in flight and hands back waiters no commit covered yet' (chord/output/output_test.go) ports the Pi stop case."
   },
+  "pkg:chord/sync#JsonObject": {
+    "go": "chord/sync/remote.go#JsonObject",
+    "reason": "Pi chord/src/sync/remote.ts:8 `export type JsonObject = { [key: string]: unknown }` is the host's session description (SessionSummary.meta, putMeta, getMeta). A same-named alias in chord/src/documents/definition.ts:14 (`{ [key: string]: JsonValue }`) makes the name ambiguous for the alias table, so no rule reads the body. Go spells the object as the ordered JSON object of Chord's delta package, aliased as sync.JsonObject (remote.go), the type PutMeta takes and GetMeta returns; TestHostPieces (sync_test.go) writes and reads it through SessionSyncStore."
+  },
+  "pkg:chord/sync#LogFormatError::construct:0": {
+    "go": "chord/sync/lines.go#NewLogFormatError",
+    "reason": "Pi chord/src/sync/lines.ts:14-19 `new LogFormatError(message, options?: ErrorOptions)` passes options to Error, whose only member is `cause`. Go has no ErrorOptions bag: NewLogFormatError(message string, cause error) takes the cause itself (nil for none) and LogFormatError.Unwrap returns it, as Error.cause is read. TestNewLogFormatErrorCarriesItsMessageAndCause (chord/sync/lines_test.go) and every DecodeLogLine failure assert it."
+  },
+  "pkg:chord/sync#SyncFileSystem::property:appendFile::call:0": {
+    "go": "chord/sync/files.go#SyncFileSystem.AppendFile",
+    "reason": "Pi chord/src/sync/files.ts:35 `appendFile(path, content: string | Uint8Array, context)` takes text or bytes and a file holds bytes either way: Pi's Node implementation writes a string as its UTF-8 bytes (chord/test/sync/node-files.ts). Go has no union of string and bytes, so SyncFileSystem.AppendFile(ctx, path, content []byte) takes the bytes: a caller with text passes []byte(text), the same UTF-8 content. chord/sync/filesystem.go writes bodies and state as bytes through it and TestSyncingASessionBetweenDevices and TestHostPieces (sync_test.go) write and read through osFiles."
+  },
+  "pkg:chord/sync#SyncFileSystem::property:writeFile::call:0": {
+    "go": "chord/sync/files.go#SyncFileSystem.WriteFile",
+    "reason": "Pi chord/src/sync/files.ts:34 `writeFile(path, content: string | Uint8Array, context)` takes text or bytes and a file holds bytes either way: Pi's Node implementation writes a string as its UTF-8 bytes (chord/test/sync/node-files.ts). Go has no union of string and bytes, so SyncFileSystem.WriteFile(ctx, path, content []byte) takes the bytes: a caller with text passes []byte(text), the same UTF-8 content. chord/sync/filesystem.go writes bodies and state as bytes through it and TestSyncingASessionBetweenDevices and TestHostPieces (sync_test.go) write and read through osFiles."
+  },
   "pkg:codemode/.#CodemodeSandboxOptions::property:wasm": {
     "go": "codemode/types.go#SandboxOptions.Wasm",
     "reason": "types.ts:113-117 wasm is a compiled WebAssembly.Module or a Promise of one, defaulting to loadQuickJSWasm(); T10 cannot compare an object-or-Promise union with a func. Go's SandboxOptions.Wasm is a loader returning the module bytes, nil meaning the embedded module (types.go:130), called lazily by Sandbox.engine, kept after the first success and retried after a failure like loadQuickJSWasm (sandbox.go:188-215). The failure paths are locked by sandbox_test.go:787 (loader error) and :798 (invalid module bytes) and the load-once path by lifetime_test.go:202."
@@ -486,9 +502,5 @@
   "pkg:tui/.#StdinBuffer::property:removeListener::call:0": {
     "go": "tui/stdin_buffer_events.go#StdinBuffer.RemoveListener",
     "reason": "Pi StdinBuffer extends EventEmitter<StdinBufferEventMap> (stdin-buffer.ts) and its listener methods take (event, listener) where the listener receives the event's string payload. Go tui.StdinBuffer carries the listener surface in tui/stdin_buffer_events.go with the event as a typed StdinBufferEvent string and the listener as a *StdinBufferListener that gives a Go callback the identity a JavaScript function has (Off and ListenerCount find it by that identity). TestStdinBufferEventsMatchPi runs Pi's StdinBuffer and compares the events its listeners receive with PiG's. Lead ruling 2026-10-10: the rows are ported."
-  },
-  "pkg:chord/sync#JsonObject": {
-    "go": "chord/sync/remote.go#JsonObject",
-    "reason": "Pi chord/src/sync/remote.ts:8 `export type JsonObject = { [key: string]: unknown }` is the host's session description (SessionSummary.meta, putMeta, getMeta). A same-named alias in chord/src/documents/definition.ts:14 (`{ [key: string]: JsonValue }`) makes the name ambiguous for the alias table, so no rule reads the body. Go spells the object as the ordered JSON object of Chord's delta package, aliased as sync.JsonObject (remote.go), the type PutMeta takes and GetMeta returns; TestHostPieces (sync_test.go) writes and reads it through SessionSyncStore."
   }
 }
