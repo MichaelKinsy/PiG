@@ -1038,18 +1038,18 @@ func listCursor(after *string) (listCursorState, error) {
 	if after == nil {
 		return listCursorState{part: "folders"}, nil
 	}
-	var parsed any
-	if err := json.Unmarshal([]byte(*after), &parsed); err != nil {
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(*after), &members); err != nil {
 		return listCursorState{}, data.Invalid(data.ReasonArgs, "files: not a listing cursor")
 	}
-	object, _ := parsed.(map[string]any)
-	if text, ok := object["folders"].(string); ok {
-		return listCursorState{part: "folders", after: &text}, nil
+	// A member counts when it is a string; `"files": null` is the cursor that starts the files after the folders.
+	for _, part := range []string{"folders", "files"} {
+		var text string
+		if raw := members[part]; len(raw) > 0 && raw[0] == '"' && json.Unmarshal(raw, &text) == nil {
+			return listCursorState{part: part, after: &text}, nil
+		}
 	}
-	if text, ok := object["files"].(string); ok {
-		return listCursorState{part: "files", after: &text}, nil
-	}
-	if value, present := object["files"]; present && value == nil {
+	if string(members["files"]) == "null" {
 		return listCursorState{part: "files"}, nil
 	}
 	return listCursorState{}, data.Invalid(data.ReasonArgs, "files: not a listing cursor")

@@ -78,7 +78,7 @@ type decoded struct {
 func decodeAll(t *testing.T, body SyncBody) decoded {
 	t.Helper()
 	lines := DecodeBatchLines(body)
-	defer lines.Close()
+	defer func() { _ = lines.Close() }()
 	var out decoded
 	var previous int64
 	for {
