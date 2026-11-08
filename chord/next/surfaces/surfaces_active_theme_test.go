@@ -37,9 +37,8 @@ func TestFollowsTheRegistryThePrincipalsPickAndTheMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clients, _, closeAll := serverAndClients(t, ":memory:", facet, "chord.themes.choice", "ada")
+	_, server, closeAll := serverAndClients(t, ":memory:", facet, "chord.themes.choice")
 	defer closeAll()
-	client := clients[0]
 	var plugins []host.HostFacet
 	plugins = append(plugins, host.HostFacet{Name: "chord.themes", Facet: ThemesFacet()})
 	for i, theme := range []Theme{solid("night", "dark"), solid("dusk", "dark"), solid("paper", "light")} {
@@ -47,9 +46,8 @@ func TestFollowsTheRegistryThePrincipalsPickAndTheMode(t *testing.T) {
 			return self.Contribute(registries.Registry[any, any](Themes), theme)
 		})})
 	}
-	if report, err := client.Load(plugins, bg); err != nil || len(report.Failed) != 0 {
-		t.Fatalf("load: %v %v", err, report.Failed)
-	}
+	client := connectUserWith(t, server, "ada", plugins)
+	defer client.Close(bg)
 	var mu sync.Mutex
 	var seen []string
 	last := func() string { mu.Lock(); defer mu.Unlock(); return seen[len(seen)-1] }

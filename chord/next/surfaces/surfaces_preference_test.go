@@ -67,12 +67,18 @@ func serverAndClients(t testing.TB, path string, facet host.Facet, name string, 
 // connectUser is a client of server for the principal user id.
 func connectUser(t testing.TB, server host.Host, id string) host.Host {
 	t.Helper()
+	return connectUserWith(t, server, id, nil)
+}
+
+// connectUserWith is connectUser with plugins loaded on the client.
+func connectUserWith(t testing.TB, server host.Host, id string, plugins []host.HostFacet) host.Host {
+	t.Helper()
 	client, err := host.CreateHost(host.HostOptions{OnError: func(host.HostError) {}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Load(nil, bg); err != nil {
-		t.Fatal(err)
+	if report, err := client.Load(plugins, bg); err != nil || len(report.Failed) != 0 {
+		t.Fatalf("client load: %v %v", err, report.Failed)
 	}
 	mine, theirs := link.MemoryLinkPair()
 	if err := server.Accept(theirs, host.LinkOptions{Principal: delta.JsonObjectOf("kind", "user", "id", id), Codec: link.BinaryCodec}, bg); err != nil {
