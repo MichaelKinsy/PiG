@@ -52,17 +52,6 @@ func conversationResults(view delta.JsonValue) []*delta.JsonObject {
 	return out
 }
 
-func resultText(result *delta.JsonObject) string {
-	var text strings.Builder
-	content, _ := result.Value("content").([]any)
-	for _, part := range content {
-		if object(part).Value("type") == "text" {
-			text.WriteString(object(part).Value("text").(string))
-		}
-	}
-	return text.String()
-}
-
 // peerEntries are the entries of a view that peers wrote.
 func peerEntries(view delta.JsonValue) []*delta.JsonObject {
 	var out []*delta.JsonObject
@@ -80,8 +69,8 @@ func jsonText(value any) string {
 	return string(encoded)
 }
 
-// sameJSON is whether value is the JSON document want (object member order aside).
-func sameJSON(t *testing.T, value any, want string) bool {
+// sameJSONText is whether value is the JSON document want (object member order aside).
+func sameJSONText(t *testing.T, value any, want string) bool {
 	t.Helper()
 	var got, expected any
 	if err := json.Unmarshal([]byte(jsonText(value)), &got); err != nil {
@@ -215,12 +204,12 @@ func TestConversationsFakeProvider(t *testing.T) {
 		entry := peerEntries(view)[0]
 		model, _ := entry.Value("model").([]any)
 		wantContent := fmt.Sprintf(`[{"type":"text","text":"<sender kind=\"session\" id=\"%s\" title=\"Alpha\"/>"},{"type":"text","text":"hello peer"}]`, alpha)
-		if len(model) == 0 || !sameJSON(t, object(model[0]).Value("content"), wantContent) {
+		if len(model) == 0 || !sameJSONText(t, object(model[0]).Value("content"), wantContent) {
 			t.Fatalf("model: %s", jsonText(model))
 		}
 		// The owner started the sending turn: the recipient's entry records it, so its turn may act for the owner too.
 		wantData := fmt.Sprintf(`{"from":{"id":"%s","title":"Alpha"},"text":"hello peer","origin":"owner"}`, alpha)
-		if !sameJSON(t, entry.Value("data"), wantData) {
+		if !sameJSONText(t, entry.Value("data"), wantData) {
 			t.Fatalf("data: %s", jsonText(entry.Value("data")))
 		}
 		if own := until(t, a.Member("view"), func(view delta.JsonValue) bool { return view != nil }); len(peerEntries(own)) != 0 {

@@ -25,8 +25,8 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/history"
 )
 
-// toolResults are the results of tool in a view, as text.
-func toolResults(view delta.JsonValue, tool string) []string {
+// toolResultTexts are the results of tool in a view, as text.
+func toolResultTexts(view delta.JsonValue, tool string) []string {
 	var out []string
 	entries, _ := object(view).Value("entries").([]any)
 	for _, entry := range entries {
@@ -114,13 +114,13 @@ func TestHistoryToolsEndToEndFakeProvider(t *testing.T) {
 	call := func(tool, args, requestID string) string {
 		t.Helper()
 		current, _ := chat.Member("view").Value()
-		before := len(toolResults(current, tool))
+		before := len(toolResultTexts(current, tool))
 		if _, err := chat.Call("send", delta.JsonObjectOf("text", tool+" "+args, "requestId", requestID), p2test.Background); err != nil {
 			t.Fatal(err)
 		}
-		view := until(chat.Member("view"), func(value delta.JsonValue) bool { return len(toolResults(value, tool)) > before }, 30*time.Second)
+		view := until(chat.Member("view"), func(value delta.JsonValue) bool { return len(toolResultTexts(value, tool)) > before }, 30*time.Second)
 		idle()
-		results := toolResults(view, tool)
+		results := toolResultTexts(view, tool)
 		return results[len(results)-1]
 	}
 	say("the zebrafish migration plan", "one")
