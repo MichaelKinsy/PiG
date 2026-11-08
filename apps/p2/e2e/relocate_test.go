@@ -943,6 +943,8 @@ func TestSessionRelocationFakeProvider(t *testing.T) {
 			if _, err := sessions.Call("dismissOperation", delta.JsonObjectOf("operation", failure.Value("id")), p2test.Background); err != nil {
 				t.Fatal(err)
 			}
+			// The dismissal is on the watched list before the next refusal is read from it.
+			r.until(sessions.Member("operations"), func(v delta.JsonValue) bool { return failed(v) == nil })
 		}
 		refused("Stop the current run")
 		// The refusal left no fence: input is admitted, and the session stayed where it was.
