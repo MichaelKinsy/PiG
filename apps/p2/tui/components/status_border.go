@@ -54,7 +54,7 @@ func borderOverflow(plainBorder string) (label string, overflow bool) {
 
 // topBorder is CustomEditor.renderTopBorder; plain is `super.renderTopBorder(width, hiddenLineCount)`.
 func (e *CustomEditor) topBorder(width int, plain string) string {
-	color := e.borderColor
+	color := e.Editor.BorderColor
 	status := e.indicator.RenderInBorder(max(1, width-5))
 	statusWidth := widthx.VisibleWidth(status)
 	if statusWidth == 0 {

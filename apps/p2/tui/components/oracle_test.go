@@ -211,15 +211,18 @@ func TestComponentsRenderLikeP2(t *testing.T) {
 	failures := 0
 	reported := map[string]bool{}
 	failing := map[string][]string{}
-	ran := map[string]bool{}
 	for i, probe := range probes {
 		got := goFrames(t, probe)
-		ran[probe.Scene] = true
+		_, known := divergent[probe.Scene]
 		if reflect.DeepEqual(got, expected[i]) {
+			if known {
+				t.Errorf("%s width %d %s/%s now matches p2: remove the scene from testdata/oracle_divergent.txt", probe.Scene, probe.Width, probe.Theme, probe.Mode)
+			}
 			continue
 		}
-		if _, known := divergent[probe.Scene]; known {
-			divergent[probe.Scene] = true
+		// D480: a known scene is excused per probe, and only for what D480 explains (colors and where code wraps at color spans). The visible
+		// characters, ignoring spaces, and the frame count must still equal p2's, so any other regression in the scene fails.
+		if known && sameGlyphs(got, expected[i]) {
 			continue
 		}
 		failures++
@@ -232,17 +235,29 @@ func TestComponentsRenderLikeP2(t *testing.T) {
 	for scene, setups := range failing {
 		t.Logf("%s differs at width/theme/mode: %s", scene, strings.Join(setups, " "))
 	}
-	for scene, differs := range divergent {
-		if ran[scene] && !differs {
-			t.Errorf("%s now matches p2: remove it from testdata/oracle_divergent.txt", scene)
-		}
-	}
 	if failures > 0 {
 		t.Fatalf("%d of %d probes differ from p2's TypeScript", failures, len(probes))
 	}
 }
 
-// divergentScenes are the scenes of testdata/oracle_divergent.txt (D480): known to differ from p2, so the value is whether a probe differed.
+// sameGlyphs reports whether two frame lists have the same frame count and, per frame, the same visible characters once escape sequences
+// and whitespace are removed: what is left when only colors and the line breaks around color spans differ.
+func sameGlyphs(got, want [][]string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	glyphs := func(rows []string) string {
+		return strings.Join(strings.Fields(plain(rows)), "")
+	}
+	for i := range got {
+		if glyphs(got[i]) != glyphs(want[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// divergentScenes are the scenes of testdata/oracle_divergent.txt (D480): every probe of them is known to differ from p2 (see sameGlyphs).
 func divergentScenes(t testing.TB) map[string]bool {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("testdata", "oracle_divergent.txt"))

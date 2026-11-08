@@ -247,18 +247,18 @@ scene("status-compaction-overflow", (ctx) => ({ component: new status.Compaction
 scene("status-compaction-threshold", (ctx) => ({ component: new status.CompactionStatusIndicator(ui, ctx, "threshold"), inputs: [] }));
 scene("status-compaction-retry", (ctx) => ({ component: new status.CompactionStatusIndicator(ui, ctx, "threshold", 1), inputs: [] }));
 const pasted = (text) => `\x1b[200~${text}\x1b[201~`;
-const longText = Array.from({ length: 14 }, (_, i) => `editor line ${i} 日本語`).join("\n");
+const longText = Array.from({ length: 10 }, (_, i) => `editor line ${i} 日本語`).join("\n");
 const editorScene = (indicator, inputs) => (ctx) => {
 	const editor = new status.CustomEditor(editorUi, ctx);
 	if (indicator) editor.setWorkingStatusIndicator(indicator(ctx));
 	return { component: editor, focus: true, inputs };
 };
-scene("editor-plain", editorScene(undefined, [pasted("hello"), pasted(longText), "\x1b[A", "\x1b[A"]));
+scene("editor-plain", editorScene(undefined, [pasted("hello"), pasted(longText), pasted(longText), "\x1b[A", "\x1b[A"]));
 const ups = (n) => Array.from({ length: n }, () => "\x1b[A");
-scene("editor-working", editorScene((ctx) => new status.WorkingStatusIndicator(ui, ctx, "Working..."), [pasted("hello"), pasted(longText), ...ups(8)]));
-scene("editor-working-long", editorScene((ctx) => new status.WorkingStatusIndicator(ui, ctx, "Working on a long message that does not fit the border at narrow widths 日本語"), [pasted(longText), ...ups(10)]));
-scene("editor-retry", editorScene((ctx) => new status.RetryStatusIndicator(ui, ctx, 1, 0, "overloaded"), [pasted("one\ntwo"), pasted(longText)]));
-scene("editor-compaction", editorScene((ctx) => new status.CompactionStatusIndicator(ui, ctx, "manual"), [pasted(longText), ...ups(14)]));
+scene("editor-working", editorScene((ctx) => new status.WorkingStatusIndicator(ui, ctx, "Working..."), [pasted("hello"), pasted(longText), pasted(longText), ...ups(8)]));
+scene("editor-working-long", editorScene((ctx) => new status.WorkingStatusIndicator(ui, ctx, "Working on a long message that does not fit the border at narrow widths 日本語"), [pasted(longText), pasted(longText), ...ups(10)]));
+scene("editor-retry", editorScene((ctx) => new status.RetryStatusIndicator(ui, ctx, 1, 0, "overloaded"), [pasted("one\ntwo"), pasted(longText), pasted(longText)]));
+scene("editor-compaction", editorScene((ctx) => new status.CompactionStatusIndicator(ui, ctx, "manual"), [pasted(longText), pasted(longText), ...ups(14)]));
 const markdownText =
 	"# Heading\n\nSome **bold** and *italic* text with `code` and a [link](https://example.com/very/long/path). 日本語のテキスト\n\n- item one\n- item two with a long line that wraps around the narrow widths of the terminal\n  - nested\n\n1. first\n2. second\n\n> quote line\n\n```\nplain code block\n  indented\n```\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n---\n\nfinal paragraph\x1b]52;c;evil\x07";
 const image = { type: "image", data: "", mimeType: "image/png" };
