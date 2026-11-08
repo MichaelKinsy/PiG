@@ -40,7 +40,7 @@ func (a *App) chatOf(h *surfacehost.Host, id string) *screens.Chat {
 	}
 	a.chat, a.chatScope, a.chatErr = chat, scope, nil
 	a.chatList = ui.ListState{FollowEnd: true}
-	a.thinking = map[string]bool{}
+	a.sheetKey, a.sheetStep = "", ""
 	return chat
 }
 

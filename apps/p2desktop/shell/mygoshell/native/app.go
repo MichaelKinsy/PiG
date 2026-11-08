@@ -64,14 +64,15 @@ type App struct {
 	shownErr      string
 	announced     bool
 
-	// The chat screen: the open conversation and its scope, its list, the prompt's text, thinking blocks opened, the markdown
+	// The chat screen: the open conversation and its scope, its list, the prompt's text, the activity sheet, the markdown
 	// options, and the first message of a session started from the empty state (sent once its chat opens).
 	chat         *screens.Chat
 	chatScope    *tui.TuiScope
 	chatErr      error
 	chatList     ui.ListState
 	draftText    string
-	thinking     map[string]bool // activity rows opened
+	sheetKey     string // the activity row whose sheet is open, and the call opened in it
+	sheetStep    string
 	actItems     []activity.Item
 	actFor       *transcript.Item
 	actLen       int
@@ -245,6 +246,7 @@ func (a *App) Build(c *ui.Context) {
 	})
 	a.spritePicker(c)
 	a.providersSheet(c)
+	a.activitySheet(c)
 	if err := sessions.LastError(); err != nil {
 		c.Toast(err.Error())
 		sessions.ClearError()

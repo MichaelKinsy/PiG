@@ -19,12 +19,12 @@ mkdir -p "$OUT"
 if [ "${HEADLESS:-}" = 1 ]; then
   # No window to capture (locked screen, Linux): the native half is drawn by MyGo's software tester in TestGateShot, over a
   # server that serves the branded web UI too; the page is photographed from that server. SEED=1 for the sessions.
-  ( cd "$HERE/../.." && go test -c -o /tmp/pd2-native.test ./shell/mygoshell/native )
+  ( cd "$HERE/../.." && go test -c -o ${NATIVE_TEST:-/tmp/pd2-native.test} ./shell/mygoshell/native )
   for THEME in dark light; do
     HOME_=$(mktemp -d); T=$(mktemp -d); mkdir -p "$HOME_/state/pig-standard"
     [ "$SPRITE" = default ] || printf '{"variant":"%s"}\n' "$SPRITE" >"$HOME_/state/pig-standard/login.json"
     ( cd "$HERE/../../shell/mygoshell/native" && PIG_HOME=$HOME_ P2_GATE_OUT="$OUT/$LABEL-$THEME-native.png" P2_GATE_THEME=$THEME \
-        P2_GATE_SEED=${SEED:+1} P2_GATE_CHAT=${CHAT:+1} P2_GATE_PORT_FILE=$T/port P2_GATE_DONE_FILE=$T/done /tmp/pd2-native.test -test.run TestGateShot -test.count=1 >/tmp/pd2-gate.log 2>&1 ) &
+        P2_GATE_SEED=${SEED:+1} P2_GATE_CHAT=${CHAT:+1} P2_GATE_TOOLS=${TOOLS:+1} P2_GATE_PORT_FILE=$T/port P2_GATE_DONE_FILE=$T/done ${NATIVE_TEST:-/tmp/pd2-native.test} -test.run TestGateShot -test.count=1 >/tmp/pd2-gate.log 2>&1 ) &
     for _ in $(seq 1 1200); do [ -f "$T/port" ] && break; sleep 0.1; done
     [ -f "$T/port" ] || { echo "headless native render failed; see /tmp/pd2-gate.log"; exit 1; }
     PORT=$(sed -n 1p "$T/port"); SID=$(sed -n 2p "$T/port")

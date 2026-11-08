@@ -149,3 +149,28 @@ func TestProvidersSheetFromTheEmptyState(t *testing.T) {
 	}
 	until(t, tt, "the sheet closed", func() bool { return !tt.HasText("Done") })
 }
+
+// TestActivityRowOpensItsSheet: a turn with a scripted call (the faux provider's "write") is one activity row, which opens the web's
+// sheet listing the steps, and a step opens to its input and output.
+func TestActivityRowOpensItsSheet(t *testing.T) {
+	app, tt := startApp(t)
+	until(t, tt, "the empty list", func() bool { return tt.HasText("No sessions yet.") })
+	id, err := app.sessions.Create(t.TempDir(), "tools")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.setSel(id)
+	until(t, tt, "the chat", func() bool { return tt.HasText("Say something to start.") })
+	if err := app.chat.Send("write"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the row", func() bool { return tt.HasText("Echo: write") && !tt.HasText("Stop") })
+	if err := tt.Click("Thought, edited a file"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the sheet", func() bool { return tt.HasText("2 steps") && tt.HasText("Thought") })
+	if err := tt.Click("Close"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the sheet closed", func() bool { return !tt.HasText("2 steps ·") })
+}

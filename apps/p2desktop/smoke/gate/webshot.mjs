@@ -18,6 +18,11 @@ const chat = new URL(base).pathname.startsWith("/s/");
 await page.goto(chat ? base : `${base}/`);
 if (!chat) await page.waitForSelector(".brand-banner", { timeout: 60000 });
 if (text) await page.getByText(text).first().waitFor({ timeout: 30000 });
+if (process.env.P2_WEB_CLICK) {
+	// the tool cards: open the activity rows named by the selector (the last one), as the native half opens its own
+	await page.locator(process.env.P2_WEB_CLICK).last().click();
+	await page.waitForTimeout(600);
+}
 await page.evaluate(() => document.fonts.ready);
 await page.waitForTimeout(800);
 await page.screenshot({ path: out });
