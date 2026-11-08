@@ -1,13 +1,15 @@
 {
-	"version": "cae1f49a8127017948fd017a2d434a4623a7a79248ca6123309370700b3689f5",
-	"script": "app-TBDTFUSM.js",
+	"version": "dab48d2344ddd86fdd2e2d1c0f026069bc6533a5f69316d52686808bef4fa1f1",
+	"script": "app-C72QKMTR.js",
 	"style": "app-LW6MBZOS.css",
 	"plugins": [
+		"artifacts",
 		"chat",
 		"coding-tools",
 		"envs",
 		"login",
 		"logs",
+		"send-file",
 		"sessions",
 		"sharing",
 		"subagents",
@@ -45,6 +47,18 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
+			"name": "app-C72QKMTR.js",
+			"type": "text/javascript; charset=utf-8",
+			"size": 1137735,
+			"sha256": "568a12d5a20b0208e35072407f00256cff552dc9cf7ef6a1f2831e15f586dcb2"
+		},
+		{
+			"name": "app-C72QKMTR.js.map",
+			"type": "application/json",
+			"size": 5457249,
+			"sha256": "2a9d3dfb287077a23a4cca89ffbd2bd7bd8b94f4c5e2971ed9d72d93145489ed"
+		},
+		{
 			"name": "app-LW6MBZOS.css",
 			"type": "text/css; charset=utf-8",
 			"size": 343524,
@@ -55,18 +69,6 @@
 			"type": "application/json",
 			"size": 617673,
 			"sha256": "2476317c09af490720fed4a31bd27f32943b5e5b970dbc338686fa8ed94462c3"
-		},
-		{
-			"name": "app-TBDTFUSM.js",
-			"type": "text/javascript; charset=utf-8",
-			"size": 1121194,
-			"sha256": "58f4ffb3b463430a2e53030add5896a28bda9a25a4fccf01b5468f3fc065c2e6"
-		},
-		{
-			"name": "app-TBDTFUSM.js.map",
-			"type": "application/json",
-			"size": 5403615,
-			"sha256": "d065c94b40a59db84c10278fc02595a3cb2b806b18264a963b93f48a7965c994"
 		}
 	],
 	"brand": {
@@ -75,7 +77,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "a7ab402322657efddfd06b61f3d35cecb14aa75df2fdd7b81960b53299a9960d",
+		"upstreamVersion": "a4a2e67a4f735ad224333eb4e9cc78f60b5d692cdf41ef0ed3cd02ad034a6a5a",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",
