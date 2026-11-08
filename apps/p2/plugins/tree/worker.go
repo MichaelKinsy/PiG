@@ -448,40 +448,8 @@ func isJSSpace(r rune) bool { return unicode.IsSpace(r) || r == '\uFEFF' }
 // collapse is text with each run of white space one space, trimmed.
 func collapse(text string) string { return strings.Join(strings.FieldsFunc(text, isJSSpace), " ") }
 
-// utf16Slice is JavaScript's `slice(0, n)` of s: at most n UTF-16 code units. A surrogate pair the limit falls inside is
-// cut in two; a Go string has no form for the lone surrogate, so the character becomes U+FFFD.
-func utf16Slice(s string, n int) string {
-	units := 0
-	for i, r := range s {
-		width := 1
-		if r > 0xFFFF {
-			width = 2
-		}
-		if units+width > n {
-			if units < n {
-				return s[:i] + "\uFFFD"
-			}
-			return s[:i]
-		}
-		units += width
-	}
-	return s
-}
-
-// utf16Length is JavaScript's `text.length`.
-func utf16Length(text string) int {
-	n := 0
-	for _, r := range text {
-		n++
-		if r > 0xFFFF {
-			n++
-		}
-	}
-	return n
-}
-
 // oneLine is text on one line, trimmed, at most PreviewLength characters.
-func oneLine(text string) string { return utf16Slice(collapse(text), contract.PreviewLength) }
+func oneLine(text string) string { return p2runtime.UTF16Slice(collapse(text), contract.PreviewLength) }
 
 func userMessage(message ai.Message) (ai.UserMessage, bool) {
 	switch typed := message.(type) {
@@ -718,7 +686,7 @@ func selectBranch(ctx context.Context, d harness.Harness, id durable.Conversatio
 func rename(ctx context.Context, d harness.Harness, id int, label string) error {
 	// Schema-checked arguments: the length and the empty rule are this method's own.
 	text := collapse(label)
-	if utf16Length(text) > contract.PreviewLength {
+	if p2runtime.UTF16Length(text) > contract.PreviewLength {
 		return fmt.Errorf("A branch label has at most %d characters", contract.PreviewLength)
 	}
 	if text == "" && id != int(durable.ROOT_CONVERSATION_ID) {
