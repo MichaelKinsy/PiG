@@ -272,8 +272,7 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 		t.Fatalf("/owner-token as a guest: %d", got)
 	}
 	both, _ := fixture.Client(merged(ownerTunnel, map[string]string{"Cookie": guestCookie + "; " + cookie}))
-	ownerAgain, err := p2test.HoldIn(both, p2runtime.Access, delta.NewJsonObject(0), "owner")
-	if err != nil || ownerAgain.Variant != "owner" {
+	if _, err := p2test.HoldIn(both, p2runtime.Access, delta.NewJsonObject(0), "owner"); err != nil {
 		t.Fatalf("an owner cookie is downgraded by an existing guest cookie: %v", err)
 	}
 	startupText, err := os.ReadFile(filepath.Join(fixture.DataDir, "owner-token.txt"))
