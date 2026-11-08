@@ -137,6 +137,6 @@ func BenchmarkOrderedObjectReaders(b *testing.B) {
 		jsonseed.Bench(b, doc, func(d []byte) { _, _ = orderedCatalogPairsV1(d) }, func(d []byte) { _, _ = orderedCatalogPairs(d) })
 	})
 	b.Run("parseStoredModels", func(b *testing.B) {
-		jsonseed.Bench(b, doc, func(d []byte) { parseStoredModelsV1(d) }, func(d []byte) { parseStoredModels(d) })
+		jsonseed.Bench(b, doc, func(d []byte) { _, _, _ = parseStoredModelsV1(d) }, func(d []byte) { _, _, _ = parseStoredModels(d) })
 	})
 }
