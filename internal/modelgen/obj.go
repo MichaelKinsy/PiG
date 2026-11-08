@@ -358,11 +358,10 @@ func decodeValue(decoder *jsontext.Decoder) (any, error) {
 	case '{':
 		object := NewObj()
 		for decoder.PeekKind() != '}' {
-			keyToken, err := decoder.ReadToken()
+			key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 			if err != nil {
 				return nil, err
 			}
-			key := keyToken.String() // a Token is void after the next call on the decoder
 			value, err := decodeValue(decoder)
 			if err != nil {
 				return nil, err

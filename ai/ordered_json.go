@@ -29,22 +29,21 @@ func orderedJSONObject(data []byte) ([]orderedJSONEntry, error) {
 	var entries []orderedJSONEntry
 	index := map[string]int{}
 	for decoder.PeekKind() != '}' {
-		keyToken, err := decoder.ReadToken()
+		name, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return nil, err
 		}
-		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
 		value, err := decoder.ReadValue()
 		if err != nil {
 			return nil, err
 		}
 		raw := json.RawMessage(bytes.Clone(value))
-		if position, seen := index[key]; seen {
+		if position, seen := index[name]; seen {
 			entries[position].value = raw
 			continue
 		}
-		index[key] = len(entries)
-		entries = append(entries, orderedJSONEntry{key: key, value: raw})
+		index[name] = len(entries)
+		entries = append(entries, orderedJSONEntry{key: jsonopts.ValidName(name), value: raw})
 	}
 	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err

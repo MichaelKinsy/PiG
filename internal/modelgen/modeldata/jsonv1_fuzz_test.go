@@ -9,6 +9,7 @@ import (
 func FuzzParseModelDataObjectMatchesV1(f *testing.F) {
 	jsonseed.Add(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		jsonseed.SameResult(t, data, "parseModelDataObject", parseModelDataObject(data), parseModelDataObjectV1(data))
 	})
 }

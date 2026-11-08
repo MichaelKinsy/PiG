@@ -1001,11 +1001,10 @@ func decodeOpenAIReasoningDetail(raw json.RawMessage) (*openAIReasoningDetail, b
 	detail := &openAIReasoningDetail{typ: typ}
 	positions := map[string]int{}
 	for decoder.PeekKind() != '}' {
-		nameToken, err := decoder.ReadToken()
+		name, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return nil, false
 		}
-		name := nameToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
 		valueBytes, err := decoder.ReadValue()
 		if err != nil {
 			return nil, false
@@ -1016,7 +1015,7 @@ func decodeOpenAIReasoningDetail(raw json.RawMessage) (*openAIReasoningDetail, b
 			continue
 		}
 		positions[name] = len(detail.fields)
-		detail.fields = append(detail.fields, openAIReasoningDetailField{name: name, value: value})
+		detail.fields = append(detail.fields, openAIReasoningDetailField{name: jsonopts.ValidName(name), value: value})
 	}
 	return detail, true
 }

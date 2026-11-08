@@ -35,22 +35,21 @@ func readJSONObjectMembers(data []byte) ([]jsonMember, error) {
 	var members []jsonMember
 	index := map[string]int{}
 	for decoder.PeekKind() != '}' {
-		keyToken, err := decoder.ReadToken()
+		name, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return nil, err
 		}
-		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
 		value, err := decoder.ReadValue()
 		if err != nil {
 			return nil, err
 		}
 		raw := json.RawMessage(bytes.Clone(value))
-		if at, seen := index[key]; seen {
+		if at, seen := index[name]; seen {
 			members[at].value = raw
 			continue
 		}
-		index[key] = len(members)
-		members = append(members, jsonMember{key: key, value: raw})
+		index[name] = len(members)
+		members = append(members, jsonMember{key: jsonopts.ValidName(name), value: raw})
 	}
 	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err

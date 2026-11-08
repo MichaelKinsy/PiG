@@ -56,6 +56,7 @@ func decodeProviderHeaderObjectV1(decoder *json.Decoder) ([]providerHeaderEntry,
 
 func rejectDuplicateLoginJSONFieldsV1(data []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber() // a number is a raw token, as the scan reads it: JSON.parse gives Infinity for 1e999 where a float64 decode fails
 	if err := scanLoginJSONValueV1(decoder, ""); err != nil {
 		return err
 	}

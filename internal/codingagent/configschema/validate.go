@@ -65,11 +65,10 @@ func parseJSONValue(decoder *jsontext.Decoder) (jsonNode, error) {
 	case '{':
 		node := jsonNode{kind: jsonObject, fields: map[string]jsonNode{}}
 		for decoder.PeekKind() != '}' {
-			keyToken, err := decoder.ReadToken()
+			key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 			if err != nil {
 				return jsonNode{}, err
 			}
-			key := keyToken.String() // a Token is void after the next call on the decoder
 			item, err := parseJSONValue(decoder)
 			if err != nil {
 				return jsonNode{}, err

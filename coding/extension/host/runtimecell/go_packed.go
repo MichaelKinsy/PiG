@@ -606,7 +606,7 @@ func goDirectiveFor(extensions []GoExtension) string {
 			continue
 		}
 		declared := file.Go.Version
-		if strings.Count(declared, ".") == 1 && !strings.ContainsAny(declared, "rcbeta") {
+		if lang := "go" + declared; strings.Contains(declared, ".") && version.Lang(lang) == lang { // a language version ("go1.27"), not a release, a candidate or a beta
 			//perf:ok one append per extension module at registration, a handful of modules, cold path
 			declared += ".0" // "1.27" and "1.27.0" name the same language version; the generated module spells it the second way
 		}

@@ -110,11 +110,10 @@ func orderedObjectValues(data json.RawMessage) ([]json.RawMessage, map[string]js
 	var values []json.RawMessage
 	byKey := map[string]json.RawMessage{}
 	for decoder.PeekKind() != '}' {
-		name, err := decoder.ReadToken()
+		key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 		if err != nil {
 			return nil, nil, err
 		}
-		key := name.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
 		valueBytes, err := decoder.ReadValue()
 		if err != nil {
 			return nil, nil, err

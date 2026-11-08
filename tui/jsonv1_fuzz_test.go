@@ -16,6 +16,7 @@ func FuzzExtractColorKeyOrderMatchesV1(f *testing.F) {
 func FuzzRawObjectKeysMatchesV1(f *testing.F) {
 	jsonseed.Add(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		jsonseed.SameResult(t, data, "rawObjectKeys", rawObjectKeys(data), rawObjectKeysV1(data))
 	})
 }

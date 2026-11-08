@@ -133,15 +133,11 @@ func scanLoginJSONValue(decoder *jsontext.Decoder, path string) error {
 	case '{':
 		seen := make(map[string]struct{})
 		for decoder.PeekKind() != '}' {
-			keyToken, err := decoder.ReadToken()
+			key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 			if err != nil {
 				return fmt.Errorf("decode login definition: %w", err)
 			}
-			if keyToken.Kind() != '"' {
-				return fmt.Errorf("decode login definition: object key is not a string")
-			}
-			key := keyToken.String() // a Token is void after the next call on the decoder
-			field := loginJSONFieldPath(path, key)
+			field := loginJSONFieldPath(path, jsonopts.ValidName(key)) // the path is only for the message
 			if _, duplicate := seen[key]; duplicate {
 				return loginDefinitionError(field, "field occurs more than once")
 			}

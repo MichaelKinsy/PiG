@@ -440,12 +440,13 @@ func (s *OrderedSections) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("system message sections must be an object")
 	}
 	sections := OrderedSections{}
+	var jsNames []string // the keys as JSON.parse has them, parallel to sections
 	for decoder.PeekKind() != '}' {
-		nameToken, err := decoder.ReadToken()
+		jsName, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return err
 		}
-		name := nameToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		name := jsonopts.ValidName(jsName)
 		rawValue, err := decoder.ReadValue()
 		if err != nil {
 			return err
@@ -459,9 +460,10 @@ func (s *OrderedSections) UnmarshalJSON(data []byte) error {
 			}
 			value = &text
 		}
-		if index := slices.IndexFunc(sections, func(section PromptSection) bool { return section.Name == name }); index >= 0 {
+		if index := slices.Index(jsNames, jsName); index >= 0 {
 			sections[index].Value = value
 		} else {
+			jsNames = append(jsNames, jsName)
 			sections = append(sections, PromptSection{Name: name, Value: value})
 		}
 	}

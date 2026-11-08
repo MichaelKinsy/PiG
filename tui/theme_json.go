@@ -366,11 +366,10 @@ func rawObjectKeys(raw []byte) []string {
 	var keys []string
 	seen := map[string]bool{}
 	for decoder.PeekKind() != '}' {
-		token, err := decoder.ReadToken()
+		key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
 		if err != nil {
 			return keys
 		}
-		key := token.String() // a Token is void after the next call on the decoder
 		if !seen[key] {
 			seen[key] = true
 			keys = append(keys, key)
