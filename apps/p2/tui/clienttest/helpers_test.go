@@ -2,6 +2,7 @@
 package clienttest
 
 import (
+	"fmt"
 	"context"
 	"errors"
 	"regexp"
@@ -190,4 +191,16 @@ func roleOf(role string) tuiruntime.TuiRole {
 		return tuiruntime.RoleGuest
 	}
 	return tuiruntime.RoleOwner
+}
+
+// fmtJSON formats a value (a JSON object as a Go map, whose keys print sorted) for comparing.
+func fmtJSON(value any) string {
+	if object, ok := value.(*delta.JsonObject); ok {
+		out := map[string]any{}
+		for key, each := range object.All() {
+			out[key] = each
+		}
+		return fmt.Sprintf("%v", out)
+	}
+	return fmt.Sprintf("%v", value)
 }
