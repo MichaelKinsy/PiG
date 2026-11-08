@@ -47,8 +47,8 @@ func CreateProcessLoginTerminal(onInterrupt func()) LoginTerminal {
 func (processLoginTerminal) Interactive() bool {
 	return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 }
-func (t processLoginTerminal) Write(line string) { fmt.Fprintln(t.output, line) }
-func (processLoginTerminal) Error(line string)   { fmt.Fprintln(os.Stderr, line) }
+func (t processLoginTerminal) Write(line string) { _, _ = fmt.Fprintln(t.output, line) }
+func (processLoginTerminal) Error(line string)   { _, _ = fmt.Fprintln(os.Stderr, line) }
 func (t processLoginTerminal) Question(ctx context.Context, message string) (string, error) {
 	return t.reader.Question(ctx, message, t.output, t.onInterrupt)
 }
@@ -66,6 +66,7 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 	if _, err := io.WriteString(output, message); err != nil {
 		return "", err
 	}
+	// A stop and continue interrupts the termios ioctl; MakeRaw retries it, as Pi's Node does.
 	state, err := tui.MakeRaw(fd)
 	if err != nil {
 		return "", err
