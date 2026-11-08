@@ -76,7 +76,7 @@ func TestMarkedBlockRulesEqualTheirPatterns(t *testing.T) {
 		// Tokenizer.list: the item rule of each kind of bullet.
 		for bull, rule := range itemRules {
 			match := rule.exec(runes)
-			bulletLength, length, ok := markedListItem(runes, bull)
+			bulletLength, length, ok := markedListItem(runes, []rune(bull))
 			if ok != (match != nil) || ok && (bulletLength != match.GroupByNumber(1).Length || length != match.Length) {
 				t.Fatalf("item %q of %q: %d, %d, %v; the pattern gives %v", bull, src, bulletLength, length, ok, match != nil)
 			}

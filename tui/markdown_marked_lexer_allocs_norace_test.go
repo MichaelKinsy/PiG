@@ -2,7 +2,10 @@
 
 package tui
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Every line of a list item that the block lexer reads is asked whether it opens a block that ends the item. Bound: asking about item and non-item lines of a long answer allocates nothing.
 func TestMarkedListItemRulesAllocateNothing(t *testing.T) {
@@ -35,5 +38,30 @@ func TestMarkedListItemRulesAllocateNothing(t *testing.T) {
 	}
 	if allocs > 0 {
 		t.Fatalf("asking %d lines about the rules that end a list item allocated %.1f times, want 0", len(lines), allocs)
+	}
+}
+
+// Bound: the block lexer of a state that has lexed a text before allocates for a document of lists, fenced code, tables and quotes by the chunks it copies strings to, not by each string and token list: a streamed message lexes again at every frame.
+func TestMarkedBlockLexerAllocatesPerDocumentNotPerString(t *testing.T) {
+	for _, doc := range []struct {
+		name  string
+		text  string
+		bound float64
+	}{
+		{"streaming body", streamingBody(8000), 8},
+		{"long answer", longAnswer(20000), 1800},
+		{"list of 600 items", "- Release detail\n" + strings.Repeat("- Release detail\n", 599), 16},
+	} {
+		state := &markedInlineState{}
+		lex := func() {
+			state.blockLexer().lexRunes(state.blockRunes(doc.text), doc.text)
+			state.startDocument()
+		}
+		lex()
+		if allocs := testing.AllocsPerRun(20, lex); allocs > doc.bound {
+			t.Errorf("%s: lexing allocated %.0f times, want at most %.0f", doc.name, allocs, doc.bound)
+		} else {
+			t.Logf("%s: %.0f allocations", doc.name, allocs)
+		}
 	}
 }

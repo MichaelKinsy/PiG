@@ -2291,7 +2291,7 @@ allocs = 161
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkChangelogCommandRender"
-allocs = 8038
+allocs = 6410
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2466,7 +2466,7 @@ allocs = 36
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveLongAnswerStream"
-allocs = 1234131
+allocs = 1196069
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3246,17 +3246,17 @@ allocs = 6
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongAnswerStream/20000"
-allocs = 170995
+allocs = 163200
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongAnswerStream/5000"
-allocs = 46278
+allocs = 44554
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongAnswerStream/60000"
-allocs = 482547
+allocs = 458945
 
 [[benchmark]]
 package = "./tui"
@@ -3321,32 +3321,32 @@ allocs = 22063
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAssistantStreaming/tokens=100"
-allocs = 575
+allocs = 557
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAssistantStreaming/tokens=10000"
-allocs = 3449865
+allocs = 3271098
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownAssistantStreaming/tokens=2000"
-allocs = 142952
+allocs = 135974
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownParseFinal"
-allocs = 2841
+allocs = 1919
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownStreaming"
-allocs = 1391197
+allocs = 1335256
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownStreamingCached"
-allocs = 202412
+allocs = 146491
 
 [[benchmark]]
 package = "./tui"
