@@ -24,7 +24,7 @@ import (
 // the next call of Next.
 //
 // Go forced differences: a chunk of lines is measured in bytes (Pi counts UTF-16 units). Decoding also bounds one line
-// (MaxLineBytes, D432): Pi holds a line of any size.
+// (RangeError): none; a line is bounded as Pi's is.
 
 // SyncBody is a body on the remote: its bytes in chunks, read once.
 type SyncBody = store.ByteSource
@@ -55,9 +55,19 @@ func (source *sliceCommits) Close() error { return nil }
 // chunkBytes is the bytes a chunk of encoded lines collects before it is compressed.
 const chunkBytes = 64 * 1024
 
-// MaxLineBytes is the longest log line a batch body may hold when it is decoded: a line past it is a LogFormatError.
-//
-// pig divergence (D432): Pi holds a log line of any size; a remote's body is untrusted and a sync holds bounded memory.
+// MaxStringLength is V8's longest string, in UTF-16 units: the most a line of a batch body may hold (see RangeError).
+const MaxStringLength = 0x1fffffe8
+
+// stringLimit is MaxStringLength; a variable so a test can reach it with small bodies.
+var stringLimit = MaxStringLength
+
+// RangeError is what Pi's runtime throws when a string it builds passes MaxStringLength: `RangeError: Invalid string length`.
+// Pi's `lines()` raises it out of `rest += decode(chunk)` for a line that long, and its encoder out of `pending += line`; a
+// line this port writes is bounded the same, so every line an upload writes pulls back.
+type RangeError struct{}
+
+func (*RangeError) Error() string { return "Invalid string length" }
+
 const MaxLineBytes = 32 * 1024 * 1024
 
 // EncodeBatch is a batch body: commits as gzip-compressed JSON lines, read from commits only as the body is read.
