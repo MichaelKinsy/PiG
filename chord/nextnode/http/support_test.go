@@ -112,6 +112,11 @@ func contributing(contribution HttpContribution) host.Facet {
 	})
 }
 
+// publicRoute is a route served without a principal (Pi's `{ public: true, handler }`).
+func publicRoute(key string, handler HttpRoute) HttpRouteEntry {
+	return HttpRouteEntry{Key: key, Route: HttpRouteOptions{Handler: handler, Public: true}}
+}
+
 // authenticating is a plugin facet contributing an authenticator.
 func authenticating(authenticator Authenticator) host.Facet {
 	return host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
