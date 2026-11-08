@@ -4,9 +4,21 @@ package ai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"slices"
+	"strings"
 )
+
+// githubCopilotSystemOne is providers/github-copilot.ts copilotSystemOne. Copilot serves System One at /v1/systemone while its chat APIs have no
+// version prefix, and the login replaces the catalog base URL with the account's endpoint, so the prefix is added per request.
+func githubCopilotSystemOne(classifier *ProviderClassifier) *ProviderClassifier {
+	return &ProviderClassifier{Classify: func(ctx context.Context, model *ClassifierModel, request ClassifierContext, options ClassifierOptions) (ClassifierResult, error) {
+		versioned := *model
+		versioned.BaseURL = strings.TrimRight(model.BaseURL, "/") + "/v1"
+		return classifier.Classify(ctx, &versioned, request, options)
+	}}
+}
 
 // filterGitHubCopilotModels keeps the models an OAuth account's availableModelIds lists. Any other credential, and an availableModelIds value that is not an array of strings, keeps every model; an explicit empty array keeps none.
 func filterGitHubCopilotModels(models []*Model, credential *Credential) []*Model {

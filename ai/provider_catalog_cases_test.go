@@ -39,6 +39,7 @@ func providerCatalogCases() []providerCatalogCase {
 		{"opencode", OpenCodeModels, OpenCodeImageModels, OpenCodeClassifierModels},
 		{"openrouter", OpenRouterModels, OpenRouterImageModels, OpenRouterClassifierModels},
 		{"qwen-token-plan-cn", QwenTokenPlanCNModels, QwenTokenPlanCNImageModels, QwenTokenPlanCNClassifierModels},
+		{"qwen-token-plan-individual-cn", QwenTokenPlanIndividualCNModels, QwenTokenPlanIndividualCNImageModels, QwenTokenPlanIndividualCNClassifierModels},
 		{"qwen-token-plan-individual", QwenTokenPlanIndividualModels, QwenTokenPlanIndividualImageModels, QwenTokenPlanIndividualClassifierModels},
 		{"qwen-token-plan", QwenTokenPlanModels, QwenTokenPlanImageModels, QwenTokenPlanClassifierModels},
 		{"radius", RadiusModels, RadiusImageModels, RadiusClassifierModels},
