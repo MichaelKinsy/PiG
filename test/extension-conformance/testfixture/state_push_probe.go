@@ -15,7 +15,7 @@ import (
 const statePushWindow = 5 * time.Second
 
 // registerStatePushProbe registers the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a goroutine that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the goroutine reports the first value that differs from the one it armed on, or the value it still holds after statePushWindow, to a file in the directory the arguments name.
-// The arguments are {"kind": "model" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}. The report is "<armed>=><read>". Every SDK fixture reads the same state with its own accessor.
+// The arguments are {"kind": "model" | "model-name" | "session-id" | "context-usage" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}. The report is "<armed>=><read>". Every SDK fixture reads the same state with its own accessor.
 func registerStatePushProbe(ext *sdk.Extension) {
 	ext.Command("state-push-probe", "Read one replicated accessor from a goroutine between requests", func(ctx sdk.Context, args string) error {
 		var request struct {
@@ -50,6 +50,56 @@ func statePushReader(ctx sdk.Context, kind string) (func() string, error) {
 	switch {
 	case kind == "model":
 		return ctx.Model, nil
+	case kind == "model-name":
+		return func() string {
+			info, err := ctx.GetModelInfo()
+			if err != nil {
+				return "error:" + err.Error()
+			}
+			if info == nil {
+				return ""
+			}
+			return info.Name
+		}, nil
+	case kind == "context-usage":
+		return func() string {
+			usage, err := ctx.GetContextUsage()
+			switch {
+			case err != nil:
+				return "error:" + err.Error()
+			case usage == nil:
+				return "none"
+			case usage.Tokens == nil:
+				return "tokens="
+			}
+			return fmt.Sprintf("tokens=%d", *usage.Tokens)
+		}, nil
+	case kind == "usage-then-id":
+		// A host call, then the replicated id: the id must not be older than the host's answer.
+		return func() string {
+			usage, err := ctx.GetContextUsage()
+			switch {
+			case err != nil:
+				return "error:" + err.Error()
+			case usage == nil || usage.Tokens == nil:
+				return "none"
+			case *usage.Tokens != 250:
+				return fmt.Sprintf("tokens=%d", *usage.Tokens)
+			}
+			id, err := ctx.GetSessionID()
+			if err != nil {
+				return "error:" + err.Error()
+			}
+			return "tokens=250,id=" + id
+		}, nil
+	case kind == "session-id":
+		return func() string {
+			id, err := ctx.GetSessionID()
+			if err != nil {
+				return "error:" + err.Error()
+			}
+			return id
+		}, nil
 	case kind == "session-name":
 		return ctx.SessionName, nil
 	case kind == "theme":

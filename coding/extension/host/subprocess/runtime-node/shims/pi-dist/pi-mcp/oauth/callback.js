@@ -58,9 +58,13 @@ export class OAuthCallbackServer {
             pending.reject(new Error("OAuth callback server closed"));
         }
         this.pending.clear();
-        await new Promise((resolve, reject) => {
+        const closed = new Promise((resolve, reject) => {
             this.server.close((error) => (error ? reject(error) : resolve()));
         });
+        // `close()` waits for every connection, and a browser may keep an unused one open (a preconnect or a
+        // spare keep-alive socket) for minutes. Responses have been sent by now, so drop them.
+        this.server.closeAllConnections();
+        await closed;
     }
     reply(response, status, page) {
         if (this.renderPage) {

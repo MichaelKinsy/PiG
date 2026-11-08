@@ -36,8 +36,9 @@ func TestContextUsageWirePreservesAbsenceAndNull(t *testing.T) {
 			if err := json.Unmarshal(data, &snapshot); err != nil {
 				t.Fatal(err)
 			}
-			if got := string(snapshot["contextUsage"]); got != tc.want {
-				t.Errorf("snapshot usage = %s, want %s", got, tc.want)
+			// The usage is not state: it moves with every committed message, which no push announces, so a snapshot would be stale.
+			if _, present := snapshot["contextUsage"]; present {
+				t.Errorf("the snapshot carries the usage: %s", snapshot["contextUsage"])
 			}
 			call, err := b.HandleCall("probe", &CallPayload{Method: "getContextUsage"})
 			if err != nil {
@@ -67,18 +68,24 @@ import {pathToFileURL} from "node:url";
 const {Runtime} = await import(pathToFileURL(%q));
 const r = new Runtime("/ext/state.mjs");
 assert.equal(r.ctx.mode, "print");
+// The usage is not state: every read asks the host, so it follows the Session with no push (absent, unknown, measured zero, then a change after no applyState).
+let usage = null, asked = 0;
+r.callSync = (method) => { assert.equal(method, "getContextUsage"); asked++; return usage; };
 assert.equal(r.ctx.getContextUsage(), undefined, "initial usage");
-r.applyState({contextUsage: {tokens: 120, contextWindow: 128000, percent: 1}, model: {id: "old", contextWindow: 128000}});
+r.applyState({model: {id: "old", contextWindow: 128000}});
+usage = {tokens: 120, contextWindow: 128000, percent: 1};
 assert.equal(r.ctx.getContextUsage().tokens, 120);
-r.applyState({contextUsage: {tokens: null, contextWindow: 128000, percent: null}});
+usage = {tokens: null, contextWindow: 128000, percent: null};
 assert.deepEqual(r.ctx.getContextUsage(), {tokens: null, contextWindow: 128000, percent: null});
-r.applyState({contextUsage: null, model: null});
+usage = null;
+r.applyState({model: null});
 assert.equal(r.ctx.getContextUsage(), undefined, "cleared usage");
 assert.equal(r.ctx.model, undefined, "cleared model");
-r.applyState({contextUsage: {tokens: 0, contextWindow: 128000, percent: 0}});
+usage = {tokens: 0, contextWindow: 128000, percent: 0};
 assert.equal(r.ctx.getContextUsage().tokens, 0, "measured zero");
-r.applyState({editorText: "unrelated"});
-assert.equal(r.ctx.getContextUsage().contextWindow, 128000, "partial update retains usage");
+usage = {tokens: 9, contextWindow: 128000, percent: 0};
+assert.equal(r.ctx.getContextUsage().tokens, 9, "a change with no state push");
+assert.equal(asked, 6);
 r.applyState({commands:[{name:"x"}], allThemes:[{name:"dark"}], flags:{flag:true}});
 r.applyState({commands:null, allThemes:null, flags:null});
 assert.deepEqual([r.state.commands, r.state.allThemes, r.state.flags], [[], [], {}]);

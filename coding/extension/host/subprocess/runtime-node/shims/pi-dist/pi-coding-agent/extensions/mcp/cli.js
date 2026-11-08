@@ -6,12 +6,13 @@
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { createInterface } from "node:readline/promises";
 import chalk from "../../../../chalk/source/index.js";
 import { APP_NAME, CONFIG_DIR_NAME } from "../../config.js";
 import { validateMcpServerConfig } from "../../core/mcp-servers.js";
+import { ModelRuntime } from "../../core/model-runtime.js";
 import { ProjectTrustStore } from "../../core/trust-manager.js";
 import { openBrowser } from "../../utils/open-browser.js";
+import { questionTerminal } from "../../utils/terminal-question.js";
 import { addMcpServerConfig, getMcpToolExposure, loadMcpConfig, removeMcpServerConfig, } from "./config.js";
 import { createDefaultTransport, McpOAuthCredentialStore, McpServerConnection, McpServerLog, McpSignInCancelledError, signInMcpServer, } from "./runtime.js";
 const HELP = `${chalk.bold("Usage:")}
@@ -66,15 +67,41 @@ function describeTransport(entry) {
     const { config } = entry;
     return "url" in config ? config.url : [config.command, ...(config.args ?? [])].join(" ");
 }
-function createConnection(entry, options, credentials) {
+function getAuthProvider(entry) {
+    return "url" in entry.config ? entry.config.auth?.provider : undefined;
+}
+function createConnection(entry, options, credentials, providerToken) {
     return new McpServerConnection({
         entry,
         cwd: options.cwd,
         createTransport: createDefaultTransport,
         credentials,
+        providerToken,
         log: new McpServerLog(join(options.agentDir, "mcp.log")),
         onTools: () => { },
     });
+}
+/**
+ * Reads provider tokens from the agent directory's credentials, refreshing expired OAuth tokens like a
+ * session does. The model runtime is created on the first request, so servers without `auth.provider`
+ * do not load it.
+ */
+function createProviderTokenReader(agentDir) {
+    let runtime;
+    return async (provider) => {
+        runtime ??= ModelRuntime.create({
+            authPath: join(agentDir, "auth.json"),
+            modelsPath: join(agentDir, "models.json"),
+            refreshOnCreate: false,
+        });
+        try {
+            return (await (await runtime).getAuth(provider))?.auth.apiKey;
+        }
+        catch {
+            // Missing or unrefreshable credentials: the server's 401 then reports that sign-in is needed.
+            return undefined;
+        }
+    };
 }
 /** Short spellings of options. `-l`/`--local` match `pi install`. */
 const OPTION_ALIASES = new Map([["-l", "--local"]]);
@@ -141,6 +168,7 @@ export async function runMcpCommand(args, options) {
         ? `${projectConfig} is ignored because the project is not trusted. Start ${APP_NAME} in the project to trust it.`
         : undefined;
     const credentials = options.credentials ?? new McpOAuthCredentialStore();
+    const providerToken = options.providerToken ?? createProviderTokenReader(options.agentDir);
     switch (command) {
         case "list": {
             const parsed = parseOptions(rest, { json: "flag" }, error);
@@ -150,7 +178,7 @@ export async function runMcpCommand(args, options) {
                 error(`Usage: ${APP_NAME} mcp list [--json]\n${HELP_HINT}`);
                 return 1;
             }
-            return list(loaded, parsed.values.has("json"), untrustedNote, options, credentials, log);
+            return list(loaded, parsed.values.has("json"), untrustedNote, options, credentials, providerToken, log);
         }
         case "login":
         case "logout": {
@@ -173,7 +201,12 @@ export async function runMcpCommand(args, options) {
                 error(`MCP server "${name}" is defined in ${entry.source}, not in the project; omit --local.`);
                 return 1;
             }
-            const connection = createConnection(entry, options, credentials);
+            const authProvider = getAuthProvider(entry);
+            if (authProvider) {
+                error(`MCP server "${name}" uses the credentials of provider "${authProvider}". Run "${APP_NAME} auth ${command} ${authProvider}".`);
+                return 1;
+            }
+            const connection = createConnection(entry, options, credentials, providerToken);
             const url = connection.oauthUrl;
             if (!url) {
                 error(`MCP server "${name}" does not use OAuth. Only HTTP servers without an Authorization header do.`);
@@ -370,8 +403,9 @@ function remove(args, projectConfig, options, log, error) {
     error(`No ${scope} MCP server named "${name}" in ${path}.${other ? ` It is defined in ${other.source}${other.scope === "project" ? "; use --local" : "; omit --local"}.` : ""}`);
     return 1;
 }
-async function list(loaded, json, untrustedNote, options, credentials, log) {
+async function list(loaded, json, untrustedNote, options, credentials, providerToken, log) {
     const reports = await Promise.all(loaded.servers.map(async (entry) => {
+        const authProvider = getAuthProvider(entry);
         const report = {
             name: entry.name,
             scope: entry.scope ?? "global",
@@ -380,12 +414,13 @@ async function list(loaded, json, untrustedNote, options, credentials, log) {
             enabled: entry.config.enabled !== false,
             exposure: entry.config.exposure ?? "codemode",
             transport: describeTransport(entry),
+            ...(authProvider ? { authProvider } : {}),
             state: "disabled",
             tools: [],
         };
         if (!report.enabled)
             return report;
-        const connection = createConnection(entry, options, credentials);
+        const connection = createConnection(entry, options, credentials, providerToken);
         try {
             await connection.getClient();
         }
@@ -425,8 +460,11 @@ async function list(loaded, json, untrustedNote, options, credentials, log) {
         log(`  ${report.transport}`);
         if (report.override)
             log(`  project override: ${report.override}`);
-        if (report.state === "needs-auth")
-            log(`  sign in with: ${APP_NAME} mcp login ${report.name}`);
+        if (report.state === "needs-auth") {
+            log(report.authProvider
+                ? `  sign in with: /login ${report.authProvider} in ${APP_NAME}`
+                : `  sign in with: ${APP_NAME} mcp login ${report.name}`);
+        }
         if (report.tools.length > 0) {
             const tools = report.tools.map((tool) => {
                 const exposure = report.toolExposure?.[tool];
@@ -496,7 +534,7 @@ async function login(entry, connection, url, timeoutMs, options, credentials, lo
 }
 /**
  * The pasted redirect URL in a terminal; otherwise only the browser callback can finish the sign-in.
- * Resolves to undefined when `signal` aborts: the callback arrived, or the sign-in timed out.
+ * Resolves to undefined on cancellation or EOF, or when the callback arrives or the sign-in times out.
  */
 async function waitForRedirectUrl(signal, interactive) {
     if (!interactive) {
@@ -504,17 +542,14 @@ async function waitForRedirectUrl(signal, interactive) {
             await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }));
         return undefined;
     }
-    const readline = createInterface({ input: process.stdin, output: process.stderr });
     try {
-        return await readline.question("If the browser cannot reach this machine, paste the URL it was redirected to: ", {
+        return await questionTerminal("If the browser cannot reach this machine, paste the URL it was redirected to: ", {
             signal,
+            output: process.stderr,
         });
     }
     catch {
         return undefined;
-    }
-    finally {
-        readline.close();
     }
 }
 //# sourceMappingURL=cli.js.map

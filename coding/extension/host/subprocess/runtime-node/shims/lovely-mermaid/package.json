@@ -1,0 +1,47 @@
+{
+  "name": "lovely-mermaid",
+  "version": "0.3.3",
+  "description": "Render Mermaid diagrams as Unicode box-drawing art for terminals",
+  "keywords": [
+    "mermaid",
+    "terminal",
+    "tui",
+    "ascii",
+    "unicode",
+    "diagram"
+  ],
+  "license": "Apache-2.0",
+  "author": "Alexey Zaytsev <alexey.zaytsev@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xl0/lovely-mermaid.git",
+    "directory": "packages/lovely-mermaid"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "cp ../../README.md README.md && tsgo -p tsconfig.build.json",
+    "typecheck": "tsgo --noEmit",
+    "check": "biome check .",
+    "test": "bun test",
+    "gen:width": "bun run scripts/gen-width-data.ts",
+    "gen:demo": "bun run scripts/gen-demo-svg.ts",
+    "gen:colors": "bun run scripts/gen-css-colors.ts",
+    "prepublishOnly": "bun run check:pkg && bun run typecheck && bun test && bun run build",
+    "release": "bun run scripts/release.ts"
+  }
+}
