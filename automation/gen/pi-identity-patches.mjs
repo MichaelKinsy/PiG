@@ -48,7 +48,7 @@ export const identityPatches = {
   // D64: pi's Client ID Metadata Documents live on PiG's origin: https://pi-in-go.dev/oauth/client.json, and https://pi-in-go.dev/oauth/<id>/client.json with /callback/<id> (the same <id> as Pi's), served by the site. Go: coding/mcpext/oauth.go.
   "pi-coding-agent/extensions/mcp/oauth.js": [
     ["/** pi's Client ID Metadata Documents on pi.dev: `client.json` and `<callback ID>/client.json`. */\nconst PI_CLIENT_METADATA_DOCUMENTS = {\n    baseUrl: \"https://pi.dev/oauth\",",
-      `/** PiG's Client ID Metadata Documents on its own origin (D64), Pi's shape: \`client.json\` and \`<callback ID>/client.json\`. */\nconst PI_CLIENT_METADATA_DOCUMENTS = {\n    baseUrl: "\${identity.hostedOrigin}/oauth",`],
+      `/** PiG's Client ID Metadata Documents on its own origin (D64), Pi's shape: \`client.json\` and \`<callback ID>/client.json\`. */\nconst PI_CLIENT_METADATA_DOCUMENTS = {\n    baseUrl: "${identity.hostedOrigin}/oauth",`],
   ],
   "pi-coding-agent/package-manager-cli.js": [
     ['const DEFAULT_INSTALLER_API_BASE = "https://pi.dev/api/installer/releases";', `const DEFAULT_INSTALLER_API_BASE = "${identity.hostedOrigin}/api/installer/releases";`],
