@@ -20,9 +20,9 @@ import (
 )
 
 // Ports the "applies changes", "applying changes one after another" and "base code" tests of
-// packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1). Not ported: the three base-code tests that scan the server's own start
-// script (`runStart`): the Go server is this process's binary, its `Base` files are listed by the app (nothing is scanned, so there is
-// no `server_scan` report); the worker kind's built-from files (a worker's entry is an executable, not a script built by the plugins
+// packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1). Designed out (D603): the three base-code tests that scan the server's own
+// start script (`runStart`): the Go server is this process's binary, its `Base` files are listed by the app (nothing is scanned, so
+// there is no `server_scan` report); the worker kind's built-from files (a worker's entry is an executable, not a script built by the plugins
 // component). The serialization test holds the first build through App's `build` and `rollout` fields, where Pi replaces the
 // component's methods. The "installs" test is ported below.
 
