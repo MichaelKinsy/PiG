@@ -7,7 +7,7 @@ import (
 )
 
 // messageEntryLimit bounds how many persisted messages a Session remembers; an extension process that has not asked for a pair this old no longer needs it.
-const messageEntryLimit = 256
+const messageEntryLimit = 256 // pig divergence (D541): a bound PiG needs to name persisted messages for Node extension processes; Pi has no table.
 
 // messageEntryLog is the newest sessionentry.MessageSeq values in the order they were noted, in a ring of messageEntryLimit slots that fills as pairs arrive (a Session that notes none holds none). noted counts every pair ever noted, so a reader's cursor survives the oldest pairs dropping off, and pair n is in slot n % messageEntryLimit while it is held.
 type messageEntryLog struct {
