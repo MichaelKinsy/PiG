@@ -1127,6 +1127,7 @@ func (e *RemoteExecutionEnv) Exec(ctx context.Context, command any, options *dur
 	// stopped answering (a rebooting host), so the call ends on time whatever the remote host does (Pi main c96e368e2).
 	var timedOut atomic.Bool
 	if options.Timeout != nil {
+		//portlint:allow numbers the timeout was validated above as a finite, positive number of seconds within maxTimeoutMs, so the Duration conversion cannot overflow (remote-env.ts exec: timeout * 1000)
 		timer := time.AfterFunc(time.Duration(*options.Timeout*float64(time.Second)), func() {
 			if requestContext.Err() != nil {
 				return
