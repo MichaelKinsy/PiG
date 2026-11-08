@@ -1,7 +1,6 @@
 package native
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -63,45 +62,42 @@ func until(t *testing.T, tt *ui.Tester, what string, ok func() bool) {
 
 func TestSessionsScreenOverTheRealServer(t *testing.T) {
 	app, tt := startApp(t)
-	until(t, tt, "the empty list", func() bool { return tt.HasText("No sessions yet.") })
+	until(t, tt, "the empty list", func() bool { return tt.HasText("No sessions yet.") && tt.HasText("What should PiG do?") })
 	// Create a session through the form.
-	if err := tt.Click("New"); err != nil {
+	if err := tt.Click("New session"); err != nil {
 		t.Fatal(err)
 	}
-	until(t, tt, "the form", func() bool { return tt.HasText("New session") })
-	if err := tt.Click("Directory"); err != nil {
-		t.Logf("label click: %v", err)
-	}
+	until(t, tt, "the form", func() bool { return tt.HasText("Directory") })
 	app.newCwd, app.newTitle = t.TempDir(), "hello native"
 	tt.Frame()
 	if err := tt.Click("Create"); err != nil {
 		t.Fatal(err)
 	}
 	until(t, tt, "the session in the list and its sheet", func() bool {
-		return tt.HasText("hello native") && tt.HasText("Archive") && tt.HasText("Pin")
+		return tt.HasText("hello native") && tt.HasText("Model") && !tt.HasText("No sessions yet.")
 	})
-	if err := tt.Click("Pin"); err != nil {
+	// The footer's Archived switches to the archive, which has nothing yet; a second click comes back.
+	if err := tt.Click("Show archived sessions"); err != nil {
 		t.Fatal(err)
 	}
-	until(t, tt, "unpin after the pin", func() bool { return tt.HasText("Unpin") })
-	if err := tt.Click("Archive"); err != nil {
+	until(t, tt, "the empty archive", func() bool { return tt.HasText("No archived sessions.") })
+	if err := tt.Click("Show archived sessions"); err != nil {
 		t.Fatal(err)
 	}
+	until(t, tt, "the list again", func() bool { return tt.HasText("hello native") })
+	// Archiving through the actions of the screen moves the row to the archive.
+	id := app.sel()
+	go func() { _ = app.sessions.Archive(id) }()
 	until(t, tt, "the row gone", func() bool { return tt.HasText("No sessions yet.") })
-	// The archive toggle shows it, and restoring brings it back.
 	app.archived = true
 	until(t, tt, "the archived row", func() bool { return tt.HasText("hello native") })
+	// Selecting an archived row restores it, as the drawer does (another row was selected before).
+	app.setSel("")
+	tt.Frame()
 	if err := tt.Click("hello native"); err != nil {
 		t.Fatal(err)
 	}
-	until(t, tt, "Restore", func() bool { return tt.HasText("Restore") })
-	if err := tt.Click("Restore"); err != nil {
-		t.Fatal(err)
-	}
-	app.archived = false
-	until(t, tt, "back in the list", func() bool {
-		return tt.HasText("hello native") && !strings.Contains(strings.Join(tt.Texts(), " "), "Restore")
-	})
+	until(t, tt, "back in the list", func() bool { return !app.archived && tt.HasText("hello native") })
 }
 
 func TestViewBeforeTheHostStartsShowsTheStartPage(t *testing.T) {
