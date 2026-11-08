@@ -6,7 +6,7 @@ import (
 )
 
 func markdownKeepsStreamingMemos(m *Markdown) bool {
-	return m.wraps != nil || m.nextWraps != nil || m.inlines != nil || m.nextInlines != nil || m.resume != nil
+	return memosOf(m).wraps != nil || memosOf(m).nextWraps != nil || memosOf(m).inlines != nil || memosOf(m).nextInlines != nil || memosOf(m).resume != nil
 }
 
 // A thinking run hidden while it streams shows the hidden-thinking label, so its Markdown never renders again: a delta that
@@ -14,6 +14,7 @@ func markdownKeepsStreamingMemos(m *Markdown) bool {
 // would keep them for the session. A finished block's hidden runs keep no streaming memos, whether hidden by Ctrl+T or by a
 // click on the run.
 func TestFinishedBlockKeepsNoMemosForAHiddenThinkingRun(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	thinking := strings.Repeat("Considering **the** `options` and [one link](https://example.com) here.\n\n", 40)
 	for _, hide := range []struct {
 		name string

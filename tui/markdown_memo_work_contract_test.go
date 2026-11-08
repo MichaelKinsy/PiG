@@ -33,15 +33,16 @@ func uniqueParagraphs(count int, format string) string {
 // A render of a text that grew resumes from the second-last point, so it renders the inline text of the last blocks only and holds only their renderings; a render of a
 // text that changed before the point, or at another width, renders every block again.
 func TestMarkdownStreamedRenderResumesFromTheSecondLastPoint(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	renders := countingInlineRenders(t)
 	text := uniqueParagraphs(31, "Paragraph N with **bold** and `code`.")
 	m := NewMarkdown(text)
 	m.Render(60)
-	if len(m.inlines) != 31 || m.resume == nil || len(m.resume.points) != 29 {
-		t.Fatalf("first render holds %d inline renderings and %v points, want 31 and 29", len(m.inlines), m.resume)
+	if len(memosOf(m).inlines) != 31 || memosOf(m).resume == nil || len(memosOf(m).resume.points) != 29 {
+		t.Fatalf("first render holds %d inline renderings and %v points, want 31 and 29", len(memosOf(m).inlines), memosOf(m).resume)
 	}
-	for i, p := range m.resume.points {
+	for i, p := range memosOf(m).resume.points {
 		if p.line != 2*(i+1) {
 			t.Fatalf("point %d is on line %d, want %d", i, p.line, 2*(i+1))
 		}
@@ -49,25 +50,26 @@ func TestMarkdownStreamedRenderResumesFromTheSecondLastPoint(t *testing.T) {
 	*renders = 0
 	m.SetText(text + " more")
 	got := m.Render(60)
-	if *renders != 1 || len(m.inlines) != 3 || len(m.resume.points) != 29 {
-		t.Fatalf("streamed render rendered %d inline texts, holds %d renderings and %d points; want 1, 3 (the last three paragraphs) and 29", *renders, len(m.inlines), len(m.resume.points))
+	if *renders != 1 || len(memosOf(m).inlines) != 3 || len(memosOf(m).resume.points) != 29 {
+		t.Fatalf("streamed render rendered %d inline texts, holds %d renderings and %d points; want 1, 3 (the last three paragraphs) and 29", *renders, len(memosOf(m).inlines), len(memosOf(m).resume.points))
 	}
 	if want := NewMarkdown(text + " more").Render(60); !slices.Equal(got, want) {
 		t.Fatalf("resumed rows differ from a new component's:\n got %q\nwant %q", got, want)
 	}
 	m.SetText("changed first\n\n" + text[strings.Index(text, "\n\n")+2:] + " more")
 	m.Render(60)
-	if len(m.inlines) != 31 {
-		t.Fatalf("a change before the point holds %d renderings, want 31 (every block rendered again)", len(m.inlines))
+	if len(memosOf(m).inlines) != 31 {
+		t.Fatalf("a change before the point holds %d renderings, want 31 (every block rendered again)", len(memosOf(m).inlines))
 	}
 	m.Render(50)
-	if len(m.inlines) != 31 {
-		t.Fatalf("a render at another width holds %d renderings, want 31", len(m.inlines))
+	if len(memosOf(m).inlines) != 31 {
+		t.Fatalf("a render at another width holds %d renderings, want 31", len(memosOf(m).inlines))
 	}
 }
 
 // The points a render records are the starts of the blocks that follow a blank line, up to the first line that may start a LaTeX block, and never the last line.
 func TestMarkdownResumePointsOfCraftedDocuments(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	for _, tc := range []struct {
 		name, text string
@@ -85,11 +87,11 @@ func TestMarkdownResumePointsOfCraftedDocuments(t *testing.T) {
 		m := NewMarkdown(tc.text)
 		m.Render(40)
 		got := []int{}
-		if m.resume == nil {
+		if memosOf(m).resume == nil {
 			t.Errorf("%s: no resume state", tc.name)
 			continue
 		}
-		for _, p := range m.resume.points {
+		for _, p := range memosOf(m).resume.points {
 			got = append(got, p.line)
 			if p.rawOff != lineStartOffset(tc.text, p.line) {
 				t.Errorf("%s: point on line %d is at byte %d, the line starts at %d", tc.name, p.line, p.rawOff, lineStartOffset(tc.text, p.line))
@@ -111,30 +113,31 @@ func lineStartOffset(text string, line int) int {
 
 // A component whose styles are not tui's own keeps no resume point, also when it kept one before the styles changed.
 func TestMarkdownKeepsNoResumePointForAnImpureTheme(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	text := uniqueParagraphs(6, "Paragraph N with **bold**.")
 	fresh := NewMarkdownWithOptions(text, 0, 0, opaqueMarkdownTheme(), nil, nil)
 	fresh.Render(40)
-	if fresh.resume != nil || len(fresh.inlines) != 0 {
-		t.Fatalf("a new component with a foreign theme keeps %v and %d inline renderings", fresh.resume, len(fresh.inlines))
+	if memosOf(fresh).resume != nil || len(memosOf(fresh).inlines) != 0 {
+		t.Fatalf("a new component with a foreign theme keeps %v and %d inline renderings", memosOf(fresh).resume, len(memosOf(fresh).inlines))
 	}
 	m := NewMarkdown(text)
 	m.Render(40)
-	if m.resume == nil {
+	if memosOf(m).resume == nil {
 		t.Fatal("the pure component keeps no resume point, so the test proves nothing")
 	}
 	m.theme = opaqueMarkdownTheme()
 	m.SetText(text + " more")
 	got := m.Render(40)
-	if m.resume != nil || len(m.inlines) != 0 {
-		t.Fatalf("after the theme became foreign the component keeps %v and %d inline renderings", m.resume, len(m.inlines))
+	if memosOf(m).resume != nil || len(memosOf(m).inlines) != 0 {
+		t.Fatalf("after the theme became foreign the component keeps %v and %d inline renderings", memosOf(m).resume, len(memosOf(m).inlines))
 	}
 	if want := NewMarkdownWithOptions(text+" more", 0, 0, m.theme, nil, nil).Render(40); !slices.Equal(got, want) {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 	background := NewMarkdownWithOptions(text, 0, 0, nil, &DefaultTextStyle{BgColor: func(s string) string { return s }}, nil)
 	background.Render(40)
-	if background.resume != nil {
+	if memosOf(background).resume != nil {
 		t.Fatal("a component with a background function keeps a resume point")
 	}
 }
@@ -169,6 +172,7 @@ func TestMarkdownBracketTextIsMemoizedWithoutDefinitions(t *testing.T) {
 
 // A finished text keeps the memos for the render of a delta that was not drawn yet, and drops them after it.
 func TestMarkdownFinishStreamingAfterAnUndrawnDelta(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	renders := countingInlineRenders(t)
 	text := uniqueParagraphs(31, "Paragraph N with **bold**.")
@@ -181,7 +185,7 @@ func TestMarkdownFinishStreamingAfterAnUndrawnDelta(t *testing.T) {
 	if *renders != 1 {
 		t.Fatalf("the render of the last delta rendered %d inline texts, want 1", *renders)
 	}
-	if m.resume != nil || len(m.inlines) != 0 || len(m.highlights) != 0 || len(m.wraps) != 0 {
+	if memosOf(m).resume != nil || len(memosOf(m).inlines) != 0 || len(memosOf(m).highlights) != 0 || len(memosOf(m).wraps) != 0 {
 		t.Fatal("the finished component keeps memos after its last render")
 	}
 	// Content is a field: a text changed through it bumps no revision, and is a text not drawn since its last change all the same.

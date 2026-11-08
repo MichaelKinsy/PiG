@@ -114,6 +114,7 @@ func resumeGeneratedDocument(rng *rand.Rand, barriers bool) string {
 // split lines and delimiters anywhere; the text is sometimes replaced by one that is not an extension, and the width,
 // padding and theme change.
 func TestResumedMarkdownEqualsAFreshRender(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	rng := rand.New(rand.NewPCG(11, 12))
 	resumed, frames := 0, 0
@@ -137,7 +138,7 @@ func TestResumedMarkdownEqualsAFreshRender(t *testing.T) {
 			case 1:
 				width = 12 + rng.IntN(60)
 			}
-			if streamed.resume != nil && strings.HasPrefix(next, text) && streamed.resume.pick(next) != nil {
+			if memosOf(streamed).resume != nil && strings.HasPrefix(next, text) && memosOf(streamed).resume.pick(next) != nil {
 				resumed++
 			}
 			text = next
@@ -211,6 +212,7 @@ var resumeDependentDocuments = []string{
 }
 
 func TestResumedMarkdownEqualsAFreshRenderForDependentBlocks(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	resumed := 0
 	for index, document := range resumeDependentDocuments {
@@ -219,7 +221,7 @@ func TestResumedMarkdownEqualsAFreshRenderForDependentBlocks(t *testing.T) {
 			streamed := NewMarkdownWithOptions("", paddingX, paddingY, nil, nil, nil)
 			for end := 0; end <= len(document); end++ {
 				text := document[:end]
-				if streamed.resume != nil && streamed.resume.pick(text) != nil {
+				if memosOf(streamed).resume != nil && memosOf(streamed).resume.pick(text) != nil {
 					resumed++
 				}
 				streamed.SetText(text)
@@ -286,6 +288,7 @@ func TestResumedMarkdownRendersAgainWhenItsInputsChange(t *testing.T) {
 // A long answer streamed 24 bytes at a time renders every sampled frame as a new component does, and nearly every frame
 // resumes from a point.
 func TestResumedMarkdownLongAnswerEqualsAFreshRender(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	answer := longAnswer(30000)
 	streamed := NewMarkdownWithOptions("", 0, 0, nil, nil, nil)
@@ -293,7 +296,7 @@ func TestResumedMarkdownLongAnswerEqualsAFreshRender(t *testing.T) {
 	for end := 24; ; end += 24 {
 		end = min(end, len(answer))
 		text := answer[:end]
-		if streamed.resume != nil && streamed.resume.pick(text) != nil {
+		if memosOf(streamed).resume != nil && memosOf(streamed).resume.pick(text) != nil {
 			resumed++
 		}
 		streamed.SetText(text)

@@ -219,6 +219,7 @@ func TestMarkdownRenderCacheKey(t *testing.T) {
 
 // FinishStreaming drops everything a streamed render kept for the next delta, whether it is called before or after the last render.
 func TestMarkdownFinishStreamingDropsTheMemos(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	text := "# heading\n\nparagraph with **bold** and a very long line that wraps when it is narrow enough to need it\n\n```go\ncode\n```\n\nlast"
 	for _, before := range []bool{false, true} {
 		md := NewMarkdown(text)
@@ -227,18 +228,18 @@ func TestMarkdownFinishStreamingDropsTheMemos(t *testing.T) {
 		}
 		md.Render(20)
 		if !before {
-			if md.resume == nil && md.wraps == nil && md.inlines == nil {
+			if memosOf(md).resume == nil && memosOf(md).wraps == nil && memosOf(md).inlines == nil {
 				t.Fatal("a streaming render kept no memos, so the test proves nothing")
 			}
 			md.FinishStreaming()
 		}
-		if md.resume != nil || md.wraps != nil || md.nextWraps != nil || md.inlines != nil || md.nextInlines != nil || md.highlights != nil || md.nextHighlights != nil {
-			t.Fatalf("finished (before the render: %v) but memos remain: resume %v wraps %v inlines %v highlights %v", before, md.resume != nil, md.wraps != nil, md.inlines != nil, md.highlights != nil)
+		if memosOf(md).resume != nil || memosOf(md).wraps != nil || memosOf(md).nextWraps != nil || memosOf(md).inlines != nil || memosOf(md).nextInlines != nil || memosOf(md).highlights != nil || memosOf(md).nextHighlights != nil {
+			t.Fatalf("finished (before the render: %v) but memos remain: resume %v wraps %v inlines %v highlights %v", before, memosOf(md).resume != nil, memosOf(md).wraps != nil, memosOf(md).inlines != nil, memosOf(md).highlights != nil)
 		}
 		// A render after the last text change resumes from the memos once and drops them again.
 		md.SetText(text + "\n\nmore")
 		md.Render(20)
-		if md.resume != nil || md.wraps != nil || md.inlines != nil || md.highlights != nil {
+		if memosOf(md).resume != nil || memosOf(md).wraps != nil || memosOf(md).inlines != nil || memosOf(md).highlights != nil {
 			t.Fatalf("memos kept by a render after FinishStreaming (before the render: %v)", before)
 		}
 	}
