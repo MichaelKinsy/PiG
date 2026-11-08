@@ -2,6 +2,7 @@ package coding
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/agent"
 )
@@ -9,9 +10,13 @@ import (
 // messageSequenceLimit bounds how many messages a Session numbers at once; the oldest are forgotten first.
 const messageSequenceLimit = 1024
 
+// lastMessageSequence is the newest number any messageSequences of this process gave. A Node process's table of message objects is keyed by the number alone, and Sessions and graph runners that reach one process (a parked process reused by a new Session, an ExtensionRunner beside a Session) number from this one counter, so two messages never share a number.
+var lastMessageSequence atomic.Uint64
+
 // messageSequences numbers the messages of one Session, so that an extension process can tell which of its payloads Pi shares one object between: the message_start, message_end, turn_end and agent_end events and the session entry message_end persists (agent-session.ts _entryIdsByMessage is its analogue for entry ids). The Session sends each number with the payloads that carry the message and with its entry.
 type messageSequences struct {
 	mu        sync.Mutex
+	// last is the newest number this instance gave, 0 before it numbered anything.
 	last      uint64
 	byMessage map[any]uint64
 	// byToolCall is the number of the newest tool result message with a tool call id: a turn_end event carries copies of its tool results.
@@ -35,7 +40,7 @@ func (m *messageSequences) Sequence(message agent.AgentMessage) uint64 {
 	if seq, ok := m.byMessage[key]; ok {
 		return seq
 	}
-	m.last++
+	m.last = lastMessageSequence.Add(1)
 	if m.byMessage == nil {
 		m.byMessage = make(map[any]uint64)
 	}
@@ -62,7 +67,7 @@ func (m *messageSequences) Sequence(message agent.AgentMessage) uint64 {
 	return m.last
 }
 
-// reset forgets every message numbered so far, so a Session that switches away from its session does not keep the old messages alive (agent-session.ts _entryIdsByMessage is a WeakMap). The counter goes on: a number is never given to another message.
+// reset forgets every message numbered so far, so a Session that switches away from its session does not keep the old messages alive (agent-session.ts _entryIdsByMessage is a WeakMap). The counter is the process's, so a number is never given to another message.
 func (m *messageSequences) reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

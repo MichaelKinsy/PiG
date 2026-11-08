@@ -224,6 +224,8 @@ export class Realm {
     this.refs = new WeakMap(); // proxy or imported unique symbol -> { realm, id, kind, desc }
     this.releases = [];
     this.releaseScheduled = false;
+    // messages, when set, is { numberOf(object), resolve(number) }: the host's number of a message object this process holds, and the object this process holds for a number. A message named by number resolves to the receiver's own object, as Pi's one realm shares one.
+    this.messages = undefined;
     this.registry = new FinalizationRegistry(entry => this.finalized(entry));
     // The prototype of every proxy's shadow target. It is created here so its hook captures no proxy's scope.
     const realm = this;
@@ -270,7 +272,10 @@ export class Realm {
       this.exportIds.set(value, id);
     }
     entry.sent++;
-    return { $x: "ref", realm: this.id, id, kind: typeof value === "function" ? "function" : Array.isArray(value) ? "array" : "object" };
+    const ref = { $x: "ref", realm: this.id, id, kind: typeof value === "function" ? "function" : Array.isArray(value) ? "array" : "object" };
+    const message = this.messages?.numberOf(value);
+    if (message !== undefined) ref.message = message;
+    return ref;
   }
 
   // A unique symbol has an object's lifetime: the owner exports it under an id counted and unpinned like an object's, and an importer holds its stand-in weakly and releases each transmission when it is collected.
@@ -339,6 +344,13 @@ export class Realm {
       const entry = this.exports.get(value.id);
       if (!entry) throw new Error(`Unknown cross-process reference: ${value.id}`);
       return entry.value;
+    }
+    // A message this process holds is not proxied: the object is its own. The transmission is released at once, as a proxy's collection would release it.
+    const own = value.message === undefined ? undefined : this.messages?.resolve(value.message);
+    if (own !== undefined) {
+      this.releases.push({ realm: value.realm, id: value.id, count: 1 });
+      this.scheduleRelease();
+      return own;
     }
     const key = `${value.realm}:${value.id}`;
     const existing = this.imports.get(key);

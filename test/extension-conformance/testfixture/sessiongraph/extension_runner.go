@@ -330,6 +330,9 @@ func extensionRunnerScript(ctx sdk.Context, args map[string]any) map[string]any 
 	emits["beforeAgentStart"] = map[string]any{
 		"messages": started["messages"], "forced": map[string]any{"startsWithBase": strings.HasPrefix(forced, "base"), "endsWithA": strings.HasSuffix(forced, "[A]")}, "customPrompt": options["customPrompt"],
 	}
+	if _, err := runner.Emit(map[string]any{"type": "message_start", "message": map[string]any{"role": "user", "content": "hi", "timestamp": 1}}); err != nil {
+		panic(err)
+	}
 	if value := ok(runner.EmitMessageEnd(map[string]any{"type": "message_end", "message": map[string]any{"role": "user", "content": "hi", "timestamp": 1}})); value != nil {
 		emits["messageEnd"] = value
 	}

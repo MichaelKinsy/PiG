@@ -338,6 +338,13 @@
 		],
 		[
 			"appendEntry",
+			"a_identity",
+			{
+				"sameMessage": true
+			}
+		],
+		[
+			"appendEntry",
 			"b_turn_end",
 			{
 				"continue": true,

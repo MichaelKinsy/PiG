@@ -20,12 +20,18 @@ func nodeIdentityScript(t *testing.T, name, body string) {
 		t.Fatal(err)
 	}
 	runtimeURL := (&url.URL{Scheme: "file", Path: filepath.ToSlash(runtimePath)}).String()
+	xrefPath, err := filepath.Abs("runtime-node/xref.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	xrefURL := (&url.URL{Scheme: "file", Path: filepath.ToSlash(xrefPath)}).String()
 	script := fmt.Sprintf(`
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Runtime } from %q;
+import { Realm } from %q;
 
 const user = (text = "hello", timestamp = 1000) => ({ role: "user", content: [{ type: "text", text }], timestamp });
 const assistant = (text = "hi") => ({ role: "assistant", content: [{ type: "text", text }], api: "x", provider: "p", model: "m", usage: { input: 1, output: 2 }, stopReason: "stop", timestamp: 2000 });
@@ -61,7 +67,7 @@ function push(runtime, entries, pairs = [], session = "s") {
 }
 
 %s
-`, runtimeURL, body)
+`, runtimeURL, xrefURL, body)
 	if output, err := exec.Command(node, "--expose-gc", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
 		t.Fatalf("%s: %v\n%s", name, err, output)
 	}
@@ -457,5 +463,81 @@ assert.equal(held.content.length, 2);
 await messageEnd(runtime, { ...user(), content: [{ type: "text", text: "replaced" }] }, seq, 2);
 assert.equal(held.content[0].text, "replaced");
 assert.equal(held.tag, undefined, "the replacement is the whole message");
+`)
+}
+
+// upstream: agent-session.ts appendMessage stores the object message_end carried, and session-manager.ts hands it back unchanged.
+//
+// The host sends an entry's message as JSON, whose members may come in another order than the event payload's (a session file read back, a Go struct against a map). The same members in another order are the same value: an edit a message_start handler made to the message stays, and a value that really differs is applied.
+func TestNodeRuntimeEntryBindWithReorderedMembersKeepsAnEdit(t *testing.T) {
+	nodeIdentityScript(t, "node entry bind reordered", `
+hostLog = [];
+const runtime = newRuntime();
+push(runtime, [], []);
+let held;
+runtime.on("message_start", (event) => { held = event.message; event.message.tag = "kept"; });
+const seq = nextSeq();
+await emit(runtime, "message_start", 1, { message: user() }, [seq]);
+const reordered = { timestamp: 1000, content: [{ text: "hello", type: "text" }], role: "user" };
+push(runtime, [entry("e0", null, reordered)], [{ id: "e0", seq }]);
+assert.equal(runtime.ctx.sessionManager.getEntries()[0].message, held, "the entry holds the object");
+assert.equal(held.tag, "kept", "members in another order are the same value: the edit stays");
+
+// The payload of a later event with its members in another order is no host change either.
+await emit(runtime, "message_end", 2, { message: { timestamp: 1000, role: "user", content: [{ type: "text", text: "hello" }] } }, [seq]);
+assert.equal(held.tag, "kept");
+
+// A value the host changed is applied, through an entry as through an event.
+hostLog = [];
+push(runtime, [entry("e1", null, { role: "user", content: [{ type: "text", text: "changed" }], timestamp: 1000 })], [{ id: "e1", seq }]);
+assert.equal(runtime.ctx.sessionManager.getEntries()[0].message, held);
+assert.equal(held.content[0].text, "changed");
+assert.equal(held.tag, undefined, "the stored message is the whole message");
+`)
+}
+
+// upstream: Pi runs every extension in one realm, so a message an extension passes on pi.events is the very object another extension holds for it.
+//
+// Two realms stand for two processes, each with the table of message objects its process holds. A message crosses by its number: the receiver that holds the number resolves it to its own object (a proxy of the sender's object is not it), one that does not holds a proxy, and every transmission is released either way.
+func TestXrefMessageCrossesByNumberToTheReceiversOwnObject(t *testing.T) {
+	nodeIdentityScript(t, "xref message by number", `
+const realms = {};
+const transport = () => ({
+  call: (method, args) => realms[args.ref.realm].serve(args),
+  notify: (method, args) => { for (const item of args.items) realms[item.realm].unpin({ items: [item] }); },
+});
+const tables = [new Map(), new Map()], numbers = [new WeakMap(), new WeakMap()];
+const [A, B] = tables.map((table, i) => {
+  const realm = new Realm(transport);
+  realm.messages = { numberOf: (object) => numbers[i].get(object), resolve: (seq) => table.get(seq) };
+  realms[realm.id] = realm;
+  return realm;
+});
+const hold = (i, seq, message) => { tables[i].set(seq, message); numbers[i].set(message, seq); return message; };
+const fromA = hold(0, 7, user()), ownB = hold(1, 7, user());
+const sent = A.encode(fromA);
+assert.equal(sent.message, 7, "the reference names the message");
+assert.equal(B.decode(sent), ownB, "B holds the number: the object is its own");
+
+// A payload that holds the message: the message read through the proxy is B's own too.
+const payload = { message: fromA, other: 1 };
+const proxy = B.decode(A.encode(payload));
+assert.notEqual(proxy, payload);
+assert.equal(proxy.message, ownB);
+assert.equal(proxy.other, 1);
+
+// A number B does not hold stays a proxy of A's object.
+const unknown = hold(0, 8, user("other"));
+const foreign = B.decode(A.encode(unknown));
+assert.notEqual(foreign, unknown);
+assert.equal(foreign.content[0].text, "other");
+
+// An object that is no message names none.
+assert.equal(A.encode({}).message, undefined);
+
+// The transmissions that resolved were released: A no longer exports the message.
+B.flushReleases();
+assert.ok(![...A.exports.values()].some((entry) => entry.value === fromA), "the message is no longer pinned in A");
+assert.ok([...A.exports.values()].some((entry) => entry.value === unknown), "the proxied object stays pinned while B holds its proxy");
 `)
 }
