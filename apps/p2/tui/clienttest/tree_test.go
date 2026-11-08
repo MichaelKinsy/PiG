@@ -172,7 +172,7 @@ func TestTreeSwitchesBranchesWithTheChosenMessageInTheEditorDoubleEscapeFollowin
 	tuitest.Poll(t, func() bool { return identity() == "s#5" })
 	tuitest.Poll(t, editable)
 	text, main := "", 0
-	f.Do(func() { text = surface().Editor.GetText(); main = f.Runtime.Ctx.Identity().Main })
+	f.Do(func() { text = surface().Editor.Text(); main = f.Runtime.Ctx.Identity().Main })
 	if text != "second question" || main != 5 {
 		t.Fatalf("editor %q, main %d", text, main)
 	}
