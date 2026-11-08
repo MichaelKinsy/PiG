@@ -151,7 +151,7 @@ node "$root/automation/gen/vendor-pi-closure.mjs" "$shims" "$(cat <<JSON
     "semver": "semver/index.js",
     "minimatch": "minimatch/dist/esm/index.js",
     "hosted-git-info": "hosted-git-info/lib/index.js",
-    "grok-mermaid": "grok-mermaid/dist/index.js",
+    "lovely-mermaid": "lovely-mermaid/dist/index.js",
     "@silvia-odwyer/photon-node": "photon-node/photon_rs.js",
     "typebox": "typebox.mjs",
     "typebox/value": "typebox-value.mjs",
@@ -167,7 +167,7 @@ JSON
 )"
 
 # Third-party packages the vendored modules import.
-for dependency in chalk undici semver minimatch hosted-git-info grok-mermaid proper-lockfile quickjs-wasi; do
+for dependency in chalk undici semver minimatch hosted-git-info lovely-mermaid proper-lockfile quickjs-wasi; do
   rm -rf "${shims:?}/$dependency"
   node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/$dependency/package.json" "$shims/$dependency"
 done

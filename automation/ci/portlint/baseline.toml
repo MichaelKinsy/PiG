@@ -1028,6 +1028,7 @@ snippet = "ChatTemplateArgs            map[string]any `json:\"chatTemplateArgs,o
 check = "emptydrop"
 file = "ai/openai.go"
 func = "(decl)"
+
 snippet = "ToolCalls        []oaiRequestToolCall `json:\"tool_calls,omitempty\"`"
 
 [[hit]]
