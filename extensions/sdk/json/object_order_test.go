@@ -3,6 +3,7 @@ package json
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -278,5 +279,46 @@ func TestObjectOrderLookupOfAnotherMapDoesNotSort(t *testing.T) {
 	}
 	if order.sorted == nil {
 		t.Error("a lookup of an object did not sort")
+	}
+}
+
+// sortOrderEntries sorts by pointer for every input shape a quicksort can be hurt by, including the heapsort fallback.
+func TestSortOrderEntriesSortsByPointer(t *testing.T) {
+	shapes := map[string]func(i, n int) uintptr{
+		"ascending":  func(i, n int) uintptr { return uintptr(i) * 64 },
+		"descending": func(i, n int) uintptr { return uintptr(n-i) * 64 },
+		"organ pipe": func(i, n int) uintptr { return uintptr(min(i, n-i)) * 64 },
+		"shuffled":   func(i, n int) uintptr { return uintptr(i*7919%n) * 64 },
+		"sawtooth":   func(i, n int) uintptr { return uintptr(i%17)*1000 + uintptr(i)*8 },
+	}
+	for name, pointerAt := range shapes {
+		for _, n := range []int{0, 1, 2, 12, 13, 100, 1000, 20011} {
+			s := make([]orderEntry, n)
+			for i := range s {
+				s[i].pointer = pointerAt(i, n)
+			}
+			want := make([]uintptr, n)
+			for i := range s {
+				want[i] = s[i].pointer
+			}
+			slices.Sort(want)
+			sortOrderEntries(s)
+			for i := range s {
+				if s[i].pointer != want[i] {
+					t.Fatalf("%s, n=%d: entry %d has pointer %d, want %d", name, n, i, s[i].pointer, want[i])
+				}
+			}
+		}
+	}
+	// The heapsort the quicksort falls back to sorts on its own.
+	s := make([]orderEntry, 5000)
+	for i := range s {
+		s[i].pointer = uintptr(i * 7919 % 5000)
+	}
+	heapOrderEntries(s)
+	for i := 1; i < len(s); i++ {
+		if s[i-1].pointer > s[i].pointer {
+			t.Fatalf("heapOrderEntries: entry %d is out of order", i)
+		}
 	}
 }
