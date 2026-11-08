@@ -735,7 +735,7 @@ func TestGC1000FailedAndRetriedAddressesLeaveNoStateNoRecordAndNoSuspension(t *t
 // Pi's `describe('the worker base (decision "Workers start from the base code the server booted with")')`: its first test
 // (an edit of the entry's imported source after the component was created runs in no worker, `workers.inputs` names the
 // bundled files, the bundle's file is removed by `close`) is a property of Pi's esbuild bundle of a Node entry; a Go worker
-// is this program's own compiled executable, which holds all of its code already (no counterpart, see D-WORKER-BASE in
+// is this program's own compiled executable, which holds all of its code already (no counterpart, see the worker base note in
 // docs/parity/divergences).
 
 func TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain(t *testing.T) {
