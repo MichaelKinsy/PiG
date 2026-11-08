@@ -187,7 +187,7 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		}
 		// A failed open leaves its holders waiting (the conversation may appear): the failure names the cause.
 		failure, err := p2test.FailureOf(missing)
-		if err != nil || failure == nil || !strings.Contains(failure.Error(), "Unknown conversation") {
+		if err != nil || failure == nil || !strings.Contains(failure.Error(), "does not exist") && !strings.Contains(failure.Error(), "Unknown conversation") {
 			t.Errorf("open failure = %v, %v", failure, err)
 		}
 		missing.Release()

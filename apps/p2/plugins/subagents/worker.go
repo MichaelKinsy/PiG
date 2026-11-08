@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -403,11 +404,16 @@ func serveControl(shared *reports) func(*delta.JsonObject, data.Principal, host.
 		}
 		harnessOf := cached(p2runtime.HarnessOf(self))
 		worker := cached(p2runtime.WorkerOf(self))
+		// First use in this section: the method runs off the loop and takes the kept natives.
+		_, _ = harnessOf()
+		_, _ = worker()
 		return contracts.Implementation{Variant: "participant", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 			"archive": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				in, _ := args.(*delta.JsonObject)
 				conversation, _ := in.Value("conversation").(float64)
 				archived, _ := in.Value("archived").(bool)
+				// The method waits for Durable, whose publications need the host's loop.
+				chordctx.Suspend(ctx)
 				parts, err := worker()
 				if err != nil {
 					return nil, err
