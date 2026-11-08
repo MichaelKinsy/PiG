@@ -204,19 +204,23 @@ func CreateExtension(tools Tools) (*p2runtime.P2Extension, error) {
 		return p2runtime.ToolText(text, details, isError)
 	}
 	owner := p2runtime.ToolAccess{Origin: "owner"}
-	tool := func(name, description string, parameters schema.Schema, execute func(ctx context.Context, a any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error)) p2runtime.P2Tool {
+	tool := func(name, description string, parameters schema.Schema, execute func(ctx context.Context, a any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error)) (p2runtime.P2Tool, error) {
+		toolSchema, err := p2runtime.ToolSchemaOf(name, description, parameters)
+		if err != nil {
+			return p2runtime.P2Tool{}, err
+		}
 		return p2runtime.P2Tool{
 			ToolRegistration: harness.DefineTool(durable.ToolRegistration{
-				ToolSchema: p2runtime.ToolSchemaOf(name, description, parameters),
+				ToolSchema: toolSchema,
 				// Setting the same destination again changes nothing.
 				Replay:  durable.ReplaySafe,
 				Execute: execute,
 			}),
 			ToolAccess: owner,
-		}
+		}, nil
 	}
 
-	envsTool := tool("location_envs",
+	envsTool, err := tool("location_envs",
 		"List the environments you can work on: this device, the configured SSH environments (host, last test) and sandboxes. Shows where you work now.",
 		schema.Obj(schema.Properties{}, schema.Open()),
 		func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -268,8 +272,11 @@ func CreateExtension(tools Tools) (*p2runtime.P2Extension, error) {
 			}
 			return reply(strings.Join(lines, "\n"), delta.NewJsonObject(0), false), nil
 		})
+	if err != nil {
+		return nil, err
+	}
 
-	dirsTool := tool("location_dirs",
+	dirsTool, err := tool("location_dirs",
 		"List the folders of a directory on an environment (default: your cwd), to find where to work. Shows at most 200.",
 		schema.Obj(where(), schema.Open()),
 		func(ctx context.Context, raw any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -316,8 +323,11 @@ func CreateExtension(tools Tools) (*p2runtime.P2Extension, error) {
 			}
 			return reply(strings.Join(lines, "\n"), delta.NewJsonObject(0), false), nil
 		})
+	if err != nil {
+		return nil, err
+	}
 
-	moveTool := tool("location_move", strings.Join([]string{
+	moveTool, err := tool("location_move", strings.Join([]string{
 		"Move yourself to another directory or environment.",
 		"The main agent moves its whole session there once this turn has ended (after your last answer, when no subagent",
 		"work is running); subagents following the session move with it, subagents with their own location stay. Your",
@@ -384,6 +394,9 @@ func CreateExtension(tools Tools) (*p2runtime.P2Extension, error) {
 			}
 			return reply("You work at "+p2runtime.LocationText(to)+" now; the session's moves no longer move you.", details, false), nil
 		})
+	if err != nil {
+		return nil, err
+	}
 
 	return &p2runtime.P2Extension{
 		Extension: &durable.Extension{Name: ExtensionName},
