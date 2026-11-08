@@ -1,10 +1,10 @@
 package piglet
 
 import (
-	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 // The tool scope rule table of the docs (internal/pigdocs/content/piglets.md and mcp.md) is computed here from the same

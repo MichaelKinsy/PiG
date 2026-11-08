@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"maps"
 	"slices"
 	"sync"
@@ -14,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 type loadState int
