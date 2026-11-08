@@ -134,6 +134,13 @@ func (s *Session) dispatchTurnEndBoundary(ctx context.Context, event agent.TurnE
 	// Upstream emitBoundary takes no abort signal, so an aborted run's turns
 	// still reach turn_end handlers.
 	dispatchCtx, wire := boundarywire.WithSessionCache(context.WithoutCancel(ctx), &s.boundaryEncodings)
+	// The turn's message and tool results are the messages message_end carried: an extension process hands its handler the objects it held for them.
+	sequences := make([]uint64, 1+len(event.ToolResults))
+	sequences[0] = s.messageSeqs.Known(event.Message)
+	for i := range event.ToolResults {
+		sequences[1+i] = s.messageSeqs.Known(agent.AgentMessage{ToolResult: &event.ToolResults[i]})
+	}
+	dispatchCtx = extension.WithMessageSequences(dispatchCtx, sequences)
 	result, err := runner.EmitBoundary(dispatchCtx, base, func(drafts []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 		return s.recordedBoundaryContext(wire, drafts, icodingagent.EventTurnEnd)
 	})

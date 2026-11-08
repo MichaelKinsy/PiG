@@ -31,6 +31,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -666,8 +667,10 @@ type managedExt struct {
 	// entryCursor is how many session entries this extension has been sent.
 	// Guarded by entryCursorMu because pushes originate from event, command,
 	// and tool dispatch goroutines.
-	entrySessionID        string
-	entryCursor           int
+	entrySessionID string
+	entryCursor    int
+	// entryPairCursor is how many message entries (SessionStatePayload.MessageEntries) this extension has been sent. Guarded by entryCursorMu.
+	entryPairCursor       int
 	entryCursorMu         sync.Mutex
 	sessionTransferActive bool
 	// lastStatePush remembers what each connection's runtime last received
@@ -1780,6 +1783,7 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 		if state.Session != nil && state.Session.SessionID != me.entrySessionID {
 			me.entrySessionID = state.Session.SessionID
 			me.entryCursor = 0
+			me.entryPairCursor = 0
 			me.sessionTransferActive = false
 			includeEntries = subscribed
 			state = h.uiBridge.Snapshot(me.flagNames, 0, includeEntries)
@@ -1793,6 +1797,12 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 			h.mu.Unlock()
 			includeEntries = true
 			state = h.uiBridge.Snapshot(me.flagNames, me.entryCursor, includeEntries)
+		}
+		// A Node runtime gives the entries message_end persisted the objects its handlers held; it needs the pair whether or not it holds the log.
+		pairsNext := me.entryPairCursor
+		var pairs []sessionentry.MessageSeq
+		if state.Session != nil && me.hostsNodeRuntime() {
+			pairs, pairsNext = h.uiBridge.messageEntries(me.entryPairCursor)
 		}
 		// Omit catalog and presentation fields the recipient already holds. The
 		// runtime's applyState retains keys a state_update leaves out, so the
@@ -1836,7 +1846,7 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 		if err != nil {
 			return err
 		}
-		if cache != nil && !sendsHeavy && bytes.Equal(cache.lastPayload, leanBody) {
+		if cache != nil && !sendsHeavy && len(pairs) == 0 && bytes.Equal(cache.lastPayload, leanBody) {
 			// The write would leave the recipient's copy unchanged. Cursor
 			// bookkeeping still applies so a large session log keeps paging.
 			if state.Session == nil || !includeEntries {
@@ -1849,7 +1859,13 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 			continue
 		}
 		out := leanBody
-		if sendsHeavy {
+		if sendsHeavy || len(pairs) > 0 {
+			// The message entries are not part of the body the next push is compared with: they are sent once.
+			if len(pairs) > 0 {
+				session := *partial.Session
+				session.MessageEntries = pairs
+				partial.Session = &session
+			}
 			if out, err = json.Marshal(stateUpdateBody{State: &partial}); err != nil {
 				return err
 			}
@@ -1873,6 +1889,7 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 				delete(me.lastStatePush, held)
 			}
 		}
+		me.entryPairCursor = pairsNext
 		me.lastStatePush[conn] = &connStatePushCache{gen: gen, lastPayload: leanBody, commands: state.Commands, promptOptions: state.SystemPromptOptions, theme: state.Theme, keybindings: state.Keybindings, terminalCapabilities: state.TerminalCapabilities, systemPrompt: state.SystemPrompt, hasSystemPrompt: true}
 		if state.Session == nil || !includeEntries {
 			return nil
@@ -3490,6 +3507,7 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		// pages before the runtime handles requests.
 		me.entryCursorMu.Lock()
 		me.entryCursor = 0
+		me.entryPairCursor = 0
 		readyPayload.State = h.uiBridge.Snapshot(flagNames, 0, false)
 		if reg.WantsModelRegistry {
 			readyPayload.Models = h.uiBridge.ModelCatalog()
@@ -4510,6 +4528,9 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				HandlerID:   handlerID,
 				Args:        argsJSON,
 				encodedArgs: !streamed,
+			}
+			if event == "message_start" || event == "message_end" || event == "turn_end" || event == "agent_end" {
+				payload.MessageSeqs = extension.MessageSequences(parent)
 			}
 			envelope := &Envelope{Type: MsgRequest, Request: payload}
 			switch {

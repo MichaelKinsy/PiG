@@ -203,6 +203,8 @@ type Session struct {
 	// messages persisted since.
 	entryIDsMu        sync.Mutex
 	entryIDsByMessage map[any]string
+	// messageSeqs numbers the messages extension events carry, so an extension process shares one object between the events and the session entry a message persists, as Pi does.
+	messageSeqs messageSequences
 
 	queueMu        sync.Mutex
 	queuedSteering []string
@@ -829,6 +831,9 @@ func (s *Session) persistMessage(msg agent.AgentMessage) error {
 			id, err = in.AppendCustomMessageEntry(customType, msg.Custom["content"], display, msg.Custom["details"])
 		} else {
 			id, err = in.AppendMessage(msg)
+			if err == nil {
+				in.NoteMessageEntry(id, s.messageSeqs.Sequence(msg))
+			}
 		}
 		if err == nil {
 			s.rememberMessageEntry(msg, id)
@@ -2730,7 +2735,7 @@ func (s *Session) dispatchAgentEventToExtensions(ev agent.AgentEvent) {
 			s.reportAgentEventPanic(ev, recovered)
 		}
 	}()
-	icodingagent.DispatchAgentLoopEvent(s.currentRunner(), ev, &s.extCurrentMessage)
+	icodingagent.DispatchAgentLoopEvent(s.currentRunner(), ev, &s.extCurrentMessage, &s.messageSeqs)
 }
 
 // notifyAgentEventListeners delivers ev to the session's subscribers; a

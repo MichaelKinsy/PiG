@@ -438,6 +438,13 @@ func BindSessionReadActions(bridge *subprocess.UIBridge, current func() *Session
 		}
 		return page, next, next < total, leafID
 	})
+	bridge.SetHostAction("getMessageEntries", func(cursor int) ([]sessionentry.MessageSeq, int) {
+		sess := current()
+		if sess == nil {
+			return nil, 0
+		}
+		return sess.Inner().MessageEntriesAfter(cursor)
+	})
 	// pi.setLabel is the handler the Session binds into its runner's runtime (agent-session.ts:3419 _bindExtensionCore); a subprocess extension
 	// reaches that one handler. An empty label clears it (types.ts:2106 SetLabelHandler takes `string | undefined`).
 	bridge.SetHostAction("setLabel", func(entryID, label string) error {
