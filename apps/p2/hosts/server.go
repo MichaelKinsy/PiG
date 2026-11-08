@@ -492,7 +492,9 @@ func (s *serverState) upgrade(response http.ResponseWriter, request *http.Reques
 		// Mobile's limits: frames up to 1 MiB (socket-limits.ts); Chord queues calls behind its window.
 		part := float64(MaxClientFrame)
 		s.upgrades.Link(response, request, chordhttp.UpgradeAdmission{Principal: p2runtime.ToChord(principal)},
-			chordhttp.LinkOptions{MaxPayload: MaxClientFrame, Limits: link.PartLimits{Part: &part}}, s.host, chordctx.Background(), &chordhttp.Router{})
+			chordhttp.LinkOptions{MaxPayload: MaxClientFrame, Limits: link.PartLimits{Part: &part}}, s.host, chordctx.Background(), &chordhttp.Router{},
+			// p2 keeps no links component (`links.opened`): nothing runs when a socket opens or closes.
+			func() func() { return nil })
 		return
 	}
 	_, err = s.host.Root(func(ctx host.Ctx) (any, error) {
