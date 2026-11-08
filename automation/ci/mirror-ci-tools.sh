@@ -35,7 +35,7 @@ api() { curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-d
 layers=""
 for entry in "${assets[@]}"; do
   digest=${entry%% *} url=${entry#* } file="$work/${url##*/}"
-  FETCH_OCI_REPO= FETCH_CACHE_DIR="$work/cache" "$root/automation/ci/fetch-pinned.sh" "$digest" "$file" "$url"
+  FETCH_OCI_REPO='' FETCH_CACHE_DIR="$work/cache" "$root/automation/ci/fetch-pinned.sh" "$digest" "$file" "$url"
   size=$(wc -c <"$file" | tr -d ' ')
   location=$(api -D - -o /dev/null -X POST "https://$registry/v2/$repo/blobs/uploads/" | sed -n 's/^[Ll]ocation: *//p' | tr -d '\r')
   case "$location" in http*) ;; *) location="https://$registry$location" ;; esac
