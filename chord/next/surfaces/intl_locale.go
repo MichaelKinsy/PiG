@@ -247,8 +247,26 @@ func lookupPair(table []localePair, from string) (string, bool) {
 	return table[i].to, true
 }
 
-// aliased applies CLDR's language, script and region aliases (a replacement fills the subtags the tag lacks).
+// aliased applies CLDR's language, script and region aliases (a replacement fills the subtags the tag lacks), and its compound
+// aliases first: a language with one variant that CLDR replaces by another language (`hy-arevmda` is `hyw`, `zh-hakka` is `hak`).
 func (p tagParts) aliased() tagParts {
+	for i, variant := range p.variants {
+		to, ok := lookupPair(intlCompoundAliases[:], p.lang+"-"+variant)
+		if !ok {
+			continue
+		}
+		p.plain = ""
+		replacement, _ := parseTag(to)
+		p.lang = replacement.lang
+		if p.script == "" {
+			p.script = replacement.script
+		}
+		if p.region == "" {
+			p.region = replacement.region
+		}
+		p.variants = slices.Delete(slices.Clone(p.variants), i, i+1)
+		break
+	}
 	if to, ok := lookupPair(intlLanguageAliases[:], p.lang); ok {
 		p.plain = ""
 		replacement, _ := parseTag(to)
@@ -289,7 +307,8 @@ func bestAvailable(available []string, tag string) (int, bool) {
 }
 
 // resolveLocale is the index into available of the locale tag formats with, tag being absent (nil Language: the
-// platform's default locale; an unavailable tag falls back to it as `Intl` does).
+// platform's default locale; an unavailable tag falls back to it as `Intl` does). -1: neither has data, and ICU formats in its root
+// locale (the caller's table of root data decides: rootTimeRow).
 func resolveLocale(tag string, available []string, exceptions []localePair) (int, error) {
 	parts, err := parseTag(tag)
 	if err != nil {
@@ -305,8 +324,25 @@ func resolveLocale(tag string, available []string, exceptions []localePair) (int
 			}
 		}
 	}
-	i, _ := slices.BinarySearch(available, "en-US")
-	return i, nil
+	return -1, nil
+}
+
+// rootTimeRow is the row of intlTimeRows ICU's root locale uses for the platform locale: the default platform locale `und` (a variable
+// set to the empty string) has its own, the others the hour cycle of their region.
+func rootTimeRow() uint16 {
+	parts, err := parseTag(platformLocale())
+	if err != nil {
+		return intlTimeRootDefaultRow
+	}
+	parts = parts.aliased()
+	if parts.lang == "und" && parts.region == "" {
+		return intlTimeRootUndRow
+	}
+	i, found := slices.BinarySearchFunc(intlTimeRootRegions[:], parts.region, func(e regionRow, region string) int { return strings.Compare(e.region, region) })
+	if !found {
+		return intlTimeRootDefaultRow
+	}
+	return intlTimeRootRegions[i].row
 }
 
 func resolveParts(parts tagParts, available []string, exceptions []localePair) (int, bool) {
@@ -317,8 +353,7 @@ func resolveParts(parts tagParts, available []string, exceptions []localePair) (
 }
 
 // platformLocale is the platform's default locale (ICU's): the first of LC_ALL, LC_MESSAGES, LANG that is set decides, even when it
-// holds no tag (then en-US); `C` and `POSIX` are en-US. A variable set to the empty string would give ICU's root locale, whose data the
-// tables do not hold: en-US here (a recorded gap).
+// holds no tag (then en-US); `C` and `POSIX` are en-US; a variable set to the empty string is `und`, whose data is ICU's root.
 func platformLocale() string {
 	for _, name := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
 		value, set := os.LookupEnv(name)
@@ -328,6 +363,9 @@ func platformLocale() string {
 		value, _, _ = strings.Cut(value, ".")
 		value, _, _ = strings.Cut(value, "@")
 		value = strings.ReplaceAll(value, "_", "-")
+		if value == "" {
+			return "und"
+		}
 		if value == "C" || value == "POSIX" {
 			return "en-US"
 		}
