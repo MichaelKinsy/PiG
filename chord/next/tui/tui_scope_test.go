@@ -90,34 +90,75 @@ func newHost(t testing.TB) host.Host {
 	return h
 }
 
-// until waits until check holds.
+// wakeups is signalled by every change a test scope reports: until and settle wait on it, not on the clock.
+var wakeups = &wakeup{ch: make(chan struct{})}
+
+type wakeup struct {
+	mu sync.Mutex
+	ch chan struct{}
+}
+
+// next is the channel the next poke closes.
+func (w *wakeup) next() <-chan struct{} {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.ch
+}
+
+func (w *wakeup) poke() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	close(w.ch)
+	w.ch = make(chan struct{})
+}
+
+// scopeOn is a scope on h whose changes call changed and wake the tests' waits.
+func scopeOn(h host.Host, changed func()) *TuiScope {
+	return NewTuiScope(bg, h, func() { changed(); wakeups.poke() })
+}
+
+// until waits until check holds, re-checking at every change any test scope reports (a missing one fails after 30 s).
 func until(t testing.TB, check func() bool) {
 	t.Helper()
-	for i := 0; i < 400 && !check(); i++ {
-		time.Sleep(5 * time.Millisecond)
-	}
-	if !check() {
-		t.Fatal("condition not reached")
+	timeout := time.NewTimer(30 * time.Second)
+	defer timeout.Stop()
+	for {
+		woken := wakeups.next()
+		if check() {
+			return
+		}
+		select {
+		case <-woken:
+		case <-timeout.C:
+			t.Fatal("condition not reached")
+		}
 	}
 }
 
-// settle waits until a counter stood still for 100 ms: the watches of Go deliver on goroutines, where Pi's microtasks
+// settle waits until no change was reported for a quiet period: the watches of Go deliver on goroutines, where Pi's microtasks
 // have all run by the time its `until` returns.
 func settle(n *atomic.Int64) {
 	for last := n.Load(); ; {
-		time.Sleep(100 * time.Millisecond)
-		if now := n.Load(); now == last {
-			return
-		} else {
-			last = now
+		woken := wakeups.next()
+		quiet := time.NewTimer(100 * time.Millisecond)
+		select {
+		case <-woken:
+			quiet.Stop()
+		case <-quiet.C:
+			if now := n.Load(); now == last {
+				return
+			} else {
+				last = now
+			}
 		}
+		last = n.Load()
 	}
 }
 
 func TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose(t *testing.T) {
 	h := newHost(t)
 	var changes atomic.Int64
-	scope := NewTuiScope(h, func() { changes.Add(1) })
+	scope := scopeOn(h, func() { changes.Add(1) })
 	notes, err := scope.Hold(Notes, delta.NewJsonObject(0))
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +180,8 @@ func TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispo
 		t.Errorf("state after dispose = %s, want ended", kind)
 	}
 	after := changes.Load()
-	time.Sleep(20 * time.Millisecond)
+	// A change arriving after Dispose reports nothing (a delivery already past the check may still land: D452).
+	scope.redraw()
 	if got := changes.Load(); got != after {
 		t.Errorf("changed called after dispose: %d -> %d", after, got)
 	}
@@ -153,7 +195,7 @@ func (noValue) Watch(context.Context) (chord.NativeWatchHandle[string], error) {
 }
 
 func TestScopeReadsNothingFromAWatchableWithoutAValueNeverPanicking(t *testing.T) {
-	scope := NewTuiScope(newHost(t), func() {})
+	scope := scopeOn(newHost(t), func() {})
 	defer scope.Dispose()
 	if got, ok := WatchNative[string](scope, noValue{})(); ok || got != "" {
 		t.Errorf("read = %q, %v", got, ok)
@@ -163,7 +205,7 @@ func TestScopeReadsNothingFromAWatchableWithoutAValueNeverPanicking(t *testing.T
 func TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange(t *testing.T) {
 	h := newHost(t)
 	var changes atomic.Int64
-	scope := NewTuiScope(h, func() { changes.Add(1) })
+	scope := scopeOn(h, func() { changes.Add(1) })
 	defer scope.Dispose()
 	notes, _ := scope.Hold(Notes, delta.NewJsonObject(0))
 	read := WatchMember(scope, notes.Member("text"))
@@ -197,7 +239,7 @@ func TestOptimisticShowsTheLastValueUntilEveryCallSettledAFailedCallDropsItAsASu
 	var mu sync.Mutex
 	var calls []string
 	var text func() string
-	scope := NewTuiScope(newHost(t), func() { mu.Lock(); calls = append(calls, text()); mu.Unlock() })
+	scope := scopeOn(newHost(t), func() { mu.Lock(); calls = append(calls, text()); mu.Unlock() })
 	defer scope.Dispose()
 	shown, add, _ := OptimisticLast(scope, func() string { return "real" })
 	text = shown
@@ -229,7 +271,7 @@ func TestOptimisticShowsTheLastValueUntilEveryCallSettledAFailedCallDropsItAsASu
 }
 
 func TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending(t *testing.T) {
-	scope := NewTuiScope(newHost(t), func() {})
+	scope := scopeOn(newHost(t), func() {})
 	defer scope.Dispose()
 	var mu sync.Mutex
 	real := []string{"a", "b", "c"}
@@ -275,7 +317,7 @@ func TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherAC
 
 func TestOptimisticNeverCallsChangedAfterDispose(t *testing.T) {
 	var changes atomic.Int64
-	scope := NewTuiScope(newHost(t), func() { changes.Add(1) })
+	scope := scopeOn(newHost(t), func() { changes.Add(1) })
 	_, add, _ := OptimisticLast(scope, func() string { return "real" })
 	call := make(chan error)
 	done := make(chan error, 1)
@@ -291,10 +333,10 @@ func TestOptimisticNeverCallsChangedAfterDispose(t *testing.T) {
 
 func TestScopePageStateIsTheHostsAScopeOpenedAfterAnotherWasDisposedFindsItsValue(t *testing.T) {
 	h := newHost(t)
-	before := NewTuiScope(h, func() {})
+	before := scopeOn(h, func() {})
 	PageState(before, "draft", "").Set("oat mi")
 	before.Dispose()
-	after := NewTuiScope(h, func() {})
+	after := scopeOn(h, func() {})
 	defer after.Dispose()
 	if got := PageState(after, "draft", "").Read(); got != "oat mi" {
 		t.Errorf("draft = %q", got)
@@ -308,7 +350,7 @@ func TestScopePageStateCallsChangedOnEachOpenScopeFollowingTheKeyAndNeverAfterDi
 	h := newHost(t)
 	var calls []string
 	redraw := func(name string) func() { return func() { calls = append(calls, name) } }
-	first, second := NewTuiScope(h, redraw("first")), NewTuiScope(h, redraw("second"))
+	first, second := scopeOn(h, redraw("first")), scopeOn(h, redraw("second"))
 	draft := PageState(first, "draft", "")
 	PageState(second, "draft", "")
 	draft.Set("a")
@@ -332,7 +374,7 @@ func TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChange
 		t.Fatal(err)
 	}
 	var changes atomic.Int64
-	scope := NewTuiScope(h, func() { changes.Add(1) })
+	scope := scopeOn(h, func() { changes.Add(1) })
 	tr := scope.Messages(notes)
 	if got, _ := tr.T("title"); got != "Notes" {
 		t.Errorf("title = %q", got)

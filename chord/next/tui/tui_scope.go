@@ -43,9 +43,9 @@ type TuiScope struct {
 	releases []func()
 }
 
-// NewTuiScope is a scope on host whose every change calls changed.
-func NewTuiScope(h host.Host, changed func()) *TuiScope {
-	ctx, cancel := context.WithCancel(context.Background())
+// NewTuiScope is a scope on host whose every change calls changed, until Dispose or ctx ends.
+func NewTuiScope(ctx context.Context, h host.Host, changed func()) *TuiScope {
+	ctx, cancel := context.WithCancel(ctx)
 	return &TuiScope{host: h, changed: changed, ctx: ctx, cancel: cancel}
 }
 
