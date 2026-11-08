@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Tests of the launcher's actions (slice 11 §4; fix rounds 1 to 4): each confirmed on the launcher's own prompt before it touches
@@ -185,9 +187,7 @@ func TestAttachingAFileShowsThePathByItsTextBeforeTheYesRefusesADirectoryAMissin
 		t.Fatalf("asked = %q, want %q", dotted.asked, want)
 	}
 	// A link: after the yes the file it leads to is asked about again.
-	if err := os.Symlink(filepath.Join(dir, "photo.png"), filepath.Join(dir, "beach.png")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, filepath.Join(dir, "photo.png"), filepath.Join(dir, "beach.png"))
 	linked := terminal(true, false)
 	if file, err := Attach(filepath.Join(dir, "beach.png"), linked, "linux"); err != nil || file != nil {
 		t.Fatalf("file = %+v, err = %v, want declined", file, err)
@@ -241,9 +241,7 @@ func (s *swapping) Ask(lines []string) (bool, error) {
 		if err := os.Rename(filepath.Join(s.dir, "a"), filepath.Join(s.dir, "a-old")); err != nil {
 			s.t.Fatal(err)
 		}
-		if err := os.Symlink(filepath.Join(s.dir, "b"), filepath.Join(s.dir, "a")); err != nil {
-			s.t.Fatal(err)
-		}
+		testenv.Symlink(s.t, filepath.Join(s.dir, "b"), filepath.Join(s.dir, "a"))
 	}
 	return true, nil
 }
@@ -264,9 +262,7 @@ func TestAttachingAFileReadsOnlyTheFileConfirmedAParentDirectorySwappedForALinkA
 			t.Fatal(err)
 		}
 	}
-	if err := os.Symlink(filepath.Join(dir, "a", "notes.txt"), filepath.Join(dir, "link.txt")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, filepath.Join(dir, "a", "notes.txt"), filepath.Join(dir, "link.txt"))
 	prompt := &swapping{dir: dir, t: t}
 	if _, err := Attach(filepath.Join(dir, "link.txt"), prompt, "linux"); !errors.Is(err, errCannotAttach) {
 		t.Fatalf("error = %v, want the one refusal", err)

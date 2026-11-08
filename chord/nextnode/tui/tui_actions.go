@@ -104,6 +104,7 @@ func Act(request BridgeRequest, terminal PromptTerminal, opener Opener) (bool, e
 		if controlText(text) {
 			return false, errors.New("copy: the text holds control characters")
 		}
+		//portlint:allow pathseparators the text has its control characters removed first (CR included), so no \r precedes a \n; Pi splits the same text
 		lines := strings.Split(text, "\n")
 		// Wrapped, never cut: a long line's end is where a pasted command would hide (Opus E6).
 		var rows []string
@@ -258,6 +259,7 @@ func attachable(filePath, platform string) bool {
 	if platform != "win32" {
 		return true
 	}
+	//portlint:allow utf16units the two characters tested are ASCII separators: a non-ASCII first character fails the byte test as it fails the unit test
 	if len(filePath) >= 2 && (filePath[0] == '\\' || filePath[0] == '/') && (filePath[1] == '\\' || filePath[1] == '/') {
 		return false
 	}
