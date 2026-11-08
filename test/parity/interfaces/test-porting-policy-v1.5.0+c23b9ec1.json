@@ -7066,6 +7066,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/mcp/test/auth-provider.test.ts",
+      "upstreamTestHash": "sha256:642139b950877d9c93db725fda23820dc478619f1c217b0fe87530ddaa3682f5",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main c23b9ec1: the MCP OAuth auth provider (createMcpAuthProvider, refreshStoredTokens) that coding turns reach: coding/mcpext/runtime.go builds it for every OAuth server a session connects to."
+    },
+    {
       "path": "packages/mcp/test/client.test.ts",
       "upstreamTestHash": "sha256:fdd11daf8bce7d83dff22c8ef25a71d7c10d3098d0096470270d2b65aad1a2e1",
       "area": "extensions",
@@ -7073,6 +7082,15 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1 (D-B, docs/plan/upgrade-0.99.1.md): mcp behavior that coding turns reach through the built-in extension; tagged hot-path until the production-path review."
+    },
+    {
+      "path": "packages/mcp/test/config.test.ts",
+      "upstreamTestHash": "sha256:ad75a745a42d2cf7aaa78559a247516d57c07419dbd2b35f939c077420247bca",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main c23b9ec1: mcpServers entry validation: coding/extension/mcp_servers.go ValidateMcpServerConfig runs it on every configuration file a session loads."
     },
     {
       "path": "packages/mcp/test/content.test.ts",
@@ -7084,6 +7102,42 @@
       "rationale": "New in 0.99.1 (D-B, docs/plan/upgrade-0.99.1.md): mcp behavior that coding turns reach through the built-in extension; tagged hot-path until the production-path review."
     },
     {
+      "path": "packages/mcp/test/input-schema.test.ts",
+      "upstreamTestHash": "sha256:0a3adf85d9a213df1e49bee7beef106a348470a62443ff218fdb719cb5877059",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main c23b9ec1: tool input schema normalization: coding/mcpext/tools.go:429 normalizes the schema of every MCP tool a session registers."
+    },
+    {
+      "path": "packages/mcp/test/lines.test.ts",
+      "upstreamTestHash": "sha256:2086d09de7e36ff9ca56241ecd3ea5c39fc00d7f23078ff70476514d4962cd91",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main c23b9ec1: JSON-RPC line framing: mcp/stdio.go reads every stdio server's output through it, and coding/mcpext/runtime.go connects stdio servers in coding turns."
+    },
+    {
+      "path": "packages/mcp/test/loopback.test.ts",
+      "upstreamTestHash": "sha256:2ef4e965b1939780d5b0d53b9ea84960d946104cb29306438b4b32f68ac124d1",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main c23b9ec1: the loopback callback server and pasted redirect URL: coding/mcpext/oauth.go listens and waits through them whenever a user signs in to an OAuth server."
+    },
+    {
+      "path": "packages/mcp/test/naming.test.ts",
+      "upstreamTestHash": "sha256:6d072ca5aa991556bf13342eecbc3b3c1c9c8382618925c51737021225848a61",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main c23b9ec1: tool and namespace naming: coding/mcpext registers every MCP tool under the name createMcpToolName gives it, and McpNamespace names the codemode namespace."
+    },
+    {
       "path": "packages/mcp/test/oauth.test.ts",
       "upstreamTestHash": "sha256:e145e6ec13011c87c97736ad02408a225adce9ac5ff90b1ac8f059c0cc4a4f90",
       "area": "extensions",
@@ -7091,6 +7145,31 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1 (D-B, docs/plan/upgrade-0.99.1.md): mcp behavior that coding turns reach through the built-in extension; tagged hot-path until the production-path review."
+    },
+    {
+      "path": "packages/mcp/test/output-limit.test.ts",
+      "upstreamTestHash": "sha256:7b8b4d97a6919bbdbdea9294d49d071ef69b42dcc8a4d1abd71bdff0b69e1266",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main c23b9ec1: model-facing output limit: coding/mcpext/tools.go limitMcpContent cuts every MCP tool result through limitMcpContent."
+    },
+    {
+      "path": "packages/mcp/test/pipe.test.ts",
+      "upstreamTestHash": "sha256:dd9999f2aa1acb109208dff5630ba49c91e720e95beea7f465996fa02ef0e19a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Production-path review at Pi main c23b9ec1: no production path in Pi or PiG: PipeTransport is a library export (packages/mcp/src/index.ts) that no package of Pi or PiG constructs; pi-env's openProcess is the pipe it is meant for. Proven by its ported tests alone."
+    },
+    {
+      "path": "packages/mcp/test/sign-in.test.ts",
+      "upstreamTestHash": "sha256:3780d67bad75f30e4661aee275b1c64b5a5b61c8473c97c779514ca0eb85499c",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi main c23b9ec1: the two-half OAuth sign-in: coding/mcpext/oauth.go runs StartMcpSignIn and CompleteMcpSignIn for every user sign-in to an OAuth MCP server."
     },
     {
       "path": "packages/mcp/test/stdio.test.ts",
