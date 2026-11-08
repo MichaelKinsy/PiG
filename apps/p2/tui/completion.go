@@ -91,7 +91,13 @@ type request struct {
 	task   func(ctx context.Context) []pitui.AutocompleteItem
 }
 
-func (p *FileCompletionProvider) resolve(ctx context.Context, lines []string, row, col int, force bool) request {
+// resolve is what the call at row, col asks for. hints says it tells the visitor when the cursor's token is outside the session directory: the editor
+// asks SuggestionTask first and GetSuggestions when that has no task, so one of the two says it.
+func (p *FileCompletionProvider) resolve(ctx context.Context, lines []string, row, col int, force, hints bool) request {
+	hint := p.hint
+	if !hints {
+		hint = func(string) {}
+	}
 	if row < 0 || row >= len(lines) {
 		return request{}
 	}
@@ -111,7 +117,7 @@ func (p *FileCompletionProvider) resolve(ctx context.Context, lines []string, ro
 		}
 		mention := items(p2runtime.MentionItems(parsed.RawPrefix, name))
 		if p2runtime.OutOfScope(parsed.RawPrefix) {
-			p.hint(OutOfScopeHint)
+			hint(OutOfScopeHint)
 			if len(mention) > 0 {
 				return request{result: &pitui.AutocompleteSuggestions{Items: mention, Prefix: at}}
 			}
@@ -155,7 +161,7 @@ func (p *FileCompletionProvider) resolve(ctx context.Context, lines []string, ro
 	p.setKind("file")
 	parsed := p2runtime.ParsePathPrefix(prefix)
 	if p2runtime.OutOfScope(parsed.RawPrefix) {
-		p.hint(OutOfScopeHint)
+		hint(OutOfScopeHint)
 		return request{}
 	}
 	return request{prefix: prefix, task: func(ctx context.Context) []pitui.AutocompleteItem {
@@ -173,12 +179,12 @@ func (p *FileCompletionProvider) resolve(ctx context.Context, lines []string, ro
 
 // GetSuggestions answers what needs no call to the file index.
 func (p *FileCompletionProvider) GetSuggestions(ctx context.Context, lines []string, row, col int, options pitui.AutocompleteSuggestionOptions) *pitui.AutocompleteSuggestions {
-	return p.resolve(ctx, lines, row, col, options.Force).result
+	return p.resolve(ctx, lines, row, col, options.Force, true).result
 }
 
 // SuggestionTask is the part that calls the file index, off the editor's loop.
 func (p *FileCompletionProvider) SuggestionTask(lines []string, row, col int, force bool) (string, func(context.Context) ([]pitui.AutocompleteItem, error), bool) {
-	request := p.resolve(context.Background(), lines, row, col, force)
+	request := p.resolve(context.Background(), lines, row, col, force, false)
 	if request.task == nil {
 		return "", nil, false
 	}
