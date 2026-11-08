@@ -41,6 +41,8 @@ for unit in "${units[@]}"; do
       ;;
     packages)
       go test -timeout 30m ./env ./coding/piglet || failed=1
+      # The plugins watcher's identity (lstat birthtimespec) and its watches on kqueue, which end with a renamed directory.
+      go test -timeout 30m -run 'TestTheBaseMark|TestTheWatcher|TestIdentityOf' ./chord/nextnode/plugins || failed=1
       ;;
   esac
   echo "::endgroup::"

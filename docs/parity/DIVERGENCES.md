@@ -3936,13 +3936,13 @@ Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main
 
 ## D540 The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for
 
-What: Pi renews the base watches under an entry on the way to base code only when the entry's identity, its inode and birth time (`identityOf`, `watcher.ts`), differs from the one it had when watched. PiG does the same with `statx` (ino, btime) on Linux and Android, `lstat` (ino, birthtimespec) on macOS and FreeBSD, and the file index and creation time on Windows. On any other Unix (OpenBSD, NetBSD, Solaris, AIX, ...) Go's `syscall.Stat_t` has no birth time, so the identity is the inode alone: a directory removed and made again that is given the same inode number is not seen as replaced there.
+What: Pi renews the base watches under an entry on the way to base code only when the entry's identity, its inode and birth time (`identityOf`, `watcher.ts`), differs from the one it had when watched. PiG does the same with `statx` (ino, btime) on Linux and Android, `lstat` (ino, birthtimespec) on macOS, FreeBSD and NetBSD, `lstat` (ino, `X__st_birthtim`) on OpenBSD, and the file index and creation time on Windows. On any other Unix (DragonFly, Solaris and illumos, AIX) Go's `syscall.Stat_t` has no birth time, so the identity is the inode alone: a directory removed and made again that is given the same inode number is not seen as replaced there.
 
 Why: the birth time is not in Go's `syscall` on those systems, and nothing in PiG ships for them (the release matrix is Linux, Android, macOS and Windows). Linux file systems with no birth time (tmpfs) give 0 in Pi as well (libuv's `statx`), so they are not part of this record.
 
 Pi bug: Not a Pi bug.
 
-Scope: `chord/nextnode/plugins/plugins_watcher_identity_other.go`, the `base` mark of `pluginWatcher` on a Unix that is not Linux, Android, macOS or FreeBSD.
+Scope: `chord/nextnode/plugins/plugins_watcher_identity_other.go`, the `base` mark of `pluginWatcher` on DragonFly, Solaris and illumos, and AIX.
 
 Owner decision: owner sign-off pending (drafted by the FollowChordPlugins lane on 2026-11-08).
 
@@ -3952,6 +3952,6 @@ Remove when: PiG ships for such a system and its `Stat_t` carries a birth time, 
 
 Call-site markers: `chord/nextnode/plugins/plugins_watcher_identity_other.go`.
 
-Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` states the identity on the systems tested; the build of the file is checked by `GOOS=openbsd go vet ./chord/nextnode/plugins`.
+Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` states the identity on the systems tested; the build of the file is checked by `GOOS=dragonfly go vet ./chord/nextnode/plugins` (and netbsd, openbsd for the files that read a birth time).
 
 Parity allowance: none needed; no Pi test depends on an inode reused with no birth time.
