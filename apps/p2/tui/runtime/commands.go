@@ -84,12 +84,12 @@ type TuiCommandConflict struct {
 }
 
 type commandEntry struct {
-	id       string
-	command  TuiCommand
-	when     ParsedWhen
-	order    int
+	id        string
+	command   TuiCommand
+	when      ParsedWhen
+	order     int
 	userBound bool
-	slash    string
+	slash     string
 }
 
 // transcriptKeys are the keys the alt screen consumes before the focused component (stage 2), unless an overlay defers.
