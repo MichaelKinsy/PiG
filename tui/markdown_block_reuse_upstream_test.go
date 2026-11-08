@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -25,6 +26,7 @@ func countingMarkdownTheme(calls *[]string) *MarkdownTheme {
 func TestUpstreamMarkdownBlockReuse(t *testing.T) {
 	t.Run("highlights a code block once across streamed text and resizes, and again after invalidate", func(t *testing.T) {
 		mdCaseSetup(t)
+		pauseGC(t) // the renders run in one JavaScript job, which keeps a WeakRef's target alive
 		var calls []string
 		markdown := NewMarkdownWithOptions("```ts\nx\n```", 0, 0, countingMarkdownTheme(&calls), nil, nil)
 		markdown.Render(80)
@@ -40,11 +42,25 @@ func TestUpstreamMarkdownBlockReuse(t *testing.T) {
 		}
 	})
 
-	// markdown.test.ts holds the rendered blocks weakly, so a full garbage collection releases them. A Go Markdown holds
-	// them until FinishStreaming, as it holds its other streaming memos: a collector cycle runs every few frames of a
-	// stream and would release a weak reference between two deltas.
+	t.Run("holds rendered blocks weakly, so a full garbage collection releases them", func(t *testing.T) {
+		mdCaseSetup(t)
+		var calls []string
+		markdown := NewMarkdownWithOptions("```ts\nx\n```", 0, 0, countingMarkdownTheme(&calls), nil, nil)
+		markdown.Render(80)
+		// Nothing but the weak reference holds the memos once Render returns, as nothing holds a WeakRef's target once its job ends.
+		runtime.GC()
+		if markdown.memosRef.Value() != nil {
+			t.Fatal("the memos of the last render survived a full garbage collection")
+		}
+		markdown.Render(40)
+		if want := []string{"ts:x", "ts:x"}; !slices.Equal(calls, want) {
+			t.Fatalf("calls = %q, want %q", calls, want)
+		}
+	})
+
 	t.Run("releases the reused highlighting when streaming finishes", func(t *testing.T) {
 		mdCaseSetup(t)
+		pauseGC(t)
 		var calls []string
 		markdown := NewMarkdownWithOptions("```ts\nx\n```", 0, 0, countingMarkdownTheme(&calls), nil, nil)
 		markdown.Render(80)
@@ -57,6 +73,7 @@ func TestUpstreamMarkdownBlockReuse(t *testing.T) {
 
 	t.Run("keeps only the code of its last render", func(t *testing.T) {
 		mdCaseSetup(t)
+		pauseGC(t)
 		var calls []string
 		markdown := NewMarkdownWithOptions("```ts\nx\n```", 0, 0, countingMarkdownTheme(&calls), nil, nil)
 		markdown.Render(80)
@@ -71,6 +88,7 @@ func TestUpstreamMarkdownBlockReuse(t *testing.T) {
 
 	t.Run("reuses the highlighting of code inside a list item and a quote", func(t *testing.T) {
 		mdCaseSetup(t)
+		pauseGC(t)
 		var calls []string
 		text := "- item\n\n  ```ts\n  x\n  ```\n\n> ```ts\n> y\n> ```"
 		markdown := NewMarkdownWithOptions(text, 0, 0, countingMarkdownTheme(&calls), nil, nil)

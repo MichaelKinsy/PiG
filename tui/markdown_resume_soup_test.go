@@ -48,6 +48,7 @@ func markdownSoupDocument(rng *rand.Rand) string {
 // (including inside a multi-byte character, a CRLF pair and every delimiter), equals a new component given the same text,
 // under several component configurations.
 func TestResumedMarkdownSoupEqualsAFreshRender(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	seed := uint64(7)
 	if s := os.Getenv("PIG_MD_SOUP_SEED"); s != "" {
@@ -80,7 +81,7 @@ func TestResumedMarkdownSoupEqualsAFreshRender(t *testing.T) {
 		for end := 0; end < len(document); {
 			end = min(len(document), end+1+rng.IntN(1+rng.IntN(16)))
 			text := document[:end]
-			if streamed.resume != nil && streamed.resume.pick(text) != nil {
+			if memosOf(streamed).resume != nil && memosOf(streamed).resume.pick(text) != nil {
 				resumed++
 			}
 			streamed.SetText(text)
