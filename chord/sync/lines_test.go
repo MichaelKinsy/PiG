@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"io/fs"
 	"reflect"
 	"strings"
 	"testing"
@@ -208,5 +209,31 @@ func TestNewLogFormatErrorCarriesItsMessageAndCause(t *testing.T) {
 	}
 	if NewLogFormatError("x", nil).Unwrap() != nil {
 		t.Fatal("an error without a cause must unwrap to nil")
+	}
+}
+
+// Intention of Pi's FileResult<T> and isNotFound (sync/files.ts:9-45): an operation reports its failure as data and a missing
+// file is told apart from every other failure, which the remote relies on (a missing body is "none", anything else fails).
+// PiG form: the failure is the error result, and IsNotFound is true exactly for fs.ErrNotExist, wrapped or not.
+func TestIsNotFoundTellsAMissingFileFromOtherFailures(t *testing.T) {
+	for name, tc := range map[string]struct {
+		err  error
+		want bool
+	}{
+		"missing":    {fs.ErrNotExist, true},
+		"wrapped":    {&fs.PathError{Op: "open", Path: "x", Err: fs.ErrNotExist}, true},
+		"joined":     {errors.Join(errors.New("other"), fs.ErrNotExist), true},
+		"permission": {fs.ErrPermission, false},
+		"other":      {errors.New("boom"), false},
+		"no failure": {nil, false},
+	} {
+		if got := IsNotFound(tc.err); got != tc.want {
+			t.Errorf("%s: IsNotFound(%v) = %v, want %v", name, tc.err, got, tc.want)
+		}
+	}
+	remote := newRemote(t)
+	body, err := remote.GetBatch(background, "absent", 0)
+	if err != nil || body != nil {
+		t.Fatalf("GetBatch of a missing slot = %v, %v, want none and no failure", body, err)
 	}
 }
