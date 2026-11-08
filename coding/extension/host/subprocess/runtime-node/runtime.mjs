@@ -128,7 +128,7 @@ const MESSAGE_OBJECT_LIMIT = 128;
 const MESSAGE_ENTRY_LIMIT = 256;
 
 // Pi hands one object to every payload that holds a message: message_end's message is the object agent-session.ts appendMessage stores in the session entry, message_start (system, user, toolResult), turn_end and agent_end carry it too, and extensions of one process share it. The host numbers each message (RequestPayload.message_seqs) and names the entry that persisted it (SessionStatePayload.messageEntries), and this table, one per process so the extensions packed in a cell share it, holds the object the first event gave for each number. The newest message_end handlers hold the object the entry shows.
-const messageObjects = new Map();
+const messageObjects = new Map(); // number -> { object, hostValue }: the object and the JSON of the value the host last sent for it
 // The session the process holds message objects of. The first runtime to see another session id drops the table (the numbers never repeat, so no later number finds an old object, and the old messages become collectable, as Pi's WeakMap of them is); the other runtimes of the process then see the id the table is already for.
 let messageObjectsSession = "";
 
@@ -143,13 +143,18 @@ function replaceMessageInPlace(target, source) {
 function sharedMessage(seq, message) {
   if (!Number.isSafeInteger(seq) || seq <= 0 || !message || typeof message !== "object") return message;
   const held = messageObjects.get(seq);
+  const hostValue = JSON.stringify(message);
   if (held === undefined) {
-    messageObjects.set(seq, message);
+    messageObjects.set(seq, { object: message, hostValue });
     if (messageObjects.size > MESSAGE_OBJECT_LIMIT) messageObjects.delete(messageObjects.keys().next().value);
     return message;
   }
-  if (held !== message && !isDeepStrictEqual(held, message)) replaceMessageInPlace(held, message);
-  return held;
+  // The host's value for the message is what the last payload carried: an edit a handler made to the object since (in message_start, turn_end or agent_end, or later on a kept object) is the handler's own, and a payload that carries the host's value again does not undo it.
+  if (held.hostValue !== hostValue) {
+    held.hostValue = hostValue;
+    if (message !== held.object && !isDeepStrictEqual(held.object, message)) replaceMessageInPlace(held.object, message);
+  }
+  return held.object;
 }
 
 // shareEventMessages gives the messages of a message_start, message_end, turn_end or agent_end event the objects this process holds for them, numbered by seqs in the order the event holds them: message_start and message_end have one, turn_end its message and then its tool results, agent_end its messages. An assistant message_start carries the partial message, which the host does not number.
@@ -3587,9 +3592,14 @@ export class Runtime {
     const seq = this.entrySeqs.get(entry.id);
     if (seq === undefined) return;
     const held = messageObjects.get(seq);
-    if (held === undefined || held === entry.message) return;
-    replaceMessageInPlace(held, entry.message);
-    entry.message = held;
+    if (held === undefined || held.object === entry.message) return;
+    // An entry that shows the value the host last sent is that message, with whatever edits a handler made to the object since.
+    const hostValue = JSON.stringify(entry.message);
+    if (held.hostValue !== hostValue) {
+      held.hostValue = hostValue;
+      replaceMessageInPlace(held.object, entry.message);
+    }
+    entry.message = held.object;
   }
 
   bindEntryMessages(entries) {

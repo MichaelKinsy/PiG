@@ -426,3 +426,36 @@ function hostValue(reply, message) {
 }
 `)
 }
+
+// upstream: a handler of message_start, turn_end or agent_end holds the one object the entry stores, so an edit it makes (a block, a property tag) is on the message every later payload and the entry show.
+//
+// Only a message_end handler's edit goes back to the host. An edit made elsewhere stays in the object the process holds, and a later payload that carries the value the host last sent does not undo it. (A payload that carries another value, a replacement, still does.)
+func TestNodeRuntimeKeepsAnEditMadeOutsideMessageEnd(t *testing.T) {
+	nodeIdentityScript(t, "node edit outside message_end", `
+hostLog = [];
+const runtime = newRuntime();
+push(runtime, [], []);
+let held;
+const ends = [], agents = [];
+runtime.on("message_start", (event) => { held = event.message; event.message.content.push({ type: "text", text: "(start)" }); event.message.tag = "kept"; });
+runtime.on("message_end", (event) => { ends.push(event.message); });
+runtime.on("agent_end", (event) => { agents.push(event.messages[0]); });
+const seq = nextSeq();
+await emit(runtime, "message_start", 1, { message: user() }, [seq]);
+await messageEnd(runtime, user(), seq, 2);
+assert.equal(ends[0], held);
+assert.equal(held.tag, "kept", "message_end's payload carries the host's value again, which is not an edit to undo");
+assert.equal(held.content.length, 2);
+push(runtime, [entry("e0", null, user())], [{ id: "e0", seq }]);
+assert.equal(runtime.ctx.sessionManager.getEntries()[0].message, held, "the entry holds the object");
+assert.equal(held.tag, "kept", "the entry shows the value the host sent: the edit stays");
+await emit(runtime, "agent_end", 3, { messages: [user()] }, [seq]);
+assert.equal(agents[0], held);
+assert.equal(held.content.length, 2);
+
+// A value the host changed is applied.
+await messageEnd(runtime, { ...user(), content: [{ type: "text", text: "replaced" }] }, seq, 2);
+assert.equal(held.content[0].text, "replaced");
+assert.equal(held.tag, undefined, "the replacement is the whole message");
+`)
+}

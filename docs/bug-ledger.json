@@ -9044,6 +9044,27 @@
       ]
     },
     {
+      "id": "BF-3dce023",
+      "title": "fix(extensions): a Node handler's edit outside message_end stays in its object",
+      "symptom": "fix(extensions): a Node handler's edit outside message_end stays in its object",
+      "rootCause": "The runtime overwrote the object it holds for a message whenever a payload's value differed from the object's, which erased an edit made in message_start, turn_end or agent_end (or later on a kept object) at the message's next numbered payload. It now keeps the JSON of the value the host last sent for each number and applies a payload or an entry only when that value changed. Such an edit is local to the extension's object and not saved; the D541 draft records it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3dce02396c",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeKeepsAnEditMadeOutsideMessageEnd"
+      ]
+    },
+    {
       "id": "BF-3def2a7",
       "title": "MCP servers whose names are numbers (`\"9\"`, `\"42\"`) load and report their errors in the order Pi does: a JSON…",
       "symptom": "MCP servers whose names are numbers (`\"9\"`, `\"42\"`) load and report their errors in the order Pi does: a JSON object lists its array-index keys first, in ascending order, then the others in file order.",
@@ -44812,7 +44833,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object. A handler that edits `event.message` in place (a redaction extension) now has the edit kept, as in Pi: later handlers, `turn_end`, `agent_end` and the saved entry hold the edited message, where before the edit was never saved. The `message` of `message_start` (system, user and tool result messages), the `message` and `toolResults` of `turn_end` and the `messages` of `agent_end` are those same objects, and extensions packed in one process hold one object for one message. This holds for the events of the session's own run; extensions in different processes (isolated) each hold their own object for a message, and an extension that drives its own `ExtensionRunner` from a Go, Rust or Python extension gets no shared identity. An extension that finds an entry with `entry.message === message` found none in PiG. Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
+      "releaseNote": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object. A handler that edits `event.message` in place (a redaction extension) now has the edit kept, as in Pi: later handlers, `turn_end`, `agent_end` and the saved entry hold the edited message, where before the edit was never saved. The `message` of `message_start` (system, user and tool result messages), the `message` and `toolResults` of `turn_end` and the `messages` of `agent_end` are those same objects, and extensions packed in one process hold one object for one message. This holds for the events of the session's own run; extensions in different processes (isolated) each hold their own object for a message, and an extension that drives its own `ExtensionRunner` from a Go, Rust or Python extension gets no shared identity. An edit made outside a `message_end` handler (in `message_start`, `turn_end` or `agent_end`) stays in the extension's own object and is not saved to the session. An extension that finds an entry with `entry.message === message` found none in PiG. Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
       "origin": "release note",
       "commits": [
         {
