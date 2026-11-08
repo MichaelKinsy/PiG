@@ -68,9 +68,9 @@ A package that no workspace manifest declares is admitted through the root lockf
 | Property | Proof |
 |---|---|
 | Upstream owner | Node, not Pi: `fs.globSync` (Pi's `expandPackageGlob`, `package-manager.ts`) runs the minimatch that ships in Node's own `deps/minimatch`, not the `minimatch` that Pi's `package.json` pins |
-| Exact release | Node 24.22.1, the release `.node-version` pins and the parity oracle runs; the record cites `.node-version` as its manifest and the guard requires the record's version to equal it |
-| Source | `test/parity/dependency-sources/node/24.22.1/deps/minimatch/index.js`, cited as `upstream: node-deps/minimatch/index.js:<symbol>` (the `node-deps/` prefix cannot be mistaken for an npm pin) |
-| Integrity | `sha256-` of `node-v24.22.1.tar.gz` from nodejs.org `SHASUMS256.txt`; capture verifies the archive before extracting `deps/minimatch/index.js` |
+| Exact release | Node 24.22.2, the release `.node-version` pins and the parity oracle runs; the record cites `.node-version` as its manifest and the guard requires the record's version to equal it |
+| Source | `test/parity/dependency-sources/node/24.22.2/deps/minimatch/index.js`, cited as `upstream: node-deps/minimatch/index.js:<symbol>` (the `node-deps/` prefix cannot be mistaken for an npm pin) |
+| Integrity | `sha256-` of `node-v24.22.2.tar.gz` from nodejs.org `SHASUMS256.txt`; capture verifies the archive before extracting `deps/minimatch/index.js` |
 | Symbols | `maxExtglobRecursion` |
 | Rule | Node's matcher parses extglobs with the regular-expression AST of minimatch 10.2.6 and nests them two deep; Pi's own `minimatch()` calls run minimatch 11.0.3, which has no AST |
 | Literal consumer | `coding/packagecontent/glob_ast.go` (`globMaxExtglobRecursion`) |

@@ -255,7 +255,7 @@ Requirements:
 - Go 1.27.3
 - Git
 - macOS 13 or later for native macOS builds
-- Node.js 24.22.1 and npm 12.2.1 for parity tooling
+- Node.js 24.22.2 and npm 12.2.1 for parity tooling
 - Python 3.12 for Python SDK tests, and CPython 3.11 for `make test-sdk-py-311`, which `make check` runs (`PIG_SDK_PY_311` names the interpreter; the default is `python3.11`)
 - Rust 1.97.1 for Rust SDK tests
 - SBCL 2.6.9 for Lisp SDK tests (`make test-sdk-lisp`, which `make check` runs; `pig setup` reports it, and `PIG_SBCL` names another executable)

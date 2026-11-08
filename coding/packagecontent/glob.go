@@ -2,7 +2,7 @@ package packagecontent
 
 // Ports packages/coding-agent/src/core/package-manager.ts
 // expandPackageGlob lists the matches of Node's globSync, walked as the sync
-// walk of lib/internal/fs/glob.js as of the qualified Node (.node-version, 24.22.1;
+// walk of lib/internal/fs/glob.js as of the qualified Node (.node-version, 24.22.2;
 // Node 26.12.1 walks the same): wildcard directory steps do not follow
 // symlinks, while literal steps can select symlinked trees. Node 24.22 stopped
 // ending a listing at an entry whose path the walk already holds (24.19 and 22.19
