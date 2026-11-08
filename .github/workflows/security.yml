@@ -271,7 +271,7 @@ jobs:
                 - coding/extension/host/subprocess/runtime-node
               paths-ignore:
                 # Vendored upstream copies (Pi's own dist, cross-spawn,
-                # grok-mermaid): shipped byte-exact so extensions run Pi's
+                # lovely-mermaid): shipped byte-exact so extensions run Pi's
                 # code; findings belong upstream, not in local patches.
                 - coding/extension/host/subprocess/runtime-node/shims
           - language: python
