@@ -800,7 +800,6 @@ func TestSqliteStorageBatches(t *testing.T) {
 		}
 	})
 
-
 	for _, failure := range readFailures {
 		t.Run("rejects a batch call whose check read fails in the database with "+failure.name+", and refuses only for its own checks", func(t *testing.T) {
 			storage, armed := openFaultyStorage(t, func(_, sqlText string) bool { return strings.Contains(sqlText, "record_type") }, failure.fail)

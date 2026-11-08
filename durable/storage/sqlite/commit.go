@@ -526,8 +526,14 @@ func (pending *pendingWrites) clear(id int64) {
 
 // commitStatements are the SQL texts of a commit call's writes, built once per schema.
 type commitStatements struct {
-	recordIds, conversations, entries, tasks, submissions, documents, revisions insertStatement
-	deleteRevisions                                                              string
+	recordIds       insertStatement
+	conversations   insertStatement
+	entries         insertStatement
+	tasks           insertStatement
+	submissions     insertStatement
+	documents       insertStatement
+	revisions       insertStatement
+	deleteRevisions string
 }
 
 func newCommitStatements(tables SqliteTables) *commitStatements {
