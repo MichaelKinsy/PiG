@@ -814,7 +814,9 @@ func (h *chordHost) References(typ *contracts.Contract) state.SourceHandle {
 				continue
 			}
 			for _, holder := range object.holders() {
-				found.record(object, holder)
+				if holder.listed() {
+					found.record(object, holder)
+				}
 			}
 		}
 		h.refs[typ.Name] = found

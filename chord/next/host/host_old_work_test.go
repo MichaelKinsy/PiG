@@ -643,8 +643,8 @@ func TestReloadCycleFailsOnceALaterWaitClosesTheCycleTheNewAttemptsOpenerCallsTh
 	gate.open.fire()
 	err := working.rejected(t)
 	var chordErr *data.ChordError
-	if !errors.As(err, &chordErr) || chordErr.Code != data.CodeUnavailable || chordErr.Reason != data.ReasonReloadCycle || !strings.Contains(chordErr.Message, "(app.d → app.p)") {
-		t.Fatalf("error = %v, want unavailable/reload_cycle naming (app.d → app.p)", err)
+	if !errors.As(err, &chordErr) || chordErr.Code != data.CodeUnavailable || chordErr.Reason != data.ReasonReloadCycle || !strings.Contains(chordErr.Message, "(app.d → app.provider)") {
+		t.Fatalf("error = %v, want unavailable/reload_cycle naming (app.d → app.provider)", err)
 	}
 	if took := time.Since(opened); took > time.Second {
 		t.Fatalf("it failed after %v, want within a second", took)
