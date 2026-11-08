@@ -106,7 +106,7 @@ for (const file of walk(join(telemetryDir, "dist")).sort()) {
 }
 
 // React, the page's own: the version Pi's chord tests with (its devDependencies), published to npm (`npm pack`), production
-// builds only (the bundles define NODE_ENV as "production"). react-dom needs scheduler, at the version it depends on. The Pi
+// builds only (the bundles define NODE_ENV as "production"). react-dom needs scheduler, at the version Pi's lock pins. The Pi
 // test fixtures' base bundle imports `react`, `react/jsx-runtime` and `react-dom/client` by name; the files below are what those
 // resolve to under client/pi/node_modules.
 const chordPackage = JSON.parse(readFileSync(join(piTree, "packages/chord/package.json"), "utf8"));
@@ -119,18 +119,27 @@ const reactFiles = {
 };
 const reactVersions = {};
 {
+	// Each package is the version, and has the integrity, Pi's package-lock.json pins (scheduler too: react-dom's range would
+	// resolve to whatever is newest).
+	const lock = JSON.parse(readFileSync(join(piTree, "package-lock.json"), "utf8")).packages;
 	const work = mkdtempSync(join(tmpdir(), "chord-react-"));
-	const pack = (spec) => {
-		const name = execFileSync("npm", ["pack", spec, "--silent", "--pack-destination", work], { encoding: "utf8" }).trim().split("\n").pop();
-		const target = join(work, name.replace(/\.tgz$/, ""));
+	const pack = (name) => {
+		const pinned = lock[`node_modules/${name}`];
+		if (!pinned?.version || !pinned.integrity) throw new Error(`Pi's package-lock.json does not pin ${name}`);
+		const [packed] = JSON.parse(execFileSync("npm", ["pack", `${name}@${pinned.version}`, "--json", "--pack-destination", work], { encoding: "utf8" }));
+		if (packed.integrity !== pinned.integrity) throw new Error(`${name}@${pinned.version}: npm's tarball integrity ${packed.integrity} is not the lock's ${pinned.integrity}`);
+		const target = join(work, packed.filename.replace(/\.tgz$/, ""));
 		mkdirSync(target);
-		execFileSync("tar", ["xzf", join(work, name), "-C", target]);
+		execFileSync("tar", ["xzf", join(work, packed.filename), "-C", target]);
 		return join(target, "package");
 	};
-	const react = pack(`react@${reactVersion}`);
-	const reactDom = pack(`react-dom@${reactDomVersion}`);
-	const schedulerSpec = JSON.parse(readFileSync(join(reactDom, "package.json"), "utf8")).dependencies.scheduler;
-	const scheduler = pack(`scheduler@${schedulerSpec}`);
+	const react = pack("react");
+	const reactDom = pack("react-dom");
+	const scheduler = pack("scheduler");
+	for (const [name, version] of [["react", reactVersion], ["react-dom", reactDomVersion]]) {
+		const locked = JSON.parse(readFileSync(join(name === "react" ? react : reactDom, "package.json"), "utf8")).version;
+		if (locked !== version) throw new Error(`${name}: Pi's devDependency says ${version}, its lock ${locked}`);
+	}
 	for (const [name, dir] of [["react", react], ["react-dom", reactDom], ["scheduler", scheduler]]) {
 		reactVersions[name] = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
 		for (const file of reactFiles[name]) copy(join(dir, file), join(pi, "node_modules", name, file));

@@ -565,7 +565,7 @@ func (l *Launcher) openSocket(id int) {
 		l.sandbox.Post(LauncherMessage{Kind: "socket_closed", Socket: id})
 		return
 	}
-	target := *l.base.JoinPath("/chord")
+	target := *serverURL(l.base, "/chord")
 	if target.Scheme == "https" {
 		target.Scheme = "wss"
 	} else {
@@ -867,7 +867,7 @@ func (l *Launcher) restart() {
 
 // get is the text at path on the server, signed in; at most 8 MiB, read no further.
 func (l *Launcher) get(ctx context.Context, path string) (string, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, l.base.JoinPath(path).String(), nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, serverURL(l.base, path).String(), nil)
 	if err != nil {
 		return "", err
 	}
