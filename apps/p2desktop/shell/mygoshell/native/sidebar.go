@@ -80,7 +80,7 @@ func (a *App) sidebar(c *ui.Context, h *surfacehost.Host, sessions *screens.Sess
 			case a.archived:
 				text = "No archived sessions."
 			}
-			ui.Text(c, text).TextColor(t.TextMuted).Padding(16)
+			ui.Text(c, text).TextColor(t.TextMuted).FontSize(13).Padding(22, 16, 16).TextAlign(ui.Center)
 		}
 	})
 	if list.Changed() && chosen >= 0 && chosen < len(items) && items[chosen].Row != nil {
@@ -167,7 +167,7 @@ func (a *App) footer(c *ui.Context, h *surfacehost.Host) {
 // groupHeader is the line above a location's sessions: its folder, its path in the mono font, and "+" to start one there.
 func (a *App) groupHeader(c *ui.Context, g *screens.Group, h *surfacehost.Host, sessions *screens.Sessions) {
 	t := c.Theme()
-	ui.Row(c).Padding(14, 8, 6, 16).Gap(8).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Padding(12, 8, 1, 16).Gap(8).AlignItems(ui.Center).Children(func() {
 		ui.Icon(c, iconFolder).Size(15, 15).TextColor(t.TextMuted)
 		ui.Text(c, g.Label).FontSize(11).Font("monospace").TextColor(t.TextMuted).SingleLine().Grow(1)
 		if !a.archived {
@@ -187,7 +187,7 @@ func (a *App) sessionRow(c *ui.Context, r *screens.Row, now time.Time, selected 
 	if selected {
 		bg = t.SurfaceHover
 	}
-	ui.Row(c).Background(bg).Padding(10, 16).Gap(8).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Background(bg).Padding(11, 16).Gap(8).AlignItems(ui.Center).Children(func() {
 		if r.Pinned {
 			ui.Icon(c, iconPin).Size(12, 12).TextColor(t.TextMuted)
 		}
@@ -204,7 +204,7 @@ func (a *App) sessionRow(c *ui.Context, r *screens.Row, now time.Time, selected 
 			}
 			ui.Text(c, r.Operation).FontSize(11).Font("monospace").TextColor(colour)
 		default:
-			col := pal.Accented(rowBackground(selected))
+			col := pal.Secondary(rowBackground(selected)) // the web's .session-meta: muted
 			ui.Text(c, screens.Ago(time.UnixMilli(r.UpdatedAt), now)).FontSize(11).Font("monospace").TextColor(ui.RGB(col.R, col.G, col.B))
 		}
 	})

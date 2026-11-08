@@ -54,6 +54,7 @@ type App struct {
 	newCwd     string
 	newTitle   string
 	shownErr   string
+	announced  bool
 }
 
 // New is an App with no host yet: nothing is drawn but the connecting page until Start.
@@ -121,6 +122,18 @@ func (a *App) stop() {
 	}
 }
 
+// announceFirstFrame writes the file P2_DESKTOP_READY_FILE names (the visual gate's hook; unset in normal runs) the first time the
+// sessions screen is built from loaded data, so a capture never shows the start page.
+func (a *App) announceFirstFrame(sessions *screens.Sessions) {
+	if a.announced || !sessions.Ready() {
+		return
+	}
+	a.announced = true
+	if path := os.Getenv("P2_DESKTOP_READY_FILE"); path != "" {
+		_ = os.WriteFile(path, []byte("ready\n"), 0o600)
+	}
+}
+
 // palette is the active theme's colours.
 func (a *App) palette(h *surfacehost.Host) surfacehost.Palette {
 	return surfacehost.Palette{Theme: h.Theme()}
@@ -176,6 +189,7 @@ func (a *App) Build(c *ui.Context) {
 		h.SetMode(mode)
 	}
 	c.SetTheme(a.themeOf(h))
+	a.announceFirstFrame(sessions)
 	t := c.Theme()
 	// Below the web UI's breakpoint the sidebar collapses to a button, as the drawer does on a phone.
 	width, _ := c.Size()

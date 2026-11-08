@@ -12,7 +12,8 @@ func TestBrandContrast(t *testing.T) {
 	pairs := []pair{
 		{"fg", "bg", 4.5}, {"fg", RoleSurface, 4.5}, {"fg", RoleSoft, 4.5},
 		{"muted", "bg", 4.5}, {"muted", RoleSurface, 4.5},
-		{"accent", "bg", 4.5}, {"accent", RoleSurface, 4.5},
+		{"accentText", "bg", 4.5}, {"accentText", RoleSurface, 4.5}, {"accentText", RoleSoft, 4.5},
+		{"muted", RoleSoft, 4.5}, {"faint", "bg", 3},
 		{RoleOnAccent, "accent", 4.5},
 		{"warning", "bg", 4.5}, {"warning", RoleSurface, 4.5},
 		{"error", "bg", 4.5}, {"error", RoleSurface, 4.5},
@@ -53,9 +54,9 @@ func TestContrastKnownValues(t *testing.T) {
 	}
 }
 
-// TestReadableFallsBackToTextWhereAccentOrMutedFailAA: on soft, the light theme's muted and accent are below AA, so a view
-// gets the text colour; everywhere else they are kept.
-func TestReadableFallsBackToTextWhereAccentOrMutedFailAA(t *testing.T) {
+// TestReadableKeepsTheTokensWhereTheyReachAA: the tokens' muted and accentText reach AA on page, surface and soft, so a view
+// gets them, never the text colour (the asking is for a theme whose tokens do not).
+func TestReadableKeepsTheTokensWhereTheyReachAA(t *testing.T) {
 	themes := BrandThemes()
 	for _, theme := range themes {
 		p := Palette{Theme: theme}
@@ -68,8 +69,8 @@ func TestReadableFallsBackToTextWhereAccentOrMutedFailAA(t *testing.T) {
 		}
 	}
 	light := Palette{Theme: themes[1]}
-	if light.Secondary(RoleSoft) != light.Color("fg") || light.Accented(RoleSoft) != light.Color("fg") {
-		t.Error("light on soft should fall back to the text colour")
+	if light.Secondary(RoleSoft) != light.Color("muted") || light.Accented(RoleSoft) != light.Color("accentText") {
+		t.Error("light on soft: the tokens reach AA and are kept")
 	}
 	if light.Secondary("bg") != light.Color("muted") {
 		t.Error("light muted on page reaches AA and is kept")

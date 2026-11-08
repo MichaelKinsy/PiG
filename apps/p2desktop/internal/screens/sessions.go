@@ -5,6 +5,7 @@ package screens
 
 import (
 	"context"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -61,6 +62,14 @@ func ShortPath(path string) string {
 			return "~" + rest[slash:]
 		}
 		return "~"
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" && home != "/" {
+		if path == home {
+			return "~"
+		}
+		if strings.HasPrefix(path, home+string(os.PathSeparator)) {
+			return "~" + path[len(home):]
+		}
 	}
 	return path
 }

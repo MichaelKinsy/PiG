@@ -22,19 +22,63 @@ const (
 	RoleOnAccent = "onAccent"
 )
 
-// BrandThemes are the PiG site's palette as Chord themes: dark (page #101c1a) and light (page #fff). The role names map
-// the site's tokens: bg is page, fg is ink, muted is subtle (dark) or muted (light), line is border.
+// BrandThemes are the PiG site's palette as Chord themes: dark (page #101c1a) and light (page #fff). The values are
+// apps/p2/web/brand/tokens.json, the one token set of the web and native clients (TestBrandThemesAreTheWebTokens fails on a
+// difference); the role names are the token names, except bg is page, fg is text, error is bad, line is border, and
+// success (the added-line ink) and onAccent (the page) are derived.
 func BrandThemes() []surfaces.Theme {
 	return []surfaces.Theme{
 		{ID: "pig.dark", Name: "PiG dark", Mode: "dark", Colors: map[string]string{
-			"bg": "#101c1a", RoleSurface: "#172824", RoleSoft: "#1d342b", RoleLine: "#30463e",
-			"fg": "#e8f4f0", "muted": "#a0b5ac", "accent": "#25c99b", "warning": "#f0c674",
-			"error": "#ff8a80", "success": "#25c99b", RoleOnAccent: "#101c1a",
+			"bg":         "#101c1a",
+			RoleSurface:  "#172824",
+			RoleSoft:     "#1d342b",
+			"code":       "#172824",
+			RoleLine:     "#30463e",
+			"fg":         "#e8f4f0",
+			"muted":      "#a0b5ac",
+			"faint":      "#7f958c",
+			"accent":     "#25c99b",
+			"warning":    "#f0c674",
+			"error":      "#f4948c",
+			"add":        "#12342a",
+			"addInk":     "#7fe0bf",
+			"del":        "#3a2220",
+			"delInk":     "#f4a19a",
+			"scrollbar":  "#3f574e",
+			"keyword":    "#f2a0d2",
+			"string":     "#9fe3b8",
+			"number":     "#f5b073",
+			"title":      "#8fbaff",
+			"type":       "#f0cf7a",
+			"attr":       "#cfaef7",
+			"accentText": "#25c99b",
+			"success":    "#7fe0bf", RoleOnAccent: "#101c1a",
 		}},
 		{ID: "pig.light", Name: "PiG light", Mode: "light", Colors: map[string]string{
-			"bg": "#ffffff", RoleSurface: "#ffffff", RoleSoft: "#eef4f1", RoleLine: "#dce5e0",
-			"fg": "#18302c", "muted": "#63766f", "accent": "#008567", "warning": "#8a5a00",
-			"error": "#b42318", "success": "#007a5e", RoleOnAccent: "#ffffff",
+			"bg":         "#ffffff",
+			RoleSurface:  "#eef4f1",
+			RoleSoft:     "#eef4f1",
+			"code":       "#f3f7f5",
+			RoleLine:     "#dce5e0",
+			"fg":         "#18302c",
+			"muted":      "#52645e",
+			"faint":      "#6f827b",
+			"accent":     "#008567",
+			"warning":    "#8a5a00",
+			"error":      "#b3261e",
+			"add":        "#e1f4ec",
+			"addInk":     "#0b6b50",
+			"del":        "#fde7e6",
+			"delInk":     "#a8302a",
+			"scrollbar":  "#b4c5be",
+			"keyword":    "#8a2f7a",
+			"string":     "#0b6b50",
+			"number":     "#9a4f00",
+			"title":      "#1f55b3",
+			"type":       "#7a5200",
+			"attr":       "#6e35a8",
+			"accentText": "#006e55",
+			"success":    "#0b6b50", RoleOnAccent: "#ffffff",
 		}},
 	}
 }
@@ -110,13 +154,17 @@ func (p Palette) Color(role string) RGB {
 const aa = 4.5
 
 // Secondary is the colour of secondary text on background role bg: the theme's muted colour when it reaches AA there, else
-// its text colour. The site's light tokens put muted (#63766f) on soft (#eef4f1) at 4.33:1, below AA, so a view asks
-// instead of choosing.
+// its text colour. A view asks instead of choosing.
 func (p Palette) Secondary(bg string) RGB { return p.readable("muted", bg) }
 
-// Accented is the colour of accent-coloured text (a link, a name) on background role bg: the accent when it reaches AA
-// there, else the text colour (light accent #008567 on soft is 4.14:1).
-func (p Palette) Accented(bg string) RGB { return p.readable("accent", bg) }
+// Accented is the colour of accent-coloured text (a link, a name) on background role bg: the tokens' accentText (#006e55 in
+// light, where the accent #008567 is 4.14:1 on soft) when it reaches AA there, else the text colour.
+func (p Palette) Accented(bg string) RGB {
+	if _, ok := p.Theme.Colors["accentText"]; ok {
+		return p.readable("accentText", bg)
+	}
+	return p.readable("accent", bg) // a theme that is not the PiG one
+}
 
 func (p Palette) readable(role, bg string) RGB {
 	if color := p.Color(role); Contrast(color, p.Color(bg)) >= aa {
