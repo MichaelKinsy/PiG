@@ -83,7 +83,9 @@ func run(t *testing.T, tool *durable.ToolRegistration, args map[string]any, api 
 	return result
 }
 
-func isError(result durable.ToolExecutionResult) bool { return result.IsError != nil && *result.IsError }
+func isError(result durable.ToolExecutionResult) bool {
+	return result.IsError != nil && *result.IsError
+}
 
 func TestReloadPluginsAdmitsOnlyARootTurnTheOwnerStartedWorkingOnP2(t *testing.T) {
 	calls := 0

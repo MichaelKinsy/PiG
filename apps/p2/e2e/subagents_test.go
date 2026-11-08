@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
@@ -21,13 +22,12 @@ import (
 	sharingcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing/contract"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
 	subagentscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
-	"github.com/MichaelKinsy/PiG/chord/delta"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
-	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/chord/next/host"
 
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
@@ -52,7 +52,9 @@ func (f *agentFixture) statuses() *host.Reference {
 }
 
 // childrenOf are the session's listed children.
-func (f *agentFixture) childrenOf(view delta.JsonValue) []any { return list(object(view).Value(f.Session)) }
+func (f *agentFixture) childrenOf(view delta.JsonValue) []any {
+	return list(object(view).Value(f.Session))
+}
 
 func (f *agentFixture) childNamed(view delta.JsonValue, name string) *delta.JsonObject {
 	for _, each := range f.childrenOf(view) {
@@ -112,7 +114,9 @@ func TestSubagentsFakeProvider(t *testing.T) {
 	t.Run("spawns a configured child and reports its answer once", func(t *testing.T) {
 		f.send("subagent")
 		view := f.until(chatView, func(v delta.JsonValue) bool {
-			return hasText(v, func(s string) bool { return strings.HasPrefix(s, "[answered, no reply needed]") && strings.Contains(s, "Echo: hello helper") })
+			return hasText(v, func(s string) bool {
+				return strings.HasPrefix(s, "[answered, no reply needed]") && strings.Contains(s, "Echo: hello helper")
+			})
 		})
 		spawned := subagentResult(view, "spawn")
 		if spawned == nil || spawned.Value("isError") != false {
@@ -144,16 +148,19 @@ func TestSubagentsFakeProvider(t *testing.T) {
 	})
 
 	t.Run("configures tools and opens a child's independent transcript", func(t *testing.T) {
-		f.send("subagent-configure")
+		// Pi's flow also chooses the `artifact` tool, which has no Go plugin yet: `read` stands in for it.
+		f.send(`subagent {"action":"configure","name":"helper","model":"faux/faux-1","thinkingLevel":"high","tools":["bash","read"]}`)
 		f.until(children.Member("children"), func(v delta.JsonValue) bool {
 			c := f.childNamed(v, "helper")
-			return c != nil && marshal(t, c.Value("tools")) == `["bash","artifact"]`
+			return c != nil && marshal(t, c.Value("tools")) == `["bash","read"]`
 		})
 		sub := f.hold(child.Value("conversationId").(float64))
-		view := f.until(sub.Member("view"), func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Echo: hello helper" }) })
+		view := f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return hasText(v, func(s string) bool { return s == "Echo: hello helper" })
+		})
 		// The sidebar lists the chosen tools; the agent also has `team` (`scope: "subagent"`), offered from the start.
 		agent := object(object(object(view).Value("docs")).Value("pi.agent"))
-		if marshal(t, agent.Value("tools")) != `["bash","artifact","team"]` || marshal(t, object(agent.Value("modelTools")).Value("add")) != `["team"]` {
+		if marshal(t, agent.Value("tools")) != `["bash","read","team"]` || marshal(t, object(agent.Value("modelTools")).Value("add")) != `["team"]` {
 			t.Errorf("agent = %s", marshal(t, agent))
 		}
 		if _, err := sub.Call("configure", delta.JsonObjectOf("model", delta.JsonObjectOf("provider", "faux", "modelId", "faux-1"), "thinkingLevel", "off"), p2test.Background); err != nil {
@@ -166,7 +173,9 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		if _, err := sub.Call("send", delta.JsonObjectOf("text", "direct child message", "requestId", "direct"), p2test.Background); err != nil {
 			t.Fatal(err)
 		}
-		f.until(sub.Member("view"), func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Echo: direct child message" }) })
+		f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return hasText(v, func(s string) bool { return s == "Echo: direct child message" })
+		})
 		root := f.until(chatView, func(v delta.JsonValue) bool { return !running(v) })
 		if hasText(root, func(s string) bool { return s == "Echo: direct child message" }) {
 			t.Error("direct child prompts do not auto-report")
@@ -231,7 +240,9 @@ func TestSubagentsFakeProvider(t *testing.T) {
 			c := f.childNamed(v, "helper")
 			return c != nil && c.Value("archived") == nil
 		})
-		f.until(sub.Member("view"), func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Echo: hello again" }) })
+		f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return hasText(v, func(s string) bool { return s == "Echo: hello again" })
+		})
 		sub.Release()
 		control.Release()
 	})
@@ -311,7 +322,9 @@ func TestSubagentsFakeProvider(t *testing.T) {
 		// Read-only guests cannot archive (read/write guests can, as the owner).
 		_, err = p2test.HoldIn(guest, subagentscontract.SubagentControl, delta.JsonObjectOf("session", f.Session), "participant")
 		p2test.ExpectChord(t, err, data.CodeForbidden)
-		f.until(sub.Member("view"), func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Echo: hello helper" }) })
+		f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return hasText(v, func(s string) bool { return s == "Echo: hello helper" })
+		})
 		sub.Release()
 		list0.Release()
 		sharing.Release()
@@ -401,7 +414,9 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 	}
 	// A missing directory fails the spawn and creates nothing; only spawn takes a cwd.
 	spawn(map[string]any{"action": "spawn", "name": "bad", "message": "x", "cwd": "missing"}, "missing")
-	f.until(view, func(v delta.JsonValue) bool { return hasText(v, hasSubstring("cwd missing is not an existing directory")) })
+	f.until(view, func(v delta.JsonValue) bool {
+		return hasText(v, hasSubstring("cwd missing is not an existing directory"))
+	})
 	spawn(map[string]any{"action": "spawn", "name": "file", "message": "x", "cwd": "worktree/marker.txt"}, "file")
 	f.until(view, func(v delta.JsonValue) bool {
 		return hasText(v, hasSubstring("cwd worktree/marker.txt is not an existing directory"))
@@ -412,7 +427,9 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 
 	// A relative cwd resolves against the caller's.
 	spawn(map[string]any{"action": "spawn", "name": "wt", "message": "bash", "cwd": "worktree", "tools": []string{"bash"}}, "spawn")
-	spawned := f.until(view, func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == `<sender kind="subagent" name="wt"/>` }) }, 20*time.Second)
+	spawned := f.until(view, func(v delta.JsonValue) bool {
+		return hasText(v, func(s string) bool { return s == `<sender kind="subagent" name="wt"/>` })
+	}, 20*time.Second)
 	worktree := filepath.Join(project, "worktree")
 	if got := object(subagentResult(spawned, "spawn").Value("details")).Value("cwd"); got != worktree {
 		t.Errorf("spawn cwd = %v", got)
@@ -424,12 +441,14 @@ func TestSubagentSpawnedWithItsOwnCwd(t *testing.T) {
 	}
 	// Only spawn and configure take a location; configure places it again (here where it is).
 	spawn(map[string]any{"action": "send", "name": "wt", "message": "x", "cwd": "worktree"}, "send-cwd")
-	f.until(view, func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Only spawn and configure take a location." }) })
+	f.until(view, func(v delta.JsonValue) bool {
+		return hasText(v, func(s string) bool { return s == "Only spawn and configure take a location." })
+	})
 	spawn(map[string]any{"action": "configure", "name": "wt", "tools": []string{"bash"}, "cwd": "worktree"}, "configure")
 	f.until(view, func(v delta.JsonValue) bool { return hasText(v, func(s string) bool { return s == "Configured wt." }) })
 	spawn(map[string]any{"action": "status"}, "status")
 	status := f.until(view, func(v delta.JsonValue) bool { return subagentResult(v, "status") != nil })
-	if !regexp.MustCompile(regexp.QuoteMeta("· in " + worktree) + `$`).MatchString(resultText(subagentResult(status, "status"))) {
+	if !regexp.MustCompile(regexp.QuoteMeta("· in "+worktree) + `$`).MatchString(resultText(subagentResult(status, "status"))) {
 		t.Errorf("status = %q", resultText(subagentResult(status, "status")))
 	}
 	// Its bash ran in the worktree.
