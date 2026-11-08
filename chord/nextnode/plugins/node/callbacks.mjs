@@ -13,7 +13,7 @@
 // through this thread's event loop.
 import { MessageChannel, receiveMessageOnPort, Worker } from "node:worker_threads";
 
-const { ChordError } = await import(new URL("./pi/chord/src/next/index.ts", import.meta.url).href);
+const { ChordError } = await import(new URL("./pi/chord/src/index.ts", import.meta.url).href);
 
 /** The control channel `attach` was given (host.mjs's framed port). */
 let channel;
