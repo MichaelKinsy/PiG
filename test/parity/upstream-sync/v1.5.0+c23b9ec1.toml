@@ -2573,9 +2573,9 @@ rationale = "D600 (draft; rows/chord-reload-workers.md): a Go worker is the prog
 [[files]]
 path = "packages/chord/src/node/workers/control.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_control_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/node/workers/index.ts"
@@ -2587,9 +2587,9 @@ rationale = "Moved from packages/chord/src/next-node/workers/index.ts by the roo
 [[files]]
 path = "packages/chord/src/node/workers/lock.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_lock_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/node/workers/main.ts"
@@ -2608,9 +2608,9 @@ rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case 
 [[files]]
 path = "packages/chord/src/node/workers/workers.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go", "test:chord/nextnode/workers/workers_rollout_test.go", "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go"]
+rationale = "Ported on the lane branches (rows/chord-*.md); every upstream case of the module's Pi test file has a Go counterpart in the evidence files (test-mapping disposition ported)."
 
 [[files]]
 path = "packages/chord/src/object.ts"

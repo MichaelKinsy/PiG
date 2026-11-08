@@ -3301,33 +3301,64 @@
     },
     {
       "path": "packages/chord/test/node/reload/contracts.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b72b2a6a6d823532b5b6e65106446a636542a7e08c14f21d9532d62e5782ccc1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b72b2a6a6d823532b5b6e65106446a636542a7e08c14f21d9532d62e5782ccc1",
+      "evidence": [
+        "chord/nextnode/app/reload_contracts_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/reload/failed.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:01df3121b616efc1eb1dd3eda3db6896588830d6ebff0b162821a5aec8fc6b10"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:01df3121b616efc1eb1dd3eda3db6896588830d6ebff0b162821a5aec8fc6b10",
+      "evidence": [
+        "chord/nextnode/app/reload_failed_test.go"
+      ],
+      "rationale": "2 of 4 upstream cases are ported on the lane branches; the 2 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "missingCases": [
+        "a reload whose new code fails › keeps a web plugin whose new build fails on its old code, its component and state on screen",
+        "a reload whose new code fails › keeps a web plugin whose new script throws in the page on its old code, reported in the page; the server marks it applied (open: pages don't report kept-old plugins back)"
+      ]
     },
     {
       "path": "packages/chord/test/node/reload/jobs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d9f263d9c3a6ffa2585b7ec2f882c315bb2e57dc2db4985153c956729a63da23"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d9f263d9c3a6ffa2585b7ec2f882c315bb2e57dc2db4985153c956729a63da23",
+      "evidence": [
+        "chord/nextnode/app/reload_jobs_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/reload/pure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:abbc104ceed9a0b6c0eaf7e60b76c1de88e792e4953351ab29d1bf7b65d79745"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:abbc104ceed9a0b6c0eaf7e60b76c1de88e792e4953351ab29d1bf7b65d79745",
+      "evidence": [
+        "chord/nextnode/app/reload_pure_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/reload/restart.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ab258f5c5386813d772d0ee4dd6df16ef4a7285b9c209bc4ff7598c339bfb116"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ab258f5c5386813d772d0ee4dd6df16ef4a7285b9c209bc4ff7598c339bfb116",
+      "evidence": [
+        "chord/nextnode/app/reload_restart_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/reload/rollout.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a7b79448a5cc056f705b9dc01cff5ceab4d035b289c428731f207426089b6656"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:a7b79448a5cc056f705b9dc01cff5ceab4d035b289c428731f207426089b6656",
+      "evidence": [
+        "chord/nextnode/app/reload_rollout_test.go"
+      ],
+      "rationale": "4 of 5 upstream cases are ported on the lane branches; the 1 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "missingCases": [
+        "a rollout across hosts › brings a page whose link was down during the rollout onto the new scripts and the new code"
+      ]
     },
     {
       "path": "packages/chord/test/node/reload/web.test.ts",
@@ -3490,27 +3521,21 @@
     },
     {
       "path": "packages/chord/test/node/workers/control.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:9858e5fb069dd676631234e0f756276f3660a447e4806bd7dde9a7c1b72dacc3",
       "evidence": [
         "chord/nextnode/workers/workers_control_test.go"
       ],
-      "rationale": "2 of 3 upstream cases are ported on the lane branches; the 1 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "errors › crosses a report's failures and parked causes and back"
-      ]
+      "rationale": "All 3 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/workers/lock.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:d867c8df557729d75b865949bae00ac9648da05364fe7d7eddbcf7f50dd946eb",
       "evidence": [
         "chord/nextnode/workers/workers_lock_test.go"
       ],
-      "rationale": "5 of 6 upstream cases are ported on the lane branches; the 1 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "socket file locks (macOS, the BSDs) › fail closed on a stale lock file, naming it: two takers never both take it over (Sol)"
-      ]
+      "rationale": "All 6 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/workers/main.test.ts",
@@ -3533,29 +3558,16 @@
     },
     {
       "path": "packages/chord/test/node/workers/workers.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:3c37d4d8b6ba7e8aacc072959d4c8eea747276567858a847056ec81a511686b6",
       "evidence": [
         "chord/nextnode/workers/workers_workers_test.go",
         "chord/nextnode/workers/workers_rollout_test.go",
         "chord/nextnode/workers/workers_rollout_blocked_unix_test.go"
       ],
-      "rationale": "20 of 34 upstream cases are ported on the lane branches; the 14 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
-      "missingCases": [
-        "the worker base (decision \"Workers start from the base code the server booted with\") › a worker started after an edit of the entry's imported source runs the code the component was created with",
-        "failures stay until retry or a rollout (R2) › a start that throws fails the address: holders fail waiting with it, a new hold forks nothing; retry starts it",
-        "failures stay until retry or a rollout (R2) › a running worker's lost link (a blocked event loop past the heartbeat): killed after the grace, its holders get a new worker past the lock file the kill left; a second within a minute fails the address",
-        "failures stay until retry or a rollout (R2) › the start timer covers only the start: a slow load after connecting is not killed (Q4)",
-        "keep-alive (D9, R3, Q5) › 1,000 sequential local calls in a worker nobody holds send no message (Sol)",
-        "the rollout step (§4) › lists a worker stopped cleanly during it as stopped and one that crashed with its error (it stays dirty)",
-        "GC › 100 addresses started and stopped leave no state, no record, no suspension (Astra, Sol)",
-        "fix round 1 › close during a forked start that never connects returns at once, no failure (Opus F1)",
-        "fix round 1 › close during an app's start that ignores its signal returns at once; nothing forks after it (Sol)",
-        "fix round 1 › a stop during the worker's startup is a stop: its closers run, nothing fails (Astra)",
-        "fix round 1 › a reload queued behind one the child never answers settles when the child exits (Astra)",
-        "fix round 1 › a plugin whose evaluation failed is shipped again by the next rollout and stays dirty (Astra)",
-        "fix round 1 › reaps a worker that closed its own IPC channel and lives on: killed after the grace, a lost link its holder gets a new worker for (Sol)",
-        "fix round 1 › keeps a worker's stderr out of the public state: only worker_failed carries its tail (Astra)"
+      "rationale": "All 34 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). 1 case(s) designed out by D600 (rows/chord-reload-workers.md, owner sign-off pending): a Go worker is the program's own executable, so no esbuild-bundled worker base.",
+      "designedOutCases": [
+        "the worker base (decision \"Workers start from the base code the server booted with\") › a worker started after an edit of the entry's imported source runs the code the component was created with"
       ]
     },
     {
