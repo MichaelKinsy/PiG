@@ -41,7 +41,7 @@ var teamParameters = schema.Obj(schema.Properties{
 // teamTool is the `team` tool.
 func teamTool() p2runtime.P2Tool {
 	registration := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: p2runtime.ToolSchemaOf(contract.TeamTool, teamDescription, teamParameters),
+		ToolSchema: p2runtime.MustToolSchema(contract.TeamTool, teamDescription, teamParameters),
 		// A send is admitted once per call (its request ID); list and answer only read.
 		Replay:   durable.ReplaySafe,
 		Deferred: true,

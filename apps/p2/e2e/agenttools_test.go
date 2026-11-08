@@ -61,17 +61,6 @@ func hasText(view delta.JsonValue, wanted func(string) bool) bool {
 	return false
 }
 
-// toolResults are the tool result messages of the tool name.
-func toolResults(view delta.JsonValue, name string) []*delta.JsonObject {
-	var out []*delta.JsonObject
-	for _, message := range messages(view) {
-		if message.Value("role") == "toolResult" && message.Value("toolName") == name {
-			out = append(out, message)
-		}
-	}
-	return out
-}
-
 // resultText is a tool result's text.
 func resultText(result *delta.JsonObject) string {
 	if result == nil {
