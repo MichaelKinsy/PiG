@@ -3878,6 +3878,9 @@
     {
       "path": "packages/coding-agent/test/agent-session-branching.test.ts",
       "disposition": "ported",
+      "protects": "Forking a session at an entry selects the right prefix and text for the new session, keeps the native system prompt, writes no file for an unbranched fork, and the replacement is a different Session.",
+      "pigTest": "TestRuntimeOriginalBranching runs Pi's three cases through factory-owned Runtime replacement, with the observed branches [system] (single and memory fork) and [system,user,assistant] (middle fork) taken from the pinned Pi implementation probe test/parity/testdata/session-branching-oracle-pi.mjs; scenario 25-runtime-replacements.toml pairs PiG with Pi on three strict cases, and persistence and installation mutations fail it.",
+      "whyNot": "Pi's test expectation disagrees with Pi's own implementation at the pin (the probe observes different branches than the test asserts), so the test cannot be run as written against either; PiG's tests assert what the pinned implementation does, which is the behavior PiG must match.",
       "upstreamTestHash": "sha256:ef1ef21bbebdd5381badb81eefd3a331c66bd640404c8d3ad90c7745c18a7671",
       "evidence": [
         "coding/session_runtime_branching_upstream_test.go#TestRuntimeOriginalBranching",
@@ -4772,6 +4775,9 @@
     {
       "path": "packages/coding-agent/test/first-time-setup-fork.test.ts",
       "disposition": "ported",
+      "protects": "A fork of Pi (a distribution that is not Pi's official one) does not block on the official first-time setup: shouldRunFirstTimeSetup returns false for it.",
+      "pigTest": "Go tests of PiG's real CLI: TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup asserts that PiG, which is never Pi's official distribution (D2), shows its own first-time setup on an interactive start without settings.json and does not hang on the official one; TestFirstTimeSetupOriginalCasesAsFork and TestShouldRunFirstTimeSetupGate run the gate inputs; PTY runs of the real CLI cover Esc and saving the theme, sprite and analytics choice (D88).",
+      "whyNot": "Pi's fork case expects no setup dialog; PiG's own gate (D88, owner decision 2026-10-02) shows it in every default agent directory without settings.json and adds a sprite step, so the same input cannot give Pi's result. The PiG-shaped tests assert the approved gate. Running Pi's component test unchanged was considered.",
       "upstreamTestHash": "sha256:38ae7d0f1aeb002ddbe6d0f9f0820b4b09b7d25d0656bde664c88d36694eabfa",
       "evidence": [
         "coding/cli/first_time_fork_upstream_test.go#TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup"
@@ -6580,6 +6586,9 @@
     {
       "path": "packages/coding-agent/test/suite/regressions/2860-replaced-session-context.test.ts",
       "disposition": "ported",
+      "protects": "After /new, /fork or a session switch, the context and Pi object a command captured before the replacement fail with Pi's stale message, and withSession runs with a context of the replacement session after its session_start (Pi #2860).",
+      "pigTest": "TestReplacedSession2860New, TestReplacedSession2860Fork and TestReplacedSession2860Switch run the original bodies and faux responses through real native Runtime replacement, TestReplacedSession2860AcrossSDKs runs them through the pig binary in print mode for the Node, Python, Go and Rust SDKs, and TestPrintModeReplacedSessionHostCallsFailWithThePiStaleMessage; scenario 27-replaced-session-context.toml pairs them with Pi (D30).",
+      "whyNot": "The Go, Rust and Python SDK getters return plain values with no error to carry Pi's stale message, and a bare coding.Session owns no factory to replace itself, so Pi's cases cannot run on those getters without an SDK interface change that needs an approved spec (D30, Why deferred). The Node runtime and the in-process runtime run Pi's exact expectations.",
       "upstreamTestHash": "sha256:7c5bd69d6bb018d7d8c064d78554e437fb42fe3fd81465a5867a9c6345ff6d97",
       "evidence": [
         "coding/session_replaced_2860_upstream_test.go",
