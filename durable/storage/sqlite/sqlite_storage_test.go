@@ -779,7 +779,7 @@ func TestSqliteStorageBatches(t *testing.T) {
 		createRoot(t, storage)
 		id := mint[durable.DocumentId](t, storage)
 		commit(t, storage, durable.DocumentCreateWrite{
-			Record: durable.DocumentCreate{Id: id, Kind: "pointer", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID}, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
+			Record:  durable.DocumentCreate{Id: id, Kind: "pointer", Scope: durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID}, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 			Content: base(chorddelta.JsonObjectOf("n", float64(1))),
 		})
 		duplicate := mint[durable.DocumentId](t, storage)
