@@ -127,6 +127,8 @@ type launcherOptions struct {
 	rows        int
 	kitty       *bool
 	options     func(*host.ClientOptions)
+	// actionOptions adjusts the launcher actions' options (a test's editor, suspend, prefs directory).
+	actionOptions func(*host.LauncherActionOptions)
 	// fixture is a server the test started itself (default: one without plugins); address is the URL the launcher is given (default: the fixture's loopback URL).
 	fixture *p2test.Fixture
 	address *url.URL
@@ -160,7 +162,7 @@ func startLauncher(t *testing.T, options launcherOptions) *launcher {
 	if role == "" {
 		role = "owner"
 	}
-	actions := host.LauncherActions(host.LauncherActionOptions{
+	actionOptions := host.LauncherActionOptions{
 		URL: address, Role: role,
 		Clipboard: func(text string, _ func(string)) error {
 			l.mu.Lock()
@@ -173,7 +175,11 @@ func startLauncher(t *testing.T, options launcherOptions) *launcher {
 			l.opened = append(l.opened, target)
 			l.mu.Unlock()
 		},
-	})
+	}
+	if options.actionOptions != nil {
+		options.actionOptions(&actionOptions)
+	}
+	actions := host.LauncherActions(actionOptions)
 	if options.actions != nil {
 		actions = options.actions(actions)
 	}
