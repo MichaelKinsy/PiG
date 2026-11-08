@@ -14772,6 +14772,31 @@
       ]
     },
     {
+      "id": "BF-59c1814",
+      "title": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with…",
+      "symptom": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL after SIGTERM no longer leaves the PiG binary running: the harness entry cannot forward SIGKILL, so a small watchdog it starts kills the binary when the entry dies.",
+      "rootCause": "The entry is a wrapper around the PiG binary and cannot forward SIGKILL, so an aborted subagent whose binary trapped or was slow on SIGTERM was orphaned. A watchdog (the entry run again with PIG_HARNESS_WATCHDOG) holds a pipe the entry owns and kills the binary when it closes, only if the process still has the binary's start time; the entry stands it down on the binary's exit. The embedded runtime pack and digest are regenerated, and a host test runs the entry from the packed and isolated runtimes.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL after SIGTERM no longer leaves the PiG binary running: the harness entry cannot forward SIGKILL, so a small watchdog it starts kills the binary when the entry dies. Signal forwarding, stdio and exit status are unchanged. Windows ends the binary by pid alone and is untested.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "59c181494e",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/harness_cli_kill_host_test.go::TestHarnessEntryKillAcrossIsolationModes",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryKeepsBinaryExitStatus",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryKillEndsItsBinary",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessWatchdogIgnoresGoneBinary"
+      ]
+    },
+    {
       "id": "BF-59e2efb",
       "title": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then…",
       "symptom": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then restored between its upgrade's router check and its keep stayed open, though Pi ends it when the removal arrives.",
@@ -29676,6 +29701,43 @@
         "internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain",
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
+      ]
+    },
+    {
+      "id": "BF-967def6",
+      "title": "Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `\"42\"` or `42` for…",
+      "symptom": "Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `\"42\"` or `42` for a bigint parameter and `null` for an undefined one validate, as TypeBox converted them.",
+      "rootCause": "A JSON null converts to undefined and a string, number or boolean to a bigint for {\"type\":\"undefined\"} and {\"type\":\"bigint\"}, as TypeBox's Value.Convert does. A bigint is a *big.Int and undefined is schema.Undefined: the checks take them (number keywords of either kind, a required property holding undefined when its schema takes it), the explainer names them, and BigInt(options...) builds the schema.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `\"42\"` or `42` for a bigint parameter and `null` for an undefined one validate, as TypeBox converted them. The arguments' JSON writes a bigint as `\"42n\"`, as Pi's validation probes do, and leaves out an undefined member. Follows Pi main af79b0c3d.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "967def653d",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "schema/coerce_base_internal_test.go::TestCoercerBaseOfAnUnreachedNodeFollowsItsID",
+        "schema/pi_main_bigint_upstream_test.go::TestBigIntAndUndefinedAreValuesOfTheChecks",
+        "schema/pi_main_bigint_upstream_test.go::TestCoerceReadsNaNAndInfinityAsNoNumberInATypeArray",
+        "schema/pi_main_bigint_upstream_test.go::TestCoerceToABigIntOrUndefinedThroughUnionsAndTypeArrays",
+        "schema/pi_main_bigint_upstream_test.go::TestExplainsBigIntsAgainstBoundsOfEitherKind",
+        "schema/pi_main_bigint_upstream_test.go::TestOptionalAndRequiredNullsOfAnUndefinedProperty",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainBuildsABigIntWithBounds",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainChecksARequiredPropertySetToUndefinedBySchema",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainChecksMultipleOfOfBigIntsExactly",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainChecksTypeBoxBigIntWithItsBounds",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainChecksTypeBoxUndefined",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainConvertsToABigIntLikeTypeBox",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainConvertsToUndefinedLikeTypeBox",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainEqualOfUndefined",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainTreatsAPropertySetToUndefinedAsAbsent",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainValueConvertWithBigIntAndUndefined"
       ]
     },
     {

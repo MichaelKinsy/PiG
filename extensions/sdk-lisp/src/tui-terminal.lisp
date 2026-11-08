@@ -44,7 +44,9 @@
           ((or (string= term-program "warpterminal") (set-p "WARP_SESSION_ID") (set-p "WARP_TERMINAL_SESSION_UUID")) (make-tui-capabilities "kitty" t t))
           ((or (set-p "ITERM_SESSION_ID") (string= term-program "iterm.app")) (make-tui-capabilities "iterm2" t t))
           ((set-p "WT_SESSION") (make-tui-capabilities nil t t))
-          ((member term-program '("alacritty" "vscode" "zed") :test #'string=) (make-tui-capabilities nil t t))
+          ;; Alacritty does not set TERM_PROGRAM: it sets TERM=alacritty when its terminfo entry is installed and ALACRITTY_WINDOW_ID on Unix and macOS (Pi 2af8a42f5).
+          ((or (member term-program '("alacritty" "vscode" "zed") :test #'string=) (starts "alacritty" term) (set-p "ALACRITTY_WINDOW_ID"))
+           (make-tui-capabilities nil t t))
           ((string= terminal-emulator "jetbrains-jediterm") (make-tui-capabilities nil t nil))
           ((equal platform "win32") (make-tui-capabilities nil t nil))
           (t (make-tui-capabilities nil (and true-color-hint t) nil)))))))
