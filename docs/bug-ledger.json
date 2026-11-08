@@ -19144,6 +19144,26 @@
       ]
     },
     {
+      "id": "BF-65d2ac1",
+      "title": "A build with `pig_strip_codemode` no longer links the codemode engine through tool search",
+      "symptom": "A build with `pig_strip_codemode` no longer links the codemode engine through tool search.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A build with `pig_strip_codemode` no longer links the codemode engine through tool search.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "65d2ac1eee",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-663e84b",
       "title": "The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead…",
       "symptom": "The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead of a five-step ladder that started at none.",
@@ -30272,6 +30292,46 @@
         "durable/core/host/cf/test/output-sanitize.test.ts",
         "durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences"
       ]
+    },
+    {
+      "id": "BF-98f0403",
+      "title": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in…",
+      "symptom": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in flight (it aborts the current session first) before it emits `session_shutdown`, as Pi's `dispose` does; the run's `agent_end` reaches the extension before the shutdown.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in flight (it aborts the current session first) before it emits `session_shutdown`, as Pi's `dispose` does; the run's `agent_end` reaches the extension before the shutdown.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98f0403ec4",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-98f0403-2",
+      "title": "`pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when…",
+      "symptom": "`pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when `codemode` is stripped.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when `codemode` is stripped.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98f0403ec4",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-992f3cb",
