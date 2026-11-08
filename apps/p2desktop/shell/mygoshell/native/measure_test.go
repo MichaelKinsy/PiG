@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
@@ -112,12 +113,15 @@ func TestMeasureLong(t *testing.T) {
 	var frames []float64
 	scrollStart := time.Now()
 	for range 400 {
-		tt.Wheel(640, 400, 0, 400)
+		tt.Wheel(640, 400, 0, -400)
+		tt.Advance(150 * time.Millisecond) // the container glides to its target as the clock advances; not part of the frame
 		t0 := time.Now()
 		tt.Frame()
 		frames = append(frames, float64(time.Since(t0).Microseconds())/1000)
 	}
 	figures["scrollUp400Ms"] = time.Since(scrollStart).Milliseconds()
+	// Where the scroll got to: the oldest numbered message on screen (a scroll that goes nowhere would show the newest).
+	figures["oldestVisible"] = oldestMessage(strings.Join(tt.Texts(), "\n"))
 	figures["scrollFrameMs"] = summary(frames)
 	// Stream: a message while at the end; the frames of the run.
 	tt.Key(0, ui.KeyEnd)
@@ -175,3 +179,14 @@ func summary(v []float64) map[string]float64 {
 }
 
 func round(x float64) float64 { return float64(int(x*100)) / 100 }
+
+// oldestMessage is the lowest n of the "message n: please answer" texts in text, -1 when there is none.
+func oldestMessage(text string) int {
+	oldest := -1
+	for _, found := range regexp.MustCompile(`message (\d+): please answer`).FindAllStringSubmatch(text, -1) {
+		if n, err := strconv.Atoi(found[1]); err == nil && (oldest < 0 || n < oldest) {
+			oldest = n
+		}
+	}
+	return oldest
+}

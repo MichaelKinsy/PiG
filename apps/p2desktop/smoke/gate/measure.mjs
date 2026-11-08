@@ -41,6 +41,19 @@ for (let i = 0; i < 400; i++) {
 	frames.push(performance.now() - t0);
 }
 figures.scrollUp400Ms = Date.now() - started;
+figures.oldestVisible = await page.evaluate(() => {
+	// the oldest numbered message whose box is on screen (the page may keep every message in the DOM)
+	let oldest = -1;
+	for (const el of document.querySelectorAll(".scroller p, .scroller div, .scroller span")) {
+		if (el.children.length > 0) continue;
+		const m = /message (\d+): please answer/.exec(el.textContent ?? "");
+		if (!m) continue;
+		const r = el.getBoundingClientRect();
+		if (r.bottom < 0 || r.top > innerHeight) continue;
+		if (oldest < 0 || Number(m[1]) < oldest) oldest = Number(m[1]);
+	}
+	return oldest;
+});
 figures.scrollFrameMs = stats(frames);
 await page.keyboard.press("End");
 await page.getByPlaceholder("Message PiG…").fill("stream one more answer");
