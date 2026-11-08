@@ -49,18 +49,22 @@ func UseTerminalDaemon(t testing.TB) {
 	t.Setenv("PS1", "$ ")
 }
 
-// plainShell is /bin/sh when that is bash, otherwise a `sh` script that is bash in POSIX mode without rc files.
+// plainShell is a `sh` script that is bash in POSIX mode without rc files and without bracketed paste: readline asks the
+// terminal for mode 2004 at every prompt (bash 5.1 and later), which Pi's /bin/sh (dash) never does, and the terminal tests
+// of paste check that a program that did not ask for it gets plain text.
 func plainShell(t testing.TB) string {
 	t.Helper()
-	if resolved, err := filepath.EvalSymlinks("/bin/sh"); err == nil && filepath.Base(resolved) == "bash" {
-		return "/bin/sh"
-	}
 	bash, err := exec.LookPath("bash")
 	if err != nil {
 		return "/bin/sh"
 	}
-	path := filepath.Join(t.TempDir(), "sh")
-	if err := os.WriteFile(path, []byte("#!/bin/sh\nexec "+bash+" --posix --norc --noprofile \"$@\"\n"), 0o755); err != nil {
+	directory := t.TempDir()
+	inputrc := filepath.Join(directory, "inputrc")
+	if err := os.WriteFile(inputrc, []byte("set enable-bracketed-paste off\n"), 0o644); err != nil {
+		t.Fatalf("writing the inputrc: %v", err)
+	}
+	path := filepath.Join(directory, "sh")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nINPUTRC="+inputrc+" exec "+bash+" --posix --norc --noprofile \"$@\"\n"), 0o755); err != nil {
 		t.Fatalf("writing the sh wrapper: %v", err)
 	}
 	return path

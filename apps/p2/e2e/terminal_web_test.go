@@ -100,22 +100,33 @@ func (p *terminalPage) touch(kind string, points ...point) {
 	p.call("Input.dispatchTouchEvent", map[string]any{"type": kind, "touchPoints": touches})
 }
 
-const terminalSocketWrapper = `
+// interceptedSocket is the clipboard tests' page script (Pi's terminal-clipboard.test.ts): the terminal socket's binary sends are
+// recorded, not sent (the shell does not see them), and window.terminalSocket takes injected output.
+const interceptedSocket = `
 window.terminalBytes=[];
-window.terminalSockets=[];
 window.WebSocket=new Proxy(window.WebSocket,{construct(Target,args){
 	const socket=Reflect.construct(Target,args);
 	if(String(args[0]).includes('/terminal')){
 		window.terminalSocket=socket;
-		window.terminalSockets.push(socket);
 		const send=socket.send.bind(socket);
 		socket.send=data=>{if(typeof data==='string')send(data);else window.terminalBytes.push([...new Uint8Array(data.buffer??data,data.byteOffset??0,data.byteLength)]);};
 	}
 	return socket;
 }});`
 
-// withTerminal opens the terminal panel of a new session in Chromium (with a touch screen when touch), after run is given the page.
-func withTerminal(t *testing.T, touch bool, run func(page *terminalPage)) {
+// recordedSockets is the reconnect test's page script (Pi's terminal-reconnect.test.ts): the terminal's sockets are listed, and
+// everything they send reaches the server.
+const recordedSockets = `
+window.terminalSockets=[];
+window.WebSocket=new Proxy(window.WebSocket,{construct(Target,args){
+	const socket=Reflect.construct(Target,args);
+	if(String(args[0]).includes('/terminal'))window.terminalSockets.push(socket);
+	return socket;
+}});`
+
+// withTerminal opens the terminal panel of a new session in Chromium (with a touch screen when touch), after script is added to its
+// pages, run is given the page.
+func withTerminal(t *testing.T, touch bool, script string, run func(page *terminalPage)) {
 	t.Helper()
 	if p2test.ChromiumBinary(t.Context()) == "" {
 		t.Skip("no Chromium: set CHROMIUM_BIN (or put chromium-docker on the PATH)")
@@ -124,10 +135,9 @@ func withTerminal(t *testing.T, touch bool, run func(page *terminalPage)) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The terminal button opens the panel in the workspace (Pi's `terminalPlacement`) or at the bottom of the chat; both are
-	// slots another plugin hosts, and the workspace plugin's web facet is not in the bundle yet.
+	// The terminal button opens the panel in the workspace (Pi's `terminalPlacement`): the workspace plugin's web facet hosts it.
 	if !slices.Contains(bundle.Plugins, "workspace") {
-		t.Skip("the web bundle has no workspace plugin (its web facet is the workspace lane's): the terminal panel has no host to open in")
+		t.Fatal("the web bundle has no workspace plugin: the terminal panel has no host to open in")
 	}
 	p2test.UseTerminalDaemon(t)
 	enabled := true
@@ -157,7 +167,7 @@ func withTerminal(t *testing.T, touch bool, run func(page *terminalPage)) {
 		page.call("Emulation.setDeviceMetricsOverride", map[string]any{"width": 390, "height": 844, "mobile": true, "deviceScaleFactor": 1})
 		page.call("Emulation.setTouchEmulationEnabled", map[string]any{"enabled": true, "maxTouchPoints": 1})
 	}
-	page.call("Page.addScriptToEvaluateOnNewDocument", map[string]any{"source": terminalSocketWrapper})
+	page.call("Page.addScriptToEvaluateOnNewDocument", map[string]any{"source": script})
 	page.Open(page.origin + "/s/" + id)
 	page.Wait("document.querySelector('button[aria-label=Terminal]')")
 	page.Run("document.querySelector('button[aria-label=Terminal]').click()")
@@ -175,7 +185,7 @@ func pasteEvent(text string) string {
 }
 
 func TestTouchTerminalALongPressOnABlankSpotIsANativePasteTargetClipboardKeyDenialScrolling(t *testing.T) {
-	withTerminal(t, true, func(page *terminalPage) {
+	withTerminal(t, true, interceptedSocket, func(page *terminalPage) {
 		page.Wait(`document.querySelector('button[aria-label="Paste into terminal"]')`)
 		// A blank cell: the prompt is on the first row.
 		blank := `(()=>{const r=document.querySelector('.terminal-content').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+Math.min(70,r.height/2)}})()`
@@ -278,7 +288,7 @@ func TestTouchTerminalALongPressOnABlankSpotIsANativePasteTargetClipboardKeyDeni
 func px(value float64) string { return strconv.FormatFloat(value, 'f', -1, 64) }
 
 func TestTouchTerminalALongPressOnOutputStaysNativeTheSelectionSurvivesOutputCopyJoinsWrappedRows(t *testing.T) {
-	withTerminal(t, true, func(page *terminalPage) {
+	withTerminal(t, true, interceptedSocket, func(page *terminalPage) {
 		// Every touch event and contextmenu after the page's own listeners ran: none may be cancelled.
 		page.Run(`window.cancelled=[];for(const type of ['touchstart','touchmove','touchend','pointerdown','pointerup','contextmenu'])window.addEventListener(type,event=>{if(event.defaultPrevented)window.cancelled.push(type)});`)
 		// A program that tracks the mouse: a tap clicks in it, so a long press that ended as a tap would send bytes.
@@ -367,7 +377,7 @@ func TestTouchTerminalALongPressOnOutputStaysNativeTheSelectionSurvivesOutputCop
 
 // A terminal whose socket drops gets a new one and keeps working (Terminal.tsx with src/web/reconnect.ts).
 func TestADroppedTerminalSocketIsReplacedAndTypingReachesTheShellAgain(t *testing.T) {
-	withTerminal(t, false, func(page *terminalPage) {
+	withTerminal(t, false, recordedSockets, func(page *terminalPage) {
 		prompt := "[...document.querySelectorAll('.terminal-row')].some(row => /[$#]/.test(row.textContent))"
 		page.Wait(prompt)
 		page.Wait("window.terminalSockets.length === 1 && window.terminalSockets[0].readyState === 1")
