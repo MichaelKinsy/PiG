@@ -147,13 +147,17 @@ const requestWriteBatch = 1 << 20
 // plainWriter hides ReadFrom, so io.Copy through it does not come back to idleTimeoutConn.ReadFrom.
 type plainWriter struct{ io.Writer }
 
-// ReadFrom sends what net/http copies from a request body. A body of a known length arrives as an io.LimitedReader; when the reader under it offers WriteTo, the segments it writes go out in vectored writes of up to requestWriteBatch bytes instead of through io.Copy's 32 KiB buffer, which copies them and writes each 32 KiB piece with a system call of its own. The bytes on the connection are the same. A body without WriteTo is copied as io.Copy copies it.
+// ReadFrom sends what net/http copies from a request body. A requestBody held as segments arrives as an io.LimitedReader over its
+// *requestBodyReader (which has a Close of its own, so neither http.NewRequest nor the transport wraps it): its segments go out in vectored
+// writes of up to requestWriteBatch bytes instead of through io.Copy's 32 KiB buffer, which copies them and writes each 32 KiB piece
+// with a system call of its own. The bytes on the connection are the same. Any other body is copied as io.Copy copies it: a reader's
+// WriteTo may reuse its buffer between writes, which the batch would send corrupted.
 func (c *idleTimeoutConn) ReadFrom(r io.Reader) (int64, error) {
 	lr, ok := r.(*io.LimitedReader)
 	if !ok {
 		return io.Copy(plainWriter{c}, r)
 	}
-	body, ok := lr.R.(io.WriterTo)
+	body, ok := lr.R.(*requestBodyReader)
 	if !ok {
 		return io.Copy(plainWriter{c}, r)
 	}
@@ -166,7 +170,7 @@ func (c *idleTimeoutConn) ReadFrom(r io.Reader) (int64, error) {
 	return batch.written, err
 }
 
-// requestBatchWriter queues the segments a request body writes and sends them to its connection in vectored writes. The segments are not copied and the body does not change them until WriteTo returns.
+// requestBatchWriter queues the segments a requestBodyReader writes and sends them to its connection in vectored writes. The segments are not copied: a requestBody never modifies them, which is why only its reader may write to a batch (Write keeps its argument until the next flush).
 type requestBatchWriter struct {
 	conn      *idleTimeoutConn
 	queue     net.Buffers
