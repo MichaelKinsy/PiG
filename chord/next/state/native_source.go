@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/chord"
 )
@@ -69,13 +70,14 @@ type NativeSource[T any] struct {
 	hooks NativeHooks[T]
 	// dependents is the derives and registry tables reading this source; each removes itself when it stops.
 	dependents DependentSet
-	// batch is the host's batch; dropped when the source ended, so an ended source keeps no host.
-	batch *Batch
+	// batch is the host's batch; dropped when the source ended, so an ended source keeps no host. A client's goroutine opens a watch while the host ends the
+	// source (a TUI closing as its scope follows), so it is read and dropped atomically.
+	batch atomic.Pointer[Batch]
 }
 
 // Init makes the source of batch, with hooks its embedder; batch nil makes it ended (a released reference's state).
 func (n *NativeSource[T]) Init(batch *Batch, hooks NativeHooks[T]) {
-	n.batch = batch
+	n.batch.Store(batch)
 	n.hooks = hooks
 }
 
@@ -110,7 +112,7 @@ func (n *NativeSource[T]) DeriveValue() (any, error) {
 }
 
 // Batch is the host's batch, nil once the source ended.
-func (n *NativeSource[T]) Batch() *Batch { return n.batch }
+func (n *NativeSource[T]) Batch() *Batch { return n.batch.Load() }
 
 // Changed records a change inside the current batch: every dependent marked. Pi's protected `changed`.
 func (n *NativeSource[T]) Changed() {
@@ -121,7 +123,7 @@ func (n *NativeSource[T]) Changed() {
 
 // End ends the source for good: its dependents dropped, the batch let go. Pi's protected `end`.
 func (n *NativeSource[T]) End() {
-	n.batch = nil
+	n.batch.Store(nil)
 	n.dependents.Clear()
 }
 
@@ -216,7 +218,7 @@ func (f *FollowedSource[T]) Watch(ctx context.Context) (chord.NativeWatchHandle[
 // OpenWatch is Watch without the Promise. On a failed source it opens at the last good value and its first call is the
 // failure; with no value to start at it returns the failure. An ended source gives a watch that has ended.
 func (f *FollowedSource[T]) OpenWatch(ctx context.Context) (*chord.NativeWatch[T], error) {
-	batch := f.batch
+	batch := f.batch.Load()
 	if batch == nil {
 		value, err := startValue(f.impl.Start())
 		if err != nil {
@@ -258,8 +260,8 @@ func (f *FollowedSource[T]) OpenWatch(ctx context.Context) (*chord.NativeWatch[T
 // value is computed in the batch that changed it. It returns the failure when there is no value to start at; aborting ctx
 // detaches it (aborted); the source's end detaches it too (ended), its abort listener removed.
 func (f *FollowedSource[T]) Observe(observer NativeObserver[T], ctx context.Context) (NativeObservation[T], error) {
-	if f.batch != nil {
-		if err := f.batch.AssertOutside("observe"); err != nil {
+	if batch := f.batch.Load(); batch != nil {
+		if err := batch.AssertOutside("observe"); err != nil {
 			return NativeObservation[T]{}, err
 		}
 	}
@@ -268,7 +270,7 @@ func (f *FollowedSource[T]) Observe(observer NativeObserver[T], ctx context.Cont
 	if err != nil {
 		return NativeObservation[T]{}, err
 	}
-	if f.batch == nil {
+	if f.batch.Load() == nil {
 		observer.End(chord.WatchEnd{Kind: chord.WatchEnded})
 		return NativeObservation[T]{Value: value, Detach: func() {}}, nil
 	}
@@ -303,7 +305,7 @@ func (f *FollowedSource[T]) Observe(observer NativeObserver[T], ctx context.Cont
 // Subscribe feeds observer every call from now on, inside each batch, also while the source has no value (Chord's own
 // followers: retryOn). Nothing is delivered for the current value.
 func (f *FollowedSource[T]) Subscribe(observer NativeObserver[T]) {
-	if f.batch == nil {
+	if f.batch.Load() == nil {
 		return
 	}
 	f.followOrNone()
@@ -380,7 +382,8 @@ func (f *FollowedSource[T]) Changed() {
 // List lists the source for a frame in the current batch when someone follows it (or Watched says so), its dependents left
 // as they are (marked already). Pi's protected `list`.
 func (f *FollowedSource[T]) List() {
-	if f.batch == nil {
+	batch := f.batch.Load()
+	if batch == nil {
 		return
 	}
 	f.mu.Lock()
@@ -397,7 +400,7 @@ func (f *FollowedSource[T]) List() {
 		f.hasShown, f.shown = true, shown[T]{kind: shownNone}
 	}
 	f.mu.Unlock()
-	f.batch.Changed(f)
+	batch.Changed(f)
 }
 
 // Unfollowed is nothing follows it any more (no watch, no observer): an embedder drops what it kept for followers.
