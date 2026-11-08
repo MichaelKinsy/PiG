@@ -186,4 +186,3 @@ type Transcript struct {
 	Queued      []Queued
 	Agent       harness.AgentState
 }
-

@@ -211,7 +211,6 @@ var namedKeys = func() map[string]bool {
 
 var keybindingID = lazyregexp.New(`^[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)+$`)
 
-
 // IsKeyID is isKeyId: at most 64 characters, up to four distinct modifiers, then one base key (a-z, 0-9 or a pi-tui Key name).
 func IsKeyID(value string) bool {
 	if len(value) > 64 {

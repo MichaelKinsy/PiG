@@ -6,7 +6,6 @@ package components
 // pi: apps/p2/src/tui/components/panel.ts
 
 import (
-
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/render"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -98,4 +97,3 @@ func NewPanelFrame(ctx PanelContext, id string, content PanelContent, title func
 	}, tui.StackOptions{})
 	return frame
 }
-
