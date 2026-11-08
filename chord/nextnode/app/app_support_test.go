@@ -50,8 +50,9 @@ func apiModules() AppAPI {
 	return AppAPI{Name: "@test/app", Versions: []string{"v1"}, Modules: plugins.HostPackages{"@test/app/v1": path}}
 }
 
-func testKinds() []AppKind {
-	return []AppKind{{Name: "server", Platform: plugins.PlatformNode}, {Name: "worker", Platform: plugins.PlatformNode}, {Name: "teamworker", Platform: plugins.PlatformNode}}
+func testKinds() []AppKindEntry {
+	node := AppKind{Platform: plugins.PlatformNode}
+	return []AppKindEntry{{Name: "server", Kind: node}, {Name: "worker", Kind: node}, {Name: "teamworker", Kind: node}}
 }
 
 // workerOptions are the fixture worker's: StartWorker with the tests' API.

@@ -85,12 +85,18 @@ type AppAPI struct {
 	Modules  plugins.HostPackages
 }
 
-// AppKind is a facet kind of the app: its name, where its builds run, and the packages besides the API its plugins share (`react`).
+// AppKind is a facet kind of the app: where its builds run, and the packages besides the API its plugins share (`react`).
 // Its API modules are named by convention: `<api>/<version>` and `<api>/<version>/<kind>` for every version.
 type AppKind struct {
-	Name     string
 	Platform plugins.Platform
 	Packages plugins.HostPackages
+}
+
+// AppKindEntry is one entry of upstream's `kinds` record: the kind's name, the record's key, and its AppKind. A record keeps its keys
+// in insertion order and a Go map does not, so the kinds are a slice of entries in the order the app gave them.
+type AppKindEntry struct {
+	Name string
+	Kind AppKind
 }
 
 // AppWorkerKind is a worker kind: a host kind of the app and how its workers start (the workers component's options).
@@ -197,7 +203,7 @@ type AppOptions struct {
 	Listen *chordhttp.ListenAddress
 	API    AppAPI
 	// Kinds are the app's facet kinds, in order: `server` and each worker kind's facet kind among them.
-	Kinds     []AppKind
+	Kinds     []AppKindEntry
 	Principal AppPrincipals
 	// Workers are the worker kinds; none: a server with clients only. They need Principal.Worker.
 	Workers []AppWorkerKind
@@ -495,7 +501,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	kinds := make([]plugins.KindEntry, len(options.Kinds))
 	for i, kind := range options.Kinds {
-		kinds[i] = plugins.KindEntry{Name: kind.Name, Definition: plugins.KindDefinition{Platform: kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}}
+		kinds[i] = plugins.KindEntry{Name: kind.Name, Definition: plugins.KindDefinition{Platform: kind.Kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}}
 	}
 	base := make([]string, len(options.Base))
 	for i, path := range options.Base {
@@ -605,7 +611,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err := failedPlugins(report); err != nil {
 		return err
 	}
-	var serverKind *AppKind
+	var serverKind *AppKindEntry
 	for i := range options.Kinds {
 		if options.Kinds[i].Name == "server" {
 			serverKind = &options.Kinds[i]
@@ -616,7 +622,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		modules[name] = path
 	}
 	if serverKind != nil {
-		for name, path := range serverKind.Packages {
+		for name, path := range serverKind.Kind.Packages {
 			modules[name] = path
 		}
 	}
@@ -780,12 +786,12 @@ func openServer(path string, ctx context.Context) (opened openedServer, err erro
 }
 
 // hostPackagesOf is the host packages of kind: the API's shared and per-kind module of every version, and its packages.
-func hostPackagesOf(api AppAPI, kind AppKind) []string {
+func hostPackagesOf(api AppAPI, kind AppKindEntry) []string {
 	var packages []string
 	for _, version := range api.Versions {
 		packages = append(packages, api.Name+"/"+version, api.Name+"/"+version+"/"+kind.Name)
 	}
-	for name := range kind.Packages {
+	for name := range kind.Kind.Packages {
 		packages = append(packages, name)
 	}
 	return packages

@@ -47,7 +47,7 @@ import (
 // WorkerOptions is what StartWorker takes: the app's API and kinds as the server's StartServer has them, this process's modules.
 type WorkerOptions struct {
 	API   AppAPI
-	Kinds []AppKind
+	Kinds []AppKindEntry
 	// WorkerKinds are the app's worker host kinds: the one of the address the server starts places the worker's route.
 	WorkerKinds []*contracts.HostKind
 	// Busy is the app's extra keep-alive counts (a record of numbers, all zero when idle).
@@ -75,7 +75,7 @@ func StartWorker(options WorkerOptions) {
 		packages[name] = path
 	}
 	for _, kind := range options.Kinds {
-		for name, path := range kind.Packages {
+		for name, path := range kind.Kind.Packages {
 			packages[name] = path
 		}
 	}

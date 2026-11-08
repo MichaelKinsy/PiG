@@ -69,7 +69,7 @@ func webPage(request chordhttp.HttpRequest, assets nodesurfaces.PageAssets) (str
 // withWeb adds the web kind and the web surface (entry, public or not) to the options.
 func withWeb(entry string, public bool) func(*AppOptions) {
 	return func(o *AppOptions) {
-		o.Kinds = append(o.Kinds, AppKind{Name: "web", Platform: plugins.PlatformBrowser})
+		o.Kinds = append(o.Kinds, AppKindEntry{Name: "web", Kind: AppKind{Platform: plugins.PlatformBrowser}})
 		o.Web = &AppWeb{Entry: entry, Page: webPage, Public: public}
 	}
 }
@@ -381,7 +381,7 @@ func surfaceApp(t testing.TB) started {
 	}
 	return startTestApp(t, files, func(o *AppOptions) {
 		withWeb(webEntry(t, webStarted), false)(o)
-		o.Kinds = append(o.Kinds, AppKind{Name: "tui", Platform: plugins.PlatformNode, Packages: map[string]string{"@test/app/v1/tui": tuiAPI}})
+		o.Kinds = append(o.Kinds, AppKindEntry{Name: "tui", Kind: AppKind{Platform: plugins.PlatformNode, Packages: map[string]string{"@test/app/v1/tui": tuiAPI}}})
 		o.Tui = &AppTui{Entry: surfacesFixture(t, "tui", "main.ts"), Conditions: []string{"source"}}
 	})
 }
