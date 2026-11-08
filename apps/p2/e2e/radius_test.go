@@ -226,7 +226,7 @@ func (r *radiusRig) get(path string, headers map[string]string) p2test.HTTPResul
 	return result
 }
 
-func jsonOf(t *testing.T, data []byte) map[string]any {
+func radiusJSON(t *testing.T, data []byte) map[string]any {
 	t.Helper()
 	var out map[string]any
 	if err := json.Unmarshal(data, &out); err != nil {
@@ -243,7 +243,7 @@ func TestRadiusPluginAdmitsItsAuthenticatedRemoteOwnerIncludingProviderLoginWith
 	if response["status"] != float64(200) {
 		t.Fatalf("response = %v", response)
 	}
-	access := jsonOf(t, f.radius.Body(id))
+	access := radiusJSON(t, f.radius.Body(id))
 	if !reflect.DeepEqual(access["principal"], map[string]any{"kind": "owner", "access": "relay"}) {
 		t.Fatalf("principal = %v", access["principal"])
 	}
@@ -301,7 +301,7 @@ func TestRadiusPluginAdmitsItsAuthenticatedRemoteOwnerIncludingProviderLoginWith
 	// The shell frames the relayed UI (a cross-site iframe load): Radius authenticates it, not a browser cookie, so the
 	// foreign-request rule leaves it the owner.
 	framed := f.get("/probe", f.marked(map[string]string{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "iframe"}))
-	if !reflect.DeepEqual(jsonOf(t, []byte(framed.Body))["principal"], map[string]any{"kind": "owner", "access": "relay"}) {
+	if !reflect.DeepEqual(radiusJSON(t, []byte(framed.Body))["principal"], map[string]any{"kind": "owner", "access": "relay"}) {
 		t.Fatalf("framed = %d %s", framed.Status, framed.Body)
 	}
 	if got := f.get("/probe", f.marked(map[string]string{"Origin": "https://foreign.example"})).Status; got != 403 {
@@ -807,7 +807,7 @@ func TestRadiusClientChannelsTheOwnersTUILauncherReachesTheServerOneRadiusConnec
 	}
 	// The owner by Radius alone, framed by no shell; until a browser opened the brain, its origin is a placeholder.
 	body, _ := probe.Bytes()
-	access := jsonOf(t, body)
+	access := radiusJSON(t, body)
 	if !reflect.DeepEqual(access["principal"], map[string]any{"kind": "owner", "access": "relay"}) {
 		t.Fatalf("principal = %v", access["principal"])
 	}
