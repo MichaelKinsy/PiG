@@ -434,6 +434,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4bcc7da](#bf-4bcc7da) | `StreamProxy` merges the final tool call and reports abort and timeout as Pi does, and it no longer changes a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4c032a0](#bf-4c032a0) | A description decoded from the wire is written back with every schema member in the order it was declared in… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4c45afa](#bf-4c45afa) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
+| [BF-4c70e73](#bf-4c70e73) | fix(chord): the app builds for Windows (no uid check there, as Pi), a required root's failed load stops the… | PiG's own defect | Windows | Unreleased |
 | [BF-4c7ccf2](#bf-4c7ccf2) | A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4cf6069](#bf-4cf6069) | The read, write, edit and ls cards draw their call fallback, as Pi does, for a path argument whose `file:`… | PiG's own defect | All platforms | Unreleased |
 | [BF-4cf6069-2](#bf-4cf6069-2) | The read card's truncation warning prints a count the result does not carry as `undefined` and keeps a stored… | PiG's own defect | All platforms | Unreleased |
@@ -562,6 +563,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-61fc01d](#bf-61fc01d) | `list_mcp_resources`, `list_mcp_resource_templates` and `read_mcp_resource` return every member a server sent… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61fc01d-2](#bf-61fc01d-2) | MCP tool descriptions, resource MIME types, a pasted sign-in redirect URL and the resource tools' `server`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-620abb0](#bf-620abb0) | Hidden thinking with an empty label (`ctx.ui.setHiddenThinkingLabel("")`) renders no rows: thinking before a… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-62222ca](#bf-62222ca) | fix(chord/plugins): a base record arriving after the close watches nothing (Pi recordBase) | PiG's own defect | All platforms | Unreleased |
 | [BF-6235532](#bf-6235532) | Filterable selector lists (theme, images, tree-filter-like pickers) check up/down before confirm/cancel like… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6258d27](#bf-6258d27) | fix(rpc): a replacement aborts the compactions of its batch at its teardown only | PiG's own defect | All platforms | Unreleased |
 | [BF-625a32e](#bf-625a32e) | Display text that PiG cuts at a length (the `/tree` listing, the Piglet system-prompt preview, an extension… | PiG's own defect | All platforms | 0.5.0 |
@@ -764,6 +766,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-6dfa6bf](#bf-6dfa6bf) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | 0.5.2 |
+| [BF-6e6304d](#bf-6e6304d) | fix(chord/tui): the reader's swallowed redraw panic cites Pi's TuiScope.watch try/catch | PiG's own defect | All platforms | Unreleased |
 | [BF-6e6a0dd](#bf-6e6a0dd) | A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6ea3ba8](#bf-6ea3ba8) | `pig status` now gives a skill without a `description` the health `not loaded: description is required`, and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6ee6eae](#bf-6ee6eae) | A Session delivers each event to its listeners the way Pi's `AgentSession` does | PiG's own defect | All platforms | 0.5.0 |
@@ -772,6 +775,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f74b70](#bf-6f74b70) | The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a… | PiG's own defect | All platforms | Unreleased |
 | [BF-6fb1307](#bf-6fb1307) | openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6fdf59f](#bf-6fdf59f) | On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot… | PiG's own defect | macOS | Unreleased |
 | [BF-7056d2d](#bf-7056d2d) | Images in steering and follow-up messages queued while the agent is busy (`steer`, `followUp`, a prompt sent… | PiG's own defect | All platforms | Unreleased |
 | [BF-70d51e5](#bf-70d51e5) | Fixed bash and PowerShell results losing `Took` after reloading a session, and the live `Took` including… | A fix Pi shipped that PiG ported | Windows | 0.5.0 |
 | [BF-70d51e5-2](#bf-70d51e5-2) | Fixed the message-format page: it said PiG does not carry the `nestedCalls` record on tool result messages… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
@@ -1171,6 +1175,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a30388b](#bf-a30388b) | GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a3859aa](#bf-a3859aa) | An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-a3bfab2](#bf-a3bfab2) | A Radius gateway config cached on an OAuth credential is sanitized as Pi does | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a3e1a0c](#bf-a3e1a0c) | fix(chord/surfaces): comparableEqual's swallowed panic cites Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-a40a16d](#bf-a40a16d) | fix(codingagent): typed input restarts the idle collection's wait on every route | PiG's own defect | All platforms | Unreleased |
 | [BF-a422947](#bf-a422947) | fix(chord/next/documents): a shared cold load hands its document to the waiters, which an ending object may… | PiG's own defect | All platforms | Unreleased |
 | [BF-a46f930](#bf-a46f930) | A Package configured as a settings object reads a resource kind its `pi` manifest does not declare (or… | PiG's own defect | All platforms | 0.5.0 |
@@ -7522,6 +7527,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4c45afaf73` (2026-10-21)
 - **Tests:** `extensions/sdk-py/bundle_test.go::TestEveryPackageSourceIsBundled`
 
+### BF-4c70e73
+
+**fix(chord): the app builds for Windows (no uid check there, as Pi), a required root's failed load stops the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): the app builds for Windows (no uid check there, as Pi), a required root's failed load stops the loaded Node host, the app's roots and API modules follow the root move
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `4c70e73afa` (2026-11-07)
+- **Tests:** `chord/nextnode/app/app_changes_test.go::TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt`
+
 ### BF-4c7ccf2
 
 **A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count…**
@@ -9286,6 +9304,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `620abb0ff5` (2026-10-27)
 - **Tests:** `internal/codingagent/assistant_message_upstream_test.go::TestAssistantMessageUpstream`
 - **Release note:** Hidden thinking with an empty label (`ctx.ui.setHiddenThinkingLabel("")`) renders no rows: thinking before a tool call no longer draws blank rows, and thinking before text draws one spacer.
+
+### BF-62222ca
+
+**fix(chord/plugins): a base record arriving after the close watches nothing (Pi recordBase)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/plugins): a base record arriving after the close watches nothing (Pi recordBase)
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `62222ca3da` (2026-11-08)
+- **Tests:** `chord/nextnode/plugins/plugins_watcher_base_test.go::TestARecordedBaseAfterTheCloseWatchesNothing`
 
 ### BF-6235532
 
@@ -12101,6 +12132,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `automation/release/modulesize/main_test.go::TestCommittedBudgetStaysFarBelowTheGoLimit`, `automation/release/modulesize/main_test.go::TestMeasureCountsOnlyWhatGoPutsInTheModuleZip`, `automation/release/modulesize/main_test.go::TestOverBudgetListsTheLargestFilesAndDirectories`, `automation/release/modulesize/main_test.go::TestReadBudget`
 - **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.
 
+### BF-6e6304d
+
+**fix(chord/tui): the reader's swallowed redraw panic cites Pi's TuiScope.watch try/catch**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/tui): the reader's swallowed redraw panic cites Pi's TuiScope.watch try/catch
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6e6304d56e` (2026-11-08)
+- **Tests:** None recorded.
+
 ### BF-6e6a0dd
 
 **A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it**
@@ -12212,6 +12256,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a6fffa638` (2026-10-10), `6fb1307525` (2026-10-11), `81e584bdba` (2026-10-11)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi`, `ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi` and 4 more in docs/bug-ledger.json
 - **Release note:** openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before `transformMessages` drops an errored or aborted assistant turn (`ai/openai_responses.go`, openai-codex-responses.ts:551): a transcript that starts with such a turn followed by a system message no longer sends that message as the prompt. Found by drawing the responses compat members the payload oracle never drew (`supportsDeveloperRole`, `supportsAdditionalTools`, `supportsToolSearch`, `supportsExplicitPromptCacheMode`, `sessionAffinityFormat`, `supportsOpenAIGrammarTools`) in `checkResponsesPayload`; 5 mutants of those flags and the codex initial-system source go red (grammar tools stay inert there: the drawn tools carry no `constrainedSampling`, covered by `constrained_sampling_oracle_test.go`).
+
+### BF-6fdf59f
+
+**On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot be put on one entry (a protected or vanished one in a watched directory) no longer stops every watch.
+- **Root cause:** Go's syscall.Stat_t has Birthtimespec on NetBSD and X__st_birthtim on OpenBSD. The macOS packages unit now runs the plugins watcher's base and identity tests, which exercise the lstat birthtimespec identity and the kqueue watches that end with a renamed directory.
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `018a05add9` (2026-11-07), `0c44f84f21` (2026-11-07), `6fdf59fc08` (2026-11-07)
+- **Tests:** `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsTheSameOne`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName`
+- **Release note:** On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot be put on one entry (a protected or vanished one in a watched directory) no longer stops every watch.
 
 ### BF-7056d2d
 
@@ -17796,6 +17854,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `093cf5c781` (2026-10-09), `a3bfab2c03` (2026-10-09), `b5356c4269` (2026-10-09), `d1b3ad0151` (2026-10-09), `da99854d1b` (2026-10-09)
 - **Tests:** `ai/error_body_oracle_test.go::TestErrorBodyHelpersMatchPiOnSeededProbes`, `ai/estimate_oracle_test.go::TestTokenEstimatesMatchPiOnSeededTranscripts`, `ai/overflow_oracle_test.go::TestContextOverflowMatchesPiOnSeededMessages`, `ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`
 - **Release note:** A Radius gateway config cached on an OAuth credential is sanitized as Pi does. A model whose `contextWindow` or `maxTokens` is `null` is dropped (it was kept). A model with a fractional or out-of-range window, a non-object cost tier, `headers` that are not a string map or another member Pig cannot represent is kept (it was dropped): a window keeps its integer part, clamped to the integer range, and any other such member is left at its zero value. `baseUrl`, `models` and each model member are read by their exact key, so a member such as `ID` or `contextwindow` no longer replaces `id` or `contextWindow`.
+
+### BF-a3e1a0c
+
+**fix(chord/surfaces): comparableEqual's swallowed panic cites Pi**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/surfaces): comparableEqual's swallowed panic cites Pi
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a3e1a0c77c` (2026-11-08)
+- **Tests:** None recorded.
 
 ### BF-a40a16d
 

@@ -40,7 +40,8 @@ lines.on("line", (line) => {
 type mappingEvaluator struct {
 	options NodeOptions
 
-	mu     sync.Mutex
+	// turn is the lock of the evaluator: a 1-slot channel, so a build waiting for it still sees its ctx end.
+	turn   chan struct{}
 	cmd    *exec.Cmd
 	input  io.WriteCloser
 	output *bufio.Reader
@@ -52,7 +53,7 @@ type mappingEvaluator struct {
 
 // newMappingEvaluator is an evaluator that starts its process when it is first used.
 func newMappingEvaluator(options NodeOptions) *mappingEvaluator {
-	return &mappingEvaluator{options: options}
+	return &mappingEvaluator{options: options, turn: make(chan struct{}, 1)}
 }
 
 // mappingRequest is a line of the process's input.
@@ -70,8 +71,15 @@ type mappingReply struct {
 // ends before or during the evaluation (the process is killed: the next evaluation starts another). An error of the process (it
 // did not start, died, did not answer) is this evaluation's alone, and so is a module that does not evaluate.
 func (e *mappingEvaluator) evaluate(ctx context.Context, js string) (string, error) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return "", context.Cause(ctx)
+	}
+	select {
+	case e.turn <- struct{}{}:
+		defer func() { <-e.turn }()
+	case <-ctx.Done():
+		return "", context.Cause(ctx)
+	}
 	if e.closed {
 		return "", errors.New("the evaluator of CSS module mappings is closed")
 	}
@@ -105,8 +113,8 @@ func (e *mappingEvaluator) evaluate(ctx context.Context, js string) (string, err
 
 // close ends the process, if one started; later evaluations fail.
 func (e *mappingEvaluator) close() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.turn <- struct{}{}
+	defer func() { <-e.turn }()
 	e.closed = true
 	e.stop()
 }

@@ -223,3 +223,59 @@ func TestEsbuildBuildsThatShareAnEvaluatorStartOneNodeSubprocessBetweenThem(t *t
 		t.Fatal("the shared process is still running after close")
 	}
 }
+
+// The component's builds share one Node subprocess for the mappings of their CSS modules (buildOne passes the component's
+// evaluator), and Close ends it.
+func TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt(t *testing.T) {
+	var mu sync.Mutex
+	var started []*exec.Cmd
+	node := NodeOptions{CacheDir: t.TempDir(), Command: func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, name, args...)
+		if slices.Contains(args, mappingScript) {
+			mu.Lock()
+			started = append(started, cmd)
+			mu.Unlock()
+		}
+		return cmd
+	}}
+	root := tempRoot(t)
+	var names []string
+	for i := range 3 {
+		name := "p" + strconv.Itoa(i)
+		writePlugin(t, root, name, "@test/"+name, map[string]string{
+			"web.ts":       "import a from \"./a.module.css\";\nexport default { setup: () => a };",
+			"a.module.css": ".x{color:red}",
+		}, nil)
+		names = append(names, "@test/"+name)
+	}
+	component := CreatePlugins(PluginsOptions{Roots: []PluginRoot{{Path: root}}, Kinds: pcKinds(nil), Node: node}, background)
+	closed := false
+	defer func() {
+		if !closed {
+			component.Close()
+		}
+	}()
+	built, err := component.Build(names, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(built.Facets) != len(names) {
+		t.Fatalf("%d facets built, want %d: %+v", len(built.Facets), len(names), built)
+	}
+	for _, facet := range built.Facets {
+		if facet.Kind != BuiltFacetScript {
+			t.Fatalf("facet did not build: %+v", facet)
+		}
+	}
+	mu.Lock()
+	count, running := len(started), len(started) > 0 && started[0].ProcessState == nil
+	mu.Unlock()
+	if count != 1 || !running {
+		t.Fatalf("%d evaluator processes after the component's builds, running = %v; want one, running", count, running)
+	}
+	component.Close()
+	closed = true
+	if started[0].ProcessState == nil {
+		t.Fatal("the shared process is still running after Plugins.Close")
+	}
+}

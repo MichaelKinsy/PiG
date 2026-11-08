@@ -2,6 +2,7 @@ package host
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -16,7 +17,8 @@ import (
 // Ports the cases of packages/chord/test/next/link/channel.test.ts that run a host over the channel (link/channel_test.go
 // has the channel's own equivalents): "the handshake" (a consumer's messages queue until the peer's hello), "a codec
 // mismatch", "the heartbeat" (a silent link pings after 15 s and closes after 30 s without an answer, one timer per
-// host only while it has links, the numbers from the host's options).
+// host only while it has links, the numbers from the host's options), and "answers each ping with a pong at once; two sides
+// pinging at once both answer".
 
 // channelThing is the remote type `app.thing` of the handshake case.
 var channelThing = mustContract(contracts.Remote("app.thing", contracts.RemoteDeclaration{
@@ -118,6 +120,20 @@ func TestTheHeartbeatPingsASilentLinkAfter15sAndClosesItAfter30sWithoutAnAnswerR
 		if kind := refStateOf(notes).Kind; kind != RefStateLoading {
 			t.Fatalf("state = %v, want loading", kind)
 		}
+	})
+}
+
+func TestTheHeartbeatAnswersEachPingWithAPongAtOnceTwoSidesPingingAtOnceBothAnswer(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		loop := newScopeLoop().fakeIntervals()
+		run := linked(t, func(FacetHost) error { return nil }, linkedOptions{Loop: loop})
+		channelElapse(loop, 60_000)
+		// Both sides pinged at 15 s and were answered: neither closed the link.
+		notes := mustHold(t, run.Client, Notes, jsonObject("session", "S1"))
+		untilKind(t, notes, RefStateFailed)
+		raw := rawLinked(t, func(FacetHost) error { return nil }, rawLinkedOptions{})
+		raw.Peer.Send(&link.PingMessage{})
+		scopeEventually(t, "the pong", func() bool { return slices.Contains(raw.Peer.Kinds(), "pong") })
 	})
 }
 
