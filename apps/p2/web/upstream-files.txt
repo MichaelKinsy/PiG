@@ -44,3 +44,10 @@ plugins/envs/DirectoryPicker.tsx
 plugins/envs/SecretsSection.tsx
 plugins/envs/style.css
 plugins/envs/secret-presets.ts
+plugins/ports/contract.ts
+plugins/ports/protocol.ts
+plugins/ports/web.tsx
+plugins/ports/PortsPanel.tsx
+plugins/ports/activity.tsx
+plugins/ports/activity.css
+plugins/locations/contract.ts
