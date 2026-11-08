@@ -40,7 +40,7 @@ func TestAChangeOfBaseCodeReloadsThePageEndsCallsInFlightWithTheLinkLosesPageSta
 		t.Fatalf("the call in flight = %+v, want an error", got)
 	}
 	second := startReloadWebApp(t, entry, port, nil, func(o *AppOptions) { o.DataDir, o.Root = first.dataDir, first.root })
-	if second.app.Web.Base == first.app.Web.Base {
+	if second.app.Web.Base() == first.app.Web.Base() {
 		t.Fatal("another entry gave the same base hash")
 	}
 

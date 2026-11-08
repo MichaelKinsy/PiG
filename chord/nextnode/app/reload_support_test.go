@@ -370,6 +370,10 @@ func expectFailure(t *testing.T, scenario func(testing.TB)) {
 		scenario(g)
 	}()
 	<-done
+	// A scenario that skipped (no Chromium) skips the row: Pi's `describe.skipIf` skips an `it.fails` too.
+	if g.Skipped() {
+		t.SkipNow()
+	}
 	if g.failed == "" {
 		t.Fatal("the scenario passed: Pi marks it `it.fails` (a documented gap), so a passing run means the gap closed")
 	}
