@@ -164,9 +164,7 @@ func buildPiCorpus(t *testing.T) piCorpus {
 			c.Width = append(c.Width, string(cp))
 		}
 	}
-	for _, s := range rgiList {
-		c.Width = append(c.Width, s)
-	}
+	c.Width = append(c.Width, rgiList...)
 	c.Width = append(c.Width, curatedWidthStrings...)
 	c.Width = append(c.Width, boxDrawingWidthCases()...)
 	real := testdataLines(t)

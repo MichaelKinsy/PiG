@@ -27,7 +27,7 @@ func writeCatalogRecordChunks(dir string, rows []modelRow) error {
 		return err
 	}
 	chunks := (len(rows) + catalogRecordChunk - 1) / catalogRecordChunk
-	for c := 0; c < chunks; c++ {
+	for c := range chunks {
 		var b strings.Builder
 		for i := c * catalogRecordChunk; i < min(len(rows), (c+1)*catalogRecordChunk); i++ {
 			if strings.Contains(rows[i].Record, "\n") {

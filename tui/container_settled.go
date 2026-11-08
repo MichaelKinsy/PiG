@@ -5,6 +5,8 @@ package tui
 // made that search the one cost of a streamed delta that grew with the transcript. Here the children the last search found clean
 // are not asked again: those of the types below tell their container when they are invalidated, and the others stay polled.
 
+import "slices"
+
 // nestedRender is what a nested container returned when its lines were not the revision the window holds, which the render adopts
 // instead of asking the container again.
 type nestedRender struct {
@@ -178,10 +180,8 @@ func (c *Container) releaseKidLocked(ch Component) {
 	if inv == nil {
 		return
 	}
-	for _, child := range c.children {
-		if child == ch {
-			return
-		}
+	if slices.Contains(c.children, ch) {
+		return
 	}
 	inv.owner.CompareAndSwap(c, nil)
 }
