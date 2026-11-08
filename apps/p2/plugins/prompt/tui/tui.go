@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/prompt/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	p2tui "github.com/MichaelKinsy/PiG/apps/p2/tui"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/render"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -95,7 +96,7 @@ func (s *Surface) changed() {
 		if source == nil {
 			return
 		}
-		s.stops = append(s.stops, p2runtime.FollowJSON(source, func(value delta.JsonValue) {
+		s.stops = append(s.stops, p2tui.FollowMember(source, func(value delta.JsonValue) {
 			rt.Post(func() {
 				if s.ref != ref {
 					return

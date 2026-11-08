@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/search/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
+	p2tui "github.com/MichaelKinsy/PiG/apps/p2/tui"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/render"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -82,7 +83,7 @@ func reindex(ctx runtime.TuiContext) error {
 		ref.Release()
 	}
 	if rebuilds := ref.Member("rebuilds"); rebuilds != nil {
-		stop = p2runtime.FollowJSON(rebuilds, func(value delta.JsonValue) {
+		stop = p2tui.FollowMember(rebuilds, func(value delta.JsonValue) {
 			ctx.Post(func() {
 				if finished || !started {
 					return
