@@ -150,7 +150,7 @@ func TestLsToolUpstreamBehavior(t *testing.T) {
 	if res := runFileTool(t, ls, context.Background(), map[string]any{"path": "file.txt"}); !res.IsError || res.Text() != "Not a directory: "+file {
 		t.Fatalf("file: %+v", res)
 	}
-	// pig divergence (D253): Pi main 676af1d77 reads limit 0 as 1.
+	// Pi main 676af1d77 (#11747) reads limit 0 as 1.
 	if res := runFileTool(t, ls, context.Background(), map[string]any{"limit": 0}); res.Text() != ".hidden\n\n[1 entries limit reached. Use limit=2 for more]" {
 		t.Fatalf("limit 0: %+v", res)
 	}
