@@ -2128,7 +2128,7 @@
       "path": "packages/chord/test/delta-append-text.test.ts",
       "disposition": "ported",
       "protects": "AppendText accepts only keys whose type is exactly string.",
-      "pigTest": "chord/delta/append_text_test.go#TestAppendTextRejectsWhatACallerCanGetWrong runs the runtime half (a missing key, an array, an object are refused with the upstream message). The cost and heap-retention cases are ported as chord/delta/append_text_scaling_norace_test.go#TestScalingTrackerAppendTextStream and chord/delta/append_text_retention_norace_test.go#TestAppendTextOpsDoNotKeepTheLargerStringTheyWereCutFromAlive.",
+      "pigTest": "chord/delta/append_text_test.go#TestAppendTextRejectsWhatACallerCanGetWrong runs the runtime half (a missing key, an array, an object are refused with the upstream message). The cost and heap-retention cases are ported as chord/delta/append_text_scaling_norace_test.go#TestScalingTrackerAppendTextStream and chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps.",
       "whyNot": "StringKeys is a TypeScript type-level check; AppendText takes the key as a string in Go, so the type half has no form. Only that case is designed out.",
       "upstreamTestHash": "sha256:1dace17c787a5a7ac6c97dbd705e967f4a80be0faf9e50648ca5d1983405ba66",
       "evidence": [
@@ -2139,9 +2139,9 @@
         "chord/delta/append_text_test.go#TestAppendTextRejectsWhatACallerCanGetWrong",
         "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps",
         "chord/delta/append_text_scaling_norace_test.go#TestScalingTrackerAppendTextStream",
-        "chord/delta/append_text_retention_norace_test.go#TestAppendTextOpsDoNotKeepTheLargerStringTheyWereCutFromAlive"
+        "chord/delta/append_text_test.go#TestAppendTextOwnsTheTextItKeeps"
       ],
-      "rationale": "Five of the eight cases are ported with the same documents and expected ops: the op and value, joined appends beside other changes, the fallback when the key is also assigned or deleted, blocks inserted or replaced in the same change, and the errors (a non-string, a missing key, an array index, a settled overlay); the op-text case checks the op owns its bytes. The StringKeys type case is a TypeScript type test (its runtime half, the refused keys, is in TestAppendTextRejectsWhatACallerCanGetWrong). The cost case (a 500 KB stream allocates linearly) is ported as TestScalingTrackerAppendTextStream, which compares allocation growth over a tenfold longer stream and against a control of commits that set a number; AppendText removes the comparison, not the copy. The heap-retention case is ported with Pi's inputs (50 commits, each appending 40 bytes cut from a different 100 KB string, under 1 MB retained) as TestAppendTextOpsDoNotKeepTheLargerStringTheyWereCutFromAlive."
+      "rationale": "Five of the eight cases are ported with the same documents and expected ops: the op and value, joined appends beside other changes, the fallback when the key is also assigned or deleted, blocks inserted or replaced in the same change, and the errors (a non-string, a missing key, an array index, a settled overlay); the op-text case checks the op owns its bytes. The StringKeys type case is a TypeScript type test (its runtime half, the refused keys, is in TestAppendTextRejectsWhatACallerCanGetWrong). The cost case (a 500 KB stream allocates linearly) is ported as TestScalingTrackerAppendTextStream, which compares allocation growth over a tenfold longer stream and against a control of commits that set a number; AppendText removes the comparison, not the copy. The heap-retention case (an op text cut from a larger string must not keep it alive) is ported in Go form as TestAppendTextOwnsTheTextItKeeps: a Go substring shares its parent's bytes, so the test cuts the appended text from a 1 MiB buffer, overwrites the buffer, and fails when the op did not copy its text (red with the copy removed). Pi's 50-commit heap measurement is not repeated: it passes with the copy removed, (measured in review of this row)."
     },
     {
       "path": "packages/chord/test/delta-apply-immutable.test.ts",

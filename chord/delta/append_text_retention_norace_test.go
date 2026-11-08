@@ -81,21 +81,3 @@ func TestTrackerAppendTextReleasesBuffersOfReleasedKeys(t *testing.T) {
 		})
 	}
 }
-
-// upstream: delta-append-text.test.ts "keeps an op text that does not hold a larger string it was cut from alive": 50 commits each append the first 40 bytes of a different 100 KB string; the ops, still held, keep under 1 MB. A Go substring shares its parent's bytes, so AppendText copies the text it records.
-func TestAppendTextOpsDoNotKeepTheLargerStringTheyWereCutFromAlive(t *testing.T) {
-	before := heapAfterGC()
-	tracker := Track(appendTextDocument())
-	ops := make([]Op, 0, 50)
-	for index := range 50 {
-		source := strings.Repeat(fmt.Sprint(index), 100_000)
-		ops = append(ops, appendTextCommit(t, tracker, func(root *Object) { mustAppend(t, root.Array("content").Object(0), "text", source[:40]) })...)
-	}
-	if retained := int64(heapAfterGC()) - int64(before); retained > 1_000_000 {
-		t.Fatalf("%d held ops retain %d bytes, want under 1000000", len(ops), retained)
-	}
-	if len(ops) != 50 {
-		t.Fatalf("ops = %d, want 50", len(ops))
-	}
-	runtime.KeepAlive(tracker)
-}
