@@ -4421,135 +4421,135 @@ rationale = ""
 [[files]]
 path = "packages/mcp/src/config.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/config_pi_test.go#TestValidateMcpServerConfigAcceptsStdioAndHTTPEntriesAndKeepsThemAsGiven", "test:mcp/config_pi_test.go#TestValidateMcpServerConfigPicksTheTransportFromTypeURLAndCommand", "test:mcp/config_pi_test.go#TestValidateMcpServerConfigReportsInvalidNamesAndFields"]
+rationale = "Pi main 76c040a2a moves the mcpServers validation into the mcp package. Ported as internal/mcpshared/config.go (ValidateMcpServerConfig, IsMcpServerOverride), re-exported by mcp/config.go because coding/extension validates entries in a pig_strip_mcp build that links neither mcp nor mcp/oauth. The shared fields are checked before the exposure and auth checks, as Pi main (D372 against the pin)."
 
 [[files]]
 path = "packages/mcp/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/naming_pi_test.go#TestCreateMcpToolNameJoinsServerAndToolAndReplacesCharactersOutsideTheAllowedSet"]
+rationale = "The barrel export gains config, naming, input-schema, output-limit and the pipe transport; Go has no barrel exports: the exports are the mcp package (mcp/config.go, naming.go, input_schema.go, output_limit.go, pipe.go)."
 
 [[files]]
 path = "packages/mcp/src/input-schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing", "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaKeepsTheSchemasOwnKeywords"]
+rationale = "Pi main 76c040a2a normalizeMcpInputSchema, ported as mcp/input_schema.go."
 
 [[files]]
 path = "packages/mcp/src/naming.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/naming_pi_test.go#TestCreateMcpToolNameJoinsServerAndToolAndReplacesCharactersOutsideTheAllowedSet", "test:mcp/naming_pi_test.go#TestCreateMcpToolNameShortensNamesOver64CharactersWithAHashOfServerAndTool", "test:mcp/naming_pi_test.go#TestCreateMcpToolNameAddsTheHashSuffixWhenTheSanitizedNameIsTaken"]
+rationale = "Pi main 76c040a2a createMcpToolName and mcpNamespace, ported as internal/mcpshared/naming.go (re-exported by mcp/naming.go); extension.McpNamespace and mcpext.CreateMcpToolName are gone, their callers use these."
 
 [[files]]
 path = "packages/mcp/src/oauth/auth-provider.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderRefreshesARejectedToken", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderLeavesAPendingSignInUsableWhenTheRefreshFails", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderDoesNotRegisterAClientToRefresh"]
+rationale = "Pi main bb266bf35 createMcpAuthProvider, ported as mcp/oauth/auth_provider.go (CreateMcpAuthProvider, RefreshStoredTokens)."
 
 [[files]]
 path = "packages/mcp/src/oauth/callback.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPlainTextByDefault", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPagesThroughRenderPage", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne"]
+rationale = "Pi main 63ea042ce closes remaining connections when the callback server closes: Go closes the connections that never sent a request and leaves the others to Shutdown (D370, which also records that a wait after Close fails at once and a wait that ends with its context frees its state)."
 
 [[files]]
 path = "packages/mcp/src/oauth/client-settings.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/sign_in_pi_test.go#TestStoredClientRefreshesFromAnotherRedirectURI", "test:mcp/oauth/sign_in_pi_test.go#TestStoredClientKeepsTheClientForABrowserStepOnItsRedirectURI", "test:mcp/oauth/sign_in_pi_test.go#TestStoredClientIsDroppedWithItsTokensForABrowserStepOnAnotherRedirectURI"]
+rationale = "Pi main bb266bf35 client settings and Client ID Metadata Document selection, ported as mcp/oauth/client_settings.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/discovery.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataTriesThePathAwareURLThenTheRoot", "test:mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataUsesAnExplicitURLWithoutFallingBack", "test:mcp/oauth/discovery_info_test.go#TestDiscoverOAuthServerInfoFollowsTheFirstAuthorizationServerOfTheResourceMetadata"]
+rationale = "Pi main bb266bf35 adds the discovery options the sign-in uses; behavior pinned by the discovery tests."
 
 [[files]]
 path = "packages/mcp/src/oauth/errors.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401", "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate", "test:mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope"]
+rationale = "Pi main adds McpRefreshLockBusyError; ported in mcp/oauth/errors.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/flow.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401", "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate", "test:mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope"]
+rationale = "Pi main bb266bf35 adds the RefreshOnly and AuthorizationRedirectURL options to the flow; ported in mcp/oauth/flow.go. PiG also drops the single-use PKCE verifier after the exchange (D373)."
 
 [[files]]
 path = "packages/mcp/src/oauth/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/sign_in_pi_test.go#TestSignInCompletesInASecondCallWithTheSameStoreAndAPersistedRedirect"]
+rationale = "The barrel export gains the sign-in, loopback, client-settings and auth-provider modules; Go has no barrel exports: the exports are the mcp/oauth package."
 
 [[files]]
 path = "packages/mcp/src/oauth/loopback.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInCompletesThroughTheLoopbackCallbackServer", "test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInRejectsAResponseOnAnotherRedirectPath", "test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInTakesAPastedRedirectURLWhileWaitingForTheCallback"]
+rationale = "Pi main bb266bf35 loopback sign-in, ported as mcp/oauth/loopback.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/sign-in.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/sign_in_pi_test.go#TestSignInCompletesInASecondCallWithTheSameStoreAndAPersistedRedirect", "test:mcp/oauth/sign_in_pi_test.go#TestSignInRefreshesTheStoredTokensInsteadOfRedirecting", "test:mcp/oauth/sign_in_pi_test.go#TestSignInRefreshesUnderTheStoresRefreshLock", "test:mcp/oauth/sign_in_pi_test.go#TestSignInRefusesToCompleteWithAnotherRedirectURIThanTheAuthorizationRequest"]
+rationale = "Pi main bb266bf35 startMcpSignIn and completeMcpSignIn, ported as mcp/oauth/sign_in.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/types.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsUsesADocumentWhenTheServerSupportsThemAndTheDocumentsListTheRedirectURI", "test:mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsUsesADocumentAndRedirectURISpecificToTheMCPServerWithoutTheIssParameter"]
+rationale = "Pi main bb266bf35 type additions (client settings, sign-in types); ported in mcp/oauth/types.go and client_settings.go."
 
 [[files]]
 path = "packages/mcp/src/output-limit.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/output_limit_pi_test.go#TestLimitMcpContentReturnsContentWithinTheLimitAsItIsWithoutSaving", "test:mcp/output_limit_pi_test.go#TestLimitMcpContentCutsTheMiddleOfLongerTextSavesTheFullTextAndKeepsImages", "test:mcp/output_limit_pi_test.go#TestLimitMcpContentReportsAFailedSaveAndNamesNoFileWithoutASaver"]
+rationale = "Pi main 76c040a2a limitMcpContent, ported as mcp/output_limit.go; TruncateMiddle moved with it."
 
 [[files]]
 path = "packages/mcp/src/transports/lines.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/lines_pi_test.go#TestLineReaderDeliversAMessageSplitAcrossManyChunks", "test:mcp/lines_pi_test.go#TestLineReaderHandlesMultiByteCharactersCRLFBlankLinesAndSeveralMessagesPerChunkAtAnySplit", "test:mcp/lines_pi_test.go#TestLineReaderDropsAnOversizedMessageAndKeepsReadingTheNextOne"]
+rationale = "Pi main c158fa2ee and f6278a472 JsonRpcLineReader, ported as mcp/lines.go."
 
 [[files]]
 path = "packages/mcp/src/transports/pipe.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/pipe_pi_test.go#TestPipeTransportJoinsMessagesSplitAcrossChunksAndSplitsSeveralMessagesInOneChunk", "test:mcp/pipe_pi_test.go#TestPipeTransportStripsATrailingCarriageReturnAndSkipsBlankLines", "test:mcp/pipe_pi_test.go#TestPipeTransportReportsInvalidMessagesAndKeepsReading", "test:mcp/pipe_pi_test.go#TestPipeTransportDropsMessagesOverMaxMessageBytesCompleteOrNot"]
+rationale = "Pi main c158fa2ee PipeTransport, ported as mcp/pipe.go."
 
 [[files]]
 path = "packages/mcp/src/transports/stdio.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/stdio_splitter_test.go#TestStdioTransportDeliversALargeMessageSpanningManyReads", "test:mcp/stdio_splitter_test.go#TestStdioSplitterLargeMessageScalesLinearly", "test:mcp/stdio_splitter_test.go#TestStdioSplitterChunkingEquivalence"]
+rationale = "Pi main f6278a472: the stdio transport reads through the line reader (mcp/lines.go)."
 
 [[files]]
 path = "packages/mcp/src/transports/streamable-http.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/sse_cr_pi_test.go#TestConsumeSSEStreamRecognizesCRLFAndCRLineEndingsIncludingCRLFSplitAcrossChunks", "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses"]
+rationale = "Pi main f40984747: a failed SSE response is closed (mcp/streamable_http.go)."
 
 [[files]]
 path = "packages/schema/src/builders.ts"

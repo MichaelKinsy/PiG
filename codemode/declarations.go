@@ -1,6 +1,7 @@
 package codemode
 
 import (
+	"bytes"
 	"encoding/json"
 	"maps"
 	"math"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 const (
@@ -305,19 +305,17 @@ func ResolveSchemaRef(ref string, root any) (any, bool) {
 }
 
 // ResolveSchemaRefJSON is [ResolveSchemaRef] on schema text: it returns the text of the subschema a local `$ref` names in root, with its members in the
-// order root has them.
+// order root has them. It reads root once, token by token, without building a tree: the cost is the size of root, not its depth times its size.
 func ResolveSchemaRefJSON(ref string, root json.RawMessage) (json.RawMessage, bool) {
 	segments, ok := refSegments(ref)
 	if !ok {
 		return nil, false
 	}
 	current := root
-	for _, key := range segments {
-		members, err := orderedjson.Parse(current)
-		if err != nil {
-			return nil, false
-		}
-		if current, ok = members.Get(key); !ok {
+	if len(segments) > 0 {
+		decoder := json.NewDecoder(bytes.NewReader(root))
+		var err error
+		if current, ok, err = walkSchemaRef(decoder, segments); err != nil || !ok {
 			return nil, false
 		}
 	}
@@ -328,8 +326,74 @@ func ResolveSchemaRefJSON(ref string, root json.RawMessage) (json.RawMessage, bo
 	return nil, false
 }
 
+// walkSchemaRef reads one JSON value from decoder: when it is an object it follows segments through its members and returns the text of the
+// member they name. Like JSON.parse, a repeated name is the last one. A value that is not an object names nothing, and is read to its end.
+func walkSchemaRef(decoder *json.Decoder, segments []string) (json.RawMessage, bool, error) {
+	token, err := decoder.Token()
+	if err != nil {
+		return nil, false, err
+	}
+	if delim, isDelim := token.(json.Delim); !isDelim || delim != '{' {
+		return nil, false, skipToken(decoder, token)
+	}
+	var found json.RawMessage
+	var ok bool
+	for decoder.More() {
+		keyToken, err := decoder.Token()
+		if err != nil {
+			return nil, false, err
+		}
+		if key, _ := keyToken.(string); key != segments[0] {
+			valueToken, err := decoder.Token()
+			if err != nil {
+				return nil, false, err
+			}
+			if err := skipToken(decoder, valueToken); err != nil {
+				return nil, false, err
+			}
+			continue
+		}
+		if len(segments) > 1 {
+			if found, ok, err = walkSchemaRef(decoder, segments[1:]); err != nil {
+				return nil, false, err
+			}
+			continue
+		}
+		var raw json.RawMessage
+		if err := decoder.Decode(&raw); err != nil {
+			return nil, false, err
+		}
+		found, ok = raw, true
+	}
+	_, err = decoder.Token() // the closing brace
+	return found, ok, err
+}
+
+// skipToken reads to the end of the value token began.
+func skipToken(decoder *json.Decoder, token json.Token) error {
+	delim, isDelim := token.(json.Delim)
+	if !isDelim || (delim != '{' && delim != '[') {
+		return nil
+	}
+	for depth := 1; depth > 0; {
+		next, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if d, ok := next.(json.Delim); ok {
+			if d == '{' || d == '[' {
+				depth++
+			} else {
+				depth--
+			}
+		}
+	}
+	return nil
+}
+
 // refSegments are the members a local `$ref` (`#`, `#/$defs/Item`) walks through, URI-decoded and JSON Pointer unescaped. It reports false for a
 // remote reference and for a segment with a malformed percent escape.
+// pig divergence (D371): Pi main 6d3e342b2 follows local schema refs in tool search and codemode summaries; Pi 1.5.0 throws on a malformed ref.
 func refSegments(ref string) ([]string, bool) {
 	if ref != "#" && !strings.HasPrefix(ref, "#/") {
 		return nil, false

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/env"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/mcp"
 )
 
@@ -25,8 +26,10 @@ type fakePipe struct {
 	calls   []string
 	written []string
 	exited  chan struct{}
-	once    sync.Once
-	failure error
+	// stdinClosed receives a value for each CloseStdin call.
+	stdinClosed chan struct{}
+	once        sync.Once
+	failure     error
 }
 
 func (p *fakePipe) Write(data any) {
@@ -44,6 +47,9 @@ func (p *fakePipe) CloseStdin() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.calls = append(p.calls, "closeStdin")
+	if p.stdinClosed != nil {
+		p.stdinClosed <- struct{}{}
+	}
 }
 
 func (p *fakePipe) Close() {
@@ -124,7 +130,7 @@ func (p *fakeProgram) settle(t *testing.T) {
 
 func startFake(t *testing.T, options mcp.PipeTransportOptions) *fakeProgram {
 	t.Helper()
-	program := &fakeProgram{pipe: &fakePipe{exited: make(chan struct{})}, closed: make(chan struct{})}
+	program := &fakeProgram{pipe: &fakePipe{exited: make(chan struct{}), stdinClosed: make(chan struct{}, 4)}, closed: make(chan struct{})}
 	options.Open = func(handlers mcp.McpPipeHandlers) (mcp.McpPipe, error) {
 		program.handlers = handlers
 		return program.pipe, nil
@@ -254,10 +260,7 @@ func TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime(t *testin
 	program := startFake(t, mcp.PipeTransportOptions{})
 	closing := make(chan error, 1)
 	go func() { closing <- program.transport.Close() }()
-	deadline := time.Now().Add(5 * time.Second)
-	for len(program.pipe.callList()) == 0 && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	<-program.pipe.stdinClosed
 	wantList(t, "calls", program.pipe.callList(), []string{"closeStdin"})
 	if err := program.transport.Send(t.Context(), ping(1)); !errors.As(err, new(*mcp.McpConnectionClosedError)) {
 		t.Fatalf("send while closing = %v", err)
@@ -293,7 +296,7 @@ func TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs(t *testing.T) {
 	closing := make(chan error, 1)
 	start := time.Now()
 	go func() { closing <- program.transport.Close() }()
-	time.Sleep(150 * time.Millisecond)
+	<-program.pipe.stdinClosed
 	wantList(t, "calls before the timeout", program.pipe.callList(), []string{"closeStdin"})
 	if err := <-closing; err != nil {
 		t.Fatal(err)
@@ -318,15 +321,16 @@ func TestPipeTransportRejectsStartWhenOpenFails(t *testing.T) {
 
 func TestPipeTransportKillsAProgramThatFinishedStartingAfterClose(t *testing.T) {
 	pipe := &fakePipe{exited: make(chan struct{})}
-	release := make(chan struct{})
+	release, opening := make(chan struct{}), make(chan struct{})
 	transport := mcp.NewPipeTransport(mcp.PipeTransportOptions{Open: func(mcp.McpPipeHandlers) (mcp.McpPipe, error) {
+		close(opening)
 		<-release
 		return pipe, nil
 	}})
 	starting := make(chan error, 1)
 	go func() { starting <- transport.Start() }()
 	// Close runs while the program is starting; it finds nothing to shut down.
-	time.Sleep(50 * time.Millisecond)
+	<-opening
 	if err := transport.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -439,3 +443,23 @@ func TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall(t *tes
 // Pi's README: `openProcess()` of pi-env returns an McpPipe without an adapter. PiG's env.RemoteProcess is one as it is, and its ProcessOptions take
 // the handlers of McpPipeHandlers.
 var _ mcp.McpPipe = (*env.RemoteProcess)(nil)
+
+// Close ends every goroutine the transport started, whether the program exits on its own or is killed after closeTimeoutMs.
+func TestPipeTransportLeavesNoGoroutineBehindAfterClose(t *testing.T) {
+	baseline := testenv.BaselineGoroutines()
+	exits := startFake(t, mcp.PipeTransportOptions{})
+	closing := make(chan error, 1)
+	go func() { closing <- exits.transport.Close() }()
+	<-exits.pipe.stdinClosed
+	exits.pipe.end(nil)
+	if err := <-closing; err != nil {
+		t.Fatal(err)
+	}
+	exits.settle(t)
+	killed := startFake(t, mcp.PipeTransportOptions{CloseTimeoutMs: 20})
+	if err := killed.transport.Close(); err != nil {
+		t.Fatal(err)
+	}
+	killed.settle(t)
+	baseline.RequireEnded(t, 10*time.Second)
+}
