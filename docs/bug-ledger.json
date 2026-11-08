@@ -35136,6 +35136,29 @@
       ]
     },
     {
+      "id": "BF-b0ab4cd",
+      "title": "Chord: a `Writable.Set` from outside a section of its owner's loop enters one, so its commit and the derives…",
+      "symptom": "Chord: a `Writable.Set` from outside a section of its owner's loop enters one, so its commit and the derives it causes run on the loop and never race the batch; a Set inside a section is the plain call.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a `Writable.Set` from outside a section of its owner's loop enters one, so its commit and the derives it causes run on the loop and never race the batch; a Set inside a section is the plain call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b0ab4cd256",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_writable_section_test.go::TestWritableSetInASectionNests",
+        "chord/next/host/host_writable_section_test.go::TestWritableSetOffTheLoopRunsItsCommitOnTheLoop"
+      ]
+    },
+    {
       "id": "BF-b1642ac",
       "title": "fix(ai,chord): AppendText is a function over a draft; the streaming JSON parser reads deep nesting in linear…",
       "symptom": "fix(ai,chord): AppendText is a function over a draft; the streaming JSON parser reads deep nesting in linear time",
