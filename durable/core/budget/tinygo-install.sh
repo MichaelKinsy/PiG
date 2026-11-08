@@ -27,7 +27,7 @@ if [ ! -x "$bin" ]; then
 	tmp=$(mktemp -d "${TMPDIR:-/tmp}/tinygo.XXXXXXXX")
 	trap 'rm -rf "$tmp"' EXIT
 	echo "tinygo-install.sh: downloading $url" >&2
-	curl -fsSL -m 900 -o "$tmp/tinygo.tar.gz" "$url" || die "download of $url failed"
+	curl -fsSL --retry 4 --retry-delay 10 -m 900 -o "$tmp/tinygo.tar.gz" "$url" || die "download of $url failed"
 	[ "$(sha256 "$tmp/tinygo.tar.gz")" = "$want" ] || die "checksum mismatch for $url"
 	mkdir "$tmp/x" && tar -xzf "$tmp/tinygo.tar.gz" -C "$tmp/x"
 	mkdir -p "$cache" && rm -rf "${cache:?}/$version" && mv "$tmp/x" "$cache/$version"
