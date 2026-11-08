@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -21,15 +22,23 @@ import (
 // archives are one point: with a writer that commits tick i to the plugins' store and then to the kit's, the plugins' archive holds the
 // kit's count or one more, and each archive holds exactly the ticks its own manifest counts.
 
-var ticks = func() *store.TableDefinition {
-	definition, err := store.DefineTable("ticks", store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Int())}, Key: []string{"id"}})
+// tickTable is a table of one int key, `id`.
+func tickTable(name string) *store.TableDefinition {
+	definition, err := store.DefineTable(name, store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Int())}, Key: []string{"id"}})
 	if err != nil {
 		panic(err)
 	}
 	return definition
-}()
+}
 
-// tickOwner is the owner of the tests' table handle: nothing to refuse, nothing live.
+var (
+	// ticks is written to both stores: the plugins' tick i, then the kit's. noise is written to the plugins' store alone, by the plugins' own
+	// writer, which nothing stops while the worker exports (the NodeHost's plugins write their store whatever the kit does).
+	ticks = tickTable("ticks")
+	noise = tickTable("noise")
+)
+
+// tickOwner is the owner of the tests' table handles: nothing to refuse, nothing live.
 type tickOwner struct{}
 
 func (tickOwner) Label() string               { return "ticks" }
@@ -40,21 +49,27 @@ func (tickOwner) Fail(*data.ChordError)       {}
 
 var openFence = store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 
-// ticker is a writer of the ticks table of opened.
-type ticker struct {
-	t      testing.TB
-	store  *store.ChordStore
-	handle *store.TableHandle
-	// base is the store's seq once the table exists: the preload is the next seq, each tick one more.
-	base int64
-}
-
-func newTicker(t testing.TB, opened *store.ChordStore) *ticker {
+// prepared creates the tables in opened, in one commit; it returns their writers.
+func prepared(t testing.TB, opened *store.ChordStore, definitions ...*store.TableDefinition) []*ticker {
 	t.Helper()
-	if err := store.PrepareTables([]store.DeclaredTable{{Definition: ticks, Table: "test:ticks"}}, opened, openFence, "test", background); err != nil {
+	declared := make([]store.DeclaredTable, len(definitions))
+	for i, definition := range definitions {
+		declared[i] = store.DeclaredTable{Definition: definition, Table: "test:" + definition.Name}
+	}
+	if err := store.PrepareTables(declared, opened, openFence, "test", background); err != nil {
 		t.Fatal(err)
 	}
-	return &ticker{t: t, store: opened, handle: store.NewTableHandle(ticks, "test:ticks", opened, tickOwner{}), base: opened.LastSeq()}
+	writers := make([]*ticker, len(definitions))
+	for i, definition := range definitions {
+		writers[i] = &ticker{store: opened, handle: store.NewTableHandle(definition, "test:"+definition.Name, opened, tickOwner{})}
+	}
+	return writers
+}
+
+// ticker is a writer of one table of a store.
+type ticker struct {
+	store  *store.ChordStore
+	handle *store.TableHandle
 }
 
 // put commits the ticks from..to (one commit).
@@ -70,8 +85,8 @@ func (w *ticker) put(from, to int) error {
 	return err
 }
 
-// archived is what one store archive of an export says: the seq of its manifest and how many ticks it has.
-type archived struct{ lastSeq, ticks int64 }
+// archived is what one store archive of an export says: the seq of its manifest, how many rows it puts and how many of them are ticks.
+type archived struct{ lastSeq, puts, ticks int64 }
 
 // archivesOf reads the plugins' and the kit's store archives of the export tar at path.
 func archivesOf(t *testing.T, path string) (plugins, kit archived) {
@@ -103,11 +118,14 @@ func archivesOf(t *testing.T, path string) (plugins, kit archived) {
 			if err := json.Unmarshal(lines.Bytes(), &part); err != nil {
 				return err
 			}
-			switch {
-			case part.Kind == "manifest":
+			switch part.Kind {
+			case "manifest":
 				seen.lastSeq = part.LastSeq
-			case part.Kind == "put" && part.Table == "test:ticks":
-				seen.ticks++
+			case "put":
+				seen.puts++
+				if part.Table == "test:ticks" {
+					seen.ticks++
+				}
 			}
 		}
 		found[entry.Path] = seen
@@ -133,32 +151,50 @@ func TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten(t *testing.T)
 	// The plugins' store as the NodeHost has it: a store of its own on store.sqlite, written while the worker exports.
 	pluginsStore := openStoreAt(t, filepath.Join(dir, "store.sqlite"))
 	kitStore := openStoreAt(t, filepath.Join(dir, "kit.sqlite"))
-	plugins, kit := newTicker(t, pluginsStore), newTicker(t, kitStore)
-	for _, w := range []*ticker{plugins, kit} {
+	// Each store's seq before its preload: the preload is the next seq, each commit after it one more.
+	pluginsTables := prepared(t, pluginsStore, ticks, noise)
+	pluginsTicks, pluginsNoise := pluginsTables[0], pluginsTables[1]
+	kitTicks := prepared(t, kitStore, ticks)[0]
+	pluginsBase, kitBase := pluginsStore.LastSeq(), kitStore.LastSeq()
+	for _, w := range []*ticker{pluginsTicks, kitTicks} {
 		if err := w.put(1, preloaded); err != nil {
 			t.Fatal(err)
 		}
 	}
 	stop := make(chan struct{})
-	var writer sync.WaitGroup
-	var written int
-	writer.Go(func() {
+	var writers sync.WaitGroup
+	var written atomic.Int64
+	writers.Go(func() {
 		for id := preloaded + 1; ; id++ {
 			select {
 			case <-stop:
 				return
 			default:
 			}
-			// Plugins' tick, then the kit's: the plugins' store is never behind the kit's, and ahead of it by at most the tick in between.
-			if err := plugins.put(id, id); err != nil {
+			// The plugins' tick, then the kit's: the plugins' store is never behind the kit's, and ahead of it by at most the tick in between.
+			if err := pluginsTicks.put(id, id); err != nil {
 				t.Error(err)
 				return
 			}
-			if err := kit.put(id, id); err != nil {
+			if err := kitTicks.put(id, id); err != nil {
 				t.Error(err)
 				return
 			}
-			written = id
+			written.Store(int64(id))
+		}
+	})
+	// The plugins' own writer, which the kit's hold does not stop: only a snapshot keeps its commits out of the archive.
+	writers.Go(func() {
+		for id := 1; ; id++ {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			if err := pluginsNoise.put(id, id); err != nil {
+				t.Error(err)
+				return
+			}
 		}
 	})
 	var first, last int64
@@ -168,14 +204,14 @@ func TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten(t *testing.T)
 			t.Fatalf("export %d: %v", n, err)
 		}
 		inPlugins, inKit := archivesOf(t, out)
-		// Each archive is a point of its store: the ticks its manifest counts, no more (a read past its snapshot would add them).
-		if inPlugins.ticks != inPlugins.lastSeq-plugins.base+preloaded-1 {
-			t.Fatalf("export %d: the plugins' archive has %d ticks at seq %d (base %d)", n, inPlugins.ticks, inPlugins.lastSeq, plugins.base)
+		// Each archive is a point of its store: exactly the rows its manifest's seq counts (a read past its snapshot would add some).
+		if want := inPlugins.lastSeq - pluginsBase + preloaded - 1; inPlugins.puts != want {
+			t.Fatalf("export %d: the plugins' archive has %d rows at seq %d (base %d), want %d", n, inPlugins.puts, inPlugins.lastSeq, pluginsBase, want)
 		}
-		if inKit.ticks != inKit.lastSeq-kit.base+preloaded-1 {
-			t.Fatalf("export %d: the kit's archive has %d ticks at seq %d (base %d)", n, inKit.ticks, inKit.lastSeq, kit.base)
+		if want := inKit.lastSeq - kitBase + preloaded - 1; inKit.puts != want || inKit.ticks != want {
+			t.Fatalf("export %d: the kit's archive has %d rows (%d ticks) at seq %d (base %d), want %d", n, inKit.puts, inKit.ticks, inKit.lastSeq, kitBase, want)
 		}
-		// And the two are one point: the plugins' is the kit's, or one tick ahead.
+		// And the two are one point: the plugins' ticks are the kit's, or one more.
 		if ahead := inPlugins.ticks - inKit.ticks; ahead != 0 && ahead != 1 {
 			t.Fatalf("export %d: the plugins' archive has %d ticks and the kit's %d: not one point", n, inPlugins.ticks, inKit.ticks)
 		}
@@ -185,9 +221,9 @@ func TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten(t *testing.T)
 		last = inKit.ticks
 	}
 	close(stop)
-	writer.Wait()
-	if last <= first || written <= preloaded {
-		t.Fatalf("the writer made no progress during the exports: first %d, last %d, written %d", first, last, written)
+	writers.Wait()
+	if last <= first || written.Load() <= preloaded {
+		t.Fatalf("the writers made no progress during the exports: first %d, last %d, written %d", first, last, written.Load())
 	}
 	if err := pluginsStore.Close(background); err != nil {
 		t.Fatal(err)
