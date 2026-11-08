@@ -798,9 +798,12 @@ func (h *Host) applyCommits(commits []abi.Commit) error {
 		if err := h.applyRun(run); err != nil {
 			return err
 		}
+		// The run is stored: the trace of its transaction is observed even when reading a range back fails (fatal), so the trace
+		// does not lack a transaction that the store holds.
+		var observed error
 		for _, c := range run {
-			if err := h.observeRanges(c); err != nil {
-				return err
+			if observed = h.observeRanges(c); observed != nil {
+				break
 			}
 			if h.opts.OnCommitted != nil {
 				h.opts.OnCommitted(c, h.opts.SQL)
@@ -808,6 +811,9 @@ func (h *Host) applyCommits(commits []abi.Commit) error {
 		}
 		if h.opts.OnCommittedRun != nil {
 			h.opts.OnCommittedRun(run, h.opts.SQL)
+		}
+		if observed != nil {
+			return observed
 		}
 		i = j
 	}
