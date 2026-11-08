@@ -72,6 +72,7 @@ type socket struct {
 	closed    bool
 }
 
+//portlint:allow golifetime read returns when the socket closes
 func (s *socket) start() { go s.read() }
 
 func (s *socket) read() {
