@@ -513,3 +513,10 @@ src/web/virtual-list.ts
 tsconfig.json
 plugins/terminals/protocol.ts
 plugins/terminals/wasm.d.ts
+plugins/codemode/contract.ts
+plugins/codemode/card.ts
+plugins/codemode/tui.ts
+plugins/coding-tools/cards.ts
+plugins/coding-tools/tui.ts
+plugins/powershell/tui.ts
+plugins/subagents/tui.ts
