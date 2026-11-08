@@ -26,9 +26,29 @@ var modes = map[string]bool{"25": true, "2004": true, "2026": true, "1049": true
 // ErrFrameTooLarge is a frame over MaxFrame.
 var ErrFrameTooLarge = errors.New("terminal: a frame over 64 KiB")
 
+// exceedsUnits is whether s is longer than limit UTF-16 code units (JavaScript's `length`, which Pi's limits count). A string of
+// at most limit bytes has at most limit units (a unit is never more than a byte of its UTF-8 form, as an astral character's two
+// units are four bytes), so only a longer one is counted.
+func exceedsUnits(s string, limit int) bool {
+	if len(s) <= limit {
+		return false
+	}
+	units := 0
+	for _, r := range s {
+		units++
+		if r >= 0x10000 {
+			units++
+		}
+		if units > limit {
+			return true
+		}
+	}
+	return false
+}
+
 // FilterOutput is output with only the allowed sequences; it fails for a frame over MaxFrame.
 func FilterOutput(output string) (string, error) {
-	if len(output) > MaxFrame {
+	if exceedsUnits(output, MaxFrame) {
 		return "", ErrFrameTooLarge
 	}
 	units := utf16.Encode([]rune(output))

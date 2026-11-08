@@ -78,7 +78,7 @@ func FuzzFilterOutput(f *testing.F) {
 			return
 		}
 		for i := 0; i < len(got); i++ {
-			if got[i] == 0x1b && !(i+1 < len(got) && got[i+1] == '[') {
+			if got[i] == 0x1b && (i+1 >= len(got) || got[i+1] != '[') {
 				t.Fatalf("a bare escape in %q (from %q)", got, frame)
 			}
 			if got[i] == 0x07 || got[i] == 0x00 || got[i] == 0x7f {
@@ -89,4 +89,18 @@ func FuzzFilterOutput(f *testing.F) {
 			t.Fatalf("a control string or C1 control in %q (from %q)", got, frame)
 		}
 	})
+}
+
+// The 64 KiB limit counts UTF-16 code units, as Pi's `output.length` does: 40,000 two-byte characters are 80,000 bytes and 40,000
+// units, within it; 40,000 astral characters are 80,000 units, over it.
+func TestTheFrameLimitCountsUTF16UnitsNotBytes(t *testing.T) {
+	if _, err := FilterOutput(strings.Repeat("é", 40_000)); err != nil {
+		t.Fatalf("40,000 units: %v", err)
+	}
+	if _, err := FilterOutput(strings.Repeat("😀", 40_000)); err == nil {
+		t.Fatal("80,000 units were accepted")
+	}
+	if exceedsUnits(strings.Repeat("a", MaxFrame), MaxFrame) || !exceedsUnits(strings.Repeat("a", MaxFrame+1), MaxFrame) {
+		t.Fatal("the limit is not exactly MaxFrame units")
+	}
 }

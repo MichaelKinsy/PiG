@@ -43,7 +43,7 @@ func (w *w3cTelemetry) Propagation() pitelemetry.TelemetryPropagation { return w
 type w3cPropagation struct{ w *w3cTelemetry }
 
 func (p w3cPropagation) Inject(context pitelemetry.TelemetryContext) pitelemetry.TelemetryCarrier {
-	return p.w.InMemoryTelemetryContext.Inject(context)
+	return p.w.Inject(context)
 }
 
 func (p w3cPropagation) Extract(carrier pitelemetry.TelemetryCarrier) pitelemetry.TelemetryContext {
@@ -52,9 +52,9 @@ func (p w3cPropagation) Extract(carrier pitelemetry.TelemetryCarrier) pitelemetr
 	parent := p.w.parent
 	p.w.mu.Unlock()
 	if carrier["traceparent"] != traceparent || parent == nil {
-		return p.w.InMemoryTelemetryContext.Extract(carrier)
+		return p.w.Extract(carrier)
 	}
-	return p.w.InMemoryTelemetryContext.Extract(parent)
+	return p.w.Extract(parent)
 }
 
 func (w *w3cTelemetry) spansNamed(name string) []pitelemetry.RecordedTelemetrySpan {

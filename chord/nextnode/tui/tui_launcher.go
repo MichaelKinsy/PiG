@@ -77,6 +77,9 @@ const terminalPrefix = "/_chord/tui/"
 // terminalFilePattern is a terminal surface file's path, as the sandbox may ask for it.
 var terminalFilePattern = regexp.MustCompile(`^/_chord/tui/(?:plugin/)?[\w.~@-]+$`)
 
+// localeSuffix is what follows a locale name: its encoding or modifier (`de_DE.UTF-8@euro`).
+var localeSuffix = regexp.MustCompile(`[.@].*$`)
+
 // TerminalFile is path resolved on the server `server` when it names one of the terminal surface's files (dot segments and
 // encodings resolved first: Opus M2, Fable L1); it fails otherwise: the sandbox reaches nothing else of the server through the
 // launcher's token.
@@ -544,7 +547,7 @@ func (l *Launcher) openSocket(id int) {
 	sandbox := l.sandbox
 	headers := http.Header{"Authorization": {"Bearer " + l.token}}
 	go func() {
-		conn, _, err := websocket.DefaultDialer.DialContext(l.ctx, target.String(), headers)
+		conn, _, err := websocket.DefaultDialer.DialContext(l.ctx, target.String(), headers) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
 		closed := func() {
 			l.post(func() {
 				if l.sockets[id] != socket {
@@ -842,7 +845,6 @@ func (l *Launcher) get(ctx context.Context, path string) (string, error) {
 // systemLocales are the system's languages: `LANGUAGE` (a colon list), then `LC_ALL`, `LC_MESSAGES`, `LANG` (`de_DE.UTF-8` is
 // `de-DE`; `C` and `POSIX` name none), then the runtime's default locale.
 func systemLocales() []string {
-	suffix := regexp.MustCompile(`[.@].*$`)
 	values := append(strings.Split(os.Getenv("LANGUAGE"), ":"), os.Getenv("LC_ALL"), os.Getenv("LC_MESSAGES"), os.Getenv("LANG"))
 	var locales []string
 	seen := map[string]bool{}
@@ -853,7 +855,7 @@ func systemLocales() []string {
 		}
 	}
 	for _, value := range values {
-		add(strings.ReplaceAll(suffix.ReplaceAllString(value, ""), "_", "-"))
+		add(strings.ReplaceAll(localeSuffix.ReplaceAllString(value, ""), "_", "-"))
 	}
 	add(next.PlatformLocale())
 	return locales

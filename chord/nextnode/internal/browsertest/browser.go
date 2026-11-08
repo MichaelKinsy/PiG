@@ -29,6 +29,7 @@ func Binary() string {
 			continue
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		//nolint:gosec // G204: the binary is the test runner's own choice (CHROMIUM_BIN), as Pi's driver runs it
 		err := exec.CommandContext(ctx, candidate, "--version").Run()
 		cancel()
 		if err == nil {
@@ -123,7 +124,7 @@ func Start(t testing.TB) *Browser {
 		"--headless=new", "--no-sandbox", "--no-zygote", "--disable-gpu", "--disable-dev-shm-usage",
 		"--remote-debugging-address=127.0.0.1", "--remote-debugging-port=0", "--user-data-dir=" + profile, "about:blank",
 	}
-	command := exec.Command(binary, args...)
+	command := exec.Command(binary, args...) //nolint:gosec // G204: the binary is the test runner's own choice (CHROMIUM_BIN)
 	stderr := &tail{}
 	command.Stderr = stderr
 	if err := command.Start(); err != nil {
@@ -181,7 +182,7 @@ func Start(t testing.TB) *Browser {
 			break
 		}
 	}
-	socket, _, err := websocket.DefaultDialer.DialContext(ctx, target.WebSocketDebuggerURL, nil)
+	socket, _, err := websocket.DefaultDialer.DialContext(ctx, target.WebSocketDebuggerURL, nil) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
 	if err != nil {
 		t.Fatal(err)
 	}

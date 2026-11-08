@@ -164,7 +164,7 @@ func StartSandbox(node, source string, start BridgeStart, onMessage func(Sandbox
 	if err := CheckSandboxNode(node); err != nil {
 		return nil, err
 	}
-	if len(source) > maxBundle {
+	if exceedsUnits(source, maxBundle) {
 		return nil, errors.New("terminal: the base bundle exceeds 8 MiB")
 	}
 	text, err := bootstrap()
@@ -185,7 +185,7 @@ func StartSandbox(node, source string, start BridgeStart, onMessage func(Sandbox
 		_ = os.RemoveAll(directory)
 		return nil, err
 	}
-	cmd := exec.Command(node, SandboxFlags(script)...)
+	cmd := exec.Command(node, SandboxFlags(script)...) //nolint:gosec // G204: the Node binary the launcher checked (CheckSandboxNode) and the sandbox flags; the script is the launcher's own temporary file
 	cmd.Env = SandboxEnvironment()
 	cmd.Dir = directory
 	// Dropped: the sandbox writes only through the bridge, and the terminal is the launcher's.
