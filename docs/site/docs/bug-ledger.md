@@ -429,6 +429,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-43d2597-2](#bf-43d2597-2) | `/compact <instructions>` applies the instructions to the summary of the start of a turn that compaction… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-43d2597-3](#bf-43d2597-3) | A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-43d2597-4](#bf-43d2597-4) | Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
+| [BF-43d5639](#bf-43d5639) | A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's… | PiG's own defect | All platforms | Unreleased |
+| [BF-43d5639-2](#bf-43d5639-2) | A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does… | PiG's own defect | All platforms | Unreleased |
 | [BF-448b245](#bf-448b245) | The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-448d2a9](#bf-448d2a9) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-448ff71](#bf-448ff71) | A panic in an extension error listener is now named on stderr instead of vanishing, and extension SDK… | PiG's own defect | All platforms | 0.5.0 |
@@ -536,6 +538,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-542b536](#bf-542b536) | fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version | PiG's own defect | All platforms | Unreleased |
 | [BF-5443b6c](#bf-5443b6c) | `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-54660cf](#bf-54660cf) | A custom message renderer is called once, not twice, when a message is drawn | PiG's own defect | All platforms | Unreleased |
+| [BF-547d589](#bf-547d589) | A test fixture stops the log redactor reading the credential files of its removed data directories (each line… | PiG's own defect | All platforms | Unreleased |
+| [BF-547d589-2](#bf-547d589-2) | Removing code mode while a script runs no longer swallows every panic of telling the script why: a call that… | PiG's own defect | All platforms | Unreleased |
 | [BF-54a5bf6](#bf-54a5bf6) | The host answers a parsed frontmatter with `<`, `>`, `&` and U+2028 as they are (as `JSON.stringify` writes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-54c4ee3](#bf-54c4ee3) | fix(chord): the platform locale is the first set variable of LC_ALL, LC_MESSAGES, LANG (C and POSIX are… | PiG's own defect | All platforms | Unreleased |
 | [BF-54dc372](#bf-54dc372) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
@@ -564,7 +568,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-58704cf](#bf-58704cf) | p2: PowerShell reads the system of an environment's machine through any environment that reports it… | PiG's own defect | Windows | Unreleased |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59693cd](#bf-59693cd) | Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a… | PiG's own defect | All platforms | Unreleased |
@@ -1035,7 +1038,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8e70eff](#bf-8e70eff) | fix(chord/nextnode/workers): the channel refuses a record over the limit | PiG's own defect | All platforms | Unreleased |
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f241ca](#bf-8f241ca) | A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on… | PiG's own defect | All platforms | Unreleased |
-| [BF-8f2be35](#bf-8f2be35) | A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f88d43](#bf-8f88d43) | On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is… | PiG's own defect | Windows | 0.7.0 |
 | [BF-8fead2d](#bf-8fead2d) | fix(chord/nextnode/workers,chord/nextnode/plugins): the workers run on the plugins' Node host; no test hooks… | PiG's own defect | All platforms | Unreleased |
@@ -1144,7 +1146,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-93f8b7c](#bf-93f8b7c) | fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api | PiG's own defect | All platforms | Unreleased |
 | [BF-94284ac](#bf-94284ac) | `pig -e git:<repo>@<branch>` no longer stays on its first checkout | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-942bc6c](#bf-942bc6c) | fix(coding-agent): preserve pi.exec spawn errors (Pi) | PiG's own defect | All platforms | Unreleased |
-| [BF-94baf0a](#bf-94baf0a) | A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does… | PiG's own defect | All platforms | Unreleased |
 | [BF-94e3498](#bf-94e3498) | On Windows, PiG no longer searches `C:\etc\pig\piglets` or `C:\opt\pig\piglet.yaml` for a Piglet | PiG's own defect | Windows | 0.5.0 |
 | [BF-94e6796](#bf-94e6796) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-94f1e6f](#bf-94f1e6f) | fix(coding): a provider of only virtual models is configured with source virtual | PiG's own defect | All platforms | Unreleased |
@@ -1254,6 +1255,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a1efda7](#bf-a1efda7) | The Durable core's host no longer reads the extensions of the Harness settings before every event it sends… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a1fa6d1](#bf-a1fa6d1) | NO_PROXY entries and ports are trimmed with JavaScript's whitespace rules, as in Pi: an entry or port that… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a21394b](#bf-a21394b) | A message sent to a conversation while its run is between tool calls no longer waits on the host's loop for a… | PiG's own defect | All platforms | Unreleased |
+| [BF-a21394b-2](#bf-a21394b-2) | A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the… | PiG's own defect | All platforms | Unreleased |
 | [BF-a222037](#bf-a222037) | A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a238095](#bf-a238095) | coding: fix session executor queue-prefix race and durable execMu waits | PiG's own defect | All platforms | Unreleased |
 | [BF-a2fad25](#bf-a2fad25) | The footer's context percentage includes the prompt as soon as it is sent, for the whole reply, as Pi shows… | PiG's own defect | All platforms | Unreleased |
@@ -1341,10 +1343,10 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-affc944](#bf-affc944) | Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-b02876b](#bf-b02876b) | `chord/host`: a link that is already closed when a host accepts or routes to it is no longer kept as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b04bb32](#bf-b04bb32) | fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers… | PiG's own defect | All platforms | Unreleased |
-| [BF-b05192a](#bf-b05192a) | The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused… | PiG's own defect | All platforms | Unreleased |
 | [BF-b0608a9](#bf-b0608a9) | OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b06ad92](#bf-b06ad92) | An MCP server `url` can use environment variables (`"url": "${TOOLS_URL}"`): PiG checks and connects to the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b098679](#bf-b098679) | Markdown quotes, lists, paragraphs, tables and display math now lex exactly as Pi's marked lexer does: the… | PiG's own defect | All platforms | Unreleased |
+| [BF-b0a9e4f](#bf-b0a9e4f) | The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused… | PiG's own defect | All platforms | Unreleased |
 | [BF-b0ab4cd](#bf-b0ab4cd) | Chord: a `Writable.Set` from outside a section of its owner's loop enters one, so its commit and the derives… | PiG's own defect | All platforms | Unreleased |
 | [BF-b1642ac](#bf-b1642ac) | fix(ai,chord): AppendText is a function over a draft; the streaming JSON parser reads deep nesting in linear… | PiG's own defect | All platforms | Unreleased |
 | [BF-b182cbc](#bf-b182cbc) | fix(chord/nextnode): the Windows pipe listeners close through internal/chord/winpipe, whose Close always… | PiG's own defect | Windows | Unreleased |
@@ -1562,7 +1564,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d50faf0](#bf-d50faf0) | Replacing the editor component with `ctx.ui.setEditorComponent()` while an extension dialog is open no longer… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d514b3d](#bf-d514b3d) | In a Node extension's `before_agent_start` handler, `event.systemPrompt` and `ctx.getSystemPrompt()` now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d53cd09](#bf-d53cd09) | A tool call whose arguments are not an object is written back to each provider as Pi writes it: Anthropic and… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-d54d6ab](#bf-d54d6ab) | A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the… | PiG's own defect | All platforms | Unreleased |
 | [BF-d60d422](#bf-d60d422) | `pi.exec` gives the command PiG's environment unchanged, as Pi does, so a command started in a symlinked… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d64f8ed](#bf-d64f8ed) | `durable.StorageRequestError` and `durable.SessionFailed` are Pi's error classes of the same names… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d6613f8](#bf-d6613f8) | A tool call whose arguments were cut inside a surrogate pair (the codemode card cuts a call's arguments at 77… | PiG's own defect | All platforms | Unreleased |
@@ -1596,7 +1597,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d9886fe](#bf-d9886fe) | fix(hljs): no magic-literal hits for the resume and dispatch bounds | PiG's own defect | All platforms | Unreleased |
 | [BF-d991498](#bf-d991498) | Display math (`$$...$$`, `\[...\]`) wider than the Markdown content width renders as its raw LaTeX source… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d9a9c51](#bf-d9a9c51) | `pig status --json` now gives a skill without a `description` and a theme that fails the theme schema… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-d9ab2d7](#bf-d9ab2d7) | p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits… | PiG's own defect | All platforms | Unreleased |
 | [BF-da12a5a](#bf-da12a5a) | A saved "Do not trust" decision is no longer ignored for a project without trust-requiring resources, for… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-da5d32b](#bf-da5d32b) | fix(extension): theme palette reports the theme's own sourcePath; conformance rows for the rest of… | PiG's own defect | All platforms | Unreleased |
 | [BF-da65d9a](#bf-da65d9a) | Extension commands now run one after the other where Pi awaits each prompt: among the positional startup… | PiG's own defect | All platforms | Unreleased |
@@ -1903,6 +1903,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fb4d32e-2](#bf-fb4d32e-2) | Fullscreen Kitty images show every row in terminals that keep an image in the cells it covers (Orca, WezTerm) | PiG's own defect | All platforms | Unreleased |
 | [BF-fba9b47](#bf-fba9b47) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
 | [BF-fbd3640](#bf-fbd3640) | The legacy credential migration writes `auth.json` and the rewritten `settings.json` with the key order Pi… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-fc0d578](#bf-fc0d578) | p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits… | PiG's own defect | All platforms | Unreleased |
+| [BF-fc0d578-2](#bf-fc0d578-2) | p2: PowerShell reads the system of an environment's machine through any environment that reports it… | PiG's own defect | Windows | Unreleased |
 | [BF-fc1703f](#bf-fc1703f) | Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-fc5baaf](#bf-fc5baaf) | `pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fc749ad](#bf-fc749ad) | A task list item whose first line looks like a heading, quote, rule, bullet, fence, table row or HTML tag… | PiG's own defect | All platforms | 0.5.0 |
@@ -7585,6 +7587,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi`, `coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError`, `coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi`, `coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort`, `internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn`, `test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs`, `tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD`, `tui/file_autocomplete_test.go::TestBuildFdPathQuery`
 - **Release note:** Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).
 
+### BF-43d5639
+
+**A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs.
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `43d563908d` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs.
+
+### BF-43d5639-2
+
+**A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes.
+- **Root cause:** Not recorded.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `43d563908d` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes.
+
 ### BF-448b245
 
 **The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode**
@@ -9056,6 +9086,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** A custom message renderer is called once, not twice, when a message is drawn.
 
+### BF-547d589
+
+**A test fixture stops the log redactor reading the credential files of its removed data directories (each line…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A test fixture stops the log redactor reading the credential files of its removed data directories (each line stat'ed the files of every directory ever registered, so a late test of a long-running test binary spent seconds on the stacks of one worker).
+- **Root cause:** Not recorded.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `547d5898eb` (2026-11-08)
+- **Tests:** `apps/p2/plugins/codemode/calls_test.go::TestAnnounceRemovalTakesTheSettledCallsPanicAndReturnsAnyOther`
+- **Release note:** A test fixture stops the log redactor reading the credential files of its removed data directories (each line stat'ed the files of every directory ever registered, so a late test of a long-running test binary spent seconds on the stacks of one worker).
+
+### BF-547d589-2
+
+**Removing code mode while a script runs no longer swallows every panic of telling the script why: a call that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Removing code mode while a script runs no longer swallows every panic of telling the script why: a call that settled meanwhile is still the expected end, anything else is reported on stderr.
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `547d5898eb` (2026-11-08)
+- **Tests:** `apps/p2/plugins/codemode/calls_test.go::TestAnnounceRemovalTakesTheSettledCallsPanicAndReturnsAnyOther`
+- **Release note:** Removing code mode while a script runs no longer swallows every panic of telling the script why: a call that settled meanwhile is still the expected end, anything else is reported on stderr.
+
 ### BF-54a5bf6
 
 **The host answers a parsed frontmatter with `<`, `>`, `&` and U+2028 as they are (as `JSON.stringify` writes…**
@@ -9441,20 +9499,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `50ca49180f` (2026-10-13), `57ee33b5c7` (2026-10-13), `5cd840e477` (2026-10-13)
 - **Tests:** `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryRefreshesConnectedNode`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10ModelRuntimeCreation`, `coding/cli/shipped_piglet_inventory_test.go::TestShippedPigletInventory`, `coding/cli/strip_leak_gate_test.go::TestStripLeakGate`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream` and 1 more in docs/bug-ledger.json
 - **Release note:** A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as Pi's object: the definition's members in the order the extension wrote them, then `api`, `provider` and `baseUrl`, and its `input` as written. PiG sent the members in its own order and filled in `input: ["text"]` when the definition left it out.
-
-### BF-58704cf
-
-**p2: PowerShell reads the system of an environment's machine through any environment that reports it…**
-
-- **Source:** PiG's own defect
-- **Symptom:** p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`.
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** Windows
-- **Fixed in:** Unreleased
-- **Fix commits:** `58704cfa78` (2026-11-08), `a0309d10ad` (2026-11-08)
-- **Tests:** `apps/p2/e2e/prompt_test.go::TestPromptResourcesOnTheWorkerParticipantsOnlyLiveTemplatesExpandWithSkills`, `apps/p2/e2e/prompt_test.go::TestPromptResourcesReachTheModelAndApplyLive`, `apps/p2/e2e/relocate_worker_test.go::TestAWorkspaceFollowsAMoveMadeWhileItActivatesAndRetriesAFailedReopen`, `apps/p2/e2e/relocate_worker_test.go::TestConversationsOnDifferentMachinesRunConcurrentlyOneConnectionPerMachine`, `apps/p2/e2e/relocate_worker_test.go::TestDevToolsAndPowerShellDetectAgainAfterARealMove`, `apps/p2/e2e/relocate_worker_test.go::TestPowerShellIsOfferedToEachAgentWorkingOnWindowsIndependently`, `apps/p2/e2e/relocate_worker_test.go::TestThePrivateDataDirectoryIsDeniedByTheEnvironmentNotTheLocation`, `apps/p2/e2e/relocate_worker_test.go::TestTheSessionMovesToAnotherMachineASubagentWithItsOwnLocationStaysOnItsOwn` and 6 more in docs/bug-ledger.json
-- **Release note:** p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`. <!-- fix: p2-workspace -->
 
 ### BF-58f6697
 
@@ -14802,7 +14846,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `806e993990` (2026-11-08)
 - **Tests:** `apps/p2/e2e/ports_test.go::TestPortsToolDefaultsPrivateListsPublicEndpointsFencesGuestsAndClosesOnArchive`, `apps/p2/plugins/ports/contract/contract_test.go::TestContractsFingerprintAsPi`, `apps/p2/plugins/ports/contract/store_test.go::TestForwardOriginsAreIsolatedBesideTheBrain`, `apps/p2/plugins/ports/contract/store_test.go::TestForwardsFileFormatIsPis`, `apps/p2/plugins/ports/contract/store_test.go::TestForwardsPersistValidatePortsPreserveOwnershipAndInvalidateRemovedIDs`, `apps/p2/plugins/ports/contract/store_test.go::TestForwardsStayAtMostFiftyAndConcurrentWritesLoseNothing`, `apps/p2/plugins/ports/contract/store_test.go::TestForwardsTellTheirListenersOfEveryChange`, `apps/p2/plugins/ports/contract/store_test.go::TestInvalidForwardsFilesAreRefusedLikePis`
-- **Release note:** p2's session archive and copy jobs read their registries once the object composed them, so their first read no longer races the host's loop. <!-- fix: p2-ports -->
+- **Release note:** p2's session archive and copy jobs read their registries once the object composed them, so their first read no longer races the host's loop.
 
 ### BF-8070fcc
 
@@ -15389,7 +15433,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `8710da1381` (2026-11-08)
 - **Tests:** `apps/p2/hosts/sprite_test.go::TestSelectedSpriteIsServedAsSVG`, `apps/p2/hosts/sprite_test.go::TestSpriteEventsPushChanges`, `apps/p2/hosts/sprite_test.go::TestWithoutASpriteSourceTheHookIsInert`, `apps/p2desktop/internal/sprite/sprite_test.go::TestGridIsTheWebsHead`
-- **Release note:** The desktop app's composer row shows Pi's skeleton block while the context window is unknown, "Choose model" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs. <!-- fix: p2-welcome -->
+- **Release note:** The desktop app's composer row shows Pi's skeleton block while the context window is unknown, "Choose model" is underlined with dots as Pi's, and the footer's theme button draws Pi's system (half-filled circle), sun and moon glyphs.
 
 ### BF-8780292
 
@@ -15973,20 +16017,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8f241ca2fd` (2026-11-08)
 - **Tests:** `ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi`, `ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset`, `ai/transport_diagnostic_test.go::TestProviderTransportResetRecordsDiagnosticAndKeepsMessage`
 - **Release note:** A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on `openai-completions`, `openai-responses`, `google` and `anthropic-messages`, as Pi does, instead of `terminated (cause: ...)`.
-
-### BF-8f2be35
-
-**A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs.
-- **Root cause:** Not recorded.
-- **User impact:** Crash, hang or runaway process
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `a2b80f672e` (2026-11-07), `318a2706a1` (2026-11-08), `8f2be35581` (2026-11-08), `e486a7d418` (2026-11-08)
-- **Tests:** `apps/p2/e2e/locations_test.go::TestLocationToolsMainAgentsListAndMoveSubagentsArePlacedAndMoveOnlyWithTheToolGuestsAreRefused`, `apps/p2/plugins/locations/contract/contract_test.go::TestContractsFingerprintAsPi`, `apps/p2/plugins/locations/tool_test.go::TestEnvsAreListedWithTheirLastTestWhileItTestsTheCurrentConfiguration`, `apps/p2/plugins/locations/tool_test.go::TestLocationToolsSchemasAndDefaults`, `apps/p2/plugins/locations/tool_test.go::TestSandboxAtIsDecidedByTheConfiguredTypeNeverTheName`, `apps/p2/plugins/sessions/restart_race_test.go::TestRestartOverAnExistingCatalogPublishesItsRowsWithoutRacingTheLoop`, `apps/p2/plugins/sessions/worker_test.go::TestRenameSessionToolRenamesThroughTheWorkersRoot`, `apps/p2/plugins/subagents/server_test.go::TestRestartOverAnExistingChildStorePublishesItsRowsWithoutRacingTheLoop` and 3 more in docs/bug-ledger.json
-- **Release note:** A p2 session's move no longer hangs the worker when a conversation's agent cwd has to change: the worker's `relocate` handler (and `prepare`) now suspends before it waits for the Durable session, whose commit publication is a section of the host's loop, so the section no longer holds the loop its own commit needs. <!-- fix: p2-locations -->
 
 ### BF-8f45099
 
@@ -17494,20 +17524,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `942bc6c05b` (2026-10-22)
 - **Tests:** `coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty`, `coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne`
-
-### BF-94baf0a
-
-**A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes.
-- **Root cause:** Not recorded.
-- **User impact:** Lost or altered data
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `a2b80f672e` (2026-11-07), `8f2be35581` (2026-11-08), `94baf0a48e` (2026-11-08), `e486a7d418` (2026-11-08)
-- **Tests:** `apps/p2/plugins/sessions/restart_race_test.go::TestRestartOverAnExistingCatalogPublishesItsRowsWithoutRacingTheLoop`, `apps/p2/plugins/sessions/worker_test.go::TestRenameSessionToolRenamesThroughTheWorkersRoot`, `apps/p2/plugins/subagents/server_test.go::TestRestartOverAnExistingChildStorePublishesItsRowsWithoutRacingTheLoop`, `apps/p2/runtime/tool_access_test.go::TestAnOwnerOnlyToolRefusesATurnTheOwnerDidNotStartAndAMainOnlyToolOutsideTheMainConversation`, `apps/p2/runtime/tool_access_test.go::TestInALockedSessionTheLockDecidesAnOwnerOnlyToolForEveryoneTheOwnerToo`, `apps/p2/runtime/tool_access_test.go::TestToolsWithoutRequirementsRunUnchanged`, `chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges`
-- **Release note:** A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine (p2's environment-restart and sharing-archive jobs) no longer races the object's own commits and its seal when the host closes. <!-- fix: p2-locations -->
 
 ### BF-94e3498
 
@@ -19049,9 +19065,23 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `4a0c6d011b` (2026-11-08), `6ded9540b5` (2026-11-08), `a21394be5c` (2026-11-08)
-- **Tests:** `apps/p2/e2e/subagents_test.go::TestSubagentsFakeProvider`, `apps/p2/plugins/codemode/contract/contract_test.go::TestFingerprintAsPi`, `apps/p2/plugins/codemode/plugin_test.go::TestRegistersItsExtensionFollowsTheSettingAndThePluginAcrossAReloadAndARemoval`, `apps/p2/plugins/dev-tools/dev_test.go::TestReloadPluginsAdmitsOnlyARootTurnTheOwnerStartedWorkingOnP2`, `apps/p2/plugins/dev-tools/dev_test.go::TestReloadPluginsIsOfferedOnlyInDevModeForASessionOnThisP2Checkout`, `apps/p2/plugins/dev-tools/dev_test.go::TestReloadPluginsReturnsARefusalAsAnErrorResultWithoutReplayingIt`, `apps/p2/plugins/dev-tools/dev_test.go::TestWorkerFacetRegistersReloadPluginsAndTheOwnerToolUsesOnlyItsOwnPrivateDataDirectoryChannel`, `apps/p2/plugins/powershell/contract/contract_test.go::TestFingerprintAsPi` and 2 more in docs/bug-ledger.json
-- **Release note:** A message sent to a conversation while its run is between tool calls no longer waits on the host's loop for a read of the subagent registry, and archiving a subagent from the sidebar no longer blocks the worker. <!-- fix: p2-agent-tools -->
+- **Fix commits:** `a21394be5c` (2026-11-08)
+- **Tests:** `apps/p2/e2e/subagents_test.go::TestSubagentsFakeProvider`
+- **Release note:** A message sent to a conversation while its run is between tool calls no longer waits on the host's loop for a read of the subagent registry, and archiving a subagent from the sidebar no longer blocks the worker.
+
+### BF-a21394b-2
+
+**A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a21394be5c` (2026-11-08)
+- **Tests:** `apps/p2/e2e/subagents_test.go::TestSubagentsFakeProvider`
+- **Release note:** A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`).
 
 ### BF-a222037
 
@@ -20255,20 +20285,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b04bb32856` (2026-11-03)
 - **Tests:** `coding/session_graph_signal_test.go::TestGraphGetSignalAppliesAnswersInReadOrder`
 
-### BF-b05192a
-
-**The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused…**
-
-- **Source:** PiG's own defect
-- **Symptom:** The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused with `forbidden` (the terminals plugin's `agent terminals are for session workers`, `terminals are owner-only`) is never one, whatever its message says.
-- **Root cause:** plugins/artifacts (contract, store, tool, worker, server: the `artifact` tool, the per-agent index document, ArtifactList/ArtifactContent/ArtifactSource, the /artifact route) and plugins/send-file (contract, tool, worker: the send_file tool, SentFiles) ported from Pi, with runtime.WriteChunks/SaveDownload (session-files.ts) and runtime.ToolSchemaOf (the sessions rename tool uses it too). Tests: artifacts.test.ts and send-file.test.ts as e2e (the long preview is saved by a test-binary plugin: the fake provider streams a tool call at 800 characters a second where Pi's script uses codemode), files.test.ts's archived/unknown /artifact assertions, store/preview/version/validation unit tests…
-- **User impact:** Credential or permission exposure
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `0ef03afb07` (2026-11-07), `6f4715f728` (2026-11-07), `771c0d996a` (2026-11-07), `817f452a05` (2026-11-07), `a2b80f672e` (2026-11-07), `a6a3cebfe4` (2026-11-07), `de3515ac5e` (2026-11-07), `10601f39ea` (2026-11-08), `1dc26ff60d` (2026-11-08), `2735a203f4` (2026-11-08), `4a6575c2c7` (2026-11-08), `54de7dce61` (2026-11-08), `55477b3b6c` (2026-11-08), `796d81c365` (2026-11-08), `9587c1d428` (2026-11-08), `98bf81abcd` (2026-11-08), `a653d1cfdd` (2026-11-08), `b05192a679` (2026-11-08), `b5403711f4` (2026-11-08), `ca01a21614` (2026-11-08)
-- **Tests:** `apps/p2/e2e/artifacts_test.go::TestArtifactsFakeProvider`, `apps/p2/e2e/files_test.go::TestFilesFakeProvider`, `apps/p2/e2e/logs_test.go::TestAFailedWorkerStartIsCachedAndRetryRecovers`, `apps/p2/e2e/logs_test.go::TestDetachedHostStoresFatalStartupErrorsRedacted`, `apps/p2/e2e/logs_test.go::TestOwnerOnlyLogsExposeLivePerSourceStateAndImportBoundedDetachedSnapshots`, `apps/p2/e2e/m1_test.go::TestM1WorkingChat`, `apps/p2/e2e/m1_test.go::TestMain`, `apps/p2/e2e/m1_test.go::TestSmokeCreatesASessionAndGetsAnAnswer` and 92 more in docs/bug-ledger.json
-- **Release note:** The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused with `forbidden` (the terminals plugin's `agent terminals are for session workers`, `terminals are owner-only`) is never one, whatever its message says. The Go filter matched the word `forbidden` in the printed text, which these messages lack, so a refused hold reached the owner's notices (`Server: {activation_failed p2.agent-terminals …}`). <!-- fix: p2-terminals -->
-
 ### BF-b0608a9
 
 **OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL…**
@@ -20310,6 +20326,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1b82ede629` (2026-11-03), `b058711ea5` (2026-11-03), `b09867998c` (2026-11-03)
 - **Tests:** `tui/markdown_autolink_test.go::TestAutoLinkScannerRenderingPrecedence`, `tui/markdown_marked_lexer_allocs_norace_test.go::TestMarkedListItemRulesAllocateNothing`, `tui/markdown_marked_lexer_rules_test.go::TestMarkedBlockRulesEqualTheirPatterns`, `tui/markdown_random_contract_test.go::TestMarkdownRandomDocsMatchPi`, `tui/markdown_residual_contract_test.go::TestMarkdownResidualDocsMatchPi`
 - **Release note:** Markdown quotes, lists, paragraphs, tables and display math now lex exactly as Pi's marked lexer does: the block lexer is a port of `Lexer.blockTokens` with the `blockquote`, `list`, `paragraph` and `table` tokenizers and the display-math clipping of paragraphs. This closes every remaining difference from Pi that the random-document comparison found, among them a quote whose nested quote is empty and swallows the lines after it (`>>` then `b`), lazy lines after a quoted list, an item with an empty first line followed by indented content, a list followed by spaces and a blank line, a table delimiter row or display math on a lazy line, an indented line after a lazy line, a list item whose lazy line starts with an astral character, and a quote line that holds a carriage return.
+
+### BF-b0a9e4f
+
+**The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused with `forbidden` (the terminals plugin's `agent terminals are for session workers`, `terminals are owner-only`) is never one, whatever its message says.
+- **Root cause:** Not recorded.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b0a9e4fce9` (2026-11-08)
+- **Tests:** `apps/p2/e2e/terminal_tool_test.go::TestTheAgentsTerminalToolOnTheSessionsSharedTerminals`, `apps/p2/plugins/terminals/agent_host_test.go::TestTerminalHostTheAgentsCalls`, `apps/p2/plugins/terminals/contract/contract_test.go::TestTerminalContractsFingerprintAsPi`, `apps/p2/plugins/terminals/terminals_host_test.go::TestTerminalsClosingAsksFirstWhileTheShellRunsAJob`, `apps/p2/plugins/terminals/terminals_host_test.go::TestTerminalsProgramsSeeTheViewersColorsAndHearAboutLightDarkSwitches`, `apps/p2/plugins/terminals/terminals_host_test.go::TestTerminalsRunInTheHostSurviveDisconnectsAndComeBackAsSnapshots`
+- **Release note:** The p2 server's owner notices go by the error's class, as Pi's `isOwnerNotice`: a hold its factory refused with `forbidden` (the terminals plugin's `agent terminals are for session workers`, `terminals are owner-only`) is never one, whatever its message says. The Go filter matched the word `forbidden` in the printed text, which these messages lack, so a refused hold reached the owner's notices (`Server: {activation_failed p2.agent-terminals …}`).
 
 ### BF-b0ab4cd
 
@@ -22036,9 +22066,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Lost or altered data
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Commit that wrote the release note (the fix commit is not identified):** `c761ebae84` (2026-11-08)
+- **Fix commits:** `c761ebae84` (2026-11-08)
 - **Tests:** None recorded.
-- **Release note:** A send router or read-only check that reads the session (chat mode's router, the tree's earlier-branch check) no longer holds the worker's loop while a tool runs, which dropped the worker's link ("worker: link lost"). <!-- fix: p2-chat-tree -->
+- **Release note:** A send router or read-only check that reads the session (chat mode's router, the tree's earlier-branch check) no longer holds the worker's loop while a tool runs, which dropped the worker's link ("worker: link lost").
 
 ### BF-c7b91e7
 
@@ -23318,20 +23348,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/proxy_non_object_arguments_test.go::TestProxyNonObjectToolArgumentsFollowPi`, `ai/tool_call_non_object_converters_test.go::TestGoogleNullFunctionCallArgsAreTheEmptyObject`, `ai/tool_call_non_object_converters_test.go::TestNonObjectToolArgumentsReplayAsEachProviderDoes`
 - **Release note:** A tool call whose arguments are not an object is written back to each provider as Pi writes it: Anthropic and Google send `{}` for `null` (`arguments ?? {}`), Mistral sends `{}` for `null`, `0`, `false` and `""` (`arguments || {}`), Bedrock sends the value itself; a Gemini function call with `"args": null` is the empty object, and the agent proxy keeps Pi's `parseStreamingJson(...) || {}` and the streamed arguments of a `toolcall_end` that omits them.
 
-### BF-d54d6ab
-
-**A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`).
-- **Root cause:** Not recorded.
-- **User impact:** Crash, hang or runaway process
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `d54d6ab58e` (2026-11-08), `d92788bdbd` (2026-11-08)
-- **Tests:** `apps/p2/e2e/artifacts_test.go::TestArtifactsFakeProvider`, `apps/p2/plugins/terminals/attach_ready_test.go::TestAnAttachmentIsReadyOnceTheHandlerSawTheHello`, `apps/p2/runtime/refs_test.go::TestFollowOfAWatchThatEndedBeforeItsStartHasNothingToFollow`
-- **Release note:** A p2 reference that ends between its watch's making and its start no longer panics `Watch is stopped` on the follower's goroutine (which took the process down), and the terminal host's attachment is ready only after its frame handler took the host's hello (a call right after could fail with `The terminal host runs older code`). <!-- fix: p2-agent-tools -->
-
 ### BF-d60d422
 
 **`pi.exec` gives the command PiG's environment unchanged, as Pi does, so a command started in a symlinked…**
@@ -23788,20 +23804,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d9a9c51ff7` (2026-10-28)
 - **Tests:** `coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded`, `coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid`, `coding/piglet/active_source_test.go::TestActiveSourceValue`
 - **Release note:** `pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource. They were `enabled: true` before. They count as disabled in `resources`.
-
-### BF-d9ab2d7
-
-**p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits…**
-
-- **Source:** PiG's own defect
-- **Symptom:** p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state ("Watch is stopped").
-- **Root cause:** Not recorded.
-- **User impact:** Crash, hang or runaway process
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `9d0c1c116a` (2026-11-08), `c4b351ceab` (2026-11-08), `d9ab2d79c0` (2026-11-08)
-- **Tests:** `apps/p2/e2e/relocate_test.go::TestSessionRelocationFakeProvider`
-- **Release note:** p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state ("Watch is stopped"). <!-- fix: p2-workspace -->
 
 ### BF-da12a5a
 
@@ -24966,7 +24968,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e11607f2b7` (2026-11-08)
 - **Tests:** `apps/p2/hosts/reload_test.go::TestReloadOfABuildThatFailsToStartRollsTheRevisionBack`, `apps/p2/plugins/status/worker_race_test.go::TestPushReadsTheFollowedGraphInASectionWhileTheGraphChanges`
-- **Release note:** p2: the status worker's push and the chat's `abortCompaction` read the followed task graph and view in a section of the host's loop, as Pi's synchronous read does, instead of from their own goroutines (a data race with the Durable publication that applies them). `host.InSection` runs work in the loop for a handler that suspended. <!-- fix: p2-status-race -->
+- **Release note:** p2: the status worker's push and the chat's `abortCompaction` read the followed task graph and view in a section of the host's loop, as Pi's synchronous read does, instead of from their own goroutines (a data race with the Durable publication that applies them). `host.InSection` runs work in the loop for a handler that suspended.
 
 ### BF-e11607f-2
 
@@ -24980,7 +24982,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e11607f2b7` (2026-11-08)
 - **Tests:** `apps/p2/hosts/reload_test.go::TestReloadOfABuildThatFailsToStartRollsTheRevisionBack`, `apps/p2/plugins/status/worker_race_test.go::TestPushReadsTheFollowedGraphInASectionWhileTheGraphChanges`
-- **Release note:** p2: a reload of a plugin whose new build fails to start is tested to keep the old revision (the failed build is tried again by the next reload). <!-- fix: p2-reload-rollback -->
+- **Release note:** p2: a reload of a plugin whose new build fails to start is tested to keep the old revision (the failed build is tried again by the next reload).
 
 ### BF-e1634c0
 
@@ -28051,6 +28053,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8d23cfcee3` (2026-10-06), `fbd3640da9` (2026-10-06)
 - **Tests:** `internal/codingagent/migrations_auth_order_test.go::TestMigrateAuthToAuthJSONWritesFilesInPiKeyOrder`, `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder`, `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace`
 - **Release note:** The legacy credential migration writes `auth.json` and the rewritten `settings.json` with the key order Pi writes (array-index names first, then the order in the old files) and without escaping `<`, `>` and `&`. The files used to be written with every key sorted.
+
+### BF-fc0d578
+
+**p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state ("Watch is stopped").
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fc0d57839f` (2026-11-08)
+- **Tests:** `apps/p2/plugins/prompt/moves_test.go::TestConversationsWhereTheSessionWorksShareItsLoadsAndOtherLocationsHaveTheirOwn`, `apps/p2/plugins/prompt/moves_test.go::TestThePromptLoadsMoveOnlyForANewerMove`
+- **Release note:** p2: a session's relocation answers once the restarted worker's start settled (`SessionWorkers`' restart waits for the start its retry began, which the route reports, instead of a fixed 50 ms), and a relocation step that finished first no longer panics a wait on the workers' state ("Watch is stopped").
+
+### BF-fc0d578-2
+
+**p2: PowerShell reads the system of an environment's machine through any environment that reports it…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `fc0d57839f` (2026-11-08)
+- **Tests:** `apps/p2/plugins/prompt/moves_test.go::TestConversationsWhereTheSessionWorksShareItsLoadsAndOtherLocationsHaveTheirOwn`, `apps/p2/plugins/prompt/moves_test.go::TestThePromptLoadsMoveOnlyForANewerMove`
+- **Release note:** p2: PowerShell reads the system of an environment's machine through any environment that reports it (`SystemReporter`, as Pi duck-types `connection.info()`), not only the two connection-backed ones; `OffersPowerShell` is exported as Pi's `offersPowerShell`.
 
 ### BF-fc1703f
 
