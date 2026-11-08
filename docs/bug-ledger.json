@@ -32444,6 +32444,86 @@
       ]
     },
     {
+      "id": "BF-D600",
+      "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins (\"a worker started after an edit of the entry's imported source runs the code the base was built with\"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D600",
+      "removeWhen": "PiG's worker is a Node entry again.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "70b2b7bf42",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "23978e4efb",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "981a62878f",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "d6646c05d7",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D605",
+      "title": "The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other",
+      "symptom": "none.",
+      "rootCause": "process boundary (a Node subprocess for the plugins) and the Go server's two hosts (D462). Without the first direction a TypeScript server plugin cannot serve a remote type (`a host without an address serves only local types`, or, with the address, `unavailable`), which every reload row on the server needs; without the second a server plugin cannot hold any type the Go server serves.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D605",
+      "removeWhen": "never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "612e5b6ab7",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "6871fcf20e",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "70b2b7bf42",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "23978e4efb",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "595c3b4930",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "981a62878f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_delegate_test.go::TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack",
+        "chord/next/host/host_delegate_test.go::TestDelegateWhatTheDelegatesOwnLinkAsksForAndNothingServesIsNotSentBackToIt",
+        "chord/next/host/host_delegate_test.go::TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched",
+        "chord/next/host/host_delegate_test.go::TestHostServesTheTypesOfItsPublishedTableAndNoOtherName",
+        "chord/nextnode/app/app_delegate_test.go::TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -52871,6 +52951,16 @@
       "id": "D540",
       "title": "The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for",
       "entry": "BF-D540"
+    },
+    {
+      "id": "D600",
+      "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
+      "entry": "BF-D600"
+    },
+    {
+      "id": "D605",
+      "title": "The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other",
+      "entry": "BF-D605"
     }
   ],
   "exemptCommits": {
