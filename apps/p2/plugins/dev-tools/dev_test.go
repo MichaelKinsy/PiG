@@ -1,9 +1,9 @@
 package devtools
 
 import (
-	"fmt"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
