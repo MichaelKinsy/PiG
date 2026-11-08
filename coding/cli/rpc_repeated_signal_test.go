@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Pi main ace560c30 (#11752, D234): once a shutdown has started, from stdin end or from a signal, a stdin end or a single signal does not interrupt it, and a second signal exits at once. Pi 1.5.0 removed its signal handlers when shutdown() started, so the next signal killed the process mid-dispose, and a second shutdown() call exited at once. Paseo closes stdin and sends SIGTERM together; systemd sends SIGTERM and stdin closes after.
+// Pi main ace560c30 (#11752): once a shutdown has started, from stdin end or from a signal, a stdin end or a single signal does not interrupt it, and a second signal exits at once. Pi 1.5.0 removed its signal handlers when shutdown() started, so the next signal killed the process mid-dispose, and a second shutdown() call exited at once. Paseo closes stdin and sends SIGTERM together; systemd sends SIGTERM and stdin closes after.
 //
 // The fixture's session_shutdown handler waits a second and then records that it ran to its end.
 const rpcSlowShutdown = "RPC_SHUTDOWN_SLOW=1500"

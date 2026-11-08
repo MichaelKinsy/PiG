@@ -30,7 +30,7 @@ func TestRPCShutdownInputEndSettlesBeforeShutdownStarts(t *testing.T) {
 	}
 }
 
-// A repeated signal during a stdin-end dispose exits 128+SIGTERM at once (D234, Pi main ace560c30). Pig's exit stops the extension processes before it ends the process, which completes the pending dispose, and the dispose's own exit (0) then runs beside the signal's. The first exit decides the status. The fake exit forces that interleaving: it completes the dispose and waits for the stdin end's shutdown to finish before it records its own status.
+// A repeated signal during a stdin-end dispose exits 128+SIGTERM at once (Pi main ace560c30). Pig's exit stops the extension processes before it ends the process, which completes the pending dispose, and the dispose's own exit (0) then runs beside the signal's. The first exit decides the status. The fake exit forces that interleaving: it completes the dispose and waits for the stdin end's shutdown to finish before it records its own status.
 func TestRPCShutdownRepeatedSignalKeepsItsExitStatus(t *testing.T) {
 	var mu sync.Mutex
 	var exits []int
@@ -60,7 +60,7 @@ func TestRPCShutdownRepeatedSignalKeepsItsExitStatus(t *testing.T) {
 	}
 }
 
-// Pi's repeated signal calls process.exit at once (rpc-mode.ts signalCount > 1). An exit that is already waiting for stdout does not hold it back: the repeated signal ends the process through its own exit, which does not wait for stdout either (D234).
+// Pi's repeated signal calls process.exit at once (rpc-mode.ts signalCount > 1). An exit that is already waiting for stdout does not hold it back: the repeated signal ends the process through its own exit, which does not wait for stdout either.
 func TestRPCShutdownRepeatedSignalExitsWhileAnotherExitFlushes(t *testing.T) {
 	flushing := make(chan struct{})
 	release := make(chan struct{})

@@ -78,7 +78,7 @@ type rpcAdmission struct {
 	// shared, when set, is the task group every Session's admission of one RPC process uses, so a replacement does not fork the set of tasks that shutdown joins.
 	shared *rpcTaskGroup
 	runs   *sync.WaitGroup
-	// shutdown counts the commands in flight for an extension's ctx.shutdown() request (D231); nil counts nothing.
+	// shutdown counts the commands in flight for an extension's ctx.shutdown() request; nil counts nothing.
 	shutdown *rpcShutdownGate
 	// commandsInFlight, when set, counts the extension commands whose prompt response is not yet written.
 	commandsInFlight *atomic.Int32
@@ -102,7 +102,6 @@ func (a *rpcAdmission) taskGroup() *rpcTaskGroup {
 // commandTurn opens a Turns command for work that runs outside the executor. Pi runs the command's microtasks to the response without a timer callback between, so the extension runtimes hold theirs until the work's result settled and the loop drained what it queued: settled is called from the task that settles the result, and ends the command once that drain is over. abandoned ends it at once.
 func (a *rpcAdmission) commandTurn() (settled, abandoned func()) {
 	finish := a.turns.Command()
-	// pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin.
 	a.shutdown.Begin()
 	return func() {
 		idle := a.turn.Idle()
@@ -187,8 +186,7 @@ func rpcAwaitHandler[T any](a *rpcAdmission, work func(context.Context) (T, erro
 	entered := make(chan struct{})
 	ctx := invocation.WithSuspensionAcknowledgment(a.ctx, func() { close(entered) })
 	p := &rpcPromise[T]{turn: a.turn}
-	// pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin.
-	// The handler is a command in flight until its continuation was queued; the shutdown check runs as a macrotask, after that continuation (D231).
+	// The handler is a command in flight until its continuation was queued; the shutdown check runs as a macrotask, after that continuation.
 	a.shutdown.Begin()
 	if !a.tasks.Go(func() {
 		defer invocation.Acknowledge(ctx)
@@ -617,8 +615,7 @@ func (a *rpcAdmission) startPreparedPrompt(id rpcRequestID, start *coding.RunSta
 				}
 				hasStartHandler := a.runner != nil && a.runner.HasHandlers("agent_start")
 				rpcAwaitWork(a, hasStartHandler, start).then(func(_ struct{}, _ error) {
-					// pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin.
-					// The prompt command is in flight until the run settles (rpc-mode.ts activeCommands, D231).
+					// The prompt command is in flight until the run settles (rpc-mode.ts activeCommands).
 					a.shutdown.Begin()
 					a.runs.Go(func() { defer a.shutdown.End(); stackprime.Prime(); _, _ = run.Run() })
 				})

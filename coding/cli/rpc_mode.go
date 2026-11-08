@@ -406,7 +406,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	// Upstream shutdown() runs once, on stdin end, ctx.shutdown(), or the first termination signal (rpc-mode.ts:728-744). It stops writing
 	// Session events and awaits runtimeHost.dispose(): session_shutdown, then AgentSession.dispose, while the Session still runs. It then
 	// flushes stdout, unless the signal is SIGTERM, and exits without joining the remaining work: dialogs stdin can no longer answer stay
-	// pending, and their commands never respond. pig divergence (D234): follows Pi main ace560c30. A trigger after shutdown started does
+	// pending, and their commands never respond. A trigger after shutdown started does
 	// nothing and the signal handlers stay until exit; a repeated signal exits at once (rpcShutdown).
 	// The extension host of any Session reaches the process controls of every host the process started.
 	terminateProcesses := func() {
@@ -507,7 +507,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			invocation.Acknowledge(shutdownContext)
 			sess().Dispose()
 			release()
-			// pig divergence (D237): Pi main b2cb62923 makes runtimeHost.dispose() wait for credential writes in progress, so a started OAuth refresh is saved before the process exits. A repeated signal exits at once (D234 repeatedSignal), so the wait is interruptible.
+			// pig divergence (D237): Pi main b2cb62923 makes runtimeHost.dispose() wait for credential writes in progress, so a started OAuth refresh is saved before the process exits. A repeated signal exits at once (repeatedSignal), so the wait is interruptible.
 			_ = rt.SettleCredentialWrites(shutdownContext)
 		},
 		func() {
@@ -564,8 +564,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		return ctx.Err() == nil
 	}
 	defer shutdown.finish()
-	// pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin.
-	// checkShutdownRequested is rpc-mode.ts checkShutdownRequested (D231). The gate runs it as a macrotask of the stdin executor, so the command that is running answers first; shutdown itself runs apart from the executor.
+	// checkShutdownRequested is rpc-mode.ts checkShutdownRequested. The gate runs it as a macrotask of the stdin executor, so the command that is running answers first; shutdown itself runs apart from the executor.
 	var shutdownTasks sync.WaitGroup
 	defer shutdownTasks.Wait()
 	shutdownGate.bind(
@@ -591,10 +590,10 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	)
 	defer shutdownGate.unbind()
 	host.afterSettled = shutdownGate.Check
-	// pig divergence (D234): follows Pi main ace560c30 ahead of the v1.5.0 pin. Main's handler takes the first signal; the watcher takes the repeated ones.
+	// Main's handler takes the first signal; the watcher takes the repeated ones.
 	repeated := watchRepeatedTermination(shutdown.repeatedSignal)
 	defer repeated.Stop()
-	// The hook is registered before the record, and cleared after it: while a signal can claim the shutdown at record time, a hook exists to run it, and finish runs one that a signal claimed and no hook got to (D234).
+	// The hook is registered before the record, and cleared after it: while a signal can claim the shutdown at record time, a hook exists to run it, and finish runs one that a signal claimed and no hook got to.
 	termination = &rpcTermination{
 		shutdown: shutdown, exit: exitRPC, release: release, done: ctx.Done(),
 		received:     func() syscall.Signal { return syscall.Signal(receivedTerminationSignal.Load()) },
@@ -893,8 +892,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	// ── Command loop ───────────────────────────────────────────────────────
 
 	inputLines := make(chan [][]byte, 64)
-	// Input is attached: a ctx.shutdown() requested during startup is checked now (D231).
-	// pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin.
+	// Input is attached: a ctx.shutdown() requested during startup is checked now.
 	shutdownGate.InputReady()
 	inputDone := make(chan error, 1)
 	// loopIdle is closed when the command loop has dispatched every line read
@@ -937,7 +935,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		case <-ctx.Done():
 		}
 		if ctx.Err() == nil && !shutdown.inputEnd() {
-			// pig divergence (D234): a shutdown that another trigger started goes on and ends the process; returning would end it under the dispose. A drained event loop (host.drain) still ends it.
+			// a shutdown that another trigger started goes on and ends the process; returning would end it under the dispose. A drained event loop (host.drain) still ends it.
 			<-ctx.Done()
 			inputDone <- nil
 			return

@@ -288,8 +288,9 @@ before the session reads it (the session's context is refreshed after it). The r
               (rt-result nil)))))))
 
 (defun agent-session-runtime-dispose (runtime)
-  "Emit session_shutdown with the reason \"quit\" to the current session's extensions, run the before-invalidate function and dispose the session."
+  "Settle any active response, emit session_shutdown with the reason \"quit\" to the current session's extensions, run the before-invalidate function and dispose the session."
   (let ((session (agent-session-runtime-session runtime)))
+    (agent-session-abort session)
     (child-emit-event session (obj "type" "session_shutdown" "reason" "quit"))
     (when (agent-session-runtime-before-invalidate runtime) (funcall (agent-session-runtime-before-invalidate runtime)))
     (agent-session-dispose session)

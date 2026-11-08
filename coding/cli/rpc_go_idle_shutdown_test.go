@@ -75,7 +75,7 @@ func writeIdleShutdownFactory(t *testing.T, name string, requests bool) string {
 	return root
 }
 
-// Pi 1.5.0 and Pi main: ctx.shutdown() returns at once and the check runs on the next tick, so the code after the call runs before session_shutdown (rpc-mode.ts shutdownHandler, setImmediate). A Go SDK's ctx.Shutdown() is a synchronous host call: the host must not run the shutdown check on the caller's goroutine, or the call blocks until the session_shutdown handlers ran and the process exits first (D231, Pi main 1708b4788).
+// Pi 1.5.0 and Pi main: ctx.shutdown() returns at once and the check runs on the next tick, so the code after the call runs before session_shutdown (rpc-mode.ts shutdownHandler, setImmediate). A Go SDK's ctx.Shutdown() is a synchronous host call: the host must not run the shutdown check on the caller's goroutine, or the call blocks until the session_shutdown handlers ran and the process exits first (Pi main 1708b4788).
 func TestRPCGoSDKIdleShutdownReturnsBeforeSessionShutdown(t *testing.T) {
 	for _, layout := range []struct {
 		name    string
