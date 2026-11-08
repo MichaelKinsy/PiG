@@ -73,33 +73,51 @@ func selectLinesFromStream(ctx context.Context, stream io.Reader, startLine, lim
 		endLine = startLine + limit
 	}
 	var (
-		decoder        utf8stream.Decoder
-		storedLines    []string
-		storedBytes    int
+		decoder utf8stream.Decoder
+		// stored holds the stored lines joined by "\n": no string per line. completedBytes is its size without the selected line
+		// being read, and storedLines counts the finished lines in it.
+		stored         strings.Builder
+		completedBytes int
+		storedLines    int
 		storedPastCaps bool
+		// line is the line being read, 0-based, and selectedCount the selected lines finished.
 		line           int
 		selectedCount  int
 		selectedBytes  int
 		firstLineBytes int
 		lastLineEmpty  = true
-		// The selected line being read: its text while it is stored, and its size.
+		// scratch takes the decoded text of a chunk's selected lines when decoding changes it.
+		scratch []byte
+		// The selected line being read: whether it is stored, whether its separator is in stored, and its size.
 		storing     = true
-		pieces      []string
+		lineOpen    bool
 		lineBytes   int
 		lineHasText bool
 	)
+	newline := []byte{'\n'}
 
-	appendToLine := func(piece string) {
-		lineHasText = true
+	// addPiece takes the decoded text of the selected line being read up to a newline or the end of a chunk.
+	addPiece := func(text []byte) {
+		if len(text) != 0 {
+			selectedBytes += len(text)
+			lineHasText = true
+		}
 		if !storing {
 			return
 		}
+		if !lineOpen {
+			lineOpen = true
+			if storedLines > 0 {
+				stored.WriteByte('\n')
+			}
+		}
 		// A line over the byte cap is never shown, and a first line over it is only measured: never store all of a 1 GB line.
 		if lineBytes <= DefaultMaxBytes {
-			pieces = append(pieces, piece)
+			stored.Write(text)
 		}
-		lineBytes += len(piece)
+		lineBytes += len(text)
 	}
+	// finishLine ends the selected line being read at a newline or the end of the file.
 	finishLine := func() {
 		if storing {
 			if selectedCount == 0 {
@@ -107,54 +125,143 @@ func selectLinesFromStream(ctx context.Context, stream io.Reader, startLine, lim
 			}
 			// Storing continues one line past the caps: TruncateHead ignores a trailing empty line, so the line after the cap must be
 			// there for it to decide truncation as for the full text.
-			if len(storedLines) > DefaultMaxLines || storedBytes > DefaultMaxBytes {
+			if storedLines > DefaultMaxLines || completedBytes > DefaultMaxBytes {
 				storedPastCaps = true
 			}
-			text := strings.Join(pieces, "")
-			storedBytes += len(text)
-			if len(storedLines) > 0 {
-				storedBytes++
+			if !lineOpen && storedLines > 0 {
+				stored.WriteByte('\n')
 			}
-			storedLines = append(storedLines, text)
+			storedLines++
+			completedBytes = stored.Len()
 		}
 		selectedCount++
+		line++
 		lastLineEmpty = !lineHasText
 		storing = !storedPastCaps
-		pieces = pieces[:0]
+		lineOpen = false
 		lineBytes = 0
 		lineHasText = false
 	}
-	// selectChunk reads the lines of one chunk of bytes. Only the lines of the selection are decoded: a line that ends the chunk is
-	// decoded as a stream, and a newline flushes the decoder, as an invalid sequence before it becomes U+FFFD before the newline.
-	selectChunk := func(chunk []byte) {
-		position := 0
-		for {
-			selected := line >= startLine && line < endLine
-			newline := bytes.IndexByte(chunk[position:], '\n')
-			end := len(chunk)
-			if newline != -1 {
-				newline += position
-				end = newline
+	// storeWholeLines stores, in one write, the lines of text that end in a newline and cannot reach a cap of the stored lines, which
+	// is every line while storedLines stays within DefaultMaxLines and the stored text within DefaultMaxBytes. text starts a line. It
+	// returns the bytes taken, which end in the newline that separates the last line from the next, already stored.
+	storeWholeLines := func(text []byte) int {
+		taken, lines, lastLine := 0, 0, 0
+		separator := 0
+		if storedLines > 0 {
+			separator = 1
+		}
+		for storedLines+lines < DefaultMaxLines {
+			next := bytes.IndexByte(text[taken:], '\n')
+			// The stored text, without the newline that follows the last line, stays within the byte cap.
+			if next == -1 || completedBytes+separator+taken+next > DefaultMaxBytes {
+				break
 			}
-			if selected && (end > position || newline != -1) {
-				text := decoder.Decode(chunk[position:end], newline == -1)
-				if text != "" {
-					selectedBytes += len(text)
-					appendToLine(text)
+			if selectedCount == 0 && lines == 0 {
+				firstLineBytes = next
+			}
+			lastLine = next
+			taken += next + 1
+			lines++
+		}
+		if lines == 0 {
+			return 0
+		}
+		if separator == 1 {
+			stored.WriteByte('\n')
+		}
+		stored.Write(text[:taken])
+		lineOpen = true
+		storedLines += lines
+		completedBytes = stored.Len() - 1
+		selectedCount += lines
+		selectedBytes += taken
+		line += lines
+		lastLineEmpty = lastLine == 0
+		return taken
+	}
+	// selectText reads decoded text of selected lines: the text holds a newline between the lines. Lines that no longer show are
+	// counted without a pass per line, and the line the text ends in stays open.
+	selectText := func(text []byte) {
+		// Storing ends a line past the caps, so about DefaultMaxBytes is the most this chunk adds.
+		if room := DefaultMaxBytes + 1 - stored.Len(); storing && room > 0 {
+			stored.Grow(min(len(text), room))
+		}
+		for storing {
+			if !lineOpen {
+				if taken := storeWholeLines(text); taken > 0 {
+					text = text[taken:]
+					continue
 				}
 			}
-			if newline == -1 {
+			next := bytes.IndexByte(text, '\n')
+			if next == -1 {
+				addPiece(text)
 				return
 			}
-			if selected {
-				finishLine()
-				// The joined selected lines hold a newline between them.
-				if line+1 < endLine {
-					selectedBytes++
-				}
+			addPiece(text[:next])
+			finishLine()
+			selectedBytes++
+			text = text[next+1:]
+		}
+		selectedBytes += len(text)
+		lines := bytes.Count(text, newline)
+		if lines == 0 {
+			lineHasText = lineHasText || len(text) != 0
+			return
+		}
+		last := bytes.LastIndexByte(text, '\n')
+		if lines == 1 {
+			lastLineEmpty = !lineHasText && last == 0
+		} else {
+			lastLineEmpty = last-bytes.LastIndexByte(text[:last], '\n') == 1
+		}
+		selectedCount += lines
+		line += lines
+		lineHasText = len(text) > last+1
+	}
+	// selectChunk reads one chunk of bytes. Only the bytes of the selected lines are decoded, in one pass: a newline flushes the
+	// decoder, as an invalid sequence before it becomes U+FFFD before the newline.
+	selectChunk := func(chunk []byte) {
+		position := 0
+		for ; line < startLine; line++ {
+			next := bytes.IndexByte(chunk[position:], '\n')
+			if next == -1 {
+				return
 			}
-			line++
-			position = newline + 1
+			position += next + 1
+		}
+		if line >= endLine {
+			line += bytes.Count(chunk[position:], newline)
+			return
+		}
+		selection, ends := chunk[position:], false
+		if limit >= 0 {
+			// The newline that ends the last selected line is the remaining-th one.
+			offset := 0
+			for remaining := endLine - line; remaining > 0; remaining-- {
+				next := bytes.IndexByte(selection[offset:], '\n')
+				if next == -1 {
+					break
+				}
+				offset += next
+				if remaining == 1 {
+					selection, ends = selection[:offset], true
+					break
+				}
+				offset++
+			}
+		}
+		// Valid text is its own decoding. Otherwise decoding into scratch takes as many bytes as the text has for valid parts.
+		text := selection
+		if !decoder.Passthrough(selection) {
+			scratch = decoder.AppendDecode(scratch[:0], selection, !ends)
+			text = scratch
+		}
+		selectText(text)
+		if ends {
+			finishLine()
+			line += bytes.Count(chunk[position+len(selection)+1:], newline)
 		}
 	}
 
@@ -177,14 +284,13 @@ func selectLinesFromStream(ctx context.Context, stream io.Reader, startLine, lim
 			return selectedLines{}, errors.New(NodeFSError(err, "read", ""))
 		}
 	}
+	totalFileLines := line + 1
 	if line >= startLine && line < endLine {
-		if text := decoder.Decode(nil, false); text != "" {
-			selectedBytes += len(text)
-			appendToLine(text)
-		}
+		scratch = decoder.AppendDecode(scratch[:0], nil, false)
+		selectText(scratch)
 		finishLine()
 	}
-	truncation := TruncateHead(strings.Join(storedLines, "\n"), TruncationOptions{})
+	truncation := TruncateHead(stored.String(), TruncationOptions{})
 	// TruncateHead's counts for the joined selected lines, which drop a trailing empty line.
 	truncation.TotalLines = 0
 	if selectedBytes != 0 {
@@ -194,7 +300,7 @@ func selectLinesFromStream(ctx context.Context, stream io.Reader, startLine, lim
 		}
 	}
 	truncation.TotalBytes = selectedBytes
-	return selectedLines{totalFileLines: line + 1, truncation: truncation, firstLineBytes: firstLineBytes}, nil
+	return selectedLines{totalFileLines: totalFileLines, truncation: truncation, firstLineBytes: firstLineBytes}, nil
 }
 
 // afterReadChunkHook runs after a streamed read takes a chunk, while the file is open and partly read; tests use it to change the file

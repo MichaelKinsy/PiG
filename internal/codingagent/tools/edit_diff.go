@@ -336,6 +336,7 @@ func applyReplacementsToOriginal(originalContent string, replacements []matchedE
 	position := 0
 	for _, r := range replacements {
 		start := toOriginal(r.matchIndex)
+		//portlint:allow utf16units start and position are byte offsets of originalContent, from toOriginal over the byte offsets of matchIndex and matchLength
 		push(originalContent[position:start])
 		ending := getLineEndingAt(originalContent, start)
 		if ending == "\n" {
@@ -345,6 +346,7 @@ func applyReplacementsToOriginal(originalContent string, replacements []matchedE
 		}
 		position = toOriginal(r.matchIndex + r.matchLength)
 	}
+	//portlint:allow utf16units position is a byte offset produced by toOriginal
 	push(originalContent[position:])
 	return result.String()
 }
@@ -353,10 +355,12 @@ func applyReplacementsToOriginal(originalContent string, replacements []matchedE
 // last line. A lone CR only counts in files without any LF (classic Mac line endings); elsewhere it is more likely a control character
 // inside a line.
 func getLineEndingAt(content string, offset int) string {
-	lineFeed := -1
+	var lineFeed int
+	//portlint:allow utf16units offset is a byte offset into content, the start of a matched range
 	if next := strings.IndexByte(content[offset:], '\n'); next != -1 {
 		lineFeed = offset + next
 	} else {
+		//portlint:allow utf16units offset is a byte offset into content, the start of a matched range
 		lineFeed = strings.LastIndexByte(content[:min(offset+1, len(content))], '\n')
 	}
 	if lineFeed == -1 {

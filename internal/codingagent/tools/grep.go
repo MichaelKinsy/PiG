@@ -2,8 +2,8 @@ package tools
 
 import (
 	"bufio"
+	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -94,14 +94,6 @@ const grepDefaultLimit = 100
 // maxSafeInteger is Number.MAX_SAFE_INTEGER.
 const maxSafeInteger = 1<<53 - 1
 
-// grepEvent is one rg "match" or "context" event that carries a path and a line number.
-type grepEvent struct {
-	isMatch    bool
-	filePath   string
-	lineNumber int
-	lineText   string
-}
-
 // grepLeadingDotSlash is the "./" prefix of a glob (after an optional "!") that rg never matches.
 var grepLeadingDotSlash = lazyregexp.New(`^(!?)(?:\./)+`)
 
@@ -184,24 +176,26 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	outputBytes, outputLineCount := 0, 0
 	matchCount := 0
 	matchLimitReached := false
-	lastFile := ""
+	var lastFile, lastFileBuf []byte
 	// Set at the last allowed match. rg still sends that match's trailing context, kept up to trailingContextEnd, and the limit notice
 	// waits for proof of one more match.
 	limitHit := false
 	trailingContextEnd := 0.0
 	done := false
 	pushLine := func(e grepEvent) {
-		lastFile = e.filePath
+		lastFileBuf = append(lastFileBuf[:0], e.path...)
+		lastFile = lastFileBuf
 		length := f.emit(e, joined)
 		// outputBytes counts a newline after every line; the joined output has one fewer.
 		outputBytes += length + 1
 		outputLineCount++
 	}
-	handle := func(line string) (finish bool) {
-		if done || jsstring.Trim(line) == "" {
+	var parser grepEventParser
+	handle := func(line []byte) (finish bool) {
+		if done || isBlankLine(line) {
 			return false
 		}
-		e, ok := parseRipgrepEvent(line)
+		e, ok := parser.parse(line)
 		if !ok {
 			return false
 		}
@@ -217,7 +211,7 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 			}
 			return false
 		}
-		inWindow := e.filePath == lastFile && float64(e.lineNumber) <= trailingContextEnd
+		inWindow := bytes.Equal(e.path, lastFile) && float64(e.lineNumber) <= trailingContextEnd
 		// A match inside the last match's trailing context is shown as context.
 		isMatch := e.isMatch
 		if inWindow {
@@ -302,7 +296,7 @@ type ripgrepRun struct {
 
 // runRipgrep streams rg's JSON lines to handle. Lines are read without a length cap and the pipe is always drained, so a huge match
 // line can neither stall rg nor drop later events; when handle returns true rg is killed and the rest of its output discarded.
-func runRipgrep(ctx context.Context, rgPath, dir string, args []string, handle func(line string) (finish bool)) (ripgrepRun, error) {
+func runRipgrep(ctx context.Context, rgPath, dir string, args []string, handle func(line []byte) (finish bool)) (ripgrepRun, error) {
 	//nolint:gosec // G204 (class b): program is rg resolved by PiG's tools manager; args are fixed flags, then -- and the pattern and search path from the grep tool call, so the model cannot reach an rg option.
 	cmd := exec.CommandContext(ctx, rgPath, args...)
 	// Upstream's spawn has no cwd option for a file search, so on Windows libuv finds rg from
@@ -320,8 +314,18 @@ func runRipgrep(ctx context.Context, rgPath, dir string, args []string, handle f
 	}
 	var run ripgrepRun
 	reader := bufio.NewReader(stdout)
+	var long []byte
 	for {
-		line, readErr := reader.ReadString('\n')
+		line, readErr := reader.ReadSlice('\n')
+		// A line longer than the reader's buffer comes in pieces, joined in long.
+		for errors.Is(readErr, bufio.ErrBufferFull) {
+			long = append(long, line...)
+			line, readErr = reader.ReadSlice('\n')
+		}
+		if len(long) > 0 {
+			line = append(long, line...)
+			long = line[:0]
+		}
 		if !run.killedDueToLimit && handle(line) {
 			run.killedDueToLimit = true
 			_ = cmd.Process.Kill()
@@ -340,53 +344,9 @@ func runRipgrep(ctx context.Context, rgPath, dir string, args []string, handle f
 	return run, nil
 }
 
-// rgText is a ripgrep JSON text field: valid UTF-8 arrives as text, anything else base64-encoded as bytes.
-type rgText struct {
-	Text  *string `json:"text"`
-	Bytes *string `json:"bytes"`
-}
-
-// decode is upstream decodeRgText: the text, or the decoded bytes (invalid UTF-8 becomes U+FFFD, as Buffer.toString does).
-func (t *rgText) decode() string {
-	if t == nil {
-		return ""
-	}
-	if t.Text != nil {
-		return *t.Text
-	}
-	if t.Bytes != nil {
-		if data, err := base64.StdEncoding.DecodeString(*t.Bytes); err == nil {
-			return decodeText(data)
-		}
-	}
-	return ""
-}
-
-// parseRipgrepEvent reads a "match" or "context" event that carries a path and a line number; upstream skips every other line.
-func parseRipgrepEvent(line string) (grepEvent, bool) {
-	var event struct {
-		Type string `json:"type"`
-		Data struct {
-			Path       *rgText  `json:"path"`
-			LineNumber *float64 `json:"line_number"`
-			Lines      *rgText  `json:"lines"`
-		} `json:"data"`
-	}
-	// upstream: coding-agent/src/core/tools/grep.ts:JSON.parse
-	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		return grepEvent{}, false
-	}
-	isMatch := event.Type == "match"
-	if !isMatch && event.Type != "context" {
-		return grepEvent{}, false
-	}
-	d := event.Data
-	filePath := d.Path.decode()
-	if filePath == "" || d.LineNumber == nil {
-		return grepEvent{}, false
-	}
-	//portlint:allow numbers ripgrep reports a line number as a small positive integer, so the conversion cannot leave the int range
-	return grepEvent{isMatch: isMatch, filePath: filePath, lineNumber: int(*d.LineNumber), lineText: d.Lines.decode()}, true
+// isBlankLine is jsstring.Trim(line) == "": an event line starts with a brace, so only a line that does not is looked at.
+func isBlankLine(line []byte) bool {
+	return len(line) == 0 || line[0] != '{' && jsstring.Trim(string(line)) == ""
 }
 
 // grepFormatter formats the rows of a grep result (upstream formatPath and pushLine).
@@ -394,6 +354,11 @@ type grepFormatter struct {
 	searchPath     string
 	isDirectory    bool
 	linesTruncated bool
+	// relative is formatPath of relativeFor: a file's events run together, so it is formatted once per file.
+	relativeFor []byte
+	relative    string
+	// row is the row being built.
+	row []byte
 }
 
 func (f *grepFormatter) formatPath(filePath string) string {
@@ -409,47 +374,63 @@ func (f *grepFormatter) formatPath(filePath string) string {
 	return filepath.Base(filePath)
 }
 
-func (f *grepFormatter) truncate(line string) string {
-	truncated := TruncateLine(line, GrepMaxLineLength)
-	text, wasTruncated := truncated.Text, truncated.WasTruncated
-	if wasTruncated {
+// relativePath is formatPath(string(filePath)).
+func (f *grepFormatter) relativePath(filePath []byte) string {
+	if len(f.relativeFor) == 0 || !bytes.Equal(f.relativeFor, filePath) {
+		f.relativeFor = append(f.relativeFor[:0], filePath...)
+		f.relative = f.formatPath(string(filePath))
+	}
+	return f.relative
+}
+
+// appendTruncated appends the line to dst, cut to GrepMaxLineLength with the notice (upstream truncateLine), and records a cut.
+func (f *grepFormatter) appendTruncated(dst, line []byte) []byte {
+	if jsLengthBytes(line) <= GrepMaxLineLength {
+		return append(dst, line...)
+	}
+	truncated := TruncateLine(string(line), GrepMaxLineLength)
+	if truncated.WasTruncated {
 		f.linesTruncated = true
 	}
-	return text
+	return append(dst, truncated.Text...)
 }
 
 // stripLineTerminator is lineText.replace(/\r?\n?$/, ""): only the line terminator goes, a lone CR inside a line is content.
-func stripLineTerminator(lineText string) string {
+func stripLineTerminator(lineText []byte) []byte {
 	switch {
-	case strings.HasSuffix(lineText, "\r\n"):
+	case bytes.HasSuffix(lineText, []byte("\r\n")):
 		return lineText[:len(lineText)-2]
-	case strings.HasSuffix(lineText, "\n"), strings.HasSuffix(lineText, "\r"):
+	case bytes.HasSuffix(lineText, []byte("\n")), bytes.HasSuffix(lineText, []byte("\r")):
 		return lineText[:len(lineText)-1]
 	}
 	return lineText
 }
 
 // emit adds the row of one event to out and returns its length in bytes. Once out holds every byte its result can show, a row is only
-// measured: its length and whether its text was cut are what the result and the notice still read.
+// measured: its length and whether its text was cut are what the result and the notice still read. Neither path allocates per row.
 func (f *grepFormatter) emit(e grepEvent, out *headJoin) int {
-	relativePath := f.formatPath(e.filePath)
+	relativePath := f.relativePath(e.path)
 	sanitized := stripLineTerminator(e.lineText)
-	separator := "-"
+	separator := byte('-')
 	if e.isMatch {
-		separator = ":"
+		separator = ':'
 	}
-	if out.full() && !strings.Contains(sanitized, "\n") {
+	if out.full() && bytes.IndexByte(sanitized, '\n') == -1 {
 		length := len(relativePath) + 1 + decimalBytes(e.lineNumber) + 2 + f.truncatedBytes(sanitized)
 		out.AddLength(length)
 		return length
 	}
-	row := relativePath + separator + strconv.Itoa(e.lineNumber) + separator + " " + f.truncate(sanitized)
-	out.Add(row)
-	return len(row)
+	f.row = append(f.row[:0], relativePath...)
+	f.row = append(f.row, separator)
+	f.row = strconv.AppendInt(f.row, int64(e.lineNumber), 10)
+	f.row = append(f.row, separator, ' ')
+	f.row = f.appendTruncated(f.row, sanitized)
+	out.Add(f.row)
+	return len(f.row)
 }
 
-// truncatedBytes is len(f.truncate(line)), recording a cut line as f.truncate does.
-func (f *grepFormatter) truncatedBytes(line string) int {
+// truncatedBytes is the length appendTruncated adds for line, recording a cut line as it does.
+func (f *grepFormatter) truncatedBytes(line []byte) int {
 	n, wasTruncated := truncatedLineBytes(line, GrepMaxLineLength)
 	if wasTruncated {
 		f.linesTruncated = true

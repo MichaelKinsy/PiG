@@ -335,12 +335,12 @@ func readLocalFile(path string, stream bool) (readSource, string) {
 	mime := imageprocessing.DetectSupportedImageMimeType(data)
 	if n == imageprocessing.ImageTypeSniffBytes {
 		if stream && mime == "" {
-			var rest io.Reader = f
-			if size > n {
-				rest = io.LimitReader(f, int64(size-n))
-			}
 			closeFile = false
-			return readSource{stream: readerCloser{Reader: io.MultiReader(bytes.NewReader(data), rest), Closer: f}}, ""
+			stream := &sniffedFile{head: data, file: f}
+			if size > n {
+				stream.limited, stream.limit = true, size-n
+			}
+			return readSource{stream: stream}, ""
 		}
 		for {
 			if len(data) == cap(data) {
@@ -359,11 +359,38 @@ func readLocalFile(path string, stream bool) (readSource, string) {
 	return readSource{data: data, mime: mime}, ""
 }
 
-// readerCloser is a stream whose bytes come from Reader and whose Close closes the file under it.
-type readerCloser struct {
-	io.Reader
-	io.Closer
+// sniffedFile is a stream of a file whose first bytes were already read: Read yields head, then the file, up to limit more bytes when
+// limited, and Close closes the file.
+type sniffedFile struct {
+	head    []byte
+	file    *os.File
+	limited bool
+	limit   int
 }
+
+func (s *sniffedFile) Read(p []byte) (int, error) {
+	// The first read fills p from the file after head, so the first chunk is as large as the others.
+	n := copy(p, s.head)
+	s.head = s.head[n:]
+	if n == len(p) {
+		return n, nil
+	}
+	rest := p[n:]
+	if s.limited {
+		if s.limit <= 0 {
+			if n > 0 {
+				return n, nil
+			}
+			return 0, io.EOF
+		}
+		rest = rest[:min(len(rest), s.limit)]
+	}
+	m, err := s.file.Read(rest)
+	s.limit -= m
+	return n + m, err
+}
+
+func (s *sniffedFile) Close() error { return s.file.Close() }
 
 // lineStart is the byte offset at which line `line` (0-based, split on "\n") of data starts, scanning forward from the start of line
 // `from` at offset `at`.
