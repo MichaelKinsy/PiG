@@ -74,6 +74,8 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		{"retries temporary ChatGPT subscription errors/user_unavailable", "subscription_sharing_user_unavailable: User cannot be loaded."},
 		// Pi 29057ece (#11057): the Codex CLI mid-stream disconnect, relayed by a proxy.
 		{"matches Codex CLI stream disconnects relayed by proxies", "stream disconnected before completion: stream closed before response.completed"},
+		// .upstream/current/packages/ai/test/retry.test.ts:100 (#11879)
+		{"matches gateway wording for a stream cut short mid-reply", "Claude Code's stream from Anthropic was cut short after the reply had begun"},
 		// Pi 6e491cfa: a status code stays retryable next to punctuation, whitespace and at either end.
 		{"matches standalone status codes/prefix", "429"},
 		{"matches standalone status codes/in parentheses", "OpenAI API error (503): upstream"},
