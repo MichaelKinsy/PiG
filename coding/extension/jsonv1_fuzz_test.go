@@ -17,7 +17,7 @@ func FuzzDecodeProviderHeaderEntriesMatchesV1(f *testing.F) {
 		var out any
 		var rangeErr *json.UnmarshalTypeError
 		if errors.As(json.Unmarshal(data, &out), &rangeErr) {
-			t.Skip("encoding/json v1 Token rejected a top-level number outside float64 range, where the reader now returns no entries for a non-object, as for any other")
+			t.Skip("JSON.parse gives Infinity for a top-level number outside float64 range, a non-object, so the reader returns no entries as Pi does; encoding/json v1 Token rejected it, which is not the behaviour to match")
 		}
 		got, gotErr := decodeProviderHeaderEntries(data)
 		want, wantErr := decodeProviderHeaderEntriesV1(data)
