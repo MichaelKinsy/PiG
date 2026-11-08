@@ -276,6 +276,12 @@ func TestProxyRequestPreservesOptionPresence(t *testing.T) {
 	}{
 		{name: "unset", want: `{}`},
 		{
+			// Pi: packages/agent/src/proxy.ts:55,99 (disableContinuation, added at c23b9ec1 with Anthropic message threads #11545).
+			name:    "disable continuation",
+			options: ProxyStreamOptions{DisableContinuation: true},
+			want:    `{"disableContinuation":true}`,
+		},
+		{
 			name: "empty objects and zero minimal budget",
 			options: ProxyStreamOptions{
 				SamplingParams: map[string]any{}, Headers: ai.ProviderHeaders{}, Metadata: map[string]any{},
