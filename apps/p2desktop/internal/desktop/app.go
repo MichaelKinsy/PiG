@@ -443,6 +443,10 @@ func (a *App) shutdown() {
 	server, note, surface := a.server, a.notifier, a.surface
 	a.server, a.notifier, a.surface = nil, nil, nil
 	a.mu.Unlock()
+	// The content's scope goes before the host it follows (the window's own close calls Detach too: it is idempotent).
+	if a.cfg.Native != nil {
+		a.cfg.Native.Detach()
+	}
 	if surface != nil {
 		surface.Close()
 	}
