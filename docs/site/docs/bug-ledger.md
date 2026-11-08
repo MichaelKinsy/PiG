@@ -169,6 +169,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-20b9d05](#bf-20b9d05) | `pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its… | PiG's own defect | All platforms | Unreleased |
 | [BF-20bdd2c](#bf-20bdd2c) | Markdown text that holds a lone UTF-16 surrogate (a paragraph, heading, emphasis, code span, link, table… | PiG's own defect | All platforms | Unreleased |
 | [BF-211af49](#bf-211af49) | `/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2123e97](#bf-2123e97) | fix(chord): the heartbeat report marker names the upstream file under the root layout | PiG's own defect | All platforms | Unreleased |
 | [BF-2165463](#bf-2165463) | On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once… | PiG's own defect | Windows | 0.5.0 |
 | [BF-21c27bf](#bf-21c27bf) | A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-21cdff7](#bf-21cdff7) | A row that fills the terminal and holds an unpaired UTF-16 surrogate, for example text cut inside an emoji… | PiG's own defect | All platforms | Unreleased |
@@ -177,6 +178,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2280bf8](#bf-2280bf8) | The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-22866b5](#bf-22866b5) | Session files with large tool outputs opened slowly when `/tree` navigated or the transcript repainted: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-228dbea](#bf-228dbea) | fix(durable/core): follow the microtask schedule of Pi | PiG's own defect | All platforms | Unreleased |
+| [BF-2293426](#bf-2293426) | fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait | PiG's own defect | All platforms | Unreleased |
 | [BF-2307f4e](#bf-2307f4e) | An extension's message_end replacement of a custom message that has no `content` now writes `content` after… | PiG's own defect | All platforms | Unreleased |
 | [BF-2309604](#bf-2309604) | Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2316fe3](#bf-2316fe3) | The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet… | PiG's own defect | Windows | 0.5.3 |
@@ -252,6 +254,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-30d4a6d](#bf-30d4a6d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-30e47f4](#bf-30e47f4) | fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback | PiG's own defect | All platforms | Unreleased |
 | [BF-31118b1](#bf-31118b1) | Installing a chord plugin's npm dependencies no longer waits for a process the install command left running… | PiG's own defect | All platforms | Unreleased |
+| [BF-31312ab](#bf-31312ab) | Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-31312ab-2](#bf-31312ab-2) | Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-316eac6](#bf-316eac6) | `pig status` and `pig status --json` no longer print the credentials of a configured Package source | PiG's own defect | All platforms | 0.7.0 |
 | [BF-31740ec](#bf-31740ec) | A `waitForIdle()` waiter registered during a run stays pending through `agent_settled` handlers and the… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-31a7d77](#bf-31a7d77) | `SessionBeforeTreeResultSummary.Usage` is typed as `ai.Usage` | PiG's own defect | All platforms | 0.5.0 |
@@ -316,6 +320,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3ad9ec8](#bf-3ad9ec8) | fix(tui): tree label prompt gives its input width-2 cells (Pi LabelInput) | PiG's own defect | All platforms | Unreleased |
 | [BF-3b009a3](#bf-3b009a3) | `chord/host`: a child host forked by `ForkDriver` no longer inherits its parent's `CHORD2_LOCK` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3b3dba6](#bf-3b3dba6) | A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3b49d43](#bf-3b49d43) | Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is… | PiG's own defect | All platforms | Unreleased |
+| [BF-3b49d43-2](#bf-3b49d43-2) | Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged… | PiG's own defect | All platforms | Unreleased |
 | [BF-3b696c8](#bf-3b696c8) | A changelog version recorded with a prerelease or build suffix, such as `0.1.5-20261020.7`, no longer shows… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-3b8aa66](#bf-3b8aa66) | A Piglet Binary that strips `bedrock-converse-stream` links the AWS SDK again: the Bedrock retry backoff… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3b9bd16](#bf-3b9bd16) | `chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node… | PiG's own defect | All platforms | 0.7.0 |
@@ -535,6 +541,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5f4a0b2](#bf-5f4a0b2) | fix(durable/core): a Session's reports reach its report(error, info) | PiG's own defect | All platforms | Unreleased |
 | [BF-6018935](#bf-6018935) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-60473d7](#bf-60473d7) | The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-604e180](#bf-604e180) | fix(codemode,tool-search): follow local schema refs in tool search and codemode summaries | PiG's own defect | All platforms | Unreleased |
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-60c4c6f](#bf-60c4c6f) | A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-612955a](#bf-612955a) | The Rust and Go SDKs keep an unpaired surrogate through `prepareBranchEntries`… | PiG's own defect | All platforms | 0.5.0 |
@@ -554,6 +561,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-62a1c87](#bf-62a1c87) | The `ExtensionSelector` and `ExtensionInput` oracles also run with the Kitty keyboard protocol active (CSI-u… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62ae30d](#bf-62ae30d) | Durable: reading the history of a conversation whose parent conversation is not stored now fails with Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62b009c](#bf-62b009c) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
+| [BF-62b28a2](#bf-62b28a2) | fix(mcp/oauth): close remaining connections when the OAuth callback server closes | PiG's own defect | All platforms | Unreleased |
 | [BF-62c3691](#bf-62c3691) | `grep` with a large `context` no longer holds every context line in memory: its memory is bounded by the 50KB… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6323c8e](#bf-6323c8e) | fix(ai): a Bedrock model outside the catalog is a bedrock-converse-stream model of amazon-bedrock, so its own… | PiG's own defect | All platforms | Unreleased |
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | 0.7.0 |
@@ -1158,6 +1166,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a6932b4](#bf-a6932b4) | fix(coding): pass a Node extension request's client identity to the provider | PiG's own defect | All platforms | Unreleased |
 | [BF-a6e0ce8](#bf-a6e0ce8) | fix(codingagent): session selector page keys keep the index valid (Pi #7680) | PiG's own defect | All platforms | Unreleased |
 | [BF-a739b6d](#bf-a739b6d) | The Bedrock endpoint region is read from the WHATWG hostname of the base URL, as Pi's `new URL` does… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a79074e](#bf-a79074e) | Chord: a reload whose new factory pins a keyed member of another object (`ref.keyed.at(key)`) no longer fails… | PiG's own defect | All platforms | Unreleased |
 | [BF-a7be906](#bf-a7be906) | Pressing Enter in the model picker's search box selects the highlighted model even when `tui.select.confirm`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a7d2ef5](#bf-a7d2ef5) | Path autocomplete after resuming a session created in another directory now lists files from that session's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a808864](#bf-a808864) | Grep match lines, codemode output and previews, compaction summaries of tool results, and MCP server… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1572,6 +1581,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e9e9cf8](#bf-e9e9cf8) | An extension that calls a pi-ai function such as `completeSimple` at top level or in its factory no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ea6db99](#bf-ea6db99) | A provider request that fails in transport now records its cause: the failed message carries a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ea90fb3](#bf-ea90fb3) | A running `!cmd` block keeps only the last 2000 lines or 50 KB it shows instead of every byte the command… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ea921ca](#bf-ea921ca) | Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)… | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-eaa4ed7](#bf-eaa4ed7) | F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ead285d](#bf-ead285d) | Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147) | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eb34085](#bf-eb34085) | The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name… | PiG's own defect | All platforms | 0.5.0 |
@@ -1652,6 +1662,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f589900](#bf-f589900) | fix(tui): delete D155; PageUp and PageDown paging follows Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-f5dd13f](#bf-f5dd13f) | fix(photonimage): lint findings of the PNG inflater and the GIF decoder | PiG's own defect | All platforms | Unreleased |
 | [BF-f5ecdc2](#bf-f5ecdc2) | Settings and `models.json` compat objects keep the members PiG does not model, as Pi 1.2.0 does | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f5efecf](#bf-f5efecf) | Chord's objects no longer answer a call `not_ready` during a reload while the caller sees them `live`: a call… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-f6305d9](#bf-f6305d9) | A `new_session`, `fork`, `clone` or `switch_session` in the same RPC batch as a `compact` aborts the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f6575ff](#bf-f6575ff) | `pig install`, `pig remove` and `pig update --extensions` run npm with `--no-audit --no-fund`, wherever they… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f68aa40](#bf-f68aa40) | A `delta.Tracker` no longer keeps memory alive that Pi's tracker releases | PiG's own defect | All platforms | 0.5.0 |
@@ -3470,7 +3481,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** Windows
 - **Fixed in:** 0.7.0
 - **Fix commits:** `1c1887a562` (2026-10-23, #298)
-- **Tests:** `ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks`, `ai/usage_json_test.go::TestUsageCostTotalFromProviderWire`, `automation/ci/bugledger/bugledger_test.go::TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote`, `chord/host/close_queued_hold_test.go::TestCloseDropsAHoldQueuedBeforeItsLinkClosed`, `chord/state_source_test.go::TestConformanceReplicatedStateSourceContract`, `durable/core/driver/watch_test.go::TestConversationWatchFollowsCommits`, `durable/core/driver/watch_test.go::TestDocumentWatchValueFollowsCommitsUntilStopped` and 33 more in docs/bug-ledger.json
+- **Tests:** `ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks`, `ai/usage_json_test.go::TestUsageCostTotalFromProviderWire`, `automation/ci/bugledger/bugledger_test.go::TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote`, `durable/core/driver/watch_test.go::TestConversationWatchFollowsCommits`, `durable/core/driver/watch_test.go::TestDocumentWatchValueFollowsCommitsUntilStopped`, `durable/documents_family_definition_test.go::TestDocFamilyDefinitionCarriesPisFamilyDiscriminator`, `durable/examples/agent_examples_test.go::TestExample25CodingAgent` and 31 more in docs/bug-ledger.json
 - **Release note:** Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time. A frame the link had handed to the host loop before it closed could run after Close took its last look at the host's objects and after the connection had released what it held, so it created an object nothing disposed or released, and Close waited for that object's resource open for good (seen as a 30 minute `chord/host` test timeout on Windows after a `ready_timeout` get). A connection now ignores frames once its link closed, as Pi's link delivers none.
 
 ### BF-1c1b349
@@ -3817,6 +3828,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `coding/discover_extensions_oracle_test.go::TestDiscoverExtensionPathsMatchPi`, `coding/extension/host/inproc/registries_test.go::TestShortcuts_DiagnosticMessageMatchesUpstream`, `coding/extension/host/inproc/shortcuts_oracle_test.go::TestRunnerShortcutsMatchPi`, `internal/codingagent/armin_test.go::TestArminFramesMatchPinnedPi` and 13 more in docs/bug-ledger.json
 - **Release note:** `/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's `getShortcuts` Map (load order, registration order, a re-registered key keeps its first position) instead of path then key / Go map order (`coding/extension/host/inproc/runner.go` OrderedShortcuts, `internal/codingagent/interactive_hotkeys.go`, `interactive_helpers.go`; `TestRunnerShortcutsMatchPi` now compares Map order, regression `TestHotkeysCommandListsExtensionShortcutsInRegistrationOrder`).
 
+### BF-2123e97
+
+**fix(chord): the heartbeat report marker names the upstream file under the root layout**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): the heartbeat report marker names the upstream file under the root layout
+- **Root cause:** packages/chord/src/next/host/host.ts moved to src/host/host.ts with Pi's root move ().
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2123e97d81` (2026-11-07)
+- **Tests:** None recorded.
+
 ### BF-2165463
 
 **On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once…**
@@ -3927,6 +3951,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `228dbea36a` (2026-10-27)
 - **Tests:** `durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes`, `durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit`
+
+### BF-2293426
+
+**fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(mcp/oauth): refresh with the app's redirect URI, cancel sign-in during the lock wait
+- **Root cause:** Ports Pi main, on top of the sign-in package. Token refresh tries the redirect URI the application signs in with (RedirectURL on McpAuthProviderOptions and McpSignInOptions) before the loopback and stored ones, so tokens from a Client ID Metadata Document with only an https callback route can be refreshed. Ending the sign-in's context also stops the wait for the refresh lock; a lock that arrives later runs nothing and is released. McpRefreshLockBusyError makes StartMcpSignIn skip the refresh; any other lock failure fails it. The credential store reports a lock held by another process (ELOCKED) as the busy error.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `22934263b9` (2026-11-07)
+- **Tests:** `mcp/oauth/auth_provider_pi_test.go::TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed`, `mcp/oauth/sign_in_pi_test.go::TestCancellationCancelsAtOnceWhileAnotherProcessHoldsTheRefreshLockAndRefreshesNothing`, `mcp/oauth/sign_in_pi_test.go::TestSignInFailsWhenTheRefreshLockFailsForAnotherReason`, `mcp/oauth/sign_in_pi_test.go::TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong`
 
 ### BF-2307f4e
 
@@ -4446,7 +4483,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** Windows
 - **Fixed in:** Unreleased
 - **Fix commits:** `285ae70166` (2026-11-06)
-- **Tests:** `chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeCloseEndsPendingRead`, `chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeCloseEndsWrites`, `chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeWriteWhileReadWaits`
+- **Tests:** None recorded.
 - **Release note:** Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a pending read or when the pipe is closed; both wait on the operation's own completion. The clipboard open retry ends at once when the command is cancelled.
 
 ### BF-286d303
@@ -4969,6 +5006,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes`
 - **Release note:** Installing a chord plugin's npm dependencies no longer waits for a process the install command left running: `npm install` ended only when the command had exited and every process holding its output pipes (a daemon npm started and left behind) had let go of them, which could be for as long as that process lived. The install now ends with the command, waiting for what holds the pipes for at most five seconds after the command exited, and a command that exited with code 0 still counts as installed.
 
+### BF-31312ab
+
+**Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop, before reading what the peer had sent meanwhile.
+- **Root cause:** Ports Pi. The heartbeat no longer counts time the process did not run (a laptop's sleep, a blocked event loop) as silence: after such a pause each open link pings at once and closes only if its peer stays silent for close - ping.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `31312ab0f6` (2026-11-07)
+- **Tests:** None recorded.
+- **Release note:** Chord's heartbeat closed every link after the process had slept (a laptop's sleep) or blocked its event loop, before reading what the peer had sent meanwhile. Time the process did not run no longer counts as silence: after such a pause each open link pings at once and closes only if its peer stays silent for `close - ping` (15 s by default).
+
+### BF-31312ab-2
+
+**Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a protocol error, the worker closing its own link): the worker is stopped, `WorkerLinkLostError` (`worker_link_lost`) is reported, and its holders get a new worker.
+- **Root cause:** Ports Pi. The heartbeat no longer counts time the process did not run (a laptop's sleep, a blocked event loop) as silence: after such a pause each open link pings at once and closes only if its peer stays silent for close - ping.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `31312ab0f6` (2026-11-07)
+- **Tests:** None recorded.
+- **Release note:** Chord's workers no longer leave an address failed when a running worker loses its link (the heartbeat, a protocol error, the worker closing its own link): the worker is stopped, `WorkerLinkLostError` (`worker_link_lost`) is reported, and its holders get a new worker. A second lost link within a minute of the last recovery still fails the address (public error `worker lost its link`). Crashes, `fatal`s and failed starts still stay failed until `Retry` or a rollout.
+
 ### BF-316eac6
 
 **`pig status` and `pig status --json` no longer print the credentials of a configured Package source**
@@ -5394,7 +5459,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `97051b184f` (2026-10-05), `34bcd58204` (2026-10-07), `77bfe68d1f` (2026-10-07), `d5d010a275` (2026-10-07), `db7007dad8` (2026-10-07)
-- **Tests:** `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingConversionUpstream`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesToolCallID_UnattributedItemIsHashed`, `ai/openai_responses_shared_oracle_test.go::TestConvertResponsesMessagesMatchesPi`, `ai/openai_responses_stream_options_test.go::TestProcessResponsesStreamCallsTheInjectedOptions`, `ai/openai_responses_stream_options_test.go::TestResolveCodexServiceTier`, `ai/openai_responses_stream_options_test.go::TestResponsesPricesAResponseWithoutServiceTierAtTheRequestedTier`, `ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets` and 11 more in docs/bug-ledger.json
+- **Tests:** `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingConversionUpstream`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesToolCallID_UnattributedItemIsHashed`, `ai/openai_responses_shared_oracle_test.go::TestConvertResponsesMessagesMatchesPi`, `ai/openai_responses_stream_options_test.go::TestProcessResponsesStreamCallsTheInjectedOptions`, `ai/openai_responses_stream_options_test.go::TestResolveCodexServiceTier`, `ai/openai_responses_stream_options_test.go::TestResponsesPricesAResponseWithoutServiceTierAtTheRequestedTier`, `ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets` and 10 more in docs/bug-ledger.json
 - **Release note:** OpenAI Responses prices a response that reports no `service_tier` at the requested tier, as Pi's `processResponsesStream` does (`response.service_tier ?? options.serviceTier`); only Codex did before, so a flex or priority request to OpenAI Responses was billed at the default rate.
 
 ### BF-34c4d8e
@@ -5839,7 +5904,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `3b009a35c1` (2026-10-13), `488a47a47d` (2026-10-13), `b02876b1d5` (2026-10-13)
-- **Tests:** `chord/host/link_upstream_test.go::TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName`, `chord/host/link_upstream_test.go::TestLinksAnAlreadyClosedLinkIsNotKeptAndStartsNoPinger`, `chord/host/manager_upstream_test.go::TestHostManagerAChildWithoutALockDoesNotInheritTheParentsLock`, `chord/host/manager_upstream_test.go::TestProcessLock`, `chord/host/manager_upstream_test.go::TestProcessLockAdmitsOneHolderWhenTheTemporaryDirectoryIsTooDeepForASocketPath`, `chord/host/manager_worker_unix_test.go::TestLockSocketPathKeepsTheSocketPathWithinSunPath`
+- **Tests:** None recorded.
 - **Release note:** `chord/host`: a child host forked by `ForkDriver` no longer inherits its parent's `CHORD2_LOCK`. Before, a child host that forked its own children passed its lock on, and children without a lock of their own failed to start with `locked` (Pi a4d040d3).
 
 ### BF-3b3dba6
@@ -5855,6 +5920,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3b3dba64c8` (2026-10-09)
 - **Tests:** `ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput`
 - **Release note:** A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's `JSON.stringify` does instead of `-0`.
+
+### BF-3b49d43
+
+**Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.
+- **Root cause:** Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3b49d43239` (2026-11-07)
+- **Tests:** `chord/next/host/remote_hold_kept_test.go::TestHoldCallsCrossingAFailedOrABoundOnTheWire`, `chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind`
+- **Release note:** Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.
+
+### BF-3b49d43-2
+
+**Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).
+- **Root cause:** Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3b49d43239` (2026-11-07)
+- **Tests:** `chord/next/host/remote_hold_kept_test.go::TestHoldCallsCrossingAFailedOrABoundOnTheWire`, `chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind`
+- **Release note:** Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).
 
 ### BF-3b696c8
 
@@ -6128,7 +6221,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** Linux
 - **Fixed in:** 0.5.2
 - **Fix commits:** `3ee123c6d5` (2026-10-20, #255)
-- **Tests:** `agent/stream_fn_descriptor_test.go::TestAgentEffectiveStreamFunction`, `agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle`, `chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener`, `chord/host/manager_ipc_listener_test.go::TestNodeChannelGivesTheFirstMessageListenerTheMessagesThatCameBeforeIt`, `chord/host/manager_ipc_listener_test.go::TestNodeChannelQueuesAMessageThatArrivesDuringTheReplayBehindTheBacklog`, `coding/cli/extension_stale_copy_test.go::TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath`, `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes` and 41 more in docs/bug-ledger.json
+- **Tests:** `agent/stream_fn_descriptor_test.go::TestAgentEffectiveStreamFunction`, `agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle`, `coding/cli/extension_stale_copy_test.go::TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath`, `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes`, `coding/cli/extension_upgrade_completeness_test.go::TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun` and 38 more in docs/bug-ledger.json
 - **Release note:** CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit. `portmapcheck` builds each evidence package's test binary once instead of once per PORT_MAP row, runs rows that name the same tests of a package once, and keeps a marker row's killed-mutant verdict in its cached record. CI runs the check as three shards (`make portmap-check-N`, `portmapcheck -shard N/3`); every shard computes the same plan and judges its own rows, and the Linux verification job still requires all of them. Each row's requirement is unchanged: its named tests pass, they execute its mapped cited files, and a marker row's mutant makes them fail.
 
 ### BF-3f82770
@@ -6559,7 +6652,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `43c46f5394` (2026-10-13)
-- **Tests:** `chord/host/node_delay_test.go::TestAwaitVoteDeadlineAboveNodeTimeoutMaxRejectsAfterOneMillisecond`, `chord/host/node_delay_test.go::TestNodeDelayMatchesNodeTimers`
+- **Tests:** None recorded.
 - **Release note:** Chord host timers (reload vote, gate and retire deadlines, link pings, service linger, host manager grace, ready timeout and keepAlive interval) wait as Node's `setTimeout` does: a delay above 2147483647 ms, below 1 ms or zero runs after 1 ms, and fractional milliseconds are truncated. A deadline above the limit used to never fire and a zero one fired at once.
 
 ### BF-43d2597
@@ -6984,7 +7077,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `47c300724d` (2026-10-07)
-- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/extension_test.go::TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToTheStartupWait`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled` and 15 more in docs/bug-ledger.json
+- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/extension_test.go::TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToTheStartupWait`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled` and 14 more in docs/bug-ledger.json
 - **Release note:** `/mcp` now opens at once while servers are still connecting, and connection actions (reconnect, enable, disable) run in the background so the manager stays usable. Reconnects and replacements are serialized, direct MCP tool calls wait for their own server's connection, and a call prepared earlier uses the server's current connection when it runs.
 
 ### BF-47c3007-2
@@ -6998,7 +7091,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `47c300724d` (2026-10-07)
-- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 14 more in docs/bug-ledger.json
+- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 13 more in docs/bug-ledger.json
 - **Release note:** MCP OAuth sign-ins can now be cancelled with Esc at every step, session shutdown stops a running sign-in, and each request to the authorization server times out after 15 seconds. An aborted token refresh no longer falls back to a new authorization.
 
 ### BF-47c3007-3
@@ -7012,7 +7105,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `47c300724d` (2026-10-07)
-- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 14 more in docs/bug-ledger.json
+- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 13 more in docs/bug-ledger.json
 - **Release note:** Shutdown no longer waits up to 15 seconds to refresh an MCP OAuth token that was about to expire, only to close the server's session. Closing a streamable HTTP session reuses the token of the last request.
 
 ### BF-47ec6e8
@@ -7080,7 +7173,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** macOS
 - **Fixed in:** 0.5.0
 - **Fix commits:** `488a47a47d` (2026-10-13)
-- **Tests:** `chord/host/manager_upstream_test.go::TestProcessLock`, `chord/host/manager_upstream_test.go::TestProcessLockAdmitsOneHolderWhenTheTemporaryDirectoryIsTooDeepForASocketPath`, `chord/host/manager_worker_unix_test.go::TestLockSocketPathKeepsTheSocketPathWithinSunPath`
+- **Tests:** None recorded.
 - **Release note:** `chord/host`: `ProcessLock` no longer fails with `invalid argument` on macOS and the BSDs when the temporary directory is too deep for a socket path (sun_path holds 104 bytes); the lock socket then lives in a private per-user directory, `/tmp/chord2-<uid>` (Pi cd6b2a55).
 
 ### BF-48a28fe
@@ -7274,7 +7367,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `4c032a0900` (2026-10-24)
-- **Tests:** `chord/host/schema_pi_oracle_test.go::TestADecodedDescriptionIsWrittenBackInDeclaredOrderLikePi`, `chord/host/schema_pi_oracle_test.go::TestNormalizeOverADecodedDescriptionKeepsPiMemberOrder`
+- **Tests:** None recorded.
 - **Release note:** A description decoded from the wire is written back with every schema member in the order it was declared in, as Pi writes it, and `normalize` returns the input's members in their own order followed by the defaults in the schema's declared order; the top-level members of a decoded schema came out sorted and a normalized value's defaults in sorted order.
 
 ### BF-4c45afa
@@ -8141,7 +8234,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `47c300724d` (2026-10-07), `570f85770f` (2026-10-07), `b3543f848c` (2026-10-07)
-- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 23 more in docs/bug-ledger.json
+- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs`, `coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen`, `coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey`, `coding/mcpext/manager_test.go::TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled`, `coding/mcpext/manager_test.go::TestMcpManagerViewCutsRowsToTheWidth` and 22 more in docs/bug-ledger.json
 - **Release note:** Fixed interactive sessions leaving extension prompt sections, such as the MCP `mcp_servers` list, out of the transcript's system message. Print mode and Pi record them; interactive mode now publishes its prompt run to the session, which appends the sections before the first request.
 
 ### BF-5732479
@@ -8876,6 +8969,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/clamp_max_tokens_test.go::TestClampMaxTokensToContextOpenRouterOvercountMargin`
 - **Release note:** The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full window requests at most 32,768 output tokens, as in Pi, so OpenRouter's higher token count for the same input no longer makes it reject the request with a 400 that PiG then treated as a context overflow and compacted.
 
+### BF-604e180
+
+**fix(codemode,tool-search): follow local schema refs in tool search and codemode summaries**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codemode,tool-search): follow local schema refs in tool search and codemode summaries
+- **Root cause:** Ports Pi main (#11850, fixing #11803). codemode.ResolveSchemaRef (and ResolveSchemaRefJSON for schema text) is the single resolver: a malformed percent escape names nothing instead of failing, so SchemaToType, RenderToolSignature, RenderToolSample, RenderDeclarations and RenderToolOutputType no longer return an error and CreateDescription no longer fails (URIError is removed; callers migrated). tool_search's schemaText (coding and durable) follows local refs once each, and the codemode 'resolves to' summary resolves $ref chains against the output schema root.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `604e18084d` (2026-11-07)
+- **Tests:** `codemode/declarations_parity_print_test.go::TestCodemodeDeclarationsParity`, `codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown`, `codemode/declarations_test.go::TestResolveSchemaRefResolvesLocalReferencesWithEscapedSegments`, `codemode/declarations_test.go::TestResolveSchemaRefReturnsNothingForRemoteMissingAndMalformedReferences`, `codemode/upstream_oracle_test.go::TestSchemaToTypeMatchesPi`, `codemode/upstream_oracle_test.go::TestToolOutputTypeMatchesPi`, `coding/extension/builtin/codemode/description_helpers_test.go::TestMalformedRefInAToolSchemaRendersAsUnknownInTheDescription`, `coding/extension/builtin/codemode/schema_uri_error_test.go::TestExecuteRunsWithAToolSchemaWithMalformedRefEncoding` and 6 more in docs/bug-ledger.json
+
 ### BF-609d2bd
 
 **fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does**
@@ -8997,7 +9103,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `44e0ab8129` (2026-10-05), `49cb28c369` (2026-10-05), `61fc01d975` (2026-10-05)
-- **Tests:** `coding/mcpext/connection_test.go::TestMCPConnectionsAppendsTheLastUTF16UnitsOfAFailedStdioServersStderr`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes`, `coding/mcpext/fixtures_test.go::TestMain`, `coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty`, `coding/mcpext/jstrim_internal_test.go::TestResponseFromRedirectURLTrimsLikeJavaScript`, `coding/mcpext/jstrim_internal_test.go::TestWaitForAuthorizationResponseCancelsOnAJavaScriptBlankAnswer` and 5 more in docs/bug-ledger.json
+- **Tests:** `coding/mcpext/connection_test.go::TestMCPConnectionsAppendsTheLastUTF16UnitsOfAFailedStdioServersStderr`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes`, `coding/mcpext/fixtures_test.go::TestMain`, `coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty`, `coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit`, `coding/mcpext/manager_test.go::TestMcpManagerViewRedirectURLTrimsLikeJavaScript` and 3 more in docs/bug-ledger.json
 - **Release note:** `list_mcp_resources`, `list_mcp_resource_templates` and `read_mcp_resource` return every member a server sent for a resource, template or content entry, in Pi's order and in the form `JSON.stringify` writes: integer-like keys first, numbers such as `2.0` as `2`, and `<`, `&` and `>` unescaped. Before, members PiG did not know were dropped and the known ones were reordered.
 
 ### BF-61fc01d-2
@@ -9011,7 +9117,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `471c46e063` (2026-10-05), `49cb28c369` (2026-10-05), `61fc01d975` (2026-10-05)
-- **Tests:** `coding/mcpext/extension_test.go::TestAgentSessionMCPHidesToolsInTheOrderTheServerListedThem`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes`, `coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty`, `coding/mcpext/jstrim_internal_test.go::TestResponseFromRedirectURLTrimsLikeJavaScript`, `coding/mcpext/jstrim_internal_test.go::TestWaitForAuthorizationResponseCancelsOnAJavaScriptBlankAnswer`, `coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit` and 4 more in docs/bug-ledger.json
+- **Tests:** `coding/mcpext/extension_test.go::TestAgentSessionMCPHidesToolsInTheOrderTheServerListedThem`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsKeepTheMembersAndOrderTheServerSent`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsTrimServerArgumentsLikeJavaScript`, `coding/mcpext/extension_test.go::TestAgentSessionMCPResourceToolsWriteTheServersEntriesAsJSONStringifyDoes`, `coding/mcpext/jstrim_internal_test.go::TestParseStatesTreatsJavaScriptWhitespaceAsEmpty`, `coding/mcpext/log_rotation_test.go::TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit`, `coding/mcpext/manager_test.go::TestMcpManagerViewRedirectURLTrimsLikeJavaScript`, `coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle` and 2 more in docs/bug-ledger.json
 - **Release note:** MCP tool descriptions, resource MIME types, a pasted sign-in redirect URL and the resource tools' `server` and `uri` arguments are trimmed as JavaScript trims them: a byte order mark (U+FEFF) is removed and U+0085 is kept.
 
 ### BF-620abb0
@@ -9137,6 +9243,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `144341e42a` (2026-10-27), `62b009c7e6` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-62b28a2
+
+**fix(mcp/oauth): close remaining connections when the OAuth callback server closes**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(mcp/oauth): close remaining connections when the OAuth callback server closes
+- **Root cause:** Ports Pi main (#11855, fixing #11311). Close() waited for a browser's unused preconnect or spare keep-alive socket: Go's Shutdown treats a connection that never sent a request as active for up to 5 s, and the 2 s bound made /mcp login stall on Connecting. Close() now drops the connections that have not sent a request before it shuts down; in-flight and idle connections keep Shutdown's handling, so a callback response being written is not cut off.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `62b28a24c6` (2026-11-07)
+- **Tests:** `mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`
 
 ### BF-62c3691
 
@@ -12671,7 +12790,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `78093645cf` (2026-10-24)
-- **Tests:** `chord/host/schema_pi_oracle_test.go::TestAssertValidMatchesPi`
+- **Tests:** None recorded.
 - **Release note:** Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as Pi's do (the `additionalProperties`, `propertyNames` and `unevaluatedProperties` lists and the order of the errors); they came out in sorted key order.
 
 ### BF-787c354
@@ -13097,7 +13216,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `7f2c05b082` (2026-10-24)
-- **Tests:** `chord/host/schema_pi_oracle_test.go::TestAssertValidMatchesPi`, `chord/host/schema_pi_oracle_test.go::TestCanonicalIdentityAndNormalizeMatchPi`, `internal/typebox/value_oracle_test.go::TestValueMatchesTypeboxOnCases`
+- **Tests:** `internal/typebox/value_oracle_test.go::TestValueMatchesTypeboxOnCases`
 - **Release note:** A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole error objects as `details` (keyword, schemaPath, instancePath, params and message), as Pi's does; it carried only instancePath and message.
 
 ### BF-7f3a71c
@@ -13615,7 +13734,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `852f029c26` (2026-10-12)
-- **Tests:** `chord/json_test.go::TestIsJsonValueChecksStrictJSONWithoutNormalizing`, `chord/replicated_state_delivery_upstream_test.go::TestAttachedReplicatedStateListenerErrors`, `chord/replicated_state_delivery_upstream_test.go::TestMutableReplicatedStateReportsRejectedCallbacksThroughItsDefaultReporter`, `chord/replicated_state_delivery_upstream_test.go::TestReplicatedStatePublicDelivery`, `chord/replicated_state_upstream_test.go::TestAuthoritativeReplicatedStateSources`, `chord/replicated_state_upstream_test.go::TestTransactionalReplicatedState`, `durable/session/session_watches_test.go::TestSessionDocumentWatches`, `internal/goroutineid/goroutineid_test.go::TestCurrentIdentifiesTheCallingGoroutine`
+- **Tests:** `chord/json_test.go::TestIsJsonValueChecksStrictJSONWithoutNormalizing`, `durable/session/session_watches_test.go::TestSessionDocumentWatches`, `internal/goroutineid/goroutineid_test.go::TestCurrentIdentifiesTheCallingGoroutine`
 - **Release note:** Durable document, conversation-view and task-graph states report failing state listeners to the Session's report, as Pi does, instead of dropping them.
 
 ### BF-854c355
@@ -17572,6 +17691,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL`
 - **Release note:** The Bedrock endpoint region is read from the WHATWG hostname of the base URL, as Pi's `new URL` does: full-width and mixed-case hosts, tabs and newlines inside the URL, and other schemes are handled as in Pi, and a URL without a scheme no longer yields a region.
 
+### BF-a79074e
+
+**Chord: a reload whose new factory pins a keyed member of another object (`ref.keyed.at(key)`) no longer fails…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a reload whose new factory pins a keyed member of another object (`ref.keyed.at(key)`) no longer fails the whole plugin with "is valid only in the factory".
+- **Root cause:** The recording self a reload runs the new factory on handed out references with no dependent, so a factory that pins a keyed member of another object (ref.keyed.at(key)) failed the whole plugin with 'is valid only in the factory'. Pi's recording self hands out an inert value that takes any call. Includes the ported hold.test.ts cases of Pi (calls during a swap never see not_ready; a call at the gate when the swap parks survives its hold's loading).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a79074ec58` (2026-11-07)
+- **Tests:** `chord/next/host/remote_hold_gate_test.go::TestReloadARecordedFactoryMayPinAKeyOnItsInertReference`, `chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind`, `chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay`
+- **Release note:** Chord: a reload whose new factory pins a keyed member of another object (`ref.keyed.at(key)`) no longer fails the whole plugin with "is valid only in the factory". The recording self a reload runs the factory on handed out references with no dependent.
+
 ### BF-a7be906
 
 **Pressing Enter in the model picker's search box selects the highlighted model even when `tui.select.confirm`…**
@@ -18332,7 +18465,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `b02876b1d5` (2026-10-13)
-- **Tests:** `chord/host/link_upstream_test.go::TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName`, `chord/host/link_upstream_test.go::TestLinksAnAlreadyClosedLinkIsNotKeptAndStartsNoPinger`
+- **Tests:** None recorded.
 - **Release note:** `chord/host`: a link that is already closed when a host accepts or routes to it is no longer kept as a connection. Before, a route that returned a dead link (a child that exited before its link was wrapped) made every later call to that host name fail with `unavailable` until restart, and started a ping timer for the dead connection (Pi 7f022043).
 
 ### BF-b04bb32
@@ -18844,7 +18977,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `b85fd6826a` (2026-10-30)
-- **Tests:** `chord/host/wire_test.go::TestIsFrameChecksWithoutRecompilingTheFrameSchema`
+- **Tests:** None recorded.
 
 ### BF-b88044f
 
@@ -19785,7 +19918,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `c58ceeda89` (2026-10-12), `fa905766d4` (2026-10-12)
-- **Tests:** `chord/host/boundary_upstream_test.go::TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord`, `chord/host/contract_upstream_test.go::TestContractsBindOtherVersionsOnlyThroughAcceptsAdapters`, `chord/host/contract_upstream_test.go::TestContractsCompareOpaqueMembersByNameVersionAndFunctionMembersStructurally`, `chord/host/contract_upstream_test.go::TestContractsCoverAdditiveChangesAndRefuseBreakingOnes`, `chord/host/contract_upstream_test.go::TestContractsFingerprintsAreStableAndDescriptionBased`, `chord/host/contract_upstream_test.go::TestContractsNormalizeInputAndOmitDefaultsFromTheIdentity`, `chord/host/contract_upstream_test.go::TestContractsRejectReservedMemberNamesAndOpaqueRemoteMembers`, `chord/host/errors_test.go::TestAsChordErrorKeepsChordErrorsAndWrapsOthers` and 11 more in docs/bug-ledger.json
+- **Tests:** `internal/typebox/value_oracle_test.go::TestValueMatchesTypeboxOnCases`, `third_party/jsonschema/items_location_test.go::TestItemsAfterPrefixItemsReportTheElementIndex`
 - **Release note:** `chord/host.Forbidden("")` keeps the empty message, as Pi's `forbidden("")` does; `Forbidden()` still says "forbidden". `IsChordError` takes the code as an optional argument and, like `ToWireError`, no longer looks through wrappers, so an aggregate of ChordErrors goes on the wire as `unavailable`, as in Pi. `ChordError.Name` is "ChordError".
 
 ### BF-c5b14a5
@@ -21702,7 +21835,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `339445102a` (2026-10-06), `77bfe68d1f` (2026-10-07), `d5d010a275` (2026-10-07), `db7007dad8` (2026-10-07)
-- **Tests:** `agent/thinking_level_test.go::TestAgentLoop_RequestsReasoningOnlyForLevelsOtherThanOff`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingConversionUpstream`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesToolCallID_UnattributedItemIsHashed`, `ai/openai_responses_shared_oracle_test.go::TestConvertResponsesMessagesMatchesPi`, `ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets`, `ai/openai_responses_tool_result_output_test.go::TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder`, `ai/radius_sampling_by_level_test.go::TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel` and 6 more in docs/bug-ledger.json
+- **Tests:** `agent/thinking_level_test.go::TestAgentLoop_RequestsReasoningOnlyForLevelsOtherThanOff`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingConversionUpstream`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesToolCallID_UnattributedItemIsHashed`, `ai/openai_responses_shared_oracle_test.go::TestConvertResponsesMessagesMatchesPi`, `ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets`, `ai/openai_responses_tool_result_output_test.go::TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder`, `ai/radius_sampling_by_level_test.go::TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel` and 5 more in docs/bug-ledger.json
 - **Release note:** A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed catalog entry (Pi's `getRadiusModelsFromConfig` spreads each gateway model); it was dropped before.
 
 ### BF-db9a315
@@ -23004,7 +23137,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `e5bfd245d4` (2026-11-01)
-- **Tests:** `chord/host/schema_upstream_test.go::TestCleanedKeepsAFieldOfARecordWhoseValueSchemaIsNull`, `chord/host/schema_upstream_test.go::TestNormalizeWritesATupleHoleAsNull`, `chord/next/data/validator_test.go::TestFailedChecks`
+- **Tests:** `chord/next/data/validator_test.go::TestFailedChecks`
 
 ### BF-e5f9fdd
 
@@ -23307,6 +23440,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0532a57c08` (2026-10-13), `ea90fb311c` (2026-10-13)
 - **Tests:** `internal/codingagent/bash_execution_oracle_test.go::TestBashExecutionComponentMatchesPi`, `internal/codingagent/settings_live_effects_test.go::TestOnSettingAppliedOutputPaddingReachesEveryChatAndPendingChild`, `tui/bash_execution_retention_test.go::TestBashExecutionStreamingRetainsTheTailNotTheWholeOutput`, `tui/bash_execution_test.go::TestBashExecutionAppendOutputCleansChunksAndExposesOutputAndCommand`, `tui/component_accessors_test.go::TestBashExecutionAppendOutputSanitizesAndGettersReadItBack`
 - **Release note:** A running `!cmd` block keeps only the last 2000 lines or 50 KB it shows instead of every byte the command prints, so a long build or `!cat` of a large file no longer grows memory with its output (32 MB of output: 33.3 MB retained before, 0.2 MB now). The rows drawn and the output saved to the session are unchanged. `tui.BashExecutionComponent.GetOutput` is replaced by `ContextOutput`, which returns the shown window.
+
+### BF-ea921ca
+
+**Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand.
+- **Root cause:** Ports Pi. A worker killed by a signal left its lock's socket file, and every later start of its address failed closed on it, retry too. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. ProcessLock also treats ENOTSOCK as stale instead of retrying until its context ended.
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `ea921ca80b` (2026-11-07)
+- **Tests:** None recorded.
+- **Release note:** Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. `ProcessLock` on macOS no longer spins until its context ends when a regular file sits at the lock's path (`ENOTSOCK`); it fails closed naming the file, as for a socket file nobody listens on.
 
 ### BF-eaa4ed7
 
@@ -24424,6 +24571,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/session_prompt_custom_run_upstream_test.go::TestUpstreamSessionPromptRunsStartedByACustomMessage`, `coding/session_tool_info_reaches_tools_test.go::TestGetAllToolsCarriesTheDefinitionsReachesTools`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptCustomCompatibilitySettingsAndRejectMalformedKnownFields`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInKeybindingsJSONWithoutTreatingItAsAnAction`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInSettingsJSON`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasValidateSchemaInModelsJSONAtRuntime`, `internal/codingagent/model_registry_merge_compat_fields_test.go::TestMergeCompatSpreadsEveryScalarCompatField`, `internal/codingagent/unmodeled_config_members_test.go::TestUnmodeledCompatMembersReachTheComposedModel` and 12 more in docs/bug-ledger.json
 - **Release note:** Settings and `models.json` compat objects keep the members PiG does not model, as Pi 1.2.0 does. `getGlobalSettings()`, `getSettings()` and the settings JSON now include keys such as `$schema` or an extension's own setting, project values merge over global ones member by member, and only the legacy keys a migration rewrote (`queueMode`, `websockets`) are dropped. A provider or model `compat` object keeps keys such as a custom API's `customOption`, and the composed model carries them, so a custom API reads its own compat settings. Before, both were dropped on load (Pi 1.2.0 `settings-manager.ts` getGlobalSettings and deepMergeSettings, `provider-composer.ts` mergeCompat, `config-schemas.test.ts`).
 
+### BF-f5efecf
+
+**Chord's objects no longer answer a call `not_ready` during a reload while the caller sees them `live`: a call…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Chord's objects no longer answer a call `not_ready` during a reload while the caller sees them `live`: a call over a link to an object whose restart had drained, sent while its hold was still bound to the old instance, got `not_ready: ... not live yet`.
+- **Root cause:** Ports Pi. A call arriving while an attempt activates waits for its outcome (bounded by readyTimeout) instead of failing not_ready while its client sees live. Fates start in the reverse of the order objects went live, so a pure dependent of a swapping provider swaps instead of parking. Includes the ported 'fates start dependents first' object tests.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f5efecf629` (2026-11-07)
+- **Tests:** None recorded.
+- **Release note:** Chord's objects no longer answer a call `not_ready` during a reload while the caller sees them `live`: a call over a link to an object whose restart had drained, sent while its hold was still bound to the old instance, got `not_ready: ... not live yet`. Such a call now waits for the object's new attempt (live, failed or ended), bounded by `readyTimeout` (`unavailable/park_timeout`); a parked attempt showing `failed { waiting }` rejects it with that cause.
+
 ### BF-f6305d9
 
 **A `new_session`, `fork`, `clone` or `switch_session` in the same RPC batch as a `compact` aborts the…**
@@ -24491,7 +24652,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `f6e46951d1` (2026-10-24)
-- **Tests:** `chord/host/schema_pi_oracle_test.go::TestAssertValidOverADecodedDescriptionKeepsTheDeclaredOrderLikePi`
+- **Tests:** None recorded.
 - **Release note:** Schemas decoded from a wire description (a Node child's contracts, a hold token) keep their declared property order, so a failed args, result, state or input check lists its errors in that order as Pi does, and a description is written back in the declared order; they were sorted by name.
 
 ### BF-f6e7d49
