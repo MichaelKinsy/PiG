@@ -137,6 +137,8 @@ func (s *Session) UndecodableCount() int {
 // become orphaned subtrees in the same file).
 type Session struct {
 	mu sync.RWMutex
+	// messageEntries records the entries message_end persisted, with the sequence their message was numbered by (NoteMessageEntry).
+	messageEntries messageEntryLog
 	// appendMu makes writing an entry's record and adding the entry one step, so the file and memory hold the same entries in the same order.
 	appendMu sync.Mutex
 	// projectionCalls counts BuildSessionProjection calls.

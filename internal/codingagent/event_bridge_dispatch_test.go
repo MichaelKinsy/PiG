@@ -57,7 +57,7 @@ func TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents(t *testing.T) {
 		agent.AgentEndEvent{Messages: []agent.AgentMessage{{Custom: map[string]any{"marker": "final"}}}},
 	}
 	for _, ev := range events {
-		DispatchAgentLoopEvent(runner, ev, &cur)
+		DispatchAgentLoopEvent(runner, ev, &cur, nil)
 	}
 
 	for _, n := range names {
@@ -130,9 +130,9 @@ func TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents(t *testing.T) {
 // where no extensions are loaded: a nil runner must be a no-op, not a panic.
 func TestDispatchAgentLoopEvent_NilRunnerNoPanic(t *testing.T) {
 	var cur extension.AgentMessage
-	DispatchAgentLoopEvent(nil, agent.AgentStartEvent{}, &cur)
-	DispatchAgentLoopEvent(nil, agent.MessageStartEvent{Message: agent.AgentMessage{}}, &cur)
-	DispatchAgentLoopEvent(nil, agent.AgentEndEvent{}, nil)
+	DispatchAgentLoopEvent(nil, agent.AgentStartEvent{}, &cur, nil)
+	DispatchAgentLoopEvent(nil, agent.MessageStartEvent{Message: agent.AgentMessage{}}, &cur, nil)
+	DispatchAgentLoopEvent(nil, agent.AgentEndEvent{}, nil, nil)
 }
 
 // Pi 0.99.1 agent-session.ts:671-678 forwards the agent's tool_execution_end as it is, so a handler sees the finalized AgentToolResult
@@ -176,7 +176,7 @@ func TestDispatchToolExecutionEndDeliversTheFinalizedResultAndTheCallFlag(t *tes
 		t.Run(tc.name, func(t *testing.T) {
 			got = extension.ToolExecutionEndEvent{}
 			var current extension.AgentMessage
-			DispatchAgentLoopEvent(runner, tc.event, &current)
+			DispatchAgentLoopEvent(runner, tc.event, &current, nil)
 			if !reflect.DeepEqual(got.Result, tc.wantResult) || got.IsError != tc.wantIsError || got.ToolCallID != tc.event.ToolCallID {
 				t.Fatalf("event = %#v, want result %#v isError %v", got, tc.wantResult, tc.wantIsError)
 			}
