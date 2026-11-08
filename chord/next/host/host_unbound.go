@@ -96,13 +96,6 @@ func newUnboundIndex(clock *unboundClock) *unboundIndex {
 	return &unboundIndex{byName: map[string]*unboundSet[unboundRequest]{}, clock: clock}
 }
 
-// sortedNames is the names requests wait for, sorted.
-func (i *unboundIndex) sortedNames() []string {
-	names := i.names.items()
-	slices.Sort(names)
-	return names
-}
-
 // add indexes request under name (once; again after a wake), waiting for the publication (no cause) or for a provider
 // that fits (cause, on the clock).
 func (i *unboundIndex) add(name string, request unboundRequest, cause *data.FailureCause) {

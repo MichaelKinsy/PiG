@@ -301,7 +301,7 @@ func valueOf(r *host.Reference) string {
 }
 
 // until waits until check holds.
-func until(t *testing.T, check func() bool) {
+func untilPolled(t *testing.T, check func() bool) {
 	t.Helper()
 	for i := 0; i < 2000 && !check(); i++ {
 		time.Sleep(5 * time.Millisecond)
@@ -330,7 +330,7 @@ func TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet(t *
 	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2}, more{})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2))
-	until(t, func() bool { return valueOf(g) == "hello again" })
+	untilPolled(t, func() bool { return valueOf(g) == "hello again" })
 	if f := s.fetchedNow(); !slices.Equal(f, []string{"/@test/a.d2.js"}) {
 		t.Fatalf("fetched = %v", f)
 	}
@@ -342,7 +342,7 @@ func TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt(t *testing.T) {
 	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{broken}, more{})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", broken))
-	until(t, func() bool { return len(s.errorKinds()) > 0 })
+	untilPolled(t, func() bool { return len(s.errorKinds()) > 0 })
 	s.mu.Lock()
 	first := s.errs[0]
 	s.mu.Unlock()
@@ -360,13 +360,13 @@ func TestTriesAFailedPluginsScriptAgainWhenAReconnectsSnapshotHasItNotTakenAsApp
 	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{flaky}, more{})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", flaky))
-	until(t, func() bool { return slices.Contains(s.errorKinds(), ClientPluginsError) })
+	untilPolled(t, func() bool { return slices.Contains(s.errorKinds(), ClientPluginsError) })
 	if got := valueOf(g); got != "hello" {
 		t.Fatalf("greeting = %q", got)
 	}
-	until(t, func() bool { return s.socketCount() >= 1 })
+	untilPolled(t, func() bool { return s.socketCount() >= 1 })
 	s.socket(0).link.Close()
-	until(t, func() bool { return valueOf(g) == "hello again" })
+	untilPolled(t, func() bool { return valueOf(g) == "hello again" })
 	if f := s.fetchedNow(); !slices.Equal(f, []string{"/@test/a.d2.js", "/@test/a.d2.js"}) {
 		t.Fatalf("fetched = %v", f)
 	}
@@ -413,13 +413,13 @@ func TestLoadsTheNewStylesheetsBeforeTheReloadThenSettlesThemWithThePluginsThatK
 	s := setup(t, []RegisteredScript{a1, script("@test/b", "e1", "b")}, []RegisteredScript{a2, broken}, more{styles: r})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2, broken))
-	until(t, func() bool { return r.count() == 1 })
+	untilPolled(t, func() bool { return r.count() == 1 })
 	// The new code waits for its stylesheets: the reload is not under way while Prepare has not returned.
 	if got := valueOf(g); got != "hello" {
 		t.Fatalf("greeting = %q before the stylesheets loaded", got)
 	}
 	close(r.loaded)
-	until(t, func() bool { return r.count() == 2 })
+	untilPolled(t, func() bool { return r.count() == 2 })
 	r.mu.Lock()
 	calls := slices.Clone(r.calls)
 	r.mu.Unlock()
@@ -435,7 +435,7 @@ func TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere(t *testing
 	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2}, more{styles: r})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2))
-	until(t, func() bool { return r.count() == 1 })
+	untilPolled(t, func() bool { return r.count() == 1 })
 	if got := valueOf(g); got != "hello" {
 		t.Fatalf("greeting = %q", got)
 	}
@@ -455,7 +455,7 @@ func TestTriesASetWhoseScriptDidNotLoadAgainAfter1sThen2sUntilItApplies(t *testi
 	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2}, more{failing: 2, manual: manual})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2))
-	until(t, func() bool { return len(manual.withMs(1000, 2000)) == 1 })
+	untilPolled(t, func() bool { return len(manual.withMs(1000, 2000)) == 1 })
 	if kinds := s.errorKinds(); !slices.Equal(kinds, []ClientErrorKind{ClientUpdateFailed}) {
 		t.Fatalf("errors = %v", kinds)
 	}
@@ -463,12 +463,12 @@ func TestTriesASetWhoseScriptDidNotLoadAgainAfter1sThen2sUntilItApplies(t *testi
 		t.Fatalf("first retry = %d ms", ms)
 	}
 	manual.withMs(1000, 2000)[0].fire()
-	until(t, func() bool { return len(manual.withMs(2000)) == 1 })
+	untilPolled(t, func() bool { return len(manual.withMs(2000)) == 1 })
 	if kinds := s.errorKinds(); !slices.Equal(kinds, []ClientErrorKind{ClientUpdateFailed, ClientUpdateFailed}) {
 		t.Fatalf("errors = %v", kinds)
 	}
 	manual.withMs(2000)[0].fire()
-	until(t, func() bool { return valueOf(g) == "hello again" })
+	untilPolled(t, func() bool { return valueOf(g) == "hello again" })
 	if f := s.fetchedNow(); !slices.Equal(f, []string{"/@test/a.d2.js", "/@test/a.d2.js", "/@test/a.d2.js"}) {
 		t.Fatalf("fetched = %v", f)
 	}
@@ -481,9 +481,9 @@ func TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne(t *testing.T)
 	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 1, manual: manual})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2))
-	until(t, func() bool { return len(manual.withMs(1000)) == 1 })
+	untilPolled(t, func() bool { return len(manual.withMs(1000)) == 1 })
 	s.publish(t, setOf("B1", a3))
-	until(t, func() bool { return valueOf(g) == "hello at last" })
+	untilPolled(t, func() bool { return valueOf(g) == "hello at last" })
 	// The retry was cancelled with the newer set: nothing is left to fire.
 	if n := len(manual.withMs(1000)); n != 0 {
 		t.Fatalf("%d retries left", n)
@@ -497,7 +497,7 @@ func TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne(t *testing.T)
 func TestCallsOutdatedForASetWithAnotherBase(t *testing.T) {
 	s := setup(t, nil, nil, more{})
 	s.publish(t, setOf("B2"))
-	until(t, func() bool { return s.outdatedCount() == 1 })
+	untilPolled(t, func() bool { return s.outdatedCount() == 1 })
 	s.finish(t)
 }
 
@@ -506,9 +506,9 @@ func TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops(t *
 	s.mu.Lock()
 	s.base = "B2"
 	s.mu.Unlock()
-	until(t, func() bool { return s.socketCount() >= 1 })
+	untilPolled(t, func() bool { return s.socketCount() >= 1 })
 	s.socket(0).link.Close()
-	until(t, func() bool { return s.outdatedCount() == 1 })
+	untilPolled(t, func() bool { return s.outdatedCount() == 1 })
 	time.Sleep(400 * time.Millisecond)
 	if n := s.socketCount(); n != 1 {
 		t.Fatalf("sockets = %d, want 1", n)
