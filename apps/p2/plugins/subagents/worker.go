@@ -58,7 +58,7 @@ type reports struct{ reporter atomic.Pointer[childReporter] }
 
 // childrenOf is the session's subagents and one-shot agents as the server's index lists them.
 func childrenOf(ctx context.Context, session harness.Harness) ([]any, error) {
-	registry, err := registryOf(ctx, session)
+	registry, err := contract.Registry(ctx, session)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func childrenOf(ctx context.Context, session harness.Harness) ([]any, error) {
 		entry := delta.JsonObjectOf("name", name, "conversationId", float64(agent.ConversationId), "model", agent.Model,
 			"thinkingLevel", agent.ThinkingLevel, "tools", stringsAny(agent.Tools))
 		if agent.Location != nil {
-			entry.Set("location", locationJSON(*locationOf(agent.Location)))
+			entry.Set("location", locationJSON(*contract.LocationOf(agent.Location)))
 		}
 		entry.Set("lastEntryId", float64(latest))
 		if agent.Archived {
@@ -115,7 +115,7 @@ func (conversationPlacement) Place(ctx context.Context, session harness.Harness,
 }
 
 func (conversationPlacement) Own(ctx context.Context, read durable.DocumentReader, id durable.ConversationId) (*p2runtime.Location, error) {
-	return ownLocation(ctx, read, id)
+	return contract.OwnLocation(ctx, read, id)
 }
 
 // toolsContribution contributes the subagent and team tools, the hooks around them and the reports to the server.
@@ -272,7 +272,7 @@ func toolsContribution(shared *reports) func(self host.StoreSelf) error {
 				if err != nil {
 					return "", err
 				}
-				registry, err := registryOf(ctx, opened)
+				registry, err := contract.Registry(ctx, opened)
 				if err != nil {
 					return "", err
 				}
@@ -427,7 +427,7 @@ func serveControl(shared *reports) func(*delta.JsonObject, data.Principal, host.
 					if err != nil {
 						return err
 					}
-					registry, err := registryOf(ctx, opened)
+					registry, err := contract.Registry(ctx, opened)
 					if err != nil {
 						return err
 					}
