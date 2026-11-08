@@ -1602,7 +1602,7 @@ wire = "extension.ProviderModelConfig.compat"
 key = "pi.registerMarkdownTransformer"
 node = "api.registerMarkdownTransformer"
 go = "Extension.MarkdownTransformer"
-rust = "Extension::markdown_transformer"
+rust = "Extension::markdown_transformer_with_options|Extension::markdown_transformer"
 python = "Extension.markdown_transformer"
 lisp = "pig:markdown-transformer|pig:markdown-transformer-p"
 

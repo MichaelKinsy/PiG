@@ -8,7 +8,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
-	"github.com/MichaelKinsy/PiG/mcp"
 )
 
 type mcpOracleCase struct {
