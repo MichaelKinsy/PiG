@@ -496,6 +496,7 @@ func (c *Connection) Info(ctx context.Context) (RemoteInfo, error) {
 
 // Session connects if needed and returns the live session's id. Upstream's session() takes no signal: the connecting is not cancelled.
 func (c *Connection) Session(_ context.Context) (int, error) {
+	//portlint:allow ctxmapping Pi's session() takes no signal (connection.ts session), so the connecting is not cancellable
 	ready, err := c.connect(context.Background())
 	if err != nil {
 		return 0, err
