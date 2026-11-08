@@ -54,6 +54,8 @@ type fixture struct {
 	tree    treeCalls
 	test    *p2test.TestHost
 	worker  host.Host
+	// e are the IDs of the four entries (entries and conversations draw their IDs from one counter).
+	e [4]float64
 }
 
 // newFixture: conversation 1 holds "first" (entry 1), "first answer" (2), "second" (3), "second answer" (4).
@@ -64,17 +66,19 @@ func newFixture(t *testing.T) *fixture {
 	if _, err := opened.Root(p2test.Background, &harness.RootOptions{}); err != nil {
 		t.Fatal(err)
 	}
+	f := &fixture{opened: opened, reports: &reports{}}
 	if _, err := opened.Commit(p2test.Background, func(tx durable.Tx) (any, error) {
-		for _, draft := range []durable.EntryDraft{user("first"), answer("first answer"), user("second\n  line"), answer("second answer")} {
-			if _, err := tx.AppendEntry(durable.ROOT_CONVERSATION_ID, draft); err != nil {
+		for i, draft := range []durable.EntryDraft{user("first"), answer("first answer"), user("second\n  line"), answer("second answer")} {
+			appended, err := tx.AppendEntry(durable.ROOT_CONVERSATION_ID, draft)
+			if err != nil {
 				return nil, err
 			}
+			f.e[i] = float64(appended.Id)
 		}
 		return nil, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
-	f := &fixture{opened: opened, reports: &reports{}}
 	// The Sessions the worker reports to is the server's: a worker host linked to a server host that stubs it.
 	f.test = p2test.NewTestHost(t, p2test.TestHostOptions{
 		Stubs: []p2test.Stub{{Contract: sessionscontract.Sessions, Factory: func(*delta.JsonObject, p2runtime.Principal, p2test.StubSelf) p2test.StubMembers {
@@ -133,15 +137,15 @@ func TestReadsTheTreeOfTheMainConversation(t *testing.T) {
 	f := newFixture(t)
 	got := f.call(t, "tree", nil)
 	nodes := list(got, "nodes")
-	if len(nodes) != 4 || got.Value("main") != float64(1) || got.Value("current") != float64(4) {
+	if len(nodes) != 4 || got.Value("main") != float64(1) || got.Value("current") != f.e[3] {
 		t.Fatalf("tree = %+v", got)
 	}
 	for i, node := range nodes {
 		var parent any
 		if i > 0 {
-			parent = float64(i)
+			parent = f.e[i-1]
 		}
-		if field(node, "entry") != float64(i+1) || field(node, "parent") != parent || field(node, "conversation") != float64(1) {
+		if field(node, "entry") != f.e[i] || field(node, "parent") != parent || field(node, "conversation") != float64(1) {
 			t.Fatalf("node %d = %+v", i, node)
 		}
 	}
@@ -156,31 +160,33 @@ func TestReadsTheTreeOfTheMainConversation(t *testing.T) {
 
 func TestNavigatesToAnAnswerForkingABranchThenReusesIt(t *testing.T) {
 	f := newFixture(t)
-	switched := f.call(t, "navigate", delta.JsonObjectOf("entry", float64(2)))
-	if switched.Value("conversation") != float64(2) || switched.Value("text") != nil {
+	switched := f.call(t, "navigate", delta.JsonObjectOf("entry", f.e[1]))
+	if switched.Value("conversation") == float64(1) ||
+		switched.Value("conversation") == nil || switched.Value("text") != nil {
 		t.Fatalf("navigate = %+v", switched)
 	}
+	fork := switched.Value("conversation")
 	report := f.reports.last()
-	if report == nil || report.Value("main") != float64(2) {
+	if report == nil || report.Value("main") != fork {
 		t.Fatalf("report = %+v", report)
 	}
 	// Newest first, the fork labelled with the chosen message.
 	branches := list(report, "branches")
-	if len(branches) != 2 || field(branches[0], "conversation") != float64(2) || field(branches[0], "label") != "first answer" || field(branches[1], "label") != nil {
+	if len(branches) != 2 || field(branches[0], "conversation") != fork || field(branches[0], "label") != "first answer" || field(branches[1], "label") != nil {
 		t.Fatalf("branches = %+v", branches)
 	}
 	tree := f.call(t, "tree", nil)
-	if tree.Value("main") != float64(2) || tree.Value("current") != float64(2) {
+	if tree.Value("main") != fork || tree.Value("current") != f.e[1] {
 		t.Fatalf("tree = %+v", tree)
 	}
 	// The same point again continues the branch ending there: no new conversation.
-	again := f.call(t, "navigate", delta.JsonObjectOf("entry", float64(2)))
-	if again.Value("conversation") != float64(2) || len(list(f.call(t, "tree", nil), "branches")) != 2 {
+	again := f.call(t, "navigate", delta.JsonObjectOf("entry", f.e[1]))
+	if again.Value("conversation") != fork || len(list(f.call(t, "tree", nil), "branches")) != 2 {
 		t.Fatalf("again = %+v", again)
 	}
 	// Back to the end of conversation 1 by its row.
 	f.call(t, "select", delta.JsonObjectOf("conversation", float64(1)))
-	if got := f.call(t, "tree", nil); got.Value("main") != float64(1) || got.Value("current") != float64(4) {
+	if got := f.call(t, "tree", nil); got.Value("main") != float64(1) || got.Value("current") != f.e[3] {
 		t.Fatalf("after select = %+v", got)
 	}
 	if f.reports.last().Value("main") != float64(1) {
@@ -190,23 +196,23 @@ func TestNavigatesToAnAnswerForkingABranchThenReusesIt(t *testing.T) {
 
 func TestNavigatingToAUserMessageReturnsItsTextAndContinuesBefore(t *testing.T) {
 	f := newFixture(t)
-	switched := f.call(t, "navigate", delta.JsonObjectOf("entry", float64(3)))
-	if switched.Value("conversation") != float64(2) || switched.Value("text") != "second\n  line" {
+	switched := f.call(t, "navigate", delta.JsonObjectOf("entry", f.e[2]))
+	if switched.Value("conversation") == float64(1) || switched.Value("text") != "second\n  line" {
 		t.Fatalf("navigate = %+v", switched)
 	}
-	if got := f.call(t, "tree", nil); got.Value("current") != float64(2) {
+	if got := f.call(t, "tree", nil); got.Value("current") != f.e[1] {
 		t.Fatalf("current = %v", got.Value("current"))
 	}
 	// Before the first message: a new empty conversation with no entries of its own.
-	first := f.call(t, "navigate", delta.JsonObjectOf("entry", float64(1)))
-	if first.Value("conversation") != float64(3) || first.Value("text") != "first" {
+	first := f.call(t, "navigate", delta.JsonObjectOf("entry", f.e[0]))
+	if first.Value("conversation") == switched.Value("conversation") || first.Value("conversation") == float64(1) || first.Value("text") != "first" {
 		t.Fatalf("first = %+v", first)
 	}
-	if got := f.call(t, "tree", nil); got.Value("main") != float64(3) || got.Value("current") != nil {
+	if got := f.call(t, "tree", nil); got.Value("main") != first.Value("conversation") || got.Value("current") != nil {
 		t.Fatalf("tree = %+v", got)
 	}
 	// Every call again: the empty conversation is reused.
-	if again := f.call(t, "navigate", delta.JsonObjectOf("entry", float64(1))); again.Value("conversation") != float64(3) {
+	if again := f.call(t, "navigate", delta.JsonObjectOf("entry", f.e[0])); again.Value("conversation") != first.Value("conversation") {
 		t.Fatalf("again = %+v", again)
 	}
 }
@@ -223,8 +229,8 @@ func TestRefusesWhatIsNotAMessage(t *testing.T) {
 
 func TestRenamesBranchesAndResetsTheRootToTheSessionTitle(t *testing.T) {
 	f := newFixture(t)
-	f.call(t, "navigate", delta.JsonObjectOf("entry", float64(2)))
-	f.call(t, "rename", delta.JsonObjectOf("conversation", float64(2), "label", "  my \n branch "))
+	fork := f.call(t, "navigate", delta.JsonObjectOf("entry", f.e[1])).Value("conversation")
+	f.call(t, "rename", delta.JsonObjectOf("conversation", fork, "label", "  my \n branch "))
 	f.call(t, "rename", delta.JsonObjectOf("conversation", float64(1), "label", "main line"))
 	branches := list(f.reports.last(), "branches")
 	if field(branches[0], "label") != "my branch" || field(branches[1], "label") != "main line" {
@@ -235,18 +241,18 @@ func TestRenamesBranchesAndResetsTheRootToTheSessionTitle(t *testing.T) {
 		t.Fatalf("conversation 1 keeps a label: %+v", f.reports.last())
 	}
 	for _, label := range []any{nil, "   ", strings.Repeat("x", contract.PreviewLength+1)} {
-		if _, err := f.tree.Call("rename", delta.JsonObjectOf("conversation", float64(2), "label", label), p2test.Background); err == nil {
+		if _, err := f.tree.Call("rename", delta.JsonObjectOf("conversation", fork, "label", label), p2test.Background); err == nil {
 			t.Fatalf("label %v was accepted", label)
 		}
 	}
-	if _, err := f.tree.Call("rename", delta.JsonObjectOf("conversation", float64(9), "label", "x"), p2test.Background); err == nil {
+	if _, err := f.tree.Call("rename", delta.JsonObjectOf("conversation", float64(99999), "label", "x"), p2test.Background); err == nil {
 		t.Fatal("an unknown branch was renamed")
 	}
 }
 
 func TestEarlierBranchesAreReadOnly(t *testing.T) {
 	f := newFixture(t)
-	f.call(t, "navigate", delta.JsonObjectOf("entry", float64(2)))
+	forked := f.call(t, "navigate", delta.JsonObjectOf("entry", f.e[1])).Value("conversation").(float64)
 	source, err := f.worker.Registry(p2test.Background, p2runtime.ReadOnlyConversations.Registry, host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -263,7 +269,7 @@ func TestEarlierBranchesAreReadOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := f.worker.Root(func(ctx host.Ctx) (any, error) {
-		for conversation, want := range map[int]bool{1: true, 2: false, 99: false} {
+		for conversation, want := range map[int]bool{1: true, int(forked): false, 99999: false} {
 			reason, err := check(ctx, conversation)
 			if err != nil {
 				return nil, err
