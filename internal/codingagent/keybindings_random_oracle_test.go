@@ -86,10 +86,6 @@ for (const [name, path] of Object.entries(files)) {
 		if err := json.Unmarshal([]byte(want[name]), &expected); err != nil {
 			t.Fatal(err)
 		}
-		// pig divergence (D241): Windows and WSL hosts default app.clipboard.pasteImage to alt+v and ctrl+v, Pi 1.5.0 to alt+v.
-		if _, bound := expected.User[pasteImageAction]; d241Applies() && !bound {
-			expected.Effective[pasteImageAction] = d241PasteKeys(t, expected.Effective[pasteImageAction])
-		}
 		user := map[string][]string{}
 		maps.Copy(user, kb.GetUserBindings())
 		effective := map[string][]string{}

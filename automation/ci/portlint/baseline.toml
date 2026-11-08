@@ -159,7 +159,7 @@ snippet = "_, err = refresh.Publish(ModelsPublication{Persist: &ModelsStoreEntry
 check = "clock"
 file = "ai/models_runtime_stream.go"
 func = "pushModelsSetupError"
-snippet = "message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: time.Now().UnixMilli()}"
+snippet = "message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: reason, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: time.Now().UnixMilli()}"
 
 [[hit]]
 check = "clock"
@@ -5871,12 +5871,6 @@ snippet = "if apiKey, err = resolveAPIKey(context.Background()); err != nil {"
 
 [[hit]]
 check = "ctxbackground"
-file = "coding/model_runtime_typed.go"
-func = "ModelRuntime.failedStream"
-snippet = "runtime.fail(context.Background(), outer, model, err)"
-
-[[hit]]
-check = "ctxbackground"
 file = "coding/piglet/pull_cli.go"
 func = "cmdPull"
 snippet = "result, err := pigletrelease.Pull(context.Background(), ref, pigletrelease.Options{"
@@ -7174,13 +7168,13 @@ snippet = "if err := json.Unmarshal(encoded, &wire); err != nil {"
 [[hit]]
 check = "hotpathjson"
 file = "coding/extension/host/subprocess/host.go"
-func = "Host.pushStateTo"
+func = "Host.pushState"
 snippet = "leanBody, err := json.Marshal(stateUpdateBody{State: &lean})"
 
 [[hit]]
 check = "hotpathjson"
 file = "coding/extension/host/subprocess/host.go"
-func = "Host.pushStateTo"
+func = "Host.pushState"
 snippet = "if out, err = json.Marshal(stateUpdateBody{State: &partial}); err != nil {"
 
 [[hit]]

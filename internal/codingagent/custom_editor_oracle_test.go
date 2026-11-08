@@ -181,8 +181,7 @@ func runCeOracleWithPig(probe ceOracleProbe) []ceOracleFrame {
 // CustomEditor (custom-editor.ts) against pinned Pi over 800 seeded key sequences: app actions registered in a random order, replaced by a later registration, the escape, exit and paste-image hooks that override them, an extension shortcut that consumes a key or lets it through, the autocomplete popup deciding whether escape reaches the app, ctrl+d only when the editor is empty, editor history keys taking precedence over app actions, insertTextAtCursor, and the frame after every key; the handlers that ran, the text, the cursor, the popup state and the rows must agree.
 func TestCustomEditorMatchesPi(t *testing.T) {
 	probes := ceOracleProbes()
-	// pig divergence (D241): Ctrl+V reaches onPasteImage in Pig on Windows and WSL hosts and not in Pi 1.5.0; d241PiProbes gives Pi D241's keys for those probes.
-	input, err := json.Marshal(d241PiProbes(probes))
+	input, err := json.Marshal(probes)
 	if err != nil {
 		t.Fatal(err)
 	}
