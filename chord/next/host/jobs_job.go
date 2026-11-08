@@ -130,9 +130,6 @@ const (
 	// jobDeclared until the attempt is live (starts are refused).
 	jobDeclared jobState = iota
 	jobLive
-	// jobHanded once a reload's swap gave its records to the new attempt's job (starts refused, its invocations finish
-	// here).
-	jobHanded
 	// jobSealed once it is sealed.
 	jobSealed
 )
@@ -225,7 +222,7 @@ func (handle *job) Stage(tx *documents.Transaction, args any, ctx context.Contex
 	if tx.Documents() != handle.owner.documents {
 		return nil, fmt.Errorf("%s: a transaction starts only its own object's jobs", handle.owner.documents.Label())
 	}
-	if handle.state == jobSealed || handle.state == jobHanded {
+	if handle.state == jobSealed {
 		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: handle.records.name() + ": its attempt ended"}, nil)
 	}
 	if handle.state == jobDeclared {
@@ -241,30 +238,14 @@ func (handle *job) seal(err *data.ChordError, reason cutReason) {
 	if handle.state == jobSealed {
 		return
 	}
-	handed := handle.state == jobHanded
 	handle.state = jobSealed
 	handle.sealed = &sealedWith{err: err, reason: reason}
 	handle.records.detach(handle, handle.finishing.snapshot())
 	handle.finishing.clear()
-	// A handed-over job's invocations finish on its code; their outcomes go to the new attempt's job.
-	if !handed {
-		for _, run := range handle.invocations.snapshot() {
-			handle.records.cut(run, err, reason)
-		}
+	for _, run := range handle.invocations.snapshot() {
+		handle.records.cut(run, err, reason)
 	}
 	handle.invocations.clear()
-}
-
-// handOver is: a reload swapped its attempt out (slice 7b section 8): starts are refused, the records go to the new
-// attempt's job once it is live, the runs it invokes finish on this code (their outcome is finished by the new code), a
-// finish running here completes here.
-func (handle *job) handOver() {
-	if handle.state != jobLive && handle.state != jobDeclared {
-		return
-	}
-	handle.state = jobHanded
-	// Runs needing a live attempt meanwhile wait for the new one.
-	handle.records.detach(handle, nil)
 }
 
 // invoke runs `run` for a committed run (with its signal aborted already after an early abort); a persisted run's
@@ -312,13 +293,13 @@ func (handle *job) invoke(run *jobRun) {
 func (handle *job) start(run *jobRun, current *invocation) {
 	owner, records := handle.owner, handle.records
 	ctx := &jobContext{
-		callContext: newCallContext(chordctx.WithAbortSignal(owner.context, current.signal), owner.caller, owner.host),
+		callContext: newCallContext(chordctx.WithAbortSignal(owner.context, current.signal), owner.caller, owner.host, nil),
 		jobID:       run.id,
 		state:       handle.stateOf(run, current),
 	}
 	settle := owner.admitRun(ctx.settle)
 	handle.invocations.add(run)
-	// Its own version's args: a handed-over attempt's late start runs its own code (Sol, reservation).
+	// Its own version's args: a run started by old work during a restart runs on the old code (its definition).
 	args, argsErr := records.argsOf(run, handle.definition)
 	records.loop.Go(func() {
 		var result any

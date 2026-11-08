@@ -212,10 +212,10 @@ func (k KitStart) json() *delta.JsonObject {
 	}
 	timeouts := delta.NewJsonObject(0)
 	if k.Timeouts.Close != 0 {
-		timeouts.Set("closeTimeout", float64(k.Timeouts.Close/time.Millisecond))
+		timeouts.Set("closeTimeout", float64(k.Timeouts.Close/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
 	if k.Timeouts.Ready != 0 {
-		timeouts.Set("readyTimeout", float64(k.Timeouts.Ready/time.Millisecond))
+		timeouts.Set("readyTimeout", float64(k.Timeouts.Ready/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
 	object := delta.JsonObjectOf("dir", k.Dir, "facet", k.Facet, "principal", k.Principal, "server", k.Server, "files", files, "telemetry", k.Telemetry)
 	if k.Uploads != 0 {
@@ -239,21 +239,21 @@ func decodeKitStart(value delta.JsonValue) (KitStart, error) {
 	kit.Telemetry, _ = object.Value("telemetry").(bool)
 	if files, ok := object.Value("files").(*delta.JsonObject); ok {
 		if n, ok := files.Value("maxFile").(float64); ok {
-			kit.Files.MaxFile = int64(n)
+			kit.Files.MaxFile = int64(n) //portlint:allow numbers Go-to-Go start data: a whole number KitStart.json wrote from an int
 		}
 		if n, ok := files.Value("maxTotal").(float64); ok {
-			kit.Files.MaxTotal = int64(n)
+			kit.Files.MaxTotal = int64(n) //portlint:allow numbers Go-to-Go start data: a whole number KitStart.json wrote from an int
 		}
 	}
 	if n, ok := object.Value("uploads").(float64); ok {
-		kit.Uploads = int(n)
+		kit.Uploads = int(n) //portlint:allow numbers Go-to-Go start data: a whole number KitStart.json wrote from an int
 	}
 	if timeouts, ok := object.Value("timeouts").(*delta.JsonObject); ok {
 		if n, ok := timeouts.Value("closeTimeout").(float64); ok {
-			kit.Timeouts.Close = time.Duration(n) * time.Millisecond
+			kit.Timeouts.Close = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 		if n, ok := timeouts.Value("readyTimeout").(float64); ok {
-			kit.Timeouts.Ready = time.Duration(n) * time.Millisecond
+			kit.Timeouts.Ready = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 	}
 	if kit.Dir == "" || kit.Facet == "" {
@@ -381,7 +381,8 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		}
 	}
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots: []plugins.PluginRoot{{Path: root}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
+		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
+		Api: &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
 	workerHosts := &workerHosts{keys: map[string]string{}}
@@ -454,7 +455,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err := PrivateStore(pluginsStore); err != nil {
 		return err
 	}
-	node, nodeReport, err := a.Plugins.Load(plugins.PluginsLoad{
+	node, _, err := a.Plugins.Load(plugins.PluginsLoad{
 		Kind: "server", Modules: modules, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), Telemetry: options.Telemetry,
 		Store: &plugins.StoreOptions{Path: pluginsStore},
@@ -463,11 +464,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},
 		},
 	}, ctx)
-	if err != nil {
-		return err
-	}
+	// A required root's plugin failing returns the loaded host with the *PluginError: the app owns it and closes it.
 	a.Node = node
-	if err := failedPlugins(nodeReport); err != nil {
+	if err != nil {
 		return err
 	}
 	if err := h.Accept(node.Link(), host.LinkOptions{Principal: options.Principal.Server, Trusted: true}, ctx); err != nil {

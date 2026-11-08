@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -111,12 +112,7 @@ func (views *FolderViews) delete(each *view) {
 func (views *FolderViews) has(each *view) bool {
 	views.mu.Lock()
 	defer views.mu.Unlock()
-	for _, other := range views.views {
-		if other == each {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(views.views, each)
 }
 
 // Changed is: space changed: every watched folder of it is read again (once per folder) and its watchers told.

@@ -772,10 +772,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/app/blobs.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/blobs_test.go"]
+rationale = "Blob files of one host: each file operation is awaited in turn; Go calls them in the same order and blocks (synchronous os calls, no goroutine)."
 
 [[files]]
 path = "packages/chord/src/node/app/data.ts"
@@ -793,31 +793,31 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/app/files-copy.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/files_copy_test.go"]
+rationale = "The files index is the part of the source store's export that is Files' own, imported as the new directory's store, and each blob is linked or copied while the export holds the source's commit queue; Pi's async generator of parts is a store.PartSource and the awaits block on the caller's goroutine."
 
 [[files]]
 path = "packages/chord/src/node/app/files-index.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/files_index_test.go"]
+rationale = "Every change of the index is one transaction computed by its caller's turn (the object runs one change at a time) and its reads are awaited in turn; Go blocks on the same calls in the same order."
 
 [[files]]
 path = "packages/chord/src/node/app/files.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/files_test.go", "test:chord/nextnode/app/files_example_test.go"]
+rationale = "Each method handler is Pi's async function: its synchronous part (argument checks, and for append the acceptance of the bytes and of their offset) runs inside the section that admits the call, in call order; it suspends before its first wait and the rest blocks. `turn`, Pi's promise chain, is a mutex: changes run one at a time in the order they took it. A caller that starts several appends before awaiting any uses Reference.Start and PendingCall.Wait (D430)."
 
 [[files]]
 path = "packages/chord/src/node/app/folder-views.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/folder_views_test.go"]
+rationale = "Live folder listings: Files reads a watched folder again after each change of its space, inside the method that changed it, and hands the listing to its watchers; the awaited reads block and return (value, error)."
 
 [[files]]
 path = "packages/chord/src/node/app/invite.ts"
@@ -828,10 +828,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/app/layout.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/layout_test.go"]
+rationale = "The data directory's layout is made by awaited file operations in turn; Go calls them in the same order and blocks."
 
 [[files]]
 path = "packages/chord/src/node/app/owner.ts"
@@ -849,10 +849,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/app/secrets.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/secrets_test.go", "test:chord/nextnode/app/secrets_umask_unix_test.go"]
+rationale = "Secret files are written by awaited file operations in turn (a temporary file linked or renamed into place); Go calls them in the same order and blocks."
 
 [[files]]
 path = "packages/chord/src/node/app/sessions.ts"
@@ -870,10 +870,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/app/uploads.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/uploads_test.go"]
+rationale = "An append is accepted at the offset the accepted appends reached and its write starts synchronously, then is awaited: Accept is that first half (it returns the write to run), Append both. The writes in flight are a WaitGroup, not a Set of Promises; uploaded, finish and expiry wait for an upload's writes in flight."
 
 [[files]]
 path = "packages/chord/src/node/app/users.ts"
@@ -947,24 +947,24 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/plugins/base-inputs.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined"]
+evidence = ["test:chord/nextnode/plugins/plugins_baseinputs_test.go#TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEachOnesBytes", "test:chord/nextnode/plugins/plugins_baseinputs_test.go#TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem"]
+rationale = "`readRecorded` and `recordedSources`: blocking `Recorder.Read` and an esbuild plugin (`Recorder.Plugin`) whose OnLoad runs on esbuild's goroutines, so the record is kept under a lock (upstream's shared Map); the hash is the one read of the file, SHA-256 of the bytes esbuild is given (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/build.ts"
-disposition = "pending"
-contracts = []
-evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow", "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildAnAbortedContextIsItsCause"]
-rationale = "`buildFacet`: blocking `BuildFacet` on esbuild's Go API; a missing facet and a failed build are results, an error only for an aborted ctx (`context.Cause`)."
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow", "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildAnAbortedContextIsItsCause", "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildGivesAPlainStylesheetsURLAnAsset"]
+rationale = "`buildFacet`: blocking `BuildFacet` on esbuild's Go API; a missing facet and a failed build are results, an error only for an aborted ctx (`context.Cause`). Delta at Pi c23b9ec1: a CSS module is scoped by `ScopeCSSModule` inside the build's OnLoad (a scoped stylesheet namespace the build imports), and a stylesheet's `url()` is an asset in a browser build (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/css-modules.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildScopesACSSModulesClassNamesToItsFileTheImportGivingTheMapping", "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildGivesACSSModulesURLAssetsItsImportComposesAndEscapedClassNames", "test:chord/nextnode/plugins/plugins_cssmodules_pi_test.go#TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase", "test:chord/nextnode/plugins/plugins_cssmodules_node_test.go#TestScopeCSSModuleGivesWhatNodeGivesForEsbuildsMappingModuleOverGeneratedCases"]
+rationale = "`scopeCssModule`: blocking `ScopeCSSModule`, one small esbuild build per CSS module, called from the facet build's OnLoad; the mapping module runs in a Node subprocess (one per component, shared by its builds, started by the first CSS module and ended by Plugins.Close; a standalone BuildFacet starts its own; reads bounded by ctx and NodeOptions.ReadyTimeout, a ctx that ends kills it and the next read starts another), the `vm` call, spread and `JSON.stringify` of Pi's, so the mapping is the JavaScript engine's (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/discover.ts"
@@ -982,10 +982,10 @@ rationale = "`installDependencies` (spawn with the context's signal): blocking `
 
 [[files]]
 path = "packages/chord/src/node/plugins/plugins.ts"
-disposition = "pending"
-contracts = []
+disposition = "translated"
+contracts = ["awaited","concurrent-joined","microtask-ordering"]
 evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothing", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRootsAndMarksSetRefusesADirectoryThatIsNoRoot"]
-rationale = "`build` Promise.all is `buildAll` (one goroutine per facet in a WaitGroup, results by index); reloads of one host are serialized by a ticket taken in the section that applies the build; `rollout` runs the steps in order, a step's error stops it as a result; the watcher's microtask publication is `Batch.Soon` and fs events run as host sections. Delta at Pi 9823079ad: `installPlugin` is a blocking `Plugins.InstallPlugin` that marks `set` after the install; `load` of a required root rejects with a `PluginError` after the host's load settled (the loaded host is returned with the error) (lane chord-slice12)."
+rationale = "`build` Promise.all is `buildAll` (one goroutine per facet in a WaitGroup, results by index); reloads of one host are serialized by a ticket taken in the section that applies the build; `rollout` runs the steps in order, a step's error stops it as a result; the watcher's microtask publication is `Batch.Soon` and fs events run as host sections. Delta at Pi 9823079ad: `installPlugin` is a blocking `Plugins.InstallPlugin` that marks `set` after the install; `load` of a required root rejects with a `PluginError` after the host's load settled (the loaded host is returned with the error) (lane chord-slice12). Delta at Pi c23b9ec1: `watchBase` is the blocking `Plugins.WatchBase` (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/runtime.ts"
@@ -1003,10 +1003,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/plugins/watcher.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["concurrent-joined", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkIgnoresARewriteWithTheSameBytesMarksAChangeAndClearsAtItsRevert", "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkTakesTheLatestOfABurstOfWritesAChangeAndItsQuickRevertLeaveNoMark", "test:chord/nextnode/plugins/plugins_watcher_linux_test.go#TestTheBaseMarkReadsOnePathInOrderASecondComparisonWaitsForTheFirstHeldOnAPipeAndDecides", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch"]
+rationale = "The marks' microtask publication is `Batch.Soon` and fsnotify events enter the host as sections (one section per burst of queued events, renewals once per burst). Base comparisons: upstream's per-path promise chain is a queue read by at most 8 goroutines owned by the watcher (`join` waits for them), a path asked for again while queued or read is read once more after it, each result entering the host as a section (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/bundle.ts"
@@ -1269,10 +1269,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/store/live-query.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/host/host_live_query_test.go", "test:chord/next/store/live_query_test.go"]
+rationale = "Pi's load and rerun are async functions the commit step awaits; here they block and return (value, error) inside the step, run on the committing goroutine in the commit queue's turn. rerun never fails the step: a failing run is the live query's failed state and reported once as query_failed."
 
 [[files]]
 path = "packages/chord/src/store/outbox.ts"
@@ -1297,10 +1297,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/store/store.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering", "cancellable"]
+evidence = ["test:chord/next/store/store_test.go", "test:chord/next/store/group_commit_test.go", "test:chord/next/store/outbox_test.go"]
+rationale = "Pi's commit queue is the `#tail` promise chain: commit, commitSeries, replay and take take their place synchronously at the call and run once the entry before them settled, a settled entry never blocking the next whatever it rejected with. Go keeps that with a ticket taken under the store's mutex at the call (a channel the previous entry closes), and Commit, CommitSeries, Replay and Read block until their promise would settle. Group commit (S18) lets the commits queued behind a running step share the next step's backend transaction: enlist takes a commit's place at the call, behind the open group or as the first of a new one, and Wait runs the group's turn on the goroutine of its first commit once the entry before it settled, settling every commit of the group (no goroutine of its own; a panic out of a callback of the turn rejects the unsettled commits storage_failed, stops the store and goes on in that caller). The context counts the step and aborts nothing once queued, as Pi's."
 
 [[files]]
 path = "packages/chord/src/store/table-changes.ts"
@@ -1374,45 +1374,45 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/sync/batch.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/sync/lines_test.go", "test:chord/sync/sync_test.go"]
+rationale = "Pi's bodies are async iterables over a CompressionStream written while the output is read. Go bodies are store.ByteSource pull iterators (Next blocks for the next chunk, Close is the generator's return, idempotent) that compress and decompress on the caller's goroutine as the body is read, with no goroutine of their own: a body holds one chunk of lines and the compressor's window, a source's error ends the iterator, and closing it closes the source it wraps (an export gives the store's commit queue back). The context of Next reaches the source's wait."
 
 [[files]]
 path = "packages/chord/src/sync/client.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:chord/sync/sync_test.go"]
+rationale = "uploadSession, pullSession and foldSession are async functions on one thread; the Go functions block until their promise would settle, on the caller's goroutine, and start none; every body stream they open is closed on each path that stops reading it. FlushScheduler's timer callback starts the flush promise, which close() awaits and then flushes once more: here the callback runs the flush on the goroutine of the timer mechanism (time.AfterFunc starts one per firing), running is a channel closed when a flush ended and Close waits on it (or its context) before the last flush, so the scheduler starts and leaks nothing. SetTimer and Now stay injected, so tests drive time."
 
 [[files]]
 path = "packages/chord/src/sync/files.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Type declarations of the file operations the directory-backed sync pieces need, and two pure helpers (isNotFound, unwrap). The async operations are interface members that environments implement; Go's SyncFileSystem returns errors (a missing path is fs.ErrNotExist) and takes the context first."
 
 [[files]]
 path = "packages/chord/src/sync/filesystem.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/sync/sync_test.go"]
+rationale = "The directory remote awaits each file operation in turn; Go calls them in the same order and blocks. A body is written chunk by chunk through a temporary file and a rename, the body closed on every path, and read back by a fileBody that reads at growing offsets and closes the file at the end or when the body is closed."
 
 [[files]]
 path = "packages/chord/src/sync/remote.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Interfaces of the remote store (their methods return promises in Pi, (value, error) in Go with the context first), plain types, an Error class and two pure functions over a listing (remoteHistory, remoteHead)."
 
 [[files]]
 path = "packages/chord/src/sync/state.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/sync/sync_test.go"]
+rationale = "One JSON file per session, replaced through a temporary file and a rename, each file operation awaited in turn; Go calls them in the same order and blocks."
 
 [[files]]
 path = "packages/chord/src/telemetry-ingest/facet.ts"

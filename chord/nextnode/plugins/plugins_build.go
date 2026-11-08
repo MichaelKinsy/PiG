@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode/utf16"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -63,6 +64,12 @@ type BuildOptions struct {
 	Plugins []Plugin
 	// PublicPath is where the app serves a browser build's assets: the URL prefix their imports evaluate to (nil: `/`).
 	PublicPath *string
+	// Node is how the Node subprocess that reads the mapping of a CSS module is started (NodeOptions.Command and ReadyTimeout;
+	// the Node is found as the plugin host's is): one per build that has a CSS module, unless the build is the component's,
+	// which shares one.
+	Node NodeOptions
+	// mappings is the component's evaluator of CSS module mappings (nil: the build starts its own).
+	mappings *mappingEvaluator
 }
 
 // BuildInput is a file a build read, with the hash of the bytes it handed its tool (the watcher's inputs).
@@ -157,6 +164,10 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 		return BuiltFacet{}, err
 	}
 	rules := newImportRules(plugin, kind, entry, options, ctx)
+	if options.mappings == nil {
+		rules.mappings = newMappingEvaluator(options.Node)
+		defer rules.mappings.close()
+	}
 	if wrongEntry := rules.checkEntry(named, entry); wrongEntry != "" {
 		return failed([]string{wrongEntry}), nil
 	}
@@ -209,6 +220,10 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 		buildOptions.Engines = []api.Engine{{Name: api.EngineNode, Version: "22"}}
 	}
 	result := api.Build(buildOptions)
+	// A CSS module whose mapping could not be read because ctx ended is an abort, not a failed build.
+	if rules.aborted.Load() {
+		return BuiltFacet{}, context.Cause(ctx)
+	}
 	if len(result.Errors) > 0 {
 		errors := make([]string, len(result.Errors))
 		for i, message := range result.Errors {
@@ -355,7 +370,7 @@ var loaders = map[string]api.Loader{
 	".wasm": api.LoaderFile,
 }
 
-// chordPackage is Chord's package: never imported by plugins of an app with an API (only its `/next/plugins` for
+// chordPackage is Chord's package: never imported by plugins of an app with an API (only its `/plugins` for
 // `pluginFile`).
 const chordPackage = "@earendil-works/chord"
 
@@ -432,6 +447,12 @@ type importRules struct {
 	mu         sync.Mutex
 	readInputs map[string]string
 	readCopied map[string]bool
+	// scoped is the scoped stylesheet of every CSS module read, by its file.
+	scoped map[string]string
+	// mappings reads the mapping of each CSS module (one Node subprocess, started by the first).
+	mappings *mappingEvaluator
+	// aborted is set when ctx ended a read of a mapping: the build is aborted, not failed.
+	aborted atomic.Bool
 	// importers is the first importer of every file resolved, by file.
 	importers map[string]string
 	// versions is the API versions imported, in the order they were first imported.
@@ -449,6 +470,8 @@ func newImportRules(own Plugin, kind, entry string, options BuildOptions, ctx co
 		ctx:          ctx,
 		readInputs:   map[string]string{},
 		readCopied:   map[string]bool{},
+		scoped:       map[string]string{},
+		mappings:     options.mappings,
 		importers:    map[string]string{},
 	}
 	for _, each := range options.Plugins {
@@ -474,6 +497,9 @@ func (rules *importRules) noteImporter(path, importer string) {
 
 func (rules *importRules) setup(builder api.PluginBuild) {
 	builder.OnResolve(api.OnResolveOptions{Filter: ".*"}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+		if path, scoped := strings.CutPrefix(args.Path, scopedCSSNamespace+":"); scoped {
+			return api.OnResolveResult{Path: path, Namespace: scopedCSSNamespace}, nil
+		}
 		// The plugin's files are resolved here, the entry too: esbuild then gives them no Node module type
 		// (`"type": "module"`), whose interop would read a whole host package for a default import instead of honouring
 		// the `__esModule` an ESM namespace is wrapped with (§3).
@@ -549,6 +575,13 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		return result, nil
 	})
 	builder.OnLoad(api.OnLoadOptions{Filter: ".*"}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
+		if args.Namespace == scopedCSSNamespace {
+			// Its `url()` and `@import` resolve relative to the module file.
+			rules.mu.Lock()
+			css := rules.scoped[args.Path]
+			rules.mu.Unlock()
+			return api.OnLoadResult{Contents: &css, Loader: api.LoaderCSS, ResolveDir: filepath.Dir(args.Path)}, nil
+		}
 		if args.Namespace != "file" {
 			return api.OnLoadResult{}, nil
 		}
@@ -569,9 +602,34 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		rules.mu.Lock()
 		rules.readInputs[args.Path] = hex.EncodeToString(sum[:])
 		rules.mu.Unlock()
+		if args.PluginData != any(assetData{}) && strings.HasSuffix(args.Path, ".module.css") {
+			// build.ts: `scopeCssModule(…, new TextDecoder().decode(contents))`.
+			return rules.cssModule(args.Path, decodeUTF8(contents))
+		}
 		text := string(contents)
 		return api.OnLoadResult{Contents: &text, Loader: loader, ResolveDir: filepath.Dir(args.Path)}, nil
 	})
+}
+
+// cssModule is the CSS module file with contents as the facet imports it: a module whose default export is the class
+// mapping, importing the scoped stylesheet (ScopeCSSModule), which the build collects with the facet's other CSS.
+func (rules *importRules) cssModule(file, contents string) (api.OnLoadResult, error) {
+	scoped, err := scopeCSSModule(rules.own.Name, rules.own.Dir, file, contents, rules.mappings, rules.ctx)
+	if err != nil {
+		var failure *cssModuleError
+		if errors.As(err, &failure) {
+			return api.OnLoadResult{Errors: failure.messages}, nil
+		}
+		if rules.ctx.Err() != nil {
+			rules.aborted.Store(true)
+		}
+		return api.OnLoadResult{}, err
+	}
+	rules.mu.Lock()
+	rules.scoped[file] = scoped.CSS
+	rules.mu.Unlock()
+	module := "import " + jsString(scopedCSSNamespace+":"+file) + ";export default " + scoped.Classes + ";"
+	return api.OnLoadResult{Contents: &module, Loader: api.LoaderJS, ResolveDir: filepath.Dir(file)}, nil
 }
 
 // nodeReadError is the text of the error Node's `readFile(path)` throws, which Pi's build reports for an input it cannot read
@@ -717,8 +775,10 @@ func (rules *importRules) resolve(specifier, importer string, kind api.ResolveKi
 	if from.kind == placePackage {
 		return resolution{kind: resolvedPackage}
 	}
+	// A stylesheet's `url()` names an asset of the plugin (served under `publicPath`).
+	asset := kind == api.ResolveCSSURLToken && browser
 	if strings.HasPrefix(specifier, ".") || filepath.IsAbs(specifier) {
-		return resolution{kind: resolvedPath, path: specifier}
+		return resolution{kind: resolvedPath, path: specifier, asset: asset}
 	}
 	name := packageName(specifier)
 	if slices.Contains(rules.own.External, name) {
