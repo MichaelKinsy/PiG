@@ -98,3 +98,27 @@ func TestCookiesRefuseACookiePastItsSignedExpiryAndOneWhoseExpiryWasChanged(t *t
 	clock = clock.Add(61 * time.Second)
 	cookiesExpectNone(t, cookiesRequestWith(value), "session", "s")
 }
+
+// TestReadSignedCookieGivesTheSignedExpiry is `readSignedCookie` of packages/chord/src/node/http/cookies.ts (Pi main
+// c23b9ec1): the value as ReadCookie reads it, with its signed expiry (milliseconds since the epoch); none for a cookie
+// without MaxAge; nothing for a cookie ReadCookie refuses.
+func TestReadSignedCookieGivesTheSignedExpiry(t *testing.T) {
+	local := cookiesRequestWith("")
+	maxAge := 3600.0
+	with := Cookie("session", "a.b", CookieOptions{Secret: "s", Request: local, MaxAge: &maxAge})
+	signed, ok := ReadSignedCookie(cookiesRequestWith(strings.SplitN(with, ";", 2)[0]), "session", "s")
+	if !ok || signed.Value != "a.b" || signed.Expires == nil {
+		t.Fatalf("signed = %+v, %v", signed, ok)
+	}
+	if remaining := *signed.Expires - float64(time.Now().UnixMilli()); remaining < 3_590_000 || remaining > 3_601_000 {
+		t.Fatalf("expires in %v ms, want about an hour", remaining)
+	}
+	without := Cookie("session", "x", CookieOptions{Secret: "s", Request: local})
+	signed, ok = ReadSignedCookie(cookiesRequestWith(strings.SplitN(without, ";", 2)[0]), "session", "s")
+	if !ok || signed.Value != "x" || signed.Expires != nil {
+		t.Fatalf("session cookie = %+v, %v", signed, ok)
+	}
+	if _, ok := ReadSignedCookie(cookiesRequestWith(strings.SplitN(with, ";", 2)[0]), "session", "other"); ok {
+		t.Fatal("a cookie signed with another secret was read")
+	}
+}

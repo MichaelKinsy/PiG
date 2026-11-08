@@ -1425,13 +1425,21 @@ func (h *chordHost) startTicking() {
 	ping, shut := h.heartbeat.ping, h.heartbeat.close
 	//portlint:allow numbers min(ping, shut) is a time.Duration in whole nanoseconds: the /10 drops under 1 ns, below nodeDelay's whole-millisecond truncation, so the armed delay equals Pi's Math.min(ping, close) / 10 (host.ts:1319)
 	interval := min(ping, shut) / 10
+	last := h.events.Now()
 	tick := func() {
 		if ticking.stopped {
 			return
 		}
 		now := h.events.Now()
+		// A tick a whole interval late is time this process did not run (a sleeping laptop, a blocked event loop).
+		late := float64(now-last) - float64(interval)/float64(time.Millisecond)
+		var paused int64
+		if late >= float64(interval)/float64(time.Millisecond) {
+			paused = int64(late)
+		}
+		last = now
 		for _, each := range slices.Clone(h.links) {
-			each.tick(now, ping, shut)
+			each.tick(now, paused, ping, shut)
 		}
 	}
 	var arm func()
@@ -2136,10 +2144,7 @@ func (h *chordHost) commit(plan *reloadPlan, ctx context.Context) ([]startedFate
 			names = append(names, name)
 		}
 	}
-	started := make([]startedFate, 0, len(plan.fates))
-	for _, fate := range plan.fates {
-		started = append(started, h.startFate(fate))
-	}
+	started := h.startFates(plan.fates)
 	for _, name := range table.types.keys() {
 		entry, _ := table.types.get(name)
 		if entry.kind == servedLocal && entry.hostLifetime {
@@ -2148,6 +2153,27 @@ func (h *chordHost) commit(plan *reloadPlan, ctx context.Context) ([]startedFate
 	}
 	h.unbound.wake(names)
 	return started, nil
+}
+
+// startFates starts fates (in the order of the host's objects: providers before their dependents, `wentLive`) and returns them
+// in that order, for the report. The removals first, then the others dependents first (decision "Swaps: dependents first"): a
+// dependent's new attempt binds its provider while that is still live, so it does not park on the provider's own swap or
+// restart, and reads the old instance until the new one is live. A removed provider is gone before, so a dependent whose new
+// code still needs it parks (decision 4). A provider takes its new served type with its own fate: a dependent of a version
+// only that serves waits unbound until then (`ChordObject.hold`), then binds the swapping provider and parks.
+func (h *chordHost) startFates(fates []plannedFate) []startedFate {
+	started := make([]startedFate, len(fates))
+	for index, fate := range fates {
+		if fate.end {
+			started[index] = h.startFate(fate)
+		}
+	}
+	for index := len(fates) - 1; index >= 0; index-- {
+		if !fates[index].end {
+			started[index] = h.startFate(fates[index])
+		}
+	}
+	return started
 }
 
 // startFate starts one object's fate after the commit (slice 7b §4): a removed type's object ends, its holders waiting
