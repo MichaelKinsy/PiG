@@ -299,7 +299,8 @@ func parseClassDef(rest string) (names []string, props map[string]string, ok boo
 			continue
 		}
 		k, v = trimJS(k), trimJS(v)
-		if k != "" && v != "" {
+		// Assigning to `__proto__` in the JS object this mirrors sets a prototype, not a property.
+		if k != "" && v != "" && k != "__proto__" {
 			props[k] = v
 		}
 	}
