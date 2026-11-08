@@ -189,27 +189,29 @@ func TestHostRootAnAbortedContextRejectsBeforeFnRunsASynchronousThrowIsARejectio
 	}
 }
 
-// Mirrors "host.root › a `ctx.get` before `load` throws not_ready (decision (a)); after it, it gets".
-func TestHostRootACtxGetBeforeLoadThrowsNotReadyDecisionAAfterItItGets(t *testing.T) {
+// Mirrors "host.root › a `ctx.get` before `load` resolved parks until it did".
+func TestHostRootACtxGetBeforeLoadResolvedParksUntilItDid(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	defer closeHosts(t, host)
-	get := func(ctx Ctx) (*Reference, error) {
-		return ctx.Get(rootInfo, jsonObject("id", float64(3)), GetOptions{})
+	type result struct {
+		id  any
+		err error
 	}
-	_, err := host.Root(func(ctx Ctx) (any, error) { return get(ctx) }, background, RootOptions{})
-	if _, ok := data.IsChordErrorCode(err, data.CodeNotReady); !ok {
-		t.Fatalf("root before load = %v, want not_ready", err)
-	}
+	got := make(chan result, 1)
+	go func() {
+		value, err := host.Root(func(ctx Ctx) (any, error) {
+			info, err := ctx.Get(rootInfo, jsonObject("id", float64(3)), GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			return info.Member("id").Value()
+		}, background, RootOptions{})
+		got <- result{value, err}
+	}()
+	awaitUnbound(t, host)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: DefineFacet(serveRootInfo)}}, background))
-	id, err := host.Root(func(ctx Ctx) (any, error) {
-		info, err := get(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return info.Member("id").Value()
-	}, background, RootOptions{})
-	if err != nil || id != float64(3) {
-		t.Fatalf("root = %v, %v; want 3", id, err)
+	if outcome := <-got; outcome.err != nil || outcome.id != float64(3) {
+		t.Fatalf("root = %v, %v; want 3", outcome.id, outcome.err)
 	}
 }
 

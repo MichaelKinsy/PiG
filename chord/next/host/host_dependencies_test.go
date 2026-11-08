@@ -310,14 +310,9 @@ func TestParkedLongIsReportedOnceAfterReadyTimeoutWhateverTheBlockerAMissingLoca
 	if got, want := errs.All(), []HostError{parkedLongOf("app.view(1)", "app.missing", "failed", 0)}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("errors = %+v, want %+v", got, want)
 	}
-	// Its unbound reference was reported too, after 5 s (`unbound_long`, unbound-clock.test.ts); no second parked_long.
 	loop.AdvanceAsync(60000)
-	var kinds []HostErrorKind
-	for _, err := range errs.All() {
-		kinds = append(kinds, err.Kind)
-	}
-	if !reflect.DeepEqual(kinds, []HostErrorKind{ErrParkedLong, ErrUnboundLong}) {
-		t.Fatalf("error kinds = %v, want [parked_long unbound_long]", kinds)
+	if errs.Len() != 1 {
+		t.Fatalf("errors = %d, want 1", errs.Len())
 	}
 	if state := refStateOf(view); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
 		t.Fatalf("state = %+v, want failed waiting", state)
@@ -471,7 +466,7 @@ func TestParkedLongIsReportedOncePerParkingEpisodeAgainForAnAttemptThatParksAfte
 	host, errs := loaded(t, serveViewOfMissing, loadedOptions{Loop: loop, ReadyTimeout: &ready})
 	defer closeHosts(t, host)
 	view := mustHold(t, host, depView, jsonObject("id", float64(1)))
-	advanceSettled(loop, host, 4000)
+	loop.AdvanceAsync(5000)
 	var kinds []HostErrorKind
 	for _, err := range errs.All() {
 		kinds = append(kinds, err.Kind)
@@ -482,12 +477,12 @@ func TestParkedLongIsReportedOncePerParkingEpisodeAgainForAnAttemptThatParksAfte
 	// A reload of its plugin replaces the parked attempt: a new episode, its clock from its own parking.
 	_, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(serveViewOfMissing)}}, background, ReloadOptions{})
 	must(t, err)
-	advanceSettled(loop, host, 999)
+	loop.AdvanceAsync(999)
 	if errs.Len() != 1 {
 		t.Fatalf("errors = %d, want 1", errs.Len())
 	}
-	advanceSettled(loop, host, 1)
-	if got, want := errs.All()[1], parkedLongOf("app.view(1)", "app.missing", "failed", 4000); !reflect.DeepEqual(got, want) {
+	loop.AdvanceAsync(1)
+	if got, want := errs.All()[1], parkedLongOf("app.view(1)", "app.missing", "failed", 5000); !reflect.DeepEqual(got, want) {
 		t.Fatalf("second report = %+v, want %+v", got, want)
 	}
 	view.Release()
@@ -558,7 +553,7 @@ func TestTheDependencyCheckOfRegistryValues(t *testing.T) {
 	if got := checkDependencies([]dependency{live}); got.kind != checkLive {
 		t.Fatalf("check of a registry with a last good value = %+v, want live", got)
 	}
-	absent := registries.NewRegistryRecord("app.absent", e.batch, func(registries.RegistryError) {}, nil)
+	absent := registries.NewRegistryRecord("app.absent", e.batch, func(registries.RegistryError) {})
 	got := checkDependencies([]dependency{live, {kind: dependencyRegistry, value: absent.Value(1)}})
 	if got.kind != checkParked || got.shown.Kind != RefStateFailed || got.shown.Cause.Kind != data.FailureWaiting || !got.firstPass ||
 		got.blocker != (blocker{label: "registry app.absent", state: blockerFailed}) || got.loadingOn != nil {

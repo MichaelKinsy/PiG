@@ -403,6 +403,31 @@ func TestReadersAReaderParkedOnAFirstComposeThatThrewGoesOnAtTheFirstGoodComposi
 	must(t, host.Close(background))
 }
 
+func TestReadersHostRegistryBeforeThePublicationWaitsForItThenResolvesWithTheProviderItServed(t *testing.T) {
+	errs := &hostErrors{}
+	host := newHost(t, HostOptions{OnError: errs.push})
+	type result struct {
+		value *registries.RegistryValueSource
+		err   error
+	}
+	waiting := make(chan result, 1)
+	go func() {
+		value, err := host.Registry(background, rvSum, GetOptions{})
+		waiting <- result{value, err}
+	}()
+	// The read is waiting once nothing answers it yet: load publishes the provider.
+	time.Sleep(10 * time.Millisecond)
+	mustLoad(t)(host.Load([]HostFacet{rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
+		return rvServeSum(h, rvTotalCompose, nil)
+	})}, background))
+	got := <-waiting
+	must(t, got.err)
+	if value, thrown := rvRead(got.value); thrown != nil || value != (rvTotal{}) {
+		t.Fatalf("value = %v, %v, want { total: 0 }", value, thrown)
+	}
+	must(t, host.Close(background))
+}
+
 func TestReadersHostRegistryWaitsThroughNoValueUntilAFirstGoodCompositionWokenByItItsWaitThenGone(t *testing.T) {
 	host, _ := rvPlugins(t, HostOptions{}, rvPlugin("@app/sum", func(h FacetHost, self FacetSelf) error {
 		if err := rvServeSum(h, rvFirstGoodCompose, nil); err != nil {

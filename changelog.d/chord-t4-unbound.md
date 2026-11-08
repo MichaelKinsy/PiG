@@ -1,3 +1,0 @@
-### Changed
-
-- Chord: `host.get`, `host.hold`, `host.registry` and a root's `ctx.get` made before `host.load` fail `not_ready` at once instead of waiting for a publication nobody started; a plugin name that is no npm name makes `load` and `reload` fail before anything changes. A request that waits unbound after the publication (a type or registry nobody serves, a registry whose first `compose` failed) is reported once through `onError` as `unbound_long` after 5 s, by one host-wide timer; a registry with contributions and no provider is reported as `registry_undeclared` at each publication. <!-- fix: 1e09c9c11c -->
