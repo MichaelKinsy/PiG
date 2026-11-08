@@ -485,32 +485,35 @@ func runUpdateCommand(cwd string, sm *codingagent.SettingsManager, opts *package
 		fmt.Println(chalkDim(fmt.Sprintf("Extensions are skipped. Run %s update --extensions to update extensions.", codingagent.AppName)))
 	}
 	if opts.source != "" && !isSelfUpdateTarget(opts.source) {
-		if err := packageManagerFor(cwd, sm, packageProgressPrinter(os.Stdout)).Update(opts.source); err != nil {
+		var summary updateSummary
+		if err := packageManagerFor(cwd, sm, summary.progress(os.Stdout)).Update(opts.source); err != nil {
 			printCLIError("%v", err)
 			return 1
 		}
-		fmt.Println(chalkGreen("Updated " + opts.source))
+		summary.print(opts.source)
 		return 0
 	}
 
 	// --extensions updates every package without touching pig itself.
 	if opts.extensionsOnly && !opts.allPackages {
-		if err := packageManagerFor(cwd, sm, packageProgressPrinter(os.Stdout)).Update(""); err != nil {
+		var summary updateSummary
+		if err := packageManagerFor(cwd, sm, summary.progress(os.Stdout)).Update(""); err != nil {
 			printCLIError("%v", err)
 			return 1
 		}
-		fmt.Println(chalkGreen("Updated packages"))
+		summary.print("")
 		return 0
 	}
 
 	if !opts.allPackages {
 		return runSelfUpdate(opts.force)
 	}
-	if err := packageManagerFor(cwd, sm, packageProgressPrinter(os.Stdout)).Update(""); err != nil {
+	var summary updateSummary
+	if err := packageManagerFor(cwd, sm, summary.progress(os.Stdout)).Update(""); err != nil {
 		printCLIError("%v", err)
 		return 1
 	}
-	fmt.Println(chalkGreen("Updated packages"))
+	summary.print("")
 	return runSelfUpdate(opts.force)
 }
 

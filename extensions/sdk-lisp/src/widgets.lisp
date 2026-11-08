@@ -208,7 +208,7 @@ host's footer data changes. NIL restores the built-in footer. A render that sign
             (loop for method being the hash-keys of (kit-state-surfaces kit) using (hash-value encoded)
                   do (when (intersection refs (kit-encoded-refs encoded) :test #'string=)
                        (ctx-call-host ctx method (obj "view" (kit-wire ext encoded)))))))
-      (error (e) (unless (extension-shutdown ext) (format *error-output* "pig: resend evicted view images: ~A~%" e))))))
+      (error (e) (unless (extension-shutdown ext) (diagnose "pig: resend evicted view images: ~A~%" e))))))
 
 (defun widget-footer-key (data)
   (to-json (obj "b" (let ((b (jget data "gitBranch"))) (if (and (stringp b) (plusp (length b))) b :null))

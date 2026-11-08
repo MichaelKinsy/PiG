@@ -3,6 +3,7 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math"
 	"math/rand/v2"
 	"reflect"
@@ -157,6 +158,29 @@ func TestConformance_CompactionUsageHelpersAgreeAcrossSDKs(t *testing.T) {
 	for _, message := range messages {
 		cases = append(cases, tcase{"fn": "estimate", "message": message})
 	}
+	// Strings with unpaired surrogates, which Pi's length counts as one unit each and JSON.stringify writes as a six-character escape. The Go SDK holds one as
+	// WTF-8, Python as a lone surrogate character, Lisp as a surrogate code point; the cases are raw JSON text, since a Go string cannot carry the escape. Rust's
+	// serde_json refuses the escape (its string type cannot hold the unit), so the Rust SDKs have no such message to size and skip them.
+	unpairedCases := 0
+	for _, text := range []string{
+		`\ud800`, `\udc00`, `\ud800\ud800\ud800\ud800\ud800\ud800\ud800\ud800`, `\udc00\ud800`, `a\ud83db`, `abcdefgh\ud800`, `\ud83d\ud83d\ud83d\ude00`,
+		`\ud83d\ude00`, `😀\ud800😀`, `é\ud800日\udfff😀`, `\u00e9\u0301`, `e\u0301\ud83d`, `\ud800\n\"\\\ud800`,
+	} {
+		for _, shape := range []string{
+			`{"role":"user","content":"%s"}`,
+			`{"role":"user","content":"%[1]s%[1]s%[1]s%[1]s"}`,
+			`{"role":"custom","content":[{"type":"text","text":"%s"}]}`,
+			`{"role":"toolResult","content":[{"type":"text","text":"%s"},{"type":"image"}]}`,
+			`{"role":"assistant","content":[{"type":"text","text":"%s"},{"type":"thinking","thinking":"%[1]s"}]}`,
+			`{"role":"assistant","content":[{"type":"toolCall","id":"c","name":"%s","arguments":{"k":"%[1]s","%[1]s":["%[1]s",1]}}]}`,
+			`{"role":"bashExecution","command":"%s","output":"%[1]s"}`,
+			`{"role":"branchSummary","summary":"%s"}`,
+			`{"role":"system","content":"%s","sections":{"a":"%[1]s"},"toolsAdded":["%[1]s",{"%[1]s":"%[1]s"}]}`,
+		} {
+			cases = append(cases, tcase{"fn": "estimate", "unpaired": true, "message": json.RawMessage(fmt.Sprintf(shape, text))})
+			unpairedCases++
+		}
+	}
 
 	// findCutPoint and findTurnStartIndex: entries of every kind the session holds, with sizes around the keep budget, so a boundary (>= versus >), the
 	// cut that moves back over metadata entries, a split turn and a compaction boundary each show against Pi's own code.
@@ -310,6 +334,9 @@ func TestConformance_CompactionUsageHelpersAgreeAcrossSDKs(t *testing.T) {
 				}
 			})
 			for i, c := range cases {
+				if c["unpaired"] == true && strings.Contains(tc.name, "rust") {
+					continue
+				}
 				got := run(t, h, c)
 				if !reflect.DeepEqual(got, reference[i]) {
 					args, _ := json.Marshal(c)

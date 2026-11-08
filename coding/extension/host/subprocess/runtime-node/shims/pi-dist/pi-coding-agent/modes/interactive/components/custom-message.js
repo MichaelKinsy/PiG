@@ -1,6 +1,7 @@
 import { Box, Container, Markdown, Spacer, Text } from "../../../../../pi-tui.mjs";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 import { keyHint, keyText } from "./keybinding-hints.js";
+import { createMarkdownTransform } from "./markdown-transform.js";
 /**
  * Component that renders a custom message entry from extensions.
  * Uses distinct styling to differentiate from user messages.
@@ -13,12 +14,18 @@ export class CustomMessageComponent extends Container {
     markdownTheme;
     _expanded = false;
     outputPad;
-    constructor(message, customRenderer, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+    markdownTransformers;
+    messageId;
+    timestamp;
+    constructor(message, customRenderer, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
         super();
         this.message = message;
         this.customRenderer = customRenderer;
         this.markdownTheme = markdownTheme;
         this.outputPad = outputPad;
+        this.markdownTransformers = markdownTransformers;
+        this.messageId = messageId;
+        this.timestamp = timestamp;
         this.addChild(new Spacer(1));
         // Create box with purple background (used for default rendering)
         this.box = new Box(1, 1, (t) => theme.bg("customMessageBg", t));
@@ -81,8 +88,8 @@ export class CustomMessageComponent extends Container {
                 .map((c) => c.text)
                 .join("\n");
         }
-        this.box.addChild(new Markdown(text, 0, 0, this.markdownTheme, {
-            color: (text) => theme.fg("customMessageText", text),
+        this.box.addChild(new Markdown(text, 0, 0, this.markdownTheme, { color: (text) => theme.fg("customMessageText", text) }, {
+            transform: createMarkdownTransform("custom", () => false, this.markdownTransformers, this.messageId, this.timestamp),
         }));
     }
 }

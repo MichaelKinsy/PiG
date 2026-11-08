@@ -13,7 +13,7 @@ import (
 
 // pi: packages/coding-agent/src/core/tools/truncate.ts
 
-// truncateHead, truncateTail, truncateLine, truncateMiddle and formatSize against pinned Pi over seeded content (ASCII, multi-byte, astral
+// truncateHead, truncateTail, truncateLine and formatSize against pinned Pi over seeded content (ASCII, multi-byte, astral
 // characters, CRLF, missing trailing newline, one huge line) and limits around every boundary.
 func TestTruncateMatchesPi(t *testing.T) {
 	type call struct {

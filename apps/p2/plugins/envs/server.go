@@ -391,7 +391,8 @@ func serveEnvService(_ *delta.JsonObject, self host.Self) (contracts.Implementat
 	}}, nil
 }
 
-func directoryJSON(listing p2runtime.DirectoryListing) delta.JsonValue {
+// DirectoryJSON is a directory listing as the contracts carry it.
+func DirectoryJSON(listing p2runtime.DirectoryListing) delta.JsonValue {
 	var parent any
 	if listing.Parent != nil {
 		parent = *listing.Parent
@@ -547,7 +548,7 @@ func serveEnvs(_ *delta.JsonObject, principal data.Principal, self host.Self) (c
 				if err != nil {
 					return nil, err
 				}
-				return directoryJSON(listing), nil
+				return DirectoryJSON(listing), nil
 			}),
 			"sandboxStatus": call(func(m *Manager, ctx context.Context, args *delta.JsonObject) (delta.JsonValue, error) {
 				return m.SandboxStatus(ctx, stringOf(args.Value("name")))
@@ -644,6 +645,17 @@ func (l *lazyManager) WorkingDirectory(ctx context.Context, env, cwd string, cre
 		return "", err
 	}
 	return m.WorkingDirectory(ctx, env, cwd, create)
+}
+
+// ListDirectory is the folders of path on environment name.
+func (l *lazyManager) ListDirectory(ctx context.Context, name, path string) (p2runtime.DirectoryListing, error) {
+	// Listing it is SSH: not the section's work.
+	chordctx.Suspend(ctx)
+	m, err := l.get()
+	if err != nil {
+		return p2runtime.DirectoryListing{}, err
+	}
+	return m.ListDirectory(ctx, name, path)
 }
 
 // Connection is a pi-env connection to environment name; a manager that did not open answers its error at the first request.

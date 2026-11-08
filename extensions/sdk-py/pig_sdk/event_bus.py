@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import itertools
 import json
-import sys
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from . import host_helpers
+from ._diagnostic import diagnose
 
 if TYPE_CHECKING:
     from . import Context, Extension
@@ -146,7 +146,7 @@ class _EventBusHub:
             try:
                 self._call("events.off", {"handlerId": sub.id}, None)
             except Exception as exc:  # noqa: BLE001 - upstream's unsubscribe cannot fail; report it
-                print(f"extension: pi.events unsubscribe {sub.channel!r}: {exc}", file=sys.stderr)
+                diagnose(f"extension: pi.events unsubscribe {sub.channel!r}: {exc}" + "\n")
 
         return unsubscribe
 

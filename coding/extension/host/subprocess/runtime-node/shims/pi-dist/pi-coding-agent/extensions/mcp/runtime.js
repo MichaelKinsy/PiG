@@ -8,12 +8,14 @@ import { basename, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { JSON_RPC_ERROR_CODES, McpAuthRequiredError, McpClient, McpError, McpHttpError, McpSessionExpiredError, StdioTransport, StreamableHttpTransport, } from "../../../pi-mcp/index.js";
-import { McpOAuthAuthorizationRequiredError } from "../../../pi-mcp/oauth/index.js";
+import { McpOAuthAuthorizationRequiredError, } from "../../../pi-mcp/oauth/index.js";
 import { VERSION } from "../../config.js";
 import { resolveConfigValueOrThrow, resolveHeadersOrThrow } from "../../core/resolve-config-value.js";
-import { createMcpAuthProvider, } from "./oauth.js";
+import { sliceTail } from "../../core/tools/truncate.js";
+import { createMcpAuthProvider } from "./oauth.js";
+export { McpSignInCancelledError } from "../../../pi-mcp/oauth/index.js";
 export { McpServerLog } from "./log.js";
-export { McpOAuthCredentialStore, McpSignInCancelledError, signInMcpServer } from "./oauth.js";
+export { McpOAuthCredentialStore, signInMcpServer } from "./oauth.js";
 const DEFAULT_TIMEOUT_SECONDS = 60;
 const STDERR_TAIL_CHARS = 2_000;
 /** Delays between attempts to connect to an HTTP server that failed with a transient error. */
@@ -321,7 +323,7 @@ export class McpServerConnection {
         catch (error) {
             await closeClient();
             if (transport instanceof StdioTransport) {
-                this.stderrTail = transport.stderr.trim().slice(-STDERR_TAIL_CHARS) || undefined;
+                this.stderrTail = sliceTail(transport.stderr.trim(), STDERR_TAIL_CHARS) || undefined;
             }
             throw error;
         }
@@ -345,7 +347,7 @@ export class McpServerConnection {
             return;
         this.client = undefined;
         this.state = "disconnected";
-        const stderr = stdio?.stderr.trim().slice(-STDERR_TAIL_CHARS);
+        const stderr = stdio ? sliceTail(stdio.stderr.trim(), STDERR_TAIL_CHARS) : undefined;
         this.error = stderr ? `Connection closed\n${stderr}` : "Connection closed";
         this.changed();
     }
