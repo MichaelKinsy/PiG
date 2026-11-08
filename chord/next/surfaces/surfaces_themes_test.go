@@ -1,6 +1,9 @@
 package surfaces
 
-import "testing"
+import (
+	"maps"
+	"testing"
+)
 
 // pi: packages/chord/test/surfaces/themes.test.ts
 
@@ -13,12 +16,8 @@ func baseColors() map[string]string {
 
 func with(colors map[string]string, extra map[string]string) map[string]string {
 	out := map[string]string{}
-	for k, v := range colors {
-		out[k] = v
-	}
-	for k, v := range extra {
-		out[k] = v
-	}
+	maps.Copy(out, colors)
+	maps.Copy(out, extra)
 	return out
 }
 
@@ -28,8 +27,6 @@ var (
 	night     = Theme{ID: "night", Name: "Night", Mode: "dark", Colors: baseColors(), Tui: map[string]string{"accent": "208"}}
 )
 
-func ptr(s string) *string { return &s }
-
 func TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback(t *testing.T) {
 	themes := []Theme{solarized, paper, night}
 	for _, c := range []struct {
@@ -37,10 +34,10 @@ func TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback(
 		mode string
 		want string
 	}{
-		{ThemePick{Dark: ptr("night")}, "dark", "night"},
+		{ThemePick{Dark: new("night")}, "dark", "night"},
 		{ThemePick{}, "dark", "solarized"},
-		{ThemePick{Dark: ptr("paper")}, "dark", "solarized"},
-		{ThemePick{Light: ptr("gone")}, "light", "paper"},
+		{ThemePick{Dark: new("paper")}, "dark", "solarized"},
+		{ThemePick{Light: new("gone")}, "light", "paper"},
 	} {
 		if got := ActiveTheme(themes, c.pick, c.mode).ID; got != c.want {
 			t.Errorf("ActiveTheme(%v, %s) = %s, want %s", c.pick, c.mode, got, c.want)

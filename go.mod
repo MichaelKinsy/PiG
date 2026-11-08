@@ -26,7 +26,7 @@ require (
 	github.com/gofrs/flock v0.13.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/klauspost/compress v1.19.2
+	github.com/klauspost/compress v1.20.3
 	github.com/mattn/go-runewidth v0.0.23
 	github.com/rivo/uniseg v0.4.7
 	github.com/tetratelabs/wazero v1.12.0

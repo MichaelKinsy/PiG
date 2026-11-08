@@ -9146,46 +9146,6 @@
       ]
     },
     {
-      "id": "BF-3b49d43",
-      "title": "Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is…",
-      "symptom": "Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.",
-      "rootCause": "Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3b49d43239",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-3b49d43-2",
-      "title": "Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged…",
-      "symptom": "Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).",
-      "rootCause": "Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3b49d43239",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-3b696c8",
       "title": "A changelog version recorded with a prerelease or build suffix, such as `0.1.5-20261020.7`, no longer shows…",
       "symptom": "A changelog version recorded with a prerelease or build suffix, such as `0.1.5-20261020.7`, no longer shows the `0.1.1` to `0.1.5` notes again on every launch: only its leading `major.minor.patch` is read.",
@@ -27000,7 +26960,6 @@
         "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
         "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
         "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
-        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
         "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
         "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
         "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
@@ -27033,7 +26992,6 @@
         "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
         "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
         "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
-        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
         "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
         "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
         "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
@@ -27066,7 +27024,6 @@
         "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
         "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
         "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
-        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
         "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
         "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
         "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
@@ -32296,56 +32253,6 @@
         }
       ],
       "tests": []
-    },
-    {
-      "id": "BF-D370",
-      "title": "The OAuth callback server drops connections that have not sent a request when it closes",
-      "symptom": "1.5.0 waits for the browser to drop the socket, for minutes.",
-      "rootCause": "Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D370",
-      "removeWhen": "the pinned Pi release contains 63ea042ce and PiG's close matches it.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "d852965a33",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen"
-      ]
-    },
-    {
-      "id": "BF-D373",
-      "title": "The stored PKCE verifier is dropped once its code exchange succeeded",
-      "symptom": "none observable in behavior; additive hardening.",
-      "rootCause": "a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D373",
-      "removeWhen": "Pi drops the verifier after the exchange, or the owner declines the hardening.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "474fc73fd8",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "8d46bf82b6",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "mcp/oauth/oauth_test.go::TestAuthorizeMcpDropsTheVerifierAfterTheExchange"
-      ]
     },
     {
       "id": "BF-D430",
@@ -52853,16 +52760,6 @@
       "id": "D312",
       "title": "The model selectors keep the row the user browsed to when a catalog refresh lands",
       "entry": "BF-D312"
-    },
-    {
-      "id": "D370",
-      "title": "The OAuth callback server drops connections that have not sent a request when it closes",
-      "entry": "BF-D370"
-    },
-    {
-      "id": "D373",
-      "title": "The stored PKCE verifier is dropped once its code exchange succeeded",
-      "entry": "BF-D373"
     },
     {
       "id": "D430",
