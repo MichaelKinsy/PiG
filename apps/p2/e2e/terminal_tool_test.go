@@ -3,17 +3,15 @@
 // guest turns may use it; tmux errors come back as tool errors; the server serves only the session's current worker, on the
 // session's environments, and archiving closes the session's terminals. Without code mode, `tool_search` loads the tool.
 //
-// Go forced difference: Pi's cases drive the tool from code mode scripts (`codemode <code>` prompts), and the code mode
-// plugin is not ported to apps/p2 yet (no `plugins/codemode`), so the fake provider's one fixed script is all a script can
-// be. The model calls the tool directly instead, after `tool_search` loaded it, as Pi's last case does: the same commands,
-// the same terminals, the result as the model reads it (the text) instead of a script's returned value. The case "a
-// subagent's script opens windows at the subagent's own location" needs the subagent tools and code mode: not ported (the
-// subagents plugin has no `subagent` tool yet, rows/p2-A.md).
+// Pi's cases drive the tool from code mode scripts (`codemode <code>` prompts) and read the script's returned value; so do
+// these. The last case, without code mode, has the model call the tool directly after `tool_search` loaded it.
 
 package e2e_test
 
 import (
+	"encoding/json"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -60,12 +58,6 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 	p2test.UseTerminalDaemon(t)
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"share.test"}})
 	t.Cleanup(func() { shutdownTerminalHost(t, fixture.DataDir) })
-	// The e2e binary links the code mode plugin, which on (its default) leaves `tool_search` uninstalled: the model reaches the
-	// tool through it only with code mode off. The worker applies the setting asynchronously: the first search goes until it
-	// is found.
-	if err := os.WriteFile(fixture.DataDir+"/settings.json", []byte(`{"codemode":false}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	workspace, err := realpathOf(fixture.Workspace)
 	if err != nil {
 		t.Fatal(err)
@@ -118,13 +110,14 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 		}
 		return "terminal " + `{"command":` + jsonString(command) + `,"args":[` + strings.Join(quoted, ",") + `]}`
 	}
-	succeeds := func(prompt string, target *host.Reference) string {
+	// script runs code in a `codemode` turn and decodes the value it returns.
+	script := func(code string, target *host.Reference, into any) {
 		t.Helper()
-		result := call(prompt, target)
+		result := call("codemode "+code, target)
 		if result.Value("isError") == true {
-			t.Fatalf("%s: %s", prompt, resultText(result))
+			t.Fatalf("script: %s", resultText(result))
 		}
-		return resultText(result)
+		decode(t, scriptOutput(t, resultText(result)), into)
 	}
 	// The owner's terminal panel: its byte channel hears the session's terminals change.
 	view, err := p2test.HoldIn(owner, terminalscontract.Terminals, delta.JsonObjectOf("session", session, "view", randomView()), "owner")
@@ -151,31 +144,43 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 		return latest
 	}
 
-	t.Run("tool_search loads the tool; a window opens, takes keys and reads its output", func(t *testing.T) {
-		var found string
-		for attempt := 0; attempt < 20; attempt++ {
-			if attempt > 0 {
-				time.Sleep(200 * time.Millisecond)
-			}
-			result := call(`tool_search {"query":"terminal tmux windows"}`, chat)
-			if found = resultText(result); result.Value("isError") != true {
-				break
-			}
+	t.Run("a script opens a window, types into it and reads its output", func(t *testing.T) {
+		var value struct {
+			Opened struct {
+				Window  int    `json:"window"`
+				Output  string `json:"output"`
+				Running bool   `json:"running"`
+			} `json:"opened"`
+			Sent struct {
+				Window int    `json:"window"`
+				Output string `json:"output"`
+			} `json:"sent"`
+			Windows struct {
+				Windows []struct {
+					Window   int    `json:"window"`
+					Name     string `json:"name"`
+					Opener   string `json:"opener"`
+					Location string `json:"location"`
+				} `json:"windows"`
+			} `json:"windows"`
 		}
-		if !strings.Contains(found, "- terminal: ") {
-			t.Fatalf("tool_search: %s", found)
+		script(strings.Join([]string{
+			`const opened = await tools.terminal({ command: "new-window", args: ["-n", "dev", "-w", "/^hello-agent$/", "echo hello-age''nt"] });`,
+			`const sent = await tools.terminal({ command: "send-keys", args: ["-t", "dev", "-w", "/^two$/", "echo t''wo", "Enter"] });`,
+			`const windows = await tools.terminal({ command: "list-windows" });`,
+			`return { opened, sent, windows };`,
+		}, "\n"), chat, &value)
+		if value.Opened.Window != 1 || !value.Opened.Running || !regexp.MustCompile(`(?m)^hello-agent$`).MatchString(value.Opened.Output) {
+			t.Fatalf("opened = %+v", value.Opened)
 		}
-		opened := succeeds(tool("new-window", "-n", "dev", "-w", "/^hello-agent$/", "echo hello-age''nt"), chat)
-		if !strings.HasPrefix(opened, "window 1 · ") || !regexp.MustCompile(`(?m)^hello-agent$`).MatchString(opened) {
-			t.Fatalf("new-window: %q", opened)
+		if !regexp.MustCompile(`(?m)^two$`).MatchString(value.Sent.Output) || strings.Contains(value.Sent.Output, "hello-agent") {
+			t.Fatalf("sent = %+v", value.Sent)
 		}
-		sent := succeeds(tool("send-keys", "-t", "dev", "-w", "/^two$/", "echo t''wo", "Enter"), chat)
-		if !regexp.MustCompile(`(?m)^two$`).MatchString(sent) || strings.Contains(sent, "hello-agent") {
-			t.Fatalf("send-keys: %q", sent)
+		if len(value.Windows.Windows) != 1 {
+			t.Fatalf("windows = %+v", value.Windows)
 		}
-		windows := succeeds(tool("list-windows"), chat)
-		if !strings.HasPrefix(windows, "1: dev · "+workspace+" · opened by agent · ") {
-			t.Fatalf("list-windows: %q", windows)
+		if got := value.Windows.Windows[0]; got.Window != 1 || got.Name != "dev" || got.Opener != "agent" || got.Location != workspace {
+			t.Fatalf("window = %+v", got)
 		}
 		// The owner's panel lists it, marked as the agent's.
 		pollUntil(t, func() bool {
@@ -203,39 +208,57 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 			return ok
 		})
 		_ = bytes.conn.WriteMessage(websocket.BinaryMessage, []byte("echo from-own''er\n"))
-		read := succeeds(tool("read", "-t", "1", "-w", "/^from-owner$/"), chat)
-		if strings.Contains(read, "timed out") || !regexp.MustCompile(`(?m)^from-owner$`).MatchString(read) {
-			t.Fatalf("read: %q", read)
+		var read struct {
+			Output   string `json:"output"`
+			TimedOut *bool  `json:"timedOut"`
+		}
+		script(`return await tools.terminal({ command: "read", args: ["-t", "1", "-w", "/^from-owner$/"] });`, chat, &read)
+		if read.TimedOut != nil || !regexp.MustCompile(`(?m)^from-owner$`).MatchString(read.Output) {
+			t.Fatalf("read = %+v", read)
 		}
 		// The owner opens a terminal; the agent sees and drives it.
 		if _, err := view.Call("open", delta.JsonObjectOf("cols", float64(80), "rows", float64(10), "conversation", float64(1)), p2test.Background); err != nil {
 			t.Fatal(err)
 		}
 		pollUntil(t, func() bool { return len(listed()) == 2 })
-		owned := succeeds(tool("send-keys", "-t", "2", "-w", "/^owned-by-user$/", "-l", "echo own''ed-by-user\n"), chat)
-		if strings.Contains(owned, "timed out") || !regexp.MustCompile(`(?m)^owned-by-user$`).MatchString(owned) {
-			t.Fatalf("send-keys: %q", owned)
+		var value struct {
+			Read struct {
+				Output   string `json:"output"`
+				TimedOut *bool  `json:"timedOut"`
+			} `json:"read"`
+			Windows []struct {
+				Window int    `json:"window"`
+				Opener string `json:"opener"`
+			} `json:"windows"`
 		}
-		windows := succeeds(tool("list-windows"), chat)
-		lines := strings.Split(windows, "\n")
-		if len(lines) != 2 || !strings.Contains(lines[0], "opened by agent") || !strings.HasPrefix(lines[1], "2: ") || !strings.Contains(lines[1], "opened by user") {
-			t.Fatalf("list-windows: %q", windows)
+		script(strings.Join([]string{
+			`const read = await tools.terminal({ command: "send-keys", args: ["-t", "2", "-w", "/^owned-by-user$/", "-l", "echo own''ed-by-user\n"] });`,
+			`const { windows } = await tools.terminal({ command: "list-windows" });`,
+			`return { read, windows };`,
+		}, "\n"), chat, &value)
+		if value.Read.TimedOut != nil || !regexp.MustCompile(`(?m)^owned-by-user$`).MatchString(value.Read.Output) {
+			t.Fatalf("read = %+v", value.Read)
+		}
+		if len(value.Windows) != 2 || value.Windows[0].Window != 1 || value.Windows[0].Opener != "agent" || value.Windows[1].Window != 2 || value.Windows[1].Opener != "user" {
+			t.Fatalf("windows = %+v", value.Windows)
 		}
 	})
 
 	t.Run("tmux errors and a missing window are tool errors", func(t *testing.T) {
-		for _, each := range []struct {
-			args []string
-			want string
-		}{
-			{[]string{"send-keys", "-x"}, "send-keys: unknown option -- x"},
-			{[]string{"send-keys", "Enter"}, "usage: send-keys"},
-			{[]string{"read", "-t", "9"}, "can't find window: 9"},
-			{[]string{"capture-pane", "-t", "1", "-S", "x"}, "capture-pane: invalid start line: x"},
-		} {
-			result := call(tool(each.args[0], each.args[1:]...), chat)
-			if result.Value("isError") != true || !strings.Contains(resultText(result), each.want) {
-				t.Fatalf("%v: %v %q", each.args, result.Value("isError"), resultText(result))
+		var value []string
+		script(strings.Join([]string{
+			`const errors = [];`,
+			`for (const [command, args] of [["send-keys", ["-x"]], ["send-keys", ["Enter"]], ["read", ["-t", "9"]], ["capture-pane", ["-t", "1", "-S", "x"]]])`,
+			`  try { await tools.terminal({ command, args }); errors.push('no error'); } catch (error) { errors.push(String(error.message ?? error)); }`,
+			`return errors;`,
+		}, "\n"), chat, &value)
+		wants := []string{"send-keys: unknown option -- x", "usage: send-keys", "can't find window: 9", "capture-pane: invalid start line: x"}
+		if len(value) != len(wants) {
+			t.Fatalf("errors = %q", value)
+		}
+		for index, want := range wants {
+			if !strings.Contains(value[index], want) {
+				t.Fatalf("error %d = %q, want %q", index, value[index], want)
 			}
 		}
 	})
@@ -243,9 +266,13 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 	t.Run("guest turns may use it, like bash", func(t *testing.T) {
 		guest := guestOf(t, fixture, owner, session, "full", "Guest")
 		guestChat := chatOf(guest, session, "participant")
-		captured := succeeds(tool("capture-pane", "-p", "-t", "dev"), guestChat)
-		if !strings.HasPrefix(captured, "window 1 · ") || !strings.Contains(captured, "from-owner") {
-			t.Fatalf("capture-pane: %q", captured)
+		var value struct {
+			Window int    `json:"window"`
+			Output string `json:"output"`
+		}
+		script(`return await tools.terminal({ command: "capture-pane", args: ["-p", "-t", "dev"] });`, guestChat, &value)
+		if value.Window != 1 || !strings.Contains(value.Output, "from-owner") {
+			t.Fatalf("capture-pane = %+v", value)
 		}
 		// Guests still have no terminal panel.
 		denied, err := guest.Hold(p2test.Background, terminalscontract.Terminals, delta.JsonObjectOf("session", session, "view", randomView()), host.GetOptions{})
@@ -288,6 +315,47 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 		}
 		p2test.ExpectChord(t, p2runtime.WhenLive(p2test.Background, ownerView), data.CodeForbidden)
 		ownerView.Release()
+	})
+
+	t.Run("a subagent's script opens windows at the subagent's own location", func(t *testing.T) {
+		own := filepath.Join(workspace, "own")
+		if err := os.Mkdir(own, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		opener := `return await tools.terminal({ command: "new-window", args: ["-n", "sub", "-w", "/^in-sub$/", "echo in-s''ub"] });`
+		spawn, err := json.Marshal(map[string]any{"action": "spawn", "name": "own", "message": "codemode " + opener, "cwd": "own"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if spawned := call("subagent "+string(spawn), chat); spawned.Value("isError") == true {
+			t.Fatalf("spawn: %s", resultText(spawned))
+		}
+		// Its answer is reported to the main conversation; that turn ends before the next script.
+		if _, err := p2test.Until(chat.Member("view"), func(view delta.JsonValue) bool {
+			return view != nil && hasText(view, func(text string) bool { return text == `<sender kind="subagent" name="own"/>` }) && !running(view)
+		}, 60*time.Second); err != nil {
+			t.Fatal(err)
+		}
+		var value struct {
+			Windows []struct {
+				Name     string `json:"name"`
+				Opener   string `json:"opener"`
+				Location string `json:"location"`
+			} `json:"windows"`
+		}
+		script(`return await tools.terminal({ command: "list-windows" });`, chat, &value)
+		found := 0
+		for _, window := range value.Windows {
+			if window.Name == "sub" {
+				found++
+				if window.Opener != "agent" || window.Location != own {
+					t.Fatalf("window = %+v, want opener agent at %s", window, own)
+				}
+			}
+		}
+		if found != 1 {
+			t.Fatalf("windows = %+v", value.Windows)
+		}
 	})
 
 	t.Run("archiving the session closes its terminals", func(t *testing.T) {
