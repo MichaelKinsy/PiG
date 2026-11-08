@@ -183,8 +183,8 @@ func (h *handler) txStorageRead(t *hostTx, name string, op *jv.Object, method st
 	}})
 }
 
-// noStorageArgs are the arguments of a Storage call that takes none (mintId). The hook payload only reads them, so every call
-// shares the one object rather than allocating its own.
+// noStorageArgs are the arguments of a Storage call that takes none (mintId). It is read-only: the hook payload only reads it, so
+// every call shares the one object rather than allocating its own.
 var noStorageArgs = jv.NewObject()
 
 // requiredConversation is the conversation an operation requires to exist, or 0 when it names none (the operation then reports its own
