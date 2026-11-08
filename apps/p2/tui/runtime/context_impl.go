@@ -109,10 +109,7 @@ func (c *TuiRuntimeContext) Perform(action func() error) { c.rt.Perform(action) 
 
 // Scope is a scope for an overlay or a command, disposed by its owner when it closes.
 func (c *TuiRuntimeContext) Scope() *chordtui.TuiScope {
-	scope := chordtui.NewTuiScope(c.rt.ctx, c.rt.Host, c.rt.postChanged)
-	// A refused or broken hold shows as a status line (Pi's TuiScope.watch), once: Chord does not retry it.
-	scope.ReportFailures(func(err error) { c.rt.Post(func() { c.rt.Fail(err) }) })
-	return scope
+	return chordtui.NewTuiScope(c.rt.ctx, c.rt.Host, c.rt.postChanged)
 }
 
 // Overlay shows an overlay on the tui stack.

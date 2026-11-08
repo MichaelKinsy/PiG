@@ -22,7 +22,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
-	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
@@ -42,14 +41,7 @@ type TuiScope struct {
 
 	mu       sync.Mutex
 	releases []func()
-	// failed is told what a held reference cannot fix by itself (see ReportFailures); set before the first Hold.
-	failed func(error)
 }
-
-// ReportFailures makes the scope tell failed what its held references cannot mend: a broken failure (no automatic
-// retry) or an end (a refused principal, a released object). Chord rebinds a reference by itself after the rest, so
-// nothing else is reported, and each state is reported once. Call it before the first Hold.
-func (s *TuiScope) ReportFailures(failed func(error)) { s.failed = failed }
 
 // NewTuiScope is a scope on host whose every change calls changed, until Dispose or ctx ends.
 func NewTuiScope(ctx context.Context, h host.Host, changed func()) *TuiScope {
@@ -82,51 +74,7 @@ func (s *TuiScope) Hold(typ *contracts.Contract, params any) (*host.Reference, e
 	}
 	s.release(held.Release)
 	WatchNative(s, held.State())
-	if s.failed != nil {
-		s.reportFailures(held)
-	}
 	return held, nil
-}
-
-// reportFailures tells s.failed of each broken failure and end of held's state, from the state held now on.
-func (s *TuiScope) reportFailures(held *host.Reference) {
-	report := func(state *host.RefState) {
-		if s.disposed() {
-			return
-		}
-		switch {
-		case state.Kind == host.RefStateFailed && state.Cause.Kind == data.FailureBroken && state.Cause.Error != nil:
-			s.failed(state.Cause.Error)
-		case state.Kind == host.RefStateEnded && state.Error != nil:
-			s.failed(state.Error)
-		}
-	}
-	go func() {
-		watch, err := held.State().Watch(s.ctx)
-		if err != nil {
-			return
-		}
-		s.release(func() { _, _ = watch.Stop() })
-		if s.disposed() {
-			_, _ = watch.Stop()
-			return
-		}
-		current := watch.Value()
-		if !chord.StartUnlessEnded(func() {
-			watch.Start(func(_ context.Context, call chord.NativeWatchCall[*host.RefState]) error {
-				if call.Value != nil {
-					report(call.Value)
-				}
-				return nil
-			})
-		}) {
-			return
-		}
-		// The state it acquired may be one to report already (a refusal that came before the watch).
-		if current != nil {
-			report(current)
-		}
-	}()
 }
 
 // follow follows a source until Dispose: its changes call changed; the reader of its current value is the result.

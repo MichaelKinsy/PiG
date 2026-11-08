@@ -35,12 +35,16 @@ func p4Session(id string, patch func(*contract.Session)) contract.Session {
 	return session
 }
 
-// p4SessionsStub is the Sessions stub recording every call; guests (owner false) see the catalog read-only.
-func p4SessionsStub(c *calls, rows []contract.Session, owner bool) p2test.Stub {
-	return p2test.Stub{Contract: contract.Sessions, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
-		if !owner {
-			return p2test.StubMembers{Variant: "guest", State: map[string]any{"sessions": self.Cell(rowsOf(rows...))}}
-		}
+type p4Setup struct {
+	*tuitest.Topology
+	calls *calls
+}
+
+// newP4Setup is the server stubs that record every call; rows is the catalog the owner sees.
+func newP4Setup(t *testing.T, rows []contract.Session, screen string) *p4Setup {
+	t.Helper()
+	s := &p4Setup{calls: &calls{}}
+	sessions := p2test.Stub{Contract: contract.Sessions, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
 		cell := self.Cell(rowsOf(rows...))
 		update := func(id any, patch func(*delta.JsonObject)) {
 			_ = cell.Change(func(current any) any {
@@ -61,8 +65,8 @@ func p4SessionsStub(c *calls, rows []contract.Session, owner bool) p2test.Stub {
 			Methods: map[string]p2test.StubMethod{
 				"create": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					object := args.(*delta.JsonObject)
-					c.record("create", location{env: object.Value("env"), cwd: object.Value("cwd").(string)})
-					c.record("created", object.Value("id"))
+					s.calls.record("create", location{env: object.Value("env"), cwd: object.Value("cwd").(string)})
+					s.calls.record("created", object.Value("id"))
 					created := p4Session(object.Value("id").(string), func(each *contract.Session) {
 						each.Cwd = object.Value("cwd").(string)
 						each.UpdatedAt = time.Now().UnixMilli()
@@ -72,25 +76,25 @@ func p4SessionsStub(c *calls, rows []contract.Session, owner bool) p2test.Stub {
 				},
 				"rename": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					object := args.(*delta.JsonObject)
-					c.record("rename", [2]any{object.Value("id"), object.Value("title")})
+					s.calls.record("rename", [2]any{object.Value("id"), object.Value("title")})
 					update(object.Value("id"), func(row *delta.JsonObject) { row.Set("title", object.Value("title")) })
 					return nil, nil
 				},
 				"pin": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					object := args.(*delta.JsonObject)
-					c.record("pin", [2]any{object.Value("id"), object.Value("pinned")})
+					s.calls.record("pin", [2]any{object.Value("id"), object.Value("pinned")})
 					update(object.Value("id"), func(row *delta.JsonObject) { row.Set("pinned", object.Value("pinned")) })
 					return nil, nil
 				},
 				"archive": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					object := args.(*delta.JsonObject)
-					c.record("archive", object.Value("id"))
+					s.calls.record("archive", object.Value("id"))
 					update(object.Value("id"), func(row *delta.JsonObject) { row.Set("archivedAt", float64(time.Now().UnixMilli())) })
 					return nil, nil
 				},
 				"restore": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					object := args.(*delta.JsonObject)
-					c.record("restore", object.Value("id"))
+					s.calls.record("restore", object.Value("id"))
 					update(object.Value("id"), func(row *delta.JsonObject) { row.Set("archivedAt", nil) })
 					return nil, nil
 				},
@@ -98,16 +102,6 @@ func p4SessionsStub(c *calls, rows []contract.Session, owner bool) p2test.Stub {
 			},
 		}
 	}}
-}
-
-type p4Setup struct {
-	*tuitest.Topology
-	calls *calls
-}
-
-// p4Stubs are the server stubs of the session selector and the chat, recording every call; rows is the catalog (read-only for a guest).
-func p4Stubs(c *calls, rows []contract.Session, owner bool) []p2test.Stub {
-	sessions := p4SessionsStub(c, rows, owner)
 	subagents := p2test.Stub{Contract: subagentscontract.Subagents, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, _ p2test.StubSelf) p2test.StubMembers {
 		child := delta.JsonObjectOf("name", "helper", "conversationId", float64(2), "model", "faux/faux-1", "thinkingLevel", "off", "tools", []any{}, "lastEntryId", float64(1))
 		return p2test.StubMembers{Variant: "reader", State: map[string]any{"children": delta.JsonObjectOf("s1", []any{child})}}
@@ -138,21 +132,14 @@ func p4Stubs(c *calls, rows []contract.Session, owner bool) []p2test.Stub {
 			Methods: map[string]p2test.StubMethod{
 				"markRead": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 					object := args.(*delta.JsonObject)
-					c.record("markRead", [2]any{object.Value("session"), object.Value("through")})
+					s.calls.record("markRead", [2]any{object.Value("session"), object.Value("through")})
 					return nil, nil
 				},
 			},
 		}
 	}}
-	return []p2test.Stub{sessions, subagents, search, status, reads}
-}
-
-// newP4Setup is the server stubs that record every call; rows is the catalog the owner sees.
-func newP4Setup(t *testing.T, rows []contract.Session, screen string) *p4Setup {
-	t.Helper()
-	s := &p4Setup{calls: &calls{}}
 	s.Topology = tuitest.NewTopology(t, tuitest.TopologyOptions{
-		Server: p4Stubs(s.calls, rows, true), Worker: []p2test.Stub{chatWorker()},
+		Server: []p2test.Stub{sessions, subagents, search, status, reads}, Worker: []p2test.Stub{chatWorker()},
 		Facets:  []host.Facet{tui.CoreFacet, sessionstui.Facet, subagentstui.Facet, searchtui.Facet},
 		Columns: 100,
 	})

@@ -13,17 +13,6 @@ import (
 // session "s" shown on the chat screen when session is true. For tests whose server is a real p2 server (p2test.Fixture) rather than a stub topology.
 func OnHost(t testing.TB, client host.Host, role tuiruntime.TuiRole, columns, rows int, session bool) *Fixture {
 	t.Helper()
-	return OnHostWith(t, client, role, columns, rows, func(rt *tuiruntime.TuiRuntime) {
-		if session {
-			rt.Session, rt.HasSession = "s", true
-			rt.Screen = "chat"
-		}
-	})
-}
-
-// OnHostWith is OnHost with the runtime's state set by prepare (on the owner loop, before the runtime starts): a reload restores a snapshot there.
-func OnHostWith(t testing.TB, client host.Host, role tuiruntime.TuiRole, columns, rows int, prepare func(*tuiruntime.TuiRuntime)) *Fixture {
-	t.Helper()
 	if columns == 0 {
 		columns, rows = 100, 30
 	}
@@ -33,7 +22,10 @@ func OnHostWith(t testing.TB, client host.Host, role tuiruntime.TuiRole, columns
 	f.start(client, func(rt *tuiruntime.TuiRuntime) {
 		rt.Connected = true
 		rt.Role = role
-		prepare(rt)
+		if session {
+			rt.Session, rt.HasSession = "s", true
+			rt.Screen = "chat"
+		}
 	})
 	return f
 }
