@@ -524,37 +524,54 @@ func (pending *pendingWrites) clear(id int64) {
 	pending.revisions.drop(id)
 }
 
-// flush writes everything pending, a few statements per table (insertRows), and forgets it.
-func (pending *pendingWrites) flush(executor SqliteExecutor, tables SqliteTables) error {
-	steps := []struct {
-		table    string
-		columns  []string
-		rows     [][]cell
-		conflict string
-	}{
-		{tables.RecordIds, []string{"id", "record_type"}, pending.recordIds.all(), "ON CONFLICT(id) DO NOTHING"},
-		{tables.Conversations, []string{"id", "owner_conversation_id", "owner_task_id", "record"}, pending.conversations, ""},
-		{tables.Entries, []string{"id", "conversation_id", "head", "commit_seq", "record"}, pending.entries, ""},
-		{tables.Tasks, []string{"id", "conversation_id", "kind", "status", "abort_requested", "background", "record"}, pending.tasks.all(),
+// commitStatements are the SQL texts of a commit call's writes, built once per schema.
+type commitStatements struct {
+	recordIds, conversations, entries, tasks, submissions, documents, revisions insertStatement
+	deleteRevisions                                                              string
+}
+
+func newCommitStatements(tables SqliteTables) *commitStatements {
+	return &commitStatements{
+		recordIds:     newInsertStatement(tables.RecordIds, []string{"id", "record_type"}, "ON CONFLICT(id) DO NOTHING"),
+		conversations: newInsertStatement(tables.Conversations, []string{"id", "owner_conversation_id", "owner_task_id", "record"}, ""),
+		entries:       newInsertStatement(tables.Entries, []string{"id", "conversation_id", "head", "commit_seq", "record"}, ""),
+		tasks: newInsertStatement(tables.Tasks, []string{"id", "conversation_id", "kind", "status", "abort_requested", "background", "record"},
 			`ON CONFLICT(id) DO UPDATE SET conversation_id = excluded.conversation_id, kind = excluded.kind,
 				status = excluded.status, abort_requested = excluded.abort_requested,
-				background = excluded.background, record = excluded.record`},
-		{tables.Submissions, []string{"id", "conversation_id", "request_id", "status", "record"}, pending.submissions.all(),
+				background = excluded.background, record = excluded.record`),
+		submissions: newInsertStatement(tables.Submissions, []string{"id", "conversation_id", "request_id", "status", "record"},
 			`ON CONFLICT(id) DO UPDATE SET conversation_id = excluded.conversation_id,
-				request_id = excluded.request_id, status = excluded.status, record = excluded.record`},
+				request_id = excluded.request_id, status = excluded.status, record = excluded.record`),
 		// A created document is inserted, a stored one retired: one upsert writes both.
-		{tables.Documents, []string{"id", "kind", "family", "key_value", "scope_kind", "owner_id", "created_at", "retired_at", "record"}, pending.documents.all(),
-			"ON CONFLICT(id) DO UPDATE SET retired_at = excluded.retired_at, record = excluded.record"},
+		documents: newInsertStatement(tables.Documents, []string{"id", "kind", "family", "key_value", "scope_kind", "owner_id", "created_at", "retired_at", "record"},
+			"ON CONFLICT(id) DO UPDATE SET retired_at = excluded.retired_at, record = excluded.record"),
+		revisions:       newInsertStatement(tables.DocumentRevisions, []string{"document_id", "seq", "kind", "version", "content"}, ""),
+		deleteRevisions: "DELETE FROM " + tables.DocumentRevisions + " WHERE document_id IN (SELECT value FROM json_each(?))",
+	}
+}
+
+// flush writes everything pending, a few statements per table (insertRows), and forgets it.
+func (pending *pendingWrites) flush(executor SqliteExecutor, statements *commitStatements) error {
+	steps := [...]struct {
+		statement *insertStatement
+		rows      [][]cell
+	}{
+		{&statements.recordIds, pending.recordIds.all()},
+		{&statements.conversations, pending.conversations},
+		{&statements.entries, pending.entries},
+		{&statements.tasks, pending.tasks.all()},
+		{&statements.submissions, pending.submissions.all()},
+		{&statements.documents, pending.documents.all()},
 	}
 	for _, step := range steps {
-		if err := insertRows(executor, step.table, step.columns, step.rows, step.conflict); err != nil {
+		if err := insertRows(executor, step.statement, step.rows); err != nil {
 			return err
 		}
 	}
-	if err := runForEach(executor, "DELETE FROM "+tables.DocumentRevisions+" WHERE document_id IN (SELECT value FROM json_each(?))", pending.cleared); err != nil {
+	if err := runForEach(executor, statements.deleteRevisions, pending.cleared); err != nil {
 		return err
 	}
-	if err := insertRows(executor, tables.DocumentRevisions, []string{"document_id", "seq", "kind", "version", "content"}, pending.revisions.all(), ""); err != nil {
+	if err := insertRows(executor, &statements.revisions, pending.revisions.all()); err != nil {
 		return err
 	}
 	pending.recordIds.clear()

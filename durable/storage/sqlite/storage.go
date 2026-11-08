@@ -270,6 +270,7 @@ type SqliteStorage struct {
 	retained *workingSet
 
 	schema        SqliteSchema
+	statements    *commitStatements
 	mu            sync.Mutex
 	nextId        int64
 	closed        bool
@@ -332,7 +333,7 @@ func open(db SqliteDatabase, prefix *string) (*SqliteStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SqliteStorage{db: db, schema: schema, nextId: nextId}, nil
+	return &SqliteStorage{db: db, schema: schema, statements: newCommitStatements(schema.Tables), nextId: nextId}, nil
 }
 
 func metadataNextId(metadata SqliteRow) (int64, error) {
@@ -447,7 +448,7 @@ func (storage *SqliteStorage) Commit(
 			seqs = append(seqs, seq)
 			candidateNextId = max(candidateNextId, storage.candidateNextId(batch))
 		}
-		if err := pending.flush(transaction, storage.schema.Tables); err != nil {
+		if err := pending.flush(transaction, storage.statements); err != nil {
 			return err
 		}
 		committedEntries = append(committedEntries, pending.stored...)
@@ -518,7 +519,7 @@ func (storage *SqliteStorage) checkBatch(
 	if !copies {
 		return actions, nil, nil
 	}
-	if err := pending.flush(executor, storage.schema.Tables); err != nil {
+	if err := pending.flush(executor, storage.statements); err != nil {
 		return nil, nil, err
 	}
 	// Whether a database call of the copies' resolution failed: then the failure is an unknown outcome, not a refusal.

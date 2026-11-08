@@ -93,10 +93,43 @@ func runForEach(executor SqliteExecutor, sql string, values []cell) error {
 // escaping of their records costs more than the statements they need.
 const largeRowCharacters = 8 * 1024
 
-// insertRows inserts rows (one cell per column, in order) into table, then conflict (an upsert's clause): the rows of
-// little text from one JSON array parameter per chunk, the same SQL text whatever their number; the large ones bound
-// column by column.
-func insertRows(executor SqliteExecutor, table string, columns []string, rows [][]cell, conflict string) error {
+// insertStatement is the SQL of one table's inserts: the same texts on every call, so built once per schema.
+type insertStatement struct {
+	// small is the insert of rows of little text from one JSON array parameter.
+	small string
+	// head is INSERT INTO t (columns) VALUES, for the large rows bound column by column.
+	head string
+	// row is one row of placeholders.
+	row      string
+	width    int
+	conflict string
+}
+
+// newInsertStatement builds the inserts of table's columns, then conflict (an upsert's clause).
+func newInsertStatement(table string, columns []string, conflict string) insertStatement {
+	names := strings.Join(columns, ", ")
+	cells := make([]string, len(columns))
+	placeholders := make([]string, len(columns))
+	for index := range columns {
+		cells[index] = "json_extract(item.value, '$[" + strconv.Itoa(index) + "]')"
+		placeholders[index] = "?"
+	}
+	return insertStatement{
+		// WHERE true keeps SQLite from reading an upsert's ON as a join constraint of the SELECT.
+		small:    "INSERT INTO " + table + " (" + names + ") SELECT " + strings.Join(cells, ", ") + " FROM json_each(?) AS item WHERE true " + conflict,
+		head:     "INSERT INTO " + table + " (" + names + ") VALUES",
+		row:      "(" + strings.Join(placeholders, ", ") + ")",
+		width:    len(columns),
+		conflict: conflict,
+	}
+}
+
+// insertRows inserts rows (one cell per column, in order) with statement: the rows of little text from one JSON array
+// parameter per chunk, the same SQL text whatever their number; the large ones bound column by column.
+func insertRows(executor SqliteExecutor, statement *insertStatement, rows [][]cell) error {
+	if len(rows) == 0 {
+		return nil
+	}
 	var small []string
 	var large [][]cell
 	for _, row := range rows {
@@ -112,34 +145,23 @@ func insertRows(executor SqliteExecutor, table string, columns []string, rows []
 			small = append(small, jsonText(row))
 		}
 	}
-	names := strings.Join(columns, ", ")
 	if len(small) > 0 {
-		cells := make([]string, len(columns))
-		for index := range columns {
-			cells[index] = "json_extract(item.value, '$[" + strconv.Itoa(index) + "]')"
-		}
-		// WHERE true keeps SQLite from reading an upsert's ON as a join constraint of the SELECT.
-		sql := "INSERT INTO " + table + " (" + names + ") SELECT " + strings.Join(cells, ", ") + " FROM json_each(?) AS item WHERE true " + conflict
 		for _, array := range jsonArrays(small) {
-			if err := executor.Run(sql, array); err != nil {
+			if err := executor.Run(statement.small, array); err != nil {
 				return err
 			}
 		}
 	}
-	return insertBound(executor, "INSERT INTO "+table+" ("+names+") VALUES", len(columns), large, conflict)
+	return insertBound(executor, statement, large)
 }
 
 // maxParameters: Durable Objects bind at most 100 parameters per statement.
 const maxParameters = 100
 
-// insertBound inserts rows with head (INSERT INTO t (columns) VALUES), width cells each, in statements of 1, 2, 4, ...
-// rows up to maxParameters cells: few statements, and at most a handful of SQL texts per table for prepared statements.
-func insertBound(executor SqliteExecutor, head string, width int, rows [][]cell, conflict string) error {
-	placeholders := make([]string, width)
-	for index := range placeholders {
-		placeholders[index] = "?"
-	}
-	row := "(" + strings.Join(placeholders, ", ") + ")"
+// insertBound inserts rows with statement.head, statement.width cells each, in statements of 1, 2, 4, ... rows up to
+// maxParameters cells: few statements, and at most a handful of SQL texts per table for prepared statements.
+func insertBound(executor SqliteExecutor, statement *insertStatement, rows [][]cell) error {
+	width := statement.width
 	size := 1
 	for size*2*width <= maxParameters {
 		size *= 2
@@ -152,10 +174,10 @@ func insertBound(executor SqliteExecutor, head string, width int, rows [][]cell,
 		values := make([]string, size)
 		params := make([]SqliteValue, 0, size*width)
 		for index := range values {
-			values[index] = row
+			values[index] = statement.row
 			params = append(params, rows[start+index]...)
 		}
-		if err := executor.Run(head+" "+strings.Join(values, ", ")+" "+conflict, params...); err != nil {
+		if err := executor.Run(statement.head+" "+strings.Join(values, ", ")+" "+statement.conflict, params...); err != nil {
 			return err
 		}
 	}
