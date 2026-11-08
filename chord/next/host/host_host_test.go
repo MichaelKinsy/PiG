@@ -2291,24 +2291,23 @@ func TestHostReloadTheAPIAnAbortBeforeTheCommitRejectsAbortedAndChangesNothing(t
 }
 
 // Mirrors "reload: the API › an abort after the commit rejects aborted naming what the commit applied, which stands".
+// Pi hooks its batch's commit; here the abort lands in the commit's own batch: the first attempt of an added host-lifetime
+// object runs there, and its factory aborts the context.
 func TestHostReloadTheAPIAnAbortAfterTheCommitRejectsAbortedNamingWhatTheCommitAppliedWhichStands(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: noopOnError})
 	defer closeHosts(t, host)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}, {Name: "@app/gone", Facet: emptyFacet()}}, background))
 	info := mustGet(t, host, hostInfo, jsonObject())
 	aborting, cancel := chordctx.WithCancel(background)
-	// The abort lands right after the commit, while the reload waits for its report: the swapped object's new factory
-	// runs after the commit's batch (its second run: the first is staging's).
-	var runs atomic.Int32
-	changed := DefineFacet(func(h FacetHost, _ FacetSelf) error {
-		return h.Serve(hostInfo, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
-			if runs.Add(1) == 2 {
-				cancel(errors.New("stop"))
-			}
-			return impl("title", constant("b")), nil
+	// The abort lands right after the commit, while the reload waits for its report.
+	changed := infoFacet("b")
+	added := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(hostAborter, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			cancel(errors.New("stop"))
+			return impl("n", constant(1.0)), nil
 		}, ServeOptions{})
 	})
-	_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: changed}, {Name: "@app/new", Facet: emptyFacet()}}, aborting, ReloadOptions{})
+	_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: changed}, {Name: "@app/new", Facet: added}}, aborting, ReloadOptions{})
 	chordErr, ok := data.IsChordError(err)
 	if !ok || chordErr.Code != data.CodeAborted {
 		t.Fatalf("reload = %v, want aborted", err)
@@ -2319,16 +2318,23 @@ func TestHostReloadTheAPIAnAbortAfterTheCommitRejectsAbortedNamingWhatTheCommitA
 			t.Fatalf("committed.%s = %v, want %v", name, got, want)
 		}
 	}
-	turn(host)
-	if title := memberOf(t, info, "title"); title != "b" {
-		t.Fatalf("title = %v, want b", title)
-	}
+	// Restarted: the new attempt goes live once the old one ended.
+	scopeEventually(t, "the commit stands: the restarted object shows the new code", func() bool {
+		value, err := info.Member("title").Value()
+		return err == nil && value == "b"
+	})
 }
 
+// hostAborter is a host-lifetime type whose factory the tests above use to abort a reload's context from inside its commit.
+var hostAborter = mustContract(declareLocal("app.aborter", contracts.LocalDeclaration{
+	Version: 1, Params: contracts.Params{},
+	Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+}))
+
 // Own test (Pi's `#report` waits for no listener, and `host.reload` may be called from a watch callback): the watch
-// listener of a reference of the reloaded type calls `Reload` itself, from the delivery its first reload's commit
-// scheduled. A report that waited for every delivery to finish would wait for that listener, which waits for the first
-// reload to end: neither returns.
+// listener of a reference of a removed type calls `Reload` itself, from the delivery its first reload's commit scheduled
+// (the reference's member waits for the type). A report that waited for every delivery to finish would wait for that
+// listener, which waits for the first reload to end: neither returns.
 func TestHostReloadAWatchListenerMayCallReloadItself(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: noopOnError})
 	defer closeHosts(t, host)
@@ -2342,7 +2348,10 @@ func TestHostReloadAWatchListenerMayCallReloadItself(t *testing.T) {
 	}
 	inner := make(chan result, 1)
 	var once sync.Once
-	watch.Start(func(context.Context, chord.WatchCall[delta.JsonValue]) error {
+	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+		if call.Kind != chord.WatchCallFailed {
+			return nil
+		}
 		once.Do(func() {
 			report, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("c")}}, background, ReloadOptions{})
 			inner <- result{report, err}
@@ -2351,29 +2360,33 @@ func TestHostReloadAWatchListenerMayCallReloadItself(t *testing.T) {
 	})
 	outer := make(chan result, 1)
 	go func() {
-		report, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, background, ReloadOptions{})
+		report, err := host.Reload(nil, background, ReloadOptions{})
 		outer <- result{report, err}
 	}()
 	for name, done := range map[string]chan result{"the reload": outer, "the reload the listener called": inner} {
 		select {
 		case got := <-done:
 			must(t, got.err)
-			if !reflect.DeepEqual(got.report.Plugins.Changed, []string{"@app/info"}) {
-				t.Fatalf("%s: changed = %v, want [@app/info]", name, got.report.Plugins.Changed)
+			plugins := got.report.Plugins
+			if name == "the reload" && !reflect.DeepEqual(plugins.Removed, []string{"@app/info"}) {
+				t.Fatalf("%s: removed = %v, want [@app/info]", name, plugins.Removed)
+			}
+			if name != "the reload" && !reflect.DeepEqual(plugins.Added, []string{"@app/info"}) {
+				t.Fatalf("%s: added = %v, want [@app/info]", name, plugins.Added)
 			}
 		case <-time.After(10 * time.Second):
 			t.Fatalf("%s did not return", name)
 		}
 	}
-	turn(host)
-	if title := memberOf(t, info, "title"); title != "c" {
-		t.Fatalf("title = %v, want c", title)
-	}
+	scopeEventually(t, "the type served again", func() bool {
+		value, err := info.Member("title").Value()
+		return err == nil && value == "c"
+	})
 }
 
-// Own test (Pi's `#report`: "`context`'s abort ends only this wait"): a listener of the reloaded object's reference is
-// still running (busy, not waiting) when the context aborts; the reload does not wait for it to return and rejects
-// `aborted` naming what the commit applied.
+// Own test (Pi's `#report`: "`context`'s abort ends only this wait"): a listener of a removed type's reference is still
+// running (busy, not waiting) when the context aborts; the reload does not wait for it to return and rejects `aborted`
+// naming what the commit applied.
 func TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: noopOnError})
 	defer closeHosts(t, host)
@@ -2386,7 +2399,7 @@ func TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning(t *testing.
 	running := make(chan struct{})
 	var once sync.Once
 	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-		if call.Value == "b" {
+		if call.Kind == chord.WatchCallFailed {
 			once.Do(func() { close(running) })
 			for !release.Load() {
 				runtime.Gosched()
@@ -2397,7 +2410,7 @@ func TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning(t *testing.
 	aborting, cancel := chordctx.WithCancel(background)
 	done := make(chan error, 1)
 	go func() {
-		_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, aborting, ReloadOptions{})
+		_, err := host.Reload(nil, aborting, ReloadOptions{})
 		done <- err
 	}()
 	<-running
@@ -2409,8 +2422,8 @@ func TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning(t *testing.
 			t.Fatalf("reload = %v, want aborted", err)
 		}
 		committed, _ := chordErr.Details.(*delta.JsonObject).Value("committed").(*delta.JsonObject)
-		if got, _ := committed.Value("changed").([]any); !reflect.DeepEqual(got, []any{"@app/info"}) {
-			t.Fatalf("committed.changed = %v, want [@app/info]", got)
+		if got, _ := committed.Value("removed").([]any); !reflect.DeepEqual(got, []any{"@app/info"}) {
+			t.Fatalf("committed.removed = %v, want [@app/info]", got)
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the abort did not end the reload's wait for a running listener")
@@ -2418,7 +2431,8 @@ func TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning(t *testing.
 }
 
 // Pi's report runs the listeners of the batch the reload committed to the end of their synchronous part before it reads the
-// context: a watcher of a reference that left `live` aborts the context from its callback, and the reload rejects `aborted`.
+// context: a watcher of a reference that left `live` (its type removed) aborts the context from its callback, and the reload
+// rejects `aborted`.
 func TestHostReloadAListenerThatAbortsTheContextFromItsCallbackEndsTheReportAborted(t *testing.T) {
 	// One processor: the listener yields while it works, so a report that did not wait for it would read the context first.
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
@@ -2430,7 +2444,7 @@ func TestHostReloadAListenerThatAbortsTheContextFromItsCallbackEndsTheReportAbor
 	must(t, err)
 	aborting, cancel := chordctx.WithCancel(background)
 	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-		if call.Value == "b" {
+		if call.Kind == chord.WatchCallFailed {
 			// A slow synchronous part: a report that read the context before it ran would succeed.
 			for range 200 {
 				runtime.Gosched()
@@ -2439,7 +2453,7 @@ func TestHostReloadAListenerThatAbortsTheContextFromItsCallbackEndsTheReportAbor
 		}
 		return nil
 	})
-	_, err = host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, aborting, ReloadOptions{})
+	_, err = host.Reload(nil, aborting, ReloadOptions{})
 	chordErr, ok := data.IsChordError(err)
 	if !ok || chordErr.Code != data.CodeAborted {
 		t.Fatalf("reload = %v, want aborted", err)
@@ -2476,13 +2490,11 @@ func TestHostReloadTheAPIReportsASetupsOrAFactorysThrowAsFailedNamingThePluginWh
 	if got, want := failedMessages(report.Failed), [][2]string{{"@app/other", `plugin "@app/other": app.info is served twice (plugin "@app/info")`}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("failed = %v, want %v", got, want)
 	}
-	turn(host)
-	if title := memberOf(t, info, "title"); title != "b" {
-		t.Fatalf("title = %v, want b", title)
-	}
-	if state := refStateOf(info); state.Kind != RefStateLive {
-		t.Fatalf("state = %+v, want live", state)
-	}
+	// Restarted: the new attempt goes live once the old one ended.
+	scopeEventually(t, "the restarted object shows the new code live", func() bool {
+		value, err := info.Member("title").Value()
+		return err == nil && value == "b" && refStateOf(info).Kind == RefStateLive
+	})
 }
 
 // Mirrors "reload: the commit (slice 7b §3) › serves added types, drops removed ones and their presence lists, and wakes requests per name".

@@ -28,7 +28,6 @@ coding  ./coding
 coding  ./internal/codingagent/tools
 cli   ./coding/cli
 libs  ./chord
-libs  ./chord/host
 libs  ./chord/output
 libs  ./chord/telemetrysqlite
 libs  ./chord/internal/parking

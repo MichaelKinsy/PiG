@@ -59,7 +59,7 @@ func TestErrorsCrossAReportsFailuresAndParkedCausesAndBack(t *testing.T) {
 		Plugins: host.PluginChanges{Added: []string{"@a/x"}, Changed: []string{}, Removed: []string{}},
 		Failed:  []host.PluginFailure{{Plugin: "@a/y", Error: errors.New("broken")}},
 		Objects: []host.ReloadedObject{
-			{Object: "a.one", Kind: host.ReloadSwapped},
+			{Object: "a.one", Kind: host.ReloadRestarted},
 			{
 				Object: "a.two", Kind: host.ReloadParked,
 				Cause: data.FailureCause{Kind: data.FailureWaiting, Error: data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "w"}, nil)},

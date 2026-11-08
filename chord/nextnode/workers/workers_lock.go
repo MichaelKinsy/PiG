@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"sync"
@@ -13,7 +15,9 @@ import (
 // Ports packages/chord/src/next-node/workers/lock.ts. Process locks (slice 10 §3, Chord v1's `processLock`): one live
 // worker per address. A lock is a listening socket the kernel owns for the holder's lifetime (an abstract socket on Linux
 // and Android, a named pipe on Windows, a socket file elsewhere), so there is no race between two would-be holders; a
-// socket file a crashed holder left fails closed (the error names it: a takeover would race another taker). A child
+// socket file a crashed holder left fails closed for a taker (the error names it: a takeover would race another taker), and
+// only the one process that starts the holders of a name clears it (ClearStaleLock; decision "Stale lock files are cleared by
+// the starter"). A child
 // finding the lock held waits without polling: it connects to the holder's socket, which the holder never answers, and
 // tries again when that connection closes (the holder exited).
 //
@@ -41,14 +45,61 @@ type lockLocation struct {
 // ProcessLock takes the lock name, waiting while another process holds it (until ctx aborts: it returns its cause). It
 // returns what listening returns besides "in use", and for a stale socket file (macOS, the BSDs) an error naming it.
 func ProcessLock(name string, ctx context.Context) (*ProcessLockHandle, error) {
-	sum := sha256.Sum256([]byte(name))
-	//portlint:allow utf16units the slice is of a hex digest, ASCII only, so bytes are UTF-16 units; lock.ts:27 `.digest("hex").slice(0, 32)`
-	key := hex.EncodeToString(sum[:])[:32]
-	location, err := platformLockLocation(key)
+	location, err := lockAddress(name)
 	if err != nil {
 		return nil, err
 	}
 	return lockAt(location, ctx)
+}
+
+// ClearStaleLock removes the socket file of the lock name when nobody accepts on it (a holder killed without its exit hooks
+// left it); it returns whether it did. Abstract sockets and named pipes end with their holder: nothing to clear. Only one
+// process clears a name, one clear at a time: two clearers could both find it stale, one remove it, a new holder take it,
+// and the other remove the new holder's file.
+func ClearStaleLock(name string, ctx context.Context) (bool, error) {
+	location, err := lockAddress(name)
+	if err != nil {
+		return false, err
+	}
+	return clearStaleLockAt(location, ctx)
+}
+
+// lockAddress is where the lock name lives on this platform (`lockAddress` upstream).
+func lockAddress(name string) (lockLocation, error) {
+	sum := sha256.Sum256([]byte(name))
+	//portlint:allow utf16units the slice is of a hex digest, ASCII only, so bytes are UTF-16 units; lock.ts `.digest("hex").slice(0, 32)`
+	key := hex.EncodeToString(sum[:])[:32]
+	return platformLockLocation(key)
+}
+
+// On Linux the lock is an abstract socket with no file to go stale.
+// clearStaleLockAt is ClearStaleLock at location: a socket file nobody accepts on is removed.
+func clearStaleLockAt(location lockLocation, ctx context.Context) (bool, error) {
+	if ctx.Err() != nil {
+		return false, context.Cause(ctx)
+	}
+	if location.kind != lockFile || !nobodyAccepts(location) {
+		return false, nil
+	}
+	if err := os.Remove(location.address); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// nobodyAccepts is whether the path of location exists and nobody accepts on it: the connect's errors that mean a socket
+// file nobody listens on, or no socket there (`NOBODY_ACCEPTS`).
+func nobodyAccepts(location lockLocation) bool {
+	//portlint:allow ctxbackground Pi's `nobodyAccepts` takes no signal (lock.ts): a connect to a local socket file answers at once (accepted or refused), so there is nothing to cancel
+	conn, err := platformDialLock(location, context.Background())
+	if err != nil {
+		return lockRefused(err)
+	}
+	_ = conn.Close()
+	return false
 }
 
 // lockAt takes the lock at location, waiting while it is held. A socket file nobody accepts on (a crashed holder's) fails
